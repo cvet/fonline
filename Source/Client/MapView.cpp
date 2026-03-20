@@ -53,7 +53,7 @@ void SpritePattern::Finish()
 }
 
 MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef())
 {
@@ -1136,7 +1136,7 @@ void MapView::ShowHex(const ViewField& vf)
 
     // Lighting
     if (!field.LightSources.empty()) {
-        for (auto& ls : field.LightSources | std::views::keys) {
+        for (auto* ls : field.LightSources | std::views::keys) {
             const auto it = _visibleLightSources.find(ls);
 
             if (it == _visibleLightSources.end()) {
@@ -1307,7 +1307,7 @@ void MapView::ProcessLighting()
     vector<LightSource*> reapply_sources;
     vector<LightSource*> remove_sources;
 
-    for (auto& ls : _visibleLightSources | std::views::keys) {
+    for (auto* ls : _visibleLightSources | std::views::keys) {
         const auto prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {

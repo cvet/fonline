@@ -289,6 +289,7 @@ FIXED_SETTING(int32, UpdaterInfoDelay, 1000); // Updater info delay in milliseco
 FIXED_SETTING(int32, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, DefaultSplashPack); // Default splash pack
+FIXED_SETTING(bool, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 VARIABLE_SETTING(string, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, SoundNotify, false); // If true, sound notifications are enabled
@@ -298,6 +299,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
 FIXED_SETTING(string, DbStorage, "Memory"); // Database storage type
+FIXED_SETTING(bool, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(bool, AutoStartClientOnServer, false); // If true, server automatically spawns an embedded client on startup
 FIXED_SETTING(bool, CollapseLogOnStart, false); // If true, log is collapsed on start

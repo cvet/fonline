@@ -42,7 +42,7 @@
 FO_BEGIN_NAMESPACE
 
 Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _staticMap {static_map},

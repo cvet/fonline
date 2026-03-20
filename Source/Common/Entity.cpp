@@ -36,15 +36,15 @@
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    _props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept :
+    _props {registrator, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
 
-    if (props != nullptr) {
-        _props.CopyFrom(*props);
+    if (init_props != nullptr) {
+        _props.CopyFrom(*init_props);
     }
 }
 

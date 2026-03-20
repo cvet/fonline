@@ -36,7 +36,7 @@
 FO_BEGIN_NAMESPACE
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    Entity(registrator, props),
+    Entity(registrator, props, nullptr),
     _protoId {proto_id}
 {
     FO_STACK_TRACE_ENTRY();

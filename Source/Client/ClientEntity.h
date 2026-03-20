@@ -61,7 +61,7 @@ public:
     void DestroySelf();
 
 protected:
-    ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
+    ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props);
 
     virtual void OnDestroySelf() = 0;
 
@@ -76,8 +76,8 @@ private:
 class CustomEntityView : public ClientEntity, public EntityProperties
 {
 public:
-    CustomEntityView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
-        ClientEntity(engine, id, registrator, props),
+    CustomEntityView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) :
+        ClientEntity(engine, id, registrator, props, base_props),
         EntityProperties(GetInitRef())
     {
     }
@@ -89,7 +89,7 @@ class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProt
 {
 public:
     CustomEntityWithProtoView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) :
-        CustomEntityView(engine, id, registrator, &proto->GetProperties()),
+        CustomEntityView(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }

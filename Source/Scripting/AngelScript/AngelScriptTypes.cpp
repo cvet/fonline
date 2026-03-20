@@ -256,16 +256,6 @@ static void HashedString_Construct(hstring* self)
     new (self) hstring();
 }
 
-static void HashedString_CreateFromString(AngelScript::asIScriptGeneric* gen)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto* str = *cast_from_void<const string**>(gen->GetAddressOfArg(0));
-    const auto* meta = GetEngineMetadata(gen->GetEngine());
-    const auto hstr = meta->Hashes.ToHashedString(*str);
-    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
-}
-
 static void HashedString_Destruct(hstring* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -342,6 +332,16 @@ static auto HashedString_GetHash(const hstring& self) -> int32
     FO_NO_STACK_TRACE_ENTRY();
 
     return self.as_int32();
+}
+
+static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* str = cast_from_void<const string*>(gen->GetObject());
+    const auto* meta = GetEngineMetadata(gen->GetEngine());
+    const auto hstr = meta->Hashes.ToHashedString(*str);
+    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 }
 
 static auto HashedString_GetUHash(const hstring& self) -> uint32
@@ -707,7 +707,6 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hstring", AngelScript::asBEHAVE_DESTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(HashedString_Destruct), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", FO_SCRIPT_GENERIC(HashedString_IsValidHash), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", FO_SCRIPT_GENERIC(HashedString_CreateFromHash), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring to_hstring(const string &in)", FO_SCRIPT_GENERIC(HashedString_CreateFromString), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "hstring& opAssign(const hstring &in)", FO_SCRIPT_FUNC_THIS(HashedString_Assign), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int opCmp(const hstring &in) const", FO_SCRIPT_FUNC_THIS(Type_Cmp<hstring>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", FO_SCRIPT_FUNC_THIS(Type_Equals<hstring>), FO_SCRIPT_FUNC_THIS_CONV));
@@ -719,6 +718,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "uint get_uhash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetUHash), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr hstring empty_hstring;
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetZero<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "hstring hstr() const", FO_SCRIPT_FUNC_THIS(String_ToHashedString), FO_SCRIPT_GENERIC_CONV));
 
     // Register any
     FO_AS_VERIFY(as_engine->RegisterObjectType("any", sizeof(any_t), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<any_t>()));

@@ -221,7 +221,7 @@ public:
     void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept;
+    Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept;
     virtual ~Entity() = default;
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
