@@ -35,57 +35,73 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
-extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
+extern auto ConfigSectionParseHook(string_view fname, string_view section, string& out_section, map<string, string>& init_section_kv) -> bool;
+extern auto ConfigEntryParseHook(string_view fname, string_view section, string_view key, string_view value, string& out_key, string& out_value) -> bool;
 
-ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* hash_resolver, ConfigFileOption options) :
+struct ConfigFile::Data
+{
+    string Input {};
+    list<string> OwnedStrings {};
+};
+
+ConfigFile::~ConfigFile() = default;
+ConfigFile::ConfigFile(ConfigFile&&) noexcept = default;
+auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+
+ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_resolver, ConfigFileOption options) :
     _fileNameHint {name_hint},
     _hashResolver {hash_resolver},
-    _options {options}
+    _options {options},
+    _data {unique_ptr<Data> {SafeAlloc::MakeRaw<Data>()}}
 {
     FO_STACK_TRACE_ENTRY();
 
-    map<string, string>* cur_section;
-    string section_name_hint;
+    _data->Input = std::move(str);
 
-    const auto it_section = _sectionKeyValues.find(_emptyStr);
-
-    if (it_section == _sectionKeyValues.end()) {
-        auto it = _sectionKeyValues.emplace(_emptyStr, map<string, string>());
-        cur_section = &it->second;
-    }
-    else {
-        cur_section = &it_section->second;
-    }
+    auto cur_section_it = _sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {});
+    map<string_view, string_view>* cur_section = &cur_section_it->second;
+    string_view section_name_for_hook {};
 
     string section_content;
 
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-        section_content.reserve(str.length());
+        section_content.reserve(_data->Input.length());
     }
 
-    istringstream istr(str);
-    string line;
+    string key;
+    string value;
     string accum_line;
+    size_t line_begin = 0;
 
-    while (std::getline(istr, line, '\n')) {
-        if (!line.empty()) {
-            line = strex(line).trim();
+    while (line_begin <= _data->Input.length()) {
+        const size_t line_end = _data->Input.find('\n', line_begin);
+        const size_t view_end = line_end != string::npos ? line_end : _data->Input.length();
+        string_view line {_data->Input.data() + line_begin, view_end - line_begin};
+        bool line_stable = true;
+        string merged_line;
+
+        if (!line.empty() && line.back() == '\r') {
+            line.remove_suffix(1);
         }
 
-        // Accumulate line
+        line_begin = line_end != string::npos ? line_end + 1 : _data->Input.length() + 1;
+        line = strvex(line).trim();
+
         if (!accum_line.empty()) {
-            line.insert(0, accum_line);
-            accum_line.clear();
+            accum_line.append(line);
+            merged_line = std::move(accum_line);
+            line = merged_line;
+            line_stable = false;
         }
+
+        accum_line.clear();
 
         if (line.empty()) {
             continue;
         }
 
-        if (line.length() >= 2 && line.back() == '\\' && (line[line.length() - 2] == ' ' || line[line.length() - 2] == '\t')) {
-            line.pop_back();
-            accum_line = strex(line).trim();
+        if (line.size() >= 2 && line.back() == '\\' && (line[line.size() - 2] == ' ' || line[line.size() - 2] == '\t')) {
+            accum_line.assign(strvex(line.substr(0, line.length() - 1)).trim());
             accum_line.append(" ");
             continue;
         }
@@ -97,22 +113,25 @@ ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* h
             }
 
             // Parse name
-            const auto end = line.find(']');
+            const size_t end = line.find(']');
 
-            if (end == string::npos) {
+            if (end == string_view::npos) {
                 continue;
             }
 
-            string section_name = strex(line.substr(1, end - 1)).trim();
+            const string_view raw_section_name = strvex(line.substr(1, end - 1)).trim();
 
-            if (section_name.empty()) {
+            if (raw_section_name.empty()) {
                 continue;
             }
 
-            section_name_hint = section_name;
             map<string, string> section_kv;
+            string section_name;
+            const bool section_changed = ConfigSectionParseHook(_fileNameHint, raw_section_name, section_name, section_kv);
 
-            ConfigSectionParseHook(_fileNameHint, section_name, section_kv);
+            if (!section_changed) {
+                section_name = string(raw_section_name);
+            }
 
             if (section_name.empty()) {
                 continue;
@@ -120,25 +139,31 @@ ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* h
 
             // Store current section content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-                (*cur_section)[_emptyStr] = std::move(section_content);
+                (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
                 section_content.clear();
 
-                if (!section_kv.empty()) {
-                    for (auto&& [key, value] : section_kv) {
-                        section_content += strex("{} = {}\n", key, value);
-                    }
+                for (const auto& [key, value] : section_kv) {
+                    section_content += strex("{} = {}\n", key, value);
                 }
             }
 
             // Add new section
-            auto it = _sectionKeyValues.emplace(section_name, std::move(section_kv));
-            cur_section = &it->second;
+            const bool section_name_unchanged = line_stable && section_name == raw_section_name;
+            const string_view stored_section_name = section_name_unchanged ? raw_section_name : StoreOwnedString(std::move(section_name));
+
+            cur_section_it = _sectionKeyValues.emplace(stored_section_name, map<string_view, string_view> {});
+            cur_section = &cur_section_it->second;
+            section_name_for_hook = stored_section_name;
+
+            for (const auto& [key, value] : section_kv) {
+                (*cur_section)[StoreOwnedString(key)] = StoreOwnedString(value);
+            }
         }
         // Section content
         else {
             // Store raw content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-                section_content.append(line).append("\n");
+                section_content.append(line.data(), line.size()).append("\n");
             }
 
             // Text format {}{}{}
@@ -146,102 +171,126 @@ ConfigFile::ConfigFile(string_view name_hint, const string& str, HashResolver* h
                 uint32 num = 0;
                 size_t offset = 0;
 
-                for (auto i = 0; i < 3; i++) {
-                    auto first = line.find('{', offset);
-                    auto last = line.find('}', first);
+                for (int32 i = 0; i < 3; i++) {
+                    const size_t first = line.find('{', offset);
+                    const size_t last = line.find('}', first);
 
-                    if (first == string::npos || last == string::npos) {
+                    if (first == string_view::npos || last == string_view::npos) {
                         break;
                     }
 
-                    auto str2 = line.substr(first + 1, last - first - 1);
+                    const string_view str2 = line.substr(first + 1, last - first - 1);
                     offset = last + 1;
 
                     if (i == 0 && num == 0) {
-                        num = strex(str2).is_number() ? static_cast<uint32>(strex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32();
+                        num = strvex(str2).is_number() ? numeric_cast<uint32>(strvex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32();
                     }
                     else if (i == 1 && num != 0) {
-                        num += !str2.empty() ? (strex(str2).is_number() ? static_cast<uint32>(strex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32()) : 0;
+                        num += !str2.empty() ? (strvex(str2).is_number() ? numeric_cast<uint32>(strvex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32()) : 0;
                     }
                     else if (i == 2 && num != 0) {
-                        (*cur_section)[strex("{}", num)] = str2;
+                        (*cur_section)[StoreOwnedString(strex("{}", num).str())] = line_stable ? str2 : StoreOwnedString(str2);
                     }
                 }
             }
             else {
                 // Cut comments
-                auto comment_pos = line.find('#');
+                size_t comment_pos = line.find('#');
 
-                while (comment_pos != string::npos && comment_pos != 0 && line[comment_pos - 1] == '\\') {
+                while (comment_pos != string_view::npos && comment_pos != 0 && line[comment_pos - 1] == '\\') {
                     comment_pos = line.find('#', comment_pos + 1);
                 }
 
-                if (comment_pos != string::npos) {
-                    line.erase(comment_pos);
-                }
+                line = comment_pos != string_view::npos ? line.substr(0, comment_pos) : line;
+                line = strvex(line).trim();
 
                 if (line.empty()) {
                     continue;
                 }
 
                 // Key value format
-                const auto separator = line.find('=');
+                const size_t separator = line.find('=');
 
-                if (separator != string::npos && separator > 0) {
-                    if (line[separator - 1] == '+') {
-                        string key = strex(line.substr(0, separator - 1)).trim();
-                        string value = strex(line.substr(separator + 1)).trim();
+                if (separator != string_view::npos && separator > 0) {
+                    const bool append_value = line[separator - 1] == '+';
+                    const string_view raw_key = append_value ? strvex(line.substr(0, separator - 1)).trim() : strvex(line.substr(0, separator)).trim();
+                    const string_view raw_value = strvex(line.substr(separator + 1)).trim();
 
-                        ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
+                    key.clear();
+                    value.clear();
+                    const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
 
-                        if (!key.empty()) {
-                            if (cur_section->count(key) != 0) {
-                                if (!value.empty()) {
-                                    (*cur_section)[key] += " ";
-                                    (*cur_section)[key] += value;
-                                }
-                            }
-                            else {
-                                (*cur_section)[key] = value;
+                    const string_view entry_key = entry_changed ? string_view {key} : raw_key;
+                    const string_view entry_value = entry_changed ? string_view {value} : raw_value;
+
+                    if (entry_key.empty()) {
+                        continue;
+                    }
+
+                    const bool key_unchanged = line_stable && entry_key == raw_key;
+                    const bool value_unchanged = line_stable && entry_value == raw_value;
+                    const string_view stored_key = key_unchanged ? raw_key : StoreOwnedString(entry_key);
+                    const string_view stored_value = value_unchanged ? raw_value : StoreOwnedString(entry_value);
+
+                    if (append_value) {
+                        const auto existing_it = cur_section->find(stored_key);
+
+                        if (existing_it != cur_section->end()) {
+                            if (!stored_value.empty()) {
+                                string merged_value;
+                                merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
+                                merged_value.append(existing_it->second);
+                                merged_value.push_back(' ');
+                                merged_value.append(stored_value);
+                                existing_it->second = StoreOwnedString(std::move(merged_value));
                             }
                         }
-                    }
-                    else {
-                        string key = strex(line.substr(0, separator)).trim();
-                        string value = strex(line.substr(separator + 1)).trim();
-
-                        ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
-
-                        if (!key.empty()) {
-                            (*cur_section)[key] = value;
+                        else {
+                            (*cur_section)[stored_key] = stored_value;
                         }
+
+                        continue;
                     }
+
+                    (*cur_section)[stored_key] = stored_value;
                 }
             }
         }
     }
 
-    if (!IsEnumSet(_options, ConfigFileOption::ReadFirstSection)) {
-        FO_RUNTIME_ASSERT(istr.eof());
-    }
-
     // Store current section content
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
-        (*cur_section)[_emptyStr] = section_content;
+        (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
     }
 }
 
-auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string*
+auto ConfigFile::StoreOwnedString(string_view value) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it_section = _sectionKeyValues.find(section_name);
+    _data->OwnedStrings.emplace_back(value);
+    return _data->OwnedStrings.back();
+}
+
+auto ConfigFile::StoreOwnedString(string&& value) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _data->OwnedStrings.emplace_back(std::move(value));
+    return _data->OwnedStrings.back();
+}
+
+auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const multimap<string_view, map<string_view, string_view>>::const_iterator it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
     }
 
-    const auto it_key = it_section->second.find(key_name);
+    const map<string_view, string_view>::const_iterator it_key = it_section->second.find(key_name);
 
     if (it_key == it_section->second.end()) {
         return nullptr;
@@ -254,16 +303,16 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* str = GetRawValue(section_name, key_name);
+    const string_view* str = GetRawValue(section_name, key_name);
 
-    return str != nullptr ? *str : _emptyStr;
+    return str != nullptr ? *str : string_view {};
 }
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* str = GetRawValue(section_name, key_name);
+    const string_view* str = GetRawValue(section_name, key_name);
 
     return str != nullptr ? *str : def_val;
 }
@@ -272,52 +321,52 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* str = GetRawValue(section_name, key_name);
+    const string_view* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strex(*str).compare_ignore_case("true")) {
+    if (str != nullptr && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strex(*str).compare_ignore_case("false")) {
+    if (str != nullptr && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strex(*str).to_int32() : 0;
+    return str != nullptr ? strvex(*str).to_int32() : 0;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* str = GetRawValue(section_name, key_name);
+    const string_view* str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strex(*str).compare_ignore_case("true")) {
+    if (str != nullptr && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strex(*str).compare_ignore_case("false")) {
+    if (str != nullptr && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strex(*str).to_int32() : def_val;
+    return str != nullptr ? strvex(*str).to_int32() : def_val;
 }
 
-auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&
+auto ConfigFile::GetSection(string_view section_name) const -> const map<string_view, string_view>&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = _sectionKeyValues.find(section_name);
+    const multimap<string_view, map<string_view, string_view>>::const_iterator it = _sectionKeyValues.find(section_name);
     FO_RUNTIME_ASSERT(it != _sectionKeyValues.end());
 
     return it->second;
 }
 
-auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, string>*>
+auto ConfigFile::GetSections(string_view section_name) -> vector<map<string_view, string_view>*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto count = _sectionKeyValues.count(section_name);
+    const size_t count = _sectionKeyValues.count(section_name);
     auto it = _sectionKeyValues.find(section_name);
 
-    vector<map<string, string>*> key_values;
+    vector<map<string_view, string_view>*> key_values;
     key_values.reserve(count);
 
     for (size_t i = 0; i < count; i++, ++it) {
@@ -327,7 +376,7 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
     return key_values;
 }
 
-auto ConfigFile::GetSections() noexcept -> multimap<string, map<string, string>>&
+auto ConfigFile::GetSections() noexcept -> multimap<string_view, map<string_view, string_view>>&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -339,7 +388,6 @@ auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     const auto it_section = _sectionKeyValues.find(section_name);
-
     return it_section != _sectionKeyValues.end();
 }
 
@@ -362,7 +410,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
     return true;
 }
 
-auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const map<string, string>*
+auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const map<string_view, string_view>*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -375,7 +423,7 @@ auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const
     return &it_section->second;
 }
 
-auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
+auto ConfigFile::GetSectionContent(string_view section_name) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -384,13 +432,13 @@ auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
     const auto it_section = _sectionKeyValues.find(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
-        return _emptyStr;
+        return {};
     }
 
-    const auto it_key = it_section->second.find(_emptyStr);
+    const auto it_key = it_section->second.find(string_view {});
 
     if (it_key == it_section->second.end()) {
-        return _emptyStr;
+        return {};
     }
 
     return it_key->second;

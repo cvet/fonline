@@ -229,7 +229,7 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : config.GetSection("")) {
-        SetValue(key, value, config_dir);
+        SetValue(string(key), string(value), config_dir);
     }
 
     AddResourcePacks(config.GetSections("ResourcePack"), config_dir);
@@ -541,14 +541,14 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     }
 }
 
-void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir)
+void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* res_pack : res_packs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = res_pack->find(key);
-            return it != res_pack->end() ? it->second : string();
+            return it != res_pack->end() ? string(it->second) : string();
         };
 
         ResourcePackInfo pack_info;
@@ -613,14 +613,14 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
     }
 }
 
-void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir)
+void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* sub_config : sub_configs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = sub_config->find(key);
-            return it != sub_config->end() ? it->second : string();
+            return it != sub_config->end() ? string(it->second) : string();
         };
 
         SubConfigInfo config_info;
@@ -648,7 +648,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
         for (auto&& [key, value] : *sub_config) {
             if (key != "Name" && key != "Parent") {
-                config_info.Settings[key] = value;
+                config_info.Settings[string(key)] = string(value);
             }
         }
 

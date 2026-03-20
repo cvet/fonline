@@ -906,16 +906,28 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t errors = 0;
+    map<string_view, string_view> key_values_view;
 
-    for (auto&& [key, value] : key_values) {
-        // Skip technical fields
+    for (const auto& [key, value] : key_values) {
+        key_values_view.emplace(key, value);
+    }
+
+    ApplyFromText(key_values_view);
+}
+
+void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t errors = 0;
+    const PropertyRegistrator* registrator = GetRegistrator();
+
+    for (const auto& [key, value] : key_values) {
         if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
         }
 
-        // Find property
-        const auto* prop = _registrator->FindProperty(key);
+        const Property* prop = registrator->FindProperty(key);
 
         if (prop == nullptr) {
             WriteLog("Failed to load unknown property {}", key);
@@ -924,10 +936,10 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
         }
 
         if (prop->IsDisabled()) {
-            if (_registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
+            if (registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
                 continue;
             }
-            if (_registrator->GetSide() == EngineSideKind::ClientSide && prop->IsServerOnly()) {
+            if (registrator->GetSide() == EngineSideKind::ClientSide && prop->IsServerOnly()) {
                 continue;
             }
 
@@ -948,7 +960,6 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
             continue;
         }
 
-        // Parse
         try {
             ApplyPropertyFromText(prop, value);
         }

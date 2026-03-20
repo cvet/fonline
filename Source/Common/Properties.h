@@ -38,6 +38,8 @@
 
 #include "Common.h"
 
+#include "ConfigFile.h"
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertiesException);
@@ -300,6 +302,7 @@ public:
     void CopyFrom(const Properties& other) noexcept;
     void ValidateForRawData(const Property* prop) const noexcept(false);
     void ApplyFromText(const map<string, string>& key_values);
+    void ApplyFromText(const map<string_view, string_view>& key_values);
     void ApplyPropertyFromText(const Property* prop, string_view text);
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);

@@ -136,10 +136,7 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &meta->Hashes, fopro_options);
 
-        for (auto& section : fopro.GetSections()) {
-            const auto& section_name = section.first;
-            auto& section_kv = section.second;
-
+        for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
             // Skip default section
             if (section_name.empty()) {
                 continue;
@@ -167,6 +164,12 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
             }
             else if (!meta->IsFixedType(type_name)) {
                 throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
+            }
+
+            map<string, string> section_kv;
+
+            for (const auto& [key, value] : section_kv_view) {
+                section_kv.emplace(string(key), string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();

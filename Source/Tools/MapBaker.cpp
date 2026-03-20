@@ -147,7 +147,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         MapLoader::Load(
             map_name, file_content, server_engine.ProtoMngr, server_engine.Hashes,
-            [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
+            [&](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 
@@ -160,7 +160,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_cr_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
                 map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
             },
-            [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
+            [&](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 

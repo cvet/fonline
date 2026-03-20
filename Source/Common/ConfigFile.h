@@ -47,12 +47,12 @@ enum class ConfigFileOption : uint8
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(string_view name_hint, const string& str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(string_view name_hint, string str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
-    ConfigFile(ConfigFile&&) noexcept = default;
+    ConfigFile(ConfigFile&&) noexcept;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
-    ~ConfigFile() = default;
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile&;
+    ~ConfigFile();
 
     [[nodiscard]] auto GetNameHint() const -> const string& { return _fileNameHint; }
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
@@ -61,20 +61,24 @@ public:
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view;
     [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32;
     [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32;
-    [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
-    [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
-    [[nodiscard]] auto GetSections() noexcept -> multimap<string, map<string, string>>&;
-    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> const map<string, string>*;
-    [[nodiscard]] auto GetSectionContent(string_view section_name) -> const string&;
+    [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string_view, string_view>&;
+    [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string_view, string_view>*>;
+    [[nodiscard]] auto GetSections() noexcept -> multimap<string_view, map<string_view, string_view>>&;
+    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> const map<string_view, string_view>*;
+    [[nodiscard]] auto GetSectionContent(string_view section_name) const -> string_view;
 
 private:
-    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string*;
+    struct Data;
+
+    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*;
+    [[nodiscard]] auto StoreOwnedString(string_view value) -> string_view;
+    [[nodiscard]] auto StoreOwnedString(string&& value) -> string_view;
 
     string _fileNameHint;
     raw_ptr<HashResolver> _hashResolver;
     ConfigFileOption _options;
-    multimap<string, map<string, string>> _sectionKeyValues {}; // Todo: rework ConfigFile entries to string_view
-    string _emptyStr {};
+    unique_ptr<Data> _data;
+    multimap<string_view, map<string_view, string_view>> _sectionKeyValues {};
 };
 
 FO_END_NAMESPACE

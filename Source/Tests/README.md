@@ -14,6 +14,7 @@ This directory contains unit tests for deterministic engine/common functionality
 - `Test_AnyData.cpp` — serialization/parsing and container value behavior
 - `Test_CommonHelpers.cpp` — helper utilities and container helpers
 - `Test_Compressor.cpp` — compression/decompression roundtrips and invalid input handling
+- `Test_ConfigFile.cpp` — config parser string-view storage, hook rewrites, collected content, and parse benchmark
 - `Test_Containers.cpp` — container helpers, concepts, formatter/hash checks
 - `Test_DataSerialization.cpp` — binary reader/writer and pointer/bounds behavior
 - `Test_EngineMetadata.cpp` — migration rule registration, chain resolution, and cycle rejection
