@@ -329,11 +329,13 @@ void GlobalSettings::ApplyDefaultSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #define FIXED_SETTING(type, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
-#define VARIABLE_SETTING(type, name, ...) name = { __VA_ARGS__ }
+#define VARIABLE_SETTING(type, name, ...) name = {__VA_ARGS__}
 #include "Settings-Include.h"
+    FO_DISABLE_WARNINGS_POP()
 }
 
 void GlobalSettings::ApplyAutoSettings()

@@ -1064,7 +1064,7 @@ auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const n
 BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
     ScriptSystem(),
-    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr),
+    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr, nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Resources {std::move(resources)},

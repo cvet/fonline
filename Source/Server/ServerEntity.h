@@ -62,7 +62,7 @@ public:
     void SetInitCalled() noexcept { _initCalled = true; }
 
 protected:
-    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
+    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept;
 
     raw_ptr<ServerEngine> _engine;
 
@@ -76,8 +76,8 @@ private:
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-        ServerEntity(engine, id, registrator, props),
+    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props = nullptr) noexcept :
+        ServerEntity(engine, id, registrator, props, base_props),
         EntityProperties(GetInitRef())
     {
     }
@@ -89,7 +89,7 @@ class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
     CustomEntityWithProto(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
-        CustomEntity(engine, id, registrator, &proto->GetProperties()),
+        CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }

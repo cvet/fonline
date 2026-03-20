@@ -32,11 +32,12 @@
 //
 
 #include "ServerEntity.h"
+#include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
-ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    Entity(registrator, props),
+ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept :
+    Entity(registrator, props, engine->Settings.ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {

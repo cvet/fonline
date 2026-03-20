@@ -886,6 +886,7 @@ list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"

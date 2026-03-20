@@ -36,6 +36,37 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr size_t OVERLAY_START_CAPACITY = 16;
+static constexpr uint8 FULL_DATA_STORE_TYPE = 0;
+static constexpr uint8 SEPARATE_PROPS_STORE_TYPE = 1;
+
+static auto RawDataEqual(const_span<uint8> left, const_span<uint8> right) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (left.size() != right.size()) {
+        return false;
+    }
+
+    switch (left.size()) {
+    case 0:
+        return true;
+    case 1:
+        return left[0] == right[0];
+    case 2: {
+        return *reinterpret_cast<const uint16*>(left.data()) == *reinterpret_cast<const uint16*>(right.data());
+    }
+    case 4: {
+        return *reinterpret_cast<const uint32*>(left.data()) == *reinterpret_cast<const uint32*>(right.data());
+    }
+    case 8: {
+        return *reinterpret_cast<const uint64*>(left.data()) == *reinterpret_cast<const uint64*>(right.data());
+    }
+    default:
+        return MemCompare(left.data(), right.data(), left.size());
+    }
+}
+
 auto PropertyRawData::GetPtr() noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -121,12 +152,14 @@ void Property::AddPostSetter(PropertyPostSetCallback setter) const
     _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
-Properties::Properties(const PropertyRegistrator* registrator) noexcept :
-    _registrator {registrator}
+Properties::Properties(const PropertyRegistrator* registrator, const Properties* base) noexcept :
+    _registrator {registrator},
+    _baseProps {base}
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(_registrator);
+    FO_STRONG_ASSERT(!_baseProps || _registrator == _baseProps->GetRegistrator());
 
     if (_registrator->_registeredProperties.size() > 1) {
         AllocData();
@@ -137,31 +170,335 @@ void Properties::AllocData() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!_podData);
+    FO_STRONG_ASSERT(!_podData && !_complexData);
     FO_STRONG_ASSERT(_registrator->_registeredProperties.size() > 1);
 
-    _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
-    MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
+    if (!_baseProps) {
+        _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
+        MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
+        _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8>, size_t>>(_registrator->_complexProperties.size());
+    }
+}
 
-    _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8>, size_t>>(_registrator->_complexProperties.size());
+auto Properties::FindOverlayEntry(const Property* prop) const noexcept -> const OverlayEntry*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_baseProps || _overlayEntries.empty()) {
+        return nullptr;
+    }
+
+    const auto reg_index = prop->GetRegIndex();
+    const auto it = std::ranges::lower_bound(_overlayEntries, reg_index, std::ranges::less {}, &OverlayEntry::PropRegIndex);
+    return it != _overlayEntries.end() && it->PropRegIndex == reg_index ? &*it : nullptr;
+}
+
+auto Properties::FindOverlayEntry(const Property* prop) noexcept -> OverlayEntry*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_baseProps || _overlayEntries.empty()) {
+        return nullptr;
+    }
+
+    const auto reg_index = prop->GetRegIndex();
+    const auto it = std::ranges::lower_bound(_overlayEntries, reg_index, std::ranges::less {}, &OverlayEntry::PropRegIndex);
+    return it != _overlayEntries.end() && it->PropRegIndex == reg_index ? &*it : nullptr;
+}
+
+auto Properties::IsOverlayPropertyIncluded(const Property* prop, bool with_protected) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(prop);
+
+    if (!prop->IsSynced()) {
+        return false;
+    }
+
+    if (prop->IsPlainData()) {
+        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+        const auto limit = _registrator->_publicPodDataSpace.size() + (with_protected ? _registrator->_protectedPodDataSpace.size() : 0);
+        return *prop->_podDataOffset + prop->GetBaseSize() <= limit;
+    }
+
+    const auto& allowed_props = with_protected ? _registrator->_publicProtectedComplexDataPropsLookup : _registrator->_publicComplexDataPropsLookup;
+    return allowed_props.contains(prop->GetRegIndex());
+}
+
+auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (data_size == 0) {
+        return 0;
+    }
+
+    const auto needed_size = _overlayDataSize + data_size;
+
+    if (needed_size > _overlayDataCapacity) {
+        size_t new_capacity = _overlayDataCapacity != 0 ? _overlayDataCapacity : OVERLAY_START_CAPACITY;
+
+        while (new_capacity < needed_size) {
+            new_capacity *= 2;
+        }
+
+        RepackOverlayData(new_capacity);
+    }
+
+    const auto offset = static_cast<uint32>(_overlayDataSize);
+    _overlayDataSize += data_size;
+    return offset;
+}
+
+auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t new_capacity = std::max(min_capacity, OVERLAY_START_CAPACITY);
+    size_t used_size = 0;
+
+    for (const auto& entry : _overlayEntries) {
+        used_size += entry.DataSize;
+    }
+
+    while (new_capacity < used_size) {
+        new_capacity *= 2;
+    }
+
+    auto new_data = new_capacity != 0 ? SafeAlloc::MakeUniqueArr<uint8>(new_capacity) : nullptr;
+    size_t new_size = 0;
+
+    for (auto& entry : _overlayEntries) {
+        if (entry.DataSize != 0) {
+            if (_overlayData) {
+                MemCopy(new_data.get() + new_size, _overlayData.get() + entry.DataOffset, entry.DataSize);
+            }
+
+            entry.DataOffset = static_cast<uint32>(new_size);
+            new_size += entry.DataSize;
+        }
+        else {
+            entry.DataOffset = 0;
+        }
+    }
+
+    _overlayData = std::move(new_data);
+    _overlayDataCapacity = new_capacity;
+    _overlayDataSize = new_size;
+    _overlayGarbageSize = 0;
+
+    _storeDataRevision++;
+}
+
+void Properties::RemoveOverlayEntry(const Property* prop) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* entry = FindOverlayEntry(prop);
+
+    if (entry != nullptr) {
+        _overlayGarbageSize += entry->DataSize;
+
+        const auto index = static_cast<ptrdiff_t>(entry - _overlayEntries.data());
+        _overlayEntries.erase(_overlayEntries.begin() + index);
+
+        if (_overlayEntries.empty()) {
+            ResetOverlayData();
+        }
+        else if (_overlayGarbageSize > (_overlayDataCapacity / 2)) {
+            RepackOverlayData(_overlayDataCapacity);
+        }
+
+        _storeDataRevision++;
+    }
+}
+
+void Properties::ResetOverlayData() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _overlayEntries.clear();
+    _overlayData.reset();
+    _overlayDataSize = 0;
+    _overlayDataCapacity = 0;
+    _overlayGarbageSize = 0;
+
+    _storeDataRevision++;
+}
+
+void Properties::ResetComplexData() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_complexData == nullptr) {
+        return;
+    }
+
+    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
+        _complexData[i].first.reset();
+        _complexData[i].second = 0;
+    }
+
+    _storeDataRevision++;
+}
+
+void Properties::RemoveSyncedOverlayEntries() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_overlayEntries.empty()) {
+        return;
+    }
+
+    size_t write_pos = 0;
+    size_t removed_data_size = 0;
+    bool removed_any = false;
+
+    for (size_t read_pos = 0; read_pos < _overlayEntries.size(); read_pos++) {
+        const auto& entry = _overlayEntries[read_pos];
+        const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
+        FO_STRONG_ASSERT(prop);
+
+        if (prop->IsSynced()) {
+            removed_data_size += entry.DataSize;
+            removed_any = true;
+            continue;
+        }
+
+        if (write_pos != read_pos) {
+            _overlayEntries[write_pos] = entry;
+        }
+
+        write_pos++;
+    }
+
+    if (!removed_any) {
+        return;
+    }
+
+    _overlayEntries.resize(write_pos);
+    _overlayGarbageSize += removed_data_size;
+
+    if (_overlayEntries.empty()) {
+        ResetOverlayData();
+    }
+    else if (_overlayGarbageSize > (_overlayDataCapacity / 2)) {
+        RepackOverlayData(_overlayDataCapacity);
+    }
+
+    _storeDataRevision++;
+}
+
+void Properties::CloneOwnDataFrom(const Properties& other) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_registrator == other._registrator);
+    FO_STRONG_ASSERT((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps));
+
+    if (_baseProps) {
+        _overlayEntries = other._overlayEntries;
+        _overlayDataSize = other._overlayDataSize;
+        _overlayDataCapacity = other._overlayDataSize;
+        _overlayGarbageSize = 0;
+
+        if (_overlayDataSize != 0) {
+            _overlayData = SafeAlloc::MakeUniqueArr<uint8>(_overlayDataSize);
+            MemCopy(_overlayData.get(), other._overlayData.get(), _overlayDataSize);
+        }
+        else {
+            _overlayData.reset();
+        }
+    }
+    else {
+        MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
+
+        for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
+            if (other._complexData[i].first) {
+                _complexData[i].first = SafeAlloc::MakeUniqueArr<uint8>(other._complexData[i].second);
+                _complexData[i].second = other._complexData[i].second;
+                MemCopy(_complexData[i].first.get(), other._complexData[i].first.get(), other._complexData[i].second);
+            }
+            else {
+                _complexData[i].first.reset();
+                _complexData[i].second = 0;
+            }
+        }
+    }
+
+    _storeDataRevision++;
+}
+
+void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_registrator == other._registrator);
+    FO_STRONG_ASSERT(_baseProps != nullptr);
+    FO_STRONG_ASSERT(other._baseProps == nullptr);
+
+    ResetOverlayData();
+
+    size_t total_overlay_data_size = 0;
+
+    for (const auto& data_prop : _registrator->_dataProperties) {
+        const auto* prop = data_prop.Prop.get();
+        const auto other_raw_data = data_prop.IsPlain ? span<const uint8> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
+
+        if (!RawDataEqual(_baseProps->GetRawData(prop), other_raw_data)) {
+            _overlayEntries.emplace_back(OverlayEntry {.PropRegIndex = prop->GetRegIndex(), .DataOffset = 0, .DataSize = numeric_cast<uint32>(other_raw_data.size())});
+            total_overlay_data_size += other_raw_data.size();
+        }
+    }
+
+    if (!_overlayEntries.empty()) {
+        if (total_overlay_data_size != 0) {
+            _overlayData = SafeAlloc::MakeUniqueArr<uint8>(total_overlay_data_size);
+        }
+
+        _overlayDataSize = total_overlay_data_size;
+        _overlayDataCapacity = total_overlay_data_size;
+        _overlayGarbageSize = 0;
+
+        size_t data_offset = 0;
+        size_t overlay_index = 0;
+
+        for (const auto& data_prop : _registrator->_dataProperties) {
+            if (overlay_index >= _overlayEntries.size()) {
+                break;
+            }
+
+            auto& entry = _overlayEntries[overlay_index];
+            const auto* prop = data_prop.Prop.get();
+
+            if (entry.PropRegIndex != prop->GetRegIndex()) {
+                continue;
+            }
+
+            const auto other_raw_data = data_prop.IsPlain ? span<const uint8> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
+            entry.DataOffset = numeric_cast<uint32>(data_offset);
+
+            if (entry.DataSize != 0) {
+                MemCopy(_overlayData.get() + data_offset, other_raw_data.data(), entry.DataSize);
+                data_offset += entry.DataSize;
+            }
+
+            overlay_index++;
+        }
+
+        FO_STRONG_ASSERT(overlay_index == _overlayEntries.size());
+    }
+
+    _storeDataRevision++;
 }
 
 auto Properties::Copy() const noexcept -> Properties
 {
     FO_STACK_TRACE_ENTRY();
 
-    Properties props = Properties(_registrator.get());
-
-    MemCopy(props._podData.get(), _podData.get(), _registrator->_wholePodDataSize);
-
-    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
-        if (_complexData[i].first) {
-            props._complexData[i].first = SafeAlloc::MakeUniqueArr<uint8>(_complexData[i].second);
-            props._complexData[i].second = _complexData[i].second;
-            MemCopy(props._complexData[i].first.get(), _complexData[i].first.get(), _complexData[i].second);
-        }
-    }
-
+    Properties props = _baseProps ? Properties(_registrator.get(), _baseProps.get()) : Properties(_registrator.get());
+    props.CloneOwnDataFrom(*this);
     return props;
 }
 
@@ -171,12 +508,28 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
     FO_STRONG_ASSERT(_registrator == other._registrator);
 
-    // Copy plain data
-    MemCopy(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize);
+    if ((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps)) {
+        CloneOwnDataFrom(other);
+    }
+    else if (_baseProps && !other._baseProps) {
+        RebuildOverlayFromFullData(other);
+    }
+    else if (other._baseProps) {
+        CopyFrom(*other._baseProps);
 
-    // Copy complex data
-    for (const auto& prop : _registrator->_complexProperties) {
-        SetRawData(prop.get(), {other._complexData[*prop->_complexDataIndex].first.get(), other._complexData[*prop->_complexDataIndex].second});
+        for (const auto& entry : other._overlayEntries) {
+            const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
+            FO_STRONG_ASSERT(prop);
+
+            const auto other_raw_data = span<const uint8>(entry.DataSize != 0 ? other._overlayData.get() + entry.DataOffset : nullptr, entry.DataSize);
+
+            if (!RawDataEqual(GetRawData(prop.get()), other_raw_data)) {
+                SetRawData(prop.get(), other_raw_data);
+            }
+        }
+    }
+    else {
+        FO_STRONG_ASSERT(false);
     }
 }
 
@@ -185,51 +538,66 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     FO_STACK_TRACE_ENTRY();
 
     all_data.clear();
+
     auto writer = DataWriter(all_data);
-
-    // Store plain properties data
     writer.Write<uint32>(numeric_cast<uint32>(_registrator->_wholePodDataSize));
+    writer.Write<bool>(!!_baseProps);
 
-    int32 start_pos = -1;
-    constexpr int32 seek_step = 3;
+    if (_baseProps) {
+        writer.Write<uint32>(numeric_cast<uint32>(_overlayEntries.size()));
 
-    for (size_t i = 0; i < _registrator->_wholePodDataSize; i++) {
-        if (_podData[i] != 0) {
-            if (start_pos == -1) {
-                start_pos = numeric_cast<int32>(i);
-            }
+        for (const auto& entry : _overlayEntries) {
+            writer.Write<uint16>(entry.PropRegIndex);
+            writer.Write<uint32>(entry.DataSize);
 
-            i += seek_step;
-        }
-        else {
-            if (start_pos != -1) {
-                const size_t len = i - start_pos;
-                writer.Write<uint32>(numeric_cast<uint32>(start_pos));
-                writer.Write<uint32>(numeric_cast<uint32>(len));
-                writer.WritePtr(_podData.get() + start_pos, len);
-
-                start_pos = -1;
+            if (entry.DataSize != 0) {
+                FO_STRONG_ASSERT(_overlayData);
+                writer.WritePtr(_overlayData.get() + entry.DataOffset, entry.DataSize);
             }
         }
     }
+    else {
+        int32 start_pos = -1;
+        constexpr int32 seek_step = 3;
 
-    if (start_pos != -1) {
-        const size_t len = _registrator->_wholePodDataSize - start_pos;
-        writer.Write<uint32>(numeric_cast<uint32>(start_pos));
-        writer.Write<uint32>(numeric_cast<uint32>(len));
-        writer.WritePtr(_podData.get() + start_pos, len);
-    }
+        for (size_t i = 0; i < _registrator->_wholePodDataSize; i++) {
+            if (_podData[i] != 0) {
+                if (start_pos == -1) {
+                    start_pos = numeric_cast<int32>(i);
+                }
 
-    writer.Write<uint32>(const_numeric_cast<uint32>(0));
-    writer.Write<uint32>(const_numeric_cast<uint32>(0));
+                i += seek_step;
+            }
+            else {
+                if (start_pos != -1) {
+                    const size_t len = i - start_pos;
+                    writer.Write<uint32>(numeric_cast<uint32>(start_pos));
+                    writer.Write<uint32>(numeric_cast<uint32>(len));
+                    writer.WritePtr(_podData.get() + start_pos, len);
 
-    // Store complex properties
-    writer.Write<uint32>(numeric_cast<uint32>(_registrator->_complexProperties.size()));
+                    start_pos = -1;
+                }
+            }
+        }
 
-    for (const auto& prop : _registrator->_complexProperties) {
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-        writer.Write<uint32>(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
-        writer.WritePtr(_complexData[*prop->_complexDataIndex].first.get(), _complexData[*prop->_complexDataIndex].second);
+        if (start_pos != -1) {
+            const size_t len = _registrator->_wholePodDataSize - start_pos;
+            writer.Write<uint32>(numeric_cast<uint32>(start_pos));
+            writer.Write<uint32>(numeric_cast<uint32>(len));
+            writer.WritePtr(_podData.get() + start_pos, len);
+        }
+
+        writer.Write<uint32>(const_numeric_cast<uint32>(0));
+        writer.Write<uint32>(const_numeric_cast<uint32>(0));
+
+        // Store complex properties
+        writer.Write<uint32>(numeric_cast<uint32>(_registrator->_complexProperties.size()));
+
+        for (const auto& prop : _registrator->_complexProperties) {
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            writer.Write<uint32>(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
+            writer.WritePtr(_complexData[*prop->_complexDataIndex].first.get(), _complexData[*prop->_complexDataIndex].second);
+        }
     }
 
     // Store hashes
@@ -240,47 +608,45 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         }
     };
 
-    for (const auto& prop : _registrator->_registeredProperties) {
-        if (prop && !prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsDictKeyHash())) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), *_registrator->_hashResolver, *_registrator->_nameResolver);
+    for (const auto& prop : _registrator->_hashProperties) {
+        const auto value = PropertiesSerializator::SavePropertyToValue(this, prop.get(), *_registrator->_hashResolver, *_registrator->_nameResolver);
 
-            if (value.Type() == AnyData::ValueType::String) {
-                add_hash(value.AsString());
+        if (value.Type() == AnyData::ValueType::String) {
+            add_hash(value.AsString());
+        }
+        else if (value.Type() == AnyData::ValueType::Array) {
+            const auto& arr = value.AsArray();
+
+            for (const auto& arr_entry : arr) {
+                add_hash(arr_entry.AsString());
             }
-            else if (value.Type() == AnyData::ValueType::Array) {
-                const auto& arr = value.AsArray();
+        }
+        else if (value.Type() == AnyData::ValueType::Dict) {
+            const auto& dict = value.AsDict();
 
-                for (const auto& arr_entry : arr) {
-                    add_hash(arr_entry.AsString());
+            if (prop->IsDictKeyHash()) {
+                for (const auto& key : dict | std::views::keys) {
+                    add_hash(key);
                 }
             }
-            else if (value.Type() == AnyData::ValueType::Dict) {
-                const auto& dict = value.AsDict();
 
-                if (prop->IsDictKeyHash()) {
-                    for (const auto& key : dict | std::views::keys) {
-                        add_hash(key);
-                    }
-                }
+            if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType()) {
+                for (const auto& dict_value : dict | std::views::values) {
+                    if (dict_value.Type() == AnyData::ValueType::Array) {
+                        const auto& dict_arr = dict_value.AsArray();
 
-                if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType()) {
-                    for (const auto& dict_value : dict | std::views::values) {
-                        if (dict_value.Type() == AnyData::ValueType::Array) {
-                            const auto& dict_arr = dict_value.AsArray();
-
-                            for (const auto& dict_arr_entry : dict_arr) {
-                                add_hash(dict_arr_entry.AsString());
-                            }
-                        }
-                        else {
-                            add_hash(dict_value.AsString());
+                        for (const auto& dict_arr_entry : dict_arr) {
+                            add_hash(dict_arr_entry.AsString());
                         }
                     }
+                    else {
+                        add_hash(dict_value.AsString());
+                    }
                 }
             }
-            else {
-                FO_UNREACHABLE_PLACE();
-            }
+        }
+        else {
+            FO_UNREACHABLE_PLACE();
         }
     }
 }
@@ -290,117 +656,235 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader(all_data);
-
-    // Read plain properties data
     const auto whole_pod_data_size = reader.Read<uint32>();
-    FO_RUNTIME_ASSERT_STR(whole_pod_data_size == _registrator->_wholePodDataSize, "Run ForceBakeResources");
+    FO_RUNTIME_ASSERT_STR(whole_pod_data_size == _registrator->_wholePodDataSize, "Run BakeResources");
+    const auto has_overlay_data = reader.Read<bool>();
+    FO_RUNTIME_ASSERT(!!_baseProps == has_overlay_data);
 
-    while (true) {
-        const auto start_pos = reader.Read<uint32>();
-        const auto len = reader.Read<uint32>();
+    if (_baseProps) {
+        ResetOverlayData();
 
-        if (start_pos == 0 && len == 0) {
-            break;
+        const auto overlay_entries_count = reader.Read<uint32>();
+
+        for (uint32 i = 0; i < overlay_entries_count; i++) {
+            const auto prop_index = reader.Read<uint16>();
+            FO_RUNTIME_ASSERT(prop_index > 0 && prop_index < _registrator->_registeredProperties.size());
+            const auto& prop = _registrator->_registeredProperties[prop_index];
+            FO_RUNTIME_ASSERT(prop);
+            const auto data_size = reader.Read<uint32>();
+            SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
+        }
+    }
+    else {
+        MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
+        ResetComplexData();
+
+        while (true) {
+            const auto start_pos = reader.Read<uint32>();
+            const auto len = reader.Read<uint32>();
+
+            if (start_pos == 0 && len == 0) {
+                break;
+            }
+
+            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
         }
 
-        MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
-    }
+        // Read complex properties
+        const auto complex_props_count = reader.Read<uint32>();
+        FO_RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
 
-    // Read complex properties
-    const auto complex_props_count = reader.Read<uint32>();
-    FO_RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
-
-    for (const auto& prop : _registrator->_complexProperties) {
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-        const auto data_size = reader.Read<uint32>();
-        SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
+        for (const auto& prop : _registrator->_complexProperties) {
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            const auto data_size = reader.Read<uint32>();
+            SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
+        }
     }
 
     reader.VerifyEnd();
+
+    _storeDataRevision++;
 }
 
 void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    make_if_not_exists(_storeData);
-    make_if_not_exists(_storeDataSizes);
-    make_if_not_exists(_storeDataComplexIndices);
+    auto& cache_ptr = _storeDataCaches[with_protected ? 1 : 0];
+    make_if_not_exists(cache_ptr);
+    auto& cache = *cache_ptr;
+    *all_data = &cache.Data;
+    *all_data_sizes = &cache.Sizes;
 
-    *all_data = &*_storeData;
-    *all_data_sizes = &*_storeDataSizes;
-    _storeData->resize(0);
-    _storeDataSizes->resize(0);
+    if (cache.Revision == _storeDataRevision) {
+        return;
+    }
 
-    *_storeDataComplexIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+    cache.Data.clear();
+    cache.Sizes.clear();
+    cache.PropertyIndices.clear();
 
-    const auto preserve_size = 1u + (!_storeDataComplexIndices->empty() ? 1u + _storeDataComplexIndices->size() : 0);
-    _storeData->reserve(preserve_size);
-    _storeDataSizes->reserve(preserve_size);
+    cache.Data.push_back(_baseProps ? &SEPARATE_PROPS_STORE_TYPE : &FULL_DATA_STORE_TYPE);
+    cache.Sizes.push_back(sizeof(uint8));
 
-    // Store plain properties data
-    _storeData->push_back(_podData.get());
-    _storeDataSizes->push_back(numeric_cast<uint32>(_registrator->_publicPodDataSpace.size()) + (with_protected ? numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size()) : 0));
+    if (_baseProps) {
+        for (const auto& entry : _overlayEntries) {
+            const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
+            FO_STRONG_ASSERT(prop);
 
-    // Filter complex data to send
-    for (size_t i = 0; i < _storeDataComplexIndices->size();) {
-        const auto& prop = _registrator->_registeredProperties[(*_storeDataComplexIndices)[i]];
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            if (!IsOverlayPropertyIncluded(prop.get(), with_protected)) {
+                continue;
+            }
 
-        if (!_complexData[*prop->_complexDataIndex].first) {
-            _storeDataComplexIndices->erase(_storeDataComplexIndices->begin() + numeric_cast<int32>(i));
+            const auto raw_data = GetRawData(prop.get());
+
+            cache.PropertyIndices.push_back(entry.PropRegIndex);
+            cache.Data.push_back(raw_data.data());
+            cache.Sizes.push_back(numeric_cast<uint32>(raw_data.size()));
         }
-        else {
-            i++;
+
+        if (!cache.PropertyIndices.empty()) {
+            cache.Data.insert(cache.Data.begin() + 1, reinterpret_cast<const uint8*>(cache.PropertyIndices.data()));
+            cache.Sizes.insert(cache.Sizes.begin() + 1, numeric_cast<uint32>(cache.PropertyIndices.size() * sizeof(uint16)));
+        }
+    }
+    else {
+        cache.PropertyIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+
+        const auto preserve_size = 2u + (!cache.PropertyIndices.empty() ? 1u + cache.PropertyIndices.size() : 0);
+        cache.Data.reserve(preserve_size);
+        cache.Sizes.reserve(preserve_size);
+
+        // Store plain properties data
+        cache.Data.push_back(_podData.get());
+        cache.Sizes.push_back(numeric_cast<uint32>(_registrator->_publicPodDataSpace.size()) + (with_protected ? numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size()) : 0));
+
+        // Filter complex data to send
+        for (size_t i = 0; i < cache.PropertyIndices.size();) {
+            const auto& prop = _registrator->_registeredProperties[cache.PropertyIndices[i]];
+            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+
+            if (!_complexData[*prop->_complexDataIndex].first) {
+                cache.PropertyIndices.erase(cache.PropertyIndices.begin() + numeric_cast<int32>(i));
+            }
+            else {
+                i++;
+            }
+        }
+
+        // Store complex properties data
+        if (!cache.PropertyIndices.empty()) {
+            cache.Data.push_back(reinterpret_cast<uint8*>(cache.PropertyIndices.data()));
+            cache.Sizes.push_back(numeric_cast<uint32>(cache.PropertyIndices.size()) * sizeof(uint16));
+
+            for (const auto index : cache.PropertyIndices) {
+                const auto& prop = _registrator->_registeredProperties[index];
+                cache.Data.push_back(_complexData[*prop->_complexDataIndex].first.get());
+                cache.Sizes.push_back(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
+            }
         }
     }
 
-    // Store complex properties data
-    if (!_storeDataComplexIndices->empty()) {
-        _storeData->push_back(reinterpret_cast<uint8*>(_storeDataComplexIndices->data()));
-        _storeDataSizes->push_back(numeric_cast<uint32>(_storeDataComplexIndices->size()) * sizeof(uint16));
-
-        for (const auto index : *_storeDataComplexIndices) {
-            const auto& prop = _registrator->_registeredProperties[index];
-            _storeData->push_back(_complexData[*prop->_complexDataIndex].first.get());
-            _storeDataSizes->push_back(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
-        }
-    }
+    cache.Revision = _storeDataRevision;
 }
 
 void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<uint32>& all_data_sizes)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Restore plain data
-    FO_RUNTIME_ASSERT(!all_data_sizes.empty());
     FO_RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
-    const auto public_size = numeric_cast<uint32>(_registrator->_publicPodDataSpace.size());
-    const auto protected_size = numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size());
-    const auto private_size = numeric_cast<uint32>(_registrator->_privatePodDataSpace.size());
-    FO_RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
 
-    if (all_data_sizes[0] != 0) {
-        MemCopy(_podData.get(), all_data[0], all_data_sizes[0]);
+    const auto apply_separate_props_data = [this](const vector<const uint8*>& separate_data, const vector<uint32>& separate_sizes) {
+        if (separate_data.empty()) {
+            return;
+        }
+
+        const uint32 property_data_count = separate_sizes[0] / sizeof(uint16);
+        FO_RUNTIME_ASSERT(separate_sizes[0] == property_data_count * sizeof(uint16));
+        FO_RUNTIME_ASSERT(separate_data.size() == 1 + property_data_count);
+
+        for (uint32 i = 0; i < property_data_count; i++) {
+            uint16 prop_index {};
+            MemCopy(&prop_index, separate_data[0] + i * sizeof(uint16), sizeof(uint16));
+
+            FO_RUNTIME_ASSERT(prop_index > 0);
+            FO_RUNTIME_ASSERT(prop_index < _registrator->_registeredProperties.size());
+            const auto& prop = _registrator->_registeredProperties[prop_index];
+            FO_RUNTIME_ASSERT(prop);
+            SetRawData(prop.get(), {separate_data[1 + i], separate_sizes[1 + i]});
+        }
+    };
+
+    const auto apply_full_data = [this](Properties& target, const vector<const uint8*>& full_data, const vector<uint32>& full_sizes) {
+        FO_RUNTIME_ASSERT(!full_sizes.empty());
+
+        const auto public_size = numeric_cast<uint32>(_registrator->_publicPodDataSpace.size());
+        const auto protected_size = numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size());
+        const auto private_size = numeric_cast<uint32>(_registrator->_privatePodDataSpace.size());
+        FO_RUNTIME_ASSERT(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size);
+
+        if (full_sizes[0] != 0) {
+            MemCopy(target._podData.get(), full_data[0], full_sizes[0]);
+        }
+
+        if (full_data.size() > 1) {
+            const uint32 comlplex_data_count = full_sizes[1] / sizeof(uint16);
+            FO_RUNTIME_ASSERT(comlplex_data_count > 0);
+            vector<uint16> complex_indicies(comlplex_data_count);
+            MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
+
+            for (size_t i = 0; i < complex_indicies.size(); i++) {
+                FO_RUNTIME_ASSERT(complex_indicies[i] > 0);
+                FO_RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
+                const auto& prop = _registrator->_registeredProperties[complex_indicies[i]];
+                FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+                const auto data_size = full_sizes[2 + i];
+                const auto* data = full_data[2 + i];
+                target.SetRawData(prop.get(), {data, data_size});
+            }
+        }
+    };
+
+    if (all_data.empty()) {
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+        }
+
+        return;
     }
 
-    // Restore complex data
-    if (all_data.size() > 1) {
-        const uint32 comlplex_data_count = all_data_sizes[1] / sizeof(uint16);
-        FO_RUNTIME_ASSERT(comlplex_data_count > 0);
-        vector<uint16> complex_indicies(comlplex_data_count);
-        MemCopy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
+    FO_RUNTIME_ASSERT(all_data_sizes[0] == sizeof(uint8));
 
-        for (size_t i = 0; i < complex_indicies.size(); i++) {
-            FO_RUNTIME_ASSERT(complex_indicies[i] > 0);
-            FO_RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
-            const auto& prop = _registrator->_registeredProperties[complex_indicies[i]];
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-            const auto data_size = all_data_sizes[2 + i];
-            const auto* data = all_data[2 + i];
-            SetRawData(prop.get(), {data, data_size});
+    uint8 store_type = 0;
+    MemCopy(&store_type, all_data[0], sizeof(store_type));
+
+    vector<const uint8*> payload_data(all_data.begin() + 1, all_data.end());
+    vector<uint32> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
+
+    if (store_type == SEPARATE_PROPS_STORE_TYPE) {
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+        }
+
+        apply_separate_props_data(payload_data, payload_sizes);
+    }
+    else {
+        FO_RUNTIME_ASSERT(store_type == FULL_DATA_STORE_TYPE);
+
+        if (_baseProps) {
+            RemoveSyncedOverlayEntries();
+
+            Properties full_props(_registrator.get());
+            full_props.CopyFrom(*_baseProps);
+            apply_full_data(full_props, payload_data, payload_sizes);
+            RebuildOverlayFromFullData(full_props);
+        }
+        else {
+            apply_full_data(*this, payload_data, payload_sizes);
         }
     }
+
+    _storeDataRevision++;
 }
 
 void Properties::RestoreData(const vector<vector<uint8>>& all_data)
@@ -488,46 +972,22 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 
     map<string, string> key_values;
 
-    for (const auto& prop : _registrator->_registeredProperties) {
-        if (!prop) {
-            continue;
-        }
-        if (prop->IsDisabled()) {
-            continue;
-        }
-        if (prop->IsVirtual()) {
-            continue;
-        }
-        if (prop->IsTemporary()) {
-            continue;
-        }
-
+    for (const auto& prop : _registrator->_textProperties) {
         // Skip same as in base or zero values
         if (base != nullptr) {
-            if (prop->_podDataOffset.has_value()) {
-                const auto* pod_data = &_podData[*prop->_podDataOffset];
-                const auto* base_pod_data = &base->_podData[*prop->_podDataOffset];
+            const auto raw_data = GetRawData(prop.get());
+            const auto base_raw_data = base->GetRawData(prop.get());
 
-                if (MemCompare(pod_data, base_pod_data, prop->_baseType.Size)) {
-                    continue;
-                }
-            }
-            else {
-                const auto& complex_data = _complexData[*prop->_complexDataIndex];
-                const auto& base_complex_data = base->_complexData[*prop->_complexDataIndex];
-
-                if (!complex_data.first && !base_complex_data.first) {
-                    continue;
-                }
-                if (complex_data.second == base_complex_data.second && MemCompare(complex_data.first.get(), base_complex_data.first.get(), complex_data.second)) {
-                    continue;
-                }
+            if (raw_data.size() == base_raw_data.size() && MemCompare(raw_data.data(), base_raw_data.data(), raw_data.size())) {
+                continue;
             }
         }
         else {
+            const auto raw_data = GetRawData(prop.get());
+
             if (prop->_podDataOffset.has_value()) {
-                const auto* pod_data = &_podData[*prop->_podDataOffset];
-                const auto* pod_data_end = pod_data + prop->_baseType.Size;
+                const auto* pod_data = raw_data.data();
+                const auto* pod_data_end = pod_data + raw_data.size();
 
                 while (pod_data != pod_data_end && *pod_data == 0) {
                     ++pod_data;
@@ -538,7 +998,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
                 }
             }
             else {
-                if (!_complexData[*prop->_complexDataIndex].first) {
+                if (raw_data.empty()) {
                     continue;
                 }
             }
@@ -557,52 +1017,81 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
 
     FO_RUNTIME_ASSERT(_registrator == other._registrator);
 
-    {
-        const auto pod_data_size = _registrator->_wholePodDataSize;
-        vector<uint8> pod_data1;
-        pod_data1.resize(pod_data_size);
-        MemCopy(pod_data1.data(), _podData.get(), pod_data_size);
-        vector<uint8> pod_data2;
-        pod_data2.resize(pod_data_size);
-        MemCopy(pod_data2.data(), other._podData.get(), pod_data_size);
+    if (this == &other) {
+        return true;
+    }
 
-        for (const auto* ignore_prop : ignore_props) {
-            if (ignore_prop->_podDataOffset.has_value()) {
-                const auto offset = ignore_prop->_podDataOffset.value();
-                const auto size = ignore_prop->_baseType.Size;
-                MemFill(pod_data1.data() + offset, 0, size);
-                MemFill(pod_data2.data() + offset, 0, size);
+    if (ignore_props.empty() && !ignore_temporary) {
+        if (!_baseProps && !other._baseProps) {
+            if (!MemCompare(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize)) {
+                return false;
             }
-        }
 
-        if (ignore_temporary) {
-            for (const auto& prop : _registrator->_registeredProperties) {
-                if (prop && prop->IsTemporary() && prop->_podDataOffset.has_value()) {
-                    const auto offset = prop->_podDataOffset.value();
-                    const auto size = prop->_baseType.Size;
-                    MemFill(pod_data1.data() + offset, 0, size);
-                    MemFill(pod_data2.data() + offset, 0, size);
+            for (const auto& prop : _registrator->_complexProperties) {
+                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+                const auto index = *prop->_complexDataIndex;
+                const auto& complex_data = _complexData[index];
+                const auto& other_complex_data = other._complexData[index];
+
+                if (complex_data.second != other_complex_data.second) {
+                    return false;
+                }
+                if (complex_data.second != 0 && !MemCompare(complex_data.first.get(), other_complex_data.first.get(), complex_data.second)) {
+                    return false;
                 }
             }
+
+            return true;
         }
 
-        if (!MemCompare(pod_data1.data(), pod_data2.data(), pod_data_size)) {
-            return false;
+        if (_baseProps && _baseProps == other._baseProps) {
+            if (_overlayEntries.size() != other._overlayEntries.size()) {
+                return false;
+            }
+
+            for (size_t i = 0; i < _overlayEntries.size(); i++) {
+                const auto& entry = _overlayEntries[i];
+                const auto& other_entry = other._overlayEntries[i];
+
+                if (entry.PropRegIndex != other_entry.PropRegIndex || entry.DataSize != other_entry.DataSize) {
+                    return false;
+                }
+                if (entry.DataSize != 0 && !MemCompare(_overlayData.get() + entry.DataOffset, other._overlayData.get() + other_entry.DataOffset, entry.DataSize)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 
-    for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
-        if (vec_exists(ignore_props, _registrator->_complexProperties[i].get())) {
+    const auto get_data_prop_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop, const Property* prop) noexcept -> span<const uint8> {
+        if (props._baseProps) {
+            return props.GetRawData(prop);
+        }
+
+        if (data_prop.IsPlain) {
+            return {props._podData.get() + data_prop.DataIndex, data_prop.DataSize};
+        }
+
+        const auto& complex_data = props._complexData[data_prop.DataIndex];
+        return {complex_data.first.get(), complex_data.second};
+    };
+
+    for (const auto& data_prop : _registrator->_dataProperties) {
+        const auto* prop = data_prop.Prop.get();
+
+        if (vec_exists(ignore_props, prop)) {
             continue;
         }
-        if (ignore_temporary && _registrator->_complexProperties[i]->IsTemporary()) {
+        if (ignore_temporary && prop->IsTemporary()) {
             continue;
         }
 
-        if (_complexData[i].second != other._complexData[i].second) {
-            return false;
-        }
-        if (!MemCompare(_complexData[i].first.get(), other._complexData[i].first.get(), _complexData[i].second)) {
+        const auto raw_data = get_data_prop_raw_data(*this, data_prop, prop);
+        const auto other_raw_data = get_data_prop_raw_data(other, data_prop, prop);
+
+        if (raw_data.size() != other_raw_data.size() || !MemCompare(raw_data.data(), other_raw_data.data(), raw_data.size())) {
             return false;
         }
     }
@@ -618,29 +1107,7 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
     FO_RUNTIME_ASSERT(_registrator == prop->_registrator);
     FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
 
-    const auto is_dict = prop->IsDict();
-    const auto is_array = prop->IsArray() || prop->IsDictOfArray() || prop->IsBaseTypeComplexStruct();
-
-    AnyData::ValueType value_type;
-
-    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
-        value_type = AnyData::ValueType::String;
-    }
-    else if (prop->IsBaseTypeInt() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsInt)) {
-        value_type = AnyData::ValueType::Int64;
-    }
-    else if (prop->IsBaseTypeBool() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsBool)) {
-        value_type = AnyData::ValueType::Bool;
-    }
-    else if (prop->IsBaseTypeFloat() || (prop->IsBaseTypeSimpleStruct() && prop->GetStructFirstType().IsFloat)) {
-        value_type = AnyData::ValueType::Float64;
-    }
-    else {
-        FO_UNREACHABLE_PLACE();
-    }
-
-    const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
-    PropertiesSerializator::LoadPropertyFromValue(this, prop, value, *_registrator->_hashResolver, *_registrator->_nameResolver);
+    PropertiesSerializator::LoadPropertyFromText(this, prop, text, *_registrator->_hashResolver, *_registrator->_nameResolver);
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -651,13 +1118,12 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
     FO_RUNTIME_ASSERT(_registrator == prop->_registrator);
     FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
 
-    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
-    return AnyData::ValueToString(value);
+    return PropertiesSerializator::SavePropertyToText(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
 }
 
 void Properties::ValidateForRawData(const Property* prop) const noexcept(false)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     if (_registrator != prop->_registrator) {
         throw PropertiesException("Invalid property for raw data", prop->GetName(), _registrator->GetTypeName(), prop->_registrator->GetTypeName());
@@ -681,12 +1147,21 @@ auto Properties::GetRawData(const Property* prop) const noexcept -> span<const u
 
     FO_STRONG_ASSERT(_registrator == prop->_registrator);
 
+    if (_baseProps) {
+        if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
+            return {entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize};
+        }
+
+        return _baseProps->GetRawData(prop);
+    }
+
     if (prop->IsPlainData()) {
         FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
         return {&_podData[*prop->_podDataOffset], prop->_baseType.Size};
     }
     else {
         FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+
         const auto& complex_data = _complexData[*prop->_complexDataIndex];
         return {complex_data.first.get(), complex_data.second};
     }
@@ -698,46 +1173,110 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
 
     FO_STRONG_ASSERT(_registrator == prop->_registrator);
 
-    if (prop->IsPlainData()) {
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-        return prop->_baseType.Size;
+    if (_baseProps) {
+        if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
+            return entry->DataSize;
+        }
+
+        return _baseProps->GetRawDataSize(prop);
     }
     else {
-        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-        const auto& complex_data = _complexData[*prop->_complexDataIndex];
-        return complex_data.second;
+        if (prop->IsPlainData()) {
+            FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+            return prop->_baseType.Size;
+        }
+        else {
+            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+
+            const auto& complex_data = _complexData[*prop->_complexDataIndex];
+            return complex_data.second;
+        }
     }
 }
 
 void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(_registrator == prop->_registrator);
 
-    if (prop->IsPlainData()) {
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-        FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
+    if (_baseProps) {
+        const auto base_raw_data = _baseProps->GetRawData(prop);
 
-        MemCopy(_podData.get() + *prop->_podDataOffset, raw_data.data(), raw_data.size());
-    }
-    else {
-        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-
-        auto& complex_data = _complexData[*prop->_complexDataIndex];
-
-        if (raw_data.size() != complex_data.second) {
-            if (!raw_data.empty()) {
-                complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
-                complex_data.second = raw_data.size();
-            }
-            else {
-                complex_data.first.reset();
-                complex_data.second = 0;
-            }
+        if (RawDataEqual(raw_data, base_raw_data)) {
+            RemoveOverlayEntry(prop);
+            return;
         }
 
-        MemCopy(complex_data.first.get(), raw_data.data(), raw_data.size());
+        if (auto* entry = FindOverlayEntry(prop); entry != nullptr) {
+            const auto current_overlay_data = span<const uint8>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+
+            if (RawDataEqual(raw_data, current_overlay_data)) {
+                return;
+            }
+
+            if (entry->DataSize == raw_data.size()) {
+                if (!raw_data.empty()) {
+                    MemCopy(_overlayData.get() + entry->DataOffset, raw_data.data(), raw_data.size());
+                }
+            }
+            else {
+                _overlayGarbageSize += entry->DataSize;
+                entry->DataOffset = AllocOverlayData(raw_data.size());
+                entry->DataSize = static_cast<uint32>(raw_data.size());
+
+                if (!raw_data.empty()) {
+                    MemCopy(_overlayData.get() + entry->DataOffset, raw_data.data(), raw_data.size());
+                }
+            }
+        }
+        else {
+            OverlayEntry new_entry;
+            new_entry.PropRegIndex = prop->GetRegIndex();
+            new_entry.DataOffset = AllocOverlayData(raw_data.size());
+            new_entry.DataSize = static_cast<uint32>(raw_data.size());
+
+            if (!raw_data.empty()) {
+                MemCopy(_overlayData.get() + new_entry.DataOffset, raw_data.data(), raw_data.size());
+            }
+
+            const auto it = std::ranges::lower_bound(_overlayEntries, new_entry.PropRegIndex, std::ranges::less {}, &OverlayEntry::PropRegIndex);
+            _overlayEntries.emplace(it, new_entry);
+        }
+
+        if (_overlayGarbageSize > (_overlayDataCapacity / 2)) {
+            RepackOverlayData(_overlayDataCapacity);
+        }
+
+        _storeDataRevision++;
+    }
+    else {
+        if (prop->IsPlainData()) {
+            FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+            FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
+
+            MemCopy(_podData.get() + *prop->_podDataOffset, raw_data.data(), raw_data.size());
+        }
+        else {
+            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+
+            auto& complex_data = _complexData[*prop->_complexDataIndex];
+
+            if (raw_data.size() != complex_data.second) {
+                if (!raw_data.empty()) {
+                    complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
+                    complex_data.second = raw_data.size();
+                }
+                else {
+                    complex_data.first.reset();
+                    complex_data.second = 0;
+                }
+            }
+
+            MemCopy(complex_data.first.get(), raw_data.data(), raw_data.size());
+        }
+
+        _storeDataRevision++;
     }
 }
 
@@ -1615,11 +2154,14 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
         if (prop->IsPublicSync()) {
             _publicComplexDataProps.emplace_back(reg_index);
+            _publicComplexDataPropsLookup.emplace(reg_index);
             _publicProtectedComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataPropsLookup.emplace(reg_index);
         }
         else if (prop->IsOwnerSync()) {
             _protectedComplexDataProps.emplace_back(reg_index);
             _publicProtectedComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataPropsLookup.emplace(reg_index);
         }
     }
 
@@ -1654,6 +2196,34 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         else if (!other_prop->IsSynced()) {
             *other_prop->_podDataOffset -= prev_public_space_size + prev_protected_space_size;
             *other_prop->_podDataOffset += _publicPodDataSpace.size() + _protectedPodDataSpace.size();
+        }
+    }
+
+    for (auto& data_prop : _dataProperties) {
+        if (data_prop.IsPlain) {
+            FO_STRONG_ASSERT(data_prop.Prop->_podDataOffset.has_value());
+            data_prop.DataIndex = numeric_cast<uint32>(*data_prop.Prop->_podDataOffset);
+        }
+    }
+
+    if (!prop->IsDisabled()) {
+        if (!prop->IsVirtual()) {
+            if (prop->IsPlainData()) {
+                FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16>(prop->GetBaseSize()), .IsPlain = true});
+            }
+            else {
+                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
+            }
+
+            if (!prop->IsTemporary()) {
+                _textProperties.emplace_back(prop.get());
+            }
+        }
+
+        if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsDictKeyHash()) {
+            _hashProperties.emplace_back(prop.get());
         }
     }
 
