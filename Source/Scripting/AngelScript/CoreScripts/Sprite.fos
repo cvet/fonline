@@ -37,7 +37,7 @@ class Sprite
 
     bool Load(string name, bool separateLoad = false)
     {
-        return Load(to_hstring(name), separateLoad);
+        return Load(name.hstr(), separateLoad);
     }
 
     bool Load(hstring name, bool separateLoad = false)
@@ -150,7 +150,7 @@ class Sprite
             return;
         }
 
-        Game.PlaySprite(Id, to_hstring(animName), loop, reverse);
+        Game.PlaySprite(Id, animName.hstr(), loop, reverse);
     }
 
     void Play(hstring animName, bool loop = true, bool reverse = false)
