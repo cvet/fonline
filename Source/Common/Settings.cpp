@@ -325,6 +325,17 @@ void GlobalSettings::ApplyInternalConfig()
     ApplyConfigFile(config, "");
 }
 
+void GlobalSettings::ApplyDefaultSettings()
+{
+    FO_STACK_TRACE_ENTRY();
+
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define VARIABLE_SETTING(type, name, ...) name = { __VA_ARGS__ }
+#include "Settings-Include.h"
+}
+
 void GlobalSettings::ApplyAutoSettings()
 {
     FO_STACK_TRACE_ENTRY();
