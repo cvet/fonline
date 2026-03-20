@@ -6,6 +6,7 @@
 * Assimp (math only) - [assimp-5.0.1](https://github.com/assimp/assimp)
 * Catch2 - [Catch2-3.10.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
+* earcut.hpp - [v2.2.4](https://github.com/mapbox/earcut.hpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net)
 * glslang - [glslang-1.4.321.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.12.0](https://github.com/azadkuh/nlohmann_json_release)
