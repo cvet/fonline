@@ -146,7 +146,10 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
     auto settings = GlobalSettings(false);
 
     if (argc == -1) {
-        return settings; // Unit testing
+        // Unit testing
+        settings.ApplyDefaultSettings();
+        settings.ApplyAutoSettings();
+        return settings;
     }
 
     if (!IsPackaged()) {

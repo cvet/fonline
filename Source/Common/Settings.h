@@ -111,6 +111,7 @@ public:
     void ApplyCommandLine(int32 argc, char** argv);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
+    void ApplyDefaultSettings();
     void ApplyAutoSettings();
     void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
