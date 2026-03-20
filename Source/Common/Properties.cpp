@@ -536,7 +536,6 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     FO_STACK_TRACE_ENTRY();
 
     all_data.clear();
-    str_hashes.clear();
 
     auto writer = DataWriter(all_data);
     writer.Write<uint32>(numeric_cast<uint32>(_registrator->_wholePodDataSize));

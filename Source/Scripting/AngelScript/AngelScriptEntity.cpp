@@ -978,10 +978,12 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     };
 
     const auto register_entity_id_equals = [&](const char* name) {
+        // Entities are equal if they are the same instance or if they have the same id
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_Equals), FO_SCRIPT_FUNC_THIS_CONV));
     };
 
     const auto register_entity_proto_equals = [&](const char* name) {
+        // Protos are equal if they have the same type and proto id, regardless of whether they are the same instance or not
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_ProtoEquals), FO_SCRIPT_FUNC_THIS_CONV));
     };
 

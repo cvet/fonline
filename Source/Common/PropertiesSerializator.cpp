@@ -257,7 +257,7 @@ static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> str
     return decoded_storage;
 }
 
-static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
+static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
 
 static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& primitive_type, string_view text)
 {
@@ -306,7 +306,7 @@ static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& pri
     }
 }
 
-static void AppendComplexStructFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static void AppendComplexStructFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     const auto decoded = StringEscaping::DecodeString(text);
     const char* s = decoded.c_str();
@@ -314,11 +314,12 @@ static void AppendComplexStructFromText(vector<uint8>& data, const BaseTypeDesc&
 
     for (const auto& field : base_type.StructLayout->Fields) {
         s = ReadTextTokenView(s, token);
+
         if (s == nullptr) {
             throw PropertySerializationException("Wrong struct size (from text)");
         }
 
-        AppendBaseTypeFromText(data, field.Type, token, hash_resolver, name_resolver);
+        AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
     }
 
     if (ReadTextTokenView(s, token) != nullptr) {
@@ -326,7 +327,7 @@ static void AppendComplexStructFromText(vector<uint8>& data, const BaseTypeDesc&
     }
 }
 
-static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     if (base_type.IsString) {
         string decoded_storage;
@@ -334,7 +335,29 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base
     }
     else if (base_type.IsHashedString) {
         string decoded_storage;
-        const auto hash = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage)).as_hash();
+        auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        const auto hash = resolved_value.as_hash();
+        AppendRawBytes(data, &hash, sizeof(hash));
+    }
+    else if (base_type.IsFixedType) {
+        string decoded_storage;
+        auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        const auto* proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
+
+        if (proto != nullptr) {
+            resolved_value = proto->GetProtoId();
+        }
+
+        if (!resolved_value) {
+            if (prop == nullptr || !prop->IsMaybeNull()) {
+                throw PropertySerializationException("FixedType property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
+            }
+        }
+        else if (proto == nullptr) {
+            throw PropertySerializationException("FixedType proto does not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+        }
+
+        const auto hash = resolved_value.as_hash();
         AppendRawBytes(data, &hash, sizeof(hash));
     }
     else if (base_type.IsEnum) {
@@ -367,14 +390,14 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const BaseTypeDesc& base
         AppendPrimitiveFromText(data, primitive_type, text);
     }
     else if (base_type.IsComplexStruct) {
-        AppendComplexStructFromText(data, base_type, text, hash_resolver, name_resolver);
+        AppendComplexStructFromText(data, prop, base_type, text, hash_resolver, name_resolver);
     }
     else {
         FO_UNREACHABLE_PLACE();
     }
 }
 
-static auto ParseArrayFromText(const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8>
+static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8>
 {
     const auto decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
     const char* s = decoded.c_str();
@@ -388,7 +411,7 @@ static auto ParseArrayFromText(const BaseTypeDesc& base_type, bool is_array_of_s
     }
 
     while ((s = ReadTextTokenView(s, token)) != nullptr) {
-        AppendBaseTypeFromText(data, base_type, token, hash_resolver, name_resolver);
+        AppendBaseTypeFromText(data, prop, base_type, token, hash_resolver, name_resolver);
         arr_size++;
     }
 
@@ -1364,7 +1387,7 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
                     throw PropertySerializationException("Wrong struct size (from text)");
                 }
 
-                AppendBaseTypeFromText(data, field.Type, token, hash_resolver, name_resolver);
+                AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
             }
 
             if (ReadTextTokenView(s, token) != nullptr) {
@@ -1373,11 +1396,11 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
         }
         else {
             data.reserve(prop->GetBaseSize());
-            AppendBaseTypeFromText(data, prop->GetBaseType(), text, hash_resolver, name_resolver);
+            AppendBaseTypeFromText(data, prop, prop->GetBaseType(), text, hash_resolver, name_resolver);
         }
     }
     else if (prop->IsArray()) {
-        data = ParseArrayFromText(prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
+        data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
     }
     else if (prop->IsDict()) {
         const string source_text {text};
@@ -1387,10 +1410,10 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
         data.reserve(std::max<size_t>(text.length() * 2, 64));
 
         while ((s = ReadTextTokenView(s, key_token)) != nullptr && (s = ReadTextTokenView(s, value_token)) != nullptr) {
-            AppendBaseTypeFromText(data, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
+            AppendBaseTypeFromText(data, prop, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
 
             if (prop->IsDictOfArray()) {
-                const auto arr_data = ParseArrayFromText(prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
+                const auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
 
                 if (prop->IsDictOfArrayOfString()) {
                     const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32*>(arr_data.data());
@@ -1410,7 +1433,7 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
                 }
             }
             else {
-                AppendBaseTypeFromText(data, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
+                AppendBaseTypeFromText(data, prop, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
             }
         }
     }

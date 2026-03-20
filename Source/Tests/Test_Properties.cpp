@@ -1685,6 +1685,32 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
+TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("AccumulatedHashesEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties first(&registrator);
+    first.SetValue<hstring>(hash_prop, hashes.ToHashedString("alpha"));
+
+    Properties second(&registrator);
+    second.SetValue<hstring>(hash_prop, hashes.ToHashedString("beta"));
+
+    vector<uint8> all_data;
+    set<hstring> str_hashes;
+
+    first.StoreAllData(all_data, str_hashes);
+    CHECK(str_hashes.contains(hashes.ToHashedString("alpha")));
+    CHECK_FALSE(str_hashes.contains(hashes.ToHashedString("beta")));
+
+    second.StoreAllData(all_data, str_hashes);
+    CHECK(str_hashes.contains(hashes.ToHashedString("alpha")));
+    CHECK(str_hashes.contains(hashes.ToHashedString("beta")));
+}
+
 TEST_CASE("PropertiesDictConversions")
 {
     HashStorage hashes;
