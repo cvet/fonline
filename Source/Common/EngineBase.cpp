@@ -488,6 +488,33 @@ void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(_migrationRules.empty());
 
+    for (const auto& [name1, rules_by_info] : migration_rules) {
+        for (const auto& [name2, rules] : rules_by_info) {
+            for (const auto& [target, replacement] : rules) {
+                FO_RUNTIME_ASSERT(target != replacement);
+
+                unordered_set<hstring> visited {};
+                visited.emplace(target);
+
+                hstring current = replacement;
+
+                while (true) {
+                    const auto [name3, inserted] = visited.emplace(current);
+                    ignore_unused(name1, name2, name3);
+                    FO_RUNTIME_ASSERT(inserted);
+
+                    const auto it = rules.find(current);
+
+                    if (it == rules.end()) {
+                        break;
+                    }
+
+                    current = it->second;
+                }
+            }
+        }
+    }
+
     _migrationRules = std::move(migration_rules);
 }
 
@@ -502,7 +529,31 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     const auto htarget = Hashes.ToHashedString(target);
     const auto hreplacement = Hashes.ToHashedString(replacement);
 
-    _migrationRules[hrule_name][hextra_info][htarget] = hreplacement;
+    auto& rules = _migrationRules[hrule_name][hextra_info];
+
+    FO_RUNTIME_ASSERT(!rules.contains(htarget));
+    FO_RUNTIME_ASSERT(htarget != hreplacement);
+
+    unordered_set<hstring> visited {};
+    visited.emplace(htarget);
+
+    hstring current = hreplacement;
+
+    while (true) {
+        const auto [name, inserted] = visited.emplace(current);
+        ignore_unused(name);
+        FO_RUNTIME_ASSERT(inserted);
+
+        const auto it = rules.find(current);
+
+        if (it == rules.end()) {
+            break;
+        }
+
+        current = it->second;
+    }
+
+    rules.emplace(htarget, hreplacement);
 }
 
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> BaseTypeDesc&
