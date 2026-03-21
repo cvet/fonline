@@ -209,14 +209,10 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
 
     const string config_path = strex(config_dir).combine_path(config_name);
 
-    if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
+    if (const auto settings_content = fs_read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
-        string settings_content;
-        settings_content.resize(settings_file.GetSize());
-        settings_file.Read(settings_content.data(), settings_content.size());
-
-        auto config = ConfigFile(config_name, settings_content);
+        auto config = ConfigFile(config_name, *settings_content);
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -479,15 +475,10 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     }
                     else {
                         const string file_path = strex(config_dir).combine_path(name);
-                        auto file = DiskFileSystem::OpenFile(file_path, false);
+                        if (auto file_content = fs_read_file(file_path)) {
+                            *file_content = strvex(*file_content).trim();
 
-                        if (file) {
-                            string file_content;
-                            file_content.resize(file.GetSize());
-                            file.Read(file_content.data(), file_content.size());
-                            file_content = strvex(file_content).trim();
-
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(file_content);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
                             end_pos++;
                         }
                         else {
