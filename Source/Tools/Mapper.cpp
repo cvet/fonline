@@ -3594,10 +3594,17 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
         fomap_path = strex("{}.fomap", fomap_path).format_path();
     }
 
-    auto fomap_file = DiskFileSystem::OpenFile(fomap_path, true);
+    const auto dir = strex(fomap_path).extract_dir().str();
+
+    if (!dir.empty()) {
+        const auto dir_ok = fs_create_directories(dir);
+        FO_RUNTIME_ASSERT(dir_ok);
+    }
+
+    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_RUNTIME_ASSERT(fomap_file);
-    const auto fomap_file_ok = fomap_file.Write(fomap_content);
-    FO_RUNTIME_ASSERT(fomap_file_ok);
+    fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
+    FO_RUNTIME_ASSERT(fomap_file);
 
     OnEditMapSave.Fire(map);
 }

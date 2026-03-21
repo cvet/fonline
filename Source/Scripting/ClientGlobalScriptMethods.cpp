@@ -1384,13 +1384,26 @@ FO_SCRIPT_API void Client_Game_SaveText(ClientEngine* client, string_view filePa
 {
     ignore_unused(client);
 
-    auto file = DiskFileSystem::OpenFile(strex(filePath).format_path(), true);
+    const auto path = strex(filePath).format_path().str();
+    const auto dir = strex(path).extract_dir().str();
+
+    if (!dir.empty()) {
+        if (!fs_create_directories(dir)) {
+            throw ScriptException("Can't open file for writing", filePath);
+        }
+    }
+
+    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }
 
-    if (!file.Write(text)) {
+    if (!text.empty()) {
+        file.write(text.data(), static_cast<std::streamsize>(text.size()));
+    }
+
+    if (!file) {
         throw ScriptException("Can't write file", filePath, text.length());
     }
 }

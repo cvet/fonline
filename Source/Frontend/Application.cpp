@@ -808,9 +808,15 @@ void Application::BeginFrame()
             EventsQueue->emplace_back(ev2);
         } break;
         case SDL_EVENT_DROP_FILE: {
-            if (auto file = DiskFileSystem::OpenFile(sdl_event.drop.data, false)) {
+            if (const auto file_size = fs_file_size(sdl_event.drop.data)) {
+                std::ifstream file {fs_open_ifstream(sdl_event.drop.data)};
+
+                if (!file) {
+                    break;
+                }
+
                 auto stripped = false;
-                auto size = file.GetSize();
+                auto size = numeric_cast<size_t>(*file_size);
 
                 if (size > AppInput::DROP_FILE_STRIP_LENGHT) {
                     stripped = true;
@@ -819,7 +825,7 @@ void Application::BeginFrame()
 
                 char buf[AppInput::DROP_FILE_STRIP_LENGHT + 1];
 
-                if (file.Read(buf, size)) {
+                if (size == 0 || (file.read(buf, static_cast<std::streamsize>(size)) && file.gcount() == static_cast<std::streamsize>(size))) {
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
