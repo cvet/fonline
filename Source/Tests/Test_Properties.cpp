@@ -35,6 +35,7 @@
 
 #include "Common.h"
 #include "DataSerialization.h"
+#include "EntityProtos.h"
 #include "Properties.h"
 #include "PropertiesSerializator.h"
 

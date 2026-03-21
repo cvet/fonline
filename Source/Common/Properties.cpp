@@ -1901,7 +1901,6 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!type.IsMutable);
     FO_RUNTIME_ASSERT(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto);
     FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
-    FO_RUNTIME_ASSERT((!type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) || type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array);
 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
         FO_RUNTIME_ASSERT(type.KeyType.has_value());

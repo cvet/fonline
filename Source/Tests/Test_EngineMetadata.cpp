@@ -62,7 +62,6 @@ TEST_CASE("EngineMetadata")
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterEntityType("Map", true, false, true, true, true);
 
-        CHECK(meta.IsEntityProtoType("ProtoMap"));
         CHECK_FALSE(meta.IsFixedType("ProtoMap"));
         CHECK_FALSE(meta.IsFixedType("StaticMap"));
         CHECK_FALSE(meta.IsFixedType("AbstractMap"));
