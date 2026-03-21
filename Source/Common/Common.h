@@ -441,6 +441,7 @@ struct BaseTypeDesc
     bool IsRefType {};
     bool IsSingleton {};
     bool IsFixedType {};
+    bool IsEntityProto {};
     raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
     raw_ptr<const StructLayoutDesc> StructLayout {};
     raw_ptr<const RefTypeDesc> RefType {};

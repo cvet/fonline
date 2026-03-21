@@ -186,21 +186,38 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
         }
     }
 
-    for (const auto& [type_name, file_protos] : all_file_protos) {
-        if (!meta->IsFixedType(type_name)) {
-            continue;
+    unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
+
+    const auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
+        const auto* registrator = meta->GetPropertyRegistrator(type_name);
+        FO_RUNTIME_ASSERT(registrator);
+
+        if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, nullptr);
         }
 
-        const auto* registrator = meta->GetPropertyRegistrator(type_name);
+        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+    };
 
+    for (const auto& [type_name, file_protos] : all_file_protos) {
         for (const auto& pid : file_protos | std::views::keys) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+            auto proto = create_empty_proto(type_name, pid);
             meta->ProtoMngr.AddProto(type_name, proto);
+            const auto inserted = all_protos[type_name].emplace(pid, std::move(proto)).second;
+            FO_RUNTIME_ASSERT(inserted);
         }
     }
 
     // Processing
-    unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
@@ -218,8 +235,6 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
-            FO_RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
-
             // Fill content from parents
             map<string, string> proto_kv;
 
@@ -250,14 +265,8 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
             // Actual content
             insert_map_values(file_kv, proto_kv);
 
-            // Create proto
-            const auto* property_registrator = meta->GetPropertyRegistrator(type_name);
-            auto props = Properties(property_registrator);
-            props.ApplyFromText(proto_kv);
-
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, property_registrator, &props);
-            const auto inserted = all_protos[type_name].emplace(pid, proto).second;
-            FO_RUNTIME_ASSERT(inserted);
+            auto& proto = all_protos[type_name].at(pid);
+            proto->GetPropertiesForEdit().ApplyFromText(proto_kv);
         }
     }
 

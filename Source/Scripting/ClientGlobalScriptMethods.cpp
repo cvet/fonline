@@ -432,6 +432,33 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ClientEngine* client,
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ClientEngine* client, ProtoCritter* proto, CritterFindType findType)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    vector<CritterView*> critters;
+
+    if (client->GetCurMap() != nullptr) {
+        for (auto& cr : client->GetCurMap()->GetCritters()) {
+            if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
+                critters.emplace_back(cr.get());
+            }
+        }
+    }
+    else {
+        for (auto& cr : client->GetGlobalMapCritters()) {
+            if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
+                critters.emplace_back(cr.get());
+            }
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ClientEngine* client, readonly_vector<CritterView*> critters)
 {
     ignore_unused(client);
