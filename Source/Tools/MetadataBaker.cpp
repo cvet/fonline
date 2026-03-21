@@ -551,6 +551,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         const auto has_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
         const auto has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
         const auto has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
+        const auto has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
         const auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
 
         if (!ctx.Meta->IsValidEntityType(holder_entity_hname)) {
@@ -568,6 +569,11 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
                 stub.emplace_back(holder_entity_name);
                 stub.emplace_back("");
                 stub.emplace_back(entry_name);
+
+                for (const auto& flag : flags) {
+                    stub.emplace_back(string(flag));
+                }
+
                 result_tag_entity_holder.emplace_back(stub);
             }
 
@@ -590,7 +596,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid EntityHolder codegen tag: cannot hold exported entity type", tag_desc.SourceFile, tag_desc.LineNumber, target_entity_name);
         }
 
-        ctx.Meta->RegsiterEntityHolderEntry(holder_entity_name, target_entity_name, entry_name, sync);
+        ctx.Meta->RegsiterEntityHolderEntry(holder_entity_name, target_entity_name, entry_name, sync, has_persistent);
 
         auto tokens = vec_transform(tag_desc.Tokens, [](auto&& e) -> string { return string(e); });
         result_tag_entity_holder.emplace_back(tokens);

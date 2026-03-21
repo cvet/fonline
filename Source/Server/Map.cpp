@@ -134,6 +134,10 @@ void Map::AddCritter(Critter* cr)
     }
 
     AddCritterToField(cr);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(cr, true);
+    }
 }
 
 void Map::RemoveCritter(Critter* cr)
@@ -154,6 +158,10 @@ void Map::RemoveCritter(Critter* cr)
     }
 
     RemoveCritterFromField(cr);
+
+    if (IsPersistent() && cr->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(cr, false);
+    }
 }
 
 void Map::AddCritterToField(Critter* cr)
@@ -228,6 +236,10 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     auto item_ids = GetItemIds();
     vec_add_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, true);
+    }
 
     // Process critters view
     for (auto* cr : copy_hold_ref(GetCritters())) {
@@ -340,6 +352,10 @@ void Map::RemoveItem(ident_t item_id)
     auto item_ids = GetItemIds();
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
+
+    if (IsPersistent() && item->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, false);
+    }
 
     RecacheHexFlags(field);
 

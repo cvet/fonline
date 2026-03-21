@@ -51,4 +51,11 @@ void ServerEntity::SetId(ident_t id) noexcept
     _id = id;
 }
 
+void ServerEntity::SetPersistent(bool persistent) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _isPersistent = persistent;
+}
+
 FO_END_NAMESPACE

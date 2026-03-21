@@ -106,6 +106,10 @@ void Location::AddMap(Map* map)
     map->SetLocId(GetId());
     map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()) - 1);
     map->SetLocation(this);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(map, true);
+    }
 }
 
 void Location::RemoveMap(Map* map)
@@ -123,6 +127,10 @@ void Location::RemoveMap(Map* map)
     map->SetLocId({});
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
+
+    if (IsPersistent() && map->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(map, false);
+    }
 }
 
 FO_END_NAMESPACE
