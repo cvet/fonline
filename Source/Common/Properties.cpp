@@ -630,7 +630,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 }
             }
 
-            if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType()) {
+            if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference()) {
                 for (const auto& dict_value : dict | std::views::values) {
                     if (dict_value.Type() == AnyData::ValueType::Array) {
                         const auto& dict_arr = dict_value.AsArray();
@@ -1394,7 +1394,7 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsFixedType) {
+    if (base_type.IsFixedType || base_type.IsEntityProto) {
         return any_t {GetValue<hstring>(prop).as_str()};
     }
     else if (base_type.IsEnum) {
@@ -1526,7 +1526,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsFixedType) {
+    if (base_type.IsFixedType || base_type.IsEntityProto) {
         SetValue<hstring>(prop, _registrator->GetHashResolver()->ToHashedString(value));
     }
     else if (base_type.IsEnum) {
@@ -1899,9 +1899,9 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     const auto type = _nameResolver->ResolveComplexType(tokens[1]);
     FO_RUNTIME_ASSERT(!type.IsMutable);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsEntity);
+    FO_RUNTIME_ASSERT(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto);
     FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsFixedType || type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array);
+    FO_RUNTIME_ASSERT((!type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) || type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array);
 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
         FO_RUNTIME_ASSERT(type.KeyType.has_value());
@@ -2093,7 +2093,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
     FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
-    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeFixedType());
+    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeProtoReference());
 
     const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
 
@@ -2233,7 +2233,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             }
         }
 
-        if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsDictKeyHash()) {
+        if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference() || prop->IsDictKeyHash()) {
             _hashProperties.emplace_back(prop.get());
         }
     }

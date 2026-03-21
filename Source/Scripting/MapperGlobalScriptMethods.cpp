@@ -50,6 +50,19 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, m
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, ProtoItem* proto, mpos hex)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+    if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    return mapper->CreateItem(proto->GetProtoId(), hex, nullptr);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring pid, mpos hex)
 {
     if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
@@ -57,6 +70,19 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring 
     }
 
     return mapper->CreateCritter(pid, hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCritter* proto, mpos hex)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+    if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    return mapper->CreateCritter(proto->GetProtoId(), hex);
 }
 
 ///@ ExportMethod

@@ -50,6 +50,16 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    return server->CreateCritter(proto->GetProtoId(), forPlayer);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crId, bool forPlayer)
 {
     return server->LoadCritter(crId, forPlayer);
@@ -595,6 +605,18 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Location proto arg is null");
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId());
+    FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
@@ -618,6 +640,24 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
+    FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto, readonly_map<LocationProperty, any_t> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Location proto arg is null");
+    }
+
+    auto props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, &props_);
     FO_RUNTIME_ASSERT(loc);
     return loc;
 }

@@ -73,6 +73,20 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32 count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, {});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, any_t stackId)
 {
     if (count <= 0) {
@@ -80,6 +94,20 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, an
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32 count, any_t stackId)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
 }
 
 ///@ ExportMethod

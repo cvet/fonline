@@ -83,6 +83,23 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, int32 count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32 count, readonly_map<ItemProperty, int32> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -110,6 +127,33 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
     }
 
     return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, nullptr);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, int32 count, readonly_map<ItemProperty, int32> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    if (!props.empty()) {
+        Properties props_ = proto->GetProperties().Copy();
+
+        for (const auto& [key, value] : props) {
+            props_.SetValueAsIntProps(static_cast<int32>(key), value);
+        }
+
+        return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
+    }
+
+    return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
 }
 
 ///@ ExportMethod
@@ -741,6 +785,19 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), nullptr, self, hex, dir);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, readonly_map<CritterProperty, int32> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -759,6 +816,25 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
     }
 
     return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir, readonly_map<CritterProperty, int32> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int32>(key), value);
+    }
+
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
 }
 
 ///@ ExportMethod
@@ -781,6 +857,25 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
     }
 
     return self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir, readonly_map<CritterProperty, any_t> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    return self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
 }
 
 ///@ ExportMethod

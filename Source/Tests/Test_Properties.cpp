@@ -94,6 +94,16 @@ namespace
                 return type;
             };
 
+            auto make_proto = [](string_view name) {
+                BaseTypeDesc type;
+                type.Name = string(name);
+                type.IsObject = true;
+                type.IsEntity = true;
+                type.IsEntityProto = true;
+                type.Size = sizeof(hstring::hash_t);
+                return type;
+            };
+
             auto make_mode = [this]() {
                 BaseTypeDesc type;
                 type.Name = "Mode";
@@ -143,13 +153,28 @@ namespace
             _types.emplace("float32", make_float32());
             _types.emplace("string", make_string());
             _types.emplace("hstring", make_hstring());
+            _types.emplace("ProtoItem", make_proto("ProtoItem"));
+            _types.emplace("ProtoCritter", make_proto("ProtoCritter"));
+            _types.emplace("ProtoMap", make_proto("ProtoMap"));
+            _types.emplace("ProtoLocation", make_proto("ProtoLocation"));
             _types.emplace("Mode", make_mode());
             _types.emplace("Waypoint", make_waypoint());
+
+            _types.at("ProtoItem").HashedName = _proto_hashes.ToHashedString("ProtoItem");
+            _types.at("ProtoCritter").HashedName = _proto_hashes.ToHashedString("ProtoCritter");
+            _types.at("ProtoMap").HashedName = _proto_hashes.ToHashedString("ProtoMap");
+            _types.at("ProtoLocation").HashedName = _proto_hashes.ToHashedString("ProtoLocation");
 
             _enum_values.emplace("ModeA", 1);
             _enum_values.emplace("ModeB", 2);
             _enum_names.emplace(1, "ModeA");
             _enum_names.emplace(2, "ModeB");
+
+            _proto_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("ProtoResolverEntity", EngineSideKind::ServerSide, _proto_hashes, *this);
+
+            AddProto("ProtoItem", "knife");
+            AddProto("ProtoItem", "pistol");
+            AddProto("ProtoMap", "wasteland");
         }
 
         [[nodiscard]] auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& override
@@ -241,13 +266,34 @@ namespace
         }
 
         [[nodiscard]] auto CheckMigrationRule(hstring, hstring, hstring) const noexcept -> optional<hstring> override { return std::nullopt; }
-        [[nodiscard]] auto GetProtoEntity(hstring, hstring) const noexcept -> const ProtoEntity* override { return nullptr; }
+        [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override
+        {
+            const auto type_it = _protos.find(type_name.as_hash());
+
+            if (type_it == _protos.end()) {
+                return nullptr;
+            }
+
+            const auto proto_it = type_it->second.find(proto_id.as_hash());
+            return proto_it != type_it->second.end() ? proto_it->second.get() : nullptr;
+        }
+
+        void AddProto(string_view type_name, string_view proto_id)
+        {
+            const auto type_hname = _proto_hashes.ToHashedString(type_name);
+            const auto proto_hname = _proto_hashes.ToHashedString(proto_id);
+
+            _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, _proto_registrator.get(), nullptr));
+        }
 
     private:
         unordered_map<string, BaseTypeDesc> _types {};
         unordered_map<string, StructLayoutDesc> _layouts {};
         unordered_map<string, int32> _enum_values {};
         unordered_map<int32, string> _enum_names {};
+        HashStorage _proto_hashes {};
+        unique_ptr<PropertyRegistrator> _proto_registrator {};
+        unordered_map<hstring::hash_t, unordered_map<hstring::hash_t, refcount_ptr<ProtoCustomEntity>>> _protos {};
         string _empty {};
     };
 
@@ -1714,6 +1760,71 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     from_any.SetValueAsAnyProps(enum_prop->GetRegIndex(), any_t {string {"ModeA"}});
     CHECK(from_any.GetValue<hstring>(hash_prop) == hashes.ToHashedString("beta"));
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+}
+
+TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
+
+    CHECK(item_prop->GetBaseType().IsEntity);
+    CHECK(item_prop->IsBaseTypeEntityProto());
+    CHECK(item_prop->IsBaseTypeProtoReference());
+    CHECK(map_prop->IsMaybeNull());
+    CHECK(loot_sets_prop->IsDictOfArray());
+    CHECK(loot_sets_prop->IsBaseTypeEntityProto());
+    CHECK(loot_sets_prop->IsBaseTypeProtoReference());
+
+    const auto loot_sets_value = []() {
+        AnyData::Array default_loot;
+        default_loot.EmplaceBack(string {"knife"});
+        default_loot.EmplaceBack(string {"pistol"});
+
+        AnyData::Array backup_loot;
+        backup_loot.EmplaceBack(string {"pistol"});
+
+        AnyData::Dict loot_sets;
+        loot_sets.Emplace("default", AnyData::Value {std::move(default_loot)});
+        loot_sets.Emplace("backup set", AnyData::Value {std::move(backup_loot)});
+        return AnyData::Value {std::move(loot_sets)};
+    }();
+
+    Properties props(&registrator);
+    props.SetValueAsAnyProps(item_prop->GetRegIndex(), any_t {string {"knife"}});
+    props.SetValueAsAnyProps(loot_sets_prop->GetRegIndex(), any_t {AnyData::ValueToString(loot_sets_value)});
+
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, map_prop, "", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, item_prop, "", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, item_prop, "missing_proto", hashes, resolver));
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {string {"knife"}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, loot_sets_prop, hashes, resolver) == loot_sets_value);
+
+    const auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("ItemProto"));
+    REQUIRE(text_data.contains("LootSets"));
+    CHECK(text_data.at("ItemProto") == "knife");
+    CHECK(text_data.at("LootSets").find("backup set") != string::npos);
+    CHECK(text_data.at("LootSets").find("knife") != string::npos);
+    CHECK(text_data.at("LootSets").find("pistol") != string::npos);
+
+    Properties restored(&registrator);
+    restored.ApplyFromText(text_data);
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, item_prop, hashes, resolver) == AnyData::Value {string {"knife"}});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, loot_sets_prop, hashes, resolver) == loot_sets_value);
+
+    vector<uint8> all_data;
+    set<hstring> str_hashes;
+    restored.StoreAllData(all_data, str_hashes);
+
+    CHECK(str_hashes.contains(hashes.ToHashedString("knife")));
+    CHECK(str_hashes.contains(hashes.ToHashedString("pistol")));
 }
 
 TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")

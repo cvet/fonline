@@ -56,6 +56,24 @@ static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -
 
 TEST_CASE("EngineMetadata")
 {
+    SECTION("BuiltinProtoEntityTypesUseDedicatedProtoFlag")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterEntityType("Map", true, false, true, true, true);
+
+        CHECK(meta.IsEntityProtoType("ProtoMap"));
+        CHECK_FALSE(meta.IsFixedType("ProtoMap"));
+        CHECK_FALSE(meta.IsFixedType("StaticMap"));
+        CHECK_FALSE(meta.IsFixedType("AbstractMap"));
+
+        const auto& proto_map_type = meta.GetBaseType("ProtoMap");
+        CHECK(proto_map_type.IsEntity);
+        CHECK(proto_map_type.IsEntityProto);
+        CHECK_FALSE(proto_map_type.IsFixedType);
+        CHECK(proto_map_type.Size == sizeof(hstring::hash_t));
+    }
+
     SECTION("MissingMigrationRuleReturnsEmpty")
     {
         EngineMetadata meta {[] { }};

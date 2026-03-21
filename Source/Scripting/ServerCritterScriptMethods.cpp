@@ -363,6 +363,16 @@ FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, hstring protoId)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    return self->CountInvItemByPid(proto->GetProtoId());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
 {
     if (!pid) {
@@ -410,6 +420,20 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32 cou
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32 count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
     if (!itemId) {
@@ -423,6 +447,16 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 {
     return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
 }
 
 ///@ ExportMethod
