@@ -972,6 +972,39 @@ FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(ServerEngine* s
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, ident_t id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    return server->DbStorage.Valid(collectionName, id);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server, hstring collectionName)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+
+    return server->DbStorage.GetAllIds(collectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
+{
+    if (entity == nullptr) {
+        throw ScriptException("Entity arg is null");
+    }
+
+    return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server)
 {
     return server->CrMngr.GetNonPlayerCritters();

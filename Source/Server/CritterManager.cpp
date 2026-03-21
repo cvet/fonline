@@ -59,10 +59,8 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
         if (item_already != nullptr) {
             const auto count = item->GetCount();
-
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
-
             return item_already;
         }
     }
@@ -79,6 +77,10 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     auto item_ids = cr->GetItemIds();
     vec_add_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
+
+    if (cr->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, true);
+    }
 
     if (send && !item->GetHidden()) {
         cr->Send_ChosenAddItem(item);
@@ -119,6 +121,10 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     auto item_ids = cr->GetItemIds();
     vec_remove_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
+
+    if (cr->IsPersistent() && item->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, false);
+    }
 
     _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
 }

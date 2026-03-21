@@ -134,14 +134,17 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
         const auto flags = span(tokens).subspan(4);
         const auto has_owner_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "OwnerSync"; });
         const auto has_public_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "PublicSync"; });
+        const auto has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
         const auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
 
         if (target != "Stub") {
-            meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync);
+            meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync, has_persistent);
         }
         else {
             auto* prop_registrator = meta->GetPropertyRegistratorForEdit(holder_entity);
-            const auto* prop = prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"});
+            const auto* prop = has_persistent ? //
+                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+                prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
             meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
         }
     }

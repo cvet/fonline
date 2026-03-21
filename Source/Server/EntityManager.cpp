@@ -266,6 +266,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
 
     try {
         RegisterLocation(loc.get());
+        loc->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register location {} {}", loc_pid, loc_id);
@@ -347,6 +348,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
 
     try {
         RegisterMap(map.get());
+        map->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register map {} {}", map_pid, map_id);
@@ -451,6 +453,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
 
     try {
         RegisterCritter(cr.get());
+        cr->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register critter {} {}", cr_pid, cr_id);
@@ -526,6 +529,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
     try {
         item->SetStatic(false);
         RegisterItem(item.get());
+        item->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog("Failed to register item {} {}", item_pid, item_id);
@@ -839,6 +843,7 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id)
     FO_RUNTIME_ASSERT(id);
     player->SetId(id);
     RegisterEntity(player);
+    player->SetPersistent(true);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
     FO_RUNTIME_ASSERT(inserted);
 }
@@ -950,6 +955,227 @@ void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool del
     UnregisterEntity(custom_entity, delete_from_db);
 }
 
+void EntityManager::MakePersistent(ServerEntity* entity, bool persistent)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity->GetId());
+
+    if (persistent) {
+        unordered_set<ServerEntity*> processed;
+        MakePersistentRecursive(entity, processed);
+    }
+    else {
+        unordered_set<const ServerEntity*> validated;
+        ValidateCanMakeTemporary(entity, validated);
+
+        unordered_set<ServerEntity*> processed;
+        MakeTemporaryRecursive(entity, processed);
+    }
+}
+
+void EntityManager::ValidateCanMakeTemporary(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(entity->GetId());
+
+    if (processed.contains(entity)) {
+        return;
+    }
+
+    processed.emplace(entity);
+
+    if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
+        throw GenericException("Can't make player temporary", player->GetId());
+    }
+    if (const auto* cr = dynamic_cast<const Critter*>(entity); cr != nullptr && cr->GetControlledByPlayer()) {
+        throw GenericException("Can't make player critter temporary", cr->GetId());
+    }
+
+    ForEachPersistentChildEntity(const_cast<ServerEntity*>(entity), [this, &processed](ServerEntity* child) { ValidateCanMakeTemporary(child, processed); });
+}
+
+void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    if (processed.contains(entity)) {
+        return;
+    }
+
+    processed.emplace(entity);
+
+    if (auto* holder = GetEntityHolder(entity); holder != nullptr) {
+        MakePersistentRecursive(holder, processed);
+    }
+
+    if (!entity->IsPersistent()) {
+        WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
+        _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
+        entity->SetPersistent(true);
+    }
+
+    ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakePersistentRecursive(child, processed); });
+}
+
+void EntityManager::MakeTemporaryRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    if (processed.contains(entity)) {
+        return;
+    }
+
+    processed.emplace(entity);
+
+    ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakeTemporaryRecursive(child, processed); });
+
+    if (entity->IsPersistent()) {
+        WriteLog("Remove entity {} {} from database", entity->GetTypeName(), entity->GetId());
+        _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
+        entity->SetPersistent(false);
+    }
+}
+
+void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
+        for (auto* map : copy_hold_ref(loc->GetMaps())) {
+            callback(map);
+        }
+    }
+    else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
+        for (auto* cr : copy_hold_ref(map->GetCritters())) {
+            callback(cr);
+        }
+
+        for (auto* item : copy_hold_ref(map->GetItems())) {
+            callback(item);
+        }
+    }
+    else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+        for (auto* item : copy_hold_ref(cr->GetInvItems())) {
+            callback(item);
+        }
+    }
+    else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->HasInnerItems()) {
+        for (auto* inner_item : copy_hold_ref(item->GetAllInnerItems())) {
+            callback(inner_item);
+        }
+    }
+
+    if (entity->HasInnerEntities()) {
+        const auto& entity_type = _engine->GetEntityType(entity->GetTypeName());
+
+        for (auto& [entry, inner_entities] : entity->GetInnerEntities()) {
+            FO_RUNTIME_ASSERT(entity_type.HolderEntries.count(entry));
+
+            if (!entity_type.HolderEntries.at(entry).Persistent) {
+                continue;
+            }
+
+            for (auto& inner_entity : inner_entities) {
+                auto* server_entity = dynamic_cast<ServerEntity*>(inner_entity.get());
+                FO_RUNTIME_ASSERT(server_entity);
+                callback(server_entity);
+            }
+        }
+    }
+}
+
+auto EntityManager::GetEntityHolder(ServerEntity* entity) -> ServerEntity*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    if (dynamic_cast<const Player*>(entity) != nullptr) {
+        return nullptr;
+    }
+
+    if (dynamic_cast<const Location*>(entity) != nullptr) {
+        return nullptr;
+    }
+
+    if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
+        return map->GetLocation();
+    }
+
+    if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+        if (!cr->GetMapId()) {
+            return nullptr;
+        }
+
+        auto* map = GetMap(cr->GetMapId());
+        FO_RUNTIME_ASSERT(map);
+        return map;
+    }
+
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
+        switch (item->GetOwnership()) {
+        case ItemOwnership::CritterInventory: {
+            auto* cr = GetCritter(item->GetCritterId());
+            FO_RUNTIME_ASSERT(cr);
+            return cr;
+        }
+        case ItemOwnership::MapHex: {
+            auto* map = GetMap(item->GetMapId());
+            FO_RUNTIME_ASSERT(map);
+            return map;
+        }
+        case ItemOwnership::ItemContainer: {
+            auto* cont = GetItem(item->GetContainerId());
+            FO_RUNTIME_ASSERT(cont);
+            return cont;
+        }
+        case ItemOwnership::Nowhere:
+            return nullptr;
+        }
+    }
+
+    if (auto* custom_entity = dynamic_cast<CustomEntity*>(entity); custom_entity != nullptr) {
+        if (!custom_entity->GetCustomHolderId()) {
+            return nullptr;
+        }
+
+        auto* holder = GetEntity(custom_entity->GetCustomHolderId());
+        FO_RUNTIME_ASSERT(holder);
+        return holder;
+    }
+
+    FO_RUNTIME_ASSERT(false);
+    return nullptr;
+}
+
+auto EntityManager::StoreEntityDoc(ServerEntity* entity) -> AnyData::Document
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
+        const auto* proto = entity_with_proto->GetProto();
+        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), _engine->Hashes, *_engine);
+        doc.Emplace("_Proto", string(proto->GetName()));
+        return doc;
+    }
+    else {
+        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
+        return doc;
+    }
+}
+
 void EntityManager::RegisterEntity(ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
@@ -957,26 +1183,10 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     if (!entity->GetId()) {
         const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
         const auto id = ident_t {id_num};
-        const auto collection_name = entity->GetTypeNamePlural();
 
         FO_RUNTIME_ASSERT(_allEntities.count(id) == 0);
 
         _engine->SetLastEntityId(id);
-
-        if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
-            const auto* proto = entity_with_proto->GetProto();
-            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), _engine->Hashes, *_engine);
-
-            doc.Emplace("_Proto", string(proto->GetName()));
-
-            _engine->DbStorage.Insert(collection_name, id, doc);
-        }
-        else {
-            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
-
-            _engine->DbStorage.Insert(collection_name, id, doc);
-        }
-
         entity->SetId(id);
     }
 
@@ -996,7 +1206,7 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
     FO_RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it); // Maybe last pointer to this entity
 
-    if (delete_from_db) {
+    if (delete_from_db && entity->IsPersistent()) {
         _engine->DbStorage.Delete(type_name_plural, entity_id);
     }
 }
@@ -1093,6 +1303,14 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     auto inner_entity_ids = holder_props.GetValueFast<vector<ident_t>>(holder_prop);
     vec_add_unique_value(inner_entity_ids, entity->GetId());
     holder_props.SetValue(holder_prop, inner_entity_ids);
+
+    if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
+        const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
+
+        if (holder_type.HolderEntries.at(entry).Persistent && holder_with_id->IsPersistent()) {
+            MakePersistent(entity, true);
+        }
+    }
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
 
@@ -1193,6 +1411,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         }
 
         RegisterCustomEntity(entity.get());
+        entity->SetPersistent(true);
 
         return entity.get();
     }

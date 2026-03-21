@@ -1500,6 +1500,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
+    EntityMngr.MakePersistent(cr, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {
@@ -2336,6 +2337,10 @@ void ServerEngine::OnSaveEntityValue(Entity* entity, const Property* prop)
     ident_t entry_id;
 
     if (server_entity != nullptr) {
+        if (!server_entity->IsPersistent()) {
+            return;
+        }
+
         entry_id = server_entity->GetId();
 
         if (!entry_id) {

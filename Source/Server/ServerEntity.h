@@ -58,6 +58,7 @@ public:
     [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine* { return _engine.get(); }
     [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return _engine.get(); }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
 
@@ -68,9 +69,11 @@ protected:
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager
+    void SetPersistent(bool persistent) noexcept; // Invoked by EntityManager
 
     ident_t _id;
     bool _initCalled {};
+    bool _isPersistent {};
 };
 
 class CustomEntity : public ServerEntity, public EntityProperties

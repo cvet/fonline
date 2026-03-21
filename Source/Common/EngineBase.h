@@ -96,7 +96,7 @@ public:
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;
     auto RegisterFixedType(string_view name, bool exported) -> PropertyRegistrator*;
-    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync);
+    void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent);
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32 entry_value);
     void RegisterValueType(string_view name);
