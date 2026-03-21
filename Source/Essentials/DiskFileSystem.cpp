@@ -255,7 +255,7 @@ auto fs_open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstrea
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {std::filesystem::path {fs_make_path(path)}, mode};
+    return std::ifstream {std::filesystem::path {fs_make_path(path)}, mode};
 }
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
