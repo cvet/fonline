@@ -94,6 +94,7 @@ FORMAT_PATTERNS = [
 	'Frontend/*.cpp', 'Frontend/*.h',
 	'Tests/*.cpp',
 ]
+UTF8_BOM = b'\xef\xbb\xbf'
 
 
 def log(*parts: object) -> None:
@@ -450,6 +451,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	log(f'Runtime {triplet} is ready!')
 
 
+
 def discover_clang_format() -> str:
 	for executable in ('clang-format-20', 'clang-format'):
 		path = shutil.which(executable)
@@ -458,21 +460,52 @@ def discover_clang_format() -> str:
 	raise SystemExit('clang-format not found')
 
 
+def read_text_strip_bom(path: Path) -> tuple[str, bool]:
+	data = path.read_bytes()
+	has_bom = data.startswith(UTF8_BOM)
+	return data.decode('utf-8-sig'), has_bom
+
+
+def write_text_utf8(path: Path, content: str) -> None:
+	path.write_bytes(content.encode('utf-8'))
+
+
+def strip_text_bom(content: str) -> str:
+	return content[1:] if content.startswith('\ufeff') else content
+
+
+def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
+	files: list[Path] = []
+	for pattern in patterns:
+		files.extend(sorted(root.glob(pattern)))
+	if not files:
+		log('No files matched format patterns in', root)
+		return 0
+
+	changed = 0
+	seen: set[Path] = set()
+	for path in files:
+		if path in seen:
+			continue
+		seen.add(path)
+
+		original, has_bom = read_text_strip_bom(path)
+		formatted = strip_text_bom(subprocess.check_output([clang_format, str(path)], text=True, encoding='utf-8'))
+		if original == formatted and not has_bom:
+			continue
+
+		changed += 1
+		rel_path = path.relative_to(root).as_posix()
+		log('Format', rel_path)
+		write_text_utf8(path, formatted)
+
+	log(f'Completed, changed {changed} file(s)')
+	return changed
+
+
 def format_source(env: Mapping[str, str]) -> None:
 	clang_format = discover_clang_format()
-	source_root = Path(env['FO_ENGINE_ROOT']) / 'Source'
-	files: list[Path] = []
-	for pattern in FORMAT_PATTERNS:
-		files.extend(sorted(source_root.glob(pattern)))
-	if not files:
-		log('No files matched format patterns')
-		return
-
-	total = len(files)
-	for index, path in enumerate(files, start=1):
-		rel_path = path.relative_to(source_root).as_posix().replace('/', '\\')
-		print(f'Formatting [{index}/{total}] {rel_path}', flush=True)
-		subprocess.check_call([clang_format, '-i', str(path)])
+	format_files(clang_format, Path(env['FO_ENGINE_ROOT']) / 'Source', FORMAT_PATTERNS)
 
 
 def build_toolset(target: str, env: Mapping[str, str]) -> None:
