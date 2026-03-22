@@ -205,9 +205,9 @@ if(FO_USE_GLEW)
     DisableLibWarnings(GLEW)
 endif()
 
-# Assimp
-StatusMessage("+ Assimp (math headers)")
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/AssimpMath")
+# GLM
+StatusMessage("+ GLM")
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/glm")
 
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)

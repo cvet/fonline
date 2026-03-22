@@ -247,9 +247,7 @@ void ParticleEditor::OnDraw()
     const auto proj_width = proj_height * frame_ratio;
 
     const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-
-    mat44 world;
-    mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
+    const mat44 world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
 
     vec3 pos_offest;
     pos_offest = vec3();
