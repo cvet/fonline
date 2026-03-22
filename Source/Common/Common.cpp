@@ -117,15 +117,22 @@ void GenericUtils::WriteSimpleTga(string_view fname, isize32 size, vector<ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto file = DiskFileSystem::OpenFile(fname, true);
+    const auto dir = strex(fname).extract_dir().str();
+
+    if (!dir.empty()) {
+        const auto dir_ok = fs_create_directories(dir);
+        FO_RUNTIME_ASSERT(dir_ok);
+    }
+
+    std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
     FO_RUNTIME_ASSERT(file);
 
     const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
         numeric_cast<uint8>(size.width % 256), numeric_cast<uint8>(size.width / 256), //
         numeric_cast<uint8>(size.height % 256), numeric_cast<uint8>(size.height / 256), 4 * 8, 0x20};
-    file.Write(header);
-
-    file.Write(data.data(), data.size() * sizeof(uint32));
+    file.write(reinterpret_cast<const char*>(header), static_cast<std::streamsize>(sizeof(header)));
+    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size() * sizeof(uint32)));
+    FO_RUNTIME_ASSERT(file);
 }
 
 // Default randomizer

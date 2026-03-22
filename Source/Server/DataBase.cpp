@@ -519,7 +519,7 @@ public:
     explicit DbJson(string_view storage_dir) :
         _storageDir {storage_dir}
     {
-        DiskFileSystem::MakeDirTree(storage_dir);
+        (void)fs_create_directories(storage_dir);
     }
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
@@ -528,24 +528,34 @@ public:
 
         vector<ident_t> ids;
 
-        DiskFileSystem::IterateDir(strex(_storageDir).combine_path(collection_name), false, [&ids](string_view path, size_t size, uint64 write_time) {
-            ignore_unused(size);
-            ignore_unused(write_time);
+        std::error_code ec;
+        const auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
+        const auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
 
-            if (strex(path).get_file_extension() != "json") {
-                return;
+        if (!ec) {
+            for (const auto& dir_entry : dir_iterator) {
+                if (dir_entry.is_directory()) {
+                    continue;
+                }
+
+                const auto path_str = dir_entry.path().filename().u8string();
+                const auto path = string(path_str.begin(), path_str.end());
+
+                if (strex(path).get_file_extension() != "json") {
+                    continue;
+                }
+
+                static_assert(sizeof(ident_t) == sizeof(int64));
+
+                const auto id = strvex(path).extract_file_name().erase_file_extension().to_int64();
+
+                if (id == 0) {
+                    throw DataBaseException("DbJson Id is zero", path);
+                }
+
+                ids.emplace_back(id);
             }
-
-            static_assert(sizeof(ident_t) == sizeof(int64));
-
-            const auto id = strvex(path).extract_file_name().erase_file_extension().to_int64();
-
-            if (id == 0) {
-                throw DataBaseException("DbJson Id is zero", path);
-            }
-
-            ids.emplace_back(id);
-        });
+        }
 
         return ids;
     }
@@ -557,24 +567,16 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        string json;
+        const auto json = fs_read_file(path);
 
-        if (auto f = DiskFileSystem::OpenFile(path, false)) {
-            const size_t length = f.GetSize();
-            json.resize(length);
-
-            if (!f.Read(json.data(), length)) {
-                throw DataBaseException("DbJson Can't read file", path);
-            }
-        }
-        else {
+        if (!json) {
             return {};
         }
 
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -593,7 +595,7 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        if (const auto f_check = DiskFileSystem::OpenFile(path, false)) {
+        if (fs_exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
         }
 
@@ -614,13 +616,14 @@ protected:
         const auto pretty_json_dump = pretty_json.dump(4);
         bson_free(json);
 
-        if (auto f = DiskFileSystem::OpenFile(path, true)) {
-            if (!f.Write(pretty_json_dump)) {
-                throw DataBaseException("DbJson Can't write file", path);
-            }
-        }
-        else {
+        const auto dir = strex(path).extract_dir().str();
+
+        if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
+        }
+
+        if (!fs_write_file(path, pretty_json_dump)) {
+            throw DataBaseException("DbJson Can't write file", path);
         }
     }
 
@@ -632,24 +635,16 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        string json;
+        const auto json = fs_read_file(path);
 
-        if (auto f_read = DiskFileSystem::OpenFile(path, false)) {
-            const size_t length = f_read.GetSize();
-            json.resize(length);
-
-            if (!f_read.Read(json.data(), length)) {
-                throw DataBaseException("DbJson Can't read file", path);
-            }
-        }
-        else {
+        if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
         }
 
         bson_t bson;
         bson_error_t error;
 
-        if (!bson_init_from_json(&bson, json.c_str(), numeric_cast<ssize_t>(json.length()), &error)) {
+        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -668,13 +663,14 @@ protected:
         const auto pretty_json_dump = pretty_json.dump(4);
         bson_free(new_json);
 
-        if (auto f_write = DiskFileSystem::OpenFile(path, true)) {
-            if (!f_write.Write(pretty_json_dump)) {
-                throw DataBaseException("DbJson Can't write file", path);
-            }
-        }
-        else {
+        const auto dir = strex(path).extract_dir().str();
+
+        if (!dir.empty() && !fs_create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
+        }
+
+        if (!fs_write_file(path, pretty_json_dump)) {
+            throw DataBaseException("DbJson Can't write file", path);
         }
     }
 
@@ -684,7 +680,7 @@ protected:
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        if (!DiskFileSystem::DeleteFile(path)) {
+        if (!fs_remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
     }
@@ -714,7 +710,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        DiskFileSystem::MakeDirTree(storage_dir);
+        (void)fs_create_directories(storage_dir);
 
         unqlite* ping_db = nullptr;
         const string ping_db_path = strex("{}/Ping.unqlite", storage_dir);
@@ -731,7 +727,7 @@ public:
         }
 
         unqlite_close(ping_db);
-        DiskFileSystem::DeleteFile(ping_db_path);
+        (void)fs_remove_file(ping_db_path);
 
         _storageDir = storage_dir;
     }

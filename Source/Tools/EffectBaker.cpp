@@ -183,7 +183,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
     constexpr bool old_code_profile = false;
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-    const auto shader_common_content = fofx.GetSectionContent("ShaderCommon");
+    const string shader_common_content = string(fofx.GetSectionContent("ShaderCommon"));
     const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
     const auto shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
@@ -195,17 +195,17 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
     const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
     for (auto pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = fofx.GetSectionContent(strex("VertexShader Pass{}", pass));
+        string vertex_pass_content = string(fofx.GetSectionContent(strex("VertexShader Pass{}", pass)));
         if (vertex_pass_content.empty()) {
-            vertex_pass_content = fofx.GetSectionContent("VertexShader");
+            vertex_pass_content = string(fofx.GetSectionContent("VertexShader"));
         }
         if (vertex_pass_content.empty()) {
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = fofx.GetSectionContent(strex("FragmentShader Pass{}", pass));
+        string fragment_pass_content = string(fofx.GetSectionContent(strex("FragmentShader Pass{}", pass)));
         if (fragment_pass_content.empty()) {
-            fragment_pass_content = fofx.GetSectionContent("FragmentShader");
+            fragment_pass_content = string(fofx.GetSectionContent("FragmentShader"));
         }
         if (fragment_pass_content.empty()) {
             throw EffectBakerException("No content for fragment shader", fname, pass);

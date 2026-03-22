@@ -2536,7 +2536,7 @@ class MessageBox : Text
         _MessageTexts = array<string>();
         _MessageTypes = array<MessageBoxType>();
         _MessageTimes = array<string>();
-        _DisplayedMessages = array<MessageBoxType> = {MessageBoxType::All};
+        _DisplayedMessages = {MessageBoxType::All};
         _IsNotCatchable = true;
 
         _ScrollUp = Sprite::Sprite("MiniArrowUp.png".hstr());
@@ -3206,7 +3206,7 @@ void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
         return;
     }
 
-    @ScreenCreators[screenNum] = screenFunc;
+    ScreenCreators[screenNum] = screenFunc;
 
     // Precache
     Screen screen = CreateScreen(screenNum);
@@ -4167,11 +4167,11 @@ void Highlight(GuiScreen screenNum, string objName, timespan duration = Time::Se
         int count = screen != null ? screen.Count(objName) : 0;
 
         for (int i = 0; i < count; i++) {
-            Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, i});
+            Game.StartTimeEvent(Time::Asap(), HighlightProcess, {screenNum, objName, duration.milliseconds, i});
         }
     }
     else {
-        Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, skip});
+        Game.StartTimeEvent(Time::Asap(), HighlightProcess, {screenNum, objName, duration.milliseconds, skip});
     }
 }
 

@@ -630,7 +630,7 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
                 }
             }
 
-            if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType()) {
+            if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference()) {
                 for (const auto& dict_value : dict | std::views::values) {
                     if (dict_value.Type() == AnyData::ValueType::Array) {
                         const auto& dict_arr = dict_value.AsArray();
@@ -906,16 +906,28 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t errors = 0;
+    map<string_view, string_view> key_values_view;
 
-    for (auto&& [key, value] : key_values) {
-        // Skip technical fields
+    for (const auto& [key, value] : key_values) {
+        key_values_view.emplace(key, value);
+    }
+
+    ApplyFromText(key_values_view);
+}
+
+void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t errors = 0;
+    const PropertyRegistrator* registrator = GetRegistrator();
+
+    for (const auto& [key, value] : key_values) {
         if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
         }
 
-        // Find property
-        const auto* prop = _registrator->FindProperty(key);
+        const Property* prop = registrator->FindProperty(key);
 
         if (prop == nullptr) {
             WriteLog("Failed to load unknown property {}", key);
@@ -924,10 +936,10 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
         }
 
         if (prop->IsDisabled()) {
-            if (_registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
+            if (registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
                 continue;
             }
-            if (_registrator->GetSide() == EngineSideKind::ClientSide && prop->IsServerOnly()) {
+            if (registrator->GetSide() == EngineSideKind::ClientSide && prop->IsServerOnly()) {
                 continue;
             }
 
@@ -948,7 +960,6 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
             continue;
         }
 
-        // Parse
         try {
             ApplyPropertyFromText(prop, value);
         }
@@ -1383,7 +1394,7 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsFixedType) {
+    if (base_type.IsFixedType || base_type.IsEntityProto) {
         return any_t {GetValue<hstring>(prop).as_str()};
     }
     else if (base_type.IsEnum) {
@@ -1515,7 +1526,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
-    if (base_type.IsFixedType) {
+    if (base_type.IsFixedType || base_type.IsEntityProto) {
         SetValue<hstring>(prop, _registrator->GetHashResolver()->ToHashedString(value));
     }
     else if (base_type.IsEnum) {
@@ -1888,9 +1899,8 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     const auto type = _nameResolver->ResolveComplexType(tokens[1]);
     FO_RUNTIME_ASSERT(!type.IsMutable);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsEntity);
+    FO_RUNTIME_ASSERT(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto);
     FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsFixedType || type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array);
 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
         FO_RUNTIME_ASSERT(type.KeyType.has_value());
@@ -2082,7 +2092,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
     FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
-    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeFixedType());
+    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeProtoReference());
 
     const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
 
@@ -2222,7 +2232,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             }
         }
 
-        if (prop->IsBaseTypeHash() || prop->IsBaseTypeFixedType() || prop->IsDictKeyHash()) {
+        if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference() || prop->IsDictKeyHash()) {
             _hashProperties.emplace_back(prop.get());
         }
     }

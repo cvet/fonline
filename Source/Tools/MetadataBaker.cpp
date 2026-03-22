@@ -824,8 +824,8 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         if (is_null_getter_for_proto && !is_virtual) {
             throw MetadataBakerException("Invalid Property codegen tag: null getter can only be on virtual property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (is_maybe_null && !type.BaseType.IsFixedType) {
-            throw MetadataBakerException("Invalid Property codegen tag: MaybeNull can only be used on FixedType properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        if (is_maybe_null && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
+            throw MetadataBakerException("Invalid Property codegen tag: MaybeNull can only be used on FixedType or Proto entity properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
         if (is_persistent && is_client_only) {
             throw MetadataBakerException("Invalid Property codegen tag: persistent property can't be client only", tag_desc.SourceFile, tag_desc.LineNumber, name);

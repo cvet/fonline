@@ -45,7 +45,6 @@
 #include "MemorySystem.h"
 #include "Containers.h"
 #include "StringUtils.h"
-#include "DiskFileSystem.h"
 #include "Platform.h"
 #include "ExceptionHadling.h"
 #include "SafeArithmetics.h"
@@ -57,6 +56,7 @@
 #include "Compressor.h"
 #include "WorkThread.h"
 #include "Logging.h"
+#include "DiskFileSystem.h"
 #include "CommonHelpers.h"
 #include "NetSockets.h"
 // clang-format on

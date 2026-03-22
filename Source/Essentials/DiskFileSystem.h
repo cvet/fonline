@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,76 +29,43 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #pragma once
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "ExceptionHadling.h"
+#include "StackTrace.h"
+#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE
 
-enum class DiskFileSeek : uint8
-{
-    Set = 0,
-    Cur = 1,
-    End = 2,
-};
+using FsFileVisitor = function<void(string_view, size_t, uint64)>;
 
-class DiskFile final
-{
-    friend class DiskFileSystem;
+// Filesystem helpers
+[[nodiscard]] auto fs_make_path(string_view path) -> std::u8string;
+[[nodiscard]] auto fs_path_to_string(const std::filesystem::path& path) -> string;
+[[nodiscard]] auto fs_resolve_path(string_view path) -> string;
+[[nodiscard]] auto fs_exists(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_is_dir(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_create_directories(string_view dir) noexcept -> bool;
+[[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64;
+[[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64>;
+[[nodiscard]] auto fs_read_file(string_view path) -> optional<string>;
+[[nodiscard]] auto fs_compare_file_content(string_view path, const_span<uint8> content) -> bool;
+[[nodiscard]] auto fs_write_file(string_view path, string_view content) -> bool;
+[[nodiscard]] auto fs_write_file(string_view path, const_span<uint8> content) -> bool;
+[[nodiscard]] auto fs_remove_file(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
+[[nodiscard]] auto fs_touch_file(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
+[[nodiscard]] auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
+void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor);
 
-public:
-    DiskFile() = delete;
-    DiskFile(const DiskFile&) = delete;
-    DiskFile(DiskFile&&) noexcept = default;
-    auto operator=(const DiskFile&) -> DiskFile& = delete;
-    auto operator=(DiskFile&&) -> DiskFile& = delete;
-    explicit operator bool() const;
-    ~DiskFile() = default;
-
-    [[nodiscard]] auto GetReadPos() -> size_t;
-    [[nodiscard]] auto GetSize() -> size_t;
-
-    auto Read(void* buf, size_t len) -> bool;
-    auto Write(const void* buf, size_t len) -> bool;
-    auto Write(string_view str) -> bool;
-    auto Write(const_span<uint8> data) -> bool;
-    auto SetReadPos(int32 offset, DiskFileSeek origin) -> bool;
-
-private:
-    explicit DiskFile(string_view path, bool write, bool write_through);
-
-    std::fstream _file {};
-    bool _openedForWriting {};
-    bool _writeThrough {};
-};
-
-class DiskFileSystem final
-{
-public:
-    using FileVisitor = function<void(string_view, size_t, uint64)>;
-
-    DiskFileSystem() = delete;
-
-    static auto OpenFile(string_view path, bool write) -> DiskFile;
-    static auto OpenFile(string_view path, bool write, bool write_through) -> DiskFile;
-    static auto ReadFile(string_view path) -> optional<string>;
-    static auto WriteFile(string_view path, string_view content) -> bool;
-    static auto WriteFile(string_view path, const_span<uint8> content) -> bool;
-    static auto GetWriteTime(string_view path) -> uint64;
-    static auto IsExists(string_view path) -> bool;
-    static auto IsDir(string_view path) -> bool;
-    static auto DeleteFile(string_view path) -> bool;
-    static auto CopyFile(string_view path, string_view copy_path) -> bool;
-    static auto RenameFile(string_view path, string_view new_path) -> bool;
-    static auto ResolvePath(string_view path) -> string;
-    static auto MakeDirTree(string_view dir) -> bool;
-    static auto DeleteDir(string_view dir) -> bool;
-    static void IterateDir(string_view dir, bool recursive, FileVisitor visitor);
-    static auto CompareFileContent(string_view path, const_span<uint8> buf) -> bool;
-    static auto TouchFile(string_view path) -> bool;
-};
+// Stream helpers
+[[nodiscard]] auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool;
+[[nodiscard]] auto stream_get_size(std::istream& stream) -> size_t;
+[[nodiscard]] auto stream_get_read_pos(std::istream& stream) -> size_t;
+[[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32 offset, std::ios_base::seekdir origin) -> bool;
 
 FO_END_NAMESPACE

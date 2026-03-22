@@ -176,7 +176,9 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                if (std::filesystem::exists(dir / FO_MAIN_CONFIG) && !std::filesystem::is_directory(dir / FO_MAIN_CONFIG)) {
+                const auto config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+
+                if (fs_exists(config_path) && !fs_is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
                     config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
                     break;
@@ -253,7 +255,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    if (DiskFileSystem::IsDir(settings.CacheResources)) {
+    if (fs_is_dir(settings.CacheResources)) {
         const auto cache = CacheStorage(settings.CacheResources);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
@@ -298,7 +300,7 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (std::filesystem::exists(settings.BakeOutput) && std::filesystem::is_directory(settings.BakeOutput)) {
+        if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
             Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
         }
         else {

@@ -339,7 +339,7 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, co
         const auto hash = resolved_value.as_hash();
         AppendRawBytes(data, &hash, sizeof(hash));
     }
-    else if (base_type.IsFixedType) {
+    else if (base_type.IsFixedType || base_type.IsEntityProto) {
         string decoded_storage;
         auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
         const auto* proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
@@ -350,11 +350,11 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, co
 
         if (!resolved_value) {
             if (prop == nullptr || !prop->IsMaybeNull()) {
-                throw PropertySerializationException("FixedType property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
+                throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
             }
         }
         else if (proto == nullptr) {
-            throw PropertySerializationException("FixedType proto does not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+            throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
         }
 
         const auto hash = resolved_value.as_hash();
@@ -474,6 +474,11 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
         pdata += sizeof(hstring::hash_t);
         StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
     }
+    else if (base_type.IsFixedType || base_type.IsEntityProto) {
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        pdata += sizeof(hstring::hash_t);
+        StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
+    }
     else if (base_type.IsEnum) {
         int32 enum_value = 0;
         MemCopy(&enum_value, pdata, base_type.Size);
@@ -516,7 +521,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         pdata += str_len;
         return string(pstr, str_len);
     }
-    else if (base_type.IsHashedString || base_type.IsFixedType) {
+    else if (base_type.IsHashedString || base_type.IsFixedType || base_type.IsEntityProto) {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
         pdata += sizeof(hstring::hash_t);
         return hash_resolver.ResolveHash(hash).as_str();
@@ -975,27 +980,37 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (base_type.IsHashedString || base_type.IsFixedType) {
+    if (base_type.IsHashedString) {
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
             auto resolved_value = hash_resolver.ToHashedString(value.AsString());
+            hash = resolved_value.as_hash();
+        }
+        else {
+            throw PropertySerializationException("Wrong hash value type");
+        }
 
-            if (base_type.IsFixedType) {
-                const auto* proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
+        pdata += base_type.Size;
+    }
+    else if (base_type.IsFixedType || base_type.IsEntityProto) {
+        auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
-                if (proto != nullptr) {
-                    resolved_value = proto->GetProtoId();
-                }
+        if (value.Type() == AnyData::ValueType::String) {
+            auto resolved_value = hash_resolver.ToHashedString(value.AsString());
+            const auto* proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
 
-                if (!resolved_value) {
-                    if (!prop->IsMaybeNull()) {
-                        throw PropertySerializationException("FixedType property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
-                    }
+            if (proto != nullptr) {
+                resolved_value = proto->GetProtoId();
+            }
+
+            if (!resolved_value) {
+                if (!prop->IsMaybeNull()) {
+                    throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
                 }
-                else if (proto == nullptr) {
-                    throw PropertySerializationException("FixedType proto does not exists, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
-                }
+            }
+            else if (proto == nullptr) {
+                throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
             }
 
             hash = resolved_value.as_hash();

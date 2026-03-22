@@ -52,8 +52,8 @@ class FixedDropMenu : Gui::IDropMenu
         button.SortIndex = sortIndex;
         button.PicNormal = Sprite::Sprite(ArtDir + picNormal);
         button.PicActive = Sprite::Sprite(ArtDir + picActive);
-        @button.NeedShow = needShow;
-        @button.Action = action;
+        button.NeedShow = needShow;
+        button.Action = action;
         Buttons.insertLast(button);
         // Todo: sort
     }

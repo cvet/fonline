@@ -878,6 +878,7 @@ list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"

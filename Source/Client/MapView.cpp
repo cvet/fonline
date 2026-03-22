@@ -180,7 +180,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
     MapLoader::Load(
         map_name, str, _engine->ProtoMngr, _engine->Hashes,
-        [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
+        [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
             FO_RUNTIME_ASSERT(id);
             FO_RUNTIME_ASSERT(_crittersMap.count(id) == 0);
 
@@ -197,7 +197,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             AddCritterInternal(cr.get());
         },
-        [this, &max_id](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
+        [this, &max_id](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
             FO_RUNTIME_ASSERT(id);
             FO_RUNTIME_ASSERT(_itemsMap.count(id) == 0);
 

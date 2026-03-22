@@ -159,7 +159,7 @@ private:
     auto ReadTree() -> bool;
 
     mutable std::mutex _datFileLocker {};
-    mutable DiskFile _datFile;
+    mutable std::ifstream _datFile {};
     unordered_map<string, uint8*> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
@@ -265,7 +265,7 @@ auto DataSource::MountDir(string_view dir, bool recursive, bool non_cached, bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!DiskFileSystem::IsDir(dir)) {
+    if (!fs_is_dir(dir)) {
         if (maybe_not_available) {
             return SafeAlloc::MakeUnique<DummySpace>();
         }
@@ -287,10 +287,7 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
 
     FO_RUNTIME_ASSERT(!name.empty());
 
-    const auto is_file_present = [](string_view path) -> bool {
-        const auto file = DiskFileSystem::OpenFile(path, false);
-        return !!file;
-    };
+    const auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
 
     const string path = strex(dir).combine_path(name);
 
@@ -355,7 +352,7 @@ NonCachedDir::NonCachedDir(string_view fname, bool recursive) :
     FO_STACK_TRACE_ENTRY();
 
     _baseDir = fname;
-    _baseDir = DiskFileSystem::ResolvePath(_baseDir);
+    _baseDir = fs_resolve_path(_baseDir);
     _baseDir += "/";
 }
 
@@ -369,10 +366,10 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
 
     const string full_path = strex(_baseDir).combine_path(path);
 
-    if (!DiskFileSystem::IsExists(full_path)) {
+    if (!fs_exists(full_path)) {
         return false;
     }
-    if (DiskFileSystem::IsDir(full_path)) {
+    if (fs_is_dir(full_path)) {
         return false;
     }
 
@@ -388,14 +385,14 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64& write_tim
     }
 
     const string full_path = strex(_baseDir).combine_path(path);
-    auto file = DiskFileSystem::OpenFile(full_path, false);
+    auto file = fs_open_ifstream(full_path);
 
     if (!file) {
         return false;
     }
 
-    size = file.GetSize();
-    write_time = DiskFileSystem::GetWriteTime(full_path);
+    size = stream_get_size(file);
+    write_time = fs_last_write_time(full_path);
     return true;
 }
 
@@ -408,20 +405,20 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) 
     }
 
     const string full_path = strex(_baseDir).combine_path(path);
-    auto file = DiskFileSystem::OpenFile(full_path, false);
+    auto file = fs_open_ifstream(full_path);
 
     if (!file) {
         return nullptr;
     }
 
-    size = file.GetSize();
+    size = stream_get_size(file);
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
-    if (!file.Read(buf.get(), size)) {
+    if (!stream_read_exact(file, buf.get(), size)) {
         throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
     }
 
-    write_time = DiskFileSystem::GetWriteTime(full_path);
+    write_time = fs_last_write_time(full_path);
     return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
 }
 
@@ -435,7 +432,7 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
 
     vector<string> fnames;
 
-    DiskFileSystem::IterateDir(strex(_baseDir).combine_path(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    fs_iterate_dir(strex(_baseDir).combine_path(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64 write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -448,10 +445,10 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     FO_STACK_TRACE_ENTRY();
 
     _baseDir = fname;
-    _baseDir = DiskFileSystem::ResolvePath(_baseDir);
+    _baseDir = fs_resolve_path(_baseDir);
     _baseDir += "/";
 
-    DiskFileSystem::IterateDir(_baseDir, recursive, [this](string_view path, size_t size, uint64 write_time) {
+    fs_iterate_dir(_baseDir, recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
         fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
@@ -502,7 +499,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     const auto& fe = it->second;
-    auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+    auto file = fs_open_ifstream(fe.FileName);
 
     if (!file) {
         throw DataSourceException("Can't read file from cached dir", _baseDir, path);
@@ -511,7 +508,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     size = fe.FileSize;
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
-    if (!file.Read(buf.get(), size)) {
+    if (!stream_read_exact(file, buf.get(), size)) {
         return nullptr;
     }
 
@@ -526,19 +523,19 @@ auto CachedDir::GetFileNames(string_view dir, bool recursive, string_view ext) c
     return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext);
 }
 
-FalloutDat::FalloutDat(string_view fname) :
-    _datFile {DiskFileSystem::OpenFile(fname, false)}
+FalloutDat::FalloutDat(string_view fname)
 {
     FO_STACK_TRACE_ENTRY();
 
     _fileName = fname;
     _readBuf.resize(0x40000);
+    _datFile = fs_open_ifstream(fname);
 
     if (!_datFile) {
         throw DataSourceException("Cannot open fallout dat file", fname);
     }
 
-    _writeTime = DiskFileSystem::GetWriteTime(fname);
+    _writeTime = fs_last_write_time(fname);
 
     if (!ReadTree()) {
         throw DataSourceException("Read fallout dat file tree failed");
@@ -551,33 +548,33 @@ auto FalloutDat::ReadTree() -> bool
 
     uint32 version = 0;
 
-    if (!_datFile.SetReadPos(-12, DiskFileSeek::End)) {
+    if (!stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
         return false;
     }
-    if (!_datFile.Read(&version, 4)) {
+    if (!stream_read_exact(_datFile, &version, 4)) {
         return false;
     }
 
     // DAT 2.1 Arcanum
     if (version == 0x44415431) { // 1TAD
-        if (!_datFile.SetReadPos(-4, DiskFileSeek::End)) {
+        if (!stream_set_read_pos(_datFile, -4, std::ios_base::end)) {
             return false;
         }
 
         uint32 tree_size = 0;
 
-        if (!_datFile.Read(&tree_size, 4)) {
+        if (!stream_read_exact(_datFile, &tree_size, 4)) {
             return false;
         }
 
         // Read tree
-        if (!_datFile.SetReadPos(-numeric_cast<int32>(tree_size), DiskFileSeek::End)) {
+        if (!stream_set_read_pos(_datFile, -numeric_cast<int32>(tree_size), std::ios_base::end)) {
             return false;
         }
 
         uint32 files_total = 0;
 
-        if (!_datFile.Read(&files_total, 4)) {
+        if (!stream_read_exact(_datFile, &files_total, 4)) {
             return false;
         }
 
@@ -585,7 +582,7 @@ auto FalloutDat::ReadTree() -> bool
         _memTree = SafeAlloc::MakeUniqueArr<uint8>(tree_size);
         MemFill(_memTree.get(), 0, tree_size);
 
-        if (!_datFile.Read(_memTree.get(), tree_size)) {
+        if (!stream_read_exact(_datFile, _memTree.get(), tree_size)) {
             return false;
         }
 
@@ -617,27 +614,27 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // DAT 2.0 Fallout2
-    if (!_datFile.SetReadPos(-8, DiskFileSeek::End)) {
+    if (!stream_set_read_pos(_datFile, -8, std::ios_base::end)) {
         return false;
     }
 
     uint32 tree_size = 0;
-    if (!_datFile.Read(&tree_size, 4)) {
+    if (!stream_read_exact(_datFile, &tree_size, 4)) {
         return false;
     }
 
     uint32 dat_size = 0;
-    if (!_datFile.Read(&dat_size, 4)) {
+    if (!stream_read_exact(_datFile, &dat_size, 4)) {
         return false;
     }
 
     // Check for DAT1.0 Fallout1 dat file
-    if (!_datFile.SetReadPos(0, DiskFileSeek::Set)) {
+    if (!stream_set_read_pos(_datFile, 0, std::ios_base::beg)) {
         return false;
     }
 
     uint32 dir_count = 0;
-    if (!_datFile.Read(&dir_count, 4)) {
+    if (!stream_read_exact(_datFile, &dir_count, 4)) {
         return false;
     }
 
@@ -647,24 +644,24 @@ auto FalloutDat::ReadTree() -> bool
     }
 
     // Check for truncated
-    if (_datFile.GetSize() != dat_size) {
+    if (stream_get_size(_datFile) != dat_size) {
         return false;
     }
 
     // Read tree
-    if (!_datFile.SetReadPos(-(numeric_cast<int32>(tree_size) + 8), DiskFileSeek::End)) {
+    if (!stream_set_read_pos(_datFile, -(numeric_cast<int32>(tree_size) + 8), std::ios_base::end)) {
         return false;
     }
 
     uint32 files_total = 0;
-    if (!_datFile.Read(&files_total, 4)) {
+    if (!stream_read_exact(_datFile, &files_total, 4)) {
         return false;
     }
 
     tree_size -= 4;
     _memTree = SafeAlloc::MakeUniqueArr<uint8>(tree_size);
 
-    if (!_datFile.Read(_memTree.get(), tree_size)) {
+    if (!stream_read_exact(_datFile, _memTree.get(), tree_size)) {
         return false;
     }
 
@@ -746,7 +743,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
     int32 offset = 0;
     MemCopy(&offset, ptr + 9, sizeof(offset));
 
-    if (!_datFile.SetReadPos(offset, DiskFileSeek::Set)) {
+    if (!stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);
     }
 
@@ -755,7 +752,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
 
     if (type == 0) {
         // Plane data
-        if (!_datFile.Read(buf.get(), size)) {
+        if (!stream_read_exact(_datFile, buf.get(), size)) {
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
@@ -787,7 +784,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
                 stream.next_in = _readBuf.data();
                 const auto len = std::min(left, numeric_cast<uint32>(_readBuf.size()));
 
-                if (!_datFile.Read(_readBuf.data(), len)) {
+                if (!stream_read_exact(_datFile, _readBuf.data(), len)) {
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
 
@@ -820,43 +817,39 @@ ZipFile::ZipFile(string_view fname)
 
     zlib_filefunc_def ffunc;
 
-    auto p_file = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(_fileName, false));
+    auto p_file = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
 
     if (!*p_file) {
         throw DataSourceException("Can't open zip file", _fileName);
     }
 
-    _writeTime = DiskFileSystem::GetWriteTime(_fileName);
+    _writeTime = fs_last_write_time(_fileName);
 
     ffunc.zopen_file = [](voidpf opaque, const char*, int32) -> voidpf { return opaque; };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        auto* file = cast_from_void<DiskFile*>(stream);
-        return file->Read(buf, size) ? size : 0;
+        auto* file = cast_from_void<std::ifstream*>(stream);
+        return stream_read_exact(*file, buf, size) ? size : 0;
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        auto* file = cast_from_void<DiskFile*>(stream);
-        return numeric_cast<long>(file->GetReadPos());
+        auto* file = cast_from_void<std::ifstream*>(stream);
+        return numeric_cast<long>(stream_get_read_pos(*file));
     };
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32 origin) -> long {
-        auto* file = cast_from_void<DiskFile*>(stream);
+        auto* file = cast_from_void<std::ifstream*>(stream);
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
-            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Set);
-            break;
+            return stream_set_read_pos(*file, numeric_cast<int32>(offset), std::ios_base::beg) ? 0 : -1;
         case ZLIB_FILEFUNC_SEEK_CUR:
-            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::Cur);
-            break;
+            return stream_set_read_pos(*file, numeric_cast<int32>(offset), std::ios_base::cur) ? 0 : -1;
         case ZLIB_FILEFUNC_SEEK_END:
-            file->SetReadPos(numeric_cast<int32>(offset), DiskFileSeek::End);
-            break;
+            return stream_set_read_pos(*file, numeric_cast<int32>(offset), std::ios_base::end) ? 0 : -1;
         default:
             return -1;
         }
-        return 0;
     };
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32 {
-        const auto* file = cast_from_void<DiskFile*>(stream);
+        const auto* file = cast_from_void<std::ifstream*>(stream);
         delete file;
         return 0;
     };
@@ -1191,19 +1184,13 @@ FilesList::FilesList()
     _filesTree.clear();
     _filesTreeNames.clear();
 
-    auto file_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
+    const auto files_tree_content = fs_read_file("FilesTree.txt");
 
-    if (!file_tree) {
+    if (!files_tree_content) {
         throw DataSourceException("Can't open 'FilesTree.txt' in file list assets");
     }
 
-    const auto len = file_tree.GetSize() + 1;
-    string str;
-    str.resize(len);
-
-    if (!file_tree.Read(str.data(), len)) {
-        throw DataSourceException("Can't read 'FilesTree.txt' in file list assets");
-    }
+    const auto& str = *files_tree_content;
 
     for (string_view name : strvex(str).split('\n')) {
         name = strvex(name).trim();
@@ -1212,7 +1199,7 @@ FilesList::FilesList()
             continue;
         }
 
-        auto file = DiskFileSystem::OpenFile(name, false);
+        auto file = fs_open_ifstream(name);
 
         if (!file) {
             throw DataSourceException("Can't open file in file list assets", name);
@@ -1220,8 +1207,8 @@ FilesList::FilesList()
 
         FileEntry fe;
         fe.FileName = name;
-        fe.FileSize = file.GetSize();
-        fe.WriteTime = DiskFileSystem::GetWriteTime(name);
+        fe.FileSize = stream_get_size(file);
+        fe.WriteTime = fs_last_write_time(name);
 
         _filesTree.emplace(name, std::move(fe));
         _filesTreeNames.emplace_back(name);
@@ -1268,7 +1255,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     const auto& fe = it->second;
-    auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+    auto file = fs_open_ifstream(fe.FileName);
 
     if (!file) {
         throw DataSourceException("Can't open file in file list assets", path);
@@ -1277,7 +1264,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64& write_time) con
     size = fe.FileSize;
     auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
 
-    if (!file.Read(buf.get(), size)) {
+    if (!stream_read_exact(file, buf.get(), size)) {
         throw DataSourceException("Can't read file in file list assets", path);
     }
 

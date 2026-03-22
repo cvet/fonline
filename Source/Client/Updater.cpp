@@ -219,8 +219,8 @@ void Updater::Abort(string_view text)
     AddText(text);
     _conn.Disconnect();
 
-    if (_tempFile) {
-        _tempFile = nullptr;
+    if (_tempFile.is_open()) {
+        _tempFile.close();
     }
 }
 
@@ -306,7 +306,13 @@ void Updater::Net_OnUpdateFileData()
     auto& update_file = _filesToUpdate.front();
 
     // Write data to temp file
-    if (!_tempFile->Write(_updateFileBuf.data(), std::min(update_file.RemaningSize, _updateFileBuf.size()))) {
+    const auto write_size = std::min(update_file.RemaningSize, _updateFileBuf.size());
+
+    if (write_size != 0u) {
+        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), static_cast<std::streamsize>(write_size));
+    }
+
+    if (!_tempFile) {
         Abort(StrFilesystemError);
         return;
     }
@@ -331,16 +337,27 @@ void Updater::GetNextFile()
 
     const auto make_write_path = [this](string_view fname) -> string { return strex(_settings->ClientResources).combine_path(fname); };
 
-    if (_tempFile) {
-        _tempFile = nullptr;
+    if (_tempFile.is_open()) {
+        _tempFile.close();
 
-        const auto& prev_update_file = _filesToUpdate.front();
-
-        if (!DiskFileSystem::DeleteFile(make_write_path(prev_update_file.Name))) {
+        if (_tempFile.fail()) {
             Abort(StrFilesystemError);
             return;
         }
-        if (!DiskFileSystem::RenameFile(make_write_path(strex("~{}", prev_update_file.Name)), make_write_path(prev_update_file.Name))) {
+
+        const auto& prev_update_file = _filesToUpdate.front();
+        const auto prev_path_str = make_write_path(prev_update_file.Name);
+
+        std::error_code ec;
+        const auto prev_path = std::filesystem::path {fs_make_path(prev_path_str)};
+        (void)fs_remove_file(prev_path_str);
+
+        if (fs_exists(prev_path_str)) {
+            Abort(StrFilesystemError);
+            return;
+        }
+
+        if (!fs_rename(make_write_path(strex("~{}", prev_update_file.Name)), prev_path_str)) {
             Abort(StrFilesystemError);
             return;
         }
@@ -355,10 +372,20 @@ void Updater::GetNextFile()
         _conn.OutBuf->Write(next_update_file.Index);
         _conn.OutBuf->EndMsg();
 
-        DiskFileSystem::DeleteFile(make_write_path(strex("~{}", next_update_file.Name)));
-        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(make_write_path(strex("~{}", next_update_file.Name)), true));
+        const auto temp_path = make_write_path(strex("~{}", next_update_file.Name));
+        (void)fs_remove_file(temp_path);
+        const auto dir = strex(temp_path).extract_dir().str();
 
-        if (!*_tempFile) {
+        if (!dir.empty()) {
+            if (!fs_create_directories(dir)) {
+                Abort(StrFilesystemError);
+                return;
+            }
+        }
+
+        _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, std::ios::binary | std::ios::trunc);
+
+        if (!_tempFile) {
             Abort(StrFilesystemError);
         }
     }

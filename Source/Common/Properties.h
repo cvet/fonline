@@ -38,6 +38,8 @@
 
 #include "Common.h"
 
+#include "ConfigFile.h"
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertiesException);
@@ -145,6 +147,8 @@ public:
     [[nodiscard]] auto IsBaseTypeBool() const noexcept -> bool { return _baseType.IsBool; }
     [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString; }
     [[nodiscard]] auto IsBaseTypeFixedType() const noexcept -> bool { return _baseType.IsFixedType; }
+    [[nodiscard]] auto IsBaseTypeEntityProto() const noexcept -> bool { return _baseType.IsEntityProto; }
+    [[nodiscard]] auto IsBaseTypeProtoReference() const noexcept -> bool { return _baseType.IsFixedType || _baseType.IsEntityProto; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }
@@ -300,6 +304,7 @@ public:
     void CopyFrom(const Properties& other) noexcept;
     void ValidateForRawData(const Property* prop) const noexcept(false);
     void ApplyFromText(const map<string, string>& key_values);
+    void ApplyFromText(const map<string_view, string_view>& key_values);
     void ApplyPropertyFromText(const Property* prop, string_view text);
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);

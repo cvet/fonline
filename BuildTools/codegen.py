@@ -1565,9 +1565,9 @@ def generate_generic_code() -> None:
         global_lines.append('class ClientEngine;')
         global_lines.append('void InitClientEngine(ClientEngine*) { /* Stub */ }')
     if not is_engine_hook_enabled('ConfigSectionParseHook'):
-        global_lines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
+        global_lines.append('bool ConfigSectionParseHook(string_view, string_view, string&, map<string, string>&) {  /* Stub */ return false; }')
     if not is_engine_hook_enabled('ConfigEntryParseHook'):
-        global_lines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
+        global_lines.append('bool ConfigEntryParseHook(string_view, string_view, string_view, string_view, string&, string&) {  /* Stub */ return false; }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
         global_lines.append('struct BakingContext;')
