@@ -555,7 +555,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    mat44::RotationX(_modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, _matRot);
+    _matRot = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _forceDraw = true;
     _lastDrawTime = GetTime();
     SetupFrame(_modelInfo->_drawSize);
@@ -573,7 +573,6 @@ void ModelInstance::SetupFrame(isize32 draw_size)
 
     _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProj;
-    _frameProjColMaj.Transpose();
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
@@ -581,8 +580,9 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
     FO_STACK_TRACE_ENTRY();
 
     const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    vec3 out;
-    ModelManager::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    vec3 out {};
+    const auto identity = mat44 {1.0f};
+    ModelManager::MatrixProject(pos.x, pos.y, pos.z, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
     return {iround<int32>(out.x / const_numeric_cast<float32>(FRAME_SCALE)), iround<int32>(out.y / const_numeric_cast<float32>(FRAME_SCALE))};
 }
 
@@ -593,8 +593,9 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
     const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     const auto xf = numeric_cast<float32>(pos.x) * numeric_cast<float32>(FRAME_SCALE);
     const auto yf = numeric_cast<float32>(pos.y) * numeric_cast<float32>(FRAME_SCALE);
-    vec3 out;
-    ModelManager::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    vec3 out {};
+    const auto identity = mat44 {1.0f};
+    ModelManager::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -1190,38 +1191,37 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
     // Transformations
     if (clear) {
-        _matScaleBase = mat44();
-        _matRotBase = mat44();
-        _matTransBase = mat44();
+        _matScaleBase = mat44 {1.0f};
+        _matRotBase = mat44 {1.0f};
+        _matTransBase = mat44 {1.0f};
     }
 
-    mat44 mat_tmp;
     if (data.ScaleX != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(data.ScaleX, 1.0f, 1.0f), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {data.ScaleX, 1.0f, 1.0f});
     }
     if (data.ScaleY != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, data.ScaleY, 1.0f), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {1.0f, data.ScaleY, 1.0f});
     }
     if (data.ScaleZ != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, 1.0f, data.ScaleZ), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {1.0f, 1.0f, data.ScaleZ});
     }
     if (data.RotX != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationX(-data.RotX * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, -data.RotX * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     }
     if (data.RotY != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationY(data.RotY * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, data.RotY * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
     }
     if (data.RotZ != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationZ(data.RotZ * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, data.RotZ * DEG_TO_RAD_FLOAT, vec3 {0.0f, 0.0f, 1.0f});
     }
     if (data.MoveX != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(data.MoveX, 0.0f, 0.0f), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {data.MoveX, 0.0f, 0.0f});
     }
     if (data.MoveY != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, data.MoveY, 0.0f), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {0.0f, data.MoveY, 0.0f});
     }
     if (data.MoveZ != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, 0.0f, -data.MoveZ), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, -data.MoveZ});
     }
 
     // Speed
@@ -1388,12 +1388,9 @@ void ModelInstance::SetRotation(float32 rx, float32 ry, float32 rz)
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44 my;
-    mat44 mx;
-    mat44 mz;
-    mat44::RotationX(rx, mx);
-    mat44::RotationY(ry, my);
-    mat44::RotationZ(rz, mz);
+    const auto mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
+    const auto my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
+    const auto mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
 
     _matRot = mx * my * mz;
 }
@@ -1402,7 +1399,7 @@ void ModelInstance::SetScale(float32 sx, float32 sy, float32 sz)
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44::Scaling(vec3(sx, sy, sz), _matScale);
+    _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
 }
 
 void ModelInstance::SetSpeed(float32 speed)
@@ -1698,12 +1695,14 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
             // Move shape to face space
-            auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
-            auto sm = mesh_transform.Inverse() * shape.GlobalTransformationMatrix;
-            vec3 ss;
-            vec3 sp;
-            quaternion sr;
-            sm.Decompose(ss, sr, sp);
+            const auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
+            const auto sm = glm::inverse(mesh_transform) * shape.GlobalTransformationMatrix;
+            vec3 ss {};
+            vec3 sp {};
+            quaternion sr {};
+            vec3 skew {};
+            glm::vec<4, float32, glm::defaultp> perspective {};
+            glm::decompose(sm, ss, sr, sp, skew, perspective);
 
             // Check anim layer
             const auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
@@ -1859,12 +1858,14 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                 }
 
                 // Move shape to face space
-                auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
-                auto sm = mesh_transform.Inverse() * cut->UnskinShape.GlobalTransformationMatrix;
-                vec3 ss;
-                vec3 sp;
-                quaternion sr;
-                sm.Decompose(ss, sr, sp);
+                const auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
+                const auto sm = glm::inverse(mesh_transform) * cut->UnskinShape.GlobalTransformationMatrix;
+                vec3 ss {};
+                vec3 sp {};
+                quaternion sr {};
+                vec3 skew {};
+                glm::vec<4, float32, glm::defaultp> perspective {};
+                glm::decompose(sm, ss, sr, sp, skew, perspective);
                 auto sphere_square_radius = powf(cut->UnskinShape.SphereRadius * ss.x, 2.0f);
                 auto revert_shape = cut->RevertUnskinShape;
 
@@ -1875,7 +1876,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     auto& v = vertices[v_pos];
 
                     // Get vertex side
-                    auto v_side = ((v.Position - sp).SquareLength() <= sphere_square_radius);
+                    const auto diff = v.Position - sp;
+                    auto v_side = (glm::dot(diff, diff) <= sphere_square_radius);
                     if (revert_shape) {
                         v_side = !v_side;
                     }
@@ -1961,17 +1963,12 @@ void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
     // Update world matrix, only for root
     if (!_parentBone) {
         const auto pos3d = Convert2dTo3d(pos);
-        mat44 mat_rot_y;
-        mat44 mat_scale;
-        mat44 mat_trans;
-        mat44::Scaling(vec3(scale, scale, scale), mat_scale);
-        mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, mat_rot_y);
-        mat44::Translation(pos3d, mat_trans);
+        const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
+        const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
 
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
-        _groundPos.x = _parentMatrix.a4;
-        _groundPos.y = _parentMatrix.b4;
-        _groundPos.z = _parentMatrix.c4;
+        _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
     // Rotate body
@@ -2077,13 +2074,11 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
     FO_STACK_TRACE_ENTRY();
 
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
+        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr->_headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
+        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -2103,7 +2098,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float32));
+    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_frameProjColMaj), 16 * sizeof(float32));
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -2113,9 +2108,8 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* wm = model_buf->WorldMatrices;
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
-        auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-        m.Transpose(); // Convert to column major order
-        MemCopy(wm, m[0], 16 * sizeof(float32));
+        const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
+        MemCopy(wm, glm::value_ptr(m), 16 * sizeof(float32));
         wm += 16;
     }
 
@@ -2197,9 +2191,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
         return std::nullopt;
     }
 
-    vec3 pos;
-    quaternion rot;
-    bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
+    vec3 pos {};
+    quaternion rot {};
+    vec3 scale {};
+    vec3 skew {};
+    glm::vec<4, float32, glm::defaultp> perspective {};
+    glm::decompose(bone->CombinedTransformationMatrix, scale, rot, pos, skew, perspective);
 
     const auto p = Convert3dTo2d(pos);
     const auto x = p.x - _frameSize.width / FRAME_SCALE / 2;

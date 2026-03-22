@@ -743,27 +743,27 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 b
     const auto& zn = nearp;
     const auto& zf = farp;
 
-    mat44 result;
+    mat44 result {1.0f};
 
-    result.a1 = 2.0f / (r - l);
-    result.a2 = 0.0f;
-    result.a3 = 0.0f;
-    result.a4 = (l + r) / (l - r);
+    result[0][0] = 2.0f / (r - l);
+    result[1][0] = 0.0f;
+    result[2][0] = 0.0f;
+    result[3][0] = (l + r) / (l - r);
 
-    result.b1 = 0.0f;
-    result.b2 = 2.0f / (t - b);
-    result.b3 = 0.0f;
-    result.b4 = (t + b) / (b - t);
+    result[0][1] = 0.0f;
+    result[1][1] = 2.0f / (t - b);
+    result[2][1] = 0.0f;
+    result[3][1] = (t + b) / (b - t);
 
-    result.c1 = 0.0f;
-    result.c2 = 0.0f;
-    result.c3 = 1.0f / (zn - zf);
-    result.c4 = zn / (zn - zf);
+    result[0][2] = 0.0f;
+    result[1][2] = 0.0f;
+    result[2][2] = 1.0f / (zn - zf);
+    result[3][2] = zn / (zn - zf);
 
-    result.d1 = 0.0f;
-    result.d2 = 0.0f;
-    result.d3 = 0.0f;
-    result.d4 = 1.0f;
+    result[0][3] = 0.0f;
+    result[1][3] = 0.0f;
+    result[2][3] = 0.0f;
+    result[3][3] = 1.0f;
 
     return result;
 }
@@ -829,7 +829,6 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     D3DDeviceContext->RSSetViewports(1, &ViewPort);
 
     ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
-    ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     DisabledScissorRect.left = vp_ox;
     DisabledScissorRect.top = vp_oy;
@@ -1267,7 +1266,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float32));
+        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(ProjectionMatrixColMaj), 16 * sizeof(float32));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {

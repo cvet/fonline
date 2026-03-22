@@ -426,23 +426,17 @@ void ModelAnimationController::AdvanceTime(float32 time)
             Interpolate(o.Scale[0], o.Scale[1], factor);
             Interpolate(o.Rotation[0], o.Rotation[1], factor);
             Interpolate(o.Translation[0], o.Translation[1], factor);
-            mat44 ms;
-            mat44 mr;
-            mat44 mt;
-            mat44::Scaling(o.Scale[0], ms);
-            mr = mat44(o.Rotation[0].GetMatrix());
-            mat44::Translation(o.Translation[0], mt);
+            const auto ms = glm::scale(mat44 {1.0f}, o.Scale[0]);
+            const auto mr = glm::mat4_cast(o.Rotation[0]);
+            const auto mt = glm::translate(mat44 {1.0f}, o.Translation[0]);
             *o.Matrix = mt * mr * ms;
         }
         else {
             for (size_t i = 0; i < _tracks.size(); i++) {
                 if (o.Valid[i]) {
-                    mat44 ms;
-                    mat44 mr;
-                    mat44 mt;
-                    mat44::Scaling(o.Scale[i], ms);
-                    mr = mat44(o.Rotation[i].GetMatrix());
-                    mat44::Translation(o.Translation[i], mt);
+                    const auto ms = glm::scale(mat44 {1.0f}, o.Scale[i]);
+                    const auto mr = glm::mat4_cast(o.Rotation[i]);
+                    const auto mt = glm::translate(mat44 {1.0f}, o.Translation[i]);
                     *o.Matrix = mt * mr * ms;
                     break;
                 }
@@ -456,7 +450,7 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
     FO_STACK_TRACE_ENTRY();
 
     if (!_interpolationDisabled) {
-        quaternion::Interpolate(q1, q1, q2, factor);
+        q1 = glm::normalize(glm::slerp(q1, q2, factor));
     }
     else if (factor >= 0.5f) {
         q1 = q2;

@@ -638,24 +638,24 @@ static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    mat44 result;
+    mat44 result {1.0f};
 
-    result.a1 = numeric_cast<float32>(m.m00);
-    result.a2 = numeric_cast<float32>(m.m01);
-    result.a3 = numeric_cast<float32>(m.m02);
-    result.a4 = numeric_cast<float32>(m.m03);
-    result.b1 = numeric_cast<float32>(m.m10);
-    result.b2 = numeric_cast<float32>(m.m11);
-    result.b3 = numeric_cast<float32>(m.m12);
-    result.b4 = numeric_cast<float32>(m.m13);
-    result.c1 = numeric_cast<float32>(m.m20);
-    result.c2 = numeric_cast<float32>(m.m21);
-    result.c3 = numeric_cast<float32>(m.m22);
-    result.c4 = numeric_cast<float32>(m.m23);
-    result.d1 = 0.0f;
-    result.d2 = 0.0f;
-    result.d3 = 0.0f;
-    result.d4 = 1.0f;
+    result[0][0] = numeric_cast<float32>(m.m00);
+    result[1][0] = numeric_cast<float32>(m.m01);
+    result[2][0] = numeric_cast<float32>(m.m02);
+    result[3][0] = numeric_cast<float32>(m.m03);
+    result[0][1] = numeric_cast<float32>(m.m10);
+    result[1][1] = numeric_cast<float32>(m.m11);
+    result[2][1] = numeric_cast<float32>(m.m12);
+    result[3][1] = numeric_cast<float32>(m.m13);
+    result[0][2] = numeric_cast<float32>(m.m20);
+    result[1][2] = numeric_cast<float32>(m.m21);
+    result[2][2] = numeric_cast<float32>(m.m22);
+    result[3][2] = numeric_cast<float32>(m.m23);
+    result[0][3] = 0.0f;
+    result[1][3] = 0.0f;
+    result[2][3] = 0.0f;
+    result[3][3] = 1.0f;
 
     return result;
 }
