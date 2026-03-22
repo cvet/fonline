@@ -169,8 +169,13 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
 //   void SetCropContent(bool enabled)
 //   void SetAutoScroll(bool ver, bool hor)
+//   int VerticalScrollValue
+//   int HorizontalScrollValue
+//   int VerticalScrollRange
+//   int HorizontalScrollRange
 //   void ModifyScroll(int ver, int hor)
 //   bool CanModifyScroll(int ver, int hor)
+//   void SetScrollValue(int ver, int hor)
 // Text : Object
 //   string Text (overridable)
 //   int TextFont
@@ -1249,6 +1254,8 @@ class Object
     }
 };
 
+const int PanelScrollAnimationDurationMs = 120;
+
 class Panel : Object
 {
     Sprite::Sprite get_BackgroundImage() final
@@ -1275,6 +1282,28 @@ class Panel : Object
     {
         return _HorizontalScrollPercent;
     }
+    int get_VerticalScrollValue() final
+    {
+        return _VerticalScroll;
+    }
+    int get_HorizontalScrollValue() final
+    {
+        return _HorizontalScroll;
+    }
+    int get_VerticalScrollRange() final
+    {
+        int maxVerScroll = 0;
+        int maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+        return maxVerScroll;
+    }
+    int get_HorizontalScrollRange() final
+    {
+        int maxVerScroll = 0;
+        int maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+        return maxHorScroll;
+    }
 
     Sprite::Sprite _BackgroundImage;
     bool _CropContent;
@@ -1284,6 +1313,28 @@ class Panel : Object
     int _HorizontalScroll;
     int _VerticalScrollPercent;
     int _HorizontalScrollPercent;
+    Tween::ValueTween _VerticalScrollTween;
+    Tween::ValueTween _HorizontalScrollTween;
+
+    void _Construct() override
+    {
+        Object::_Construct();
+        _ResetScrollTweens();
+    }
+
+    void _FixClone() override
+    {
+        Object::_FixClone();
+        _ResetScrollTweens();
+    }
+
+    void _ResetScrollTweens()
+    {
+        _VerticalScrollTween = Tween::ValueTween();
+        _HorizontalScrollTween = Tween::ValueTween();
+        _VerticalScrollTween.SnapTo(_VerticalScroll);
+        _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+    }
 
     bool IsHit(ipos pos) override
     {
@@ -1298,7 +1349,7 @@ class Panel : Object
 
     void _Draw(bool callCallback) override
     {
-        _ModifyScroll(0, 0);
+        _RefreshSmoothScroll();
 
         bool crop = _CropContent;
         if (crop) {
@@ -1384,7 +1435,7 @@ class Panel : Object
             }
 
             if (dy != 0) {
-                _ModifyScroll(dy * 10, 0);
+                _ModifyScroll(dy, 0);
             }
 
             // Stop processing
@@ -1404,6 +1455,20 @@ class Panel : Object
         return _ModifyScroll(ver, hor, true);
     }
 
+    void SetScrollValue(int ver, int hor)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        int newVer = (_IsVerticalScroll ? ver : 0);
+        int newHor = (_IsHorizontalScroll ? hor : 0);
+
+        if (newVer != _VerticalScroll || newHor != _HorizontalScroll || _VerticalScrollTween.Active || _HorizontalScrollTween.Active) {
+            _SetScrollValue(newVer, newHor, false, true);
+        }
+    }
+
     void SetScrollPercent(int verPercent, int horPercent)
     {
         if (!_IsVerticalScroll && !_IsHorizontalScroll) {
@@ -1416,52 +1481,145 @@ class Panel : Object
         int newVer = (maxVerScroll > 0 ? maxVerScroll * verPercent / 100 : 0);
         int newHor = (maxHorScroll > 0 ? maxHorScroll * horPercent / 100 : 0);
 
-        if (newVer != _VerticalScroll || newHor != _HorizontalScroll) {
-            _ModifyScroll(newVer - _VerticalScroll, newHor - _HorizontalScroll);
+        if (newVer != _VerticalScroll || newHor != _HorizontalScroll || _VerticalScrollTween.Active || _HorizontalScrollTween.Active) {
+            _SetScrollValue(newVer, newHor, false, true);
         }
     }
 
-    bool _ModifyScroll(int ver, int hor, bool onlyCheck = false)
+    int _GetAdaptiveScrollStep(int scrollRange)
+    {
+        int adaptiveStep = scrollRange / 20;
+        return Math::Clamp(adaptiveStep, 10, 120);
+    }
+
+    void _ClampScrollValue(int& ver, int& hor)
+    {
+        int maxVerScroll = 0, maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+
+        if (_IsVerticalScroll) {
+            if (ver > maxVerScroll) {
+                ver = maxVerScroll;
+            }
+            if (ver < 0) {
+                ver = 0;
+            }
+        }
+        else {
+            ver = 0;
+        }
+
+        if (_IsHorizontalScroll) {
+            if (hor > maxHorScroll) {
+                hor = maxHorScroll;
+            }
+            if (hor < 0) {
+                hor = 0;
+            }
+        }
+        else {
+            hor = 0;
+        }
+    }
+
+    void _SetScrollTarget(int ver, int hor)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        int targetVer = (_IsVerticalScroll ? ver : 0);
+        int targetHor = (_IsHorizontalScroll ? hor : 0);
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (_IsVerticalScroll) {
+            if (targetVer != _VerticalScrollTween.Target || !_VerticalScrollTween.Active) {
+                _VerticalScrollTween.MoveTo(_VerticalScroll, targetVer, PanelScrollAnimationDurationMs);
+            }
+
+            if (!_VerticalScrollTween.Active) {
+                _VerticalScrollTween.SnapTo(_VerticalScroll);
+            }
+        }
+
+        if (_IsHorizontalScroll) {
+            if (targetHor != _HorizontalScrollTween.Target || !_HorizontalScrollTween.Active) {
+                _HorizontalScrollTween.MoveTo(_HorizontalScroll, targetHor, PanelScrollAnimationDurationMs);
+            }
+
+            if (!_HorizontalScrollTween.Active) {
+                _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+            }
+        }
+    }
+
+    void _RefreshSmoothScroll()
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        if (!_VerticalScrollTween.Active && !_HorizontalScrollTween.Active) {
+            _SetScrollValue(_VerticalScroll, _HorizontalScroll, false, true);
+            return;
+        }
+
+        int curVer = _VerticalScroll;
+        int curHor = _HorizontalScroll;
+        int targetVer = (_VerticalScrollTween.Active ? _VerticalScrollTween.Target : _VerticalScroll);
+        int targetHor = (_HorizontalScrollTween.Active ? _HorizontalScrollTween.Target : _HorizontalScroll);
+
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (_VerticalScrollTween.Active && targetVer != _VerticalScrollTween.Target) {
+            _VerticalScrollTween.MoveTo(_VerticalScroll, targetVer, PanelScrollAnimationDurationMs);
+        }
+        if (_HorizontalScrollTween.Active && targetHor != _HorizontalScrollTween.Target) {
+            _HorizontalScrollTween.MoveTo(_HorizontalScroll, targetHor, PanelScrollAnimationDurationMs);
+        }
+
+        if (_VerticalScrollTween.Active) {
+            curVer = _VerticalScrollTween.Update();
+        }
+
+        if (_HorizontalScrollTween.Active) {
+            curHor = _HorizontalScrollTween.Update();
+        }
+
+        _SetScrollValue(curVer, curHor, false, false);
+
+        if (!_VerticalScrollTween.Active) {
+            _VerticalScrollTween.SnapTo(_VerticalScroll);
+        }
+        if (!_HorizontalScrollTween.Active) {
+            _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+        }
+    }
+
+    bool _SetScrollValue(int ver, int hor, bool onlyCheck = false, bool syncTarget = true)
     {
         if (!_IsVerticalScroll && !_IsHorizontalScroll) {
             return false;
         }
 
-        int curVer = _VerticalScroll;
-        int curHor = _HorizontalScroll;
-        int oldVer = curVer;
-        int oldHor = curHor;
+        int oldVer = _VerticalScroll;
+        int oldHor = _HorizontalScroll;
+        int curVer = (_IsVerticalScroll ? ver : 0);
+        int curHor = (_IsHorizontalScroll ? hor : 0);
 
-        if (_IsVerticalScroll) {
-            curVer += ver;
-        }
-        if (_IsHorizontalScroll) {
-            curHor += hor;
-        }
+        _ClampScrollValue(curVer, curHor);
 
         int maxVerScroll = 0, maxHorScroll = 0;
         _GetScrollableSize(maxVerScroll, maxHorScroll);
 
-        if (_IsVerticalScroll) {
-            if (curVer > maxVerScroll) {
-                curVer = maxVerScroll;
-            }
-            if (curVer < 0) {
-                curVer = 0;
-            }
-        }
-        if (_IsHorizontalScroll) {
-            if (curHor > maxHorScroll) {
-                curHor = maxHorScroll;
-            }
-            if (curHor < 0) {
-                curHor = 0;
-            }
-        }
-
-        if (!onlyCheck || (ver == 0 && hor == 0)) {
+        if (!onlyCheck || (ver == _VerticalScroll && hor == _HorizontalScroll)) {
             _VerticalScrollPercent = (maxVerScroll > 0 ? curVer * 100 / maxVerScroll : 0);
             _HorizontalScrollPercent = (maxHorScroll > 0 ? curHor * 100 / maxHorScroll : 0);
+        }
+
+        if (!onlyCheck && syncTarget) {
+            _VerticalScrollTween.SnapTo(curVer);
+            _HorizontalScrollTween.SnapTo(curHor);
         }
 
         if (curVer != oldVer || curHor != oldHor) {
@@ -1473,6 +1631,43 @@ class Panel : Object
                 }
             }
 
+            return true;
+        }
+
+        return false;
+    }
+
+    bool _ModifyScroll(int ver, int hor, bool onlyCheck = false)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return false;
+        }
+
+        int maxVerScroll = 0, maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+
+        int verStep = 0;
+        int horStep = 0;
+
+        if (_IsVerticalScroll && ver != 0) {
+            verStep = (ver < 0 ? -1 : 1) * _GetAdaptiveScrollStep(maxVerScroll);
+        }
+        if (_IsHorizontalScroll && hor != 0) {
+            horStep = (hor < 0 ? -1 : 1) * _GetAdaptiveScrollStep(maxHorScroll);
+        }
+
+        int baseVer = (_VerticalScrollTween.Active ? _VerticalScrollTween.Target : _VerticalScroll);
+        int baseHor = (_HorizontalScrollTween.Active ? _HorizontalScrollTween.Target : _HorizontalScroll);
+        int targetVer = baseVer + verStep;
+        int targetHor = baseHor + horStep;
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (onlyCheck) {
+            return targetVer != baseVer || targetHor != baseHor;
+        }
+
+        if (targetVer != baseVer || targetHor != baseHor) {
+            _SetScrollTarget(targetVer, targetHor);
             return true;
         }
 

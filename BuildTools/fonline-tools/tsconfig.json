@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "outDir": "out",
+    "lib": [
+      "ES2020"
+    ],
+    "sourceMap": true,
+    "rootDir": "src",
+    "strict": true,
+    "noImplicitAny": false,
+    "removeComments": false,
+    "noUnusedLocals": true,
+    "noImplicitThis": true,
+    "inlineSourceMap": false,
+    "preserveConstEnums": true,
+    "strictNullChecks": true,
+    "noUnusedParameters": false
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

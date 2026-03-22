@@ -1,0 +1,43 @@
+{
+  "name": "fonline-tools",
+  "displayName": "FOnline Tools",
+  "version": "0.1.0",
+  "publisher": "fodev",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "esbuild": "esbuild ./src/extension.ts --bundle --tsconfig=./tsconfig.json --external:vscode --format=cjs --platform=node --outfile=dist/extension.js",
+    "watch": "npm run -S esbuild -- --sourcemap --sources-content=false --watch",
+    "build": "npm run -S esbuild -- --sourcemap --sources-content=false",
+    "vscode:prepublish": "npm run -S esbuild -- --minify"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "fonline-tools.showTools",
+        "title": "FOnline: Show Tools"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.86",
+    "@types/vscode": "^1.66.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^4.6.3"
+  }
+}
