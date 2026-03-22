@@ -101,6 +101,29 @@ def log(*parts: object) -> None:
 	print('[BuildTools]', *parts, flush=True)
 
 
+class TerminalProgress:
+	def __init__(self, prefix: str) -> None:
+		self._prefix = prefix
+		self._last_len = 0
+
+	def update(self, message: str) -> None:
+		line = f'[{self._prefix}] {message}'
+		padding = ' ' * max(0, self._last_len - len(line))
+		print('\r' + line + padding, end='', flush=True)
+		self._last_len = len(line)
+
+	def clear(self) -> None:
+		if self._last_len == 0:
+			return
+
+		print('\r' + ' ' * self._last_len + '\r', end='', flush=True)
+		self._last_len = 0
+
+	def finish(self, message: str) -> None:
+		self.clear()
+		print(f'[{self._prefix}] {message}', flush=True)
+
+
 def read_first_line(path: Path) -> str:
 	if not path.is_file():
 		return ''
@@ -484,10 +507,19 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 
 	changed = 0
 	seen: set[Path] = set()
+	unique_files: list[Path] = []
 	for path in files:
 		if path in seen:
 			continue
 		seen.add(path)
+		unique_files.append(path)
+
+	progress = TerminalProgress('BuildTools')
+	total = len(unique_files)
+
+	for index, path in enumerate(unique_files, start=1):
+		rel_path = path.relative_to(root).as_posix()
+		progress.update(f'Formatting {index}/{total}: {rel_path}')
 
 		original, has_bom = read_text_strip_bom(path)
 		formatted = strip_text_bom(subprocess.check_output([clang_format, str(path)], text=True, encoding='utf-8'))
@@ -495,11 +527,9 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 			continue
 
 		changed += 1
-		rel_path = path.relative_to(root).as_posix()
-		log('Format', rel_path)
 		write_text_utf8(path, formatted)
 
-	log(f'Completed, changed {changed} file(s)')
+	progress.finish(f'Completed, changed {changed} file(s)')
 	return changed
 
 
