@@ -70,9 +70,12 @@ public:
 private:
     struct Data;
 
-    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*;
-    [[nodiscard]] auto StoreOwnedString(string_view value) -> string_view;
-    [[nodiscard]] auto StoreOwnedString(string&& value) -> string_view;
+    auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
+    void TrimConfigRange(string_view line, size_t& begin, size_t& end);
+    auto IsConfigSpace(char ch) -> bool;
+    auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*;
+    auto StoreOwnedString(string_view value) -> string_view;
+    auto StoreOwnedString(string&& value) -> string_view;
 
     string _fileNameHint;
     raw_ptr<HashResolver> _hashResolver;
