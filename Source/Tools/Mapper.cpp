@@ -33,10 +33,481 @@
 
 #include "Mapper.h"
 #include "3dStuff.h"
+#include "AnyData.h"
+#include "ConfigFile.h"
+#include "DefaultSprites.h"
+#include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr ipos32 MAPPER_CONSOLE_WINDOW_OFFSET = {0, 6};
+static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.ini";
+static constexpr int32 DAY_TIME_WRAP_MINUTES = 1440;
+static constexpr int32 DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
+
+static auto MakeRectFromEdges(int32 left, int32 top, int32 right, int32 bottom) -> irect32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {left, top, right - left, bottom - top};
+}
+
+static auto ShiftDayTimeWithWrap(int32 day_time, int32 delta_minutes) -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    day_time += delta_minutes;
+
+    while (day_time > DAY_TIME_VISIBLE_UPPER_BOUND) {
+        day_time -= DAY_TIME_WRAP_MINUTES;
+    }
+
+    while (day_time < 0) {
+        day_time += DAY_TIME_WRAP_MINUTES;
+    }
+
+    return day_time;
+}
+
+static auto ScaleZoomValue(float32 current_zoom, float32 factor) -> float32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return std::clamp(current_zoom * factor, GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
+}
+
+static auto GetTileLayerFromKey(KeyCode key) -> optional<int32>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (key) {
+    case KeyCode::C0:
+    case KeyCode::Numpad0:
+        return 0;
+    case KeyCode::C1:
+    case KeyCode::Numpad1:
+        return 1;
+    case KeyCode::C2:
+    case KeyCode::Numpad2:
+        return 2;
+    case KeyCode::C3:
+    case KeyCode::Numpad3:
+        return 3;
+    case KeyCode::C4:
+    case KeyCode::Numpad4:
+        return 4;
+    default:
+        return std::nullopt;
+    }
+}
+
+static auto GetNextCritterDir(uint8 dir) -> uint8
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return numeric_cast<uint8>((dir + 1) % GameSettings::MAP_DIR_COUNT);
+}
+
+template<size_t Size>
+static auto InputBufferView(const array<char, Size>& buffer) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto end = std::find(buffer.begin(), buffer.end(), '\0');
+    return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
+}
+
+static void AdvanceCritterDir(CritterHexView* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(cr);
+    cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
+}
+
+static void ToggleMapVisibilityFlag(raw_ptr<MapView> map, bool& value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    value = !value;
+
+    if (map) {
+        map->RebuildMap();
+    }
+}
+
+static auto ContainsCaseInsensitive(string_view text, string_view filter) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (filter.empty()) {
+        return true;
+    }
+
+    auto lower_text = string(text);
+    auto lower_filter = string(filter);
+
+    std::ranges::transform(lower_text, lower_text.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
+    std::ranges::transform(lower_filter, lower_filter.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
+
+    return lower_text.find(lower_filter) != string::npos;
+}
+
+static auto ResolveAtlasSprite(const Sprite* sprite) -> const AtlasSprite*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto* sprite_sheet = dynamic_cast<const SpriteSheet*>(sprite); sprite_sheet != nullptr) {
+        sprite = sprite_sheet->GetCurSpr();
+    }
+
+    return dynamic_cast<const AtlasSprite*>(sprite);
+}
+
+static auto GetInspectorValueType(const Property* prop) -> AnyData::ValueType
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
+        return AnyData::ValueType::String;
+    }
+    if (prop->IsBaseTypeInt()) {
+        return AnyData::ValueType::Int64;
+    }
+    if (prop->IsBaseTypeBool()) {
+        return AnyData::ValueType::Bool;
+    }
+    if (prop->IsBaseTypeFloat()) {
+        return AnyData::ValueType::Float64;
+    }
+
+    return AnyData::ValueType::String;
+}
+
+static auto ParseInspectorValue(const Property* prop, string_view text) -> optional<AnyData::Value>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+static auto MakeDefaultInspectorArrayElement(const Property* prop) -> AnyData::Value
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (GetInspectorValueType(prop)) {
+    case AnyData::ValueType::Int64:
+        return AnyData::Value {int64 {0}};
+    case AnyData::ValueType::Float64:
+        return AnyData::Value {float64 {0.0}};
+    case AnyData::ValueType::Bool:
+        return AnyData::Value {false};
+    case AnyData::ValueType::String:
+        return AnyData::Value {string {}};
+    default:
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
+static auto SerializeInspectorArray(vector<AnyData::Value> entries) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AnyData::Array value_arr;
+    value_arr.Reserve(entries.size());
+
+    for (auto& entry : entries) {
+        value_arr.EmplaceBack(std::move(entry));
+    }
+
+    return AnyData::ValueToString(AnyData::Value {std::move(value_arr)});
+}
+
+static auto SerializeInspectorStringArray(const vector<string>& entries) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<AnyData::Value> values;
+    values.reserve(entries.size());
+
+    for (const auto& entry : entries) {
+        values.emplace_back(string {entry});
+    }
+
+    return SerializeInspectorArray(std::move(values));
+}
+
+static auto GetInspectorStructLayout(const Property* prop) -> const StructLayoutDesc*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& base_type = prop->GetBaseType();
+    if (base_type.StructLayout != nullptr && (base_type.IsComplexStruct || base_type.IsSimpleStruct) && base_type.StructLayout->Fields.size() > 1) {
+        return base_type.StructLayout.get();
+    }
+
+    return nullptr;
+}
+
+static auto ReadInspectorToken(const char* str, string& result) -> const char*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (str[0] == 0) {
+        return nullptr;
+    }
+
+    size_t pos = 0;
+    size_t length = utf8::DecodeStrNtLen(&str[pos]);
+    utf8::Decode(&str[pos], length);
+
+    while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+        pos++;
+
+        length = utf8::DecodeStrNtLen(&str[pos]);
+        utf8::Decode(&str[pos], length);
+    }
+
+    if (str[pos] == 0) {
+        return nullptr;
+    }
+
+    size_t begin;
+
+    if (length == 1 && str[pos] == '"') {
+        pos++;
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                if (str[pos] != 0) {
+                    length = utf8::DecodeStrNtLen(&str[pos]);
+                    utf8::Decode(&str[pos], length);
+                    pos += length;
+                }
+            }
+            else if (length == 1 && str[pos] == '"') {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
+        }
+    }
+    else {
+        begin = pos;
+
+        while (str[pos] != 0) {
+            if (length == 1 && str[pos] == '\\') {
+                pos++;
+
+                length = utf8::DecodeStrNtLen(&str[pos]);
+                utf8::Decode(&str[pos], length);
+                pos += length;
+            }
+            else if (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
+                break;
+            }
+            else {
+                pos += length;
+            }
+
+            length = utf8::DecodeStrNtLen(&str[pos]);
+            utf8::Decode(&str[pos], length);
+        }
+    }
+
+    result.assign(&str[begin], pos - begin);
+    return str[pos] != 0 ? &str[pos + 1] : &str[pos];
+}
+
+static auto ParseInspectorStructFields(const StructLayoutDesc& layout, string_view text) -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto text_str = string {text};
+        const char* token_pos = text_str.c_str();
+        string token;
+        vector<string> fields;
+        fields.reserve(layout.Fields.size());
+
+        while ((token_pos = ReadInspectorToken(token_pos, token)) != nullptr) {
+            fields.emplace_back(StringEscaping::DecodeString(token));
+        }
+
+        if (fields.size() != layout.Fields.size()) {
+            return std::nullopt;
+        }
+
+        return fields;
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+static auto ParseInspectorStringEntries(string_view text) -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
+        if (parsed.Type() != AnyData::ValueType::Array) {
+            return std::nullopt;
+        }
+
+        vector<string> entries;
+        entries.reserve(parsed.AsArray().Size());
+
+        for (const auto& entry : parsed.AsArray()) {
+            entries.emplace_back(entry.AsString());
+        }
+
+        return entries;
+    }
+    catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+struct ImGuiInputTextStringUserData
+{
+    string* Value {};
+    bool LatinOnly {};
+    bool MoveCaretToEnd {};
+};
+
+static int ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* user_data = static_cast<ImGuiInputTextStringUserData*>(data->UserData);
+    IM_ASSERT(user_data != nullptr);
+
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+        auto* str = user_data->Value;
+        IM_ASSERT(str != nullptr);
+        IM_ASSERT(data->Buf == str->c_str());
+        str->resize(data->BufTextLen);
+        data->Buf = str->data();
+    }
+    else if (data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter) {
+        if (user_data->LatinOnly && data->EventChar >= 128) {
+            return 1;
+        }
+    }
+    else if (data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
+        if (user_data->MoveCaretToEnd) {
+            data->CursorPos = data->BufTextLen;
+            data->SelectionStart = data->BufTextLen;
+            data->SelectionEnd = data->BufTextLen;
+            user_data->MoveCaretToEnd = false;
+        }
+    }
+
+    return 0;
+}
+
+static auto ImGuiInputTextString(const char* label, string& value, ImGuiInputTextFlags flags = 0, bool latin_only = false, bool move_caret_to_end = false) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (value.capacity() == 0) {
+        value.reserve(256);
+    }
+
+    ImGuiInputTextStringUserData user_data {.Value = &value, .LatinOnly = latin_only, .MoveCaretToEnd = move_caret_to_end};
+    flags |= ImGuiInputTextFlags_CallbackResize;
+    if (latin_only) {
+        flags |= ImGuiInputTextFlags_CallbackCharFilter;
+    }
+    if (move_caret_to_end) {
+        flags |= ImGuiInputTextFlags_CallbackAlways;
+    }
+
+    return ImGui::InputText(label, value.data(), value.capacity() + 1, flags, ImGuiInputTextStringCallback, &user_data);
+}
+
+static auto IsInspectorValueSameAsProto(const Entity* entity, const Property* prop, string_view value_text) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* entity_with_proto = dynamic_cast<const EntityWithProto*>(entity);
+    if (entity_with_proto == nullptr) {
+        return true;
+    }
+
+    try {
+        return entity_with_proto->GetProto()->GetProperties().SavePropertyToText(prop) == value_text;
+    }
+    catch (const std::exception&) {
+        return true;
+    }
+}
+
+static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string cfg_user;
+
+    if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
+        auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+        const auto& sections = config.GetSections();
+        auto wrote_root_key = false;
+        auto has_root_section = false;
+
+        for (const auto& [section_name, key_values] : sections) {
+            if (!section_name.empty()) {
+                cfg_user += strex("[{}]\n", section_name);
+            }
+            else {
+                has_root_section = true;
+            }
+
+            for (const auto& [entry_key, entry_value] : key_values) {
+                if (section_name.empty() && entry_key == key) {
+                    cfg_user += strex("{} = {}\n", key, value);
+                    wrote_root_key = true;
+                }
+                else {
+                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                }
+            }
+
+            if (section_name.empty() && !wrote_root_key) {
+                cfg_user += strex("{} = {}\n", key, value);
+                wrote_root_key = true;
+            }
+
+            if (!section_name.empty()) {
+                cfg_user += "\n";
+            }
+        }
+
+        if (!has_root_section) {
+            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
+        }
+    }
+    else {
+        cfg_user = strex("{} = {}\n", key, value);
+    }
+
+    cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+}
 
 MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
@@ -128,22 +599,22 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, App
             Tabs[i][DEFAULT_SUB_TAB].Scroll = 0;
         }
 
-        TabsActive[i] = &Tabs[i].begin()->second;
+        ActiveSubTabs[i] = &Tabs[i].begin()->second;
     }
 
     // Initialize tabs scroll and names
     for (auto i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++) {
-        TabsName[i] = "-";
+        PanelModeNames[i] = "-";
     }
 
-    TabsName[INT_MODE_ITEM] = "Item";
-    TabsName[INT_MODE_TILE] = "Tile";
-    TabsName[INT_MODE_CRIT] = "Crit";
-    TabsName[INT_MODE_FAST] = "Fast";
-    TabsName[INT_MODE_IGNORE] = "Ign";
-    TabsName[INT_MODE_INCONT] = "Inv";
-    TabsName[INT_MODE_MESS] = "Msg";
-    TabsName[INT_MODE_LIST] = "Maps";
+    PanelModeNames[INT_MODE_ITEM] = "Item";
+    PanelModeNames[INT_MODE_TILE] = "Tile";
+    PanelModeNames[INT_MODE_CRIT] = "Crit";
+    PanelModeNames[INT_MODE_FAST] = "Fast";
+    PanelModeNames[INT_MODE_IGNORE] = "Ign";
+    PanelModeNames[INT_MODE_INCONT] = "Inv";
+    PanelModeNames[INT_MODE_MESS] = "Msg";
+    PanelModeNames[INT_MODE_LIST] = "Maps";
 
     // Start script
     InitModules();
@@ -162,20 +633,15 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, App
     }
 
     // Refresh resources after start script executed
-    RefreshCurProtos();
+    RefreshActiveProtoLists();
+
+    if (const auto imgui_ini = Cache.GetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY); !imgui_ini.empty()) {
+        ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
+        ImGui::GetIO().WantSaveIniSettings = false;
+    }
 
     // Load console history
     const auto history_str = Cache.GetString("mapper_console.txt");
-    size_t pos = 0;
-    size_t prev = 0;
-
-    while ((pos = history_str.find('\n', prev)) != std::string::npos) {
-        string history_part;
-        history_part.assign(&history_str.c_str()[prev], pos - prev);
-        ConsoleHistory.emplace_back(history_part);
-        prev = pos + 1;
-    }
-
     ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
     while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
@@ -191,143 +657,70 @@ void MapperEngine::InitIface()
 
     WriteLog("Init interface");
 
-    const auto config_content = Resources.ReadFileText("mapper_default.ini");
-
-    IfaceIni = SafeAlloc::MakeUnique<ConfigFile>("mapper_default.ini", config_content);
-    const auto& ini = *IfaceIni;
-
     // Interface
-    IntX = ini.GetAsInt("", "IntX", -1);
-    IntY = ini.GetAsInt("", "IntY", -1);
-
-    IfaceLoadRect(IntWMain, "IntMain");
-    if (IntX == -1) {
-        IntX = (Settings.ScreenWidth - IntWMain.width) / 2;
+    MainPanelPos = {-1, -1};
+    MainPanelWindowRect = MakeRectFromEdges(0, 0, 0, 28);
+    if (MainPanelPos.x == -1) {
+        MainPanelPos.x = 0;
     }
-    if (IntY == -1) {
-        IntY = Settings.ScreenHeight - IntWMain.height;
+    if (MainPanelPos.y == -1) {
+        MainPanelPos.y = 0;
     }
 
-    IfaceLoadRect(IntWWork, "IntWork");
-    IfaceLoadRect(IntWHint, "IntHint");
+    MainPanelContentRect = MakeRectFromEdges(12, 36, 520, 120);
 
-    IfaceLoadRect(IntBCust[0], "IntCustom0");
-    IfaceLoadRect(IntBCust[1], "IntCustom1");
-    IfaceLoadRect(IntBCust[2], "IntCustom2");
-    IfaceLoadRect(IntBCust[3], "IntCustom3");
-    IfaceLoadRect(IntBCust[4], "IntCustom4");
-    IfaceLoadRect(IntBCust[5], "IntCustom5");
-    IfaceLoadRect(IntBCust[6], "IntCustom6");
-    IfaceLoadRect(IntBCust[7], "IntCustom7");
-    IfaceLoadRect(IntBCust[8], "IntCustom8");
-    IfaceLoadRect(IntBCust[9], "IntCustom9");
-    IfaceLoadRect(IntBItem, "IntItem");
-    IfaceLoadRect(IntBTile, "IntTile");
-    IfaceLoadRect(IntBCrit, "IntCrit");
-    IfaceLoadRect(IntBFast, "IntFast");
-    IfaceLoadRect(IntBIgnore, "IntIgnore");
-    IfaceLoadRect(IntBInCont, "IntInCont");
-    IfaceLoadRect(IntBMess, "IntMess");
-    IfaceLoadRect(IntBList, "IntList");
-    IfaceLoadRect(IntBScrBack, "IntScrBack");
-    IfaceLoadRect(IntBScrBackFst, "IntScrBackFst");
-    IfaceLoadRect(IntBScrFront, "IntScrFront");
-    IfaceLoadRect(IntBScrFrontFst, "IntScrFrontFst");
-
-    IfaceLoadRect(IntBShowItem, "IntShowItem");
-    IfaceLoadRect(IntBShowScen, "IntShowScen");
-    IfaceLoadRect(IntBShowWall, "IntShowWall");
-    IfaceLoadRect(IntBShowCrit, "IntShowCrit");
-    IfaceLoadRect(IntBShowTile, "IntShowTile");
-    IfaceLoadRect(IntBShowRoof, "IntShowRoof");
-    IfaceLoadRect(IntBShowFast, "IntShowFast");
-
-    IfaceLoadRect(IntBSelectItem, "IntSelectItem");
-    IfaceLoadRect(IntBSelectScen, "IntSelectScen");
-    IfaceLoadRect(IntBSelectWall, "IntSelectWall");
-    IfaceLoadRect(IntBSelectCrit, "IntSelectCrit");
-    IfaceLoadRect(IntBSelectTile, "IntSelectTile");
-    IfaceLoadRect(IntBSelectRoof, "IntSelectRoof");
-
-    IfaceLoadRect(SubTabsRect, "SubTabs");
-
-    IntVisible = true;
-    IntFix = true;
-    IntMode = INT_MODE_MESS;
-    ProtoWidth = ini.GetAsInt("", "ProtoWidth", 50);
-    ProtosOnScreen = IntWWork.width / ProtoWidth;
+    WorkspaceWindowVisible = false;
+    ContentWindowVisible = false;
+    MapListWindowVisible = true;
+    MapWindowVisible = true;
+    HistoryWindowVisible = false;
+    SettingsWindowVisible = false;
+    ActivePanelMode = INT_MODE_ITEM;
+    ProtoWidth = 50;
+    ProtosOnScreen = MainPanelContentRect.width / ProtoWidth;
     MemFill(TabIndex, 0, sizeof(TabIndex));
     CritterDir = 3;
     CurMode = CUR_MODE_DEFAULT;
-    IsSelectItem = true;
-    IsSelectScen = true;
-    IsSelectWall = true;
-    IsSelectCrit = true;
-
-    // Object
-    IfaceLoadRect(ObjWMain, "ObjMain");
-    IfaceLoadRect(ObjWWork, "ObjWork");
-    IfaceLoadRect(ObjBToAll, "ObjToAll");
-
-    ObjVisible = true;
-
-    // Console
-    ConsolePicX = ini.GetAsInt("", "ConsolePicX", 0);
-    ConsolePicY = ini.GetAsInt("", "ConsolePicY", 0);
-    ConsoleTextX = ini.GetAsInt("", "ConsoleTextX", 0);
-    ConsoleTextY = ini.GetAsInt("", "ConsoleTextY", 0);
+    SelectItemsEnabled = true;
+    SelectSceneryEnabled = true;
+    SelectWallsEnabled = true;
+    SelectCrittersEnabled = true;
+    InspectorVisible = false;
 
     // Cursor
-    CurPDef = SprMngr.LoadSprite(ini.GetAsStr("", "CurDefault", "actarrow.frm"), AtlasType::IfaceSprites);
-    CurPHand = SprMngr.LoadSprite(ini.GetAsStr("", "CurHand", "hand.frm"), AtlasType::IfaceSprites);
-
-    // Iface
-    IntMainPic = SprMngr.LoadSprite(ini.GetAsStr("", "IntMainPic", "error"), AtlasType::IfaceSprites);
-    IntPTab = SprMngr.LoadSprite(ini.GetAsStr("", "IntTabPic", "error"), AtlasType::IfaceSprites);
-    IntPSelect = SprMngr.LoadSprite(ini.GetAsStr("", "IntSelectPic", "error"), AtlasType::IfaceSprites);
-    IntPShow = SprMngr.LoadSprite(ini.GetAsStr("", "IntShowPic", "error"), AtlasType::IfaceSprites);
-
-    // Object
-    ObjWMainPic = SprMngr.LoadSprite(ini.GetAsStr("", "ObjMainPic", "error"), AtlasType::IfaceSprites);
-    ObjPbToAllDn = SprMngr.LoadSprite(ini.GetAsStr("", "ObjToAllPicDn", "error"), AtlasType::IfaceSprites);
-
-    // Sub tabs
-    SubTabsPic = SprMngr.LoadSprite(ini.GetAsStr("", "SubTabsPic", "error"), AtlasType::IfaceSprites);
-
-    // Console
-    ConsolePic = SprMngr.LoadSprite(ini.GetAsStr("", "ConsolePic", "error"), AtlasType::IfaceSprites);
+    CurPDef = SprMngr.LoadSprite("CurDefault.png", AtlasType::IfaceSprites);
+    CurPHand = SprMngr.LoadSprite("CurHand.png", AtlasType::IfaceSprites);
 
     WriteLog("Init interface complete");
 }
 
-auto MapperEngine::IfaceLoadRect(irect32& rect, string_view name) const -> bool
+void MapperEngine::ResetImGuiSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto res = string(IfaceIni->GetAsStr("", name));
+    Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, "");
+    ImGui::LoadIniSettingsFromMemory("", 0);
+    ImGui::GetIO().WantSaveIniSettings = false;
 
-    if (res.empty()) {
-        WriteLog("Signature '{}' not found", name);
-        return false;
-    }
+    WorkspaceWindowVisible = false;
+    ContentWindowVisible = false;
+    CritterAnimationsWindowVisible = false;
+    ScriptCallWindowVisible = false;
+    MapListWindowVisible = true;
+    MapWindowVisible = true;
+    HistoryWindowVisible = false;
+    SettingsWindowVisible = false;
+    InspectorVisible = false;
+    InspectorPos = {24, 24};
 
-    int32 comp[4] = {};
-
-    if (auto istr = istringstream(res); !(istr >> comp[0] && istr >> comp[1] && istr >> comp[2] && istr >> comp[3])) {
-        WriteLog("Unable to parse signature '{}'", name);
-        rect = {};
-        return false;
-    }
-
-    rect = irect32 {comp[0], comp[1], comp[2] - comp[0], comp[3] - comp[1]};
-    return true;
+    AddMess("ImGui layout reset");
 }
 
-auto MapperEngine::GetIfaceSpr(hstring fname) -> Sprite*
+auto MapperEngine::GetPreviewSprite(hstring fname) -> Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = IfaceSpr.find(fname); it != IfaceSpr.end()) {
+    if (const auto it = PreviewSprites.find(fname); it != PreviewSprites.end()) {
         return it->second.get();
     }
 
@@ -337,10 +730,42 @@ auto MapperEngine::GetIfaceSpr(hstring fname) -> Sprite*
         spr->PlayDefault();
     }
 
-    return IfaceSpr.emplace(fname, std::move(spr)).first->second.get();
+    return PreviewSprites.emplace(fname, std::move(spr)).first->second.get();
 }
 
-void MapperEngine::ProcessMapperInput()
+void MapperEngine::MapperMainLoop()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FrameAdvance();
+
+    OnLoop.Fire();
+
+    BeginMapperFrameInput();
+
+    if (_curMap) {
+        _curMap->Process();
+        ProcessRightMouseInertia();
+    }
+
+    DrawMapperFrame();
+
+    if (ResetImGuiSettingsRequested) {
+        ResetImGuiSettingsRequested = false;
+        ResetImGuiSettings();
+    }
+
+    auto& io = ImGui::GetIO();
+    if (io.WantSaveIniSettings) {
+        size_t ini_size = 0;
+        if (const auto* ini_data = ImGui::SaveIniSettingsToMemory(&ini_size); ini_data != nullptr) {
+            Cache.SetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY, string_view(ini_data, ini_size));
+        }
+        io.WantSaveIniSettings = false;
+    }
+}
+
+auto MapperEngine::BeginMapperFrameInput() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -354,378 +779,509 @@ void MapperEngine::ProcessMapperInput()
     if (!SprMngr.IsWindowFocused()) {
         Keyb.Lost();
         OnInputLost.Fire();
-        IntHold = INT_NONE;
-        return;
+        if (!PendingSelectionMoveEntries.empty()) {
+            CommitPendingSelectionMove();
+        }
+        MouseHoldMode = INT_NONE;
+        RightMouseDragged = false;
+        RightMouseInertia = {};
     }
 
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         ProcessInputEvent(ev);
+        ProcessMapperInputEvent(ev);
+    }
 
-        const auto ev_type = ev.Type;
+    return true;
+}
 
-        if (ev_type == InputEvent::EventType::KeyDownEvent || ev_type == InputEvent::EventType::KeyUpEvent) {
-            const auto dikdw = ev_type == InputEvent::EventType::KeyDownEvent ? ev.KeyDown.Code : KeyCode::None;
-            const auto dikup = ev_type == InputEvent::EventType::KeyUpEvent ? ev.KeyUp.Code : KeyCode::None;
+void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
+{
+    FO_STACK_TRACE_ENTRY();
 
-            // Avoid repeating
-            if (dikdw != KeyCode::None && PressedKeys[static_cast<int32>(dikdw)]) {
-                continue;
-            }
-            if (dikup != KeyCode::None && !PressedKeys[static_cast<int32>(dikup)]) {
-                continue;
-            }
+    const auto ev_type = ev.Type;
 
-            // Keyboard states, to know outside function
-            PressedKeys[static_cast<int32>(dikup)] = false;
-            PressedKeys[static_cast<int32>(dikdw)] = true;
+    if (ev_type == InputEvent::EventType::KeyDownEvent || ev_type == InputEvent::EventType::KeyUpEvent) {
+        HandleMapperKeyboardEvent(ev);
+    }
+    else if (ev_type == InputEvent::EventType::MouseWheelEvent) {
+        if (!IsImGuiMouseCaptured() && ev.MouseWheel.Delta != 0 && _curMap) {
+            const auto cur_zoom = _curMap->GetSpritesZoomTarget();
+            ChangeZoom(ScaleZoomValue(cur_zoom, ev.MouseWheel.Delta > 0 ? 1.2f : 0.8f));
+        }
+    }
+    else if (ev_type == InputEvent::EventType::MouseDownEvent) {
+        if (IsImGuiMouseCaptured()) {
+            return;
+        }
 
-            // Control keys
-            if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol) {
-                Keyb.CtrlDwn = true;
-            }
-            else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu) {
-                Keyb.AltDwn = true;
-            }
-            else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift) {
-                Keyb.ShiftDwn = true;
-            }
-            if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol) {
-                Keyb.CtrlDwn = false;
-            }
-            else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu) {
-                Keyb.AltDwn = false;
-            }
-            else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift) {
-                Keyb.ShiftDwn = false;
-            }
+        if (ev.MouseDown.Button == MouseButton::Middle) {
+            CurMMouseDown();
+            ChangeZoom(1.0f);
+        }
+        if (ev.MouseDown.Button == MouseButton::Left) {
+            HandleLeftMouseDown();
+        }
+        if (ev.MouseDown.Button == MouseButton::Right) {
+            MouseHoldMode = INT_PAN;
+            RightMouseDragged = false;
+            RightMouseInertia = {};
+            RightMouseVelocityAccum = {};
+            RightMouseVelocityTime = nanotime::now();
+        }
+    }
+    else if (ev_type == InputEvent::EventType::MouseUpEvent) {
+        if (IsImGuiMouseCaptured()) {
+            return;
+        }
 
-            // Hotkeys
-            if (!Keyb.AltDwn && !Keyb.CtrlDwn && !Keyb.ShiftDwn) {
-                switch (dikdw) {
-                case KeyCode::F1:
-                    Settings.ShowItem = !Settings.ShowItem;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F2:
-                    Settings.ShowScen = !Settings.ShowScen;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F3:
-                    Settings.ShowWall = !Settings.ShowWall;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F4:
-                    Settings.ShowCrit = !Settings.ShowCrit;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F5:
-                    Settings.ShowTile = !Settings.ShowTile;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F6:
-                    Settings.ShowFast = !Settings.ShowFast;
-                    if (_curMap) {
-                        _curMap->RebuildMap();
-                    }
-                    break;
-                case KeyCode::F7:
-                    IntVisible = !IntVisible;
-                    break;
-                case KeyCode::F8:
-                    if (SprMngr.IsFullscreen()) {
-                        Settings.FullscreenMouseScroll = !Settings.FullscreenMouseScroll;
-                    }
-                    else {
-                        Settings.WindowedMouseScroll = !Settings.WindowedMouseScroll;
-                    }
-                    break;
-                case KeyCode::F9:
-                    ObjVisible = !ObjVisible;
-                    break;
-                case KeyCode::F10:
-                    if (_curMap) {
-                        _curMap->SwitchShowHex();
-                    }
-                    break;
+        if (ev.MouseUp.Button == MouseButton::Left) {
+            HandleLeftMouseUp();
+        }
+        if (ev.MouseUp.Button == MouseButton::Right) {
+            CurRMouseUp();
+        }
+    }
+    else if (ev_type == InputEvent::EventType::MouseMoveEvent) {
+        if (_curMap != nullptr && MouseHoldMode == INT_PAN) {
+            const auto zoom = _curMap->GetSpritesZoom();
+            const fpos32 pan_delta {-numeric_cast<float32>(ev.MouseMove.DeltaX) / zoom, -numeric_cast<float32>(ev.MouseMove.DeltaY) / zoom};
+            const fpos32 screen_pan_delta {-numeric_cast<float32>(ev.MouseMove.DeltaX), -numeric_cast<float32>(ev.MouseMove.DeltaY)};
 
-                // Fullscreen
-                case KeyCode::F11:
-                    SprMngr.ToggleFullscreen();
-                    continue;
-                // Minimize
-                case KeyCode::F12:
-                    SprMngr.MinimizeWindow();
-                    continue;
+            if (ev.MouseMove.DeltaX != 0 || ev.MouseMove.DeltaY != 0) {
+                RightMouseDragged = true;
+                _curMap->InstantScroll(pan_delta);
 
-                case KeyCode::Delete:
-                    SelectDelete();
-                    break;
-                case KeyCode::Add:
-                    if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
-                        int32 day_time = GetGlobalDayTime();
-                        day_time += 60;
+                RightMouseVelocityAccum += screen_pan_delta;
 
-                        while (day_time > 2880) {
-                            day_time -= 1440;
-                        }
-
-                        SetGlobalDayTime(day_time);
-                    }
-                    break;
-                case KeyCode::Subtract:
-                    if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
-                        int32 day_time = GetGlobalDayTime();
-                        day_time -= 60;
-
-                        while (day_time < 0) {
-                            day_time += 1440;
-                        }
-
-                        SetGlobalDayTime(day_time);
-                    }
-                    break;
-                case KeyCode::Tab:
-                    SelectAxialGrid = !SelectAxialGrid;
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            if (Keyb.ShiftDwn) {
-                switch (dikdw) {
-                case KeyCode::F7:
-                    IntFix = !IntFix;
-                    break;
-                case KeyCode::F9:
-                    ObjFix = !ObjFix;
-                    break;
-                case KeyCode::F11:
-                    SprMngr.GetAtlasMngr().DumpAtlases();
-                    break;
-                case KeyCode::C0:
-                case KeyCode::Numpad0:
-                    TileLayer = 0;
-                    break;
-                case KeyCode::C1:
-                case KeyCode::Numpad1:
-                    TileLayer = 1;
-                    break;
-                case KeyCode::C2:
-                case KeyCode::Numpad2:
-                    TileLayer = 2;
-                    break;
-                case KeyCode::C3:
-                case KeyCode::Numpad3:
-                    TileLayer = 3;
-                    break;
-                case KeyCode::C4:
-                case KeyCode::Numpad4:
-                    TileLayer = 4;
-                    break;
-                case KeyCode::Tab:
-                    SelectEntireEntity = !SelectEntireEntity;
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            if (Keyb.CtrlDwn) {
-                switch (dikdw) {
-                case KeyCode::X:
-                    BufferCut();
-                    break;
-                case KeyCode::C:
-                    BufferCopy();
-                    break;
-                case KeyCode::V:
-                    BufferPaste();
-                    break;
-                case KeyCode::A:
-                    SelectAll();
-                    break;
-                case KeyCode::S:
-                    if (_curMap) {
-                        SaveMap(_curMap.get(), "");
-                    }
-                    break;
-                case KeyCode::D:
-                    Settings.ScrollCheck = !Settings.ScrollCheck;
-                    break;
-                case KeyCode::B:
-                    if (_curMap) {
-                        _curMap->MarkBlockedHexes();
-                    }
-                    break;
-                case KeyCode::Q:
-                    Settings.ShowCorners = !Settings.ShowCorners;
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            // Key down
-            if (dikdw != KeyCode::None) {
-                if (ObjVisible && !SelectedEntities.empty()) {
-                    ObjKeyDown(dikdw, ev.KeyDown.Text);
-                }
-                else {
-                    ConsoleKeyDown(dikdw, ev.KeyDown.Text);
-                }
-
-                if (!ConsoleEdit) {
-                    switch (dikdw) {
-                    case KeyCode::Left:
-                        Settings.ScrollKeybLeft = true;
-                        break;
-                    case KeyCode::Right:
-                        Settings.ScrollKeybRight = true;
-                        break;
-                    case KeyCode::Up:
-                        Settings.ScrollKeybUp = true;
-                        break;
-                    case KeyCode::Down:
-                        Settings.ScrollKeybDown = true;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-            }
-
-            // Key up
-            if (dikup != KeyCode::None) {
-                ConsoleKeyUp(dikup);
-
-                switch (dikup) {
-                case KeyCode::Left:
-                    Settings.ScrollKeybLeft = false;
-                    break;
-                case KeyCode::Right:
-                    Settings.ScrollKeybRight = false;
-                    break;
-                case KeyCode::Up:
-                    Settings.ScrollKeybUp = false;
-                    break;
-                case KeyCode::Down:
-                    Settings.ScrollKeybDown = false;
-                    break;
-                default:
-                    break;
+                const auto now_time = nanotime::now();
+                const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32>();
+                if (sample_ms >= 8.0f) {
+                    RightMouseInertia = RightMouseVelocityAccum * (1000.0f / sample_ms);
+                    RightMouseVelocityAccum = {};
+                    RightMouseVelocityTime = now_time;
                 }
             }
         }
-        else if (ev_type == InputEvent::EventType::MouseWheelEvent) {
-            if (IntVisible && SubTabsActive && IsCurInRect(SubTabsRect, SubTabsX, SubTabsY)) {
-                int32 step = 4;
+        else {
+            HandleSelectionMouseDrag();
+        }
+    }
+}
 
-                if (Keyb.ShiftDwn) {
-                    step = 8;
-                }
-                else if (Keyb.CtrlDwn) {
-                    step = 20;
-                }
-                else if (Keyb.AltDwn) {
-                    step = 50;
-                }
+void MapperEngine::DrawMapperFrame()
+{
+    FO_STACK_TRACE_ENTRY();
 
-                if (ev.MouseWheel.Delta > 0) {
-                    TabsScroll[SubTabsActiveTab] += step;
-                }
-                else {
-                    TabsScroll[SubTabsActiveTab] -= step;
-                }
-                TabsScroll[SubTabsActiveTab] = std::max(TabsScroll[SubTabsActiveTab], 0);
-            }
-            else if (IntVisible && IsCurInRect(IntWWork, IntX, IntY) && (IsItemMode() || IsCritMode())) {
-                int32 step = 1;
+    {
+        SprMngr.BeginScene();
 
-                if (Keyb.ShiftDwn) {
-                    step = numeric_cast<int32>(ProtosOnScreen);
-                }
-                else if (Keyb.CtrlDwn) {
-                    step = 100;
-                }
-                else if (Keyb.AltDwn) {
-                    step = 1000;
-                }
+        DrawIfaceLayer(0);
 
-                if (ev.MouseWheel.Delta > 0) {
-                    if (IsItemMode() || IsCritMode()) {
-                        (*CurProtoScroll) -= step;
-                        *CurProtoScroll = std::max(*CurProtoScroll, 0);
+        if (_curMap) {
+            _curMap->DrawMap();
+        }
+
+        DrawIfaceLayer(1);
+        DrawMainPanelImGui();
+        DrawConsoleImGui();
+        DrawInspectorImGui();
+        DrawIfaceLayer(2);
+
+        DrawIfaceLayer(4);
+        CurDraw();
+        DrawIfaceLayer(5);
+
+        SprMngr.EndScene();
+    }
+}
+
+void MapperEngine::ProcessRightMouseInertia()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr || MouseHoldMode == INT_PAN) {
+        return;
+    }
+
+    if (RightMouseInertia.dist() < 30.0f) {
+        RightMouseInertia = {};
+        return;
+    }
+
+    const auto dt_ms = std::max(GameTime.GetFrameDeltaTime().to_ms<float32>(), 1.0f);
+    const auto dt_sec = dt_ms / 1000.0f;
+    const auto zoom = std::max(_curMap->GetSpritesZoom(), 0.001f);
+    _curMap->InstantScroll((RightMouseInertia * dt_sec) / zoom);
+
+    const auto damping = std::pow(0.9f, dt_ms / 16.6667f);
+    RightMouseInertia *= damping;
+}
+
+void MapperEngine::ResetPendingSelectionMove()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    PendingSelectionMoveEntries.clear();
+}
+
+void MapperEngine::CommitPendingSelectionMove()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (PendingSelectionMoveEntries.empty() || _curMap == nullptr) {
+        ResetPendingSelectionMove();
+        return;
+    }
+
+    auto move_entries = std::move(PendingSelectionMoveEntries);
+    ResetPendingSelectionMove();
+
+    PushUndoOp(_curMap.get(),
+        UndoOp {"Move selection",
+            [move_entries](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                for (const auto& entry : move_entries) {
+                    auto* target = mapper.FindEntityById(active_map, entry.EntityId);
+                    if (target == nullptr) {
+                        return false;
                     }
-                    else if (IntMode == INT_MODE_INCONT) {
-                        InContScroll -= step;
-                        InContScroll = std::max(InContScroll, 0);
-                    }
-                    else if (IntMode == INT_MODE_LIST) {
-                        ListScroll -= step;
-                        ListScroll = std::max(ListScroll, 0);
-                    }
-                }
-                else {
-                    if (IsItemMode() && !CurItemProtos->empty()) {
-                        (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
-                            *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
+
+                    if (auto* item = dynamic_cast<ItemHexView*>(target); item != nullptr) {
+                        if (entry.HasOffset) {
+                            item->SetOffset(entry.OldOffset);
+                            item->RefreshAnim();
+                        }
+                        if (entry.HasHex) {
+                            if (!entry.OldMultihexMesh.empty()) {
+                                item->SetMultihexMesh(entry.OldMultihexMesh);
+                            }
+                            active_map->MoveItem(item, entry.OldHex);
                         }
                     }
-                    else if (IsCritMode() && !CurCritterProtos->empty()) {
-                        (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
-                            *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
+                    else if (auto* cr = dynamic_cast<CritterHexView*>(target); cr != nullptr && entry.HasHex) {
+                        active_map->MoveCritter(cr, entry.OldHex, false);
+                    }
+                }
+
+                mapper.SetMapDirty(active_map.get());
+                active_map->RebuildMap();
+                return true;
+            },
+            [move_entries](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                for (const auto& entry : move_entries) {
+                    auto* target = mapper.FindEntityById(active_map, entry.EntityId);
+                    if (target == nullptr) {
+                        return false;
+                    }
+
+                    if (auto* item = dynamic_cast<ItemHexView*>(target); item != nullptr) {
+                        if (entry.HasOffset) {
+                            item->SetOffset(entry.NewOffset);
+                            item->RefreshAnim();
+                        }
+                        if (entry.HasHex) {
+                            if (!entry.NewMultihexMesh.empty()) {
+                                item->SetMultihexMesh(entry.NewMultihexMesh);
+                            }
+                            active_map->MoveItem(item, entry.NewHex);
                         }
                     }
-                    else if (IntMode == INT_MODE_INCONT) {
-                        InContScroll += step;
-                    }
-                    else if (IntMode == INT_MODE_LIST) {
-                        ListScroll += step;
+                    else if (auto* cr = dynamic_cast<CritterHexView*>(target); cr != nullptr && entry.HasHex) {
+                        active_map->MoveCritter(cr, entry.NewHex, false);
                     }
                 }
-            }
-            else {
-                if (ev.MouseWheel.Delta != 0 && _curMap) {
-                    const auto cur_zoom = _curMap->GetSpritesZoomTarget();
-                    const auto new_zoom = std::clamp(cur_zoom * (ev.MouseWheel.Delta > 0 ? 1.2f : 0.8f), GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
-                    ChangeZoom(new_zoom);
-                }
-            }
+
+                mapper.SetMapDirty(active_map.get());
+                active_map->RebuildMap();
+                return true;
+            }});
+}
+
+void MapperEngine::HandleMapperKeyboardEvent(const InputEvent& ev)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto ev_type = ev.Type;
+    const auto dikdw = ev_type == InputEvent::EventType::KeyDownEvent ? ev.KeyDown.Code : KeyCode::None;
+    const auto dikup = ev_type == InputEvent::EventType::KeyUpEvent ? ev.KeyUp.Code : KeyCode::None;
+
+    // Avoid repeating
+    if (dikdw != KeyCode::None && PressedKeys[static_cast<int32>(dikdw)]) {
+        return;
+    }
+    if (dikup != KeyCode::None && !PressedKeys[static_cast<int32>(dikup)]) {
+        return;
+    }
+
+    // Keyboard states, to know outside function
+    PressedKeys[static_cast<int32>(dikup)] = false;
+    PressedKeys[static_cast<int32>(dikdw)] = true;
+
+    if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol) {
+        Keyb.CtrlDwn = true;
+    }
+    else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu) {
+        Keyb.AltDwn = true;
+    }
+    else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift) {
+        Keyb.ShiftDwn = true;
+    }
+
+    if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol) {
+        Keyb.CtrlDwn = false;
+    }
+    else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu) {
+        Keyb.AltDwn = false;
+    }
+    else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift) {
+        Keyb.ShiftDwn = false;
+    }
+
+    const auto block_hotkeys = IsImGuiTextInputActive();
+    HandlePrimaryMapperHotkeys(dikdw, block_hotkeys);
+
+    if (!block_hotkeys && !Keyb.AltDwn && !Keyb.CtrlDwn && !Keyb.ShiftDwn && (dikdw == KeyCode::F11 || dikdw == KeyCode::F12)) {
+        return;
+    }
+
+    HandleShiftMapperHotkeys(dikdw, block_hotkeys);
+    HandleCtrlMapperHotkeys(dikdw, block_hotkeys);
+
+    if (dikdw != KeyCode::None) {
+        HandleMapperConsoleKeyDown(dikdw, ev.KeyDown.Text);
+    }
+
+    UpdateArrowScrollKeys(dikdw, dikup);
+}
+
+void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (block_hotkeys || Keyb.AltDwn || Keyb.CtrlDwn || Keyb.ShiftDwn) {
+        return;
+    }
+
+    switch (dikdw) {
+    case KeyCode::F1:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowItem);
+        break;
+    case KeyCode::F2:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowScen);
+        break;
+    case KeyCode::F3:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowWall);
+        break;
+    case KeyCode::F4:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowCrit);
+        break;
+    case KeyCode::F5:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowTile);
+        break;
+    case KeyCode::F6:
+        ToggleMapVisibilityFlag(_curMap.get(), Settings.ShowFast);
+        break;
+    case KeyCode::F7:
+        WorkspaceWindowVisible = !WorkspaceWindowVisible;
+        break;
+    case KeyCode::F8:
+        if (SprMngr.IsFullscreen()) {
+            Settings.FullscreenMouseScroll = !Settings.FullscreenMouseScroll;
         }
-        else if (ev_type == InputEvent::EventType::MouseDownEvent) {
-            if (ev.MouseDown.Button == MouseButton::Middle) {
-                CurMMouseDown();
-                ChangeZoom(1.0f);
-            }
-            if (ev.MouseDown.Button == MouseButton::Left) {
-                IntLMouseDown();
-            }
+        else {
+            Settings.WindowedMouseScroll = !Settings.WindowedMouseScroll;
         }
-        else if (ev_type == InputEvent::EventType::MouseUpEvent) {
-            if (ev.MouseUp.Button == MouseButton::Left) {
-                IntLMouseUp();
-            }
-            if (ev.MouseUp.Button == MouseButton::Right) {
-                CurRMouseUp();
-            }
+        break;
+    case KeyCode::F9:
+        if (InspectorVisible) {
+            SelectClear();
         }
-        else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
-            IntMouseMove();
+        else if (!SelectedEntities.empty() || InContItem) {
+            InspectorVisible = true;
         }
+        break;
+    case KeyCode::F10:
+        if (_curMap) {
+            _curMap->SwitchShowHex();
+        }
+        break;
+    case KeyCode::F11:
+        SprMngr.ToggleFullscreen();
+        break;
+    case KeyCode::F12:
+        SprMngr.MinimizeWindow();
+        break;
+    case KeyCode::Delete:
+        SelectDelete();
+        break;
+    case KeyCode::Escape:
+        if (CancelInspectorPropertyEdit()) {
+            break;
+        }
+
+        if (!SelectedEntities.empty() || InContItem != nullptr) {
+            SelectClear();
+        }
+        else if (CurMode == CUR_MODE_PLACE_OBJECT) {
+            MouseHoldMode = INT_NONE;
+            SetCurMode(CUR_MODE_DEFAULT);
+        }
+        break;
+    case KeyCode::Add:
+        if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
+            SetGlobalDayTime(ShiftDayTimeWithWrap(GetGlobalDayTime(), 60));
+        }
+        break;
+    case KeyCode::Subtract:
+        if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
+            SetGlobalDayTime(ShiftDayTimeWithWrap(GetGlobalDayTime(), -60));
+        }
+        break;
+    case KeyCode::Tab:
+        SelectAxialGrid = !SelectAxialGrid;
+        break;
+    default:
+        break;
+    }
+}
+
+void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (block_hotkeys || !Keyb.ShiftDwn) {
+        return;
+    }
+
+    switch (dikdw) {
+    case KeyCode::F7:
+        ContentWindowVisible = !ContentWindowVisible;
+        break;
+    case KeyCode::F11:
+        SprMngr.GetAtlasMngr().DumpAtlases();
+        break;
+    case KeyCode::C0:
+    case KeyCode::Numpad0:
+    case KeyCode::C1:
+    case KeyCode::Numpad1:
+    case KeyCode::C2:
+    case KeyCode::Numpad2:
+    case KeyCode::C3:
+    case KeyCode::Numpad3:
+    case KeyCode::C4:
+    case KeyCode::Numpad4:
+        TileLayer = GetTileLayerFromKey(dikdw).value_or(TileLayer);
+        break;
+    case KeyCode::Tab:
+        SelectEntireEntity = !SelectEntireEntity;
+        break;
+    default:
+        break;
+    }
+}
+
+void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (block_hotkeys || !Keyb.CtrlDwn) {
+        return;
+    }
+
+    switch (dikdw) {
+    case KeyCode::Z:
+        ExecuteUndo();
+        break;
+    case KeyCode::Y:
+        ExecuteRedo();
+        break;
+    case KeyCode::X:
+        BufferCut();
+        break;
+    case KeyCode::C:
+        BufferCopy();
+        break;
+    case KeyCode::V:
+        BufferPaste();
+        break;
+    case KeyCode::A:
+        SelectAll();
+        break;
+    case KeyCode::S:
+        if (_curMap) {
+            SaveCurrentMap();
+        }
+        break;
+    case KeyCode::D:
+        Settings.ScrollCheck = !Settings.ScrollCheck;
+        break;
+    case KeyCode::B:
+        if (_curMap) {
+            _curMap->MarkBlockedHexes();
+        }
+        break;
+    case KeyCode::Q:
+        Settings.ShowCorners = !Settings.ShowCorners;
+        break;
+    default:
+        break;
+    }
+}
+
+void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (dikdw != KeyCode::None && !ConsoleEdit) {
+        switch (dikdw) {
+        case KeyCode::Left:
+            Settings.ScrollKeybLeft = true;
+            break;
+        case KeyCode::Right:
+            Settings.ScrollKeybRight = true;
+            break;
+        case KeyCode::Up:
+            Settings.ScrollKeybUp = true;
+            break;
+        case KeyCode::Down:
+            Settings.ScrollKeybDown = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (dikup != KeyCode::None) {
+        switch (dikup) {
+        case KeyCode::Left:
+            Settings.ScrollKeybLeft = false;
+            break;
+        case KeyCode::Right:
+            Settings.ScrollKeybRight = false;
+            break;
+        case KeyCode::Up:
+            Settings.ScrollKeybUp = false;
+            break;
+        case KeyCode::Down:
+            Settings.ScrollKeybDown = false;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(key_text);
+
+    if (!ConsoleEdit && dikdw == KeyCode::Grave) {
+        ConsoleEdit = true;
+        ConsoleStr.clear();
+        ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
     }
 }
 
@@ -745,496 +1301,2155 @@ void MapperEngine::ChangeZoom(float32 new_zoom)
     _curMap->ChangeZoom(new_zoom, {mouse_x_factor, mouse_y_factor});
 }
 
-void MapperEngine::MapperMainLoop()
+auto MapperEngine::IsImGuiMouseCaptured() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FrameAdvance();
+    return ImGui::GetIO().WantCaptureMouse;
+}
 
-    OnLoop.Fire();
-    ConsoleProcess();
-    ProcessMapperInput();
+auto MapperEngine::IsImGuiTextInputActive() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
-    if (_curMap) {
-        _curMap->Process();
-    }
+    return ImGui::GetIO().WantTextInput;
+}
 
-    {
-        SprMngr.BeginScene();
+MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
+    Id(other.Id),
+    Hex(other.Hex),
+    DirAngle(other.DirAngle),
+    IsCritter(other.IsCritter),
+    IsItem(other.IsItem),
+    Slot(other.Slot),
+    StackId(other.StackId),
+    Proto(other.Proto),
+    Props(other.Props ?
+            [&]() {
+                auto props = other.Props->Copy();
+                return SafeAlloc::MakeUnique<Properties>(std::move(props));
+            }() :
+            nullptr)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        DrawIfaceLayer(0);
-
-        if (_curMap) {
-            _curMap->DrawMap();
-        }
-
-        // Iface
-        DrawIfaceLayer(1);
-        IntDraw();
-        DrawIfaceLayer(2);
-        ConsoleDraw();
-        DrawIfaceLayer(3);
-        ObjDraw();
-        DrawIfaceLayer(4);
-        CurDraw();
-        DrawIfaceLayer(5);
-
-        SprMngr.EndScene();
+    Children.reserve(other.Children.size());
+    for (const auto& child : other.Children) {
+        Children.emplace_back(SafeAlloc::MakeUnique<EntityBuf>(*child));
     }
 }
 
-void MapperEngine::IntDraw()
+auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!IntVisible) {
+    if (this != &other) {
+        Id = other.Id;
+        Hex = other.Hex;
+        DirAngle = other.DirAngle;
+        IsCritter = other.IsCritter;
+        IsItem = other.IsItem;
+        Slot = other.Slot;
+        StackId = other.StackId;
+        Proto = other.Proto;
+        Props = other.Props ?
+            [&]() {
+                auto props = other.Props->Copy();
+                return SafeAlloc::MakeUnique<Properties>(std::move(props));
+            }() :
+            nullptr;
+        Children.clear();
+        Children.reserve(other.Children.size());
+        for (const auto& child : other.Children) {
+            Children.emplace_back(SafeAlloc::MakeUnique<EntityBuf>(*child));
+        }
+    }
+
+    return *this;
+}
+
+MapperEngine::UndoOp::UndoOp(string label, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> undo, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> redo, bool is_snapshot) :
+    Label(std::move(label)),
+    IsSnapshot(is_snapshot),
+    Undo(std::move(undo)),
+    Redo(std::move(redo))
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto MapperEngine::GetUndoContext(MapView* map, bool create) -> UndoContext*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr) {
+        return nullptr;
+    }
+
+    if (!create) {
+        if (const auto it = UndoContexts.find(map); it != UndoContexts.end()) {
+            return &it->second;
+        }
+
+        return nullptr;
+    }
+
+    return &UndoContexts[map];
+}
+
+auto MapperEngine::GetUndoContext(const MapView* map, bool create) const -> const UndoContext*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr) {
+        return nullptr;
+    }
+
+    if (!create) {
+        if (const auto it = UndoContexts.find(const_cast<MapView*>(map)); it != UndoContexts.end()) {
+            return &it->second;
+        }
+    }
+
+    return nullptr;
+}
+
+void MapperEngine::ClearUndoContext(MapView* map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr) {
         return;
     }
 
-    SprMngr.DrawSprite(IntMainPic.get(), {IntX, IntY}, COLOR_SPRITE);
-
-    switch (IntMode) {
-    case INT_MODE_CUSTOM0:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[0].x + IntX, IntBCust[0].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM1:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[1].x + IntX, IntBCust[1].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM2:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[2].x + IntX, IntBCust[2].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM3:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[3].x + IntX, IntBCust[3].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM4:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[4].x + IntX, IntBCust[4].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM5:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[5].x + IntX, IntBCust[5].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM6:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[6].x + IntX, IntBCust[6].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM7:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[7].x + IntX, IntBCust[7].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM8:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[8].x + IntX, IntBCust[8].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CUSTOM9:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCust[9].x + IntX, IntBCust[9].y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_ITEM:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBItem.x + IntX, IntBItem.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_TILE:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBTile.x + IntX, IntBTile.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_CRIT:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBCrit.x + IntX, IntBCrit.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_FAST:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBFast.x + IntX, IntBFast.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_IGNORE:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBIgnore.x + IntX, IntBIgnore.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_INCONT:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBInCont.x + IntX, IntBInCont.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_MESS:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBMess.x + IntX, IntBMess.y + IntY}, COLOR_SPRITE);
-        break;
-    case INT_MODE_LIST:
-        SprMngr.DrawSprite(IntPTab.get(), {IntBList.x + IntX, IntBList.y + IntY}, COLOR_SPRITE);
-        break;
-    default:
-        break;
-    }
-
-    for (auto i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++) {
-        DrawStr(irect32(IntBCust[i].x + IntX, IntBCust[i].y + IntY, IntBCust[i].width, IntBCust[i].height), TabsName[INT_MODE_CUSTOM0 + i], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    }
-    DrawStr(irect32(IntBItem.x + IntX, IntBItem.y + IntY, IntBItem.width, IntBItem.height), TabsName[INT_MODE_ITEM], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBTile.x + IntX, IntBTile.y + IntY, IntBTile.width, IntBTile.height), TabsName[INT_MODE_TILE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBCrit.x + IntX, IntBCrit.y + IntY, IntBCrit.width, IntBCrit.height), TabsName[INT_MODE_CRIT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBFast.x + IntX, IntBFast.y + IntY, IntBFast.width, IntBFast.height), TabsName[INT_MODE_FAST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBIgnore.x + IntX, IntBIgnore.y + IntY, IntBIgnore.width, IntBIgnore.height), TabsName[INT_MODE_IGNORE], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBInCont.x + IntX, IntBInCont.y + IntY, IntBInCont.width, IntBInCont.height), TabsName[INT_MODE_INCONT], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBMess.x + IntX, IntBMess.y + IntY, IntBMess.width, IntBMess.height), TabsName[INT_MODE_MESS], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    DrawStr(irect32(IntBList.x + IntX, IntBList.y + IntY, IntBList.width, IntBList.height), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
-
-    if (Settings.ShowItem) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowItem.x + IntX, IntBShowItem.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowScen) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowScen.x + IntX, IntBShowScen.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowWall) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowWall.x + IntX, IntBShowWall.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowCrit) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowCrit.x + IntX, IntBShowCrit.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowTile) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowTile.x + IntX, IntBShowTile.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowRoof) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowRoof.x + IntX, IntBShowRoof.y + IntY}, COLOR_SPRITE);
-    }
-    if (Settings.ShowFast) {
-        SprMngr.DrawSprite(IntPShow.get(), {IntBShowFast.x + IntX, IntBShowFast.y + IntY}, COLOR_SPRITE);
-    }
-
-    if (IsSelectItem) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectItem.x + IntX, IntBSelectItem.y + IntY}, COLOR_SPRITE);
-    }
-    if (IsSelectScen) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectScen.x + IntX, IntBSelectScen.y + IntY}, COLOR_SPRITE);
-    }
-    if (IsSelectWall) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectWall.x + IntX, IntBSelectWall.y + IntY}, COLOR_SPRITE);
-    }
-    if (IsSelectCrit) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectCrit.x + IntX, IntBSelectCrit.y + IntY}, COLOR_SPRITE);
-    }
-    if (IsSelectTile) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectTile.x + IntX, IntBSelectTile.y + IntY}, COLOR_SPRITE);
-    }
-    if (IsSelectRoof) {
-        SprMngr.DrawSprite(IntPSelect.get(), {IntBSelectRoof.x + IntX, IntBSelectRoof.y + IntY}, COLOR_SPRITE);
-    }
-
-    auto x = IntWWork.x + IntX;
-    auto y = IntWWork.y + IntY;
-    auto h = IntWWork.height;
-    int32 w = ProtoWidth;
-
-    if (IsItemMode()) {
-        auto i = *CurProtoScroll;
-        auto j = numeric_cast<int32>(numeric_cast<size_t>(i) + ProtosOnScreen);
-        j = std::min(j, numeric_cast<int32>(CurItemProtos->size()));
-
-        for (; i < j; i++, x += w) {
-            const auto& proto = (*CurItemProtos)[i];
-            auto col = i == numeric_cast<int32>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE;
-
-            if (const auto* spr = GetIfaceSpr(proto->GetPicMap()); spr != nullptr) {
-                SprMngr.DrawSpriteSize(spr, {x, y}, {w, h / 2}, false, true, col);
-            }
-
-            if (proto->GetPicInv()) {
-                const auto* spr = GetIfaceSpr(proto->GetPicInv());
-
-                if (spr != nullptr) {
-                    SprMngr.DrawSpriteSize(spr, {x, y + h / 2}, {w, h / 2}, false, true, col);
-                }
-            }
-
-            DrawStr(irect32(x, y + h - 15, w, h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-        }
-
-        if (GetTabIndex() < numeric_cast<int32>(CurItemProtos->size())) {
-            const auto& proto = (*CurItemProtos)[GetTabIndex()];
-
-            SprMngr.DrawText(irect32(IntWHint.x + IntX, IntWHint.y + IntY, IntWHint.width, IntWHint.height), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
-        }
-    }
-    else if (IsCritMode()) {
-        auto i = *CurProtoScroll;
-        auto j = i + ProtosOnScreen;
-        j = std::min(j, numeric_cast<int32>(CurCritterProtos->size()));
-
-        for (; i < j; i++, x += w) {
-            const auto& proto = (*CurCritterProtos)[i];
-
-            auto model_name = proto->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
-
-            if (anim == nullptr) {
-                continue;
-            }
-
-            auto col = COLOR_SPRITE;
-
-            if (i == GetTabIndex()) {
-                col = COLOR_SPRITE_RED;
-            }
-
-            SprMngr.DrawSpriteSize(anim, {x, y}, {w, h / 2}, false, true, col);
-            DrawStr(irect32(x, y + h - 15, w, h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-        }
-
-        if (GetTabIndex() < numeric_cast<int32>(CurCritterProtos->size())) {
-            const auto& proto = (*CurCritterProtos)[GetTabIndex()];
-            DrawStr(irect32(IntWHint.x + IntX, IntWHint.y + IntY, IntWHint.width, IntWHint.height), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
-        }
-    }
-    else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
-        auto& entity = SelectedEntities.front();
-        auto inner_items = GetEntityInnerItems(entity.get());
-
-        auto i = InContScroll;
-        auto j = i + ProtosOnScreen;
-
-        j = std::min(j, numeric_cast<int32>(inner_items.size()));
-
-        for (; i < j; i++, x += w) {
-            auto& inner_item = inner_items[i];
-            FO_RUNTIME_ASSERT(inner_item);
-
-            auto* spr = GetIfaceSpr(inner_item->GetPicInv());
-
-            if (spr == nullptr) {
-                continue;
-            }
-
-            auto col = COLOR_SPRITE;
-
-            if (inner_item == InContItem) {
-                col = COLOR_SPRITE_RED;
-            }
-
-            SprMngr.DrawSpriteSize(spr, {x, y}, {w, h}, false, true, col);
-
-            SprMngr.DrawText(irect32(x, y + h - 15, w, h), strex("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-
-            if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && inner_item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                SprMngr.DrawText(irect32(x, y, w, h), strex("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-            }
-        }
-    }
-    else if (IntMode == INT_MODE_LIST) {
-        auto i = ListScroll;
-        auto j = numeric_cast<int32>(LoadedMaps.size());
-
-        for (; i < j; i++, x += w) {
-            auto* map = LoadedMaps[i].get();
-            SprMngr.DrawText(irect32(x, y, w, h), strex(" '{}'", map->GetName()), 0, _curMap == map ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
-        }
-    }
-
-    // Message box
-    if (IntMode == INT_MODE_MESS) {
-        MessBoxDraw();
-    }
-
-    // Sub tabs
-    if (SubTabsActive) {
-        SprMngr.DrawSprite(SubTabsPic.get(), {SubTabsX, SubTabsY}, COLOR_SPRITE);
-
-        auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
-        auto posy = SubTabsRect.height - line_height - 2;
-        auto i = 0;
-        auto& stabs = Tabs[SubTabsActiveTab];
-
-        for (auto&& [fst, snd] : stabs) {
-            i++;
-
-            if (i - 1 < TabsScroll[SubTabsActiveTab]) {
-                continue;
-            }
-
-            auto name = fst;
-            auto& stab = snd;
-
-            auto color = TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT;
-            auto r = irect32(SubTabsRect.x + SubTabsX + 5, SubTabsRect.y + SubTabsY + posy, Settings.ScreenWidth, line_height - 1);
-
-            if (IsCurInRect(r)) {
-                color = COLOR_TEXT_DWHITE;
-            }
-
-            auto count = numeric_cast<int32>(stab.CritterProtos.size());
-
-            if (count == 0) {
-                count = numeric_cast<int32>(stab.ItemProtos.size());
-            }
-
-            name += strex(" ({})", count);
-            DrawStr(r, name, 0, color, FONT_DEFAULT);
-
-            posy -= line_height;
-
-            if (posy < 0) {
-                break;
-            }
-        }
-    }
-
-    // Map info
-    if (_curMap) {
-        mpos hex;
-        _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
-        const int32 day_time = GetGlobalDayTime();
-
-        DrawStr(irect32(Settings.ScreenWidth - 150, 20, Settings.ScreenWidth, Settings.ScreenHeight),
-            strex("Map: '{}'\n"
-                  "Mouse hex: {}\n"
-                  "Game time: {} : {}\n"
-                  "Fps: {}\n"
-                  "Tile layer: {}\n"
-                  "Scroll check: {}\n"
-                  "Grid select: {}\n"
-                  "Entity select: {}",
-                _curMap->GetName(), hex, day_time / 60 % 24, day_time % 60, GameTime.GetFramesPerSecond(), TileLayer, //
-                Settings.ScrollCheck ? "Yes" : "No", SelectAxialGrid ? "Axial" : "Native", SelectEntireEntity ? "All hexes" : "Single hex"),
-            FT_NOBREAK_LINE | FT_BORDERED, COLOR_TEXT, FONT_DEFAULT);
-    }
+    UndoContexts.erase(map);
 }
 
-void MapperEngine::ObjDraw()
+void MapperEngine::RemapUndoContext(MapView* old_map, MapView* new_map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!ObjVisible) {
+    if (old_map == nullptr || new_map == nullptr || old_map == new_map) {
+        return;
+    }
+
+    if (const auto it = UndoContexts.find(old_map); it != UndoContexts.end()) {
+        auto ctx = std::move(it->second);
+        UndoContexts.erase(it);
+        UndoContexts[new_map] = std::move(ctx);
+    }
+}
+
+void MapperEngine::PushUndoOp(MapView* map, UndoOp op)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (UndoRedoInProgress || map == nullptr || !op.Undo || !op.Redo) {
+        return;
+    }
+
+    auto* ctx = GetUndoContext(map, true);
+    FO_RUNTIME_ASSERT(ctx);
+
+    ctx->RedoStack.clear();
+    ctx->UndoStack.emplace_back(std::move(op));
+
+    if (ctx->UndoStack.size() > MaxUndoDepth) {
+        ctx->UndoStack.erase(ctx->UndoStack.begin());
+
+        if (ctx->CleanUndoDepth > 0) {
+            ctx->CleanUndoDepth--;
+        }
+        else if (ctx->CleanUndoDepth == 0) {
+            ctx->CleanUndoDepth = -1;
+        }
+    }
+}
+
+auto MapperEngine::CanUndo() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr) {
+        return false;
+    }
+
+    if (const auto* ctx = GetUndoContext(_curMap.get(), false); ctx != nullptr) {
+        return !ctx->UndoStack.empty();
+    }
+
+    return false;
+}
+
+auto MapperEngine::CanRedo() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr) {
+        return false;
+    }
+
+    if (const auto* ctx = GetUndoContext(_curMap.get(), false); ctx != nullptr) {
+        return !ctx->RedoStack.empty();
+    }
+
+    return false;
+}
+
+auto MapperEngine::GetUndoLabel() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto* ctx = _curMap ? GetUndoContext(_curMap.get(), false) : nullptr; ctx != nullptr && !ctx->UndoStack.empty()) {
+        return ctx->UndoStack.back().Label;
+    }
+
+    return {};
+}
+
+auto MapperEngine::GetRedoLabel() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto* ctx = _curMap ? GetUndoContext(_curMap.get(), false) : nullptr; ctx != nullptr && !ctx->RedoStack.empty()) {
+        return ctx->RedoStack.back().Label;
+    }
+
+    return {};
+}
+
+auto MapperEngine::ExecuteUndo() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    raw_ptr<MapView> map = _curMap.get();
+    auto* ctx = GetUndoContext(map.get(), false);
+    if (ctx == nullptr || ctx->UndoStack.empty()) {
+        return false;
+    }
+
+    auto op = std::move(ctx->UndoStack.back());
+    ctx->UndoStack.pop_back();
+
+    raw_ptr<MapView> active_map = map;
+    UndoRedoInProgress = true;
+    const auto ok = op.Undo(*this, active_map);
+    UndoRedoInProgress = false;
+
+    if (!ok) {
+        ctx = GetUndoContext(map.get(), true);
+        ctx->UndoStack.emplace_back(std::move(op));
+        return false;
+    }
+
+    ctx = GetUndoContext(active_map.get(), true);
+    ctx->RedoStack.emplace_back(std::move(op));
+    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
+    return true;
+}
+
+auto MapperEngine::ExecuteRedo() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    raw_ptr<MapView> map = _curMap.get();
+    auto* ctx = GetUndoContext(map.get(), false);
+    if (ctx == nullptr || ctx->RedoStack.empty()) {
+        return false;
+    }
+
+    auto op = std::move(ctx->RedoStack.back());
+    ctx->RedoStack.pop_back();
+
+    raw_ptr<MapView> active_map = map;
+    UndoRedoInProgress = true;
+    const auto ok = op.Redo(*this, active_map);
+    UndoRedoInProgress = false;
+
+    if (!ok) {
+        ctx = GetUndoContext(map.get(), true);
+        ctx->RedoStack.emplace_back(std::move(op));
+        return false;
+    }
+
+    ctx = GetUndoContext(active_map.get(), true);
+    ctx->UndoStack.emplace_back(std::move(op));
+    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
+    return true;
+}
+
+auto MapperEngine::CaptureMapSnapshot(MapView* map) const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return map != nullptr ? map->SaveToText() : string {};
+}
+
+void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    entity_buf.Id = entity->GetId();
+    entity_buf.IsCritter = dynamic_cast<CritterHexView*>(entity) != nullptr;
+    entity_buf.IsItem = dynamic_cast<ItemView*>(entity) != nullptr;
+    entity_buf.Proto = dynamic_cast<EntityWithProto*>(entity)->GetProto();
+    entity_buf.Props = SafeAlloc::MakeUnique<Properties>(entity->GetProperties().Copy());
+
+    if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        entity_buf.Hex = cr->GetHex();
+        entity_buf.DirAngle = numeric_cast<int16>(cr->GetDirAngle());
+    }
+    else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        entity_buf.Hex = item->GetHex();
+        entity_buf.Slot = item->GetCritterSlot();
+        entity_buf.StackId = any_t {string(item->GetContainerStack())};
+    }
+    else if (const auto* inner_item = dynamic_cast<ItemView*>(entity); inner_item != nullptr) {
+        entity_buf.Slot = inner_item->GetCritterSlot();
+        entity_buf.StackId = any_t {string(inner_item->GetContainerStack())};
+    }
+
+    for (auto& child : GetEntityInnerItems(entity)) {
+        auto child_buf = SafeAlloc::MakeUnique<EntityBuf>();
+        CaptureEntityBuf(*child_buf, child.get());
+        entity_buf.Children.emplace_back(std::move(child_buf));
+    }
+}
+
+void MapperEngine::RestoreEntityBufChildren(const EntityBuf& entity_buf, ItemView* item)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& child_buf : entity_buf.Children) {
+        auto* inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>().get(), child_buf->StackId, child_buf->Props.get());
+        RestoreEntityBufChildren(*child_buf, inner_item);
+    }
+}
+
+auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner) -> ClientEntity*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_curMap);
+
+    if (owner == nullptr) {
+        if (entity_buf.IsCritter) {
+            auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.DirAngle, entity_buf.Props.get(), entity_buf.Id);
+
+            for (const auto& child_buf : entity_buf.Children) {
+                auto* inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>().get(), child_buf->Slot, child_buf->Props.get());
+                RestoreEntityBufChildren(*child_buf, inv_item);
+            }
+
+            return cr;
+        }
+
+        if (entity_buf.IsItem) {
+            auto* item = _curMap->AddMapperItem(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.Props.get(), entity_buf.Id);
+            RestoreEntityBufChildren(entity_buf, item);
+            return item;
+        }
+
+        return nullptr;
+    }
+
+    if (auto* cr = dynamic_cast<CritterView*>(owner); cr != nullptr) {
+        auto* item = cr->AddMapperInvItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>().get(), entity_buf.Slot, entity_buf.Props.get());
+        RestoreEntityBufChildren(entity_buf, item);
+        return item;
+    }
+
+    if (auto* item_owner = dynamic_cast<ItemView*>(owner); item_owner != nullptr) {
+        auto* item = item_owner->AddMapperInnerItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>().get(), entity_buf.StackId, entity_buf.Props.get());
+        RestoreEntityBufChildren(entity_buf, item);
+        return item;
+    }
+
+    return nullptr;
+}
+
+auto MapperEngine::FindEntityById(raw_ptr<MapView> map, ident_t id) -> ClientEntity*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr || !id) {
+        return nullptr;
+    }
+
+    if (auto* cr = map->GetCritter(id); cr != nullptr) {
+        return cr;
+    }
+    if (auto* item = map->GetItem(id); item != nullptr) {
+        return item;
+    }
+
+    std::function<ClientEntity*(ItemView*)> find_inner_item = [&](ItemView* owner) -> ClientEntity* {
+        for (auto& inner_item : owner->GetInnerItems()) {
+            if (inner_item->GetId() == id) {
+                return inner_item.get();
+            }
+            if (auto* found = find_inner_item(inner_item.get()); found != nullptr) {
+                return found;
+            }
+        }
+        return nullptr;
+    };
+
+    for (auto& cr : map->GetCritters()) {
+        for (auto& inv_item : cr->GetInvItems()) {
+            if (inv_item->GetId() == id) {
+                return inv_item.get();
+            }
+            if (auto* found = find_inner_item(inv_item.get()); found != nullptr) {
+                return found;
+            }
+        }
+    }
+
+    for (auto& map_item : map->GetItems()) {
+        if (auto* found = find_inner_item(map_item.get()); found != nullptr) {
+            return found;
+        }
+    }
+
+    return nullptr;
+}
+
+auto MapperEngine::RestoreMapSnapshot(raw_ptr<MapView>& map, string_view map_name, const string& map_text) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr) {
+        return false;
+    }
+
+    auto* old_map = map.get();
+    UnloadMap(old_map, false);
+
+    auto* restored_map = LoadMapFromText(map_name, map_text);
+    if (restored_map == nullptr) {
+        return false;
+    }
+
+    RemapUndoContext(old_map, restored_map);
+    ShowMap(restored_map);
+    map = restored_map;
+    return true;
+}
+
+auto MapperEngine::ApplyEntityPropertyText(Entity* entity, const Property* prop, string_view value_text) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        entity->GetPropertiesForEdit().ApplyPropertyFromText(prop, value_text);
+        SetMapDirty(_curMap.get());
+
+        if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
+                for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+                    if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, numeric_cast<uint8>(i), _curMap->GetSize())) {
+                        auto main_mesh_items = vec_filter(_curMap->GetItemsOnHex(hex), [&](auto&& item2) -> bool {
+                            if (SelectedEntitiesSet.contains(item2.get())) {
+                                return false;
+                            }
+                            return item->GetProtoId() == item2->GetProtoId();
+                        });
+                        for (auto&& item2 : main_mesh_items) {
+                            item2->GetPropertiesForEdit().ApplyPropertyFromText(prop, value_text);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
+        if (prop == hex_item->GetPropertyOffset()) {
+            hex_item->RefreshOffs();
+        }
+        if (prop == hex_item->GetPropertyPicMap()) {
+            hex_item->RefreshAnim();
+        }
+    }
+
+    return true;
+}
+
+void MapperEngine::DrawMainPanelImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (ImGui::BeginMainMenuBar()) {
+        const auto pos = ImGui::GetWindowPos();
+        const auto size = ImGui::GetWindowSize();
+
+        MainPanelPos = {iround<int32>(pos.x), iround<int32>(pos.y)};
+        MainPanelWindowRect = {0, 0, iround<int32>(size.x), iround<int32>(size.y)};
+        MainPanelContentRect = {12, MainPanelWindowRect.height + 8, 520, 120};
+        ProtosOnScreen = std::max(1, ProtoWidth > 0 ? MainPanelContentRect.width / ProtoWidth : 1);
+
+        const auto run_menu_action = [](bool triggered, auto&& action) {
+            if (triggered) {
+                action();
+            }
+        };
+
+        const auto run_menu_action_with_message = [&](bool triggered, auto&& action, string_view message) {
+            run_menu_action(triggered, [&] {
+                action();
+                AddMess(message);
+            });
+        };
+
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save current", "Ctrl+S", false, _curMap != nullptr)) {
+                SaveCurrentMap();
+            }
+            if (ImGui::MenuItem("Reset changes", nullptr, false, _curMap != nullptr && IsMapDirty(_curMap.get()))) {
+                ResetCurrentMapChanges();
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit")) {
+                App->RequestQuit();
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Windows")) {
+            ImGui::MenuItem("Workspace", "F7", &WorkspaceWindowVisible);
+            ImGui::MenuItem("Content", "Shift+F7", &ContentWindowVisible);
+
+            if (ImGui::MenuItem("Console", "~", ConsoleEdit)) {
+                ConsoleEdit = !ConsoleEdit;
+                if (ConsoleEdit) {
+                    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+                }
+            }
+
+            ImGui::MenuItem("Critter animations", nullptr, &CritterAnimationsWindowVisible);
+            ImGui::MenuItem("Script call", nullptr, &ScriptCallWindowVisible);
+            ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
+            ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, _curMap != nullptr);
+            ImGui::MenuItem("History", nullptr, &HistoryWindowVisible, _curMap != nullptr);
+            ImGui::MenuItem("Settings", nullptr, &SettingsWindowVisible);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit")) {
+            const auto undo_label = GetUndoLabel();
+            const auto redo_label = GetRedoLabel();
+
+            if (ImGui::MenuItem(undo_label.empty() ? "Undo" : strex("Undo {}", undo_label).c_str(), "Ctrl+Z", false, CanUndo())) {
+                ExecuteUndo();
+            }
+            if (ImGui::MenuItem(redo_label.empty() ? "Redo" : strex("Redo {}", redo_label).c_str(), "Ctrl+Y", false, CanRedo())) {
+                ExecuteRedo();
+            }
+
+            ImGui::Separator();
+            if (ImGui::MenuItem("Select all", "Ctrl+A")) {
+                SelectAll();
+            }
+            if (ImGui::MenuItem("Clear selection")) {
+                SelectClear();
+            }
+            if (ImGui::MenuItem("Delete selected", "Del")) {
+                SelectDelete();
+            }
+
+            ImGui::Separator();
+            run_menu_action_with_message(ImGui::MenuItem("Copy", "Ctrl+C"), [&] { BufferCopy(); }, "Copied selection");
+            run_menu_action_with_message(ImGui::MenuItem("Cut", "Ctrl+X"), [&] { BufferCut(); }, "Cut selection");
+            run_menu_action_with_message(ImGui::MenuItem("Paste", "Ctrl+V"), [&] { BufferPaste(); }, "Pasted selection");
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View")) {
+            ImGui::MenuItem("Items", nullptr, &Settings.ShowItem);
+            ImGui::MenuItem("Scenery", nullptr, &Settings.ShowScen);
+            ImGui::MenuItem("Walls", nullptr, &Settings.ShowWall);
+            ImGui::MenuItem("Critters", nullptr, &Settings.ShowCrit);
+            ImGui::MenuItem("Tiles", nullptr, &Settings.ShowTile);
+            ImGui::MenuItem("Roof", nullptr, &Settings.ShowRoof);
+            ImGui::MenuItem("Fast", nullptr, &Settings.ShowFast);
+
+            ImGui::Separator();
+            ImGui::MenuItem("Axial grid selection", nullptr, &SelectAxialGrid);
+            ImGui::MenuItem("Select entire entity", nullptr, &SelectEntireEntity);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Tools")) {
+            run_menu_action_with_message(ImGui::MenuItem("Rebuild map", nullptr, false, _curMap != nullptr), [&] { _curMap->RebuildMap(); }, "Map rebuilt");
+            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, _curMap != nullptr), [&] { _curMap->MarkBlockedHexes(); }, "Blocked hexes marked");
+            run_menu_action_with_message(ImGui::MenuItem("Reverse lights", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* reverse-light"); }, "Reverse lights done");
+            run_menu_action_with_message(ImGui::MenuItem("Merge by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* merge-items"); }, "Merge items command done");
+            run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* break-items"); }, "Break items command done");
+
+            ImGui::Separator();
+            if (ImGui::MenuItem("Merge multihex items", nullptr, false, _curMap != nullptr)) {
+                const auto merged = MergeItemsToMultihexMeshes(_curMap.get());
+                AddMess(strex("Merged items: {}", merged));
+            }
+            if (ImGui::MenuItem("Break multihex items", nullptr, false, _curMap != nullptr)) {
+                const auto broken = BreakItemsMultihexMeshes(_curMap.get());
+                AddMess(strex("Broken items: {}", broken));
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("System")) {
+            if (ImGui::MenuItem("Toggle fullscreen", "F11")) {
+                SprMngr.ToggleFullscreen();
+            }
+            if (ImGui::MenuItem("Minimize", "F12")) {
+                SprMngr.MinimizeWindow();
+            }
+            if (ImGui::MenuItem("Dump atlases")) {
+                SprMngr.GetAtlasMngr().DumpAtlases();
+            }
+
+            ImGui::Separator();
+            if (SprMngr.IsFullscreen()) {
+                ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &Settings.FullscreenMouseScroll);
+            }
+            else {
+                ImGui::MenuItem("Windowed mouse scroll", nullptr, &Settings.WindowedMouseScroll);
+            }
+            ImGui::EndMenu();
+        }
+
+        if (_curMap != nullptr && IsMapDirty(_curMap.get())) {
+            constexpr const char* dirty_label = "*** Save ***";
+            const auto label_width = ImGui::CalcTextSize(dirty_label).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            const auto right_x = numeric_cast<float32>(MainPanelWindowRect.width) - label_width - ImGui::GetStyle().ItemSpacing.x * 2.0f;
+
+            if (ImGui::GetCursorPosX() < right_x) {
+                ImGui::SetCursorPosX(right_x);
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.45f, 0.10f, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.86f, 0.56f, 0.16f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.36f, 0.08f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
+
+            if (ImGui::Button(dirty_label)) {
+                SaveCurrentMap();
+            }
+
+            ImGui::PopStyleColor(4);
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    DrawWorkspaceWindowImGui();
+    DrawContentWindowImGui();
+    DrawCritterAnimationsWindowImGui();
+    DrawScriptCallWindowImGui();
+    DrawMapListWindowImGui();
+    DrawMapWindowImGui();
+    DrawHistoryWindowImGui();
+    DrawSettingsWindowImGui();
+}
+
+void MapperEngine::DrawWorkspaceWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!WorkspaceWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(
+        {
+            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x),
+            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y),
+        },
+        ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({500.0f, 600.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Workspace", &WorkspaceWindowVisible, 0)) {
+        ImGui::End();
+        return;
+    }
+
+    const auto toggle_visibility = [&](const char* label, const char* tooltip, bool& value) {
+        if (value) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        }
+
+        const auto clicked = ImGui::Button(label, {32.0f, 0.0f});
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", tooltip);
+        }
+
+        if (value) {
+            ImGui::PopStyleColor(2);
+        }
+
+        if (clicked) {
+            value = !value;
+        }
+
+        return clicked;
+    };
+
+    auto visibility_changed = false;
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4.0f, ImGui::GetStyle().ItemSpacing.y});
+    visibility_changed |= toggle_visibility("Items", "Items", Settings.ShowItem);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Scenery", "Scenery", Settings.ShowScen);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Walls", "Walls", Settings.ShowWall);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Critters", "Critters", Settings.ShowCrit);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Tiles", "Tiles", Settings.ShowTile);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Roof", "Roof", Settings.ShowRoof);
+    ImGui::SameLine();
+    visibility_changed |= toggle_visibility("Fast", "Fast", Settings.ShowFast);
+    ImGui::PopStyleVar();
+
+    if (visibility_changed && _curMap) {
+        _curMap->RebuildMap();
+    }
+
+    ImGui::Separator();
+
+    auto& workspace_filter_buf = WorkspaceFilterBuf;
+    constexpr array tab_order {
+        INT_MODE_CUSTOM0,
+        INT_MODE_CUSTOM1,
+        INT_MODE_CUSTOM2,
+        INT_MODE_CUSTOM3,
+        INT_MODE_CUSTOM4,
+        INT_MODE_CUSTOM5,
+        INT_MODE_CUSTOM6,
+        INT_MODE_CUSTOM7,
+        INT_MODE_CUSTOM8,
+        INT_MODE_CUSTOM9,
+        INT_MODE_ITEM,
+        INT_MODE_TILE,
+        INT_MODE_CRIT,
+        INT_MODE_FAST,
+        INT_MODE_IGNORE,
+    };
+
+    constexpr auto workspace_table_flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp;
+    if (ImGui::BeginTable("##WorkspaceTable", 3, workspace_table_flags)) {
+        ImGui::TableSetupColumn("Tabs", ImGuiTableColumnFlags_WidthStretch, 0.9f);
+        ImGui::TableSetupColumn("SubTabs", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+        ImGui::TableSetupColumn("Content", ImGuiTableColumnFlags_WidthStretch, 4.0f);
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Tabs");
+        ImGui::Separator();
+        if (ImGui::BeginChild("##WorkspaceTabs", {0.0f, 0.0f}, false)) {
+            for (const auto mode : tab_order) {
+                if (Tabs[mode].empty()) {
+                    continue;
+                }
+
+                const auto selected = ActivePanelMode == mode;
+                const auto name = !PanelModeNames[mode].empty() ? PanelModeNames[mode] : strex("Tab {}", mode).str();
+                if (ImGui::Selectable(name.c_str(), selected)) {
+                    SetActivePanelMode(mode);
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("SubTabs");
+        ImGui::Separator();
+        if (ImGui::BeginChild("##WorkspaceSubTabs", {0.0f, 0.0f}, false)) {
+            if (const auto* active_subtab = GetActiveSubTab(); active_subtab != nullptr) {
+                for (auto& [name, subtab] : Tabs[ActivePanelMode]) {
+                    const auto selected = active_subtab == &subtab;
+                    if (ImGui::Selectable(name.c_str(), selected)) {
+                        ActiveSubTabs[ActivePanelMode] = &subtab;
+                        RefreshActiveProtoLists();
+                    }
+                }
+            }
+            else {
+                ImGui::TextDisabled("No subtabs");
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::TableNextColumn();
+        if (IsItemMode() || IsCritMode()) {
+            ImGui::InputTextWithHint("##WorkspaceFilter", "Filter prototypes...", workspace_filter_buf.data(), workspace_filter_buf.size());
+            const auto filter = InputBufferView(workspace_filter_buf);
+            ImGui::Separator();
+
+            if (ImGui::BeginChild("##WorkspaceProtoList", {0.0f, 0.0f}, false)) {
+                const auto draw_proto_entry = [&](int32 index, string_view label, const Sprite* sprite, auto&& on_select) {
+                    ImGui::PushID(index);
+                    const auto selected = index == GetActiveProtoIndex();
+                    const auto row_height = 72.0f;
+                    const auto row_width = ImGui::GetContentRegionAvail().x;
+                    const auto cursor = ImGui::GetCursorScreenPos();
+                    const auto clicked = ImGui::Selectable("##ProtoRow", selected, 0, {row_width, row_height});
+                    const auto rect_min = ImGui::GetItemRectMin();
+                    const auto rect_max = ImGui::GetItemRectMax();
+                    auto* draw_list = ImGui::GetWindowDrawList();
+                    draw_list->AddRectFilled(rect_min, rect_max, ImGui::ColorConvertFloat4ToU32(selected ? ImVec4(0.24f, 0.32f, 0.18f, 0.65f) : ImVec4(0.08f, 0.08f, 0.08f, 0.35f)), 4.0f);
+                    draw_list->AddRect(rect_min, rect_max, ImGui::GetColorU32(ImGuiCol_Border), 4.0f);
+
+                    const ImVec2 preview_min {cursor.x + 8.0f, cursor.y + 8.0f};
+                    const ImVec2 preview_max {cursor.x + 64.0f, cursor.y + 64.0f};
+                    draw_list->AddRectFilled(preview_min, preview_max, ImGui::ColorConvertFloat4ToU32({0.12f, 0.12f, 0.12f, 1.0f}), 4.0f);
+
+                    if (const auto* atlas_sprite = ResolveAtlasSprite(sprite); atlas_sprite != nullptr) {
+                        if (const auto* texture = atlas_sprite->GetBatchTexture(); texture != nullptr) {
+                            const auto uv = atlas_sprite->GetAtlasRect();
+                            const auto sprite_size = sprite->GetSize();
+                            const auto scale = std::min(56.0f / std::max(1, sprite_size.width), 56.0f / std::max(1, sprite_size.height));
+                            const auto draw_width = numeric_cast<float32>(sprite_size.width) * scale;
+                            const auto draw_height = numeric_cast<float32>(sprite_size.height) * scale;
+                            const ImVec2 image_min {preview_min.x + (56.0f - draw_width) * 0.5f, preview_min.y + (56.0f - draw_height) * 0.5f};
+                            const ImVec2 image_max {image_min.x + draw_width, image_min.y + draw_height};
+                            draw_list->AddImage(const_cast<RenderTexture*>(texture), image_min, image_max, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                        }
+                    }
+
+                    draw_list->AddText({cursor.x + 76.0f, cursor.y + 10.0f}, ImGui::GetColorU32(ImGuiCol_Text), string(label).c_str());
+
+                    if (clicked) {
+                        on_select();
+                    }
+
+                    if (ImGui::IsItemHovered() && sprite != nullptr) {
+                        if (ImGui::BeginTooltip()) {
+                            if (const auto* atlas_sprite = ResolveAtlasSprite(sprite); atlas_sprite != nullptr) {
+                                if (const auto* texture = atlas_sprite->GetBatchTexture(); texture != nullptr) {
+                                    const auto uv = atlas_sprite->GetAtlasRect();
+                                    const auto sprite_size = sprite->GetSize();
+                                    ImGui::Image(const_cast<RenderTexture*>(texture), {numeric_cast<float32>(std::max(1, sprite_size.width)), numeric_cast<float32>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                                }
+                                else {
+                                    ImGui::TextDisabled("No texture");
+                                }
+                            }
+                            else {
+                                ImGui::TextDisabled("No preview");
+                            }
+
+                            ImGui::EndTooltip();
+                        }
+                    }
+
+                    ImGui::PopID();
+                };
+
+                if (IsItemMode() && ActiveItemProtos != nullptr) {
+                    vector<int32> visible_indices;
+                    visible_indices.reserve(ActiveItemProtos->size());
+
+                    for (int32 i = 0; i < numeric_cast<int32>(ActiveItemProtos->size()); i++) {
+                        const auto& proto = (*ActiveItemProtos)[i];
+
+                        if (ContainsCaseInsensitive(proto->GetName(), filter)) {
+                            visible_indices.emplace_back(i);
+                        }
+                    }
+
+                    ImGuiListClipper clipper;
+                    clipper.Begin(numeric_cast<int32>(visible_indices.size()), 72.0f);
+                    while (clipper.Step()) {
+                        for (int32 row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+                            const auto i = visible_indices[row];
+                            const auto& proto = (*ActiveItemProtos)[i];
+                            const auto label = string(proto->GetName());
+
+                            draw_proto_entry(i, label, GetPreviewSprite(proto->GetPicMap()), [&] {
+                                SetActiveProtoIndex(i);
+
+                                if (_curMap && ImGui::GetIO().KeyCtrl) {
+                                    const auto pid = proto->GetProtoId();
+                                    auto& stab = Tabs[INT_MODE_IGNORE][DEFAULT_SUB_TAB];
+                                    auto found = false;
+
+                                    for (auto it = stab.ItemProtos.begin(); it != stab.ItemProtos.end(); ++it) {
+                                        if ((*it)->GetProtoId() == pid) {
+                                            found = true;
+                                            stab.ItemProtos.erase(it);
+                                            break;
+                                        }
+                                    }
+
+                                    if (!found) {
+                                        stab.ItemProtos.emplace_back(proto.get());
+                                    }
+
+                                    _curMap->SwitchIgnorePid(pid);
+                                    _curMap->RebuildMap();
+                                }
+                                else if (ImGui::GetIO().KeyAlt && !SelectedEntities.empty()) {
+                                    auto add = true;
+
+                                    if (proto->GetStackable()) {
+                                        for (const auto& child : GetEntityInnerItems(SelectedEntities.front().get())) {
+                                            if (proto->GetProtoId() == child->GetProtoId()) {
+                                                add = false;
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    if (add) {
+                                        CreateItem(proto->GetProtoId(), {}, SelectedEntities.front().get());
+                                    }
+                                }
+                                else {
+                                    SetCurMode(CUR_MODE_PLACE_OBJECT);
+                                }
+                            });
+                        }
+                    }
+                }
+                else if (IsCritMode() && ActiveCritterProtos != nullptr) {
+                    vector<int32> visible_indices;
+                    visible_indices.reserve(ActiveCritterProtos->size());
+
+                    for (int32 i = 0; i < numeric_cast<int32>(ActiveCritterProtos->size()); i++) {
+                        const auto& proto = (*ActiveCritterProtos)[i];
+
+                        if (ContainsCaseInsensitive(proto->GetName(), filter)) {
+                            visible_indices.emplace_back(i);
+                        }
+                    }
+
+                    ImGuiListClipper clipper;
+                    clipper.Begin(numeric_cast<int32>(visible_indices.size()), 72.0f);
+                    while (clipper.Step()) {
+                        for (int32 row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+                            const auto i = visible_indices[row];
+                            const auto& proto = (*ActiveCritterProtos)[i];
+                            const auto label = string(proto->GetName());
+                            const auto* preview_sprite = ResMngr.GetCritterPreviewSpr(proto->GetModelName(), CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
+                            draw_proto_entry(i, label, preview_sprite, [&] {
+                                SetActiveProtoIndex(i);
+                                SetCurMode(CUR_MODE_PLACE_OBJECT);
+                            });
+                        }
+                    }
+                }
+            }
+            ImGui::EndChild();
+        }
+        else {
+            ImGui::Separator();
+            ImGui::TextDisabled("This mode uses the Content window.");
+            if (ImGui::Button("Open Content")) {
+                ContentWindowVisible = true;
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawContentWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!ContentWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(
+        {
+            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x),
+            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 162),
+        },
+        ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({520.0f, 540.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Content", &ContentWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    auto& map_name_buf = ContentMapNameBuf;
+    auto& map_filter_buf = ContentMapFilterBuf;
+    int32& resize_w = ContentResizeW;
+    int32& resize_h = ContentResizeH;
+
+    const auto run_button_action = [](bool triggered, auto&& action) {
+        if (triggered) {
+            action();
+        }
+    };
+
+    const auto run_button_action_with_message = [&](bool triggered, auto&& action, string_view message) {
+        run_button_action(triggered, [&] {
+            action();
+            AddMess(message);
+        });
+    };
+
+    const auto get_map_name_input = [&] { return strvex(InputBufferView(map_name_buf)).trim().str(); };
+
+    if (ActivePanelMode == INT_MODE_INCONT) {
+        if (!SelectedEntities.empty()) {
+            auto inner_items = GetEntityInnerItems(SelectedEntities.front().get());
+
+            ImGui::Text("Container items: %d", numeric_cast<int32>(inner_items.size()));
+
+            if (ImGui::BeginChild("##ContainerItems", {0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f}, true)) {
+                for (const auto& inner_item : inner_items) {
+                    auto label = strex("{} x{}", inner_item->GetName(), inner_item->GetCount());
+                    const auto selected = InContItem == inner_item;
+
+                    if (ImGui::Selectable(label.c_str(), selected)) {
+                        InContItem = inner_item;
+                        InspectorVisible = true;
+                    }
+                }
+            }
+            ImGui::EndChild();
+
+            if (InContItem && ImGui::Button("Remove item")) {
+                if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
+                    auto* owner = _curMap ? _curMap->GetCritter(InContItem->GetCritterId()) : nullptr;
+                    if (owner) {
+                        owner->DeleteInvItem(InContItem.get());
+                    }
+                }
+                else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
+                    auto* owner = _curMap ? _curMap->GetItem(InContItem->GetContainerId()) : nullptr;
+                    if (owner) {
+                        owner->DestroyInnerItem(InContItem.get());
+                    }
+                }
+
+                InContItem = nullptr;
+
+                auto* next_entity = SelectedEntities.empty() ? nullptr : SelectedEntities.front().get();
+                if (next_entity != nullptr) {
+                    SelectClear();
+                    SelectAdd(next_entity);
+                }
+            }
+
+            if (InContItem) {
+                if (auto* cr = SelectedEntities.empty() ? nullptr : dynamic_cast<CritterHexView*>(SelectedEntities.front().get()); cr != nullptr) {
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Next slot")) {
+                        size_t to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
+
+                        while (numeric_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
+                            to_slot++;
+                        }
+
+                        to_slot %= 256;
+
+                        for (auto& item : cr->GetInvItems()) {
+                            if (item->GetCritterSlot() == static_cast<CritterItemSlot>(to_slot)) {
+                                item->SetCritterSlot(CritterItemSlot::Inventory);
+                            }
+                        }
+
+                        InContItem->SetCritterSlot(static_cast<CritterItemSlot>(to_slot));
+                        cr->RefreshView();
+                    }
+                }
+            }
+        }
+        else {
+            ImGui::TextDisabled("Select an entity with inventory or container items.");
+        }
+    }
+    else if (ActivePanelMode == INT_MODE_LIST) {
+        if (_curMap && (resize_w <= 0 || resize_h <= 0)) {
+            resize_w = _curMap->GetSize().width;
+            resize_h = _curMap->GetSize().height;
+        }
+
+        ImGui::InputTextWithHint("##MapFilter", "Filter maps...", map_filter_buf.data(), map_filter_buf.size());
+        const auto map_filter = InputBufferView(map_filter_buf);
+
+        if (ImGui::BeginChild("##LoadedMaps", {0.0f, 180.0f}, true)) {
+            for (auto& map : LoadedMaps) {
+                auto label = string(map->GetName());
+
+                if (!ContainsCaseInsensitive(label, map_filter)) {
+                    continue;
+                }
+
+                if (_curMap == map.get()) {
+                    label = strex("* {}", label);
+                }
+
+                if (ImGui::Selectable(label.c_str(), _curMap == map.get()) && _curMap != map.get()) {
+                    ShowMap(map.get());
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::SeparatorText("Map commands");
+        ImGui::InputText("Map name", map_name_buf.data(), map_name_buf.size());
+
+        run_button_action(ImGui::Button("New map"), [&] { ParseCommand("* new"); });
+        ImGui::SameLine();
+        run_button_action(ImGui::Button("Unload current") && _curMap, [&] { ParseCommand("* unload"); });
+        ImGui::SameLine();
+        run_button_action(ImGui::Button("Resave all"), [&] { ParseCommand("* resave"); });
+
+        if (ImGui::Button("Load")) {
+            const auto map_name = get_map_name_input();
+            if (!map_name.empty()) {
+                if (auto* map = LoadMap(map_name); map != nullptr) {
+                    ShowMap(map);
+                    AddMess("Load map success");
+                }
+                else {
+                    AddMess("Load map failed");
+                }
+            }
+        }
+        ImGui::SameLine();
+        run_button_action_with_message(ImGui::Button("Save current") && _curMap, [&] { SaveMap(_curMap.get(), ""); }, "Save map success");
+        ImGui::SameLine();
+        if (ImGui::Button("Save As") && _curMap) {
+            const auto map_name = get_map_name_input();
+            if (!map_name.empty()) {
+                SaveMap(_curMap.get(), map_name);
+                AddMess("Save map success");
+            }
+        }
+
+        ImGui::InputInt("Resize width", &resize_w);
+        ImGui::InputInt("Resize height", &resize_h);
+
+        if (ImGui::Button("Resize current") && _curMap) {
+            ResizeMap(_curMap.get(), resize_w, resize_h);
+            AddMess(strex("Resize map to {}x{}", resize_w, resize_h));
+        }
+    }
+    else if (ActivePanelMode == INT_MODE_MESS) {
+        if (ImGui::Button("Clear")) {
+            MessBox.clear();
+            MessBoxCurText.clear();
+            MessBoxScroll = 0;
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Copy all")) {
+            string all_messages;
+            for (const auto& entry : MessBox) {
+                all_messages += entry.Time;
+                all_messages += entry.Mess;
+            }
+
+            App->Input.SetClipboardText(all_messages);
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginChild("##Messages", {0.0f, 0.0f}, true)) {
+            for (auto it = MessBox.rbegin(); it != MessBox.rend(); ++it) {
+                ImGui::TextUnformatted(strex("{}{}", it->Time, it->Mess).c_str());
+            }
+        }
+        ImGui::EndChild();
+    }
+    else {
+        ImGui::TextDisabled("No content window for the current mode.");
+    }
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawCritterAnimationsWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!CritterAnimationsWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(
+        {
+            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
+            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 132),
+        },
+        ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({360.0f, 160.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Critter Animations", &CritterAnimationsWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    int32& anim_state = CritterAnimState;
+    int32& anim_action = CritterAnimAction;
+    auto& anim_sequence_buf = CritterAnimSequenceBuf;
+
+    ImGui::InputInt("State", &anim_state);
+    ImGui::InputInt("Action", &anim_action);
+    if (ImGui::Button("Play pair")) {
+        ParseCommand(strex("@ {} {}", anim_state, anim_action));
+    }
+
+    ImGui::InputTextWithHint("##AnimSequence", "Sequence: state action [state action]...", anim_sequence_buf.data(), anim_sequence_buf.size());
+    if (ImGui::Button("Play sequence")) {
+        const auto sequence = strvex(InputBufferView(anim_sequence_buf)).trim().str();
+        if (!sequence.empty()) {
+            ParseCommand(strex("@ {}", sequence));
+        }
+    }
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawScriptCallWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!ScriptCallWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(
+        {
+            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
+            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 304),
+        },
+        ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({380.0f, 140.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Script Call", &ScriptCallWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    auto& script_func_buf = ScriptCallFuncBuf;
+    auto& script_args_buf = ScriptCallArgsBuf;
+
+    ImGui::InputTextWithHint("##ScriptFunc", "Function name", script_func_buf.data(), script_func_buf.size());
+    ImGui::InputTextWithHint("##ScriptArgs", "Arguments", script_args_buf.data(), script_args_buf.size());
+
+    if (ImGui::Button("Run script")) {
+        const auto func_name = strvex(InputBufferView(script_func_buf)).trim().str();
+        const auto args = strvex(InputBufferView(script_args_buf)).trim().str();
+
+        if (!func_name.empty()) {
+            if (!args.empty()) {
+                ParseCommand(strex("#{} {}", func_name, args));
+            }
+            else {
+                ParseCommand(strex("#{}", func_name));
+            }
+        }
+    }
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawMapListWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!MapListWindowVisible) {
+        return;
+    }
+
+    const auto* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(
+        {
+            viewport->GetCenter().x,
+            viewport->GetCenter().y,
+        },
+        ImGuiCond_Appearing, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({380.0f, 420.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints({380.0f, 420.0f}, {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()});
+
+    if (!ImGui::Begin("Map Browser", &MapListWindowVisible, 0)) {
+        ImGui::End();
+        return;
+    }
+
+    auto& map_filter_buf = MapBrowserFilterBuf;
+    if (ImGui::IsWindowAppearing()) {
+        ImGui::SetKeyboardFocusHere();
+    }
+    ImGui::InputTextWithHint("##AllMapsFilter", "Search maps...", map_filter_buf.data(), map_filter_buf.size());
+    const auto map_filter = InputBufferView(map_filter_buf);
+
+    vector<string> map_names;
+    const auto map_files = MapsFileSys.FilterFiles("fomap");
+    map_names.reserve(map_files.GetFilesCount());
+
+    for (const auto& map_file : map_files) {
+        const auto map_name = map_file.GetNameNoExt();
+
+        if (!ContainsCaseInsensitive(map_name, map_filter)) {
+            continue;
+        }
+
+        map_names.emplace_back(map_name);
+    }
+
+    std::ranges::sort(map_names);
+
+    ImGui::Text("Maps: %d", numeric_cast<int32>(map_names.size()));
+    ImGui::Separator();
+
+    if (ImGui::BeginChild("##AllMapsList", {0.0f, 0.0f}, true)) {
+        for (const auto& map_name : map_names) {
+            const auto loaded_it = std::ranges::find_if(LoadedMaps, [&](const auto& map) { return string(map->GetName()) == map_name; });
+            const auto is_loaded = loaded_it != LoadedMaps.end();
+            const auto is_current = is_loaded && _curMap == loaded_it->get();
+
+            auto label = map_name;
+            if (is_current) {
+                label = strex("* {}", label).str();
+            }
+            else if (is_loaded) {
+                label = strex("+ {}", label).str();
+            }
+
+            if (ImGui::Selectable(label.c_str(), is_current)) {
+                if (is_loaded) {
+                    ShowMap(loaded_it->get());
+                }
+                else if (auto* map = LoadMap(map_name); map != nullptr) {
+                    ShowMap(map);
+                    AddMess(strex("Load map success: {}", map_name));
+                }
+                else {
+                    AddMess(strex("Load map failed: {}", map_name));
+                }
+            }
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawMapWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!MapWindowVisible || !_curMap) {
+        return;
+    }
+
+    const auto* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(
+        {
+            viewport->WorkPos.x + viewport->WorkSize.x - 16.0f,
+            viewport->WorkPos.y + MainPanelWindowRect.height + 8.0f,
+        },
+        ImGuiCond_FirstUseEver, {1.0f, 0.0f});
+
+    if (!ImGui::Begin("Controls", &MapWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    mpos hex;
+    _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
+    const int32 day_time = GetGlobalDayTime();
+    const auto map_name = string(_curMap->GetName());
+    const auto rotate_selected_critters = [&] {
+        for (auto& entity : SelectedEntities) {
+            if (auto cr = entity.dyn_cast<CritterHexView>()) {
+                AdvanceCritterDir(cr.get());
+            }
+        }
+    };
+
+    if (ImGui::BeginTable("##ControlsSummary", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+        const auto draw_summary_row = [](string_view label, auto&& draw_value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(label.data(), label.data() + label.size());
+            ImGui::TableNextColumn();
+            draw_value();
+        };
+
+        draw_summary_row("Map", [&] { ImGui::TextUnformatted(map_name.c_str()); });
+        draw_summary_row("Mouse hex", [&] { ImGui::Text("%d, %d", hex.x, hex.y); });
+        draw_summary_row("Time", [&] { ImGui::Text("%02d:%02d", day_time / 60 % 24, day_time % 60); });
+        draw_summary_row("FPS", [&] { ImGui::Text("%d", GameTime.GetFramesPerSecond()); });
+        draw_summary_row("Tile layer", [&] { ImGui::Text("%d", TileLayer); });
+
+        ImGui::EndTable();
+    }
+    ImGui::SeparatorText("Map");
+
+    if (ImGui::Button("Time +1h")) {
+        SetGlobalDayTime(ShiftDayTimeWithWrap(day_time, 60));
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Time -1h")) {
+        SetGlobalDayTime(ShiftDayTimeWithWrap(day_time, -60));
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Toggle hex")) {
+        _curMap->SwitchShowHex();
+    }
+
+    const auto current_zoom = _curMap->GetSpritesZoomTarget();
+    ImGui::Text("Zoom: %.2f", current_zoom);
+    if (ImGui::Button("Zoom in")) {
+        ChangeZoom(ScaleZoomValue(current_zoom, 1.2f));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Zoom out")) {
+        ChangeZoom(ScaleZoomValue(current_zoom, 0.8f));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Zoom reset")) {
+        ChangeZoom(1.0f);
+    }
+
+    auto tile_layer = TileLayer;
+    ImGui::SetNextItemWidth(140.0f);
+    if (ImGui::SliderInt("##TileLayer", &tile_layer, 0, 4)) {
+        TileLayer = tile_layer;
+    }
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Tile layer");
+
+    ImGui::Checkbox("Scroll check", &Settings.ScrollCheck);
+    ImGui::Checkbox("Show corners", &Settings.ShowCorners);
+    ImGui::Checkbox("Roof preview", &PreviewRoofTiles);
+
+    const auto rotate_preview_dir_label = strex("Rotate preview dir ({})", CritterDir).str();
+    if (ImGui::Button(rotate_preview_dir_label.c_str())) {
+        CritterDir = GetNextCritterDir(CritterDir);
+    }
+
+    if (ImGui::Button("Rotate selected critters")) {
+        rotate_selected_critters();
+    }
+
+    ImGui::Checkbox("Axial grid selection", &SelectAxialGrid);
+    ImGui::Checkbox("Select entire entity", &SelectEntireEntity);
+
+    const auto visibility_before = array {
+        Settings.ShowItem,
+        Settings.ShowScen,
+        Settings.ShowWall,
+        Settings.ShowCrit,
+        Settings.ShowTile,
+        Settings.ShowRoof,
+        Settings.ShowFast,
+    };
+
+    const auto draw_checkbox_group = [](auto&& entries) {
+        for (const auto& [label, value] : entries) {
+            ImGui::Checkbox(label, value);
+        }
+    };
+
+    if (ImGui::CollapsingHeader("Visibility")) {
+        draw_checkbox_group(array {
+            std::pair {"Items", &Settings.ShowItem},
+            std::pair {"Scenery", &Settings.ShowScen},
+            std::pair {"Walls", &Settings.ShowWall},
+            std::pair {"Critters", &Settings.ShowCrit},
+            std::pair {"Tiles", &Settings.ShowTile},
+            std::pair {"Roof", &Settings.ShowRoof},
+            std::pair {"Fast", &Settings.ShowFast},
+        });
+    }
+
+    const auto visibility_after = array {
+        Settings.ShowItem,
+        Settings.ShowScen,
+        Settings.ShowWall,
+        Settings.ShowCrit,
+        Settings.ShowTile,
+        Settings.ShowRoof,
+        Settings.ShowFast,
+    };
+
+    const auto visibility_changed = visibility_before != visibility_after;
+
+    if (visibility_changed && _curMap) {
+        _curMap->RebuildMap();
+    }
+
+    if (ImGui::CollapsingHeader("Selection")) {
+        draw_checkbox_group(array {
+            std::pair {"Select items", &SelectItemsEnabled},
+            std::pair {"Select scenery", &SelectSceneryEnabled},
+            std::pair {"Select walls", &SelectWallsEnabled},
+            std::pair {"Select critters", &SelectCrittersEnabled},
+            std::pair {"Select tiles", &SelectTilesEnabled},
+            std::pair {"Select roof", &SelectRoofTilesEnabled},
+        });
+    }
+
+    ImGui::End();
+}
+
+void MapperEngine::DrawInspectorImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!InspectorVisible) {
         return;
     }
 
     auto* entity = GetInspectorEntity();
-
     if (entity == nullptr) {
         return;
     }
 
     const auto* item = dynamic_cast<ItemView*>(entity);
     const auto* cr = dynamic_cast<CritterView*>(entity);
-    auto r = irect32(ObjWWork.x + ObjX, ObjWWork.y + ObjY, ObjWWork.width, ObjWWork.height);
-    const auto x = r.x;
-    const auto y = r.y;
-    const auto w = r.width;
+    const char* type_name = cr != nullptr ? "Critter" : (item != nullptr && !item->GetStatic() ? "Dynamic Item" : "Static Item");
 
-    SprMngr.DrawSprite(ObjWMainPic.get(), {ObjX, ObjY}, COLOR_SPRITE);
+    ImGui::SetNextWindowPos({numeric_cast<float32>(InspectorPos.x), numeric_cast<float32>(InspectorPos.y)}, ImGuiCond_Once);
+    ImGui::SetNextWindowSize({380.0f, 520.0f}, ImGuiCond_Once);
 
-    if (ObjToAll) {
-        SprMngr.DrawSprite(ObjPbToAllDn.get(), {ObjBToAll.x + ObjX, ObjBToAll.y + ObjY}, COLOR_SPRITE);
-    }
-
-    if (item != nullptr) {
-        const auto* spr = GetIfaceSpr(item->GetPicMap());
-
-        if (spr == nullptr) {
-            spr = ResMngr.GetItemDefaultSpr().get();
-        }
-
-        SprMngr.DrawSpriteSize(spr, {x + w - ProtoWidth, y}, {ProtoWidth, ProtoWidth}, false, true, COLOR_SPRITE);
-
-        if (item->GetPicInv()) {
-            const auto* inv_spr = GetIfaceSpr(item->GetPicInv());
-
-            if (inv_spr != nullptr) {
-                SprMngr.DrawSpriteSize(inv_spr, {x + w - ProtoWidth, y + ProtoWidth}, {ProtoWidth, ProtoWidth}, false, true, COLOR_SPRITE);
-            }
-        }
-    }
-
-    DrawLine("Id", "", strex("{}", entity->GetId()), true, r);
-    DrawLine("ProtoId", "", dynamic_cast<EntityWithProto*>(entity)->GetProtoId(), true, r);
-
-    if (cr != nullptr) {
-        DrawLine("Type", "", "Critter", true, r);
-    }
-    else if (item != nullptr && !item->GetStatic()) {
-        DrawLine("Type", "", "Dynamic Item", true, r);
-    }
-    else if (item != nullptr && item->GetStatic()) {
-        DrawLine("Type", "", "Static Item", true, r);
-    }
-    else {
-        FO_UNREACHABLE_PLACE();
-    }
-
-    for (const auto& prop : ShowProps) {
-        if (prop) {
-            auto value = entity->GetProperties().SavePropertyToText(prop.get());
-            DrawLine(prop->GetName(), prop->GetViewTypeName(), value, prop->IsCoreProperty() && !prop->IsMutable(), r);
-        }
-        else {
-            r.y += DRAW_NEXT_HEIGHT;
-        }
-    }
-}
-
-void MapperEngine::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, irect32& r)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto x = r.x;
-    const auto y = r.y;
-    const auto w = r.width;
-    const auto h = r.height;
-
-    ucolor color = COLOR_TEXT;
-
-    if (is_const) {
-        color = COLOR_TEXT_DWHITE;
-    }
-
-    auto result_text = text;
-
-    if (ObjCurLine == (y - ObjWWork.y - ObjY) / DRAW_NEXT_HEIGHT) {
-        color = COLOR_TEXT_WHITE;
-
-        if (!is_const && ObjCurLineValue != ObjCurLineInitValue) {
-            color = COLOR_TEXT_RED;
-            result_text = ObjCurLineValue;
-        }
-    }
-
-    string str = strex("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
-    str += "........................................................................................................";
-    DrawStr(irect32(x, y, w / 2, h), str, FT_NOBREAK, color, FONT_DEFAULT);
-    DrawStr(irect32(x + w / 2, y, w / 2, h), result_text, FT_NOBREAK, color, FONT_DEFAULT);
-
-    r.y += DRAW_NEXT_HEIGHT;
-}
-
-void MapperEngine::ObjKeyDown(KeyCode dik, string_view dik_text)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
-        if (ObjCurLineInitValue != ObjCurLineValue) {
-            auto* entity = GetInspectorEntity();
-            FO_RUNTIME_ASSERT(entity);
-            ObjKeyDownApply(entity);
-
-            if (ObjToAll && !SelectedEntities.empty() && SelectedEntities.front() == entity) {
-                for (size_t i = 1; i < SelectedEntities.size(); i++) {
-                    const auto is_same1 = dynamic_cast<CritterView*>(SelectedEntities[i].get()) != nullptr && dynamic_cast<CritterView*>(entity) != nullptr;
-                    const auto is_same2 = dynamic_cast<ItemView*>(SelectedEntities[i].get()) != nullptr && dynamic_cast<ItemView*>(entity) != nullptr;
-
-                    if (is_same1 || is_same2) {
-                        ObjKeyDownApply(SelectedEntities[i].get());
-                    }
-                }
-            }
-
-            SelectEntityProp(ObjCurLine);
-        }
-    }
-    else if (dik == KeyCode::Prior) {
-        SelectEntityProp(ObjCurLine - 1);
-    }
-    else if (dik == KeyCode::Next) {
-        SelectEntityProp(ObjCurLine + 1);
-    }
-    else if (dik == KeyCode::Escape) {
-        if (ObjCurLineValue != ObjCurLineInitValue) {
-            ObjCurLineValue = ObjCurLineInitValue;
-        }
-        else {
+    auto keep_open = InspectorVisible;
+    const auto flags = ImGuiWindowFlags_AlwaysAutoResize;
+    if (!ImGui::Begin("Inspector", &keep_open, flags)) {
+        ImGui::End();
+        if (!keep_open) {
             SelectClear();
         }
+        return;
     }
-    else {
-        if (!ObjCurLineIsConst) {
-            Keyb.FillChar(dik, dik_text, ObjCurLineValue, nullptr, KIF_NO_SPEC_SYMBOLS);
+
+    const auto pos = ImGui::GetWindowPos();
+    InspectorPos = {iround<int32>(pos.x), iround<int32>(pos.y)};
+
+    auto compatible_candidates = 0;
+    const auto is_same_inspector_entity_type = [&](const ClientEntity* selected_entity) {
+        const auto same_cr = dynamic_cast<const CritterView*>(selected_entity) != nullptr && cr != nullptr;
+        const auto same_item = dynamic_cast<const ItemView*>(selected_entity) != nullptr && item != nullptr;
+        return same_cr || same_item;
+    };
+
+    if (SelectedEntities.size() > 1 && !SelectedEntities.empty() && SelectedEntities.front() == entity) {
+        for (const auto& selected_entity : SelectedEntities) {
+            if (is_same_inspector_entity_type(selected_entity.get())) {
+                compatible_candidates++;
+            }
         }
+    }
+
+    const auto can_apply_to_all = compatible_candidates > 1;
+    if (!can_apply_to_all) {
+        InspectorApplyToAll = false;
+    }
+
+    if (can_apply_to_all) {
+        const auto apply_to_all_label = strex("Apply to all ({})", compatible_candidates).str();
+        ImGui::Checkbox(apply_to_all_label.c_str(), &InspectorApplyToAll);
+    }
+
+    constexpr int32 START_LINE = 3;
+    string& edit_buf = InspectorEditBuf;
+    int32& edit_line = InspectorEditLine;
+    int32& pending_focus_line = InspectorPendingFocusLine;
+    int32& pending_focus_array_index = InspectorPendingFocusArrayIndex;
+    int32& pending_caret_reset_line = InspectorPendingCaretResetLine;
+    int32& pending_caret_reset_array_index = InspectorPendingCaretResetArrayIndex;
+    int32& pending_caret_reset_frames = InspectorPendingCaretResetFrames;
+    bool& last_edit_cell_rect_valid = InspectorLastEditCellRectValid;
+    float& last_edit_cell_min_x = InspectorLastEditCellMinX;
+    float& last_edit_cell_min_y = InspectorLastEditCellMinY;
+    float& last_edit_cell_max_x = InspectorLastEditCellMaxX;
+    float& last_edit_cell_max_y = InspectorLastEditCellMaxY;
+    const auto left_column_bg = ImGui::ColorConvertFloat4ToU32({1.0f, 1.0f, 1.0f, 0.10f});
+    const auto readonly_value_bg = ImGui::ColorConvertFloat4ToU32({0.72f, 0.78f, 0.88f, 0.22f});
+    const auto same_as_proto_bg = ImGui::ColorConvertFloat4ToU32({1.0f, 1.0f, 1.0f, 0.10f});
+    const auto changed_from_proto_bg = ImGui::ColorConvertFloat4ToU32({0.55f, 0.55f, 0.55f, 0.22f});
+
+    const auto sync_edit_buf = [&]() {
+        edit_buf = InspectorSelectedLineValue;
+        if (edit_buf.capacity() < 4096) {
+            edit_buf.reserve(4096);
+        }
+    };
+
+    const auto clear_edit_state = [&]() { ResetInspectorPropertyEditState(); };
+
+    const auto begin_edit_state = [&](int32 line, int32 array_index = 0) {
+        edit_line = line;
+        sync_edit_buf();
+        pending_focus_line = line;
+        pending_focus_array_index = array_index;
+        pending_caret_reset_line = line;
+        pending_caret_reset_array_index = array_index;
+        pending_caret_reset_frames = 2;
+    };
+
+    const auto reset_selected_line_state = [&](int32 selected_line) {
+        SelectInspectorPropertyLine(selected_line);
+        sync_edit_buf();
+        clear_edit_state();
+    };
+
+    const auto keep_selected_line_edit_state = [&](int32 selected_line) {
+        SelectInspectorPropertyLine(selected_line);
+        sync_edit_buf();
+        edit_line = selected_line;
+    };
+
+    const auto restore_selected_line_initial_value = [&] { CancelInspectorPropertyEdit(); };
+
+    const auto apply_to_compatible_selected_entities = [&](auto&& action) {
+        if (!(InspectorApplyToAll && can_apply_to_all && !SelectedEntities.empty() && SelectedEntities.front() == entity)) {
+            return;
+        }
+
+        for (size_t j = 1; j < SelectedEntities.size(); j++) {
+            auto* selected_entity = SelectedEntities[j].get();
+            if (is_same_inspector_entity_type(selected_entity)) {
+                action(selected_entity);
+            }
+        }
+    };
+
+    if (edit_line != -1 && last_edit_cell_rect_valid && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        const auto mouse_pos = ImGui::GetMousePos();
+        const auto click_inside_edit_cell = mouse_pos.x >= last_edit_cell_min_x && mouse_pos.x <= last_edit_cell_max_x && mouse_pos.y >= last_edit_cell_min_y && mouse_pos.y <= last_edit_cell_max_y;
+
+        if (!click_inside_edit_cell) {
+            CancelInspectorPropertyEdit();
+        }
+    }
+
+    ImGui::Separator();
+
+    // Preserve inspector keyboard navigation when the window has focus.
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive()) {
+        if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
+            reset_selected_line_state(InspectorSelectedLine - 1);
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_PageDown)) {
+            reset_selected_line_state(InspectorSelectedLine + 1);
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            restore_selected_line_initial_value();
+        }
+    }
+
+    auto apply_value = [&](Entity* target_entity) { ApplyInspectorPropertyEdit(target_entity); };
+
+    const auto apply_selected_value = [&](int32 selected_line) {
+        apply_value(entity);
+        apply_to_compatible_selected_entities(apply_value);
+        reset_selected_line_state(selected_line);
+    };
+
+    const auto apply_selected_value_keep_edit = [&](int32 selected_line) {
+        apply_value(entity);
+        apply_to_compatible_selected_entities(apply_value);
+        keep_selected_line_edit_state(selected_line);
+    };
+
+    const auto reset_selected_value = [&](int32 selected_line) {
+        if (selected_line < START_LINE || selected_line - START_LINE >= numeric_cast<int32>(ShowProps.size())) {
+            return;
+        }
+
+        const auto* selected_prop = ShowProps[selected_line - START_LINE].get();
+        const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity);
+        if (selected_prop == nullptr || entity_with_proto == nullptr) {
+            return;
+        }
+
+        try {
+            InspectorSelectedLineValue = entity_with_proto->GetProto()->GetProperties().SavePropertyToText(selected_prop);
+            apply_value(entity);
+        }
+        catch (const std::exception&) {
+        }
+
+        reset_selected_line_state(selected_line);
+    };
+
+    if (ImGui::BeginChild("##InspectorProps", {0.0f, 0.0f}, false)) {
+        if (ImGui::BeginTable("##InspectorGrid", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY)) {
+            ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 170.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+            auto focus_edit_line = pending_focus_line;
+            const auto focus_edit_array_index = pending_focus_array_index >= 0 ? pending_focus_array_index : 0;
+            const auto caret_reset_array_index = pending_caret_reset_array_index >= 0 ? pending_caret_reset_array_index : 0;
+
+            const auto draw_summary_row = [&](string_view label, string_view value) {
+                ImGui::TableNextRow(ImGuiTableRowFlags_None, ImGui::GetFrameHeightWithSpacing() + 2.0f);
+                ImGui::TableNextColumn();
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, left_column_bg);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(string(label).c_str());
+                ImGui::TableNextColumn();
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, readonly_value_bg);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(string(value).c_str());
+            };
+
+            draw_summary_row("Type", type_name);
+            draw_summary_row("Id", strex("{}", entity->GetId()).str());
+            draw_summary_row("ProtoId", dynamic_cast<EntityWithProto*>(entity)->GetProtoId());
+
+            for (size_t i = 0; i < ShowProps.size(); i++) {
+                const auto line = START_LINE + numeric_cast<int32>(i);
+                const auto* prop = ShowProps[i].get();
+
+                ImGui::PushID(line);
+
+                if (prop == nullptr) {
+                    ImGui::TableNextRow(ImGuiTableRowFlags_None, 1.0f);
+                    ImGui::TableNextColumn();
+                    ImGui::Separator();
+                    ImGui::TableNextColumn();
+                    ImGui::Separator();
+                    ImGui::PopID();
+                    continue;
+                }
+
+                ImGui::TableNextRow(ImGuiTableRowFlags_None, ImGui::GetFrameHeightWithSpacing() + 2.0f);
+
+                auto value = entity->GetProperties().SavePropertyToText(prop);
+                const auto is_const = prop->IsCoreProperty() && !prop->IsMutable();
+                const auto selected = InspectorSelectedLine == line;
+                const auto same_as_proto = IsInspectorValueSameAsProto(entity, prop, value);
+                const auto label = strex("{} ({})", prop->GetName(), prop->GetViewTypeName()).str();
+
+                ImGui::TableNextColumn();
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, left_column_bg);
+                if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) {
+                    reset_selected_line_state(line);
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, is_const ? readonly_value_bg : (same_as_proto ? same_as_proto_bg : changed_from_proto_bg));
+                const auto value_cell_start = ImGui::GetCursorScreenPos();
+                const auto value_cell_width = ImGui::GetContentRegionAvail().x;
+                const auto request_focus = focus_edit_line == line;
+                const auto request_caret_reset = pending_caret_reset_line == line && pending_caret_reset_frames > 0;
+                const auto select_value_line = [&] {
+                    SelectInspectorPropertyLine(line);
+                    if (!is_const) {
+                        begin_edit_state(line);
+                    }
+                    else {
+                        reset_selected_line_state(line);
+                    }
+                };
+
+                if (selected && !is_const && edit_line == line) {
+                    if (pending_focus_line == line) {
+                        focus_edit_line = line;
+                    }
+
+                    const auto* struct_layout = GetInspectorStructLayout(prop);
+
+                    auto commit_requested = false;
+                    auto cancel_requested = false;
+                    auto finish_edit_requested = false;
+                    auto focus_consumed = false;
+                    const auto edit_text_value = [&](float32 item_width = -58.0f) {
+                        ImGui::SetNextItemWidth(item_width);
+                        if (request_focus) {
+                            ImGui::SetKeyboardFocusHere();
+                            focus_consumed = true;
+                        }
+
+                        const auto value_submitted = ImGuiInputTextString("##value", edit_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, request_caret_reset);
+                        const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                        InspectorSelectedLineValue = edit_buf;
+                        commit_requested = value_submitted || value_deactivated;
+                        finish_edit_requested = value_submitted;
+                        cancel_requested = ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                    };
+
+                    const auto edit_struct_fields = [&](vector<string>& field_values, int32 struct_id, bool request_focus, bool request_caret_reset) {
+                        auto struct_changed = false;
+
+                        for (size_t field_index = 0; field_index < field_values.size(); field_index++) {
+                            const auto& field = struct_layout->Fields[field_index];
+                            ImGui::PushID(strex("{}:{}", struct_id, field.Name).str().c_str());
+
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::TextUnformatted(field.Name.c_str());
+                            ImGui::SameLine();
+                            ImGui::SetNextItemWidth(-1.0f);
+
+                            if (request_focus && field_index == 0) {
+                                ImGui::SetKeyboardFocusHere();
+                                focus_consumed = true;
+                            }
+
+                            if (field.Type.IsBool) {
+                                auto current_value = false;
+
+                                try {
+                                    current_value = AnyData::ParseValue(field_values[field_index], false, false, AnyData::ValueType::Bool).AsBool();
+                                }
+                                catch (const std::exception&) {
+                                }
+
+                                if (ImGui::Checkbox("##field", &current_value)) {
+                                    field_values[field_index] = AnyData::ValueToString(AnyData::Value {current_value});
+                                    struct_changed = true;
+                                    commit_requested = true;
+                                }
+                            }
+                            else if (field.Type.IsInt) {
+                                auto field_buf = field_values[field_index];
+                                if (field_buf.capacity() < 512) {
+                                    field_buf.reserve(512);
+                                }
+
+                                const auto value_submitted = ImGuiInputTextString("##field", field_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, request_caret_reset && field_index == 0);
+                                const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                field_values[field_index] = std::move(field_buf);
+                                struct_changed |= value_submitted || value_deactivated;
+                                commit_requested |= value_submitted || value_deactivated;
+                                finish_edit_requested |= value_submitted;
+                                cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                            }
+                            else if (field.Type.IsFloat) {
+                                auto field_buf = field_values[field_index];
+                                if (field_buf.capacity() < 512) {
+                                    field_buf.reserve(512);
+                                }
+
+                                const auto value_submitted = ImGuiInputTextString("##field", field_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, request_caret_reset && field_index == 0);
+                                const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                field_values[field_index] = std::move(field_buf);
+                                struct_changed |= value_submitted || value_deactivated;
+                                commit_requested |= value_submitted || value_deactivated;
+                                finish_edit_requested |= value_submitted;
+                                cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                            }
+                            else {
+                                auto field_buf = field_values[field_index];
+                                if (field_buf.capacity() < 512) {
+                                    field_buf.reserve(512);
+                                }
+
+                                const auto value_submitted = ImGuiInputTextString("##field", field_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, request_caret_reset && field_index == 0);
+                                const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                field_values[field_index] = std::move(field_buf);
+                                struct_changed |= value_submitted || value_deactivated;
+                                commit_requested |= value_submitted || value_deactivated;
+                                finish_edit_requested |= value_submitted;
+                                cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        return struct_changed;
+                    };
+
+                    if (prop->IsArray() && struct_layout != nullptr) {
+                        if (const auto parsed_entries = ParseInspectorStringEntries(InspectorSelectedLineValue); parsed_entries.has_value()) {
+                            auto struct_entries = *parsed_entries;
+                            auto array_changed = false;
+                            std::optional<size_t> remove_index {};
+
+                            for (size_t entry_index = 0; entry_index < struct_entries.size(); entry_index++) {
+                                auto field_values = ParseInspectorStructFields(*struct_layout, struct_entries[entry_index]).value_or(vector<string>(struct_layout->Fields.size()));
+
+                                ImGui::PushID(numeric_cast<int32>(entry_index));
+                                ImGui::SeparatorText(strex("Item {}", entry_index).str().c_str());
+                                array_changed |= edit_struct_fields(field_values, numeric_cast<int32>(entry_index), focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index), pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
+                                struct_entries[entry_index] = SerializeInspectorStringArray(field_values);
+                                if (ImGui::SmallButton("Remove")) {
+                                    remove_index = entry_index;
+                                    commit_requested = true;
+                                }
+                                ImGui::PopID();
+                            }
+
+                            if (remove_index.has_value()) {
+                                struct_entries.erase(struct_entries.begin() + numeric_cast<ptrdiff_t>(*remove_index));
+                                array_changed = true;
+                            }
+
+                            if (ImGui::Button("Add element")) {
+                                struct_entries.emplace_back(SerializeInspectorStringArray(vector<string>(struct_layout->Fields.size())));
+                                array_changed = true;
+                                pending_focus_line = line;
+                                pending_focus_array_index = numeric_cast<int32>(struct_entries.size()) - 1;
+                                pending_caret_reset_line = line;
+                                pending_caret_reset_array_index = pending_focus_array_index;
+                                pending_caret_reset_frames = 2;
+                            }
+
+                            if (array_changed) {
+                                InspectorSelectedLineValue = SerializeInspectorStringArray(struct_entries);
+                            }
+                        }
+                    }
+                    else if (prop->IsArray()) {
+                        if (const auto parsed_value = ParseInspectorValue(prop, InspectorSelectedLineValue); parsed_value.has_value() && parsed_value->Type() == AnyData::ValueType::Array) {
+                            vector<AnyData::Value> entries;
+                            entries.reserve(parsed_value->AsArray().Size());
+
+                            for (const auto& entry : parsed_value->AsArray()) {
+                                entries.emplace_back(entry.Copy());
+                            }
+
+                            auto array_changed = false;
+                            std::optional<size_t> remove_index {};
+
+                            for (size_t entry_index = 0; entry_index < entries.size(); entry_index++) {
+                                ImGui::PushID(numeric_cast<int32>(entry_index));
+
+                                if (focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index)) {
+                                    ImGui::SetKeyboardFocusHere();
+                                    focus_consumed = true;
+                                }
+
+                                switch (GetInspectorValueType(prop)) {
+                                case AnyData::ValueType::Int64: {
+                                    auto value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    if (value_buf.capacity() < 512) {
+                                        value_buf.reserve(512);
+                                    }
+                                    ImGui::SetNextItemWidth(-34.0f);
+                                    const auto value_submitted = ImGuiInputTextString("##ArrayValue", value_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
+                                    const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                    if (value_submitted || value_deactivated) {
+                                        try {
+                                            auto entry_value = AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Int64).AsInt64();
+                                            if (!prop->IsBaseTypeSignedInt() && entry_value < 0) {
+                                                entry_value = 0;
+                                            }
+                                            entries[entry_index] = AnyData::Value {entry_value};
+                                            array_changed = true;
+                                        }
+                                        catch (const std::exception&) {
+                                        }
+                                    }
+                                    commit_requested |= value_submitted || value_deactivated;
+                                    finish_edit_requested |= value_submitted;
+                                    cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                                    break;
+                                }
+                                case AnyData::ValueType::Float64: {
+                                    auto value_buf = AnyData::ValueToString(entries[entry_index]);
+                                    if (value_buf.capacity() < 512) {
+                                        value_buf.reserve(512);
+                                    }
+                                    ImGui::SetNextItemWidth(-34.0f);
+                                    const auto value_submitted = ImGuiInputTextString("##ArrayValue", value_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
+                                    const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                    if (value_submitted || value_deactivated) {
+                                        try {
+                                            entries[entry_index] = AnyData::Value {AnyData::ParseValue(value_buf, false, false, AnyData::ValueType::Float64).AsDouble()};
+                                            array_changed = true;
+                                        }
+                                        catch (const std::exception&) {
+                                        }
+                                    }
+                                    commit_requested |= value_submitted || value_deactivated;
+                                    finish_edit_requested |= value_submitted;
+                                    cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                                    break;
+                                }
+                                case AnyData::ValueType::Bool: {
+                                    auto entry_value = entries[entry_index].AsBool();
+                                    if (ImGui::Checkbox("##ArrayValue", &entry_value)) {
+                                        entries[entry_index] = AnyData::Value {entry_value};
+                                        array_changed = true;
+                                        commit_requested = true;
+                                    }
+                                    break;
+                                }
+                                case AnyData::ValueType::String: {
+                                    auto string_buf = entries[entry_index].AsString();
+                                    if (string_buf.capacity() < 512) {
+                                        string_buf.reserve(512);
+                                    }
+                                    ImGui::SetNextItemWidth(-34.0f);
+                                    const auto value_submitted = ImGuiInputTextString("##ArrayValue", string_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
+                                    const auto value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+                                    if (value_submitted || value_deactivated) {
+                                        entries[entry_index] = AnyData::Value {std::move(string_buf)};
+                                        array_changed = true;
+                                    }
+                                    commit_requested |= value_submitted || value_deactivated;
+                                    finish_edit_requested |= value_submitted;
+                                    cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
+                                    break;
+                                }
+                                default:
+                                    FO_UNREACHABLE_PLACE();
+                                }
+
+                                ImGui::SameLine();
+                                if (ImGui::SmallButton("X")) {
+                                    remove_index = entry_index;
+                                    commit_requested = true;
+                                }
+
+                                ImGui::PopID();
+                            }
+
+                            if (remove_index.has_value()) {
+                                entries.erase(entries.begin() + numeric_cast<ptrdiff_t>(*remove_index));
+                                array_changed = true;
+                            }
+
+                            if (ImGui::Button("Add element")) {
+                                entries.emplace_back(MakeDefaultInspectorArrayElement(prop));
+                                array_changed = true;
+                                pending_focus_line = line;
+                                pending_focus_array_index = numeric_cast<int32>(entries.size()) - 1;
+                                pending_caret_reset_line = line;
+                                pending_caret_reset_array_index = pending_focus_array_index;
+                                pending_caret_reset_frames = 2;
+                            }
+
+                            if (array_changed) {
+                                InspectorSelectedLineValue = SerializeInspectorArray(std::move(entries));
+                            }
+                        }
+                        else {
+                            edit_text_value();
+                        }
+                    }
+                    else if (struct_layout != nullptr) {
+                        auto field_values = ParseInspectorStructFields(*struct_layout, InspectorSelectedLineValue).value_or(vector<string>(struct_layout->Fields.size()));
+                        if (edit_struct_fields(field_values, -1, focus_edit_line == line, pending_caret_reset_line == line && pending_caret_reset_frames > 0)) {
+                            InspectorSelectedLineValue = SerializeInspectorStringArray(field_values);
+                        }
+                    }
+                    else if (prop->IsBaseTypeBool()) {
+                        auto current_value = false;
+                        if (const auto parsed_value = ParseInspectorValue(prop, InspectorSelectedLineValue); parsed_value.has_value() && parsed_value->Type() == AnyData::ValueType::Bool) {
+                            current_value = parsed_value->AsBool();
+                        }
+
+                        if (focus_edit_line == line) {
+                            ImGui::SetKeyboardFocusHere();
+                            focus_consumed = true;
+                        }
+                        if (ImGui::Checkbox("##value", &current_value)) {
+                            InspectorSelectedLineValue = AnyData::ValueToString(AnyData::Value {current_value});
+                            commit_requested = true;
+                        }
+                    }
+                    else if (prop->IsBaseTypeInt() && !prop->IsBaseTypeSimpleStruct()) {
+                        edit_text_value();
+                    }
+                    else if (prop->IsBaseTypeFloat() && !prop->IsBaseTypeSimpleStruct()) {
+                        edit_text_value();
+                    }
+                    else {
+                        edit_text_value();
+                    }
+
+                    cancel_requested |= ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+
+                    last_edit_cell_min_x = value_cell_start.x;
+                    last_edit_cell_min_y = value_cell_start.y;
+                    last_edit_cell_max_x = value_cell_start.x + value_cell_width;
+                    last_edit_cell_max_y = std::max(ImGui::GetCursorScreenPos().y, value_cell_start.y + ImGui::GetFrameHeightWithSpacing());
+                    last_edit_cell_rect_valid = true;
+
+                    if (pending_caret_reset_line == line && pending_caret_reset_frames > 0) {
+                        pending_caret_reset_frames--;
+                        if (pending_caret_reset_frames == 0) {
+                            pending_caret_reset_line = -1;
+                            pending_caret_reset_array_index = -1;
+                        }
+                    }
+
+                    if (cancel_requested) {
+                        restore_selected_line_initial_value();
+                    }
+                    else if (commit_requested) {
+                        if (finish_edit_requested) {
+                            apply_selected_value(line);
+                        }
+                        else {
+                            apply_selected_value_keep_edit(line);
+                        }
+                    }
+
+                    if (focus_consumed && pending_focus_line == line) {
+                        pending_focus_line = -1;
+                        pending_focus_array_index = -1;
+                    }
+                }
+                else {
+                    if (selected) {
+                        if (!is_const) {
+                            const auto reset_label_width = ImGui::CalcTextSize("Reset").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                            const auto reset_enabled = !same_as_proto;
+                            const auto value_button_width = reset_enabled ? std::max(1.0f, ImGui::GetContentRegionAvail().x - reset_label_width - ImGui::GetStyle().ItemSpacing.x) : ImGui::GetContentRegionAvail().x;
+
+                            if (ImGui::Selectable(strex("{}##value_display", value).str().c_str(), false, ImGuiSelectableFlags_AllowOverlap, {value_button_width, 0.0f})) {
+                                begin_edit_state(line);
+                            }
+
+                            if (reset_enabled) {
+                                ImGui::SameLine();
+                                if (ImGui::SmallButton("Reset")) {
+                                    reset_selected_value(line);
+                                }
+                            }
+                        }
+                        else {
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::TextUnformatted(value.c_str());
+                        }
+                    }
+                    else {
+                        if (ImGui::Selectable(strex("{}##value_select", value).str().c_str(), false, ImGuiSelectableFlags_AllowOverlap, {ImGui::GetContentRegionAvail().x, 0.0f})) {
+                            select_value_line();
+                        }
+                    }
+                }
+
+                ImGui::PopID();
+            }
+
+            if (edit_line == -1) {
+                last_edit_cell_rect_valid = false;
+            }
+
+            ImGui::EndTable();
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::End();
+
+    if (!keep_open) {
+        SelectClear();
     }
 }
 
-void MapperEngine::ObjKeyDownApply(Entity* entity)
+void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1242,78 +3457,100 @@ void MapperEngine::ObjKeyDownApply(Entity* entity)
 
     constexpr auto start_line = 3;
 
-    if (ObjCurLine >= start_line && ObjCurLine - start_line < numeric_cast<int32>(ShowProps.size())) {
-        const auto& prop = ShowProps[ObjCurLine - start_line];
+    if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32>(ShowProps.size())) {
+        const auto& prop = ShowProps[InspectorSelectedLine - start_line];
 
         if (prop) {
-            try {
-                entity->GetPropertiesForEdit().ApplyPropertyFromText(prop.get(), ObjCurLineValue);
+            const auto entity_id = entity->GetId();
+            const auto old_value = InspectorSelectedLineInitialValue;
+            const auto new_value = InspectorSelectedLineValue;
 
-                // Modify main mesh
-                if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                    if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
-                        for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-                            if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, static_cast<uint8>(i), _curMap->GetSize())) {
-                                auto main_mesh_items = vec_filter(_curMap->GetItemsOnHex(hex), [&](auto&& item2) -> bool {
-                                    if (SelectedEntitiesSet.contains(item2.get())) {
-                                        return false;
-                                    }
-                                    return item->GetProtoId() == item2->GetProtoId();
-                                });
-                                for (auto&& item2 : main_mesh_items) {
-                                    item2->GetPropertiesForEdit().ApplyPropertyFromText(prop.get(), ObjCurLineValue);
-                                }
-                            }
+            if (!ApplyEntityPropertyText(entity, prop.get(), new_value)) {
+                ignore_unused(ApplyEntityPropertyText(entity, prop.get(), old_value));
+                return;
+            }
+
+            const auto prop_name = string(prop->GetName());
+            PushUndoOp(_curMap.get(),
+                UndoOp {strex("Edit {}", prop_name),
+                    [entity_id, prop_name, old_value](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                        auto* target = mapper.FindEntityById(active_map, entity_id);
+                        if (target == nullptr) {
+                            return false;
                         }
 
-                        // Todo: walk around multihex lines?
-                    }
-                }
-            }
-            catch (const std::exception& ex) {
-                ignore_unused(ex);
-                entity->GetPropertiesForEdit().ApplyPropertyFromText(prop.get(), ObjCurLineInitValue);
-            }
+                        const auto* apply_prop = target->GetProperties().GetRegistrator()->FindProperty(prop_name);
+                        return apply_prop != nullptr && mapper.ApplyEntityPropertyText(target, apply_prop, old_value);
+                    },
+                    [entity_id, prop_name, new_value](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                        auto* target = mapper.FindEntityById(active_map, entity_id);
+                        if (target == nullptr) {
+                            return false;
+                        }
 
-            if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
-                if (prop == hex_item->GetPropertyOffset()) {
-                    hex_item->RefreshOffs();
-                }
-                if (prop == hex_item->GetPropertyPicMap()) {
-                    hex_item->RefreshAnim();
-                }
-            }
+                        const auto* apply_prop = target->GetProperties().GetRegistrator()->FindProperty(prop_name);
+                        return apply_prop != nullptr && mapper.ApplyEntityPropertyText(target, apply_prop, new_value);
+                    }});
         }
     }
 }
 
-void MapperEngine::SelectEntityProp(int32 line)
+void MapperEngine::SelectInspectorPropertyLine(int32 line)
 {
     FO_STACK_TRACE_ENTRY();
 
     constexpr auto start_line = 3;
 
-    ObjCurLine = line;
-    ObjCurLine = std::max(ObjCurLine, 0);
-    ObjCurLineInitValue = ObjCurLineValue = "";
-    ObjCurLineIsConst = true;
+    InspectorSelectedLine = line;
+    InspectorSelectedLine = std::max(InspectorSelectedLine, 0);
+    InspectorSelectedLineInitialValue = InspectorSelectedLineValue = "";
 
     if (const auto* entity = GetInspectorEntity(); entity != nullptr) {
-        if (ObjCurLine - start_line >= numeric_cast<int32>(ShowProps.size())) {
-            ObjCurLine = numeric_cast<int32>(ShowProps.size()) + start_line - 1;
+        if (InspectorSelectedLine - start_line >= numeric_cast<int32>(ShowProps.size())) {
+            InspectorSelectedLine = numeric_cast<int32>(ShowProps.size()) + start_line - 1;
         }
-        if (ObjCurLine >= start_line && ObjCurLine - start_line < numeric_cast<int32>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
-            ObjCurLineInitValue = ObjCurLineValue = entity->GetProperties().SavePropertyToText(ShowProps[ObjCurLine - start_line].get());
-            ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsCoreProperty() && !ShowProps[ObjCurLine - start_line]->IsMutable();
+        if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32>(ShowProps.size()) && (ShowProps[InspectorSelectedLine - start_line] != nullptr)) {
+            InspectorSelectedLineInitialValue = InspectorSelectedLineValue = entity->GetProperties().SavePropertyToText(ShowProps[InspectorSelectedLine - start_line].get());
         }
     }
+}
+
+void MapperEngine::ResetInspectorPropertyEditState()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    InspectorEditLine = -1;
+    InspectorPendingFocusLine = -1;
+    InspectorPendingFocusArrayIndex = -1;
+    InspectorPendingCaretResetLine = -1;
+    InspectorPendingCaretResetArrayIndex = -1;
+    InspectorPendingCaretResetFrames = 0;
+    InspectorLastEditCellRectValid = false;
+}
+
+auto MapperEngine::CancelInspectorPropertyEdit() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (InspectorEditLine == -1) {
+        return false;
+    }
+
+    InspectorSelectedLineValue = InspectorSelectedLineInitialValue;
+    InspectorEditBuf = InspectorSelectedLineValue;
+    if (InspectorEditBuf.capacity() < 4096) {
+        InspectorEditBuf.reserve(4096);
+    }
+
+    ResetInspectorPropertyEditState();
+    return true;
 }
 
 auto MapperEngine::GetInspectorEntity() -> ClientEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* entity = IntMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities.front().get() : nullptr);
+    auto* entity = ActivePanelMode == INT_MODE_INCONT && InContItem ? InContItem.get() : (!SelectedEntities.empty() ? SelectedEntities.front().get() : nullptr);
 
     if (entity == InspectorEntity) {
         return entity;
@@ -1331,457 +3568,110 @@ auto MapperEngine::GetInspectorEntity() -> ClientEntity*
         }
     }
 
-    SelectEntityProp(ObjCurLine);
+    SelectInspectorPropertyLine(InspectorSelectedLine);
     return entity;
 }
 
-void MapperEngine::IntLMouseDown()
+void MapperEngine::HandleLeftMouseDown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    IntHold = INT_NONE;
+    MouseHoldMode = INT_NONE;
 
-    // Sub tabs
-    if (IntVisible && SubTabsActive) {
-        if (IsCurInRect(SubTabsRect, SubTabsX, SubTabsY)) {
-            const auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
-            auto posy = SubTabsRect.height - line_height - 2;
-            auto i = 0;
-            auto& stabs = Tabs[SubTabsActiveTab];
+    if (HandleMapLeftMouseDown()) {
+        return;
+    }
+}
 
-            for (auto& snd : stabs | std::views::values) {
-                i++;
-                if (i - 1 < TabsScroll[SubTabsActiveTab]) {
-                    continue;
-                }
+auto MapperEngine::HandleMapLeftMouseDown() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
-                auto& stab = snd;
+    InContItem = nullptr;
 
-                auto r = irect32(SubTabsRect.x + SubTabsX + 5, SubTabsRect.y + SubTabsY + posy, SubTabsRect.width, line_height - 1);
-
-                if (IsCurInRect(r)) {
-                    TabsActive[SubTabsActiveTab] = &stab;
-                    RefreshCurProtos();
-                    break;
-                }
-
-                posy -= line_height;
-
-                if (posy < 0) {
-                    break;
-                }
-            }
-
-            return;
-        }
-
-        if (!IsCurInRect(IntWMain, IntX, IntY)) {
-            SubTabsActive = false;
-            return;
-        }
+    if (!_curMap) {
+        return true;
     }
 
-    // Map
-    if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
-        InContItem = nullptr;
+    if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex1, nullptr)) {
+        return true;
+    }
 
-        if (!_curMap) {
-            return;
-        }
+    SelectHex2 = SelectHex1;
+    SelectPos = Settings.MousePos;
 
-        if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex1, nullptr)) {
-            return;
-        }
+    if (CurMode == CUR_MODE_PLACE_OBJECT) {
+        return true;
+    }
 
-        SelectHex2 = SelectHex1;
-        SelectPos = Settings.MousePos;
+    const auto entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
+    const auto clicked_entity = entity.first;
+    const auto clicked_selected = clicked_entity != nullptr && SelectedEntitiesSet.contains(clicked_entity);
 
-        if (CurMode == CUR_MODE_DEFAULT) {
-            if (Keyb.ShiftDwn) {
-                for (auto& entity : SelectedEntities) {
-                    if (auto* cr = dynamic_cast<CritterHexView*>(entity.get()); cr != nullptr) {
-                        auto hex = cr->GetHex();
+    if (clicked_selected) {
+        MouseHoldMode = INT_MOVE_SELECTION;
+        SetCurMode(CUR_MODE_MOVE_SELECTION);
+        return true;
+    }
 
-                        if (const auto find_path = _curMap->FindPath(nullptr, hex, SelectHex1, -1)) {
-                            for (const auto dir : find_path->DirSteps) {
-                                if (GeometryHelper::MoveHexByDir(hex, dir, _curMap->GetSize())) {
-                                    _curMap->MoveCritter(cr, hex, true);
-                                }
-                                else {
-                                    break;
-                                }
-                            }
+    if (Keyb.ShiftDwn) {
+        for (auto& selected_entity : SelectedEntities) {
+            if (auto* cr = dynamic_cast<CritterHexView*>(selected_entity.get()); cr != nullptr) {
+                auto hex = cr->GetHex();
+
+                if (const auto find_path = _curMap->FindPath(nullptr, hex, SelectHex1, -1)) {
+                    for (const auto dir : find_path->DirSteps) {
+                        if (GeometryHelper::MoveHexByDir(hex, dir, _curMap->GetSize())) {
+                            _curMap->MoveCritter(cr, hex, true);
                         }
-
-                        break;
-                    }
-                }
-            }
-            else if (!Keyb.CtrlDwn) {
-                SelectClear();
-            }
-
-            IntHold = INT_SELECT;
-        }
-        else if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            IntHold = INT_SELECT;
-        }
-        else if (CurMode == CUR_MODE_PLACE_OBJECT) {
-            if (IsItemMode() && !CurItemProtos->empty()) {
-                CreateItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHex1, nullptr);
-            }
-            else if (IsCritMode() && !CurCritterProtos->empty()) {
-                CreateCritter((*CurCritterProtos)[GetTabIndex()]->GetProtoId(), SelectHex1);
-            }
-        }
-
-        return;
-    }
-
-    // Object editor
-    if (ObjVisible && !SelectedEntities.empty() && IsCurInRect(ObjWMain, ObjX, ObjY)) {
-        if (IsCurInRect(ObjWWork, ObjX, ObjY)) {
-            SelectEntityProp((Settings.MousePos.y - ObjY - ObjWWork.y) / DRAW_NEXT_HEIGHT);
-        }
-
-        if (IsCurInRect(ObjBToAll, ObjX, ObjY)) {
-            ObjToAll = !ObjToAll;
-            IntHold = INT_BUTTON;
-            return;
-        }
-        if (!ObjFix) {
-            IntHold = INT_OBJECT;
-            ItemVectX = Settings.MousePos.x - ObjX;
-            ItemVectY = Settings.MousePos.y - ObjY;
-        }
-
-        return;
-    }
-
-    // Interface
-    if (!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) {
-        return;
-    }
-
-    if (IsCurInRect(IntWWork, IntX, IntY)) {
-        int32 ind = (Settings.MousePos.x - IntX - IntWWork.x) / ProtoWidth;
-
-        if (IsItemMode() && !CurItemProtos->empty()) {
-            ind += *CurProtoScroll;
-            if (ind >= numeric_cast<int32>(CurItemProtos->size())) {
-                ind = numeric_cast<int32>(CurItemProtos->size()) - 1;
-            }
-            SetTabIndex(ind);
-
-            // Switch ignore pid to draw
-            if (Keyb.CtrlDwn) {
-                const auto pid = (*CurItemProtos)[ind]->GetProtoId();
-
-                auto& stab = Tabs[INT_MODE_IGNORE][DEFAULT_SUB_TAB];
-                auto founded = false;
-                for (auto it = stab.ItemProtos.begin(); it != stab.ItemProtos.end(); ++it) {
-                    if ((*it)->GetProtoId() == pid) {
-                        founded = true;
-                        stab.ItemProtos.erase(it);
-                        break;
-                    }
-                }
-                if (!founded) {
-                    stab.ItemProtos.emplace_back((*CurItemProtos)[ind].get());
-                }
-
-                _curMap->SwitchIgnorePid(pid);
-                _curMap->RebuildMap();
-            }
-            // Add to container
-            else if (Keyb.AltDwn && !SelectedEntities.empty()) {
-                auto add = true;
-                const auto& proto_item = (*CurItemProtos)[ind];
-
-                if (proto_item->GetStackable()) {
-                    for (const auto& child : GetEntityInnerItems(SelectedEntities.front().get())) {
-                        if (proto_item->GetProtoId() == child->GetProtoId()) {
-                            add = false;
+                        else {
                             break;
                         }
                     }
                 }
 
-                if (add) {
-                    CreateItem(proto_item->GetProtoId(), {}, SelectedEntities.front().get());
-                }
-            }
-        }
-        else if (IsCritMode() && !CurCritterProtos->empty()) {
-            ind += *CurProtoScroll;
-
-            if (ind >= numeric_cast<int32>(CurCritterProtos->size())) {
-                ind = numeric_cast<int32>(CurCritterProtos->size()) - 1;
-            }
-
-            SetTabIndex(ind);
-        }
-        else if (IntMode == INT_MODE_INCONT) {
-            InContItem = nullptr;
-            ind += InContScroll;
-
-            vector<refcount_ptr<ItemView>> inner_items;
-
-            if (!SelectedEntities.empty()) {
-                inner_items = GetEntityInnerItems(SelectedEntities.front().get());
-            }
-
-            if (!inner_items.empty()) {
-                if (ind < numeric_cast<int32>(inner_items.size())) {
-                    InContItem = inner_items[ind];
-                }
-
-                if (Keyb.AltDwn && InContItem != nullptr) {
-                    // Delete child
-                    if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
-                        auto* owner = _curMap->GetCritter(InContItem->GetCritterId());
-                        FO_RUNTIME_ASSERT(owner);
-                        owner->DeleteInvItem(InContItem.get());
-                    }
-                    else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
-                        ItemView* owner = _curMap->GetItem(InContItem->GetContainerId());
-                        FO_RUNTIME_ASSERT(owner);
-                        owner->DestroyInnerItem(InContItem.get());
-                    }
-                    else {
-                        FO_UNREACHABLE_PLACE();
-                    }
-
-                    InContItem = nullptr;
-
-                    // Reselect
-                    auto* next_entity = SelectedEntities.front().get();
-                    SelectClear();
-                    SelectAdd(next_entity);
-                }
-                else if (Keyb.ShiftDwn && InContItem != nullptr) {
-                    // Change child slot
-                    if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities.front().get()); cr != nullptr) {
-                        auto to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
-
-                        while (numeric_cast<size_t>(to_slot) >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
-                            to_slot++;
-                        }
-
-                        to_slot %= 256;
-
-                        for (auto& item : cr->GetInvItems()) {
-                            if (item->GetCritterSlot() == static_cast<CritterItemSlot>(to_slot)) {
-                                item->SetCritterSlot(CritterItemSlot::Inventory);
-                            }
-                        }
-
-                        InContItem->SetCritterSlot(static_cast<CritterItemSlot>(to_slot));
-
-                        cr->RefreshView();
-                    }
-                }
-            }
-        }
-        else if (IntMode == INT_MODE_LIST) {
-            ind += ListScroll;
-
-            if (ind < numeric_cast<int32>(LoadedMaps.size()) && _curMap != LoadedMaps[ind].get()) {
-                ShowMap(LoadedMaps[ind].get());
+                break;
             }
         }
     }
-    else if (IsCurInRect(IntBCust[0], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM0);
-    }
-    else if (IsCurInRect(IntBCust[1], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM1);
-    }
-    else if (IsCurInRect(IntBCust[2], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM2);
-    }
-    else if (IsCurInRect(IntBCust[3], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM3);
-    }
-    else if (IsCurInRect(IntBCust[4], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM4);
-    }
-    else if (IsCurInRect(IntBCust[5], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM5);
-    }
-    else if (IsCurInRect(IntBCust[6], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM6);
-    }
-    else if (IsCurInRect(IntBCust[7], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM7);
-    }
-    else if (IsCurInRect(IntBCust[8], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM8);
-    }
-    else if (IsCurInRect(IntBCust[9], IntX, IntY)) {
-        IntSetMode(INT_MODE_CUSTOM9);
-    }
-    else if (IsCurInRect(IntBItem, IntX, IntY)) {
-        IntSetMode(INT_MODE_ITEM);
-    }
-    else if (IsCurInRect(IntBTile, IntX, IntY)) {
-        IntSetMode(INT_MODE_TILE);
-    }
-    else if (IsCurInRect(IntBCrit, IntX, IntY)) {
-        IntSetMode(INT_MODE_CRIT);
-    }
-    else if (IsCurInRect(IntBFast, IntX, IntY)) {
-        IntSetMode(INT_MODE_FAST);
-    }
-    else if (IsCurInRect(IntBIgnore, IntX, IntY)) {
-        IntSetMode(INT_MODE_IGNORE);
-    }
-    else if (IsCurInRect(IntBInCont, IntX, IntY)) {
-        IntSetMode(INT_MODE_INCONT);
-    }
-    else if (IsCurInRect(IntBMess, IntX, IntY)) {
-        IntSetMode(INT_MODE_MESS);
-    }
-    else if (IsCurInRect(IntBList, IntX, IntY)) {
-        IntSetMode(INT_MODE_LIST);
-    }
-    else if (IsCurInRect(IntBScrBack, IntX, IntY)) {
-        if (IsItemMode() || IsCritMode()) {
-            (*CurProtoScroll)--;
-            *CurProtoScroll = std::max(*CurProtoScroll, 0);
-        }
-        else if (IntMode == INT_MODE_INCONT) {
-            InContScroll--;
-            InContScroll = std::max(InContScroll, 0);
-        }
-        else if (IntMode == INT_MODE_LIST) {
-            ListScroll--;
-            ListScroll = std::max(ListScroll, 0);
-        }
-    }
-    else if (IsCurInRect(IntBScrBackFst, IntX, IntY)) {
-        if (IsItemMode() || IsCritMode()) {
-            (*CurProtoScroll) -= numeric_cast<int32>(ProtosOnScreen);
-            *CurProtoScroll = std::max(*CurProtoScroll, 0);
-        }
-        else if (IntMode == INT_MODE_INCONT) {
-            InContScroll -= numeric_cast<int32>(ProtosOnScreen);
-            InContScroll = std::max(InContScroll, 0);
-        }
-        else if (IntMode == INT_MODE_LIST) {
-            ListScroll -= numeric_cast<int32>(ProtosOnScreen);
-            ListScroll = std::max(ListScroll, 0);
-        }
-    }
-    else if (IsCurInRect(IntBScrFront, IntX, IntY)) {
-        if (IsItemMode() && !CurItemProtos->empty()) {
-            (*CurProtoScroll)++;
-
-            if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
-            }
-        }
-        else if (IsCritMode() && !CurCritterProtos->empty()) {
-            (*CurProtoScroll)++;
-
-            if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
-            }
-        }
-        else if (IntMode == INT_MODE_INCONT) {
-            InContScroll++;
-        }
-        else if (IntMode == INT_MODE_LIST) {
-            ListScroll++;
-        }
-    }
-    else if (IsCurInRect(IntBScrFrontFst, IntX, IntY)) {
-        if (IsItemMode() && !CurItemProtos->empty()) {
-            (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
-
-            if (*CurProtoScroll >= numeric_cast<int32>(CurItemProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurItemProtos->size()) - 1;
-            }
-        }
-        else if (IsCritMode() && !CurCritterProtos->empty()) {
-            (*CurProtoScroll) += numeric_cast<int32>(ProtosOnScreen);
-
-            if (*CurProtoScroll >= numeric_cast<int32>(CurCritterProtos->size())) {
-                *CurProtoScroll = numeric_cast<int32>(CurCritterProtos->size()) - 1;
-            }
-        }
-        else if (IntMode == INT_MODE_INCONT) {
-            InContScroll += numeric_cast<int32>(ProtosOnScreen);
-        }
-        else if (IntMode == INT_MODE_LIST) {
-            ListScroll += numeric_cast<int32>(ProtosOnScreen);
-        }
-    }
-    else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
-        Settings.ShowItem = !Settings.ShowItem;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowScen, IntX, IntY)) {
-        Settings.ShowScen = !Settings.ShowScen;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowWall, IntX, IntY)) {
-        Settings.ShowWall = !Settings.ShowWall;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowCrit, IntX, IntY)) {
-        Settings.ShowCrit = !Settings.ShowCrit;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowTile, IntX, IntY)) {
-        Settings.ShowTile = !Settings.ShowTile;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowRoof, IntX, IntY)) {
-        Settings.ShowRoof = !Settings.ShowRoof;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBShowFast, IntX, IntY)) {
-        Settings.ShowFast = !Settings.ShowFast;
-        _curMap->RebuildMap();
-    }
-    else if (IsCurInRect(IntBSelectItem, IntX, IntY)) {
-        IsSelectItem = !IsSelectItem;
-    }
-    else if (IsCurInRect(IntBSelectScen, IntX, IntY)) {
-        IsSelectScen = !IsSelectScen;
-    }
-    else if (IsCurInRect(IntBSelectWall, IntX, IntY)) {
-        IsSelectWall = !IsSelectWall;
-    }
-    else if (IsCurInRect(IntBSelectCrit, IntX, IntY)) {
-        IsSelectCrit = !IsSelectCrit;
-    }
-    else if (IsCurInRect(IntBSelectTile, IntX, IntY)) {
-        IsSelectTile = !IsSelectTile;
-    }
-    else if (IsCurInRect(IntBSelectRoof, IntX, IntY)) {
-        IsSelectRoof = !IsSelectRoof;
-    }
-    else if (!IntFix) {
-        IntHold = INT_MAIN;
-        IntVectX = Settings.MousePos.x - IntX;
-        IntVectY = Settings.MousePos.y - IntY;
-        return;
-    }
-    else {
-        return;
+    else if (!Keyb.CtrlDwn) {
+        SelectClear();
     }
 
-    IntHold = INT_BUTTON;
+    MouseHoldMode = INT_SELECT;
+
+    return true;
 }
 
-void MapperEngine::IntLMouseUp()
+void MapperEngine::HandleLeftMouseUp()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntHold == INT_SELECT && _curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
-        if (CurMode == CUR_MODE_DEFAULT) {
+    if (CurMode == CUR_MODE_PLACE_OBJECT) {
+        if (_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+            if (IsItemMode() && ActiveItemProtos != nullptr && !ActiveItemProtos->empty()) {
+                CreateItem((*ActiveItemProtos)[GetActiveProtoIndex()]->GetProtoId(), SelectHex2, nullptr);
+            }
+            else if (IsCritMode() && ActiveCritterProtos != nullptr && !ActiveCritterProtos->empty()) {
+                CreateCritter((*ActiveCritterProtos)[GetActiveProtoIndex()]->GetProtoId(), SelectHex2);
+            }
+
+            SetCurMode(CUR_MODE_DEFAULT);
+        }
+
+        MouseHoldMode = INT_NONE;
+        return;
+    }
+
+    if (MouseHoldMode == INT_MOVE_SELECTION) {
+        CommitPendingSelectionMove();
+        MouseHoldMode = INT_NONE;
+        SetCurMode(CUR_MODE_DEFAULT);
+        return;
+    }
+
+    if (MouseHoldMode == INT_SELECT) {
+        if (_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
             if (SelectHex1 != SelectHex2) {
                 _curMap->ClearHexTrack();
 
@@ -1808,19 +3698,19 @@ void MapperEngine::IntLMouseUp()
                     if (_curMap->IsIgnorePid(item->GetProtoId())) {
                         return false;
                     }
-                    if (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) {
+                    if (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings.ShowTile) {
                         return true;
                     }
-                    else if (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof) {
+                    else if (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings.ShowRoof) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) {
+                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings.ShowItem) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsScenery() && IsSelectScen && Settings.ShowScen) {
+                    else if (!item->GetIsTile() && item->GetIsScenery() && SelectSceneryEnabled && Settings.ShowScen) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsWall() && IsSelectWall && Settings.ShowWall) {
+                    else if (!item->GetIsTile() && item->GetIsWall() && SelectWallsEnabled && Settings.ShowWall) {
                         return true;
                     }
                     else if (Settings.ShowFast && _curMap->IsFastPid(item->GetProtoId())) {
@@ -1838,7 +3728,7 @@ void MapperEngine::IntLMouseUp()
                         }
                     }
                     for (auto* hex_cr : copy_hold_ref(_curMap->GetCrittersOnHex(hex, CritterFindType::Any))) {
-                        if (IsSelectCrit && Settings.ShowCrit) {
+                        if (SelectCrittersEnabled && Settings.ShowCrit) {
                             SelectAdd(hex_cr, hex);
                         }
                     }
@@ -1859,140 +3749,158 @@ void MapperEngine::IntLMouseUp()
                 }
             }
 
-            // Crits or item container
             if (!SelectedEntities.empty() && !GetEntityInnerItems(SelectedEntities.front().get()).empty()) {
-                IntSetMode(INT_MODE_INCONT);
+                SetActivePanelMode(INT_MODE_INCONT);
             }
-        }
 
-        _curMap->RebuildMap();
+            _curMap->RebuildMap();
+        }
     }
 
-    IntHold = INT_NONE;
+    MouseHoldMode = INT_NONE;
+    SetCurMode(CUR_MODE_DEFAULT);
 }
 
-void MapperEngine::IntMouseMove()
+void MapperEngine::HandleSelectionMouseDrag()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntHold == INT_SELECT) {
-        _curMap->ClearHexTrack();
+    if (IsImGuiMouseCaptured() || (MouseHoldMode != INT_SELECT && MouseHoldMode != INT_MOVE_SELECTION)) {
+        return;
+    }
 
-        if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
-            if (!SelectHex2.is_zero()) {
-                _curMap->RebuildMap();
-                SelectHex2 = {};
-            }
+    _curMap->ClearHexTrack();
 
-            return;
+    if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+        if (!SelectHex2.is_zero()) {
+            _curMap->RebuildMap();
+            SelectHex2 = {};
         }
 
-        if (CurMode == CUR_MODE_DEFAULT) {
-            if (SelectHex1 != SelectHex2) {
-                if (SelectAxialGrid) {
-                    for (const auto hex : Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
-                        _curMap->GetHexTrack(hex) = 1;
+        return;
+    }
+
+    if (MouseHoldMode == INT_SELECT) {
+        if (SelectHex1 != SelectHex2) {
+            if (SelectAxialGrid) {
+                for (const auto hex : Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
+                    _curMap->GetHexTrack(hex) = 1;
+                }
+            }
+            else {
+                const auto map_size = _curMap->GetSize();
+                const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
+                const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
+                const int32 fy = std::min(SelectHex1.y, SelectHex2.y);
+                const int32 ty = std::max(SelectHex1.y, SelectHex2.y);
+
+                for (auto i = fx; i <= tx; i++) {
+                    for (auto j = fy; j <= ty; j++) {
+                        _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
                     }
                 }
-                else {
-                    const auto map_size = _curMap->GetSize();
-                    const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
-                    const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
-                    const int32 fy = std::min(SelectHex1.y, SelectHex2.y);
-                    const int32 ty = std::max(SelectHex1.y, SelectHex2.y);
-
-                    for (auto i = fx; i <= tx; i++) {
-                        for (auto j = fy; j <= ty; j++) {
-                            _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
-                        }
-                    }
-                }
-
-                _curMap->RebuildMap();
             }
-        }
-        else if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            auto offs_hx = numeric_cast<int32>(SelectHex2.x) - numeric_cast<int32>(SelectHex1.x);
-            auto offs_hy = numeric_cast<int32>(SelectHex2.y) - numeric_cast<int32>(SelectHex1.y);
-            auto offs_x = Settings.MousePos.x - SelectPos.x;
-            auto offs_y = Settings.MousePos.y - SelectPos.y;
 
-            if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
-                SelectHex1 = _curMap->GetSize().from_raw_pos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
-                SelectPos.x += offs_x;
-                SelectPos.y += offs_y;
-                _curMap->RebuildMap();
-            }
+            _curMap->RebuildMap();
         }
     }
-    else if (IntHold == INT_MAIN) {
-        IntX = Settings.MousePos.x - IntVectX;
-        IntY = Settings.MousePos.y - IntVectY;
-    }
-    else if (IntHold == INT_OBJECT) {
-        ObjX = Settings.MousePos.x - ItemVectX;
-        ObjY = Settings.MousePos.y - ItemVectY;
+    else if (MouseHoldMode == INT_MOVE_SELECTION) {
+        auto offs_hx = numeric_cast<int32>(SelectHex2.x) - numeric_cast<int32>(SelectHex1.x);
+        auto offs_hy = numeric_cast<int32>(SelectHex2.y) - numeric_cast<int32>(SelectHex1.y);
+        auto offs_x = Settings.MousePos.x - SelectPos.x;
+        auto offs_y = Settings.MousePos.y - SelectPos.y;
+
+        if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
+            SelectHex1 = _curMap->GetSize().from_raw_pos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
+            SelectPos.x += offs_x;
+            SelectPos.y += offs_y;
+            _curMap->RebuildMap();
+        }
     }
 }
 
-auto MapperEngine::GetTabIndex() const -> int32
+auto MapperEngine::GetActiveSubTab() -> SubTab*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntMode < TAB_COUNT) {
-        return TabsActive[IntMode]->Index;
+    if (ActivePanelMode < 0 || ActivePanelMode >= TAB_COUNT) {
+        return nullptr;
     }
-    return TabIndex[IntMode];
+
+    return ActiveSubTabs[ActivePanelMode].get();
 }
 
-void MapperEngine::SetTabIndex(int32 index)
+auto MapperEngine::GetActiveSubTab() const -> const SubTab*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntMode < TAB_COUNT) {
-        TabsActive[IntMode]->Index = index;
+    if (ActivePanelMode < 0 || ActivePanelMode >= TAB_COUNT) {
+        return nullptr;
     }
-    TabIndex[IntMode] = index;
+
+    return ActiveSubTabs[ActivePanelMode].get();
 }
 
-void MapperEngine::RefreshCurProtos()
+auto MapperEngine::GetActiveProtoIndex() const -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto* active_subtab = GetActiveSubTab(); active_subtab != nullptr) {
+        return active_subtab->Index;
+    }
+
+    if (ActivePanelMode >= 0 && ActivePanelMode < INT_MODE_COUNT) {
+        return TabIndex[ActivePanelMode];
+    }
+
+    return 0;
+}
+
+void MapperEngine::SetActiveProtoIndex(int32 index)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (auto* active_subtab = GetActiveSubTab(); active_subtab != nullptr) {
+        active_subtab->Index = index;
+    }
+
+    if (ActivePanelMode >= 0 && ActivePanelMode < INT_MODE_COUNT) {
+        TabIndex[ActivePanelMode] = index;
+    }
+}
+
+void MapperEngine::RefreshActiveProtoLists()
 {
     FO_STACK_TRACE_ENTRY();
 
     // Select protos and scroll
-    CurItemProtos = nullptr;
-    CurProtoScroll = nullptr;
-    CurCritterProtos = nullptr;
+    ActiveItemProtos = nullptr;
+    ActiveProtoScroll = nullptr;
+    ActiveCritterProtos = nullptr;
     InContItem = nullptr;
 
-    if (IntMode >= 0 && IntMode < TAB_COUNT) {
-        auto* stab = TabsActive[IntMode].get();
-
+    if (auto* stab = GetActiveSubTab(); stab != nullptr) {
         if (!stab->CritterProtos.empty()) {
-            CurCritterProtos = &stab->CritterProtos;
+            ActiveCritterProtos = &stab->CritterProtos;
         }
         else {
-            CurItemProtos = &stab->ItemProtos;
+            ActiveItemProtos = &stab->ItemProtos;
         }
 
-        CurProtoScroll = &stab->Scroll;
-    }
-
-    if (IntMode == INT_MODE_INCONT) {
-        InContScroll = 0;
+        ActiveProtoScroll = &stab->Scroll;
     }
 
     if (_curMap) {
         // Update fast pids
         _curMap->ClearFastPids();
-        for (const auto& fast_proto : TabsActive[INT_MODE_FAST]->ItemProtos) {
+        for (const auto& fast_proto : ActiveSubTabs[INT_MODE_FAST]->ItemProtos) {
             _curMap->AddFastPid(fast_proto->GetProtoId());
         }
 
         // Update ignore pids
         _curMap->ClearIgnorePids();
 
-        for (const auto& ignore_proto : TabsActive[INT_MODE_IGNORE]->ItemProtos) {
+        for (const auto& ignore_proto : ActiveSubTabs[INT_MODE_IGNORE]->ItemProtos) {
             _curMap->AddIgnorePid(ignore_proto->GetProtoId());
         }
 
@@ -2001,75 +3909,14 @@ void MapperEngine::RefreshCurProtos()
     }
 }
 
-void MapperEngine::IntSetMode(int32 mode)
+void MapperEngine::SetActivePanelMode(int32 mode)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (SubTabsActive && mode == SubTabsActiveTab) {
-        SubTabsActive = false;
-        return;
-    }
+    ActivePanelMode = mode;
+    MouseHoldMode = INT_NONE;
 
-    if (!SubTabsActive && mode == IntMode && mode >= 0 && mode < TAB_COUNT) {
-        // Show sub tabs screen
-        SubTabsActive = true;
-        SubTabsActiveTab = mode;
-
-        // Calculate position
-        if (mode <= INT_MODE_CUSTOM9) {
-            SubTabsX = IntBCust[mode - INT_MODE_CUSTOM0].x + IntBCust[mode - INT_MODE_CUSTOM0].width / 2;
-            SubTabsY = IntBCust[mode - INT_MODE_CUSTOM0].y;
-        }
-        else if (mode == INT_MODE_ITEM) {
-            SubTabsX = IntBItem.x + IntBItem.width / 2;
-            SubTabsY = IntBItem.y;
-        }
-        else if (mode == INT_MODE_TILE) {
-            SubTabsX = IntBTile.x + IntBTile.width / 2;
-            SubTabsY = IntBTile.y;
-        }
-        else if (mode == INT_MODE_CRIT) {
-            SubTabsX = IntBCrit.x + IntBCrit.width / 2;
-            SubTabsY = IntBCrit.y;
-        }
-        else if (mode == INT_MODE_FAST) {
-            SubTabsX = IntBFast.x + IntBFast.width / 2;
-            SubTabsY = IntBFast.y;
-        }
-        else if (mode == INT_MODE_IGNORE) {
-            SubTabsX = IntBIgnore.x + IntBIgnore.width / 2;
-            SubTabsY = IntBIgnore.y;
-        }
-        else {
-            FO_UNREACHABLE_PLACE();
-        }
-
-        SubTabsX += IntX - SubTabsRect.width / 2;
-        SubTabsY += IntY - SubTabsRect.height;
-
-        SubTabsX = std::max(SubTabsX, 0);
-        if (SubTabsX + SubTabsRect.width > Settings.ScreenWidth) {
-            SubTabsX -= SubTabsX + SubTabsRect.width - Settings.ScreenWidth;
-        }
-
-        SubTabsY = std::max(SubTabsY, 0);
-        if (SubTabsY + SubTabsRect.height > Settings.ScreenHeight) {
-            SubTabsY -= SubTabsY + SubTabsRect.height - Settings.ScreenHeight;
-        }
-
-        return;
-    }
-
-    IntMode = mode;
-    IntHold = INT_NONE;
-
-    RefreshCurProtos();
-
-    if (SubTabsActive) {
-        // Reinit sub tabs
-        SubTabsActive = false;
-        IntSetMode(IntMode);
-    }
+    RefreshActiveProtoLists();
 }
 
 void MapperEngine::MoveEntity(ClientEntity* entity, mpos hex)
@@ -2082,6 +3929,20 @@ void MapperEngine::MoveEntity(ClientEntity* entity, mpos hex)
         return;
     }
 
+    mpos old_hex {};
+    if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        old_hex = cr->GetHex();
+    }
+    else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        old_hex = item->GetHex();
+    }
+
+    if (old_hex == hex) {
+        return;
+    }
+
+    const auto entity_id = entity->GetId();
+
     SelectClear();
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
@@ -2090,15 +3951,50 @@ void MapperEngine::MoveEntity(ClientEntity* entity, mpos hex)
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         _curMap->MoveItem(item, hex);
     }
+
+    SetMapDirty(_curMap.get());
+
+    PushUndoOp(_curMap.get(),
+        UndoOp {"Move entity",
+            [entity_id, old_hex](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                auto* target = mapper.FindEntityById(active_map, entity_id);
+                if (target == nullptr) {
+                    return false;
+                }
+                mapper.MoveEntity(target, old_hex);
+                return true;
+            },
+            [entity_id, hex](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                auto* target = mapper.FindEntityById(active_map, entity_id);
+                if (target == nullptr) {
+                    return false;
+                }
+                mapper.MoveEntity(target, hex);
+                return true;
+            }});
 }
 
 void MapperEngine::DeleteEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (SelectedEntitiesSet.erase(entity) == 0) {
-        return;
+    const auto map = _curMap.get();
+    EntityBuf entity_buf;
+    CaptureEntityBuf(entity_buf, entity);
+    auto item_ownership = ItemOwnership::MapHex;
+    ident_t owner_id {};
+
+    if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
+        item_ownership = item->GetOwnership();
+        if (item_ownership == ItemOwnership::CritterInventory) {
+            owner_id = item->GetCritterId();
+        }
+        else if (item_ownership == ItemOwnership::ItemContainer) {
+            owner_id = item->GetContainerId();
+        }
     }
+
+    SelectedEntitiesSet.erase(entity);
 
     vec_remove_unique_value(SelectedEntities, entity);
 
@@ -2108,6 +4004,42 @@ void MapperEngine::DeleteEntity(ClientEntity* entity)
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         _curMap->DestroyItem(item);
     }
+    else if (auto* inner_item = dynamic_cast<ItemView*>(entity); inner_item != nullptr) {
+        if (inner_item->GetOwnership() == ItemOwnership::CritterInventory) {
+            if (auto* owner = _curMap->GetCritter(inner_item->GetCritterId()); owner != nullptr) {
+                owner->DeleteInvItem(inner_item);
+            }
+        }
+        else if (inner_item->GetOwnership() == ItemOwnership::ItemContainer) {
+            if (auto* owner = _curMap->GetItem(inner_item->GetContainerId()); owner != nullptr) {
+                owner->DestroyInnerItem(inner_item);
+            }
+        }
+    }
+
+    SetMapDirty(_curMap.get());
+
+    PushUndoOp(map,
+        UndoOp {"Delete entity",
+            [entity_buf, item_ownership, owner_id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                Entity* owner = nullptr;
+
+                if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
+                    owner = mapper.FindEntityById(active_map, owner_id);
+                    if (owner == nullptr) {
+                        return false;
+                    }
+                }
+
+                return mapper.RestoreEntityBuf(entity_buf, owner) != nullptr;
+            },
+            [entity_id = entity_buf.Id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                if (auto* target = mapper.FindEntityById(active_map, entity_id); target != nullptr) {
+                    mapper.DeleteEntity(target);
+                    return true;
+                }
+                return false;
+            }});
 }
 
 void MapperEngine::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip_refresh)
@@ -2136,6 +4068,7 @@ void MapperEngine::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip
 
     vec_add_unique_value(SelectedEntities, corrected_entity);
     SelectedEntitiesSet.emplace(corrected_entity);
+    InspectorVisible = true;
 
     // Make transparent
     if (auto* hex_view = dynamic_cast<HexView*>(corrected_entity); hex_view != nullptr) {
@@ -2158,16 +4091,16 @@ void MapperEngine::SelectAll()
             continue;
         }
 
-        if ((!item->GetIsScenery() && !item->GetIsWall() && IsSelectItem && Settings.ShowItem) || //
-            (item->GetIsScenery() && IsSelectScen && Settings.ShowScen) || //
-            (item->GetIsWall() && IsSelectWall && Settings.ShowWall) || //
-            (item->GetIsTile() && !item->GetIsRoofTile() && IsSelectTile && Settings.ShowTile) || //
-            (item->GetIsTile() && item->GetIsRoofTile() && IsSelectRoof && Settings.ShowRoof)) {
+        if ((!item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings.ShowItem) || //
+            (item->GetIsScenery() && SelectSceneryEnabled && Settings.ShowScen) || //
+            (item->GetIsWall() && SelectWallsEnabled && Settings.ShowWall) || //
+            (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings.ShowTile) || //
+            (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings.ShowRoof)) {
             SelectAdd(item.get());
         }
     }
 
-    if (IsSelectCrit && Settings.ShowCrit) {
+    if (SelectCrittersEnabled && Settings.ShowCrit) {
         for (auto& cr : _curMap->GetCritters()) {
             SelectAdd(cr.get());
         }
@@ -2240,6 +4173,16 @@ void MapperEngine::SelectClear()
         SelectRemove(SelectedEntities.back().get(), true);
     }
 
+    InContItem = nullptr;
+    InspectorVisible = false;
+    InspectorEntity = nullptr;
+    ShowProps.clear();
+    InspectorSelectedLine = 0;
+    InspectorSelectedLineInitialValue.clear();
+    InspectorSelectedLineValue.clear();
+    InspectorEditBuf.clear();
+    ResetInspectorPropertyEditState();
+
     _curMap->DefferedRefreshItems();
 }
 
@@ -2298,10 +4241,9 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
         }
     };
 
-    // Change moving speed on zooming
     if (!hex_move) {
-        static auto small_ox = 0.0f;
-        static auto small_oy = 0.0f;
+        float32& small_ox = SelectionSmallOffsetX;
+        float32& small_oy = SelectionSmallOffsetY;
         const auto ox = numeric_cast<float32>(offs_x) / _curMap->GetSpritesZoom() + small_ox;
         const auto oy = numeric_cast<float32>(offs_y) / _curMap->GetSpritesZoom() + small_oy;
 
@@ -2322,7 +4264,6 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
         offs_y = iround<int32>(oy);
     }
     else {
-        // Disable moving if out of map bounds
         for (auto& entity : SelectedEntities) {
             ipos32 raw_hex;
 
@@ -2352,7 +4293,8 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
         }
     }
 
-    // Move map objects
+    vector<MoveCommandEntry> move_entries;
+
     for (auto& entity : SelectedEntities) {
         if (!hex_move) {
             auto item = entity.dyn_cast<ItemHexView>();
@@ -2367,6 +4309,16 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             if (Keyb.AltDwn) {
                 ox = oy = 0;
             }
+
+            MoveCommandEntry entry;
+            entry.EntityId = item->GetId();
+            entry.HasOffset = true;
+            entry.OldOffset = item->GetOffset();
+            entry.NewOffset = {numeric_cast<int16>(ox), numeric_cast<int16>(oy)};
+            if (entry.OldOffset == entry.NewOffset) {
+                continue;
+            }
+            move_entries.emplace_back(std::move(entry));
 
             item->SetOffset({numeric_cast<int16>(ox), numeric_cast<int16>(oy)});
             item->RefreshAnim();
@@ -2385,8 +4337,15 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             const mpos hex = _curMap->GetSize().clamp_pos(raw_hex);
 
             if (auto item = entity.dyn_cast<ItemHexView>()) {
+                MoveCommandEntry entry;
+                entry.EntityId = item->GetId();
+                entry.HasHex = true;
+                entry.OldHex = item->GetHex();
+                entry.NewHex = hex;
+
                 if (item->IsNonEmptyMultihexMesh()) {
-                    auto multihex_mesh = item->GetMultihexMesh();
+                    entry.OldMultihexMesh = item->GetMultihexMesh();
+                    auto multihex_mesh = entry.OldMultihexMesh;
 
                     std::ranges::for_each(multihex_mesh, [&](mpos& hex2) {
                         ipos32 raw_hex2 = ipos32(hex2);
@@ -2394,14 +4353,56 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
                         hex2 = _curMap->GetSize().clamp_pos(raw_hex2);
                     });
 
+                    entry.NewMultihexMesh = multihex_mesh;
                     item->SetMultihexMesh(multihex_mesh);
                 }
+
+                if (entry.OldHex == entry.NewHex && entry.OldMultihexMesh == entry.NewMultihexMesh) {
+                    continue;
+                }
+                move_entries.emplace_back(std::move(entry));
 
                 _curMap->MoveItem(item.get(), hex);
             }
             else if (auto cr = entity.dyn_cast<CritterHexView>()) {
+                MoveCommandEntry entry;
+                entry.EntityId = cr->GetId();
+                entry.HasHex = true;
+                entry.OldHex = cr->GetHex();
+                entry.NewHex = hex;
+                if (entry.OldHex == entry.NewHex) {
+                    continue;
+                }
+                move_entries.emplace_back(std::move(entry));
+
                 _curMap->MoveCritter(cr.get(), hex, false);
             }
+        }
+    }
+
+    if (move_entries.empty()) {
+        return false;
+    }
+
+    SetMapDirty(_curMap.get());
+    _curMap->DefferedRefreshItems();
+
+    for (const auto& entry : move_entries) {
+        auto it = std::ranges::find_if(PendingSelectionMoveEntries, [&](const MoveCommandEntry& pending_entry) { return pending_entry.EntityId == entry.EntityId; });
+
+        if (it == PendingSelectionMoveEntries.end()) {
+            PendingSelectionMoveEntries.emplace_back(entry);
+            continue;
+        }
+
+        if (entry.HasOffset) {
+            it->HasOffset = true;
+            it->NewOffset = entry.NewOffset;
+        }
+        if (entry.HasHex) {
+            it->HasHex = true;
+            it->NewHex = entry.NewHex;
+            it->NewMultihexMesh = entry.NewMultihexMesh;
         }
     }
 
@@ -2416,13 +4417,85 @@ void MapperEngine::SelectDelete()
         return;
     }
 
+    if (!UndoRedoInProgress && SelectedEntities.size() > 1) {
+        struct DeleteCommandEntry
+        {
+            EntityBuf Entity {};
+            ItemOwnership Ownership {ItemOwnership::MapHex};
+            ident_t OwnerId {};
+        };
+
+        vector<DeleteCommandEntry> delete_entries;
+        delete_entries.reserve(SelectedEntities.size());
+
+        for (auto* entity : copy_hold_ref(SelectedEntities)) {
+            DeleteCommandEntry entry;
+            CaptureEntityBuf(entry.Entity, entity);
+
+            if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
+                entry.Ownership = item->GetOwnership();
+                if (entry.Ownership == ItemOwnership::CritterInventory) {
+                    entry.OwnerId = item->GetCritterId();
+                }
+                else if (entry.Ownership == ItemOwnership::ItemContainer) {
+                    entry.OwnerId = item->GetContainerId();
+                }
+            }
+
+            delete_entries.emplace_back(std::move(entry));
+        }
+
+        UndoRedoInProgress = true;
+        for (auto* entity : copy_hold_ref(SelectedEntities)) {
+            DeleteEntity(entity);
+        }
+        UndoRedoInProgress = false;
+
+        SelectClear();
+        _curMap->RebuildMap();
+        MouseHoldMode = INT_NONE;
+        SetCurMode(CUR_MODE_DEFAULT);
+
+        PushUndoOp(_curMap.get(),
+            UndoOp {"Delete selection",
+                [delete_entries](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    for (const auto& entry : delete_entries) {
+                        Entity* owner = nullptr;
+
+                        if (entry.Ownership == ItemOwnership::CritterInventory || entry.Ownership == ItemOwnership::ItemContainer) {
+                            owner = mapper.FindEntityById(active_map, entry.OwnerId);
+                            if (owner == nullptr) {
+                                return false;
+                            }
+                        }
+
+                        if (mapper.RestoreEntityBuf(entry.Entity, owner) == nullptr) {
+                            return false;
+                        }
+                    }
+
+                    mapper.SetMapDirty(active_map.get());
+                    return true;
+                },
+                [delete_entries](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    for (auto it = delete_entries.rbegin(); it != delete_entries.rend(); ++it) {
+                        if (auto* target = mapper.FindEntityById(active_map, it->Entity.Id); target != nullptr) {
+                            mapper.DeleteEntity(target);
+                        }
+                    }
+
+                    return true;
+                }});
+        return;
+    }
+
     for (auto* entity : copy_hold_ref(SelectedEntities)) {
         DeleteEntity(entity);
     }
 
     SelectClear();
     _curMap->RebuildMap();
-    IntHold = INT_NONE;
+    MouseHoldMode = INT_NONE;
     SetCurMode(CUR_MODE_DEFAULT);
 }
 
@@ -2446,8 +4519,25 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     SelectAdd(cr, hex);
 
+    SetMapDirty(_curMap.get());
     _curMap->RebuildMap();
     SetCurMode(CUR_MODE_DEFAULT);
+
+    EntityBuf entity_buf;
+    CaptureEntityBuf(entity_buf, cr);
+    PushUndoOp(_curMap.get(),
+        UndoOp {"Create critter",
+            [entity_id = entity_buf.Id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                if (auto* target = mapper.FindEntityById(active_map, entity_id); target != nullptr) {
+                    mapper.DeleteEntity(target);
+                    return true;
+                }
+                return false;
+            },
+            [entity_buf](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                ignore_unused(active_map);
+                return mapper.RestoreEntityBuf(entity_buf) != nullptr;
+            }});
 
     return cr;
 }
@@ -2489,7 +4579,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         }
     }
     else if (proto->GetIsTile()) {
-        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, numeric_cast<uint8>(TileLayer), DrawRoof);
+        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, numeric_cast<uint8>(TileLayer), PreviewRoofTiles);
     }
     else {
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
@@ -2500,8 +4590,45 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         SetCurMode(CUR_MODE_DEFAULT);
     }
     else {
-        IntSetMode(INT_MODE_INCONT);
+        SetActivePanelMode(INT_MODE_INCONT);
         InContItem = item;
+    }
+
+    SetMapDirty(_curMap.get());
+
+    if (item != nullptr) {
+        EntityBuf entity_buf;
+        CaptureEntityBuf(entity_buf, item);
+        auto item_ownership = item->GetOwnership();
+        ident_t owner_id {};
+        if (item_ownership == ItemOwnership::CritterInventory) {
+            owner_id = item->GetCritterId();
+        }
+        else if (item_ownership == ItemOwnership::ItemContainer) {
+            owner_id = item->GetContainerId();
+        }
+
+        PushUndoOp(_curMap.get(),
+            UndoOp {"Create item",
+                [entity_id = entity_buf.Id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    if (auto* target = mapper.FindEntityById(active_map, entity_id); target != nullptr) {
+                        mapper.DeleteEntity(target);
+                        return true;
+                    }
+                    return false;
+                },
+                [entity_buf, item_ownership, owner_id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    Entity* restore_owner = nullptr;
+
+                    if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
+                        restore_owner = mapper.FindEntityById(active_map, owner_id);
+                        if (restore_owner == nullptr) {
+                            return false;
+                        }
+                    }
+
+                    return mapper.RestoreEntityBuf(entity_buf, restore_owner) != nullptr;
+                }});
     }
 
     return item;
@@ -2522,6 +4649,24 @@ auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
         }
 
         SelectAdd(cr_clone);
+        SetMapDirty(_curMap.get());
+
+        EntityBuf entity_buf;
+        CaptureEntityBuf(entity_buf, cr_clone);
+        PushUndoOp(_curMap.get(),
+            UndoOp {"Clone entity",
+                [entity_id = entity_buf.Id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    if (auto* target = mapper.FindEntityById(active_map, entity_id); target != nullptr) {
+                        mapper.DeleteEntity(target);
+                        return true;
+                    }
+                    return false;
+                },
+                [entity_buf](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    ignore_unused(active_map);
+                    return mapper.RestoreEntityBuf(entity_buf) != nullptr;
+                }});
+
         return cr_clone;
     }
 
@@ -2531,6 +4676,24 @@ auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
         CloneInnerItems(item_clone, item);
 
         SelectAdd(item_clone);
+        SetMapDirty(_curMap.get());
+
+        EntityBuf entity_buf;
+        CaptureEntityBuf(entity_buf, item_clone);
+        PushUndoOp(_curMap.get(),
+            UndoOp {"Clone entity",
+                [entity_id = entity_buf.Id](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    if (auto* target = mapper.FindEntityById(active_map, entity_id); target != nullptr) {
+                        mapper.DeleteEntity(target);
+                        return true;
+                    }
+                    return false;
+                },
+                [entity_buf](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    ignore_unused(active_map);
+                    return mapper.RestoreEntityBuf(entity_buf) != nullptr;
+                }});
+
         return item_clone;
     }
 
@@ -2753,7 +4916,7 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* i
 
     // Neighbor hexes
     for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-        if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, static_cast<uint8>(i), map->GetSize())) {
+        if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, numeric_cast<uint8>(i), map->GetSize())) {
             if (auto* mergable_item = find_mergable_item_on_hex(hex2); mergable_item != nullptr) {
                 result.emplace(mergable_item);
             }
@@ -2936,6 +5099,8 @@ void MapperEngine::BufferPaste()
         return;
     }
 
+    vector<EntityBuf> pasted_entities;
+
     const ipos32 screen_raw_hex = _curMap->GetScreenRawHex();
     const auto hx_offset = screen_raw_hex.x - BufferRawHex.x;
     const auto hy_offset = screen_raw_hex.y - BufferRawHex.y;
@@ -2970,13 +5135,171 @@ void MapperEngine::BufferPaste()
             }
 
             SelectAdd(cr);
+
+            pasted_entities.emplace_back();
+            CaptureEntityBuf(pasted_entities.back(), cr);
         }
         else if (entity_buf.IsItem) {
             auto* item = _curMap->AddMapperItem(entity_buf.Proto->GetProtoId(), hex, entity_buf.Props.get());
             add_item_inner_items(&entity_buf, item);
             SelectAdd(item);
+
+            pasted_entities.emplace_back();
+            CaptureEntityBuf(pasted_entities.back(), item);
         }
     }
+
+    if (!pasted_entities.empty()) {
+        PushUndoOp(_curMap.get(),
+            UndoOp {"Paste selection",
+                [pasted_entities](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    for (auto it = pasted_entities.rbegin(); it != pasted_entities.rend(); ++it) {
+                        if (auto* target = mapper.FindEntityById(active_map, it->Id); target != nullptr) {
+                            mapper.DeleteEntity(target);
+                        }
+                    }
+
+                    return true;
+                },
+                [pasted_entities](MapperEngine& mapper, raw_ptr<MapView>& active_map) {
+                    for (const auto& entity_buf : pasted_entities) {
+                        if (mapper.RestoreEntityBuf(entity_buf) == nullptr) {
+                            return false;
+                        }
+                    }
+
+                    mapper.SetMapDirty(active_map.get());
+                    return true;
+                }});
+    }
+}
+
+auto MapperEngine::JumpHistoryToIndex(int32 target_index) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr) {
+        return false;
+    }
+
+    const auto* ctx = GetUndoContext(_curMap.get(), false);
+    const auto total_count = ctx != nullptr ? numeric_cast<int32>(ctx->UndoStack.size() + ctx->RedoStack.size()) : 0;
+    target_index = std::clamp(target_index, 0, total_count);
+
+    while (true) {
+        const auto* cur_ctx = GetUndoContext(_curMap.get(), false);
+        const auto applied_count = cur_ctx != nullptr ? numeric_cast<int32>(cur_ctx->UndoStack.size()) : 0;
+
+        if (applied_count == target_index) {
+            return true;
+        }
+
+        if (applied_count > target_index) {
+            if (!ExecuteUndo()) {
+                return false;
+            }
+        }
+        else {
+            if (!ExecuteRedo()) {
+                return false;
+            }
+        }
+    }
+}
+
+void MapperEngine::DrawHistoryWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!HistoryWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos({48.0f, 48.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({640.0f, 760.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("History", &HistoryWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    if (_curMap == nullptr) {
+        ImGui::TextUnformatted("No map loaded");
+        ImGui::End();
+        return;
+    }
+
+    const auto* ctx = GetUndoContext(_curMap.get(), false);
+    const auto undo_count = ctx != nullptr ? numeric_cast<int32>(ctx->UndoStack.size()) : 0;
+    const auto redo_count = ctx != nullptr ? numeric_cast<int32>(ctx->RedoStack.size()) : 0;
+    const auto total_count = undo_count + redo_count;
+
+    auto& last_history_map = LastHistoryMap;
+    int32& last_history_undo_count = LastHistoryUndoCount;
+    const auto scroll_to_current = ImGui::IsWindowAppearing() || last_history_map != _curMap.get() || last_history_undo_count != undo_count;
+
+    last_history_map = _curMap.get();
+    last_history_undo_count = undo_count;
+
+    ImGui::Text("Applied: %d / %d", undo_count, total_count);
+    ImGui::Separator();
+
+    const auto draw_history_button = [&](string_view label, int32 target_index, bool is_current) {
+        const auto button_label = is_current ? strex("%s  [current]", label).str() : string(label);
+        if (is_current) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        }
+
+        const auto clicked = ImGui::Button(button_label.c_str(), {-FLT_MIN, 0.0f});
+
+        if (is_current) {
+            ImGui::PopStyleColor(2);
+        }
+
+        if (clicked && !is_current) {
+            JumpHistoryToIndex(target_index);
+        }
+    };
+
+    if (ImGui::BeginChild("HistoryEntries", {0.0f, 0.0f}, false)) {
+        if (undo_count == 0) {
+            draw_history_button("Initial state", 0, true);
+        }
+        else {
+            draw_history_button("Initial state", 0, false);
+        }
+
+        if (ctx != nullptr && undo_count > 0) {
+            ImGui::SeparatorText("Undo");
+
+            for (int32 index = 0; index < undo_count; index++) {
+                const auto label = strex("{}. {}", index + 1, ctx->UndoStack[numeric_cast<size_t>(index)].Label).str();
+                draw_history_button(label, index + 1, false);
+            }
+        }
+
+        ImGui::SeparatorText("Current position");
+        ImGui::TextDisabled("Applied commands: %d", undo_count);
+        if (scroll_to_current) {
+            ImGui::SetScrollHereY(0.5f);
+        }
+
+        if (ctx != nullptr && redo_count > 0) {
+            ImGui::SeparatorText("Redo");
+
+            for (int32 index = 0; index < redo_count; index++) {
+                const auto redo_index = redo_count - 1 - index;
+                const auto target_index = undo_count + index + 1;
+                const auto label = strex("{}. {}", target_index, ctx->RedoStack[numeric_cast<size_t>(redo_index)].Label).str();
+                draw_history_button(label, target_index, false);
+            }
+        }
+
+        ImGui::EndChild();
+    }
+
+    ImGui::End();
 }
 
 void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
@@ -2990,104 +5313,180 @@ void MapperEngine::CurDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
-    switch (CurMode) {
-    case CUR_MODE_DEFAULT:
-    case CUR_MODE_MOVE_SELECTION: {
-        const auto* anim = CurMode == CUR_MODE_DEFAULT ? CurPDef.get() : CurPHand.get();
-        if (anim != nullptr) {
-            SprMngr.DrawSprite(anim, Settings.MousePos, COLOR_SPRITE);
+    if (_curMap == nullptr) {
+        return;
+    }
+
+    const auto can_place_object = CurMode == CUR_MODE_PLACE_OBJECT && ((IsItemMode() && ActiveItemProtos != nullptr && !ActiveItemProtos->empty()) || (IsCritMode() && ActiveCritterProtos != nullptr && !ActiveCritterProtos->empty()));
+
+    if (!can_place_object) {
+        return;
+    }
+
+    if (IsItemMode() && ActiveItemProtos != nullptr && !ActiveItemProtos->empty()) {
+        const auto& proto = (*ActiveItemProtos)[GetActiveProtoIndex()];
+
+        mpos hex;
+
+        if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
+            return;
         }
-    } break;
-    case CUR_MODE_PLACE_OBJECT:
-        if (IsItemMode() && !CurItemProtos->empty()) {
-            const auto& proto = (*CurItemProtos)[GetTabIndex()];
 
-            mpos hex;
+        if (proto->GetIsTile()) {
+            hex = _curMap->GetSize().from_raw_pos(hex.x - hex.x % Settings.MapTileStep, hex.y - hex.y % Settings.MapTileStep);
+        }
 
-            if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
-                break;
-            }
+        const auto* spr = GetPreviewSprite(proto->GetPicMap());
+
+        if (spr != nullptr) {
+            const auto zoom = _curMap->GetSpritesZoom();
+            ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
+            pos += ipos32(iround<int32>(numeric_cast<float32>(proto->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(proto->GetOffset().y) * zoom));
+            pos += ipos32(iround<int32>(numeric_cast<float32>(spr->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(spr->GetOffset().y) * zoom));
+            pos += ipos32(iround<int32>(numeric_cast<float32>(Settings.MapHexWidth / 2) * zoom), iround<int32>(numeric_cast<float32>(Settings.MapHexHeight) * zoom));
+            pos -= ipos32(iround<int32>(numeric_cast<float32>(spr->GetSize().width / 2) * zoom), iround<int32>(numeric_cast<float32>(spr->GetSize().height) * zoom));
 
             if (proto->GetIsTile()) {
-                hex = _curMap->GetSize().from_raw_pos(hex.x - hex.x % Settings.MapTileStep, hex.y - hex.y % Settings.MapTileStep);
-            }
-
-            const auto* spr = GetIfaceSpr(proto->GetPicMap());
-
-            if (spr != nullptr) {
-                ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
-                pos += ipos32(proto->GetOffset());
-                pos += spr->GetOffset();
-                pos += ipos32(Settings.MapHexWidth / 2, Settings.MapHexHeight / 2);
-                pos -= ipos32(spr->GetSize().width / 2, spr->GetSize().height);
-
-                if (proto->GetIsTile()) {
-                    if (DrawRoof) {
-                        pos.x += Settings.MapRoofOffsX;
-                        pos.y += Settings.MapRoofOffsY;
-                    }
-                    else {
-                        pos.x += Settings.MapTileOffsX;
-                        pos.y += Settings.MapTileOffsY;
-                    }
+                if (PreviewRoofTiles) {
+                    pos.x += iround<int32>(numeric_cast<float32>(Settings.MapRoofOffsX) * zoom);
+                    pos.y += iround<int32>(numeric_cast<float32>(Settings.MapRoofOffsY) * zoom);
                 }
-
-                const auto width = iround<int32>(numeric_cast<float32>(spr->GetSize().width) * _curMap->GetSpritesZoom());
-                const auto height = iround<int32>(numeric_cast<float32>(spr->GetSize().height) * _curMap->GetSpritesZoom());
-                SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
-            }
-        }
-        else if (IsCritMode() && !CurCritterProtos->empty()) {
-            const auto model_name = (*CurCritterProtos)[GetTabIndex()]->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
-
-            if (anim == nullptr) {
-                anim = ResMngr.GetItemDefaultSpr().get();
+                else {
+                    pos.x += iround<int32>(numeric_cast<float32>(Settings.MapTileOffsX) * zoom);
+                    pos.y += iround<int32>(numeric_cast<float32>(Settings.MapTileOffsY) * zoom);
+                }
             }
 
-            mpos hex;
-
-            if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
-                break;
-            }
-
-            ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
-            pos += anim->GetOffset();
-            pos -= ipos32(anim->GetSize().width / 2, anim->GetSize().height);
-
-            const auto width = iround<int32>(numeric_cast<float32>(anim->GetSize().width) * _curMap->GetSpritesZoom());
-            const auto height = iround<int32>(numeric_cast<float32>(anim->GetSize().height) * _curMap->GetSpritesZoom());
-            SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
+            const auto width = iround<int32>(numeric_cast<float32>(spr->GetSize().width) * zoom);
+            const auto height = iround<int32>(numeric_cast<float32>(spr->GetSize().height) * zoom);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
         }
-        else {
-            SetCurMode(CUR_MODE_DEFAULT);
-        }
-        break;
-    default:
-        SetCurMode(CUR_MODE_DEFAULT);
-        break;
+        return;
     }
+
+    if (IsCritMode() && ActiveCritterProtos != nullptr && !ActiveCritterProtos->empty()) {
+        const auto model_name = (*ActiveCritterProtos)[GetActiveProtoIndex()]->GetModelName();
+        const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
+
+        if (anim == nullptr) {
+            anim = ResMngr.GetItemDefaultSpr().get();
+        }
+
+        mpos hex;
+
+        if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
+            return;
+        }
+
+        const auto zoom = _curMap->GetSpritesZoom();
+        ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
+        pos += ipos32(iround<int32>(numeric_cast<float32>(anim->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(anim->GetOffset().y) * zoom));
+        pos -= ipos32(iround<int32>(numeric_cast<float32>(anim->GetSize().width / 2) * zoom), iround<int32>(numeric_cast<float32>(anim->GetSize().height) * zoom));
+
+        const auto width = iround<int32>(numeric_cast<float32>(anim->GetSize().width) * zoom);
+        const auto height = iround<int32>(numeric_cast<float32>(anim->GetSize().height) * zoom);
+        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
+    }
+}
+
+void MapperEngine::DrawSettingsWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!SettingsWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos({96.0f, 96.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({420.0f, 320.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Settings", &SettingsWindowVisible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        return;
+    }
+
+    const auto apply_resolution = [&](isize32 resolution) {
+        if (Settings.ScreenWidth == resolution.width && Settings.ScreenHeight == resolution.height) {
+            return;
+        }
+
+        SprMngr.SetScreenSize(resolution);
+        SprMngr.SetWindowSize(resolution);
+        UpdateLocalConfigValue(Cache, "ScreenWidth", strex("{}", resolution.width));
+        UpdateLocalConfigValue(Cache, "ScreenHeight", strex("{}", resolution.height));
+        AddMess(strex("Resolution changed to {}x{}", resolution.width, resolution.height));
+    };
+
+    ImGui::Text("Current resolution: %d x %d", Settings.ScreenWidth, Settings.ScreenHeight);
+    auto fullscreen = SprMngr.IsFullscreen();
+    if (ImGui::Checkbox("Fullscreen", &fullscreen)) {
+        SprMngr.ToggleFullscreen();
+    }
+    ImGui::Separator();
+    if (ImGui::Button("Reset layout")) {
+        ResetImGuiSettingsRequested = true;
+    }
+    ImGui::Separator();
+    ImGui::TextUnformatted("Popular resolutions");
+
+    constexpr array<isize32, 10> popular_resolutions {{
+        {1024, 768},
+        {1280, 720},
+        {1280, 800},
+        {1366, 768},
+        {1440, 900},
+        {1600, 900},
+        {1680, 1050},
+        {1920, 1080},
+        {2560, 1440},
+        {3840, 2160},
+    }};
+
+    if (ImGui::BeginChild("##SettingsResolutions", {0.0f, 0.0f}, false)) {
+        for (const auto& res : popular_resolutions) {
+            const auto is_current = Settings.ScreenWidth == res.width && Settings.ScreenHeight == res.height;
+            if (ImGui::Selectable(strex("{} x {}", res.width, res.height).c_str(), is_current)) {
+                apply_resolution(res);
+            }
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::End();
 }
 
 void MapperEngine::CurRMouseUp()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntHold == INT_NONE) {
-        if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            SetCurMode(CUR_MODE_DEFAULT);
+    if (MouseHoldMode == INT_PAN) {
+        if (RightMouseDragged) {
+            const auto now_time = nanotime::now();
+            const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32>();
+
+            if ((RightMouseVelocityAccum.x != 0.0f || RightMouseVelocityAccum.y != 0.0f) && sample_ms > 0.0f) {
+                RightMouseInertia = RightMouseVelocityAccum * (1000.0f / sample_ms);
+            }
+
+            RightMouseVelocityAccum = {};
+            RightMouseVelocityTime = {};
         }
-        else if (CurMode == CUR_MODE_PLACE_OBJECT) {
-            SetCurMode(CUR_MODE_DEFAULT);
-        }
-        else if (CurMode == CUR_MODE_DEFAULT) {
+        else {
+            RightMouseInertia = {};
+            RightMouseVelocityAccum = {};
+            RightMouseVelocityTime = {};
+
+            if (CurMode == CUR_MODE_PLACE_OBJECT) {
+                SetCurMode(CUR_MODE_DEFAULT);
+            }
+
             if (!SelectedEntities.empty()) {
-                SetCurMode(CUR_MODE_MOVE_SELECTION);
-            }
-            else if (IsItemMode() || IsCritMode()) {
-                SetCurMode(CUR_MODE_PLACE_OBJECT);
+                SelectClear();
             }
         }
+
+        MouseHoldMode = INT_NONE;
+        RightMouseDragged = false;
     }
 }
 
@@ -3096,19 +5495,14 @@ void MapperEngine::CurMMouseDown()
     FO_STACK_TRACE_ENTRY();
 
     if (SelectedEntities.empty()) {
-        CritterDir++;
+        CritterDir = GetNextCritterDir(CritterDir);
 
-        if (CritterDir >= GameSettings::MAP_DIR_COUNT) {
-            CritterDir = 0;
-        }
-
-        DrawRoof = !DrawRoof;
+        PreviewRoofTiles = !PreviewRoofTiles;
     }
     else {
         for (auto& entity : SelectedEntities) {
             if (auto cr = entity.dyn_cast<CritterHexView>()) {
-                const auto dir = cr->GetDir() + 1;
-                cr->ChangeDir(numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT));
+                AdvanceCritterDir(cr.get());
             }
         }
     }
@@ -3147,27 +5541,11 @@ auto MapperEngine::IsCurInRect(const irect32& rect) const -> bool
     return Settings.MousePos.x >= rect.x && Settings.MousePos.y >= rect.y && Settings.MousePos.x < rect.x + rect.width && Settings.MousePos.y < rect.y + rect.height;
 }
 
-auto MapperEngine::IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32 ax, int32 ay) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return IsCurInRect(rect, ax, ay) && SprMngr.SpriteHitTest(spr, {Settings.MousePos.x - rect.x - ax, Settings.MousePos.y - rect.y - ay});
-}
-
 auto MapperEngine::IsCurInInterface() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic.get(), SubTabsRect, SubTabsX, SubTabsY)) {
-        return true;
-    }
-    if (IntVisible && IsCurInRectNoTransp(IntMainPic.get(), IntWMain, IntX, IntY)) {
-        return true;
-    }
-    if (ObjVisible && !SelectedEntities.empty() && IsCurInRectNoTransp(ObjWMainPic.get(), ObjWMain, ObjX, ObjY)) {
-        return true;
-    }
-    return false;
+    return IsImGuiMouseCaptured();
 }
 
 auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
@@ -3185,126 +5563,126 @@ auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
     return _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
 }
 
-void MapperEngine::ConsoleDraw()
+void MapperEngine::DrawConsoleImGui()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ConsoleEdit) {
-        SprMngr.DrawSprite(ConsolePic.get(), {IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY}, COLOR_SPRITE);
-
-        auto str = ConsoleStr;
-        str.insert(ConsoleCur, timespan(GameTime.GetFrameTime().duration_value()).to_ms<int32>() % 800 < 400 ? "!" : ".");
-        DrawStr(irect32(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
-    }
-}
-
-void MapperEngine::ConsoleKeyDown(KeyCode dik, string_view dik_text)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
-        if (ConsoleEdit) {
-            if (ConsoleStr.empty()) {
-                ConsoleEdit = false;
-            }
-            else {
-                // Modify console history
-                ConsoleHistory.emplace_back(ConsoleStr);
-
-                for (int32 i = 0; i < numeric_cast<int32>(ConsoleHistory.size()) - 1; i++) {
-                    if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
-                        ConsoleHistory.erase(ConsoleHistory.begin() + i);
-                        i = -1;
-                    }
-                }
-
-                while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
-                    ConsoleHistory.erase(ConsoleHistory.begin());
-                }
-
-                ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
-
-                // Save console history
-                string history_str;
-
-                for (const auto& str : ConsoleHistory) {
-                    history_str += str + "\n";
-                }
-
-                Cache.SetString("mapper_console.txt", history_str);
-
-                // Process command
-                const auto process_command = OnMapperMessage.Fire(ConsoleStr);
-                AddMess(ConsoleStr);
-
-                if (process_command) {
-                    ParseCommand(ConsoleStr);
-                }
-
-                ConsoleStr = "";
-                ConsoleCur = 0;
-            }
-        }
-        else {
-            ConsoleEdit = true;
-            ConsoleStr = "";
-            ConsoleCur = 0;
-            ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
-        }
-    }
-    else {
-        switch (dik) {
-        case KeyCode::Up: {
-            if (ConsoleHistoryCur > 0) {
-                ConsoleHistoryCur--;
-                ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = numeric_cast<int32>(ConsoleStr.length());
-            }
-        } break;
-        case KeyCode::Down: {
-            if (ConsoleHistoryCur + 1 >= numeric_cast<int32>(ConsoleHistory.size())) {
-                ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
-                ConsoleStr = "";
-                ConsoleCur = 0;
-            }
-            else {
-                ConsoleHistoryCur++;
-                ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
-                ConsoleCur = numeric_cast<int32>(ConsoleStr.length());
-            }
-        } break;
-        default: {
-            Keyb.FillChar(dik, dik_text, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
-            ConsoleLastKey = dik;
-            ConsoleLastKeyText = dik_text;
-            ConsoleKeyTime = GameTime.GetFrameTime();
-            ConsoleAccelerate = 1;
-        } break;
-        }
-    }
-}
-
-void MapperEngine::ConsoleKeyUp(KeyCode /*key*/)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ConsoleLastKey = KeyCode::None;
-    ConsoleLastKeyText = "";
-}
-
-void MapperEngine::ConsoleProcess()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (ConsoleLastKey == KeyCode::None) {
+    if (!ConsoleEdit) {
         return;
     }
 
-    if ((GameTime.GetFrameTime() - ConsoleKeyTime).to_ms<int32>() >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
-        ConsoleKeyTime = GameTime.GetFrameTime();
-        ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
-        Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
+    auto& console_buf = ConsoleBuf;
+    bool& sync_from_state = ConsoleSyncFromState;
+
+    auto sync_buffer = [&]() {
+        std::fill(console_buf.begin(), console_buf.end(), '\0');
+        const auto copy_len = std::min(ConsoleStr.size(), console_buf.size() - 1);
+        std::copy_n(ConsoleStr.data(), copy_len, console_buf.data());
+    };
+
+    const auto base_y = numeric_cast<float32>(MainPanelPos.y + MainPanelWindowRect.height + MAPPER_CONSOLE_WINDOW_OFFSET.y);
+    const auto base_x = numeric_cast<float32>(MainPanelPos.x + MAPPER_CONSOLE_WINDOW_OFFSET.x);
+
+    ImGui::SetNextWindowPos({base_x, base_y}, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.85f);
+
+    auto keep_open = ConsoleEdit;
+    const auto window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
+    if (ImGui::Begin("Mapper Console", &keep_open, window_flags)) {
+        if (sync_from_state || ImGui::IsWindowAppearing()) {
+            sync_buffer();
+            sync_from_state = false;
+        }
+
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+        }
+
+        if (ImGui::InputText("##MapperConsoleInput", console_buf.data(), console_buf.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            ConsoleStr = console_buf.data();
+            ConsoleSubmitCommand();
+            sync_from_state = true;
+        }
+
+        ConsoleStr = console_buf.data();
+
+        if (ImGui::IsItemActive()) {
+            if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+                if (ConsoleHistoryCur > 0) {
+                    ConsoleHistoryCur--;
+                    ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
+                    sync_from_state = true;
+                }
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+                if (ConsoleHistoryCur + 1 >= numeric_cast<int32>(ConsoleHistory.size())) {
+                    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+                    ConsoleStr.clear();
+                }
+                else {
+                    ConsoleHistoryCur++;
+                    ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
+                }
+
+                sync_from_state = true;
+            }
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            ConsoleEdit = false;
+            ConsoleStr.clear();
+            sync_from_state = true;
+        }
     }
+    ImGui::End();
+
+    if (!keep_open) {
+        ConsoleEdit = false;
+        ConsoleStr.clear();
+        sync_from_state = true;
+    }
+}
+
+void MapperEngine::ConsoleSubmitCommand()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (ConsoleStr.empty()) {
+        ConsoleEdit = false;
+        return;
+    }
+
+    // Keep history unique and bounded.
+    ConsoleHistory.emplace_back(ConsoleStr);
+
+    for (int32 i = 0; i < numeric_cast<int32>(ConsoleHistory.size()) - 1; i++) {
+        if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
+            ConsoleHistory.erase(ConsoleHistory.begin() + i);
+            i = -1;
+        }
+    }
+
+    while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
+        ConsoleHistory.erase(ConsoleHistory.begin());
+    }
+
+    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+
+    string history_str;
+    for (const auto& str : ConsoleHistory) {
+        history_str += str + "\n";
+    }
+    Cache.SetString("mapper_console.txt", history_str);
+
+    const auto process_command = OnMapperMessage.Fire(ConsoleStr);
+    AddMess(ConsoleStr);
+
+    if (process_command) {
+        ParseCommand(ConsoleStr);
+    }
+
+    ConsoleEdit = false;
+    ConsoleStr = "";
 }
 
 void MapperEngine::ParseCommand(string_view command)
@@ -3352,6 +5730,7 @@ void MapperEngine::ParseCommand(string_view command)
     }
     // Run script
     else if (command[0] == '#') {
+        const auto before_snapshot = _curMap && !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
         const auto command_str = string(command.substr(1));
         istringstream icmd(command_str);
         string func_name;
@@ -3373,6 +5752,13 @@ void MapperEngine::ParseCommand(string_view command)
         if (!func.Call(str)) {
             AddMess("Script execution fail");
             return;
+        }
+
+        if (!before_snapshot.empty()) {
+            const auto after_snapshot = CaptureMapSnapshot(_curMap.get());
+            if (before_snapshot != after_snapshot) {
+                PushUndoOp(_curMap.get(), UndoOp {strex("Script {}", func_name), [map_name = string(_curMap->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(_curMap->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
+            }
         }
 
         AddMess(strex("Result: {}", func.GetResult()));
@@ -3434,6 +5820,7 @@ void MapperEngine::ParseCommand(string_view command)
 
             LoadedMaps.emplace_back(std::move(map));
             ShowMap(LoadedMaps.back().get());
+            SetMapDirty(LoadedMaps.back().get());
             AddMess("Create map success");
         }
         else if (command_ext == "unload" && _curMap) {
@@ -3476,6 +5863,8 @@ void MapperEngine::ParseCommand(string_view command)
             }
         }
         else if (command_ext == "reverse-light" && _curMap) {
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
+
             for (auto& item : _curMap->GetItems()) {
                 auto rgba = item->GetLightColor().rgba;
                 rgba = (rgba & 0xFF000000) | ((rgba & 0xFF) << 16) | (rgba & 0xFF00) | ((rgba & 0xFF0000) >> 16);
@@ -3483,19 +5872,82 @@ void MapperEngine::ParseCommand(string_view command)
             }
 
             _curMap->RebuildMap();
+            SetMapDirty(_curMap.get());
+
+            if (!before_snapshot.empty()) {
+                const auto after_snapshot = CaptureMapSnapshot(_curMap.get());
+                if (before_snapshot != after_snapshot) {
+                    PushUndoOp(_curMap.get(), UndoOp {"Reverse lights", [map_name = string(_curMap->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(_curMap->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
+                }
+            }
         }
         else if (command_ext == "merge-items" && _curMap) {
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             MergeItemsToMultihexMeshes(_curMap.get());
             FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(_curMap.get()) == 0);
+            SetMapDirty(_curMap.get());
+
+            if (!before_snapshot.empty()) {
+                const auto after_snapshot = CaptureMapSnapshot(_curMap.get());
+                if (before_snapshot != after_snapshot) {
+                    PushUndoOp(_curMap.get(), UndoOp {"Merge items", [map_name = string(_curMap->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(_curMap->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
+                }
+            }
         }
         else if (command_ext == "break-items" && _curMap) {
+            const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             BreakItemsMultihexMeshes(_curMap.get());
             FO_RUNTIME_ASSERT(BreakItemsMultihexMeshes(_curMap.get()) == 0);
+            SetMapDirty(_curMap.get());
+
+            if (!before_snapshot.empty()) {
+                const auto after_snapshot = CaptureMapSnapshot(_curMap.get());
+                if (before_snapshot != after_snapshot) {
+                    PushUndoOp(_curMap.get(), UndoOp {"Break items", [map_name = string(_curMap->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(_curMap->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
+                }
+            }
         }
     }
     else {
         AddMess("Unknown command");
     }
+}
+
+auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text) -> MapView*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_text, &Hashes, ConfigFileOption::ReadFirstSection);
+
+    if (!map_data.HasSection("ProtoMap")) {
+        throw MapLoaderException("Invalid map format", map_name);
+    }
+
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    pmap->AddRef(); // Todo: fix memleak
+    pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
+
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
+    new_map->EnableMapperMode();
+
+    try {
+        new_map->LoadFromFile(map_name, map_text);
+    }
+    catch (const MapLoaderException& ex) {
+        AddMess(strex("Map truncated: {}", ex.what()));
+        return nullptr;
+    }
+
+    MergeItemsToMultihexMeshes(new_map.get());
+    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(new_map.get()) == 0);
+
+    new_map->InstantScrollTo(new_map->GetWorkHex());
+    OnEditMapLoad.Fire(new_map.get());
+    LoadedMaps.emplace_back(std::move(new_map));
+    GetUndoContext(LoadedMaps.back().get(), true)->CleanUndoDepth = 0;
+    SetMapDirty(LoadedMaps.back().get(), false);
+
+    return LoadedMaps.back().get();
 }
 
 auto MapperEngine::LoadMap(string_view map_name) -> MapView*
@@ -3510,36 +5962,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> MapView*
         return nullptr;
     }
 
-    const auto map_file_str = map_file.GetStr();
-    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_file_str, &Hashes, ConfigFileOption::ReadFirstSection);
-
-    if (!map_data.HasSection("ProtoMap")) {
-        throw MapLoaderException("Invalid map format", map_name);
-    }
-
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    pmap->AddRef(); // Todo: fix memleak
-    pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
-
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
-    new_map->EnableMapperMode();
-
-    try {
-        new_map->LoadFromFile(map_name, map_file.GetStr());
-    }
-    catch (const MapLoaderException& ex) {
-        AddMess(strex("Map truncated: {}", ex.what()));
-        return nullptr;
-    }
-
-    MergeItemsToMultihexMeshes(new_map.get());
-    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(new_map.get()) == 0);
-
-    new_map->InstantScrollTo(new_map->GetWorkHex());
-    OnEditMapLoad.Fire(new_map.get());
-    LoadedMaps.emplace_back(std::move(new_map));
-
-    return LoadedMaps.back().get();
+    return LoadMapFromText(map_name, map_file.GetStr());
 }
 
 void MapperEngine::ShowMap(MapView* map)
@@ -3551,13 +5974,72 @@ void MapperEngine::ShowMap(MapView* map)
     const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
+    WorkspaceWindowVisible = true;
+    MapListWindowVisible = false;
+
     if (_curMap != map) {
         if (_curMap) {
             SelectClear();
         }
 
         _curMap = map;
-        RefreshCurProtos();
+        RefreshActiveProtoLists();
+    }
+}
+
+auto MapperEngine::IsMapDirty(const MapView* map) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return map != nullptr && DirtyMaps.contains(const_cast<MapView*>(map));
+}
+
+void MapperEngine::SetMapDirty(MapView* map, bool dirty)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (map == nullptr) {
+        return;
+    }
+
+    if (dirty) {
+        DirtyMaps.emplace(map);
+    }
+    else {
+        DirtyMaps.erase(map);
+    }
+}
+
+void MapperEngine::SaveCurrentMap()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr) {
+        return;
+    }
+
+    SaveMap(_curMap.get(), "");
+    AddMess(strex("Saved map: {}", _curMap->GetName()));
+}
+
+void MapperEngine::ResetCurrentMapChanges()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap == nullptr) {
+        return;
+    }
+
+    const auto map_name = string(_curMap->GetName());
+    ClearUndoContext(_curMap.get());
+    UnloadMap(_curMap.get());
+
+    if (auto* map = LoadMap(map_name); map != nullptr) {
+        ShowMap(map);
+        AddMess(strex("Reset changes: {}", map_name));
+    }
+    else {
+        AddMess(strex("Reset changes failed: {}", map_name));
     }
 }
 
@@ -3607,9 +6089,12 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
     FO_RUNTIME_ASSERT(fomap_file);
 
     OnEditMapSave.Fire(map);
+    auto* ctx = GetUndoContext(map, true);
+    ctx->CleanUndoDepth = numeric_cast<int32>(ctx->UndoStack.size());
+    SetMapDirty(map, false);
 }
 
-void MapperEngine::UnloadMap(MapView* map)
+void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3623,6 +6108,10 @@ void MapperEngine::UnloadMap(MapView* map)
     const auto it = std::ranges::find(LoadedMaps, map);
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
+    SetMapDirty(map, false);
+    if (clear_undo) {
+        ClearUndoContext(map);
+    }
     map->MarkAsDestroyed();
     LoadedMaps.erase(it);
 }
@@ -3633,6 +6122,8 @@ void MapperEngine::ResizeMap(MapView* map, int32 width, int32 height)
 
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
+    const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : string {};
+
     const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
@@ -3641,6 +6132,13 @@ void MapperEngine::ResizeMap(MapView* map, int32 width, int32 height)
 
     if (_curMap == map) {
         SelectClear();
+    }
+
+    SetMapDirty(map);
+
+    const auto after_snapshot = CaptureMapSnapshot(map);
+    if (!before_snapshot.empty() && before_snapshot != after_snapshot) {
+        PushUndoOp(map, UndoOp {"Resize map", [map_name = string(map->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(map->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
     }
 }
 
@@ -3656,7 +6154,7 @@ void MapperEngine::AddMess(string_view message_text)
     MessBoxScroll = 0;
     MessBoxCurText = "";
 
-    const irect32 ir(IntWWork.x + IntX, IntWWork.y + IntY, IntWWork.width, IntWWork.height);
+    const irect32 ir(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height);
     int32 max_lines = ir.height / 10;
 
     if (ir == irect32()) {
@@ -3686,14 +6184,11 @@ void MapperEngine::MessBoxDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!IntVisible) {
-        return;
-    }
     if (MessBoxCurText.empty()) {
         return;
     }
 
-    DrawStr(irect32(IntWWork.x + IntX, IntWWork.y + IntY, IntWWork.width, IntWWork.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
+    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
 void MapperEngine::DrawIfaceLayer(int32 layer)

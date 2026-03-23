@@ -101,7 +101,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException));
+        InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ShowMessageOnException));
 
         App->Settings.ScreenHudHeight = 0;
         App->Settings.ScrollCheck = false;

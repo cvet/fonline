@@ -341,8 +341,8 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
         const auto it = mapper->Tabs[tab].find(string(subTab));
 
         if (it != mapper->Tabs[tab].end()) {
-            if (mapper->TabsActive[tab] == &it->second) {
-                mapper->TabsActive[tab] = nullptr;
+            if (mapper->ActiveSubTabs[tab] == &it->second) {
+                mapper->ActiveSubTabs[tab] = nullptr;
             }
 
             mapper->Tabs[tab].erase(it);
@@ -363,11 +363,11 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
         }
     }
 
-    if (mapper->TabsActive[tab] == nullptr) {
-        mapper->TabsActive[tab] = &stab_default;
+    if (mapper->ActiveSubTabs[tab] == nullptr) {
+        mapper->ActiveSubTabs[tab] = &stab_default;
     }
 
-    mapper->RefreshCurProtos();
+    mapper->RefreshActiveProtoLists();
 }
 
 ///@ ExportMethod
@@ -399,8 +399,8 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32 tab
         // Delete sub tab
         const auto it = mapper->Tabs[tab].find(string(subTab));
         if (it != mapper->Tabs[tab].end()) {
-            if (mapper->TabsActive[tab] == &it->second) {
-                mapper->TabsActive[tab] = nullptr;
+            if (mapper->ActiveSubTabs[tab] == &it->second) {
+                mapper->ActiveSubTabs[tab] = nullptr;
             }
 
             mapper->Tabs[tab].erase(it);
@@ -421,12 +421,12 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32 tab
         }
     }
 
-    if (mapper->TabsActive[tab] == nullptr) {
-        mapper->TabsActive[tab] = &stab_default;
+    if (mapper->ActiveSubTabs[tab] == nullptr) {
+        mapper->ActiveSubTabs[tab] = &stab_default;
     }
 
     // Refresh
-    mapper->RefreshCurProtos();
+    mapper->RefreshActiveProtoLists();
 }
 
 ///@ ExportMethod
@@ -438,7 +438,7 @@ FO_SCRIPT_API void Mapper_Game_TabDelete(MapperEngine* mapper, int32 tab)
 
     mapper->Tabs[tab].clear();
     auto& stab_default = mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB];
-    mapper->TabsActive[tab] = &stab_default;
+    mapper->ActiveSubTabs[tab] = &stab_default;
 }
 
 ///@ ExportMethod
@@ -449,7 +449,7 @@ FO_SCRIPT_API void Mapper_Game_TabSelect(MapperEngine* mapper, int32 tab, string
     }
 
     if (show) {
-        mapper->IntSetMode(tab);
+        mapper->SetActivePanelMode(tab);
     }
 
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
@@ -458,7 +458,7 @@ FO_SCRIPT_API void Mapper_Game_TabSelect(MapperEngine* mapper, int32 tab, string
 
     const auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB);
     if (it != mapper->Tabs[tab].end()) {
-        mapper->TabsActive[tab] = &it->second;
+        mapper->ActiveSubTabs[tab] = &it->second;
     }
 }
 
@@ -469,13 +469,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetName(MapperEngine* mapper, int32 tab, strin
         throw ScriptException("Wrong tab arg");
     }
 
-    mapper->TabsName[tab] = tabName;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API string Mapper_Game_GetIfaceIniStr(MapperEngine* mapper, string_view key)
-{
-    return string(mapper->IfaceIni->GetAsStr("", key));
+    mapper->PanelModeNames[tab] = tabName;
 }
 
 ///@ ExportMethod
