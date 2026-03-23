@@ -50,6 +50,19 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, m
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, ProtoItem* proto, mpos hex)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+    if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    return mapper->CreateItem(proto->GetProtoId(), hex, nullptr);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring pid, mpos hex)
 {
     if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
@@ -60,13 +73,26 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Mapper_Game_GetItem(MapperEngine* mapper, mpos hex)
+FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCritter* proto, mpos hex)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+    if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex args");
+    }
+
+    return mapper->CreateCritter(proto->GetProtoId(), hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ItemView* Mapper_Game_GetItemOnHex(MapperEngine* mapper, mpos hex)
 {
     return mapper->GetCurMap()->GetItemOnHex(hex, hstring());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItems(MapperEngine* mapper, mpos hex)
+FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItemsOnHex(MapperEngine* mapper, mpos hex)
 {
     const auto hex_items = mapper->GetCurMap()->GetItemsOnHex(hex);
     return vec_transform(hex_items, [](auto&& item) -> ItemView* { return item.get(); });
@@ -300,7 +326,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
         vector<raw_ptr<const ProtoItem>> protos;
 
         for (const auto item_pid : itemPids) {
-            const auto* proto = mapper->ProtoMngr.GetProtoItemSafe(item_pid);
+            const auto* proto = mapper->ProtoMngr.GetProtoItem(item_pid);
 
             if (proto != nullptr) {
                 protos.emplace_back(proto);

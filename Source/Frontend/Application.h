@@ -250,6 +250,15 @@ struct InputEvent
 
 constexpr string_view_nt WEB_CANVAS_ID = "#canvas";
 
+struct HeadlessWindowStub
+{
+    isize32 Size {1000, 1000};
+    ipos32 Position {};
+    bool Fullscreen {};
+    bool AlwaysOnTop {};
+    bool Minimized {};
+};
+
 class AppWindow final
 {
     friend class Application;
@@ -277,6 +286,9 @@ public:
 
 private:
     AppWindow() = default;
+
+    [[nodiscard]] auto ResolveWindowHandle() const -> WindowInternalHandle*;
+    [[nodiscard]] auto ResolveWindowStub() const -> HeadlessWindowStub*;
 
     raw_ptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};

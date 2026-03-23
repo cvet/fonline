@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -153,6 +153,7 @@ int asAtomicDec(int &value)
 
 #elif defined(AS_MAC) || defined(AS_IPHONE)
 
+/* old deprecated way of doing it
 END_AS_NAMESPACE
 #include <libkern/OSAtomic.h>
 BEGIN_AS_NAMESPACE
@@ -165,6 +166,20 @@ int asAtomicInc(int &value)
 int asAtomicDec(int &value)
 {
 	return OSAtomicDecrement32((int32_t*)&value);
+}
+*/
+
+END_AS_NAMESPACE
+#include <atomic>
+BEGIN_AS_NAMESPACE
+
+int asAtomicInc(int &value)
+{
+	return std::atomic_fetch_add((std::atomic<int>*)&value, 1) + 1;
+}
+int asAtomicDec(int &value)
+{
+	return std::atomic_fetch_sub((std::atomic<int>*)&value, 1) - 1;
 }
 
 #else

@@ -66,14 +66,14 @@ class Serializator
 
     uint8[] GetData()
     {
-        uint8[] data = array<uint8>(dataArray);
+        uint8[] data = dataArray.clone();
         data.resize(dataSize);
         return data;
     }
 
     int SetData(const uint8[] data)
     {
-        dataArray = array<uint8>(data);
+        dataArray = data.clone();
         bufSize = data.length();
         dataSize = data.length();
         return dataSize;
@@ -593,7 +593,7 @@ class Serializator
     {
         string str;
         Get(str);
-        value = hstring(str);
+        value = str.hstr();
         return this;
     }
 

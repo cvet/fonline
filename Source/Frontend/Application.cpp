@@ -51,6 +51,7 @@ static unique_ptr<Renderer> ActiveRenderer {};
 static RenderType ActiveRendererType {};
 static raw_ptr<RenderTexture> RenderTargetTex {};
 static ucolor ClearColor {150, 150, 150, 255};
+static vector<unique_ptr<HeadlessWindowStub>> NullWindowStubs {};
 
 static unique_ptr<vector<InputEvent>> EventsQueue {};
 static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
@@ -71,6 +72,10 @@ const int32 AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 {
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(App);
+
     const auto vp = ActiveRenderer->GetViewPort();
 
     const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.x) / numeric_cast<float32>(vp.width) * numeric_cast<float32>(App->Settings.ScreenWidth));
@@ -81,6 +86,10 @@ static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
 
 static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
 {
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(App);
+
     const auto vp = ActiveRenderer->GetViewPort();
 
     const auto win_x = vp.x + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(App->Settings.ScreenWidth) * numeric_cast<float32>(vp.width));
@@ -106,6 +115,9 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     if (Settings.NullRenderer) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+
+        MaxAtlasWidth = 2048;
+        MaxAtlasHeight = 2048;
     }
 
     if constexpr (FO_ANDROID) {
@@ -363,128 +375,128 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #endif
 
     // Initialize video system
-    if (ActiveRendererType != RenderType::Null) {
-        if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && !SDL_InitSubSystem(SDL_INIT_VIDEO)) {
-            throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
-        }
+    if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && !SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+        throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
+    }
 
-        if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
-            SDL_DisableScreenSaver();
-        }
+    if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
+        SDL_DisableScreenSaver();
+    }
 
-        if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.HideNativeCursor) {
-            SDL_HideCursor();
-        }
+    if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.HideNativeCursor) {
+        SDL_HideCursor();
+    }
 
-        if (_isTablet) {
-            const auto display_id = SDL_GetPrimaryDisplay();
-            const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display_id);
-            Settings.ScreenWidth = std::max(display_mode->w, display_mode->h);
-            Settings.ScreenHeight = std::min(display_mode->w, display_mode->h);
+    if (_isTablet) {
+        const auto display_id = SDL_GetPrimaryDisplay();
+        const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display_id);
+        Settings.ScreenWidth = std::max(display_mode->w, display_mode->h);
+        Settings.ScreenHeight = std::min(display_mode->w, display_mode->h);
 
-            const auto ratio = numeric_cast<float32>(Settings.ScreenWidth) / numeric_cast<float32>(Settings.ScreenHeight);
-            Settings.ScreenHeight = 768;
-            Settings.ScreenWidth = iround<int32>(numeric_cast<float32>(Settings.ScreenHeight) * ratio);
+        const auto ratio = numeric_cast<float32>(Settings.ScreenWidth) / numeric_cast<float32>(Settings.ScreenHeight);
+        Settings.ScreenHeight = 768;
+        Settings.ScreenWidth = iround<int32>(numeric_cast<float32>(Settings.ScreenHeight) * ratio);
 
-            Settings.Fullscreen = true;
-        }
+        Settings.Fullscreen = true;
+    }
 
-        if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
-            ClearColor = {0, 0, 0, 255};
-        }
+    if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
+        ClearColor = {0, 0, 0, 255};
+    }
 
 #if FO_WEB
-        // Adaptive size
-        int32 window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
-        int32 window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
-        Settings.ScreenWidth = std::clamp(window_w - 200, 1024, 1920);
-        Settings.ScreenHeight = std::clamp(window_h - 100, 768, 1080);
+    // Adaptive size
+    int32 window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
+    int32 window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
+    Settings.ScreenWidth = std::clamp(window_w - 200, 1024, 1920);
+    Settings.ScreenHeight = std::clamp(window_h - 100, 768, 1080);
 
-        // Fixed size
-        int32 fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
-        int32 fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
+    // Fixed size
+    int32 fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
+    int32 fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
 
-        if (fixed_w) {
-            Settings.ScreenWidth = fixed_w;
-        }
-        if (fixed_h) {
-            Settings.ScreenHeight = fixed_h;
-        }
+    if (fixed_w) {
+        Settings.ScreenWidth = fixed_w;
+    }
+    if (fixed_h) {
+        Settings.ScreenHeight = fixed_h;
+    }
 
-        Settings.Fullscreen = false;
+    Settings.Fullscreen = false;
 #endif
 
-        MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
-        _allWindows.emplace_back(&MainWindow);
+    MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
+    _allWindows.emplace_back(&MainWindow);
 
-        if (IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
-            SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
-        }
+    if (ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
+        SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
+    }
 
-        ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
+    ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
 
-        if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
-            MainWindow.AlwaysOnTop(true);
-        }
+    if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
+        MainWindow.AlwaysOnTop(true);
+    }
 
+    if (ActiveRendererType != RenderType::Null) {
         SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
+    }
 
-        // Init Dear ImGui
-        ImGuiExt::Init();
+    // Init Dear ImGui
+    ImGuiExt::Init();
 
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
-        io.BackendPlatformName = "fonline";
-        io.WantSaveIniSettings = false;
-        io.IniFilename = nullptr;
-        io.ConfigErrorRecoveryEnableAssert = false;
+    io.BackendPlatformName = "fonline";
+    io.WantSaveIniSettings = false;
+    io.IniFilename = nullptr;
+    io.ConfigErrorRecoveryEnableAssert = false;
 
-        const string sdl_backend = SDL_GetCurrentVideoDriver();
-        vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-        _mouseCanUseGlobalState = std::ranges::any_of(global_mouse_whitelist, [&sdl_backend](auto& entry) { return strex(sdl_backend).starts_with(entry); });
+    const string sdl_backend = SDL_GetCurrentVideoDriver();
+    vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
+    _mouseCanUseGlobalState = std::ranges::any_of(global_mouse_whitelist, [&sdl_backend](auto& entry) { return strex(sdl_backend).starts_with(entry); });
 
-        if (Settings.ImGuiColorStyle == "Dark") {
-            ImGui::StyleColorsDark();
-        }
-        else if (Settings.ImGuiColorStyle == "Classic") {
-            ImGui::StyleColorsClassic();
-        }
-        else {
-            ImGui::StyleColorsLight(); // Default theme
-        }
+    if (Settings.ImGuiColorStyle == "Dark") {
+        ImGui::StyleColorsDark();
+    }
+    else if (Settings.ImGuiColorStyle == "Classic") {
+        ImGui::StyleColorsClassic();
+    }
+    else {
+        ImGui::StyleColorsLight(); // Default theme
+    }
 
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+    io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return App->Input.GetClipboardText().c_str(); };
-        platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { App->Input.SetClipboardText(text); };
-        platform_io.Platform_ClipboardUserData = nullptr;
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return App->Input.GetClipboardText().c_str(); };
+    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { App->Input.SetClipboardText(text); };
+    platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
-        if (ActiveRendererType != RenderType::Null) {
-            const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
-            ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-        }
+    if (ActiveRendererType != RenderType::Null) {
+        const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
+        ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+    }
 #endif
 
-        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
-        io.Fonts->Flags = ImFontAtlasFlags_None;
-        io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
-        io.Fonts->TexMinWidth = Settings.ImGuiFontTextureSize;
-        io.Fonts->TexMinHeight = Settings.ImGuiFontTextureSize;
-        io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_SIZE;
-        io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
+    io.Fonts->Flags = ImFontAtlasFlags_None;
+    io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
+    io.Fonts->TexMinWidth = Settings.ImGuiFontTextureSize;
+    io.Fonts->TexMinHeight = Settings.ImGuiFontTextureSize;
+    io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_SIZE;
+    io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_SIZE;
 
-        // Default effect
-        FileSystem base_fs;
-        base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
-        base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
-        LoadImGuiEffect(base_fs);
+    // Default effect
+    FileSystem base_fs;
+    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Embedded", true);
+    base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
+    LoadImGuiEffect(base_fs);
 
-        _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
-    }
+    _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
 
     // Start timings
     _timeFrequency = SDL_GetPerformanceFrequency();
@@ -545,9 +557,14 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
 
     FO_NON_CONST_METHOD_HINT();
 
-    // Dummy window pointer
-    if (Settings.NullRenderer) {
-        return SafeAlloc::MakeRaw<int32>(42);
+    if (ActiveRendererType == RenderType::Null) {
+        auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+        handle->Size = size;
+
+        auto* ptr = handle.get();
+        NullWindowStubs.emplace_back(std::move(handle));
+
+        return reinterpret_cast<WindowInternalHandle*>(ptr);
     }
 
     // Initialize window
@@ -656,8 +673,8 @@ void Application::BeginFrame()
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
             const auto vp = ActiveRenderer->GetViewPort();
-            const auto x_ratio = numeric_cast<float32>(App->Settings.ScreenWidth) / numeric_cast<float32>(vp.width);
-            const auto y_ratio = numeric_cast<float32>(App->Settings.ScreenHeight) / numeric_cast<float32>(vp.height);
+            const auto x_ratio = numeric_cast<float32>(Settings.ScreenWidth) / numeric_cast<float32>(vp.width);
+            const auto y_ratio = numeric_cast<float32>(Settings.ScreenHeight) / numeric_cast<float32>(vp.height);
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
 
@@ -791,9 +808,15 @@ void Application::BeginFrame()
             EventsQueue->emplace_back(ev2);
         } break;
         case SDL_EVENT_DROP_FILE: {
-            if (auto file = DiskFileSystem::OpenFile(sdl_event.drop.data, false)) {
+            if (const auto file_size = fs_file_size(sdl_event.drop.data)) {
+                std::ifstream file {fs_open_ifstream(sdl_event.drop.data)};
+
+                if (!file) {
+                    break;
+                }
+
                 auto stripped = false;
-                auto size = file.GetSize();
+                auto size = numeric_cast<size_t>(*file_size);
 
                 if (size > AppInput::DROP_FILE_STRIP_LENGHT) {
                     stripped = true;
@@ -802,7 +825,7 @@ void Application::BeginFrame()
 
                 char buf[AppInput::DROP_FILE_STRIP_LENGHT + 1];
 
-                if (file.Read(buf, size)) {
+                if (size == 0 || (file.read(buf, static_cast<std::streamsize>(size)) && file.gcount() == static_cast<std::streamsize>(size))) {
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
@@ -875,9 +898,7 @@ void Application::BeginFrame()
     }
 
     // Setup display size
-    if (ActiveRendererType != RenderType::Null) {
-        io.DisplaySize = ImVec2(numeric_cast<float32>(App->Settings.ScreenWidth), numeric_cast<float32>(App->Settings.ScreenHeight));
-    }
+    io.DisplaySize = ImVec2(numeric_cast<float32>(Settings.ScreenWidth), numeric_cast<float32>(Settings.ScreenHeight));
 
     // Setup time step
     uint64 cur_time = SDL_GetPerformanceCounter();
@@ -917,6 +938,9 @@ void Application::BeginFrame()
                 io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
             }
         }
+    }
+    else {
+        io.AddMousePosEvent(numeric_cast<float32>(Settings.ScreenWidth / 2), numeric_cast<float32>(Settings.ScreenHeight / 2));
     }
 
     ImGui::NewFrame();
@@ -1064,14 +1088,14 @@ auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 width = 1000;
-    int32 height = 1000;
-
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle.get_no_const()), &width, &height);
+        int32 width = 1000;
+        int32 height = 1000;
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(ResolveWindowHandle()), &width, &height);
+        return {width, height};
     }
 
-    return {width, height};
+    return ResolveWindowStub()->Size;
 }
 
 void AppWindow::SetSize(isize32 size)
@@ -1081,7 +1105,11 @@ void AppWindow::SetSize(isize32 size)
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle.get()), size.width, size.height);
+        SDL_SetWindowSize(static_cast<SDL_Window*>(ResolveWindowHandle()), size.width, size.height);
+    }
+    else {
+        ResolveWindowStub()->Size = size;
+        _onWindowSizeChangedDispatcher();
     }
 }
 
@@ -1108,14 +1136,14 @@ auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 x = 0;
-    int32 y = 0;
-
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowPosition(static_cast<SDL_Window*>(_windowHandle.get_no_const()), &x, &y);
+        int32 x = 0;
+        int32 y = 0;
+        SDL_GetWindowPosition(static_cast<SDL_Window*>(ResolveWindowHandle()), &x, &y);
+        return {x, y};
     }
 
-    return {x, y};
+    return ResolveWindowStub()->Position;
 }
 
 void AppWindow::SetPosition(ipos32 pos)
@@ -1125,7 +1153,10 @@ void AppWindow::SetPosition(ipos32 pos)
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle.get()), pos.x, pos.y);
+        SDL_SetWindowPosition(static_cast<SDL_Window*>(ResolveWindowHandle()), pos.x, pos.y);
+    }
+    else {
+        ResolveWindowStub()->Position = pos;
     }
 }
 
@@ -1134,7 +1165,7 @@ auto AppWindow::IsFocused() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle.get_no_const())) & SDL_WINDOW_INPUT_FOCUS) != 0;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     return true;
@@ -1147,7 +1178,10 @@ void AppWindow::Minimize()
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
-        SDL_MinimizeWindow(static_cast<SDL_Window*>(_windowHandle.get()));
+        SDL_MinimizeWindow(static_cast<SDL_Window*>(ResolveWindowHandle()));
+    }
+    else {
+        ResolveWindowStub()->Minimized = true;
     }
 }
 
@@ -1156,10 +1190,10 @@ auto AppWindow::IsFullscreen() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle.get_no_const())) & SDL_WINDOW_FULLSCREEN) != 0;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
-    return false;
+    return ResolveWindowStub()->Fullscreen;
 }
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
@@ -1169,18 +1203,21 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
-        return false;
+        auto* window = ResolveWindowStub();
+        const bool changed = window->Fullscreen != enable;
+        window->Fullscreen = enable;
+        return changed;
     }
 
     const auto is_fullscreen = IsFullscreen();
 
     if (!is_fullscreen && enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle.get()), true)) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(ResolveWindowHandle()), true)) {
             return IsFullscreen();
         }
     }
     else if (is_fullscreen && !enable) {
-        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle.get()), false)) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(ResolveWindowHandle()), false)) {
             return !IsFullscreen();
         }
     }
@@ -1198,7 +1235,7 @@ void AppWindow::Blink()
         return;
     }
 
-    SDL_FlashWindow(static_cast<SDL_Window*>(_windowHandle.get()), SDL_FLASH_UNTIL_FOCUSED);
+    SDL_FlashWindow(static_cast<SDL_Window*>(ResolveWindowHandle()), SDL_FLASH_UNTIL_FOCUSED);
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
@@ -1208,10 +1245,11 @@ void AppWindow::AlwaysOnTop(bool enable)
     FO_NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
+        ResolveWindowStub()->AlwaysOnTop = enable;
         return;
     }
 
-    SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(_windowHandle.get()), enable);
+    SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(ResolveWindowHandle()), enable);
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -1221,11 +1259,31 @@ void AppWindow::GrabInput(bool enable)
     _grabbed = enable;
 }
 
+auto AppWindow::ResolveWindowHandle() const -> WindowInternalHandle*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_windowHandle);
+    return _windowHandle.get_no_const();
+}
+
+auto AppWindow::ResolveWindowStub() const -> HeadlessWindowStub*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return static_cast<HeadlessWindowStub*>(ResolveWindowHandle());
+}
+
 void AppWindow::Destroy()
 {
     FO_STACK_TRACE_ENTRY();
 
     if (ActiveRendererType == RenderType::Null) {
+        if (_windowHandle && this != &App->MainWindow) {
+            std::erase_if(NullWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
+            _windowHandle = nullptr;
+        }
+
         return;
     }
 

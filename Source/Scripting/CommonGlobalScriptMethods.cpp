@@ -342,7 +342,7 @@ FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view 
 ///@ ExportMethod
 FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItemSafe(pid));
+    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItem(pid));
 }
 
 ///@ ExportMethod
@@ -355,23 +355,6 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoItem*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoItems();
-
-    vector<ProtoItem*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoItem*>(proto.get()));
-        }
     }
 
     return result;
@@ -398,7 +381,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
 ///@ ExportMethod
 FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritterSafe(pid));
+    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritter(pid));
 }
 
 ///@ ExportMethod
@@ -411,23 +394,6 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoCritters();
-
-    vector<ProtoCritter*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoCritter*>(proto.get()));
-        }
     }
 
     return result;
@@ -454,7 +420,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 ///@ ExportMethod
 FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMapSafe(pid));
+    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMap(pid));
 }
 
 ///@ ExportMethod
@@ -467,23 +433,6 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoMap*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoMaps();
-
-    vector<ProtoMap*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoMap*>(proto.get()));
-        }
     }
 
     return result;
@@ -510,7 +459,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
 ///@ ExportMethod
 FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocationSafe(pid));
+    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocation(pid));
 }
 
 ///@ ExportMethod
@@ -523,23 +472,6 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
 
     for (const auto& proto : protos | std::views::values) {
         result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationComponent component)
-{
-    const auto& protos = engine->ProtoMngr.GetProtoLocations();
-
-    vector<ProtoLocation*> result;
-    result.reserve(protos.size());
-
-    for (const auto& proto : protos | std::views::values) {
-        if (proto->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.emplace_back(const_cast<ProtoLocation*>(proto.get()));
-        }
     }
 
     return result;

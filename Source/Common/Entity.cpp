@@ -36,15 +36,15 @@
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    _props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept :
+    _props {registrator, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
 
-    if (props != nullptr) {
-        _props.CopyFrom(*props);
+    if (init_props != nullptr) {
+        _props.CopyFrom(*init_props);
     }
 }
 
@@ -122,6 +122,20 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
             it->second.clear();
         }
     }
+}
+
+void Entity::UnsubscribeAllEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _events.reset();
+}
+
+void Entity::ClearAllTimeEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _timeEvents.reset();
 }
 
 auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool

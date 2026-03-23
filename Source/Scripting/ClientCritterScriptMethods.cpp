@@ -221,6 +221,24 @@ FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, hstring protoId)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    int32 result = 0;
+
+    for (const auto& item : self->GetInvItems()) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
+            result += item->GetCount();
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
     return self->GetInvItem(itemId);
@@ -230,6 +248,10 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
 
     if (proto->GetStackable()) {
         for (auto& item : self->GetInvItems()) {
@@ -258,12 +280,33 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
+FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
 {
-    for (auto& item : self->GetInvItems()) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item.get();
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (proto->GetStackable()) {
+        for (auto& item : self->GetInvItems()) {
+            if (item->GetProtoId() == proto->GetProtoId()) {
+                return item.get();
+            }
         }
+    }
+    else {
+        ItemView* another_slot = nullptr;
+
+        for (auto& item : self->GetInvItems()) {
+            if (item->GetProtoId() == proto->GetProtoId()) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
+                    return item.get();
+                }
+
+                another_slot = item.get();
+            }
+        }
+
+        return another_slot;
     }
 
     return nullptr;
@@ -293,23 +336,6 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 
     for (auto& item : inv_items) {
         items.emplace_back(item.get());
-    }
-
-    return items;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
-{
-    auto& inv_items = self->GetInvItems();
-
-    vector<ItemView*> items;
-    items.reserve(inv_items.size());
-
-    for (auto& item : inv_items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            items.emplace_back(item.get());
-        }
     }
 
     return items;

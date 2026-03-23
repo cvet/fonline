@@ -363,6 +363,16 @@ FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, hstring protoId)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32 Server_Critter_CountItem(Critter* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    return self->CountInvItemByPid(proto->GetProtoId());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
 {
     if (!pid) {
@@ -379,6 +389,22 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    const auto count = self->CountInvItemByPid(proto->GetProtoId());
+
+    if (count == 0) {
+        return;
+    }
+
+    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32 count)
 {
     if (!pid) {
@@ -390,6 +416,20 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32 
     }
 
     self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, int32 count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return;
+    }
+
+    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
 }
 
 ///@ ExportMethod
@@ -410,6 +450,20 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32 cou
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32 count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
     if (!itemId) {
@@ -426,15 +480,13 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
+FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
 {
-    for (auto& item : self->GetInvItems()) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return item.get();
-        }
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
     }
 
-    return nullptr;
+    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
 }
 
 ///@ ExportMethod
@@ -455,23 +507,6 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property,
 FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self)
 {
     return vec_transform(self->GetInvItems(), [](auto&& item) -> Item* { return item.get(); });
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
-{
-    const auto items = self->GetInvItems();
-
-    vector<Item*> result;
-    result.reserve(items.size());
-
-    for (auto& item : items) {
-        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            result.push_back(item.get());
-        }
-    }
-
-    return result;
 }
 
 ///@ ExportMethod
@@ -502,6 +537,27 @@ FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, hstring proto
 
     for (auto& item : items) {
         if (item->GetProtoId() == protoId) {
+            result.push_back(item.get());
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(Critter* self, ProtoItem* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    const auto items = self->GetInvItems();
+
+    vector<Item*> result;
+    result.reserve(items.size());
+
+    for (auto& item : items) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
             result.push_back(item.get());
         }
     }

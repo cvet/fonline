@@ -69,6 +69,7 @@ FO_GLOBAL_DATA(AngelScriptStackTraceData, AngelScriptStackTrace);
 
 static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func);
 static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept;
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param);
 static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
 
 static void CleanupScriptContext(AngelScript::asIScriptContext* ctx)
@@ -87,6 +88,9 @@ AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngin
     FO_STACK_TRACE_ENTRY();
 
     as_engine->SetContextUserDataCleanupCallback(CleanupScriptContext);
+
+    int32 as_result = 0;
+    FO_AS_VERIFY(as_engine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
 }
 
 void AngelScriptContextManager::CreateContext()
@@ -95,7 +99,7 @@ void AngelScriptContextManager::CreateContext()
 
     auto* ctx = _asEngine->CreateContext();
     FO_RUNTIME_ASSERT(ctx);
-    vec_add_unique_value(_freeContexts, ctx);
+    _freeContexts.emplace_back(refcount_ptr<AngelScript::asIScriptContext>::adopt, ctx);
 
     auto ctx_ext = SafeAlloc::MakeUnique<AngelScriptContextExtendedData>();
     ctx_ext->StackTrace.reserve(128);
@@ -134,11 +138,12 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
 
-    auto* parent_ctx = asGetActiveContext();
+    auto* parent_ctx = AngelScript::asGetActiveContext();
     const auto* parent_ctx_ext = parent_ctx != nullptr ? AngelScriptContextExtendedData::Get(parent_ctx) : nullptr;
     auto* root_ctx = parent_ctx_ext != nullptr ? parent_ctx_ext->Root : parent_ctx;
     ctx_ext->Parent = parent_ctx;
     ctx_ext->Root = root_ctx != nullptr ? root_ctx : ctx.get();
+    ctx_ext->Exception = {};
 
     if (_contextSetupCallback) {
         _contextSetupCallback(ctx.get(), AngelScriptContextSetupReason::Request);
@@ -176,6 +181,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         ctx_ext->ValidCheck.clear();
         ctx_ext->Parent = nullptr;
         ctx_ext->Root = nullptr;
+        ctx_ext->Exception = {};
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -301,7 +307,7 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
     if (exec_result != AngelScript::asEXECUTION_FINISHED) {
         if (exec_result == AngelScript::asEXECUTION_EXCEPTION) {
             const string ex_string = ctx->GetExceptionString();
-            const auto ex = ctx->GetStdException();
+            const auto ex = AngelScriptContextExtendedData::Get(ctx)->Exception;
 
             if (_debuggerStopCallback) {
                 string source_path;
@@ -508,6 +514,17 @@ static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept
     }
 }
 
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(param);
+
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    ctx_ext->Exception = std::current_exception();
+}
+
 static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -525,7 +542,9 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
         ctx_iter = ctx_ext->Parent;
     }
 
-    auto& ex = ctx->GetStdException();
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    auto& ex = ctx_ext->Exception;
 
     if (ex) {
         return;
@@ -564,7 +583,7 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     PushStackTrace(&storage->SrcLoc);
     auto stack_trace_entry_end = scope_exit([]() noexcept { PopStackTrace(); });
-    ex = std::make_exception_ptr(ScriptException(ctx->GetExceptionString()));
+    ex = std::make_exception_ptr(ScriptCoreException(ctx->GetExceptionString()));
 }
 
 FO_END_NAMESPACE

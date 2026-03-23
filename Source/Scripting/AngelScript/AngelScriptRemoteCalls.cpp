@@ -235,7 +235,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
 
                 const auto arr_size = reader.Read<int32>();
                 FO_RUNTIME_ASSERT(arr_size >= 0);
-                auto* arr = CreateScriptArray(as_engine, strex("{}[]", MakeScriptTypeName(arg.Type.BaseType)).c_str());
+                auto* arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg.Type.BaseType)).c_str());
 
                 for (int32 l = 0; l < arr_size; l++) {
                     void* value = read_simple(arg.Type.BaseType);
@@ -328,7 +328,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             }
         }
         else {
-            throw ScriptCoreException("Remote call function not found", func_decl);
+            throw ScriptCallException("Remote call function not found", func_decl);
         }
     }
 }

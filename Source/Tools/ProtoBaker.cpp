@@ -91,7 +91,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerClientEngine(*_context->BakedFiles);
+            auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
         }));
@@ -99,7 +99,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
-            const auto engine = BakerMapperEngine(*_context->BakedFiles);
+            auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
         }));
@@ -122,12 +122,11 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
+auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto proto_rule_name = meta->Hashes.ToHashedString("Proto");
-    const auto component_rule_name = meta->Hashes.ToHashedString("Component");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
@@ -137,10 +136,7 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &meta->Hashes, fopro_options);
 
-        for (auto& section : fopro.GetSections()) {
-            const auto& section_name = section.first;
-            auto& section_kv = section.second;
-
+        for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
             // Skip default section
             if (section_name.empty()) {
                 continue;
@@ -154,12 +150,26 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = meta->Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
+            else if (meta->IsFixedType(section_name)) {
+                type_name = meta->Hashes.ToHashedString(section_name);
+            }
             else {
                 throw ProtoBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!meta->IsValidEntityType(type_name) || !meta->GetEntityType(type_name).HasProtos) {
+            if (meta->IsValidEntityType(type_name)) {
+                if (!meta->GetEntityType(type_name).HasProtos) {
+                    throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (!meta->IsFixedType(type_name)) {
                 throw ProtoBakerException("Invalid proto type", section_name, file.GetPath());
+            }
+
+            map<string, string> section_kv;
+
+            for (const auto& [key, value] : section_kv_view) {
+                section_kv.emplace(string(key), string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
@@ -176,8 +186,38 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
         }
     }
 
-    // Processing
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> all_protos;
+
+    const auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
+        const auto* registrator = meta->GetPropertyRegistrator(type_name);
+        FO_RUNTIME_ASSERT(registrator);
+
+        if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, nullptr);
+        }
+        if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, nullptr);
+        }
+
+        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
+    };
+
+    for (const auto& [type_name, file_protos] : all_file_protos) {
+        for (const auto& pid : file_protos | std::views::keys) {
+            auto proto = create_empty_proto(type_name, pid);
+            meta->ProtoMngr.AddProto(type_name, proto);
+            const auto inserted = all_protos[type_name].emplace(pid, std::move(proto)).second;
+            FO_RUNTIME_ASSERT(inserted);
+        }
+    }
+
+    // Processing
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
@@ -195,8 +235,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
-            FO_RUNTIME_ASSERT(all_protos[type_name].count(pid) == 0);
-
             // Fill content from parents
             map<string, string> proto_kv;
 
@@ -227,44 +265,8 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
             // Actual content
             insert_map_values(file_kv, proto_kv);
 
-            // Create proto
-            const auto* property_registrator = meta->GetPropertyRegistrator(type_name);
-            auto props = Properties(property_registrator);
-            props.ApplyFromText(proto_kv);
-
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, property_registrator, &props);
-            const auto inserted = all_protos[type_name].emplace(pid, proto).second;
-            FO_RUNTIME_ASSERT(inserted);
-
-            // Components
-            for (auto&& [key, value] : proto_kv) {
-                if (key.front() == '$') {
-                    continue;
-                }
-
-                bool is_component;
-                const auto* prop = property_registrator->FindProperty(key, &is_component);
-                ignore_unused(prop);
-
-                if (!is_component) {
-                    continue;
-                }
-
-                if (value != "Enabled" && value != "Disabled") {
-                    throw ProtoBakerException("Proto item has invalid component value (expected Enabled or Disabled)", base_name, key, value);
-                }
-
-                auto component_name = meta->Hashes.ToHashedString(key);
-                component_name = meta->CheckMigrationRule(component_rule_name, type_name, component_name).value_or(component_name);
-
-                if (!property_registrator->IsComponentRegistered(component_name)) {
-                    throw ProtoBakerException("Proto item has invalid component", base_name, component_name);
-                }
-
-                if (value == "Enabled") {
-                    proto->EnableComponent(component_name);
-                }
-            }
+            auto& proto = all_protos[type_name].at(pid);
+            proto->GetPropertiesForEdit().ApplyFromText(proto_kv);
         }
     }
 
@@ -302,14 +304,6 @@ auto ProtoBaker::BakeProtoFiles(const EngineMetadata* meta, const ScriptSystem* 
                 const auto proto_name = proto->GetName();
                 writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
                 writer.WritePtr(proto_name.data(), proto_name.length());
-
-                writer.Write<uint16>(numeric_cast<uint16>(proto->GetComponents().size()));
-
-                for (const auto& component : proto->GetComponents()) {
-                    const auto& component_str = component.as_str();
-                    writer.Write<uint16>(numeric_cast<uint16>(component_str.length()));
-                    writer.WritePtr(component_str.data(), component_str.length());
-                }
 
                 proto->GetProperties().StoreAllData(props_data, str_hashes);
                 writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));

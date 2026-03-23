@@ -179,17 +179,17 @@ FileCacheStorage::FileCacheStorage(string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workPath = DiskFileSystem::ResolvePath(real_path);
+    _workPath = fs_resolve_path(real_path);
 }
 
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!DiskFileSystem::IsDir(_workPath)) {
-        DiskFileSystem::MakeDirTree(_workPath);
+    if (!fs_is_dir(_workPath)) {
+        (void)fs_create_directories(_workPath);
 
-        if (!DiskFileSystem::IsDir(_workPath)) {
+        if (!fs_is_dir(_workPath)) {
             WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
             return false;
         }
@@ -203,7 +203,7 @@ auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
     FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    return !!DiskFileSystem::OpenFile(path, false);
+    return fs_exists(path);
 }
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
@@ -211,21 +211,13 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file = DiskFileSystem::OpenFile(path, false);
+    auto str = fs_read_file(path);
 
-    if (!file) {
+    if (!str) {
         return {};
     }
 
-    string str;
-    str.resize(file.GetSize());
-
-    if (!file.Read(str.data(), str.length())) {
-        WriteLog(LogType::Warning, "Can't read cache at '{}'", path);
-        return {};
-    }
-
-    return str;
+    return *str;
 }
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
@@ -233,20 +225,13 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
     FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file = DiskFileSystem::OpenFile(path, false);
+    auto data = fs_read_file(path);
 
-    if (!file) {
+    if (!data) {
         return {};
     }
 
-    vector<uint8> data(file.GetSize());
-
-    if (!file.Read(data.data(), data.size())) {
-        WriteLog(LogType::Warning, "Can't read cache at '{}'", path);
-        return {};
-    }
-
-    return data;
+    return vector<uint8>(data->begin(), data->end());
 }
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
@@ -258,15 +243,8 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     }
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file = DiskFileSystem::OpenFile(path, true);
-
-    if (!file) {
-        WriteLog(LogType::Warning, "Can't open write cache at '{}'", path);
-        return;
-    }
-
-    if (!file.Write(str)) {
-        DiskFileSystem::DeleteFile(path);
+    if (!fs_write_file(path, str)) {
+        (void)fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
@@ -280,15 +258,8 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
     }
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file = DiskFileSystem::OpenFile(path, true);
-
-    if (!file) {
-        WriteLog(LogType::Warning, "Can't open write cache at '{}'", path);
-        return;
-    }
-
-    if (!file.Write(data)) {
-        DiskFileSystem::DeleteFile(path);
+    if (!fs_write_file(path, data)) {
+        (void)fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
@@ -298,7 +269,7 @@ void FileCacheStorage::RemoveEntry(string_view entry_name)
     FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    DiskFileSystem::DeleteFile(path);
+    (void)fs_remove_file(path);
 }
 
 #if FO_HAVE_UNQLITE
@@ -306,10 +277,10 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workPath = DiskFileSystem::ResolvePath(real_path);
+    _workPath = fs_resolve_path(real_path);
     _workPath = strex(_workPath).combine_path("Cache.db");
 
-    if (DiskFileSystem::IsExists(_workPath)) {
+    if (fs_exists(_workPath)) {
         InitCacheStorage();
     }
 }
@@ -319,7 +290,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
-        DiskFileSystem::MakeDirTree(strex(_workPath).extract_dir());
+        (void)fs_create_directories(strex(_workPath).extract_dir().str());
 
         unqlite* db = nullptr;
 

@@ -77,6 +77,10 @@ public:
     [[nodiscard]] auto IsValidEntityType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityType(hstring type_name) const -> const EntityTypeDesc&;
     [[nodiscard]] auto GetEntityTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
+    [[nodiscard]] auto IsFixedType(hstring type_name) const noexcept -> bool;
+    [[nodiscard]] auto IsFixedType(string_view type_name) const noexcept -> bool;
+    [[nodiscard]] auto GetFixedType(hstring type_name) const -> const EntityTypeDesc&;
+    [[nodiscard]] auto GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
     [[nodiscard]] auto GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
     [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> auto& { return _outboundRemoteCalls; }
@@ -84,9 +88,14 @@ public:
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override;
+
+    mutable HashStorage Hashes;
+    ProtoManager ProtoMngr;
 
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;
+    auto RegisterFixedType(string_view name, bool exported) -> PropertyRegistrator*;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync);
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32 entry_value);
@@ -106,16 +115,16 @@ public:
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes;
-
 private:
     auto RegisterBaseType(string_view type_str) -> BaseTypeDesc&;
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
     map<hstring, EntityTypeDesc> _entityTypes {};
+    map<hstring, EntityTypeDesc> _fixedTypes {};
     unordered_map<string, raw_ptr<EntityTypeDesc>> _entityRelatives {};
     unordered_map<string_view, raw_ptr<EntityTypeDesc>> _entityTypesByStr {};
+    unordered_map<string_view, raw_ptr<EntityTypeDesc>> _fixedTypesByStr {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, unordered_map<string, int32>> _enums {};
     unordered_map<string, unordered_map<int32, string>> _enumsRev {};
@@ -156,7 +165,6 @@ public:
     FileSystem Resources;
     GeometryHelper Geometry;
     GameTimer GameTime;
-    ProtoManager ProtoMngr;
     TimeEventManager TimeEventMngr;
     unique_del_ptr<uint8> UserData {};
 

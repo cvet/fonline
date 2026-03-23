@@ -44,6 +44,18 @@
 
 FO_BEGIN_NAMESPACE
 
+struct AngelScriptThreadCleanupHelper
+{
+    ~AngelScriptThreadCleanupHelper() noexcept
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        AngelScript::asThreadCleanup();
+    }
+};
+
+static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
+
 struct AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*
@@ -63,11 +75,25 @@ struct AngelScriptAllocator
     }
 };
 
+static void PrepareAngelScriptRuntime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static std::once_flag init_once;
+
+    std::call_once(init_once, [] {
+        AngelScript::asSetGlobalMemoryFunctions(&AngelScriptAllocator::Alloc, &AngelScriptAllocator::Free);
+
+        const auto prepare_result = AngelScript::asPrepareMultithread();
+        FO_RUNTIME_ASSERT(prepare_result >= 0);
+    });
+}
+
 void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    AngelScript::asSetGlobalMemoryFunctions(&AngelScriptAllocator::Alloc, &AngelScriptAllocator::Free);
+    PrepareAngelScriptRuntime();
 
     auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>();
     auto* pas_backend = as_backend.get();
@@ -85,7 +111,7 @@ auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, functio
 {
     FO_STACK_TRACE_ENTRY();
 
-    AngelScript::asSetGlobalMemoryFunctions(&AngelScriptAllocator::Alloc, &AngelScriptAllocator::Free);
+    PrepareAngelScriptRuntime();
 
     auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>();
     auto* pas_backend = as_backend.get();

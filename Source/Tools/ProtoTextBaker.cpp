@@ -107,10 +107,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &engine.Hashes, fopro_options);
 
-        for (auto& section : fopro.GetSections()) {
-            const auto& section_name = section.first;
-            auto& section_kv = section.second;
-
+        for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
             // Skip default section
             if (section_name.empty()) {
                 continue;
@@ -124,12 +121,31 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
             }
+            else if (const auto section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+                type_name = section_type;
+            }
             else {
                 throw ProtoTextBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!engine.IsValidEntityType(type_name) || !engine.GetEntityType(type_name).HasProtos) {
+            if (engine.IsValidEntityType(type_name)) {
+                if (!engine.GetEntityType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (engine.IsFixedType(type_name)) {
+                if (!engine.GetFixedType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else {
                 throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+            }
+
+            map<string, string> section_kv;
+
+            for (const auto& [key, value] : section_kv_view) {
+                section_kv.emplace(string(key), string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();

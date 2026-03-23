@@ -429,7 +429,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
         const auto* registrator = meta->GetPropertyRegistrator(type_name);
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto* enums_arr = CreateScriptArray(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str());
+            auto* enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
             backend->AddCleanupCallback([enums_arr]() FO_DEFERRED { enums_arr->Release(); });
             enums_arr->Reserve(numeric_cast<int32>(properties.size()));
 
@@ -439,7 +439,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
             }
 
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }

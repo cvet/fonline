@@ -81,12 +81,18 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             const string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
 
             const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
-                if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
-                    return health_file.Write(text);
-                }
-                else {
+                std::ofstream health_file {std::filesystem::path {fs_make_path(health_file_name)}, std::ios::binary | std::ios::trunc};
+
+                if (!health_file) {
                     return false;
                 }
+
+                if (!text.empty()) {
+                    health_file.write(text.data(), static_cast<std::streamsize>(text.size()));
+                }
+
+                health_file.flush();
+                return !!health_file;
             };
 
             if (write_health_file("Starting...")) {
@@ -140,15 +146,15 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
-        if (Settings.DisableNetworking) {
-            WriteLog("Skip networking startup");
-            return std::nullopt;
-        }
-
         WriteLog("Start networking");
 
         if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
+        }
+
+        if (Settings.DisableNetworking) {
+            WriteLog("Skip remote networking startup");
+            return std::nullopt;
         }
 
 #if FO_HAVE_ASIO
@@ -652,11 +658,26 @@ void ServerEngine::Shutdown()
     _starter.Clear();
     _mainWorker.Clear();
     _healthWriter.Clear();
+
     OnFinish.Fire();
+
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
+    for (auto& entity : EntityMngr.GetEntities() | std::views::values) {
+        entity->UnsubscribeAllEvents();
+        entity->ClearAllTimeEvents();
+
+        if (auto* item = dynamic_cast<Item*>(entity.get()); item != nullptr) {
+            item->StaticScriptFunc = {};
+            item->TriggerScriptFunc = {};
+        }
+    }
+
     TimeEventMngr.ClearTimeEvents();
-    ShutdownBackends();
     EntityMngr.DestroyInnerEntities(this);
     EntityMngr.DestroyAllEntities();
+    ShutdownBackends();
     DbStorage.CommitChanges(true);
 
     // Logging clients
@@ -1421,6 +1442,11 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
     WriteLog(LogType::Info, "Create critter {}", pid);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Critter proto not found", pid);
+    }
+
     auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto);
 
     EntityMngr.RegisterCritter(cr.get());
@@ -3099,6 +3125,10 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
     }
 
     const auto* proto = ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
 
     const auto add_item = [&]() -> Item* {
         auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);

@@ -111,14 +111,15 @@ public:
     void ApplyCommandLine(int32 argc, char** argv);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
+    void ApplyDefaultSettings();
     void ApplyAutoSettings();
     void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
 
 private:
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
-    void AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir);
-    void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
+    void AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir);
+    void AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir);
 
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};

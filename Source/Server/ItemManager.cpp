@@ -110,6 +110,11 @@ auto ItemManager::CreateItem(hstring pid, int32 count, const Properties* props) 
     FO_RUNTIME_ASSERT(count >= 0);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
+
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
 
     item->SetStatic(false);
@@ -280,6 +285,11 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32 count, const a
     FO_RUNTIME_ASSERT(count >= 0);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
+
     auto* item = cont->GetInnerItemByPid(pid, stack_id);
     Item* result = nullptr;
 
@@ -325,6 +335,11 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32 count) -> Item*
     FO_RUNTIME_ASSERT(count > 0);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
+
     auto* item = cr->GetInvItemByPid(pid);
     Item* result = nullptr;
 

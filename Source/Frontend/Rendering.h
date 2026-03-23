@@ -421,6 +421,12 @@ public:
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
+
+private:
+    irect32 _viewPortRect {};
+    raw_ptr<RenderTexture> _currentRenderTarget {};
+    bool _scissorEnabled {};
+    irect32 _scissorRect {};
 };
 
 #if FO_HAVE_OPENGL

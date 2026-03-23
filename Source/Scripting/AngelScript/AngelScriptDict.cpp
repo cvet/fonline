@@ -170,8 +170,8 @@ static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
     _typeInfo {ti},
-    _keyTypeId {_typeInfo->GetSubTypeId(0)},
-    _valueTypeId {_typeInfo->GetSubTypeId(1)},
+    _keyTypeId {ti->GetSubTypeId(0)},
+    _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, _typeInfo->GetSubType(0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
@@ -185,8 +185,8 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti) :
 
 ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
     _typeInfo {ti},
-    _keyTypeId {_typeInfo->GetSubTypeId(0)},
-    _valueTypeId {_typeInfo->GetSubTypeId(1)},
+    _keyTypeId {ti->GetSubTypeId(0)},
+    _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, _typeInfo->GetSubType(0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, _typeInfo->GetSubType(1))},
     _data {ScriptDictComparator(this)}
@@ -582,8 +582,8 @@ auto ScriptDict::GetKeys() const -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(0)->GetName());
-    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    const string arr_type_name = strex("{}{}[]", _typeInfo->GetSubType(0)->GetName(), (_keyTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByDecl(arr_type_name.c_str());
     auto* arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
@@ -599,8 +599,8 @@ auto ScriptDict::GetValues() const -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string arr_type_name = strex("{}[]", _typeInfo->GetSubType(1)->GetName());
-    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByName(arr_type_name.c_str());
+    const string arr_type_name = strex("{}{}[]", _typeInfo->GetSubType(1)->GetName(), (_valueTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0 ? "@" : "");
+    auto* arr_type = _typeInfo->GetEngine()->GetTypeInfoByDecl(arr_type_name.c_str());
     auto* arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
@@ -636,7 +636,7 @@ auto ScriptDict::operator==(const ScriptDict& other) const -> bool
     auto it1 = _data.begin();
     auto it2 = other._data.begin();
 
-    for (size_t i = 0; i > _data.size(); i++) {
+    for (size_t i = 0; i < _data.size(); i++) {
         if (!Equals(_keyTypeId, _keyTypeData.get(), _typeInfo->GetEngine(), it1->first, it2->first)) {
             return false;
         }
@@ -1074,12 +1074,12 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in key, const T2&in defVal) const", FO_SCRIPT_METHOD(ScriptDict, GetDefault), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetKey), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(int index) const", FO_SCRIPT_METHOD(ScriptDict, GetValue), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T1[]@ getKeys() const", FO_SCRIPT_METHOD(ScriptDict, GetKeys), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T2[]@ getValues() const", FO_SCRIPT_METHOD(ScriptDict, GetValues), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "array<T1>@ getKeys() const", FO_SCRIPT_METHOD(ScriptDict, GetKeys), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "array<T2>@ getValues() const", FO_SCRIPT_METHOD(ScriptDict, GetValues), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Exists), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", FO_SCRIPT_METHOD(ScriptDict, IsEmpty), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>@ clone() const", FO_SCRIPT_FUNC_THIS(ScriptDict_Clone), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool equals(const dict<T1,T2>@+ other) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Equals), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>@+ other) const", FO_SCRIPT_FUNC_THIS(ScriptDict_Equals), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_GETREFCOUNT, "int f()", FO_SCRIPT_METHOD(ScriptDict, GetRefCount), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_SETGCFLAG, "void f()", FO_SCRIPT_METHOD(ScriptDict, SetFlag), FO_SCRIPT_METHOD_CONV));

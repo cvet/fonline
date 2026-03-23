@@ -71,6 +71,11 @@ void CritterHexView::OnDestroySelf()
     _spr = nullptr;
 
 #if FO_ENABLE_3D
+    if (_model) {
+        _model->AnimationCallbacks.clear();
+        _model->SetAnimInitCallback({});
+    }
+
     _modelSpr.reset();
     _model.reset();
 #endif

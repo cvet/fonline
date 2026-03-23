@@ -209,14 +209,10 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
 
     const string config_path = strex(config_dir).combine_path(config_name);
 
-    if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
+    if (const auto settings_content = fs_read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
-        string settings_content;
-        settings_content.resize(settings_file.GetSize());
-        settings_file.Read(settings_content.data(), settings_content.size());
-
-        auto config = ConfigFile(config_name, settings_content);
+        auto config = ConfigFile(config_name, *settings_content);
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -229,7 +225,7 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : config.GetSection("")) {
-        SetValue(key, value, config_dir);
+        SetValue(string(key), string(value), config_dir);
     }
 
     AddResourcePacks(config.GetSections("ResourcePack"), config_dir);
@@ -323,6 +319,19 @@ void GlobalSettings::ApplyInternalConfig()
 
     auto config = ConfigFile("InternalConfig.fomain", config_str);
     ApplyConfigFile(config, "");
+}
+
+void GlobalSettings::ApplyDefaultSettings()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_DISABLE_WARNINGS_PUSH()
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define VARIABLE_SETTING(type, name, ...) name = {__VA_ARGS__}
+#include "Settings-Include.h"
+    FO_DISABLE_WARNINGS_POP()
 }
 
 void GlobalSettings::ApplyAutoSettings()
@@ -466,15 +475,10 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     }
                     else {
                         const string file_path = strex(config_dir).combine_path(name);
-                        auto file = DiskFileSystem::OpenFile(file_path, false);
+                        if (auto file_content = fs_read_file(file_path)) {
+                            *file_content = strvex(*file_content).trim();
 
-                        if (file) {
-                            string file_content;
-                            file_content.resize(file.GetSize());
-                            file.Read(file_content.data(), file_content.size());
-                            file_content = strvex(file_content).trim();
-
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(file_content);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
                             end_pos++;
                         }
                         else {
@@ -528,14 +532,14 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     }
 }
 
-void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir)
+void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* res_pack : res_packs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = res_pack->find(key);
-            return it != res_pack->end() ? it->second : string();
+            return it != res_pack->end() ? string(it->second) : string();
         };
 
         ResourcePackInfo pack_info;
@@ -600,14 +604,14 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
     }
 }
 
-void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir)
+void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* sub_config : sub_configs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = sub_config->find(key);
-            return it != sub_config->end() ? it->second : string();
+            return it != sub_config->end() ? string(it->second) : string();
         };
 
         SubConfigInfo config_info;
@@ -635,7 +639,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
         for (auto&& [key, value] : *sub_config) {
             if (key != "Name" && key != "Parent") {
-                config_info.Settings[key] = value;
+                config_info.Settings[string(key)] = string(value);
             }
         }
 

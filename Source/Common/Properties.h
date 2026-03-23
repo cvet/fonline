@@ -38,6 +38,8 @@
 
 #include "Common.h"
 
+#include "ConfigFile.h"
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(PropertiesException);
@@ -116,7 +118,7 @@ public:
     [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator.get(); }
     [[nodiscard]] auto GetName() const noexcept -> const string& { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> const string& { return _propNameWithoutComponent; }
-    [[nodiscard]] auto GetComponent() const noexcept -> const hstring& { return _component; }
+    [[nodiscard]] auto GetComponentName() const noexcept -> const string& { return _componentName; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16 { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> const string& { return _scriptFuncType; }
 
@@ -144,6 +146,9 @@ public:
     [[nodiscard]] auto IsBaseTypeDoubleFloat() const noexcept -> bool { return _baseType.IsDoubleFloat; }
     [[nodiscard]] auto IsBaseTypeBool() const noexcept -> bool { return _baseType.IsBool; }
     [[nodiscard]] auto IsBaseTypeHash() const noexcept -> bool { return _baseType.IsHashedString; }
+    [[nodiscard]] auto IsBaseTypeFixedType() const noexcept -> bool { return _baseType.IsFixedType; }
+    [[nodiscard]] auto IsBaseTypeEntityProto() const noexcept -> bool { return _baseType.IsEntityProto; }
+    [[nodiscard]] auto IsBaseTypeProtoReference() const noexcept -> bool { return _baseType.IsFixedType || _baseType.IsEntityProto; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }
@@ -164,6 +169,8 @@ public:
     [[nodiscard]] auto GetViewTypeName() const noexcept -> const string& { return _viewTypeName; }
 
     [[nodiscard]] auto IsDisabled() const noexcept -> bool { return _isDisabled; }
+    [[nodiscard]] auto IsComponentItself() const noexcept -> bool { return _isComponentItself; }
+    [[nodiscard]] auto IsInComponent() const noexcept -> bool { return !_componentName.empty(); }
     [[nodiscard]] auto IsCoreProperty() const noexcept -> bool { return _isCoreProperty; }
     [[nodiscard]] auto IsCommon() const noexcept -> bool { return _isCommon; }
     [[nodiscard]] auto IsServerOnly() const noexcept -> bool { return _isServerOnly; }
@@ -178,6 +185,7 @@ public:
     [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
+    [[nodiscard]] auto IsMaybeNull() const noexcept -> bool { return _isMaybeNull; }
     [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
     [[nodiscard]] auto GetGetter() const noexcept -> auto& { return _getter; }
@@ -199,7 +207,7 @@ private:
 
     string _propName {};
     string _propNameWithoutComponent {};
-    hstring _component {};
+    string _componentName {};
     string _scriptFuncType {};
 
     BaseTypeDesc _baseType {};
@@ -224,6 +232,7 @@ private:
     string _viewTypeName {};
 
     bool _isDisabled {};
+    bool _isComponentItself {};
     bool _isCoreProperty {};
     bool _isCommon {};
     bool _isServerOnly {};
@@ -239,6 +248,7 @@ private:
     bool _isModifiableByAnyClient {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
+    bool _isMaybeNull {};
     uint16 _regIndex {};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};
@@ -250,8 +260,24 @@ class Properties final
     friend class Property;
 
 public:
+    struct StoreDataCache
+    {
+        vector<const uint8*> Data {};
+        vector<uint32> Sizes {};
+        vector<uint16> PropertyIndices {};
+        uint32 Revision {};
+    };
+
+    struct OverlayEntry
+    {
+        uint16 PropRegIndex {};
+        uint16 Padding {};
+        uint32 DataOffset {};
+        uint32 DataSize {};
+    };
+
     Properties() = delete;
-    explicit Properties(const PropertyRegistrator* registrator) noexcept;
+    explicit Properties(const PropertyRegistrator* registrator, const Properties* base = nullptr) noexcept;
     Properties(const Properties& other) = delete;
     Properties(Properties&&) noexcept = default;
     auto operator=(const Properties& other) noexcept = delete;
@@ -260,6 +286,8 @@ public:
 
     [[nodiscard]] auto GetRegistrator() const noexcept -> const PropertyRegistrator* { return _registrator.get(); }
     [[nodiscard]] auto GetEntity() const noexcept -> Entity* { return _entity.get(); }
+    [[nodiscard]] auto HasBaseProperties() const noexcept -> bool { return !!_baseProps; }
+    [[nodiscard]] auto GetBaseProperties() const noexcept -> const Properties* { return _baseProps.get(); }
     [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(const Property* prop) const noexcept -> span<const uint8>;
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const noexcept -> size_t;
@@ -276,6 +304,7 @@ public:
     void CopyFrom(const Properties& other) noexcept;
     void ValidateForRawData(const Property* prop) const noexcept(false);
     void ApplyFromText(const map<string, string>& key_values);
+    void ApplyFromText(const map<string_view, string_view>& key_values);
     void ApplyPropertyFromText(const Property* prop, string_view text);
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
@@ -292,6 +321,18 @@ public:
     void SetValueAsAnyProps(int32 property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring;
+
+    auto FindOverlayEntry(const Property* prop) const noexcept -> const OverlayEntry*;
+    auto FindOverlayEntry(const Property* prop) noexcept -> OverlayEntry*;
+    auto IsOverlayPropertyIncluded(const Property* prop, bool with_protected) const noexcept -> bool;
+    void CloneOwnDataFrom(const Properties& other) noexcept;
+    void RebuildOverlayFromFullData(const Properties& other) noexcept;
+    auto RepackOverlayData(size_t min_capacity) noexcept -> void;
+    auto AllocOverlayData(size_t data_size) noexcept -> uint32;
+    void ResetComplexData() noexcept;
+    void RemoveSyncedOverlayEntries() noexcept;
+    void RemoveOverlayEntry(const Property* prop) noexcept;
+    void ResetOverlayData() noexcept;
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
@@ -343,12 +384,19 @@ public:
 
 private:
     raw_ptr<const PropertyRegistrator> _registrator;
+    raw_ptr<const Properties> _baseProps {};
+
     unique_arr_ptr<uint8> _podData {};
     unique_arr_ptr<pair<unique_arr_ptr<uint8>, size_t>> _complexData {};
 
-    mutable unique_ptr<vector<const uint8*>> _storeData {};
-    mutable unique_ptr<vector<uint32>> _storeDataSizes {};
-    mutable unique_ptr<vector<uint16>> _storeDataComplexIndices {};
+    vector<OverlayEntry> _overlayEntries {};
+    unique_arr_ptr<uint8> _overlayData {};
+    size_t _overlayDataSize {};
+    size_t _overlayDataCapacity {};
+    size_t _overlayGarbageSize {};
+
+    uint32 _storeDataRevision {1};
+    mutable unique_ptr<StoreDataCache> _storeDataCaches[2] {};
     mutable raw_ptr<Entity> _entity {};
 };
 
@@ -370,31 +418,39 @@ public:
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
-    [[nodiscard]] auto FindProperty(string_view property_name, bool* is_component = nullptr) const -> const Property*;
+    [[nodiscard]] auto FindProperty(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetPropertyByIndex(int32 property_index) const noexcept -> const Property*;
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> const Property* { return _registeredProperties[property_index].get(); }
-    [[nodiscard]] auto IsComponentRegistered(hstring component_name) const noexcept -> bool;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<const Property*>>;
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _registeredComponents; }
+    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_map<string, raw_ptr<const Property>>& { return _registeredComponents; }
     [[nodiscard]] auto GetHashResolver() const noexcept -> HashResolver* { return _hashResolver.get(); }
     [[nodiscard]] auto GetNameResolver() const noexcept -> NameResolver* { return _nameResolver.get(); }
 
-    void RegisterComponent(string_view name);
     auto RegisterProperty(const initializer_list<string_view>& tokens) -> const Property* { return RegisterProperty({tokens.begin(), tokens.end()}); }
     auto RegisterProperty(const span<const string_view>& tokens) -> const Property*;
 
 private:
+    struct DataPropertyEntry
+    {
+        raw_ptr<Property> Prop {};
+        uint32 DataIndex {};
+        uint16 DataSize {};
+        bool IsPlain {};
+    };
+
     const hstring _typeName;
     const hstring _typeNamePlural;
     const EngineSideKind _side;
     const hstring _propMigrationRuleName;
-    const hstring _componentMigrationRuleName;
     mutable raw_ptr<HashResolver> _hashResolver;
     mutable raw_ptr<NameResolver> _nameResolver;
     vector<unique_ptr<Property>> _registeredProperties {};
+    vector<DataPropertyEntry> _dataProperties {};
+    vector<raw_ptr<Property>> _textProperties {};
+    vector<raw_ptr<Property>> _hashProperties {};
     unordered_map<string, raw_ptr<const Property>> _registeredPropertiesLookup {};
-    unordered_set<hstring> _registeredComponents {};
+    unordered_map<string, raw_ptr<const Property>> _registeredComponents {};
     map<string, vector<pair<raw_ptr<const Property>, int32>>> _propertyGroups {};
 
     // PlainData info
@@ -406,8 +462,10 @@ private:
     // Complex types info
     vector<raw_ptr<Property>> _complexProperties {};
     vector<uint16> _publicComplexDataProps {};
+    unordered_set<uint16> _publicComplexDataPropsLookup {};
     vector<uint16> _protectedComplexDataProps {};
     vector<uint16> _publicProtectedComplexDataProps {};
+    unordered_set<uint16> _publicProtectedComplexDataPropsLookup {};
 };
 
 template<typename T>
@@ -433,8 +491,9 @@ auto Properties::GetValue(const Property* prop) const -> T
         }
     }
 
-    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-    auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
+    const auto raw_data = GetRawData(prop);
+    FO_RUNTIME_ASSERT(raw_data.size() == sizeof(T));
+    auto result = *reinterpret_cast<const T*>(raw_data.data());
     return result;
 }
 
@@ -463,8 +522,9 @@ auto Properties::GetValue(const Property* prop) const -> T
         }
     }
 
-    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-    const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
+    const auto raw_data = GetRawData(prop);
+    FO_RUNTIME_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
     auto result = ResolveHash(hash);
     return result;
 }
@@ -491,9 +551,13 @@ auto Properties::GetValue(const Property* prop) const -> T
         }
     }
 
-    FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-    const auto& complex_data = _complexData[*prop->_complexDataIndex];
-    auto result = string(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
+    const auto raw_data = GetRawData(prop);
+
+    if (raw_data.empty()) {
+        return {};
+    }
+
+    auto result = string(reinterpret_cast<const char*>(raw_data.data()), raw_data.size());
     return result;
 }
 
@@ -516,9 +580,7 @@ auto Properties::GetValue(const Property* prop) const -> T
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-        const auto& complex_data = _complexData[*prop->_complexDataIndex];
-        prop_data.Pass({complex_data.first.get(), complex_data.second});
+        prop_data.Pass(GetRawData(prop));
     }
 
     const auto* data = prop_data.GetPtrAs<uint8>();
@@ -579,8 +641,9 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
     FO_STRONG_ASSERT(prop->IsPlainData());
     FO_STRONG_ASSERT(!prop->IsVirtual());
 
-    FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-    auto result = *reinterpret_cast<const T*>(&_podData[*prop->_podDataOffset]);
+    const auto raw_data = GetRawData(prop);
+    FO_STRONG_ASSERT(raw_data.size() == sizeof(T));
+    auto result = *reinterpret_cast<const T*>(raw_data.data());
     return result;
 }
 
@@ -596,8 +659,9 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
     FO_STRONG_ASSERT(prop->IsBaseTypeHash());
     FO_STRONG_ASSERT(!prop->IsVirtual());
 
-    FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-    const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[*prop->_podDataOffset]);
+    const auto raw_data = GetRawData(prop);
+    FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
     auto result = ResolveHash(hash, nullptr);
     return result;
 }
@@ -612,9 +676,13 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> string_vie
     FO_STRONG_ASSERT(prop->IsString());
     FO_STRONG_ASSERT(!prop->IsVirtual());
 
-    FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-    const auto& complex_data = _complexData[*prop->_complexDataIndex];
-    const auto result = string_view(reinterpret_cast<const char*>(complex_data.first.get()), complex_data.second);
+    const auto raw_data = GetRawData(prop);
+
+    if (raw_data.empty()) {
+        return {};
+    }
+
+    const auto result = string_view(reinterpret_cast<const char*>(raw_data.data()), raw_data.size());
     return result;
 }
 
@@ -630,9 +698,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 
     PropertyRawData prop_data;
 
-    FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-    const auto& complex_data = _complexData[*prop->_complexDataIndex];
-    prop_data.Pass({complex_data.first.get(), complex_data.second});
+    prop_data.Pass(GetRawData(prop));
 
     const auto* data = prop_data.GetPtrAs<uint8>();
     const auto data_size = prop_data.GetSize();
@@ -704,9 +770,9 @@ void Properties::SetValue(const Property* prop, T new_value)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
-
-        auto& cur_value = *reinterpret_cast<T*>(&_podData[*prop->_podDataOffset]);
+        const auto raw_data = GetRawData(prop);
+        FO_RUNTIME_ASSERT(raw_data.size() == sizeof(T));
+        const auto cur_value = *reinterpret_cast<const T*>(raw_data.data());
         bool equal;
 
         if constexpr (std::floating_point<T>) {
@@ -725,10 +791,10 @@ void Properties::SetValue(const Property* prop, T new_value)
                     setter(_entity.get(), prop, prop_data);
                 }
 
-                cur_value = prop_data.GetAs<T>();
+                SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
             }
             else {
-                cur_value = new_value;
+                SetRawData(prop, {reinterpret_cast<const uint8*>(&new_value), sizeof(T)});
             }
 
             if (_entity) {
@@ -764,10 +830,12 @@ void Properties::SetValue(const Property* prop, T new_value)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value());
         const auto new_value_hash = new_value.as_hash();
+        const auto raw_data = GetRawData(prop);
+        FO_RUNTIME_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+        const auto cur_value_hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
 
-        if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset])) {
+        if (new_value_hash != cur_value_hash) {
             if (!prop->_setters.empty() && _entity) {
                 PropertyRawData prop_data;
                 prop_data.SetAs<hstring::hash_t>(new_value_hash);
@@ -776,10 +844,10 @@ void Properties::SetValue(const Property* prop, T new_value)
                     setter(_entity.get(), prop, prop_data);
                 }
 
-                *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
+                SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
             }
             else {
-                *reinterpret_cast<hstring::hash_t*>(&_podData[*prop->_podDataOffset]) = new_value_hash;
+                SetRawData(prop, {reinterpret_cast<const uint8*>(&new_value_hash), sizeof(new_value_hash)});
             }
 
             if (_entity) {

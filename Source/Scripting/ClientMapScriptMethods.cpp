@@ -150,7 +150,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, mpos hex)
+FO_SCRIPT_API ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Item id arg is zero");
@@ -166,7 +166,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self, mpos hex)
+FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Item id arg is zero");
@@ -215,6 +215,24 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
 
     for (auto& cr : self->GetCritters()) {
         if (cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, ProtoCritter* proto, CritterFindType findType)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto& cr : self->GetCritters()) {
+        if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
             critters.emplace_back(cr.get());
         }
     }
@@ -681,7 +699,7 @@ FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, mpos hex)
 {
-    if (self->GetEngine()->ProtoMngr.GetProtoItemSafe(pid) == nullptr) {
+    if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid item pid arg");
     }
     if (!self->GetSize().is_valid_pos(hex)) {

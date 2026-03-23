@@ -205,9 +205,10 @@ if(FO_USE_GLEW)
     DisableLibWarnings(GLEW)
 endif()
 
-# Assimp
-StatusMessage("+ Assimp (math headers)")
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/AssimpMath")
+# GLM
+StatusMessage("+ GLM")
+include_directories("${FO_ENGINE_ROOT}/ThirdParty/glm")
+list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
 
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
@@ -220,6 +221,9 @@ if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
     add_library(ufbx STATIC EXCLUDE_FROM_ALL ${FO_UFBX_SOURCE})
     target_compile_definitions(ufbx PUBLIC "UFBX_NO_STDIO")
     target_compile_definitions(ufbx PUBLIC "UFBX_EXTERNAL_MALLOC")
+    list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbx.natvis>")
+    list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbxi.natvis>")
+
     list(APPEND FO_BAKER_LIBS ufbx)
     DisableLibWarnings(ufbx)
 endif()
@@ -351,6 +355,8 @@ include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
 add_library(imgui STATIC EXCLUDE_FROM_ALL ${FO_IMGUI_SOURCE})
 target_compile_definitions(imgui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
 add_compile_definitions("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
+list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_DEAR_IMGUI_DIR}/misc/debuggers/imgui.natvis>")
+
 list(APPEND FO_COMMON_LIBS imgui)
 DisableLibWarnings(imgui)
 
@@ -457,9 +463,11 @@ endif()
 
 # small_vector
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
+list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/support/visualstudio/small_vector.natvis>")
 
 # unordered_dense
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
+list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis>")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
@@ -468,6 +476,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     # AngelScript core
     set(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
     set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
+    set(AS_DISABLE_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
     add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
     target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     target_compile_definitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
@@ -587,13 +596,8 @@ list(APPEND FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h")
-
-if(MSVC)
-    list(APPEND FO_ESSENTIALS_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis"
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis")
-endif()
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis>")
 
 list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
@@ -653,12 +657,8 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
-
-if(MSVC)
-    list(APPEND FO_COMMON_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc")
-endif()
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
+    "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
 list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
@@ -877,12 +877,16 @@ list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExtendedTypes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
@@ -1006,6 +1010,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     add_dependencies(AppHeadless ${FO_GEN_DEPENDENCIES})
@@ -1017,6 +1022,7 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
@@ -1118,7 +1124,7 @@ if(FO_BUILD_SERVER)
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ServerHeadless")
     set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib")
+    target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib" "ClientLib")
     WriteBuildHash(${FO_DEV_NAME}_ServerHeadless)
 
     if(FO_WINDOWS)

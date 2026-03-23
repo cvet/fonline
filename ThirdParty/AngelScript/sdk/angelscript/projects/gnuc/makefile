@@ -19,6 +19,12 @@
 # I still _miss_ the rotary telephone!
 
 
+# Use export CXXFLAGS="{options}" before running make to set type of compilation:
+#
+# For debugging I suggest using: -O0 -ggdb
+# For release I suggest using: -O2
+
+
 ## library names and versions
 LIBNAME=libangelscript
 AS_VER:=$(shell awk -F\" '/\#define ANGELSCRIPT_VERSION_STRING/{print $$2}' ../../include/angelscript.h | cut -d" " -f1)
@@ -87,6 +93,15 @@ else
 	CXXFLAGS += -Wall -fPIC -fno-strict-aliasing
 endif
 
+## Detect if targetting ARM CPU and if so tell assembler to accept implicit IT constructs in thumb mode
+GCC_ARCH := $(shell $(CXX) -dumpmachine)
+$(info GCC ARCH: $(GCC_ARCH))
+ifneq (,$(findstring arm-,$(GCC_ARCH)))
+	CXXFLAGS += -Wa,-mimplicit-it=thumb
+else ifneq (,$(findstring armv7-, $(GCC_ARCH)))
+	CXXFLAGS += -Wa,-mimplicit-it=thumb
+endif
+
 ## toolchain
 AR ?= ar
 RANLIB ?= ranlib
@@ -98,9 +113,11 @@ SRCNAMES = \
   as_bytecode.cpp \
   as_callfunc.cpp \
   as_callfunc_arm.cpp \
+  as_callfunc_arm64.cpp \
   as_callfunc_mips.cpp \
   as_callfunc_ppc.cpp \
   as_callfunc_ppc_64.cpp \
+  as_callfunc_riscv64.cpp \
   as_callfunc_sh4.cpp \
   as_callfunc_x86.cpp \
   as_callfunc_x64_gcc.cpp \
@@ -136,6 +153,8 @@ ifeq ($(TARGETPLATFORM), iphone)
 	OBJ += $(OBJDIR)/as_callfunc_arm_xcode.o
 else
 	OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
+	OBJ += $(OBJDIR)/as_callfunc_arm64_gcc.o
+	OBJ += $(OBJDIR)/as_callfunc_riscv64_gcc.o
 endif
 
 
@@ -145,7 +164,7 @@ all: shared static
 
 shared: $(LIBDIR)/$(SHLIB) $(LIBDIR)/$(LIBNAME).so
 
-static: $(LIBDIR)/$(ARLIB)
+static: $(LIBDIR) $(OBJDIR) $(LIBDIR)/$(ARLIB)
 
 $(OBJDIR):
 	mkdir -p "$(OBJDIR)"
@@ -163,7 +182,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.s
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(LIBDIR)/$(SHLIB): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SHLIB) -o "$(LIBDIR)"/$(SHLIB) $(OBJ)
+	$(CXX) $(CXXFLAGS) -shared -Wl,-soname,$(SHLIB) -o "$(LIBDIR)"/$(SHLIB) $(OBJ) $(LDFLAGS)
 
 $(LIBDIR)/$(LIBNAME).so: $(LIBDIR)/$(SHLIB)
 	@( cd "$(LIBDIR)" && ln -s $(SHLIB) $(LIBNAME).so )
