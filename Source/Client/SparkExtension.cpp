@@ -198,8 +198,7 @@ namespace SPK::FO
 
         if (_modelView != _particleMngr->_viewMatColMaj) {
             _modelView = _particleMngr->_viewMatColMaj;
-            _invModelView = _modelView;
-            _invModelView.Inverse();
+            _invModelView = glm::inverse(_modelView);
         }
 
         if (!group.isEnabled(PARAM_TEXTURE_INDEX)) {
@@ -220,9 +219,9 @@ namespace SPK::FO
         }
 
         const bool globalOrientation = precomputeOrientation3D(group, //
-            Vector3D(-_invModelView.c1, -_invModelView.c2, -_invModelView.c3), //
-            Vector3D(_invModelView.b1, _invModelView.b2, _invModelView.b3), //
-            Vector3D(_invModelView.d1, _invModelView.d2, _invModelView.d3));
+            Vector3D(-_invModelView[0][2], -_invModelView[1][2], -_invModelView[2][2]), //
+            Vector3D(_invModelView[0][1], _invModelView[1][1], _invModelView[2][1]), //
+            Vector3D(_invModelView[0][3], _invModelView[1][3], _invModelView[2][3]));
 
         if (globalOrientation) {
             computeGlobalOrientation3D(group);
@@ -241,7 +240,7 @@ namespace SPK::FO
         FO_RUNTIME_ASSERT(_effect);
         FO_RUNTIME_ASSERT(_texture);
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
+        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_projMatColMaj), sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect.get());
