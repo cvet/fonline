@@ -1433,7 +1433,7 @@ void ServerEngine::DispatchLogToClients()
     _logLines.clear();
 }
 
-auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
+auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties* props) -> Critter*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1445,7 +1445,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
         throw GenericException("Critter proto not found", pid);
     }
 
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto, props);
 
     EntityMngr.RegisterCritter(cr.get());
 

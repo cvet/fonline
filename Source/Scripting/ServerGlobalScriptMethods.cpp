@@ -60,6 +60,40 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCrit
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+{
+    const auto* proto = server->GetProtoCritter(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid critter proto id arg", protoId);
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    return server->CreateCritter(protoId, forPlayer, &props_);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+    }
+
+    return server->CreateCritter(proto->GetProtoId(), forPlayer, &props_);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crId, bool forPlayer)
 {
     return server->LoadCritter(crId, forPlayer);
