@@ -460,7 +460,7 @@ def build_android_ndk_version(env: Mapping[str, str]) -> str:
 	version = env.get('ANDROID_NDK_VERSION', '')
 	if not version:
 		raise SystemExit('ANDROID_NDK_VERSION is not configured')
-	return f'{version}-workspace-v2'
+	return version
 
 
 def build_dotnet_version(env: Mapping[str, str]) -> str:
