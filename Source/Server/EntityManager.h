@@ -119,6 +119,7 @@ public:
     void UnregisterItem(Item* item, bool delete_from_db);
     void RegisterCustomEntity(CustomEntity* custom_entity);
     void UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db);
+    void MakePersistent(ServerEntity* entity, bool persistent);
 
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
@@ -132,9 +133,16 @@ public:
     void DestroyAllEntities();
 
 private:
+    void ValidateCanMakeTemporary(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const;
+    void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
+    void MakeTemporaryRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
+    void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
+    auto GetEntityHolder(ServerEntity* entity) -> ServerEntity*;
+
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
+    auto StoreEntityDoc(ServerEntity* entity) -> AnyData::Document;
 
     void RegisterEntity(ServerEntity* entity);
     void UnregisterEntity(ServerEntity* entity, bool delete_from_db);

@@ -108,6 +108,7 @@ struct EntityTypeDesc
     {
         hstring TargetType {};
         EntityHolderEntrySync Sync {};
+        bool Persistent {};
     };
 
     bool Exported {};

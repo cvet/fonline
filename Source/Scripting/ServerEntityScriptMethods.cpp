@@ -38,6 +38,18 @@
 
 FO_BEGIN_NAMESPACE
 
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Entity_IsPersistent(ServerEntity* self)
+{
+    return self->IsPersistent();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Entity_MakePersistent(ServerEntity* self, bool persistent)
+{
+    self->GetEngine()->EntityMngr.MakePersistent(self, persistent);
+}
+
 ///@ ExportMethod TimeEventRelated
 FO_SCRIPT_API uint32 Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFunc<void, ScriptSelfEntity*> func)
 {

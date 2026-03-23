@@ -147,10 +147,8 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 
         if (item_already != nullptr) {
             const auto count = item->GetCount();
-
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
-
             return item_already;
         }
     }
@@ -163,6 +161,10 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
     auto inner_item_ids = GetInnerItemIds();
     vec_add_unique_value(inner_item_ids, item->GetId());
     SetInnerItemIds(inner_item_ids);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, true);
+    }
 
     return item;
 }
@@ -184,6 +186,10 @@ void Item::RemoveItemFromContainer(Item* item)
     auto inner_item_ids = GetInnerItemIds();
     vec_remove_unique_value(inner_item_ids, item->GetId());
     SetInnerItemIds(inner_item_ids);
+
+    if (IsPersistent() && item->IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, false);
+    }
 }
 
 auto Item::CanSendItem(bool as_public) const noexcept -> bool

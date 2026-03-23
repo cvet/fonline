@@ -250,7 +250,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> Prope
     return registrator;
 }
 
-void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync)
+void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -260,10 +260,12 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
     FO_RUNTIME_ASSERT(it != _entityTypesByStr.end());
     FO_RUNTIME_ASSERT(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0);
 
-    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync});
+    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
 
     auto* registrator = GetPropertyRegistratorForEdit(holder_type);
-    const auto* prop = registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"});
+    const auto* prop = persistent ? //
+        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
     RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
 }
 
