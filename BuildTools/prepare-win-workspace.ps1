@@ -27,7 +27,7 @@ Write-Host "- FO_WORKSPACE=$FO_WORKSPACE"
 $buildToolsPy = Join-Path $PSScriptRoot "buildtools.py"
 
 Function Get-PythonCommand {
-    if (Test-Command py) {
+    if (Get-Command py -ErrorAction SilentlyContinue) {
         return @("py", "-3")
     }
 
@@ -65,24 +65,21 @@ foreach ($arg in $args) {
     }
 }
 
-while ($True) {
-    try {
-        $buildToolsArgs = @("prepare-host-workspace", "windows") + $filteredArgs
-        if ($checkOnly) {
-            $buildToolsArgs += "--check"
-        }
+$buildToolsArgs = @("prepare-host-workspace", "windows") + $filteredArgs
+if ($checkOnly) {
+    $buildToolsArgs += "--check"
+}
 
-        Invoke-BuildTools -Arguments $buildToolsArgs
-        Write-Host "Workspace is ready!"
-        exit 0
-    }
-    catch {
-    }
-
+try {
+    Invoke-BuildTools -Arguments $buildToolsArgs
+    Write-Host "Workspace is ready!"
+    exit 0
+}
+catch {
     if ($checkOnly) {
         Write-Host "Workspace is not ready!"
         exit 10
     }
 
-    Read-Host -Prompt "Fix things manually and press any key"
+    throw
 }

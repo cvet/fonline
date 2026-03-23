@@ -6,6 +6,7 @@ import argparse
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import urllib.request
@@ -335,6 +336,24 @@ def is_running_as_root() -> bool:
 	return bool(geteuid and geteuid() == 0)
 
 
+def remove_tree(path: str | Path) -> None:
+	def handle_remove_readonly(func: object, target: str, excinfo: object) -> None:
+		_ = func, excinfo
+		os.chmod(target, stat.S_IWRITE)
+		os.unlink(target)
+
+	shutil.rmtree(path, onexc=handle_remove_readonly)
+
+
+def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
+	with zipfile.ZipFile(archive_path) as archive:
+		for member in archive.infolist():
+			extracted_path = Path(archive.extract(member, output_dir))
+			mode = member.external_attr >> 16
+			if mode:
+				extracted_path.chmod(mode)
+
+
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', ' '.join(str(part) for part in cmd))
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
@@ -472,7 +491,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 	if os.name == 'nt':
 		build_dir = workspace / 'build-win64-toolset'
 		if build_dir.exists():
-			shutil.rmtree(build_dir)
+			remove_tree(build_dir)
 		ensure_dir(build_dir)
 		run([
 			'cmake',
@@ -490,7 +509,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 	build_dir = workspace / 'build-linux-toolset'
 	if build_dir.exists():
-		shutil.rmtree(build_dir)
+		remove_tree(build_dir)
 	ensure_dir(build_dir)
 	build_env = os.environ.copy()
 	build_env['CC'] = '/usr/bin/clang'
@@ -515,7 +534,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
-		command = ['cmd', '/d', '/s', '/c', f'call "{emsdk_root / "emsdk.bat"}" {join_windows_args(args)}']
+		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
 		log('Run:', ' '.join(str(part) for part in command))
 		subprocess.check_call(command, cwd=emsdk_root)
 	else:
@@ -526,7 +545,7 @@ def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	emsdk_root = workspace / 'emsdk'
 	if emsdk_root.exists():
-		shutil.rmtree(emsdk_root)
+		remove_tree(emsdk_root)
 
 	run(['git', 'clone', 'https://github.com/emscripten-core/emsdk.git', str(emsdk_root)])
 	run_emsdk_command(emsdk_root, 'list')
@@ -546,16 +565,15 @@ def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
 	if archive_path.exists():
 		archive_path.unlink()
 	if ndk_source_dir.exists():
-		shutil.rmtree(ndk_source_dir)
+		remove_tree(ndk_source_dir)
 	if ndk_target_dir.exists():
-		shutil.rmtree(ndk_target_dir)
+		remove_tree(ndk_target_dir)
 
 	url = f'https://dl.google.com/android/repository/{archive_name}'
 	log('Download Android NDK:', url)
 	urllib.request.urlretrieve(url, archive_path)
 	log('Unpack Android NDK:', archive_path)
-	with zipfile.ZipFile(archive_path) as archive:
-		archive.extractall(workspace)
+	extract_zip_with_permissions(archive_path, workspace)
 	shutil.move(str(ndk_source_dir), str(ndk_target_dir))
 	archive_path.unlink(missing_ok=True)
 
@@ -564,7 +582,7 @@ def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	dotnet_root = workspace / 'dotnet'
 	if dotnet_root.exists():
-		shutil.rmtree(dotnet_root)
+		remove_tree(dotnet_root)
 	dotnet_root.mkdir(parents=True, exist_ok=True)
 	run([
 		'git',
@@ -919,7 +937,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	if not clone_marker.exists():
 		if runtime_root.exists():
 			log('Remove previous repository')
-			shutil.rmtree(runtime_root)
+			remove_tree(runtime_root)
 		dotnet_runtime_root = env.get('FO_DOTNET_RUNTIME_ROOT', '')
 		if dotnet_runtime_root:
 			log('Copy runtime')
