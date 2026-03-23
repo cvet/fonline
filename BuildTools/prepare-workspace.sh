@@ -17,11 +17,12 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 BUILDTOOLS_ARGS=(prepare-host-workspace linux)
+KNOWN_FEATURES=(packages linux web android android-arm64 android-x86 toolset dotnet all)
 
 for arg in "$@"; do
     if [[ "$arg" == "check" ]]; then
         BUILDTOOLS_ARGS+=(--check)
-    else
+    elif [[ " ${KNOWN_FEATURES[*]} " == *" $arg "* ]]; then
         BUILDTOOLS_ARGS+=("$arg")
     fi
 done
