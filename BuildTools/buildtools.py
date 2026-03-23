@@ -348,8 +348,27 @@ def remove_tree(path: str | Path) -> None:
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
 	with zipfile.ZipFile(archive_path) as archive:
 		for member in archive.infolist():
-			extracted_path = Path(archive.extract(member, output_dir))
 			mode = member.external_attr >> 16
+			extracted_path = output_dir / member.filename
+
+			if member.is_dir():
+				extracted_path.mkdir(parents=True, exist_ok=True)
+				if mode:
+					extracted_path.chmod(mode)
+				continue
+
+			extracted_path.parent.mkdir(parents=True, exist_ok=True)
+
+			if stat.S_ISLNK(mode) and hasattr(os, 'symlink'):
+				if extracted_path.exists() or extracted_path.is_symlink():
+					extracted_path.unlink()
+				link_target = archive.read(member).decode('utf-8')
+				os.symlink(link_target, extracted_path)
+				continue
+
+			with archive.open(member) as source, extracted_path.open('wb') as destination:
+				shutil.copyfileobj(source, destination)
+
 			if mode:
 				extracted_path.chmod(mode)
 
@@ -441,7 +460,7 @@ def build_android_ndk_version(env: Mapping[str, str]) -> str:
 	version = env.get('ANDROID_NDK_VERSION', '')
 	if not version:
 		raise SystemExit('ANDROID_NDK_VERSION is not configured')
-	return version
+	return f'{version}-workspace-v2'
 
 
 def build_dotnet_version(env: Mapping[str, str]) -> str:
