@@ -136,7 +136,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     FO_RUNTIME_ASSERT(map);
     FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
+    const auto* proto = _engine->GetProtoCritter(proto_id);
 
     if (proto == nullptr) {
         throw GenericException("Critter proto not found", proto_id);
@@ -343,7 +343,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = _engine->GetProtoItem(item_pid);
 
     if (proto == nullptr) {
         throw GenericException("Item proto not found", item_pid);

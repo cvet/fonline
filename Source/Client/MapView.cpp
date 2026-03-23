@@ -179,7 +179,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
     auto max_id = _workEntityId.underlying_value();
 
     MapLoader::Load(
-        map_name, str, _engine->ProtoMngr, _engine->Hashes,
+        map_name, str, *_engine, _engine->Hashes,
         [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
             FO_RUNTIME_ASSERT(id);
             FO_RUNTIME_ASSERT(_crittersMap.count(id) == 0);
@@ -288,7 +288,7 @@ void MapView::LoadStaticData()
             const auto static_id = ident_t {reader.Read<ident_t::underlying_type>()};
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
             const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
-            const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+            const auto* item_proto = _engine->GetProtoItem(item_pid);
             FO_RUNTIME_ASSERT(item_proto);
 
             auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
@@ -646,7 +646,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     FO_RUNTIME_ASSERT(id);
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = _engine->GetProtoItem(pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
@@ -669,7 +669,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props, iden
     FO_RUNTIME_ASSERT(_mapperMode);
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = _engine->GetProtoItem(pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
@@ -686,7 +686,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) ->
     FO_RUNTIME_ASSERT(_mapperMode);
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = _engine->GetProtoItem(pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
@@ -705,7 +705,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ItemHexView*
 
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = _engine->GetProtoItem(pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
@@ -3017,7 +3017,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     FO_RUNTIME_ASSERT(id);
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
+    const auto* proto = _engine->GetProtoCritter(pid);
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
@@ -3034,7 +3034,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     FO_RUNTIME_ASSERT(_mapperMode);
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
-    const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
+    const auto* proto = _engine->GetProtoCritter(pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);

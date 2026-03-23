@@ -380,7 +380,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto& pid = *cast_from_void<hstring*>(gen->GetAddressOfArg(0));
     const auto entity_hname = engine->Hashes.ToHashedString(entity_name);
-    const auto* proto = engine->ProtoMngr.GetProtoEntity(entity_hname, pid);
+    const auto* proto = engine->GetProtoEntity(entity_hname, pid);
 
     if (proto != nullptr) {
         const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
@@ -401,7 +401,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto entity_type = engine->Hashes.ToHashedString(entity_name);
-    const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+    const auto& protos = engine->GetProtoEntities(entity_type);
     const bool is_fixed_type = engine->IsFixedType(entity_type);
 
     auto* as_engine = gen->GetEngine();
@@ -439,7 +439,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
         throw ScriptException("Property is disabled");
     }
 
-    const auto& protos = engine->ProtoMngr.GetProtoEntities(entity_type);
+    const auto& protos = engine->GetProtoEntities(entity_type);
 
     auto* as_engine = gen->GetEngine();
     auto* result = CreateScriptArray(as_engine, strex("array<{}>", entity_type).c_str());

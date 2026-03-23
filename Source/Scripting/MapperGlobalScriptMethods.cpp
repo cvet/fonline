@@ -326,7 +326,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
         vector<raw_ptr<const ProtoItem>> protos;
 
         for (const auto item_pid : itemPids) {
-            const auto* proto = mapper->ProtoMngr.GetProtoItem(item_pid);
+            const auto* proto = mapper->GetProtoItem(item_pid);
 
             if (proto != nullptr) {
                 protos.emplace_back(proto);
@@ -386,7 +386,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32 tab
         vector<raw_ptr<const ProtoCritter>> protos;
 
         for (const auto pid : critterPids) {
-            const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
+            const auto* proto = mapper->GetProtoCritter(pid);
             protos.emplace_back(proto);
         }
 

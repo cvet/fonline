@@ -57,7 +57,7 @@ void MapManager::LoadFromResources()
 
     for (const auto& map_file_header : map_files) {
         const auto map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
-        const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+        const auto* map_proto = _engine->GetProtoMap(map_pid);
 
         if (map_proto == nullptr) {
             throw MapManagerException("Map proto not found for static map", map_pid);
@@ -110,7 +110,7 @@ void MapManager::LoadFromResources()
 
                         const auto cr_pid_hash = reader.Read<hstring::hash_t>();
                         const auto cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
-                        const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+                        const auto* cr_proto = _engine->GetProtoCritter(cr_pid);
 
                         if (cr_proto == nullptr) {
                             throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
@@ -150,7 +150,7 @@ void MapManager::LoadFromResources()
 
                         const auto item_pid_hash = reader.Read<hstring::hash_t>();
                         const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
-                        const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+                        const auto* item_proto = _engine->GetProtoItem(item_pid);
 
                         if (item_proto == nullptr) {
                             throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
@@ -413,7 +413,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
+    const auto* proto = _engine->GetProtoLocation(proto_id);
 
     if (proto == nullptr) {
         throw GenericException("Location proto not found", proto_id);
@@ -424,7 +424,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     _engine->EntityMngr.RegisterLocation(loc.get());
 
     for (const auto map_pid : map_pids) {
-        const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+        const auto* map_proto = _engine->GetProtoMap(map_pid);
 
         if (map_proto == nullptr) {
             throw GenericException("Map proto not found", map_pid);
@@ -460,7 +460,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     FO_RUNTIME_ASSERT(!loc->IsDestroyed());
     FO_RUNTIME_ASSERT(!loc->IsDestroying());
 
-    const auto* map_proto = _engine->ProtoMngr.GetProtoMap(proto_id);
+    const auto* map_proto = _engine->GetProtoMap(proto_id);
 
     if (map_proto == nullptr) {
         throw GenericException("Map proto not found", proto_id);

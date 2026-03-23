@@ -270,13 +270,11 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         return std::nullopt;
     });
 
-    // Protos
+    // Language
     _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitProtosJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitLanguageJob");
 
-        WriteLog("Load protos data");
-
-        ProtoMngr.LoadFromResources(Resources);
+        WriteLog("Load language data");
 
         _defaultLang = LanguagePack {Settings.Language, *this};
         _defaultLang.LoadFromResources(Resources);
@@ -1441,7 +1439,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player) -> Critter*
 
     WriteLog(LogType::Info, "Create critter {}", pid);
 
-    const auto* proto = ProtoMngr.GetProtoCritter(pid);
+    const auto* proto = GetProtoCritter(pid);
 
     if (proto == nullptr) {
         throw GenericException("Critter proto not found", pid);
@@ -3129,7 +3127,7 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
         throw GenericException("Invalid items cound");
     }
 
-    const auto* proto = ProtoMngr.GetProtoItem(pid);
+    const auto* proto = GetProtoItem(pid);
 
     if (proto == nullptr) {
         throw GenericException("Item proto not found", pid);

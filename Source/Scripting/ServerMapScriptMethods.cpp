@@ -111,7 +111,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
     }
 
     if (!props.empty()) {
-        const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
+        const auto* proto = self->GetEngine()->GetProtoItem(protoId);
 
         if (proto == nullptr) {
             throw ScriptException("Invalid item proto id arg", protoId);
@@ -945,7 +945,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
+    const auto* proto = self->GetEngine()->GetProtoCritter(protoId);
 
     if (proto == nullptr) {
         throw ScriptException("Invalid critter proto id arg", protoId);
@@ -985,7 +985,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
+    const auto* proto = self->GetEngine()->GetProtoCritter(protoId);
 
     if (proto == nullptr) {
         throw ScriptException("Invalid critter proto id arg", protoId);
@@ -1062,7 +1062,7 @@ FO_SCRIPT_API bool Server_Map_IsOutsideArea(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, hstring pid)
 {
-    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = self->GetEngine()->GetProtoItem(pid);
 
     if (proto == nullptr) {
         throw ScriptException("Invalid item proto id arg", pid);

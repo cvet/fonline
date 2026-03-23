@@ -85,8 +85,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
 
     InitSubsystems(this);
 
-    ProtoMngr.LoadFromResources(Resources);
-
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadFromResources(Resources);
 
@@ -794,7 +792,7 @@ void ClientEngine::Net_OnAddCritter()
         cr = hex_cr;
     }
     else {
-        const auto* proto = ProtoMngr.GetProtoCritter(pid);
+        const auto* proto = GetProtoCritter(pid);
         FO_RUNTIME_ASSERT(proto);
 
         const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
@@ -829,7 +827,7 @@ void ClientEngine::Net_OnAddCritter()
         const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
         FO_RUNTIME_ASSERT(proto);
 
         auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
@@ -1046,7 +1044,7 @@ void ClientEngine::Net_OnCritterAction()
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
         FO_RUNTIME_ASSERT(proto);
 
         context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1090,7 +1088,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
         FO_RUNTIME_ASSERT(proto);
 
         moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1139,7 +1137,7 @@ void ClientEngine::Net_OnCritterMoveItem()
             const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-            const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+            const auto* proto = GetProtoItem(item_pid);
             FO_RUNTIME_ASSERT(proto);
 
             auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
@@ -1320,7 +1318,7 @@ void ClientEngine::Net_OnChosenAddItem()
         chosen->DeleteInvItem(prev_item);
     }
 
-    const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = GetProtoItem(item_pid);
     FO_RUNTIME_ASSERT(proto);
 
     auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
@@ -1604,9 +1602,9 @@ void ClientEngine::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
+        const auto* loc_proto = GetProtoLocation(loc_pid);
         FO_RUNTIME_ASSERT(loc_proto);
-        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
+        const auto* map_proto = GetProtoMap(map_pid);
         FO_RUNTIME_ASSERT(map_proto);
 
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
@@ -1644,7 +1642,7 @@ void ClientEngine::Net_OnSomeItems()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
         FO_RUNTIME_ASSERT(item_id);
 
-        const auto* proto = ProtoMngr.GetProtoItem(pid);
+        const auto* proto = GetProtoItem(pid);
         FO_RUNTIME_ASSERT(proto);
 
         auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
@@ -1803,7 +1801,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
 
     if (pid) {
         FO_RUNTIME_ASSERT(has_protos);
-        proto = ProtoMngr.GetProtoEntity(type_name, pid);
+        proto = GetProtoEntity(type_name, pid);
         FO_RUNTIME_ASSERT(proto);
     }
     else {

@@ -111,15 +111,19 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     // Load protos
     auto server_engine = BakerServerEngine(*_context->BakedFiles);
     auto client_engine = BakerClientEngine(*_context->BakedFiles);
-    server_engine.InitSubsystems(&server_engine, *_context->BakedFiles);
 
     vector<std::future<void>> proto_loadings;
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_engine.ProtoMngr.LoadFromResources(*_context->BakedFiles); }));
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_engine.ProtoMngr.LoadFromResources(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->BakedFiles); }));
 
     for (auto& proto_loading : proto_loadings) {
         proto_loading.get();
     }
+
+    server_engine.FinalizeRegistration();
+    client_engine.FinalizeRegistration();
+
+    server_engine.InitSubsystems(&server_engine, *_context->BakedFiles);
 
     // Bake maps
     const auto bake_map = [&](const File& file) {
@@ -146,7 +150,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         size_t errors = 0;
 
         MapLoader::Load(
-            map_name, file_content, server_engine.ProtoMngr, server_engine.Hashes,
+            map_name, file_content, server_engine, server_engine.Hashes,
             [&](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
@@ -177,7 +181,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 const auto is_hidden = proto->GetHidden();
 
                 if (is_static && !is_hidden) {
-                    const auto* client_proto = client_engine.ProtoMngr.GetProtoItem(proto->GetProtoId());
+                    const auto* client_proto = client_engine.GetProtoItem(proto->GetProtoId());
                     FO_RUNTIME_ASSERT(client_proto);
 
                     auto client_props = client_proto->GetProperties().Copy();

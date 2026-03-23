@@ -438,7 +438,7 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32 cou
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
-    if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
+    if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid proto", pid);
     }
 

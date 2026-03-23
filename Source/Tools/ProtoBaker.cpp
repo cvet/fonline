@@ -211,14 +211,15 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
     for (const auto& [type_name, file_protos] : all_file_protos) {
         for (const auto& pid : file_protos | std::views::keys) {
             auto proto = create_empty_proto(type_name, pid);
-            meta->ProtoMngr.AddProto(type_name, proto);
+            meta->RegisterProto(type_name, proto);
             const auto inserted = all_protos[type_name].emplace(pid, std::move(proto)).second;
             FO_RUNTIME_ASSERT(inserted);
         }
     }
 
-    // Processing
+    meta->FinalizeRegistration();
 
+    // Processing
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
             FO_RUNTIME_ASSERT(!key.empty());

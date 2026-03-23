@@ -545,8 +545,6 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, App
 
     InitSubsystems(this);
 
-    ProtoMngr.LoadFromResources(Resources);
-
     _curLang = LanguagePack {Settings.Language, *this};
     _curLang.LoadFromResources(Resources);
 
@@ -574,7 +572,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, App
     InitIface();
 
     // Initialize tabs
-    const auto& cr_protos = ProtoMngr.GetProtoCritters();
+    const auto& cr_protos = GetProtoCritters();
 
     for (const auto& proto : cr_protos | std::views::values) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].CritterProtos.emplace_back(proto);
@@ -584,7 +582,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, App
         std::ranges::stable_sort(proto.CritterProtos, [](auto&& a, auto&& b) -> bool { return a->GetName() < b->GetName(); });
     }
 
-    const auto& item_protos = ProtoMngr.GetProtoItems();
+    const auto& item_protos = GetProtoItems();
 
     for (const auto& proto : item_protos | std::views::values) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.emplace_back(proto);
@@ -4548,7 +4546,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
     FO_RUNTIME_ASSERT(_curMap);
 
-    const auto* proto = ProtoMngr.GetProtoItem(pid);
+    const auto* proto = GetProtoItem(pid);
 
     if (proto == nullptr) {
         return nullptr;

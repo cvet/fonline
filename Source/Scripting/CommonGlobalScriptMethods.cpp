@@ -342,13 +342,13 @@ FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view 
 ///@ ExportMethod
 FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->ProtoMngr.GetProtoItem(pid));
+    return const_cast<ProtoItem*>(engine->GetProtoItem(pid));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
 {
-    const auto& protos = engine->ProtoMngr.GetProtoItems();
+    const auto& protos = engine->GetProtoItems();
 
     vector<ProtoItem*> result;
     result.reserve(protos.size());
@@ -364,7 +364,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine)
 FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, ItemProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
-    const auto& protos = engine->ProtoMngr.GetProtoItems();
+    const auto& protos = engine->GetProtoItems();
 
     vector<ProtoItem*> result;
     result.reserve(protos.size());
@@ -381,13 +381,13 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
 ///@ ExportMethod
 FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->ProtoMngr.GetProtoCritter(pid));
+    return const_cast<ProtoCritter*>(engine->GetProtoCritter(pid));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine)
 {
-    const auto& protos = engine->ProtoMngr.GetProtoCritters();
+    const auto& protos = engine->GetProtoCritters();
 
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
@@ -403,7 +403,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* engine, CritterProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
-    const auto& protos = engine->ProtoMngr.GetProtoCritters();
+    const auto& protos = engine->GetProtoCritters();
 
     vector<ProtoCritter*> result;
     result.reserve(protos.size());
@@ -420,13 +420,13 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 ///@ ExportMethod
 FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->ProtoMngr.GetProtoMap(pid));
+    return const_cast<ProtoMap*>(engine->GetProtoMap(pid));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
 {
-    const auto& protos = engine->ProtoMngr.GetProtoMaps();
+    const auto& protos = engine->GetProtoMaps();
 
     vector<ProtoMap*> result;
     result.reserve(protos.size());
@@ -442,7 +442,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine)
 FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, MapProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
-    const auto& protos = engine->ProtoMngr.GetProtoMaps();
+    const auto& protos = engine->GetProtoMaps();
 
     vector<ProtoMap*> result;
     result.reserve(protos.size());
@@ -459,13 +459,13 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
 ///@ ExportMethod
 FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->ProtoMngr.GetProtoLocation(pid));
+    return const_cast<ProtoLocation*>(engine->GetProtoLocation(pid));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine)
 {
-    const auto& protos = engine->ProtoMngr.GetProtoLocations();
+    const auto& protos = engine->GetProtoLocations();
 
     vector<ProtoLocation*> result;
     result.reserve(protos.size());
@@ -481,7 +481,7 @@ FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* e
 FO_SCRIPT_API vector<ProtoLocation*> Common_Game_GetProtoLocations(BaseEngine* engine, LocationProperty property, int32 propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
-    const auto& protos = engine->ProtoMngr.GetProtoLocations();
+    const auto& protos = engine->GetProtoLocations();
 
     vector<ProtoLocation*> result;
     result.reserve(protos.size());

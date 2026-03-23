@@ -88,10 +88,17 @@ public:
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
+    [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
+    [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
+    [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _protoMngr.GetProtoCritters(); }
+    [[nodiscard]] auto GetProtoMaps() const noexcept -> const auto& { return _protoMngr.GetProtoMaps(); }
+    [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _protoMngr.GetProtoLocations(); }
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*;
     [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override;
-
-    mutable HashStorage Hashes;
-    ProtoManager ProtoMngr;
+    [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
     void RegisterSide(EngineSideKind side);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;
@@ -113,13 +120,18 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void RegisterProtos(const FileSystem& resources);
+    void RegisterProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
     void FinalizeRegistration();
+
+    mutable HashStorage Hashes;
 
 private:
     auto RegisterBaseType(string_view type_str) -> BaseTypeDesc&;
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
+    ProtoManager _protoMngr;
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};
     unordered_map<string, raw_ptr<EntityTypeDesc>> _entityRelatives {};

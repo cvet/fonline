@@ -248,7 +248,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         return nullptr;
     }
 
-    const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
+    const auto* loc_proto = _engine->GetProtoLocation(loc_pid);
 
     if (loc_proto == nullptr) {
         WriteLog("Location {} proto {} not found", loc_id, loc_pid);
@@ -329,7 +329,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         return nullptr;
     }
 
-    const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+    const auto* map_proto = _engine->GetProtoMap(map_pid);
 
     if (map_proto == nullptr) {
         WriteLog("Map {} proto {} not found", map_id, map_pid);
@@ -435,7 +435,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         return nullptr;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+    const auto* proto = _engine->GetProtoCritter(cr_pid);
 
     if (proto == nullptr) {
         WriteLog("Critter {} proto {} not found", cr_id, cr_pid);
@@ -510,7 +510,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         return nullptr;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = _engine->GetProtoItem(item_pid);
 
     if (proto == nullptr) {
         WriteLog("Item {} proto {} not found", item_id, item_pid);
@@ -1329,7 +1329,7 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
 
     if (pid) {
         FO_RUNTIME_ASSERT(has_protos);
-        proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
+        proto = _engine->GetProtoEntity(type_name, pid);
         FO_RUNTIME_ASSERT(proto);
     }
     else {
@@ -1381,10 +1381,10 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
 
         if (has_protos) {
             if (pid) {
-                proto = _engine->ProtoMngr.GetProtoEntity(type_name, pid);
+                proto = _engine->GetProtoEntity(type_name, pid);
             }
             else {
-                proto = _engine->ProtoMngr.GetProtoEntity(type_name, _engine->Hashes.ToHashedString("Default"));
+                proto = _engine->GetProtoEntity(type_name, _engine->Hashes.ToHashedString("Default"));
             }
 
             if (proto == nullptr) {

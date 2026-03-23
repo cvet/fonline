@@ -144,7 +144,7 @@ struct EngineBaseData
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
 EngineMetadata::EngineMetadata(const MeatdataRegistrator& registrator) :
-    ProtoMngr(*this)
+    _protoMngr(*this)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1058,6 +1058,34 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
     return result;
 }
 
+auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoItem(proto_id);
+}
+
+auto EngineMetadata::GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoCritter(proto_id);
+}
+
+auto EngineMetadata::GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoMap(proto_id);
+}
+
+auto EngineMetadata::GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoLocation(proto_id);
+}
+
 auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1066,7 +1094,36 @@ auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const n
         type_name = it->second->PropRegistrator->GetTypeName();
     }
 
-    return ProtoMngr.GetProtoEntity(type_name, proto_id);
+    return _protoMngr.GetProtoEntity(type_name, proto_id);
+}
+
+auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+        type_name = it->second->PropRegistrator->GetTypeName();
+    }
+
+    return _protoMngr.GetProtoEntities(type_name);
+}
+
+void EngineMetadata::RegisterProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+
+    _protoMngr.AddProto(type_name, proto);
+}
+
+void EngineMetadata::RegisterProtos(const FileSystem& resources)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+
+    _protoMngr.LoadFromResources(resources);
 }
 
 BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
@@ -1083,6 +1140,7 @@ BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const M
 {
     FO_STACK_TRACE_ENTRY();
 
+    RegisterProtos(Resources);
     FinalizeRegistration();
 }
 

@@ -79,7 +79,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
-        const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        const auto* proto = self->GetEngine()->GetProtoItem(mapSpr->ProtoId);
         color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
         is_flat = proto->GetDrawFlatten();
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
@@ -699,7 +699,7 @@ FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, mpos hex)
 {
-    if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
+    if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid item pid arg");
     }
     if (!self->GetSize().is_valid_pos(hex)) {

@@ -247,7 +247,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
-    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
+    const auto* proto = self->GetEngine()->GetProtoItem(protoId);
 
     if (proto == nullptr) {
         throw ScriptException("Invalid item proto id arg", protoId);
