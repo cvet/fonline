@@ -196,7 +196,7 @@ public:
 
     // Critters
     auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
-    auto AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props) -> CritterHexView*;
+    auto AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props, ident_t id = {}) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
     auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
@@ -212,7 +212,7 @@ public:
 
     // Items
     auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8>>& data) -> ItemHexView*;
-    auto AddMapperItem(hstring pid, mpos hex, const Properties* props) -> ItemHexView*;
+    auto AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id = {}) -> ItemHexView*;
     auto AddMapperTile(hstring pid, mpos hex, uint8 layer, bool is_roof) -> ItemHexView*;
     auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;

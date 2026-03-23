@@ -659,7 +659,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     return AddItemInternal(item.get());
 }
 
-auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> ItemHexView*
+auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -667,7 +667,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props) -> I
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -3018,7 +3018,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
     return AddCritterInternal(cr.get());
 }
 
-auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props) -> CritterHexView*
+auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props, ident_t id) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3026,7 +3026,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
 
     const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, GenTempEntityId(), proto, props);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDirAngle(dir_angle);

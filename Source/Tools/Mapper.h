@@ -37,7 +37,6 @@
 
 #include "CacheStorage.h"
 #include "Client.h"
-#include "ConfigFile.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
@@ -79,12 +78,52 @@ public:
 
     struct EntityBuf
     {
+        ident_t Id {};
         mpos Hex {};
+        int16 DirAngle {};
         bool IsCritter {};
         bool IsItem {};
+        CritterItemSlot Slot {CritterItemSlot::Inventory};
+        any_t StackId {};
         raw_ptr<const ProtoEntity> Proto {};
         unique_ptr<Properties> Props {};
         vector<unique_ptr<EntityBuf>> Children {};
+        EntityBuf() = default;
+        EntityBuf(const EntityBuf& other);
+        auto operator=(const EntityBuf& other) -> EntityBuf&;
+        EntityBuf(EntityBuf&&) noexcept = default;
+        auto operator=(EntityBuf&&) noexcept -> EntityBuf& = default;
+    };
+
+    struct UndoOp
+    {
+        string Label {};
+        bool IsSnapshot {};
+        std::function<bool(MapperEngine&, raw_ptr<MapView>&)> Undo {};
+        std::function<bool(MapperEngine&, raw_ptr<MapView>&)> Redo {};
+
+        UndoOp() = default;
+        UndoOp(string label, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> undo, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> redo, bool is_snapshot = false);
+    };
+
+    struct UndoContext
+    {
+        vector<UndoOp> UndoStack {};
+        vector<UndoOp> RedoStack {};
+        int32 CleanUndoDepth {-1};
+    };
+
+    struct MoveCommandEntry
+    {
+        ident_t EntityId {};
+        bool HasHex {};
+        mpos OldHex {};
+        mpos NewHex {};
+        bool HasOffset {};
+        ipos16 OldOffset {};
+        ipos16 NewOffset {};
+        vector<mpos> OldMultihexMesh {};
+        vector<mpos> NewMultihexMesh {};
     };
 
     struct MessBoxMessage
@@ -129,10 +168,9 @@ public:
     static constexpr auto TAB_COUNT = 15;
     static constexpr auto INT_NONE = 0;
     static constexpr auto INT_BUTTON = 1;
-    static constexpr auto INT_MAIN = 2;
     static constexpr auto INT_SELECT = 3;
-    static constexpr auto INT_OBJECT = 4;
-    static constexpr auto INT_SUB_TAB = 5;
+    static constexpr auto INT_MOVE_SELECTION = 4;
+    static constexpr auto INT_PAN = 5;
     static constexpr auto DEFAULT_SUB_TAB = "000 - all";
     static constexpr auto DRAW_NEXT_HEIGHT = 12;
     static constexpr auto CONSOLE_KEY_TICK = 500;
@@ -147,10 +185,17 @@ public:
     ~MapperEngine() override = default;
 
     void InitIface();
-    auto IfaceLoadRect(irect32& rect, string_view name) const -> bool;
-    auto GetIfaceSpr(hstring fname) -> Sprite*;
+    auto GetPreviewSprite(hstring fname) -> Sprite*;
     void MapperMainLoop();
-    void ProcessMapperInput();
+    auto BeginMapperFrameInput() -> bool;
+    void ProcessMapperInputEvent(const InputEvent& ev);
+    void DrawMapperFrame();
+    void HandleMapperKeyboardEvent(const InputEvent& ev);
+    void HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
+    void HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
+    void HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
+    void UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup);
+    void HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text);
     void ChangeZoom(float32 new_zoom);
     void DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font);
 
@@ -158,24 +203,37 @@ public:
     void CurRMouseUp();
     void CurMMouseDown();
     void SetCurMode(int cur_mode);
+    void ProcessRightMouseInertia();
+    void CommitPendingSelectionMove();
+    void ResetPendingSelectionMove();
 
     auto IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool;
     auto IsCurInRect(const irect32& rect) const -> bool;
-    auto IsCurInRectNoTransp(const Sprite* spr, const irect32& rect, int32 ax, int32 ay) const -> bool;
     auto IsCurInInterface() const -> bool;
     auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
 
-    void IntDraw();
-    void IntLMouseDown();
-    void IntLMouseUp();
-    void IntMouseMove();
-    void IntSetMode(int32 mode);
+    void DrawMainPanelImGui();
+    void DrawWorkspaceWindowImGui();
+    void DrawContentWindowImGui();
+    void DrawCritterAnimationsWindowImGui();
+    void DrawScriptCallWindowImGui();
+    void DrawMapListWindowImGui();
+    void DrawMapWindowImGui();
+    void DrawHistoryWindowImGui();
+    void DrawSettingsWindowImGui();
+    void HandleLeftMouseDown();
+    auto HandleMapLeftMouseDown() -> bool;
+    void HandleLeftMouseUp();
+    void HandleSelectionMouseDrag();
+    void SetActivePanelMode(int32 mode);
 
-    auto GetTabIndex() const -> int32;
-    void SetTabIndex(int32 index);
-    void RefreshCurProtos();
-    auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
-    auto IsCritMode() const -> bool { return CurCritterProtos != nullptr && CurProtoScroll != nullptr; }
+    auto GetActiveSubTab() -> SubTab*;
+    auto GetActiveSubTab() const -> const SubTab*;
+    auto GetActiveProtoIndex() const -> int32;
+    void SetActiveProtoIndex(int32 index);
+    void RefreshActiveProtoLists();
+    auto IsItemMode() const -> bool { return ActiveItemProtos != nullptr && ActiveProtoScroll != nullptr; }
+    auto IsCritMode() const -> bool { return ActiveCritterProtos != nullptr && ActiveProtoScroll != nullptr; }
 
     void MoveEntity(ClientEntity* entity, mpos hex);
     void DeleteEntity(ClientEntity* entity);
@@ -203,22 +261,36 @@ public:
     void BufferCut();
     void BufferPaste();
 
-    void ObjDraw();
-    void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, irect32& r);
-    void ObjKeyDown(KeyCode dik, string_view dik_text);
-    void ObjKeyDownApply(Entity* entity);
-    void SelectEntityProp(int32 line);
+    void DrawInspectorImGui();
+    auto ApplyEntityPropertyText(Entity* entity, const Property* prop, string_view value_text) -> bool;
+    void ApplyInspectorPropertyEdit(Entity* entity);
+    void ResetInspectorPropertyEditState();
+    auto CancelInspectorPropertyEdit() -> bool;
+    void SelectInspectorPropertyLine(int32 line);
     auto GetInspectorEntity() -> ClientEntity*;
 
-    void ConsoleDraw();
-    void ConsoleKeyDown(KeyCode dik, string_view dik_text);
-    void ConsoleKeyUp(KeyCode dik);
-    void ConsoleProcess();
+    void DrawConsoleImGui();
+    void ConsoleSubmitCommand();
+    void ResetImGuiSettings();
+    auto IsImGuiMouseCaptured() const -> bool;
+    auto IsImGuiTextInputActive() const -> bool;
+    auto CanUndo() const -> bool;
+    auto CanRedo() const -> bool;
+    auto GetUndoLabel() const -> string;
+    auto GetRedoLabel() const -> string;
+    auto ExecuteUndo() -> bool;
+    auto ExecuteRedo() -> bool;
+    auto JumpHistoryToIndex(int32 target_index) -> bool;
     void ParseCommand(string_view command);
     auto LoadMap(string_view map_name) -> MapView*;
+    auto LoadMapFromText(string_view map_name, const string& map_text) -> MapView*;
     void ShowMap(MapView* map);
+    auto IsMapDirty(const MapView* map) const -> bool;
+    void SetMapDirty(MapView* map, bool dirty = true);
+    void SaveCurrentMap();
+    void ResetCurrentMapChanges();
     void SaveMap(MapView* map, string_view custom_name);
-    void UnloadMap(MapView* map);
+    void UnloadMap(MapView* map, bool clear_undo = true);
     void ResizeMap(MapView* map, int32 width, int32 height);
 
     void AddMess(string_view message_text);
@@ -227,6 +299,17 @@ public:
     void DrawIfaceLayer(int32 layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
+    void CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity) const;
+    auto RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner = nullptr) -> ClientEntity*;
+    void RestoreEntityBufChildren(const EntityBuf& entity_buf, ItemView* item);
+    auto FindEntityById(raw_ptr<MapView> map, ident_t id) -> ClientEntity*;
+    auto GetUndoContext(MapView* map, bool create) -> UndoContext*;
+    auto GetUndoContext(const MapView* map, bool create) const -> const UndoContext*;
+    void ClearUndoContext(MapView* map);
+    void RemapUndoContext(MapView* old_map, MapView* new_map);
+    void PushUndoOp(MapView* map, UndoOp op);
+    auto CaptureMapSnapshot(MapView* map) const -> string;
+    auto RestoreMapSnapshot(raw_ptr<MapView>& map, string_view map_name, const string& map_text) -> bool;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
@@ -239,125 +322,106 @@ public:
 
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
-    unique_ptr<ConfigFile> IfaceIni {};
+    unordered_set<raw_ptr<MapView>> DirtyMaps {};
+    unordered_map<raw_ptr<MapView>, UndoContext> UndoContexts {};
     vector<raw_ptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};
-    unordered_map<hstring, shared_ptr<Sprite>> IfaceSpr {};
+    unordered_map<hstring, shared_ptr<Sprite>> PreviewSprites {};
     int32 CurMode {};
     shared_ptr<Sprite> CurPDef {};
     shared_ptr<Sprite> CurPHand {};
-    int32 IntMode {};
-    int32 IntHold {};
-    shared_ptr<Sprite> IntMainPic {};
-    shared_ptr<Sprite> IntPTab {};
-    shared_ptr<Sprite> IntPSelect {};
-    shared_ptr<Sprite> IntPShow {};
-    int32 IntX {};
-    int32 IntY {};
-    int32 IntVectX {};
-    int32 IntVectY {};
+    int32 ActivePanelMode {};
+    int32 MouseHoldMode {};
+    ipos32 MainPanelPos {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
     ipos32 SelectPos {};
+    bool RightMouseDragged {};
+    fpos32 RightMouseInertia {};
+    fpos32 RightMouseVelocityAccum {};
+    nanotime RightMouseVelocityTime {};
+    vector<MoveCommandEntry> PendingSelectionMoveEntries {};
     bool SelectAxialGrid {true};
     bool SelectEntireEntity {};
-    bool IntVisible {};
-    bool IntFix {};
-    irect32 IntWMain {};
-    irect32 IntWWork {};
-    irect32 IntWHint {};
-    irect32 IntBCust[10] {};
-    irect32 IntBItem {};
-    irect32 IntBTile {};
-    irect32 IntBCrit {};
-    irect32 IntBFast {};
-    irect32 IntBIgnore {};
-    irect32 IntBInCont {};
-    irect32 IntBMess {};
-    irect32 IntBList {};
-    irect32 IntBScrBack {};
-    irect32 IntBScrBackFst {};
-    irect32 IntBScrFront {};
-    irect32 IntBScrFrontFst {};
-    irect32 IntBShowItem {};
-    irect32 IntBShowScen {};
-    irect32 IntBShowWall {};
-    irect32 IntBShowCrit {};
-    irect32 IntBShowTile {};
-    irect32 IntBShowRoof {};
-    irect32 IntBShowFast {};
+    bool WorkspaceWindowVisible {};
+    bool ContentWindowVisible {};
+    bool CritterAnimationsWindowVisible {};
+    bool ScriptCallWindowVisible {};
+    bool MapListWindowVisible {};
+    bool MapWindowVisible {};
+    bool HistoryWindowVisible {};
+    bool SettingsWindowVisible {};
+    bool ResetImGuiSettingsRequested {};
+    irect32 MainPanelWindowRect {};
+    irect32 MainPanelContentRect {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
-    raw_ptr<SubTab> TabsActive[TAB_COUNT] {};
-    string TabsName[INT_MODE_COUNT] {};
-    int32 TabsScroll[INT_MODE_COUNT] {};
-    bool SubTabsActive {};
-    int32 SubTabsActiveTab {};
-    shared_ptr<Sprite> SubTabsPic {};
-    irect32 SubTabsRect {};
-    int32 SubTabsX {};
-    int32 SubTabsY {};
-    raw_ptr<vector<raw_ptr<const ProtoItem>>> CurItemProtos {};
-    raw_ptr<vector<raw_ptr<const ProtoCritter>>> CurCritterProtos {};
+    raw_ptr<SubTab> ActiveSubTabs[TAB_COUNT] {};
+    string PanelModeNames[INT_MODE_COUNT] {};
+    raw_ptr<vector<raw_ptr<const ProtoItem>>> ActiveItemProtos {};
+    raw_ptr<vector<raw_ptr<const ProtoCritter>>> ActiveCritterProtos {};
     uint8 CritterDir {};
-    raw_ptr<int32> CurProtoScroll {};
+    raw_ptr<int32> ActiveProtoScroll {};
     int32 ProtoWidth {};
     int32 ProtosOnScreen {};
+    array<char, 128> WorkspaceFilterBuf {};
+    array<char, 256> ContentMapNameBuf {};
+    array<char, 128> ContentMapFilterBuf {};
+    int32 ContentResizeW {};
+    int32 ContentResizeH {};
+    int32 CritterAnimState {};
+    int32 CritterAnimAction {};
+    array<char, 128> CritterAnimSequenceBuf {};
+    array<char, 128> ScriptCallFuncBuf {};
+    array<char, 256> ScriptCallArgsBuf {};
+    array<char, 128> MapBrowserFilterBuf {};
     int32 TabIndex[INT_MODE_COUNT] {};
-    int32 InContScroll {};
-    int32 ListScroll {};
     refcount_ptr<ItemView> InContItem {};
-    bool DrawRoof {};
+    bool PreviewRoofTiles {};
     int32 TileLayer {};
-    irect32 IntBSelectItem {};
-    irect32 IntBSelectScen {};
-    irect32 IntBSelectWall {};
-    irect32 IntBSelectCrit {};
-    irect32 IntBSelectTile {};
-    irect32 IntBSelectRoof {};
-    bool IsSelectItem {};
-    bool IsSelectScen {};
-    bool IsSelectWall {};
-    bool IsSelectCrit {};
-    bool IsSelectTile {};
-    bool IsSelectRoof {};
+    bool SelectItemsEnabled {};
+    bool SelectSceneryEnabled {};
+    bool SelectWallsEnabled {};
+    bool SelectCrittersEnabled {};
+    bool SelectTilesEnabled {};
+    bool SelectRoofTilesEnabled {};
     ipos32 BufferRawHex {};
     vector<refcount_ptr<ClientEntity>> SelectedEntities {};
     unordered_set<raw_ptr<ClientEntity>> SelectedEntitiesSet {};
     vector<EntityBuf> EntitiesBuffer {};
-    shared_ptr<Sprite> ObjWMainPic {};
-    shared_ptr<Sprite> ObjPbToAllDn {};
-    irect32 ObjWMain {};
-    irect32 ObjWWork {};
-    irect32 ObjBToAll {};
-    int32 ObjX {};
-    int32 ObjY {};
-    int32 ItemVectX {};
-    int32 ItemVectY {};
-    int32 ObjCurLine {};
-    bool ObjCurLineIsConst {};
-    string ObjCurLineInitValue {};
-    string ObjCurLineValue {};
-    bool ObjVisible {};
-    bool ObjFix {};
-    bool ObjToAll {};
+    ipos32 InspectorPos {24, 24};
+    int32 InspectorSelectedLine {};
+    string InspectorSelectedLineInitialValue {};
+    string InspectorSelectedLineValue {};
+    string InspectorEditBuf {};
+    int32 InspectorEditLine {-1};
+    int32 InspectorPendingFocusLine {-1};
+    int32 InspectorPendingFocusArrayIndex {-1};
+    int32 InspectorPendingCaretResetLine {-1};
+    int32 InspectorPendingCaretResetArrayIndex {-1};
+    int32 InspectorPendingCaretResetFrames {};
+    bool InspectorLastEditCellRectValid {};
+    float InspectorLastEditCellMinX {};
+    float InspectorLastEditCellMinY {};
+    float InspectorLastEditCellMaxX {};
+    float InspectorLastEditCellMaxY {};
+    bool InspectorVisible {};
+    bool InspectorApplyToAll {};
     raw_ptr<ClientEntity> InspectorEntity {};
-    shared_ptr<Sprite> ConsolePic {};
-    int32 ConsolePicX {};
-    int32 ConsolePicY {};
-    int32 ConsoleTextX {};
-    int32 ConsoleTextY {};
+    float SelectionSmallOffsetX {};
+    float SelectionSmallOffsetY {};
     bool ConsoleEdit {};
     string ConsoleStr {};
-    int32 ConsoleCur {};
+    array<char, 4096> ConsoleBuf {};
+    bool ConsoleSyncFromState {true};
     vector<string> ConsoleHistory {};
     int32 ConsoleHistoryCur {};
-    KeyCode ConsoleLastKey {};
-    string ConsoleLastKeyText {};
-    nanotime ConsoleKeyTime {};
-    int32 ConsoleAccelerate {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};
     int32 MessBoxScroll {};
+    raw_ptr<MapView> LastHistoryMap {};
+    int32 LastHistoryUndoCount {-1};
+    bool UndoRedoInProgress {};
+    size_t MaxUndoDepth {100};
     bool SpritesCanDraw {};
     uint8 SelectAlpha {100};
 };
