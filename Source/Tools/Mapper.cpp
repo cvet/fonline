@@ -463,29 +463,43 @@ static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_
     FO_STACK_TRACE_ENTRY();
 
     string cfg_user;
+
     if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
         auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
-        auto sections = config.GetSections();
-
-        if (auto it = sections.find(""); it != sections.end()) {
-            it->second[string(key)] = string(value);
-        }
-        else {
-            sections.emplace("", map<string, string> {{string(key), string(value)}});
-        }
+        const auto& sections = config.GetSections();
+        auto wrote_root_key = false;
+        auto has_root_section = false;
 
         for (const auto& [section_name, key_values] : sections) {
             if (!section_name.empty()) {
                 cfg_user += strex("[{}]\n", section_name);
             }
+            else {
+                has_root_section = true;
+            }
 
             for (const auto& [entry_key, entry_value] : key_values) {
-                cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                if (section_name.empty() && entry_key == key) {
+                    cfg_user += strex("{} = {}\n", key, value);
+                    wrote_root_key = true;
+                }
+                else {
+                    cfg_user += strex("{} = {}\n", entry_key, entry_value);
+                }
+            }
+
+            if (section_name.empty() && !wrote_root_key) {
+                cfg_user += strex("{} = {}\n", key, value);
+                wrote_root_key = true;
             }
 
             if (!section_name.empty()) {
                 cfg_user += "\n";
             }
+        }
+
+        if (!has_root_section) {
+            cfg_user = strex("{} = {}\n", key, value).str() + cfg_user;
         }
     }
     else {
