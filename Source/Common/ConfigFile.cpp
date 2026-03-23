@@ -142,8 +142,8 @@ ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_res
                 (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
                 section_content.clear();
 
-                for (const auto& [key, value] : section_kv) {
-                    section_content += strex("{} = {}\n", key, value);
+                for (const auto& [existing_key, existing_value] : section_kv) {
+                    section_content += strex("{} = {}\n", existing_key, existing_value);
                 }
             }
 
@@ -155,8 +155,8 @@ ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_res
             cur_section = &cur_section_it->second;
             section_name_for_hook = stored_section_name;
 
-            for (const auto& [key, value] : section_kv) {
-                (*cur_section)[StoreOwnedString(key)] = StoreOwnedString(value);
+            for (const auto& [existing_key, existing_value] : section_kv) {
+                (*cur_section)[StoreOwnedString(existing_key)] = StoreOwnedString(existing_value);
             }
         }
         // Section content
@@ -194,64 +194,46 @@ ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_res
                 }
             }
             else {
-                // Cut comments
-                size_t comment_pos = line.find('#');
+                string_view raw_key;
+                string_view raw_value;
+                bool append_value = false;
 
-                while (comment_pos != string_view::npos && comment_pos != 0 && line[comment_pos - 1] == '\\') {
-                    comment_pos = line.find('#', comment_pos + 1);
-                }
-
-                line = comment_pos != string_view::npos ? line.substr(0, comment_pos) : line;
-                line = strvex(line).trim();
-
-                if (line.empty()) {
+                if (!ParseConfigKeyValueLine(line, raw_key, raw_value, append_value)) {
                     continue;
                 }
 
-                // Key value format
-                const size_t separator = line.find('=');
+                key.clear();
+                value.clear();
+                const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
 
-                if (separator != string_view::npos && separator > 0) {
-                    const bool append_value = line[separator - 1] == '+';
-                    const string_view raw_key = append_value ? strvex(line.substr(0, separator - 1)).trim() : strvex(line.substr(0, separator)).trim();
-                    const string_view raw_value = strvex(line.substr(separator + 1)).trim();
+                const string_view entry_key = entry_changed ? string_view {key} : raw_key;
+                const string_view entry_value = entry_changed ? string_view {value} : raw_value;
 
-                    key.clear();
-                    value.clear();
-                    const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
+                if (entry_key.empty()) {
+                    continue;
+                }
 
-                    const string_view entry_key = entry_changed ? string_view {key} : raw_key;
-                    const string_view entry_value = entry_changed ? string_view {value} : raw_value;
+                const string_view stored_key = line_stable && !entry_changed ? raw_key : StoreOwnedString(entry_key);
+                const string_view stored_value = line_stable && !entry_changed ? raw_value : StoreOwnedString(entry_value);
 
-                    if (entry_key.empty()) {
-                        continue;
-                    }
+                if (append_value) {
+                    const auto existing_it = cur_section->find(stored_key);
 
-                    const bool key_unchanged = line_stable && entry_key == raw_key;
-                    const bool value_unchanged = line_stable && entry_value == raw_value;
-                    const string_view stored_key = key_unchanged ? raw_key : StoreOwnedString(entry_key);
-                    const string_view stored_value = value_unchanged ? raw_value : StoreOwnedString(entry_value);
-
-                    if (append_value) {
-                        const auto existing_it = cur_section->find(stored_key);
-
-                        if (existing_it != cur_section->end()) {
-                            if (!stored_value.empty()) {
-                                string merged_value;
-                                merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
-                                merged_value.append(existing_it->second);
-                                merged_value.push_back(' ');
-                                merged_value.append(stored_value);
-                                existing_it->second = StoreOwnedString(std::move(merged_value));
-                            }
+                    if (existing_it != cur_section->end()) {
+                        if (!stored_value.empty()) {
+                            string merged_value;
+                            merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
+                            merged_value.append(existing_it->second);
+                            merged_value.push_back(' ');
+                            merged_value.append(stored_value);
+                            existing_it->second = StoreOwnedString(std::move(merged_value));
                         }
-                        else {
-                            (*cur_section)[stored_key] = stored_value;
-                        }
-
-                        continue;
                     }
-
+                    else {
+                        (*cur_section)[stored_key] = stored_value;
+                    }
+                }
+                else {
                     (*cur_section)[stored_key] = stored_value;
                 }
             }
@@ -262,6 +244,83 @@ ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_res
     if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
         (*cur_section)[string_view {}] = StoreOwnedString(std::move(section_content));
     }
+}
+
+auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool inside_double_quotes = false;
+    size_t backslash_run = 0;
+    size_t separator_pos = string_view::npos;
+    size_t content_begin = 0;
+    size_t content_end = line.size();
+
+    for (size_t i = 0; i < line.size(); i++) {
+        const auto ch = line[i];
+        const bool escaped = (backslash_run & 1U) != 0;
+
+        if (ch == '"' && !escaped) {
+            inside_double_quotes = !inside_double_quotes;
+        }
+        else if (ch == '#' && !inside_double_quotes && !escaped) {
+            content_end = i;
+            break;
+        }
+        else if (ch == '=' && separator_pos == string_view::npos) {
+            separator_pos = i;
+        }
+
+        if (ch == '\\') {
+            backslash_run++;
+        }
+        else {
+            backslash_run = 0;
+        }
+    }
+
+    TrimConfigRange(line, content_begin, content_end);
+
+    if (content_begin == content_end || separator_pos == string_view::npos || separator_pos <= content_begin || separator_pos >= content_end) {
+        return false;
+    }
+
+    append_value = line[separator_pos - 1] == '+';
+
+    size_t key_begin = content_begin;
+    size_t key_end = append_value ? separator_pos - 1 : separator_pos;
+    size_t value_begin = separator_pos + 1;
+    size_t value_end = content_end;
+
+    TrimConfigRange(line, key_begin, key_end);
+    TrimConfigRange(line, value_begin, value_end);
+
+    if (key_begin == key_end) {
+        return false;
+    }
+
+    key = line.substr(key_begin, key_end - key_begin);
+    value = line.substr(value_begin, value_end - value_begin);
+    return true;
+}
+
+void ConfigFile::TrimConfigRange(string_view line, size_t& begin, size_t& end)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    while (begin < end && IsConfigSpace(line[begin])) {
+        begin++;
+    }
+    while (end > begin && IsConfigSpace(line[end - 1])) {
+        end--;
+    }
+}
+
+auto ConfigFile::IsConfigSpace(char ch) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '\f' || ch == '\v';
 }
 
 auto ConfigFile::StoreOwnedString(string_view value) -> string_view
@@ -279,7 +338,6 @@ auto ConfigFile::StoreOwnedString(string&& value) -> string_view
     _data->OwnedStrings.emplace_back(std::move(value));
     return _data->OwnedStrings.back();
 }
-
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*
 {
     FO_STACK_TRACE_ENTRY();

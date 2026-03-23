@@ -88,7 +88,7 @@ private:
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
     size_t _filesWholeSize {};
-    unique_ptr<DiskFile> _tempFile {};
+    std::ofstream _tempFile {};
     vector<uint8> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};
     vector<vector<uint8>> _globalsPropertiesData {};

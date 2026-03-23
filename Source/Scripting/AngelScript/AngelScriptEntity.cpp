@@ -1159,7 +1159,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeFixedType() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
@@ -1197,7 +1197,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeFixedType() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();

@@ -114,6 +114,32 @@ TEST_CASE("ConfigFile")
         CHECK(config.GetAsStr("Section", "Other") == "value");
     }
 
+    SECTION("PreservesCommentCharactersInsideDoubleQuotes")
+    {
+        const string source = "[Section]\nText = \"quoted # hash\" # strip this\nOther = value\n";
+        const ConfigFile config {"Test.cfg", source, nullptr};
+
+        CHECK(config.GetAsStr("Section", "Text") == "\"quoted # hash\"");
+        CHECK(config.GetAsStr("Section", "Other") == "value");
+    }
+
+    SECTION("PreservesCommentCharactersInsideDoubleQuotesAcrossContinuedLines")
+    {
+        const string source = "[Section]\nText = \"quoted # hash\" \\\ncontinued # tail\nOther = value\n";
+        const ConfigFile config {"Test.cfg", source, nullptr};
+
+        CHECK(config.GetAsStr("Section", "Text") == "\"quoted # hash\" continued");
+        CHECK(config.GetAsStr("Section", "Other") == "value");
+    }
+
+    SECTION("PreservesCommentCharactersInsideQuotedAppendedValues")
+    {
+        const string source = "[Section]\nText = base\nText += \"quoted # hash\" # strip this\n";
+        const ConfigFile config {"Test.cfg", source, nullptr};
+
+        CHECK(config.GetAsStr("Section", "Text") == "base \"quoted # hash\"");
+    }
+
     SECTION("SupportsBraceFormatEntries")
     {
         const string source = "[Section]\n{100}{20}{Payload}\n";

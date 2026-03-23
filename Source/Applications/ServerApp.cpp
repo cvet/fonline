@@ -167,7 +167,11 @@ int main(int argc, char** argv) // Handled by SDL
 
                         const auto time = nanotime::now().desc(true);
                         const string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
-                        DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
+                        std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
+
+                        if (log_file) {
+                            log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));
+                        }
                     }
 
                     if (!App->IsQuitRequested()) {

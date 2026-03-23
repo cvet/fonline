@@ -192,7 +192,9 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     if (has_protos) {
         _entityRelatives.emplace(strex("Proto{}", name), &entry.first->second);
-        RegisterBaseType(strex("Proto{}", name));
+        auto& proto_type = RegisterBaseType(strex("Proto{}", name));
+        proto_type.IsEntityProto = true;
+        proto_type.Size = sizeof(hstring::hash_t);
     }
     if (has_statics) {
         _entityRelatives.emplace(strex("Static{}", name), &entry.first->second);
@@ -1059,6 +1061,10 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
 auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+        type_name = it->second->PropRegistrator->GetTypeName();
+    }
 
     return ProtoMngr.GetProtoEntity(type_name, proto_id);
 }

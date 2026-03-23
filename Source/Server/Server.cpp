@@ -81,12 +81,18 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             const string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
 
             const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
-                if (auto health_file = DiskFileSystem::OpenFile(health_file_name, true, true)) {
-                    return health_file.Write(text);
-                }
-                else {
+                std::ofstream health_file {std::filesystem::path {fs_make_path(health_file_name)}, std::ios::binary | std::ios::trunc};
+
+                if (!health_file) {
                     return false;
                 }
+
+                if (!text.empty()) {
+                    health_file.write(text.data(), static_cast<std::streamsize>(text.size()));
+                }
+
+                health_file.flush();
+                return !!health_file;
             };
 
             if (write_health_file("Starting...")) {
