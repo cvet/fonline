@@ -206,25 +206,23 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
     _projMat = proj;
     _viewOffset = view_offset;
 
-    mat44 pos_offset_mat;
-    mat44::Translation(pos_offset, pos_offset_mat);
-
-    mat44 view_offset_mat;
-    mat44::Translation(view_offset, view_offset_mat);
+    const auto pos_offset_mat = glm::translate(mat44 {1.0f}, pos_offset);
+    const auto view_offset_mat = glm::translate(mat44 {1.0f}, view_offset);
 
     mat44 result_pos_mat;
 
     if (_impl->BaseSystem->getTransform().isLocalIdentity()) {
-        vec3 result_pos_rot;
-        vec3 result_pos_pos;
-        vec3 result_pos_scale;
-        (view_offset_mat * world * pos_offset_mat).Decompose(result_pos_scale, result_pos_rot, result_pos_pos);
+        vec3 result_pos_rot {};
+        vec3 result_pos_pos {};
+        vec3 result_pos_scale {};
+        vec3 skew {};
+        glm::vec<4, float32, glm::defaultp> perspective {};
+        quaternion rotation {};
+        glm::decompose(view_offset_mat * world * pos_offset_mat, result_pos_scale, rotation, result_pos_pos, skew, perspective);
+        result_pos_rot = glm::eulerAngles(rotation);
 
-        mat44 result_pos_pos_mat;
-        mat44::Translation(result_pos_pos, result_pos_pos_mat);
-
-        mat44 look_dir_mat;
-        mat44::RotationY((look_dir_angle - 90.0f) * DEG_TO_RAD_FLOAT, look_dir_mat);
+        const auto result_pos_pos_mat = glm::translate(mat44 {1.0f}, result_pos_pos);
+        const auto look_dir_mat = glm::rotate(mat44 {1.0f}, (look_dir_angle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
         result_pos_mat = result_pos_pos_mat * look_dir_mat;
     }
@@ -232,9 +230,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         result_pos_mat = view_offset_mat * world * pos_offset_mat;
     }
 
-    result_pos_mat.Transpose();
-
-    _impl->System->getTransform().set(result_pos_mat[0]);
+    _impl->System->getTransform().set(glm::value_ptr(result_pos_mat));
 
     if (const auto local_pos = _impl->BaseSystem->getTransform().getLocalPos(); local_pos != SPK::Vector3D()) {
         _impl->System->getTransform().setPosition(_impl->System->getTransform().getLocalPos() + local_pos);
@@ -292,17 +288,10 @@ void ParticleSystem::Draw()
         _impl->System->updateParticles(dt);
     }
 
-    mat44 view_offset_mat;
-    mat44::Translation({-_viewOffset.x, -_viewOffset.y, -_viewOffset.z}, view_offset_mat);
-
-    mat44 cam_rot_mat;
-    mat44::RotationX(_particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, cam_rot_mat);
-
+    const auto view_offset_mat = glm::translate(mat44 {1.0f}, vec3 {-_viewOffset.x, -_viewOffset.y, -_viewOffset.z});
+    const auto cam_rot_mat = glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     mat44 view = view_offset_mat * cam_rot_mat;
-    view.Transpose();
-
     mat44 proj = _projMat;
-    proj.Transpose();
 
     _particleMngr->_projMatColMaj = view * proj;
     _particleMngr->_viewMatColMaj = view;

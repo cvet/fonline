@@ -295,27 +295,27 @@ auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 botto
     const float32 ty = -(top + bottom) / t_b;
     const float32 tz = -(farp + nearp) / f_n;
 
-    mat44 result;
+    mat44 result {1.0f};
 
-    result.a1 = 2.0f / r_l;
-    result.a2 = 0.0f;
-    result.a3 = 0.0f;
-    result.a4 = tx;
+    result[0][0] = 2.0f / r_l;
+    result[1][0] = 0.0f;
+    result[2][0] = 0.0f;
+    result[3][0] = tx;
 
-    result.b1 = 0.0f;
-    result.b2 = 2.0f / t_b;
-    result.b3 = 0.0f;
-    result.b4 = ty;
+    result[0][1] = 0.0f;
+    result[1][1] = 2.0f / t_b;
+    result[2][1] = 0.0f;
+    result[3][1] = ty;
 
-    result.c1 = 0.0f;
-    result.c2 = 0.0f;
-    result.c3 = -2.0f / f_n;
-    result.c4 = tz;
+    result[0][2] = 0.0f;
+    result[1][2] = 0.0f;
+    result[2][2] = -2.0f / f_n;
+    result[3][2] = tz;
 
-    result.d1 = 0.0f;
-    result.d2 = 0.0f;
-    result.d3 = 0.0f;
-    result.d4 = 1.0f;
+    result[0][3] = 0.0f;
+    result[1][3] = 0.0f;
+    result[2][3] = 0.0f;
+    result[3][3] = 1.0f;
 
     return result;
 }

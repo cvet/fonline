@@ -84,18 +84,23 @@ struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
 FO_BEGIN_NAMESPACE
 
 // 3d math types
-// Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
 FO_END_NAMESPACE
-#include "assimp/types.h"
+#define GLM_FORCE_CTOR_INIT
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 FO_BEGIN_NAMESPACE
-using vec3 = aiVector3t<float32>;
-using dvec3 = aiVector3t<float64>;
-using mat44 = aiMatrix4x4t<float32>;
-using dmat44 = aiMatrix4x4t<float64>;
-using quaternion = aiQuaterniont<float32>;
-using dquaternion = aiQuaterniont<float64>;
-using color4 = aiColor4t<float32>;
-using dcolor4 = aiColor4t<float64>;
+using vec3 = glm::vec<3, float32, glm::defaultp>;
+using dvec3 = glm::vec<3, float64, glm::defaultp>;
+using mat44 = glm::mat<4, 4, float32, glm::defaultp>;
+using dmat44 = glm::mat<4, 4, float64, glm::defaultp>;
+using quaternion = glm::qua<float32, glm::defaultp>;
+using dquaternion = glm::qua<float64, glm::defaultp>;
+using color4 = glm::vec<4, float32, glm::defaultp>;
+using dcolor4 = glm::vec<4, float64, glm::defaultp>;
 
 FO_DECLARE_EXCEPTION(NotEnabled3DException);
 
