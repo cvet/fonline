@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import shutil
 import subprocess
+import sys
+import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
@@ -95,6 +99,25 @@ FORMAT_PATTERNS = [
 	'Tests/*.cpp',
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
+
+LINUX_PACKAGE_GROUPS = {
+	'common-packages': (
+		'7',
+		['clang', 'clang-format', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
+	),
+	'linux-packages': (
+		'6',
+		['libc++-dev', 'libc++abi-dev', 'libx11-dev', 'libxcursor-dev', 'libxrandr-dev', 'libxss-dev', 'libjack-dev', 'libpulse-dev', 'libasound-dev', 'freeglut3-dev', 'libssl-dev', 'libevent-dev', 'libxi-dev', 'libzstd-dev'],
+	),
+	'web-packages': (
+		'2',
+		['nodejs', 'default-jre'],
+	),
+	'android-packages': (
+		'2',
+		['android-sdk', 'openjdk-8-jdk', 'ant'],
+	),
+}
 
 
 def log(*parts: object) -> None:
@@ -213,6 +236,85 @@ def emit_shell_env(env: Mapping[str, str], shell_name: str) -> None:
 			print(f'{key}={value}')
 
 
+def resolve_macos_cmake() -> str:
+	path = shutil.which('cmake')
+	if path:
+		return path
+
+	bundle_path = Path('/Applications/CMake.app/Contents/bin/cmake')
+	return str(bundle_path) if bundle_path.is_file() else ''
+
+
+def resolve_vswhere() -> str:
+	roots = [
+		Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')),
+		Path(os.environ.get('ProgramFiles', r'C:\Program Files')),
+	]
+	for root in roots:
+		candidate = root / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+		if candidate.is_file():
+			return str(candidate)
+	return ''
+
+
+def has_windows_build_tools() -> bool:
+	vswhere = resolve_vswhere()
+	if not vswhere:
+		return False
+	try:
+		output = subprocess.check_output(
+			[
+				vswhere,
+				'-latest',
+				'-products',
+				'*',
+				'-requires',
+				'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+				'-property',
+				'installationPath',
+			],
+			text=True,
+			stderr=subprocess.STDOUT,
+		).strip()
+		return bool(output)
+	except Exception:
+		return False
+
+
+def check_host_tools(host_name: str) -> list[str]:
+	issues: list[str] = []
+
+	if host_name == 'linux':
+		if not shutil.which('apt-get'):
+			issues.append('Please use a Debian/Ubuntu host with apt-get available')
+		if not is_running_as_root() and not shutil.which('sudo'):
+			issues.append('Please install sudo or run the preparation script as root')
+		if not shutil.which('cmake'):
+			issues.append('Please install CMake')
+		return issues
+
+	if host_name == 'macos':
+		try:
+			subprocess.check_output(['xcode-select', '-p'], text=True, stderr=subprocess.STDOUT).strip()
+		except Exception:
+			issues.append('Please install Xcode from AppStore')
+
+		if not resolve_macos_cmake():
+			issues.append('Please install CMake from https://cmake.org')
+		return issues
+
+	if host_name == 'windows':
+		if not has_windows_build_tools():
+			issues.append('Please install Visual Studio with C++ Build Tools or Build Tools for Visual Studio')
+		if not shutil.which('cmake'):
+			issues.append('Please install CMake from https://cmake.org')
+		if not (shutil.which('py') or shutil.which('python')):
+			issues.append('Please install Python from https://www.python.org')
+		return issues
+
+	raise SystemExit(f'Unsupported host tools check: {host_name}')
+
+
 def build_flag_args(target_name: str, config: str | None = None) -> list[str]:
 	if target_name not in BUILD_TARGETS:
 		raise SystemExit(f'Unknown build target: {target_name}')
@@ -228,6 +330,11 @@ def ensure_dir(path: str | Path) -> None:
 	Path(path).mkdir(parents=True, exist_ok=True)
 
 
+def is_running_as_root() -> bool:
+	geteuid = getattr(os, 'geteuid', None)
+	return bool(geteuid and geteuid() == 0)
+
+
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', ' '.join(str(part) for part in cmd))
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
@@ -236,6 +343,11 @@ def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, 
 def run_bash(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', command)
 	subprocess.check_call(['bash', '-lc', command], cwd=cwd, env=dict(env) if env is not None else None)
+
+
+def run_windows_cmd(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
+	log('Run:', command)
+	subprocess.check_call(['cmd', '/d', '/s', '/c', command], cwd=cwd, env=dict(env) if env is not None else None)
 
 
 def resolve_windows_build(platform_name: str) -> tuple[str, str | None]:
@@ -251,7 +363,365 @@ def resolve_windows_build(platform_name: str) -> tuple[str, str | None]:
 
 
 def join_shell_args(args: Iterable[str]) -> str:
-	return ' '.join(args)
+	return ' '.join(shlex.quote(arg) for arg in args)
+
+
+def join_windows_args(args: Iterable[str]) -> str:
+	return subprocess.list2cmdline([str(arg) for arg in args])
+
+
+def discover_windows_ninja() -> str:
+	path = shutil.which('ninja')
+	if path:
+		return path
+
+	program_files_roots = [
+		Path(os.environ.get('ProgramFiles', r'C:\Program Files')),
+		Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')),
+	]
+
+	for root in program_files_roots:
+		for candidate in root.glob('Microsoft Visual Studio/*/*/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe'):
+			if candidate.is_file():
+				return str(candidate)
+
+	raise SystemExit('ninja not found; install Ninja or Visual Studio CMake tools')
+
+
+def run_in_emsdk_env(command: Sequence[str], workspace: Path, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
+	emscripten_root = workspace / 'emsdk'
+	if not emscripten_root.is_dir():
+		raise SystemExit(f'Workspace EMSDK is not prepared: {emscripten_root}')
+
+	if os.name == 'nt':
+		emscripten_env = emscripten_root / 'emsdk_env.bat'
+		if not emscripten_env.is_file():
+			raise SystemExit(f'Emscripten environment script not found: {emscripten_env}')
+		full_command = f'call "{emscripten_env}" >nul && {join_windows_args(command)}'
+		run_windows_cmd(full_command, cwd=cwd, env=env)
+	else:
+		emscripten_env = emscripten_root / 'emsdk_env.sh'
+		if not emscripten_env.is_file():
+			raise SystemExit(f'Emscripten environment script not found: {emscripten_env}')
+		full_command = f'source "{emscripten_env}" >/dev/null && {join_shell_args(str(part) for part in command)}'
+		run_bash(full_command, cwd=cwd, env=env)
+
+
+def build_toolset_version() -> str:
+	return f'v1-{os.name}'
+
+
+def build_emscripten_version(env: Mapping[str, str]) -> str:
+	version = env.get('EMSCRIPTEN_VERSION', '')
+	if not version:
+		raise SystemExit('EMSCRIPTEN_VERSION is not configured')
+	return version
+
+
+def build_android_ndk_version(env: Mapping[str, str]) -> str:
+	version = env.get('ANDROID_NDK_VERSION', '')
+	if not version:
+		raise SystemExit('ANDROID_NDK_VERSION is not configured')
+	return version
+
+
+def build_dotnet_version(env: Mapping[str, str]) -> str:
+	version = env.get('FO_DOTNET_RUNTIME', '')
+	if not version:
+		raise SystemExit('FO_DOTNET_RUNTIME is not configured')
+	return version
+
+
+def workspace_version_marker(workspace: Path, part_name: str) -> Path:
+	return workspace / f'{part_name}-version.txt'
+
+
+def is_workspace_part_ready(workspace: Path, part_name: str, version: str) -> bool:
+	return read_first_line(workspace_version_marker(workspace, part_name)) == version
+
+
+def mark_workspace_part_ready(workspace: Path, part_name: str, version: str) -> None:
+	workspace_version_marker(workspace, part_name).write_text(version + '\n', encoding='utf-8')
+
+
+def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -> None:
+	version, packages = LINUX_PACKAGE_GROUPS[group_name]
+	if is_workspace_part_ready(workspace, group_name, version):
+		log(f'Workspace part {group_name} is ready ({version})')
+		return
+
+	if check_only:
+		raise SystemExit(f'Workspace part {group_name} is not ready ({version})')
+
+	package_manager = ['apt-get', '-qq', '-y', '-o', 'DPkg::Lock::Timeout=-1']
+	if not is_running_as_root():
+		package_manager.insert(0, 'sudo')
+	log(f'Install Linux package group {group_name}')
+	run([*package_manager, 'update'])
+	for package_name in packages:
+		log('Install', package_name)
+		run([*package_manager, 'install', package_name])
+	mark_workspace_part_ready(workspace, group_name, version)
+
+
+def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	output = env['FO_OUTPUT']
+	project_root = env['FO_PROJECT_ROOT']
+
+	if os.name == 'nt':
+		build_dir = workspace / 'build-win64-toolset'
+		if build_dir.exists():
+			shutil.rmtree(build_dir)
+		ensure_dir(build_dir)
+		run([
+			'cmake',
+			'-G',
+			'Visual Studio 17 2022',
+			'-A',
+			'x64',
+			f'-DFO_OUTPUT_PATH={output}',
+			'-DFO_BUILD_BAKER=1',
+			'-DFO_BUILD_ASCOMPILER=1',
+			'-DFO_UNIT_TESTS=0',
+			project_root,
+		], cwd=build_dir)
+		return
+
+	build_dir = workspace / 'build-linux-toolset'
+	if build_dir.exists():
+		shutil.rmtree(build_dir)
+	ensure_dir(build_dir)
+	build_env = os.environ.copy()
+	build_env['CC'] = '/usr/bin/clang'
+	build_env['CXX'] = '/usr/bin/clang++'
+	run([
+		'cmake',
+		'-G',
+		'Unix Makefiles',
+		f'-DFO_OUTPUT_PATH={output}',
+		'-DCMAKE_BUILD_TYPE=Release',
+		'-DFO_BUILD_CLIENT=0',
+		'-DFO_BUILD_SERVER=0',
+		'-DFO_BUILD_EDITOR=0',
+		'-DFO_BUILD_MAPPER=0',
+		'-DFO_BUILD_ASCOMPILER=1',
+		'-DFO_BUILD_BAKER=1',
+		'-DFO_UNIT_TESTS=0',
+		'-DFO_CODE_COVERAGE=0',
+		project_root,
+	], cwd=build_dir, env=build_env)
+
+
+def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
+	if os.name == 'nt':
+		command = ['cmd', '/d', '/s', '/c', f'call "{emsdk_root / "emsdk.bat"}" {join_windows_args(args)}']
+		log('Run:', ' '.join(str(part) for part in command))
+		subprocess.check_call(command, cwd=emsdk_root)
+	else:
+		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)
+
+
+def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	emsdk_root = workspace / 'emsdk'
+	if emsdk_root.exists():
+		shutil.rmtree(emsdk_root)
+
+	run(['git', 'clone', 'https://github.com/emscripten-core/emsdk.git', str(emsdk_root)])
+	run_emsdk_command(emsdk_root, 'list')
+	version = build_emscripten_version(env)
+	run_emsdk_command(emsdk_root, 'install', '--build=Release', '--shallow', version)
+	run_emsdk_command(emsdk_root, 'activate', '--build=Release', version)
+
+
+def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	version = build_android_ndk_version(env)
+	archive_name = f'{version}-linux.zip'
+	archive_path = workspace / archive_name
+	ndk_source_dir = workspace / version
+	ndk_target_dir = workspace / 'android-ndk'
+
+	if archive_path.exists():
+		archive_path.unlink()
+	if ndk_source_dir.exists():
+		shutil.rmtree(ndk_source_dir)
+	if ndk_target_dir.exists():
+		shutil.rmtree(ndk_target_dir)
+
+	url = f'https://dl.google.com/android/repository/{archive_name}'
+	log('Download Android NDK:', url)
+	urllib.request.urlretrieve(url, archive_path)
+	log('Unpack Android NDK:', archive_path)
+	with zipfile.ZipFile(archive_path) as archive:
+		archive.extractall(workspace)
+	shutil.move(str(ndk_source_dir), str(ndk_target_dir))
+	archive_path.unlink(missing_ok=True)
+
+
+def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	dotnet_root = workspace / 'dotnet'
+	if dotnet_root.exists():
+		shutil.rmtree(dotnet_root)
+	dotnet_root.mkdir(parents=True, exist_ok=True)
+	run([
+		'git',
+		'clone',
+		'https://github.com/dotnet/runtime.git',
+		'--depth',
+		'1',
+		'--branch',
+		build_dotnet_version(env),
+		str(dotnet_root / 'runtime'),
+	])
+
+
+def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	output = Path(env['FO_OUTPUT'])
+	ensure_dir(workspace)
+	ensure_dir(output)
+
+	part_versions = {
+		'toolset': build_toolset_version(),
+		'emscripten': build_emscripten_version(env),
+		'android-ndk': build_android_ndk_version(env),
+		'dotnet': build_dotnet_version(env),
+	}
+	part_actions = {
+		'toolset': prepare_toolset_workspace,
+		'emscripten': prepare_emscripten_workspace,
+		'android-ndk': prepare_android_ndk_workspace,
+		'dotnet': prepare_dotnet_workspace,
+	}
+
+	for part_name in parts:
+		version = part_versions[part_name]
+		if is_workspace_part_ready(workspace, part_name, version):
+			log(f'Workspace part {part_name} is ready ({version})')
+			continue
+
+		if check_only:
+			raise SystemExit(f'Workspace part {part_name} is not ready ({version})')
+
+		log(f'Prepare workspace part {part_name} ({version})')
+		part_actions[part_name](env)
+		mark_workspace_part_ready(workspace, part_name, version)
+
+
+def has_feature(features: Sequence[str], *names: str) -> bool:
+	return any(feature in names for feature in features)
+
+
+def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	output = Path(env['FO_OUTPUT'])
+	ensure_dir(workspace)
+	ensure_dir(output)
+
+	issues = check_host_tools(host_name)
+	if issues:
+		for issue in issues:
+			print(issue, flush=True)
+		raise SystemExit(1)
+
+	if host_name == 'linux':
+		selected = list(features) if features else ['all']
+		if has_feature(selected, 'packages', 'all'):
+			install_linux_packages('common-packages', workspace, check_only)
+			if has_feature(selected, 'linux', 'all'):
+				install_linux_packages('linux-packages', workspace, check_only)
+			if has_feature(selected, 'web', 'all'):
+				install_linux_packages('web-packages', workspace, check_only)
+			if has_feature(selected, 'android', 'android-arm64', 'android-x86', 'all'):
+				install_linux_packages('android-packages', workspace, check_only)
+
+		if has_feature(selected, 'toolset', 'all'):
+			prepare_workspace(['toolset'], check_only, env)
+		if has_feature(selected, 'web', 'all'):
+			prepare_workspace(['emscripten'], check_only, env)
+		if has_feature(selected, 'android', 'android-arm64', 'android-x86', 'all'):
+			prepare_workspace(['android-ndk'], check_only, env)
+		if has_feature(selected, 'dotnet', 'all'):
+			prepare_workspace(['dotnet'], check_only, env)
+		return
+
+	if host_name == 'windows':
+		selected = list(features) if features else ['toolset']
+		parts: list[str] = []
+		if has_feature(selected, 'toolset', 'all'):
+			parts.append('toolset')
+		if has_feature(selected, 'web', 'all'):
+			parts.append('emscripten')
+		if parts:
+			prepare_workspace(parts, check_only, env)
+		return
+
+	if host_name == 'macos':
+		return
+
+	raise SystemExit(f'Unsupported host workspace preparation: {host_name}')
+
+
+def resolve_build_hash(env: Mapping[str, str]) -> str:
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	output_root = Path(env['FO_OUTPUT'])
+	for candidate in [
+		project_root / 'Baking' / 'Resources.build-hash',
+		output_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash',
+		project_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash',
+	]:
+		build_hash = read_first_line(candidate)
+		if build_hash:
+			return build_hash
+
+	raise SystemExit('Build hash not found; bake resources and build the web client first')
+
+
+def package_web_debug(env: Mapping[str, str]) -> None:
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	output_root_input = Path(env['FO_OUTPUT'])
+	output_root = Path(env['FO_WORKSPACE']) / 'web-debug'
+	package_script = Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / 'package.py'
+	build_hash = resolve_build_hash(env)
+	input_roots = [project_root]
+	if output_root_input != project_root:
+		input_roots.append(output_root_input)
+
+	command = [
+		sys.executable,
+		str(package_script),
+		'-maincfg',
+		str(project_root / 'LastFrontier.fomain'),
+		'-buildhash',
+		build_hash,
+		'-devname',
+		'LF',
+		'-nicename',
+		'LastFrontier',
+		'-target',
+		'Client',
+		'-platform',
+		'Web',
+		'-arch',
+		'wasm',
+		'-pack',
+		'Raw+WebServer',
+		'-config',
+		'LocalTest',
+		'-output',
+		str(output_root),
+	]
+	for input_root in input_roots:
+		command.extend(['-input', str(input_root)])
+
+	run(command)
+
+
+def web_package_dir(env: Mapping[str, str]) -> Path:
+	return Path(env['FO_WORKSPACE']) / 'web-debug' / 'LF-Client-LocalTest-Web'
 
 
 def resolve_android_abi(platform_name: str) -> str:
@@ -285,16 +755,20 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		run(['cmake', '-G', 'Unix Makefiles', f'-DFO_OUTPUT_PATH={output}', *cmake_args, project_root], cwd=build_dir, env=build_env)
 		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir, env=build_env)
 	elif platform_name == 'web':
-		emscripten_env = workspace / 'emsdk' / 'emsdk_env.sh'
-		toolchain_file = '$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake'
-		cmake_args_str = join_shell_args(cmake_args)
-		command = (
-			f'source "{emscripten_env}" >/dev/null && '
-			f'cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="{toolchain_file}" '
-			f'-DFO_OUTPUT_PATH="{output}" {cmake_args_str} "{project_root}" && '
-			f'cmake --build . --config {config} --parallel'
-		)
-		run_bash(command, cwd=build_dir)
+		toolchain_file = Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
+		configure_cmd = [
+			'cmake',
+			'-DCMAKE_TOOLCHAIN_FILE=' + str(toolchain_file),
+			f'-DFO_OUTPUT_PATH={output}',
+			*cmake_args,
+		]
+		if os.name == 'nt':
+			configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
+		else:
+			configure_cmd[1:1] = ['-G', 'Unix Makefiles']
+		configure_cmd.append(project_root)
+		run_in_emsdk_env(configure_cmd, workspace, cwd=build_dir)
+		run_in_emsdk_env(['cmake', '--build', '.', '--config', config, '--parallel'], workspace, cwd=build_dir)
 	elif platform_name in ('android', 'android-arm64', 'android-x86'):
 		android_abi = resolve_android_abi(platform_name)
 		toolchain_file = f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake'
@@ -374,15 +848,15 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 		run(['cmake', '-G', 'Unix Makefiles', *cmake_args, str(validation_root)], cwd=build_dir, env=build_env)
 		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir, env=build_env)
 	elif platform_name == 'web':
-		emscripten_env = workspace / 'emsdk' / 'emsdk_env.sh'
-		toolchain_file = '$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake'
-		cmake_args_str = join_shell_args(cmake_args)
-		command = (
-			f'source "{emscripten_env}" >/dev/null && '
-			f'cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="{toolchain_file}" {cmake_args_str} "{validation_root}" && '
-			f'cmake --build . --config {config} --parallel'
-		)
-		run_bash(command, cwd=build_dir)
+		toolchain_file = Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
+		configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + str(toolchain_file), *cmake_args]
+		if os.name == 'nt':
+			configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
+		else:
+			configure_cmd[1:1] = ['-G', 'Unix Makefiles']
+		configure_cmd.append(str(validation_root))
+		run_in_emsdk_env(configure_cmd, workspace, cwd=build_dir)
+		run_in_emsdk_env(['cmake', '--build', '.', '--config', config, '--parallel'], workspace, cwd=build_dir)
 	elif platform_name in ('android', 'android-arm64', 'android-x86'):
 		android_abi = resolve_android_abi(platform_name)
 		toolchain_file = f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake'
@@ -553,6 +1027,7 @@ def create_parser() -> argparse.ArgumentParser:
 	env_parser = subparsers.add_parser('env', help='resolve BuildTools environment')
 	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain')
 	env_parser.add_argument('--summary', action='store_true')
+	env_parser.add_argument('--summary-only', action='store_true')
 
 	build_parser = subparsers.add_parser('build', help='configure and build a target')
 	build_parser.add_argument('platform')
@@ -573,6 +1048,21 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
 	toolset_parser.add_argument('target')
 
+	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-ndk', 'dotnet'])
+	prepare_parser.add_argument('--check', action='store_true')
+
+	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
+	package_web_parser.set_defaults(no_args=True)
+
+	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
+	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
+
+	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
+	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
+	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'all'])
+	prepare_host_parser.add_argument('--check', action='store_true')
+
 	return parser
 
 
@@ -583,8 +1073,9 @@ def main() -> None:
 	apply_env(env)
 
 	if args.command == 'env':
-		emit_shell_env(env, args.shell)
-		if args.summary:
+		if not args.summary_only:
+			emit_shell_env(env, args.shell)
+		if args.summary or args.summary_only:
 			print_env_summary(env)
 		return
 
@@ -605,6 +1096,24 @@ def main() -> None:
 		return
 	if args.command == 'toolset':
 		build_toolset(args.target, env)
+		return
+	if args.command == 'prepare-workspace':
+		prepare_workspace(args.parts, args.check, env)
+		return
+	if args.command == 'package-web-debug':
+		package_web_debug(env)
+		return
+	if args.command == 'host-check':
+		issues = check_host_tools(args.host)
+		if issues:
+			for issue in issues:
+				print(issue, flush=True)
+			raise SystemExit(1)
+		print('Host is ready!', flush=True)
+		return
+	if args.command == 'prepare-host-workspace':
+		prepare_host_workspace(args.host, args.features, args.check, env)
+		print('Workspace is ready!', flush=True)
 		return
 	raise SystemExit(f'Unsupported command: {args.command}')
 

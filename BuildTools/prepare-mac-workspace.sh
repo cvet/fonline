@@ -3,39 +3,35 @@
 echo "Prepare workspace"
 
 CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$CUR_DIR/setup-env.sh"
-source "$CUR_DIR/internal-tools.sh"
+PYTHON_BIN="$(command -v python3 || command -v python || true)"
 
-function resolve_cmake()
-{
-    if [[ -x $(command -v cmake) ]]; then
-        echo cmake
-    else
-        echo /Applications/CMake.app/Contents/bin/cmake
-    fi
-}
+if [[ -z "$PYTHON_BIN" ]]; then
+	echo "Python not found" >&2
+	exit 1
+fi
+
+BUILDTOOLS_ARGS=(prepare-host-workspace macos)
+CHECK_ONLY=0
+
+for arg in "$@"; do
+	if [[ "$arg" == "check" ]]; then
+		CHECK_ONLY=1
+		BUILDTOOLS_ARGS+=(--check)
+	else
+		BUILDTOOLS_ARGS+=("$arg")
+	fi
+done
 
 while true; do
-    ready=1
+	if "$PYTHON_BIN" "$CUR_DIR/buildtools.py" "${BUILDTOOLS_ARGS[@]}"; then
+		echo "Workspace is ready!"
+		exit 0
+	fi
 
-    if [[ -z $(xcode-select -p) ]]; then
-        echo "Please install Xcode from AppStore"
-        ready=0
-    fi
+	if [[ $CHECK_ONLY -eq 1 ]]; then
+		echo "Workspace is not ready"
+		exit 1
+	fi
 
-    CMAKE="$(resolve_cmake)"
-    if [[ -z $CMAKE ]]; then
-        echo "Please install CMake from https://cmake.org"
-        ready=0
-    fi
-
-    if [[ $ready = "1" ]]; then
-        echo "Workspace is ready!"
-        exit 0
-    elif [[ ! -z `check_arg check` ]]; then
-        echo "Workspace is not ready"
-        exit 1
-    fi
-    
-    read -p "..."
+	read -p "..."
 done

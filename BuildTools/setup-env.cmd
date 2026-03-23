@@ -1,21 +1,16 @@
 @echo off
+setlocal
 
-for /f "delims=" %%i in ('python "%~dp0buildtools.py" env --shell cmd') do %%i
+set "PYTHON_BIN="
+where py >nul 2>nul && set "PYTHON_BIN=py -3"
+if not defined PYTHON_BIN where python >nul 2>nul && set "PYTHON_BIN=python"
+
+if not defined PYTHON_BIN (
+	echo Python not found
+	exit /b 1
+)
+
+for /f "delims=" %%i in ('%PYTHON_BIN% "%~dp0buildtools.py" env --shell cmd') do %%i
 if errorlevel 1 exit /b 1
-
-echo Setup environment
-echo FO_PROJECT_ROOT=%FO_PROJECT_ROOT%
-echo FO_ENGINE_ROOT=%FO_ENGINE_ROOT%
-echo FO_WORKSPACE=%FO_WORKSPACE%
-echo FO_OUTPUT=%FO_OUTPUT%
-echo EMSCRIPTEN_VERSION=%EMSCRIPTEN_VERSION%
-echo ANDROID_HOME=%ANDROID_HOME%
-echo ANDROID_SDK_ROOT=%ANDROID_SDK_ROOT%
-echo ANDROID_NDK_VERSION=%ANDROID_NDK_VERSION%
-echo ANDROID_SDK_VERSION=%ANDROID_SDK_VERSION%
-echo ANDROID_NATIVE_API_LEVEL_NUMBER=%ANDROID_NATIVE_API_LEVEL_NUMBER%
-echo ANDROID_NDK_ROOT=%ANDROID_NDK_ROOT%
-echo FO_DOTNET_RUNTIME=%FO_DOTNET_RUNTIME%
-echo FO_DOTNET_RUNTIME_ROOT=%FO_DOTNET_RUNTIME_ROOT%
-echo FO_IOS_SDK=%FO_IOS_SDK%
+%PYTHON_BIN% "%~dp0buildtools.py" env --summary-only
 exit /b
