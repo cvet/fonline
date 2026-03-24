@@ -58,4 +58,19 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
     _isPersistent = persistent;
 }
 
+auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto& props = const_cast<Properties&>(GetProperties());
+    return EntityProperties(props).GetExplicitlyPersistent();
+}
+
+void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    EntityProperties(GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
+}
+
 FO_END_NAMESPACE

@@ -187,7 +187,7 @@ void Item::RemoveItemFromContainer(Item* item)
     vec_remove_unique_value(inner_item_ids, item->GetId());
     SetInnerItemIds(inner_item_ids);
 
-    if (IsPersistent() && item->IsPersistent()) {
+    if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
     }
 }

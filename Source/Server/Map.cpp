@@ -159,7 +159,7 @@ void Map::RemoveCritter(Critter* cr)
 
     RemoveCritterFromField(cr);
 
-    if (IsPersistent() && cr->IsPersistent()) {
+    if (cr->IsPersistent() && !cr->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(cr, false);
     }
 }
@@ -353,7 +353,7 @@ void Map::RemoveItem(ident_t item_id)
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
 
-    if (IsPersistent() && item->IsPersistent()) {
+    if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
     }
 

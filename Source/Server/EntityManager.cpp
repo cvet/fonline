@@ -955,7 +955,7 @@ void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool del
     UnregisterEntity(custom_entity, delete_from_db);
 }
 
-void EntityManager::MakePersistent(ServerEntity* entity, bool persistent)
+void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool explicitly_requested)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -963,19 +963,27 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent)
     FO_RUNTIME_ASSERT(entity->GetId());
 
     if (persistent) {
+        if (explicitly_requested) {
+            entity->SetExplicitlyPersistent(true);
+        }
+
         unordered_set<ServerEntity*> processed;
         MakePersistentRecursive(entity, processed);
     }
     else {
         unordered_set<const ServerEntity*> validated;
-        ValidateCanMakeTemporary(entity, validated);
+        ValidateCanMakeNonPersistent(entity, validated);
+
+        if (explicitly_requested) {
+            entity->SetExplicitlyPersistent(false);
+        }
 
         unordered_set<ServerEntity*> processed;
-        MakeTemporaryRecursive(entity, processed);
+        MakeNonPersistentRecursive(entity, processed);
     }
 }
 
-void EntityManager::ValidateCanMakeTemporary(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const
+void EntityManager::ValidateCanMakeNonPersistent(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -995,7 +1003,7 @@ void EntityManager::ValidateCanMakeTemporary(const ServerEntity* entity, unorder
         throw GenericException("Can't make player critter temporary", cr->GetId());
     }
 
-    ForEachPersistentChildEntity(const_cast<ServerEntity*>(entity), [this, &processed](ServerEntity* child) { ValidateCanMakeTemporary(child, processed); });
+    ForEachPersistentChildEntity(const_cast<ServerEntity*>(entity), [this, &processed](ServerEntity* child) { ValidateCanMakeNonPersistent(child, processed); });
 }
 
 void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)
@@ -1023,7 +1031,7 @@ void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<
     ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakePersistentRecursive(child, processed); });
 }
 
-void EntityManager::MakeTemporaryRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)
+void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1035,7 +1043,7 @@ void EntityManager::MakeTemporaryRecursive(ServerEntity* entity, unordered_set<S
 
     processed.emplace(entity);
 
-    ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakeTemporaryRecursive(child, processed); });
+    ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakeNonPersistentRecursive(child, processed); });
 
     if (entity->IsPersistent()) {
         WriteLog("Remove entity {} {} from database", entity->GetTypeName(), entity->GetId());
@@ -1295,7 +1303,6 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     }
 
     entity->SetCustomHolderEntry(entry);
-
     holder->AddInnerEntity(entry, entity);
 
     const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
@@ -1313,7 +1320,6 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     }
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
-
     return entity;
 }
 
@@ -1348,7 +1354,6 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
     }
 
     RegisterCustomEntity(entity.get());
-
     return entity.get();
 }
 
@@ -1412,7 +1417,6 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
 
         RegisterCustomEntity(entity.get());
         entity->SetPersistent(true);
-
         return entity.get();
     }
     catch (const std::exception& ex) {

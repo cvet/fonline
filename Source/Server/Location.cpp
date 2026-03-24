@@ -128,7 +128,7 @@ void Location::RemoveMap(Map* map)
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
 
-    if (IsPersistent() && map->IsPersistent()) {
+    if (map->IsPersistent() && !map->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(map, false);
     }
 }

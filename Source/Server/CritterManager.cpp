@@ -122,7 +122,7 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     vec_remove_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
 
-    if (cr->IsPersistent() && item->IsPersistent()) {
+    if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
     }
 

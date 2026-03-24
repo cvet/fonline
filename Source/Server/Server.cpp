@@ -1504,7 +1504,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         cr->MarkIsForPlayer();
     }
 
-    EntityMngr.MakePersistent(cr, true);
+    EntityMngr.MakePersistent(cr, true, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
 
     if (!cr->IsDestroyed()) {

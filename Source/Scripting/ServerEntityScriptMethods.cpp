@@ -47,7 +47,7 @@ FO_SCRIPT_API bool Server_Entity_IsPersistent(ServerEntity* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Entity_MakePersistent(ServerEntity* self, bool persistent)
 {
-    self->GetEngine()->EntityMngr.MakePersistent(self, persistent);
+    self->GetEngine()->EntityMngr.MakePersistent(self, persistent, true);
 }
 
 ///@ ExportMethod TimeEventRelated

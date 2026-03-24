@@ -80,6 +80,8 @@ public:
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
 
     explicit EntityProperties(Properties& props) noexcept;
 
