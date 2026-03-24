@@ -875,21 +875,33 @@ list(APPEND FO_SOURCE_META_FILES
 
 list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_BakerSetup.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EffectBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExtendedTypes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoTextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp")
 
 # Code generation
