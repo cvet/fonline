@@ -741,9 +741,13 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         CheckScriptEntityNonDestroyed(entity);
 
         auto* context_mngr = backend->GetContextMngr();
+
+        if (deferred && context_mngr->IsDeferredPropertySetterScheduled(entity, prop, func)) {
+            return;
+        }
+
         auto* ctx = context_mngr->PrepareContext(func);
         auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
-        context_mngr->AddSetupScriptContextEntity(ctx, entity);
 
         FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
@@ -771,6 +775,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         }
         else {
             // Will be run from the scheduler
+            context_mngr->MarkDeferredPropertySetter(ctx, entity, prop, func);
             ignore_unused(has_value_ref);
             ignore_unused(prop_data);
             return_ctx.release();

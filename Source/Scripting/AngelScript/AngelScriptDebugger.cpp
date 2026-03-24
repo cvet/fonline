@@ -300,7 +300,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     }
     else if (reason == AngelScriptContextSetupReason::Request) {
         if (ctx_ext->Parent != nullptr) {
-            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
+            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
             FO_RUNTIME_ASSERT(parent_ctx_ext);
 
             ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::In ? DebuggerStepMode::In : DebuggerStepMode::None;
@@ -308,7 +308,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     }
     else if (reason == AngelScriptContextSetupReason::Return) {
         if (ctx_ext->Parent != nullptr) {
-            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
+            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
             FO_RUNTIME_ASSERT(parent_ctx_ext);
 
             if (ctx_ext->StepState->Mode == DebuggerStepMode::None) {

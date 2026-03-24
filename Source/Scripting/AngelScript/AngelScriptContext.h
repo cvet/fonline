@@ -45,6 +45,7 @@
 FO_BEGIN_NAMESPACE
 
 struct DebuggerStepState;
+class Property;
 
 enum class AngelScriptContextSetupReason : uint8
 {
@@ -55,14 +56,16 @@ enum class AngelScriptContextSetupReason : uint8
 
 struct AngelScriptContextExtendedData
 {
-    AngelScript::asIScriptContext* Root {};
-    AngelScript::asIScriptContext* Parent {};
+    raw_ptr<AngelScript::asIScriptContext> Root {};
+    raw_ptr<AngelScript::asIScriptContext> Parent {};
     int32 ExceptionCount {};
     bool ExecutionActive {};
     size_t ExecutionCalls {};
     nanotime SuspendEndTime {};
     vector<const SourceLocationData*> StackTrace {};
-    vector<refcount_ptr<const Entity>> ValidCheck {};
+    refcount_ptr<const Entity> DeferredPropertyEntity {};
+    raw_ptr<const Property> DeferredProperty {};
+    raw_ptr<AngelScript::asIScriptFunction> DeferredPropertyCallback {};
 #if FO_TRACY
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
@@ -70,6 +73,7 @@ struct AngelScriptContextExtendedData
     std::exception_ptr Exception {};
 
     static auto Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData* { return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData()); }
+    static auto Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData* { return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData()); }
 };
 
 class AngelScriptContextManager final
@@ -82,11 +86,13 @@ public:
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
     ~AngelScriptContextManager() = default;
 
+    [[nodiscard]] auto IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool;
+
     auto RequestContext() -> AngelScript::asIScriptContext*;
     void ReturnContext(AngelScript::asIScriptContext* ctx) noexcept;
     auto PrepareContext(AngelScript::asIScriptFunction* func) -> AngelScript::asIScriptContext*;
     void SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback);
-    void AddSetupScriptContextEntity(AngelScript::asIScriptContext* ctx, Entity* entity);
+    void MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func);
     auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool;
     void SuspendScriptContext(AngelScript::asIScriptContext* ctx, nanotime time);
     void ResumeSuspendedContexts(nanotime time);
