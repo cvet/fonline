@@ -145,7 +145,6 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Todo: add content verification for server inbound data
     FO_RUNTIME_ASSERT(engine->GetSide() != EngineSideKind::MapperSide);
 
     auto* as_engine = func->GetEngine();

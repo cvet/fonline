@@ -1187,11 +1187,7 @@ void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _inboundRemoteCallHandlers.find(name);
-
-    if (it == _inboundRemoteCallHandlers.end()) {
-        throw GenericException("Invalid remote call", name);
-    }
-
+    FO_RUNTIME_ASSERT(it != _inboundRemoteCallHandlers.end());
     it->second(name, caller, data);
 }
 

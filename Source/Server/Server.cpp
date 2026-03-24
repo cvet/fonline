@@ -37,6 +37,7 @@
 #include "MetadataRegistration.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"
+#include "RemoteCallValidation.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -3116,6 +3117,14 @@ void ServerEngine::Process_RemoteCall(Player* player)
 
     in_buf.Unlock();
 
+    const auto& remote_calls = GetInboundRemoteCalls();
+    const auto remote_call_it = remote_calls.find(remote_call_name);
+
+    if (remote_call_it == remote_calls.end()) {
+        throw GenericException("Invalid remote call", remote_call_name);
+    }
+
+    ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }
 
