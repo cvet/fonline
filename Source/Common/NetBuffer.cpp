@@ -43,17 +43,6 @@ NetBuffer::NetBuffer(size_t buf_len)
     _bufData.resize(buf_len);
 }
 
-auto NetBuffer::GenerateEncryptKey() -> uint32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return // Random 4 byte
-        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 24) | //
-        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 16) | //
-        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 8) | //
-        (static_cast<uint32>(GenericUtils::Random(1, 255)) << 0);
-}
-
 void NetBuffer::SetEncryptKey(uint32 seed)
 {
     FO_STACK_TRACE_ENTRY();

@@ -179,7 +179,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     auto final_dir = dir;
 
     if (dir >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = numeric_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+        final_dir = numeric_cast<uint8>(_engine->Random(0, numeric_cast<int32>(GameSettings::MAP_DIR_COUNT - 1u)));
     }
 
     // Create critter

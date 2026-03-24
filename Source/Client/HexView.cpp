@@ -134,7 +134,10 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GetFrameTime();
-        const auto fading_proc = 100 - GenericUtils::Percent(_map->GetEngine()->Settings.FadingDuration, time < _fadingTime ? (_fadingTime - time).to_ms<int32>() : 0);
+        const int32 fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32>() : 0;
+        const int32 fading_duration = _map->GetEngine()->Settings.FadingDuration;
+        const int32 fading_percent = fading_duration == 0 ? 0 : std::clamp(fading_remaining * 100 / fading_duration, 0, 100);
+        const int32 fading_proc = 100 - fading_percent;
 
         if (fading_proc == 100) {
             _fading = false;

@@ -255,7 +255,7 @@ void RenderTargetManager::DumpTextures() const
         if (rt != nullptr) {
             const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
             auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-            GenericUtils::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
+            WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
         }
     };
 

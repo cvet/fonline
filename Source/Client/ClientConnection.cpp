@@ -167,7 +167,8 @@ void ClientConnection::ProcessConnection()
 
     // Lags emulation
     if (_settings->ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {GenericUtils::Random(_settings->ArtificalLags / 2, _settings->ArtificalLags)};
+        const auto lag_ms = std::uniform_int_distribution<int32> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
+        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {lag_ms};
     }
 
     if (_artificalLagTime.has_value()) {
@@ -306,7 +307,12 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+    std::uniform_int_distribution<int32> random_distribution {1, 255};
+    const uint32 encrypt_key = //
+        (numeric_cast<uint32>(random_distribution(_randomGenerator)) << 24) | //
+        (numeric_cast<uint32>(random_distribution(_randomGenerator)) << 16) | //
+        (numeric_cast<uint32>(random_distribution(_randomGenerator)) << 8) | //
+        (numeric_cast<uint32>(random_distribution(_randomGenerator)) << 0);
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);

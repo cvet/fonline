@@ -396,7 +396,10 @@ void ClientEngine::ProcessScreenEffectFading()
         }
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32>()) + 1;
+            const int32 effect_duration = screen_effect.Duration.to_ms<int32>();
+            const int32 effect_elapsed = (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32>();
+            const int32 effect_percent = effect_duration == 0 ? 0 : std::clamp(effect_elapsed * 100 / effect_duration, 0, 100);
+            const int32 proc = std::min(effect_percent + 1, 100);
             int32 res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -423,8 +426,8 @@ void ClientEngine::ScreenQuake(int32 noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _quakeScreenOffsX = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsX = numeric_cast<float32>(Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsY = numeric_cast<float32>(Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
 
     _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));

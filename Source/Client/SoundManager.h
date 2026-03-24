@@ -74,6 +74,7 @@ private:
     int32 _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8> _outputBuf {};
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     bool _nonConstHelper {};
 };
 

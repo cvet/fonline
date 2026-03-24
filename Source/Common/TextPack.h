@@ -86,6 +86,7 @@ public:
 private:
     multimap<TextPackKey, string> _strData {};
     string _emptyStr {};
+    mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
 };
 
 class LanguagePack final

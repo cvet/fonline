@@ -760,7 +760,7 @@ void CritterHexView::AddExtraOffs(ipos32 offset)
     _offsExt.x += numeric_cast<float32>(offset.x);
     _offsExt.y += numeric_cast<float32>(offset.y);
 
-    _offsExtSpeed = GenericUtils::GetStepsCoords({}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
+    _offsExtSpeed = GeometryHelper::GetStepsCoords({}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
     _offsExtSpeed.x = -_offsExtSpeed.x;
     _offsExtSpeed.y = -_offsExtSpeed.y;
 

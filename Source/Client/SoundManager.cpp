@@ -588,7 +588,8 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     if (count != 0u) {
-        return Load(sound_names.find(strex("{}_{}", sound_name, GenericUtils::Random(1u, count)).str())->second, false, timespan::zero);
+        const int32 random_index = std::uniform_int_distribution<int32> {1, count}(_randomGenerator);
+        return Load(sound_names.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero);
     }
 
     return false;

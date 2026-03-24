@@ -74,12 +74,15 @@ public:
 
 private:
     struct Impl;
+    auto Random(int32 min_value, int32 max_value) -> int32;
+
     unique_ptr<Impl> _impl;
     raw_ptr<RenderSettings> _settings;
     raw_ptr<EffectManager> _effectMngr;
     raw_ptr<FileSystem> _resources;
     raw_ptr<GameTimer> _gameTime;
     TextureLoader _textureLoader;
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     int32 _animUpdateThreshold {};
     mat44 _projMatColMaj {};
     mat44 _viewMatColMaj {};

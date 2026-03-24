@@ -184,9 +184,7 @@ FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view re
 ///@ ExportMethod
 FO_SCRIPT_API int32 Common_Game_Random(BaseEngine* engine, int32 minValue, int32 maxValue)
 {
-    ignore_unused(engine);
-
-    return GenericUtils::Random(minValue, maxValue);
+    return engine->Random(minValue, maxValue);
 }
 
 ///@ ExportMethod

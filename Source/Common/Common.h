@@ -804,20 +804,8 @@ private:
     size_t _counter {};
 };
 
-class GenericUtils final
-{
-public:
-    GenericUtils() = delete;
-
-    [[nodiscard]] static auto Random(int32 minimum, int32 maximum) -> int32;
-    [[nodiscard]] static auto Percent(int32 full, int32 peace) -> int32;
-    [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
-    [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
-    [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
-
-    static void SetRandomSeed(int32 seed);
-    static void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
-};
+extern auto MakeSeededRandomGenerator() -> std::mt19937;
+extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8>)>;

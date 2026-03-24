@@ -809,4 +809,66 @@ void GeometryHelper::ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, 
     }
 }
 
+auto GeometryHelper::IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 x01 = x1 - cx;
+    const int32 y01 = y1 - cy;
+    const int32 x02 = x2 - cx;
+    const int32 y02 = y2 - cy;
+    const int32 dx = x02 - x01;
+    const int32 dy = y02 - y01;
+    const int32 a = dx * dx + dy * dy;
+    const int32 b = 2 * (x01 * dx + y01 * dy);
+    const int32 c = x01 * x01 + y01 * y01 - radius * radius;
+
+    if (-b < 0) {
+        return c < 0;
+    }
+    if (-b < 2 * a) {
+        return 4 * a * c - b * b < 0;
+    }
+
+    return a + b + c < 0;
+}
+
+auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32 dx = numeric_cast<float32>(std::abs(to_pos.x - from_pos.x));
+    const float32 dy = numeric_cast<float32>(std::abs(to_pos.y - from_pos.y));
+
+    float32 sx = 1.0f;
+    float32 sy = 1.0f;
+
+    if (dx < dy) {
+        sx = dx / dy;
+    }
+    else {
+        sy = dy / dx;
+    }
+
+    if (to_pos.x < from_pos.x) {
+        sx = -sx;
+    }
+    if (to_pos.y < from_pos.y) {
+        sy = -sy;
+    }
+
+    return {sx, sy};
+}
+
+auto GeometryHelper::ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32 rad = deq * DEG_TO_RAD_FLOAT;
+    const float32 x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
+    const float32 y = pos.x * std::sin(rad) + pos.y * std::cos(rad);
+
+    return {x, y};
+}
+
 FO_END_NAMESPACE

@@ -1770,7 +1770,11 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
 
     in_buf.Unlock();
 
-    const auto out_encrypt_key = NetBuffer::GenerateEncryptKey();
+    const uint32 out_encrypt_key = //
+        (numeric_cast<uint32>(Random(1, 255)) << 24) | //
+        (numeric_cast<uint32>(Random(1, 255)) << 16) | //
+        (numeric_cast<uint32>(Random(1, 255)) << 8) | //
+        (numeric_cast<uint32>(Random(1, 255)) << 0);
 
     {
         auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);

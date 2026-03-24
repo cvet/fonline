@@ -819,7 +819,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
     for (auto& cr : map_critters) {
         const auto hex = cr->GetHex();
 
-        if (cr->CheckFind(findType) && GenericUtils::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
+        if (cr->CheckFind(findType) && GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.emplace_back(cr.get());
         }
     }

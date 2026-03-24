@@ -165,6 +165,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetImGui() noexcept -> ScriptImGui* { return _imgui.get(); }
+    [[nodiscard]] auto Random(int32 min_value, int32 max_value) const -> int32;
 
     virtual void Shutdown() { }
     void FrameAdvance();
@@ -189,6 +190,7 @@ protected:
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
+    mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
 };
 

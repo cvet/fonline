@@ -72,6 +72,15 @@ ParticleManager::~ParticleManager()
     FO_STACK_TRACE_ENTRY();
 }
 
+auto ParticleManager::Random(int32 min_value, int32 max_value) -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(min_value <= max_value);
+
+    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+}
+
 auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSystem>
 {
     FO_STACK_TRACE_ENTRY();
@@ -248,7 +257,7 @@ void ParticleSystem::Prewarm()
     }
 
     const float32 max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
-    const float32 init_time = numeric_cast<float32>(GenericUtils::Random(0, iround<int32>(max_lifetime * 1000.0f))) / 1000.0f;
+    const float32 init_time = numeric_cast<float32>(_particleMngr->Random(0, iround<int32>(max_lifetime * 1000.0f))) / 1000.0f;
 
     for (float32 dt = 0.0f; dt < init_time;) {
         _impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));

@@ -57,7 +57,6 @@ public:
     [[nodiscard]] auto GetData() noexcept -> const_span<uint8> { return {_bufData.data(), _bufEndPos}; }
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
-    static auto GenerateEncryptKey() -> uint32;
     void SetEncryptKey(uint32 seed);
     virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);

@@ -86,7 +86,7 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
     }
 
     const auto hexes_around = GeometryHelper::HexesInRadius(seek_radius);
-    int32 pos = GenericUtils::Random(1, hexes_around);
+    int32 pos = GetEngine()->Random(1, hexes_around);
     int32 iterations = 0;
 
     while (true) {

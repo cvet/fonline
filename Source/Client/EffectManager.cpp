@@ -89,10 +89,12 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
-        random_value_buf->RandomValue[0] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[1] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[2] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[3] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        std::uniform_int_distribution<int32> random_distribution {0, 99999};
+
+        random_value_buf->RandomValue[0] = numeric_cast<float32>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[1] = numeric_cast<float32>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[2] = numeric_cast<float32>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[3] = numeric_cast<float32>(random_distribution(_randomGenerator)) / 100000.0f;
     }
 
     if (effect->IsNeedScriptValueBuf()) {

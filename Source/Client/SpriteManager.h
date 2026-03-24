@@ -183,6 +183,7 @@ public:
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
+    [[nodiscard]] auto Random(int32 min_value, int32 max_value) -> int32;
     [[nodiscard]] auto CheckHitTest(int32 value) const -> bool { return value > _settings->SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
@@ -244,6 +245,7 @@ private:
     TextureAtlasManager _atlasMngr;
     raw_ptr<EffectManager> _effectMngr;
     raw_ptr<HashResolver> _hashResolver;
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
     unordered_map<string, raw_ptr<SpriteFactory>> _spriteFactoryMap {};

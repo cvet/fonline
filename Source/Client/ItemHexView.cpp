@@ -142,9 +142,9 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
     _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
     auto pos_offset = _engine->Geometry.GetHexOffset(cur_hex, hex);
-    pos_offset.y += GenericUtils::Random(5, 25); // Center of body
+    pos_offset.y += _engine->Random(5, 25); // Center of body
 
-    _moveStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
+    _moveStepOffset = GeometryHelper::GetStepsCoords({}, pos_offset);
     _moveWholeDist = fpos32(pos_offset).dist();
 
     _moveStartOffset = fpos32(_sprOffset);

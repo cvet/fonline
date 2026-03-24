@@ -1159,6 +1159,15 @@ void BaseEngine::FrameAdvance()
     }
 }
 
+auto BaseEngine::Random(int32 min_value, int32 max_value) const -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(min_value <= max_value);
+
+    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+}
+
 void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
 {
     FO_STACK_TRACE_ENTRY();

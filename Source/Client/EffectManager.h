@@ -110,6 +110,7 @@ private:
 
     raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
 };
 

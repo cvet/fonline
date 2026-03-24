@@ -53,7 +53,7 @@ AtlasSprite::~AtlasSprite()
 #if 0 // For debug purposes
     if constexpr (FO_DEBUG) {
         try {
-            const auto rnd_color = ucolor {numeric_cast<uint8>(GenericUtils::Random(0, 255)), numeric_cast<uint8>(GenericUtils::Random(0, 255)), numeric_cast<uint8>(GenericUtils::Random(0, 255))};
+            const auto rnd_color = ucolor {numeric_cast<uint8>(_sprMngr->Random(0, 255)), numeric_cast<uint8>(_sprMngr->Random(0, 255)), numeric_cast<uint8>(_sprMngr->Random(0, 255))};
 
             vector<ucolor> color_data;
             color_data.resize(_atlasNode->Size.square());
@@ -236,7 +236,7 @@ void SpriteSheet::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curIndex = GenericUtils::Random(0, _framesCount - 1);
+    _curIndex = _sprMngr->Random(0, _framesCount - 1);
 
     RefreshParams();
 }

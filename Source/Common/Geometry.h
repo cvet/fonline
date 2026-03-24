@@ -143,6 +143,9 @@ public:
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool;
     [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
     [[nodiscard]] static auto HexesInRadius(int32 radius) -> int32;
+    [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
+    [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
+    [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
 
     static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;

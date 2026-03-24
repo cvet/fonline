@@ -1660,7 +1660,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto [base_sx, base_sy] = GenericUtils::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y});
+    const auto [base_sx, base_sy] = GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y});
     const auto sx1_f = base_sx;
     const auto sy1_f = base_sy;
 
@@ -1957,7 +1957,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
             const auto dist_comp = (cur.PointPos - center_pos).idist() > (next.PointPos - center_pos).idist();
             const auto x = numeric_cast<float32>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
             const auto y = numeric_cast<float32>(dist_comp ? next.PointPos.y - cur.PointPos.y : cur.PointPos.y - next.PointPos.y);
-            const auto changed_xy = GenericUtils::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
+            const auto changed_xy = GeometryHelper::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
                 soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32>(changed_xy.x), cur.PointPos.y + iround<int32>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
@@ -4222,8 +4222,10 @@ auto MapView::GetColorDay(const vector<int32>& day_time, const vector<uint8>& co
         const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
         const auto min_light = (std::min({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::min({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::min({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
         const auto cur_light = (result[0] + result[1] + result[2]) / 3;
+        const int32 light_full = max_light - min_light;
+        const int32 light_part = max_light - cur_light;
 
-        *light = GenericUtils::Percent(max_light - min_light, max_light - cur_light);
+        *light = light_full == 0 ? 0 : std::clamp(light_part * 100 / light_full, 0, 100);
         *light = std::clamp(*light, 0, 100);
     }
 

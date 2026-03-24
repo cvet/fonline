@@ -107,6 +107,7 @@ private:
     size_t _bytesRealReceived {};
     unordered_map<NetMessage, MessageCallback> _handlers {};
     optional<nanotime> _artificalLagTime {};
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
     size_t _msgCount {};

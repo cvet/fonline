@@ -106,6 +106,15 @@ SpriteManager::~SpriteManager()
     _window->Destroy();
 }
 
+auto SpriteManager::Random(int32 min_value, int32 max_value) -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(min_value <= max_value);
+
+    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+}
+
 auto SpriteManager::GetWindowSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();

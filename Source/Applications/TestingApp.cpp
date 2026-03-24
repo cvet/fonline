@@ -53,7 +53,6 @@ int32 main(int32 argc, char** argv)
 
     try {
         InitApp(-1, nullptr);
-        GenericUtils::SetRandomSeed(42);
         return Catch::Session().run(argc, argv);
     }
     catch (const std::exception& ex) {
