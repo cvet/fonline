@@ -46,20 +46,22 @@ FO_BEGIN_NAMESPACE
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 
-// Todo: move all these statics to App class fields
-static unique_ptr<Renderer> ActiveRenderer {};
-static RenderType ActiveRendererType {};
-static raw_ptr<RenderTexture> RenderTargetTex {};
-static ucolor ClearColor {150, 150, 150, 255};
-static vector<unique_ptr<HeadlessWindowStub>> NullWindowStubs {};
-
-static unique_ptr<vector<InputEvent>> EventsQueue {};
-static unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
-
-static raw_ptr<SDL_AudioStream> AudioStream {};
-static SDL_AudioSpec AudioSpec {};
-static unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
-static unique_ptr<vector<uint8>> AudioStreamBuf {};
+struct Application::Context
+{
+    unique_ptr<Renderer> ActiveRenderer {};
+    RenderType ActiveRendererType {};
+    raw_ptr<RenderTexture> RenderTargetTex {};
+    ucolor ClearColor {150, 150, 150, 255};
+    vector<unique_ptr<HeadlessWindowStub>> NullWindowStubs {};
+    unique_ptr<vector<InputEvent>> EventsQueue {};
+    unique_ptr<vector<InputEvent>> NextFrameEventsQueue {};
+    raw_ptr<SDL_AudioStream> AudioStream {};
+    SDL_AudioSpec AudioSpec {};
+    unique_ptr<AppAudio::AudioStreamCallback> AudioStreamWriter {};
+    unique_ptr<vector<uint8>> AudioStreamBuf {};
+    unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
+    unique_ptr<unordered_map<int32, MouseButton>> MouseButtonsMap {};
+};
 
 static int32 MaxAtlasWidth {};
 static int32 MaxAtlasHeight {};
@@ -70,41 +72,45 @@ const int32& AppRender::MAX_BONES {MaxBones};
 const int32 AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int32 AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
-static auto WindowPosToScreenPos(ipos32 pos) -> ipos32
+static auto WindowPosToScreenPos(Renderer* renderer, isize32 screen_size, ipos32 pos) -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(App);
+    FO_RUNTIME_ASSERT(renderer);
 
-    const auto vp = ActiveRenderer->GetViewPort();
+    const auto vp = renderer->GetViewPort();
 
-    const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.x) / numeric_cast<float32>(vp.width) * numeric_cast<float32>(App->Settings.ScreenWidth));
-    const auto screen_y = iround<int32>(numeric_cast<float32>(pos.y - vp.y) / numeric_cast<float32>(vp.height) * numeric_cast<float32>(App->Settings.ScreenHeight));
+    const auto screen_x = iround<int32>(numeric_cast<float32>(pos.x - vp.x) / numeric_cast<float32>(vp.width) * numeric_cast<float32>(screen_size.width));
+    const auto screen_y = iround<int32>(numeric_cast<float32>(pos.y - vp.y) / numeric_cast<float32>(vp.height) * numeric_cast<float32>(screen_size.height));
 
     return {screen_x, screen_y};
 }
 
-static auto ScreenPosToWindowPos(ipos32 pos) -> ipos32
+static auto ScreenPosToWindowPos(Renderer* renderer, isize32 screen_size, ipos32 pos) -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(App);
+    FO_RUNTIME_ASSERT(renderer);
 
-    const auto vp = ActiveRenderer->GetViewPort();
+    const auto vp = renderer->GetViewPort();
 
-    const auto win_x = vp.x + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(App->Settings.ScreenWidth) * numeric_cast<float32>(vp.width));
-    const auto win_y = vp.y + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(App->Settings.ScreenHeight) * numeric_cast<float32>(vp.height));
+    const auto win_x = vp.x + iround<int32>(numeric_cast<float32>(pos.x) / numeric_cast<float32>(screen_size.width) * numeric_cast<float32>(vp.width));
+    const auto win_y = vp.y + iround<int32>(numeric_cast<float32>(pos.y) / numeric_cast<float32>(screen_size.height) * numeric_cast<float32>(vp.height));
 
     return {win_x, win_y};
 }
 
-static unique_ptr<unordered_map<SDL_Keycode, KeyCode>> KeysMap {};
-static unique_ptr<unordered_map<int32, MouseButton>> MouseButtonsMap {};
-
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
-    Settings {std::move(settings)}
+    Settings {std::move(settings)},
+    MainWindow {this},
+    Render {this},
+    Input {this},
+    Audio {this}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_ctx);
+    _ctx = SafeAlloc::MakeUnique<Context>();
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
 
@@ -137,10 +143,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
-    EventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
-    NextFrameEventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
+    _ctx->EventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
+    _ctx->NextFrameEventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
 
-    KeysMap = SafeAlloc::MakeUnique<unordered_map<SDL_Keycode, KeyCode>>(unordered_map<SDL_Keycode, KeyCode> {
+    _ctx->KeysMap = SafeAlloc::MakeUnique<unordered_map<SDL_Keycode, KeyCode>>(unordered_map<SDL_Keycode, KeyCode> {
         {SDL_SCANCODE_ESCAPE, KeyCode::Escape},
         {SDL_SCANCODE_1, KeyCode::C1},
         {SDL_SCANCODE_2, KeyCode::C2},
@@ -246,7 +252,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         {SDL_SCANCODE_RGUI, KeyCode::Rwin},
     });
 
-    MouseButtonsMap = SafeAlloc::MakeUnique<unordered_map<int32, MouseButton>>(unordered_map<int32, MouseButton> {
+    _ctx->MouseButtonsMap = SafeAlloc::MakeUnique<unordered_map<int32, MouseButton>>(unordered_map<int32, MouseButton> {
         {SDL_BUTTON_LEFT, MouseButton::Left},
         {SDL_BUTTON_RIGHT, MouseButton::Right},
         {SDL_BUTTON_MIDDLE, MouseButton::Middle},
@@ -260,36 +266,37 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     // Initialize audio
     if (!Settings.DisableAudio) {
         if (SDL_WasInit(SDL_INIT_AUDIO) != 0 || SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-            AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
-            AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
+            _ctx->AudioStreamWriter = SafeAlloc::MakeUnique<AppAudio::AudioStreamCallback>();
+            _ctx->AudioStreamBuf = SafeAlloc::MakeUnique<vector<uint8>>(vector<uint8>());
 
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32 additional_amount, int32 total_amount) FO_DEFERRED {
-                ignore_unused(userdata);
+                auto* app = static_cast<Application*>(userdata);
+                FO_RUNTIME_ASSERT(app);
                 ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
-                    if (numeric_cast<size_t>(additional_amount) > AudioStreamBuf->size()) {
-                        AudioStreamBuf->resize(numeric_cast<size_t>(additional_amount) * 2);
+                    if (numeric_cast<size_t>(additional_amount) > app->_ctx->AudioStreamBuf->size()) {
+                        app->_ctx->AudioStreamBuf->resize(numeric_cast<size_t>(additional_amount) * 2);
                     }
 
-                    const auto silence = numeric_cast<uint8>(SDL_GetSilenceValueForFormat(AudioSpec.format));
+                    const auto silence = numeric_cast<uint8>(SDL_GetSilenceValueForFormat(app->_ctx->AudioSpec.format));
 
-                    MemFill(AudioStreamBuf->data(), silence, additional_amount);
+                    MemFill(app->_ctx->AudioStreamBuf->data(), silence, additional_amount);
 
-                    if (*AudioStreamWriter) {
-                        (*AudioStreamWriter)(silence, {AudioStreamBuf->data(), numeric_cast<size_t>(additional_amount)});
+                    if (*app->_ctx->AudioStreamWriter) {
+                        (*app->_ctx->AudioStreamWriter)(silence, {app->_ctx->AudioStreamBuf->data(), numeric_cast<size_t>(additional_amount)});
                     }
 
-                    SDL_PutAudioStreamData(stream, AudioStreamBuf->data(), additional_amount);
+                    SDL_PutAudioStreamData(stream, app->_ctx->AudioStreamBuf->data(), additional_amount);
                 }
             };
 
-            auto* audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, nullptr);
+            auto* audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, this);
 
             if (audio_stream != nullptr) {
-                if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream), &AudioSpec, nullptr)) {
+                if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream), &_ctx->AudioSpec, nullptr)) {
                     if (SDL_ResumeAudioStreamDevice(audio_stream)) {
-                        AudioStream = audio_stream;
+                        _ctx->AudioStream = audio_stream;
                     }
                     else {
                         WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
@@ -310,59 +317,59 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     // First choose render type by user preference
     if (Settings.NullRenderer) {
-        ActiveRendererType = RenderType::Null;
-        ActiveRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
+        _ctx->ActiveRendererType = RenderType::Null;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
     }
 #if FO_HAVE_OPENGL
     else if (Settings.ForceOpenGL) {
-        ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
+        _ctx->ActiveRendererType = RenderType::OpenGL;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 #if FO_HAVE_DIRECT_3D
     else if (Settings.ForceDirect3D) {
-        ActiveRendererType = RenderType::Direct3D;
-        ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
+        _ctx->ActiveRendererType = RenderType::Direct3D;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
     else if (Settings.ForceMetal) {
-        ActiveRendererType = RenderType::Metal;
+        _ctx->ActiveRendererType = RenderType::Metal;
         throw NotImplementedException(FO_LINE_STR);
     }
 #endif
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
-        ActiveRendererType = RenderType::Vulkan;
+        _ctx->ActiveRendererType = RenderType::Vulkan;
         throw NotImplementedException(FO_LINE_STR);
     }
 #endif
 
     // If none of selected then evaluate automatic selection
 #if FO_HAVE_DIRECT_3D
-    if (!ActiveRenderer) {
-        ActiveRendererType = RenderType::Direct3D;
-        ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
+    if (!_ctx->ActiveRenderer) {
+        _ctx->ActiveRendererType = RenderType::Direct3D;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
-    if (!ActiveRenderer) {
-        ActiveRendererType = RenderType::Metal;
+    if (!_ctx->ActiveRenderer) {
+        _ctx->ActiveRendererType = RenderType::Metal;
     }
 #endif
 #if FO_HAVE_VULKAN
-    if (!ActiveRenderer) {
-        ActiveRendererType = RenderType::Vulkan;
+    if (!_ctx->ActiveRenderer) {
+        _ctx->ActiveRendererType = RenderType::Vulkan;
     }
 #endif
 #if FO_HAVE_OPENGL
-    if (!ActiveRenderer) {
-        ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
+    if (!_ctx->ActiveRenderer) {
+        _ctx->ActiveRendererType = RenderType::OpenGL;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 
-    if (!ActiveRenderer) {
+    if (!_ctx->ActiveRenderer) {
         throw AppInitException("No renderer selected");
     }
 
@@ -401,7 +408,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
-        ClearColor = {0, 0, 0, 255};
+        _ctx->ClearColor = {0, 0, 0, 255};
     }
 
 #if FO_WEB
@@ -428,17 +435,17 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
     _allWindows.emplace_back(&MainWindow);
 
-    if (ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
+    if (_ctx->ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
         SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
     }
 
-    ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
+    _ctx->ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
 
     if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);
     }
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_ctx->ActiveRendererType != RenderType::Null) {
         SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
     }
 
@@ -475,7 +482,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
-    if (ActiveRendererType != RenderType::Null) {
+    if (_ctx->ActiveRendererType != RenderType::Null) {
         const auto sdl_windows_props = SDL_GetWindowProperties(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
         ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
     }
@@ -496,11 +503,67 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
     LoadImGuiEffect(base_fs);
 
-    _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
+    _imguiDrawBuf = _ctx->ActiveRenderer->CreateDrawBuffer(false);
 
     // Start timings
     _timeFrequency = SDL_GetPerformanceFrequency();
     _time = SDL_GetPerformanceCounter();
+}
+
+Application::~Application()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_ctx) {
+        return;
+    }
+
+    _imguiTextures.clear();
+    _imguiEffect = nullptr;
+    _imguiDrawBuf = nullptr;
+    ImGui::DestroyContext();
+
+    if (_ctx->AudioStream) {
+        SDL_DestroyAudioStream(_ctx->AudioStream.get());
+        _ctx->AudioStream = nullptr;
+    }
+
+    _ctx->AudioStreamWriter = nullptr;
+    _ctx->AudioStreamBuf = nullptr;
+
+    for (const auto window : _allWindows) {
+        if (window == nullptr || window == &MainWindow || !window->_windowHandle) {
+            continue;
+        }
+
+        if (_ctx->ActiveRendererType != RenderType::Null) {
+            SDL_DestroyWindow(reinterpret_cast<SDL_Window*>(window->_windowHandle.get_no_const()));
+        }
+    }
+
+    if (MainWindow._windowHandle) {
+        if (_ctx->ActiveRendererType != RenderType::Null) {
+            SDL_StopTextInput(reinterpret_cast<SDL_Window*>(MainWindow._windowHandle.get_no_const()));
+            SDL_DestroyWindow(reinterpret_cast<SDL_Window*>(MainWindow._windowHandle.get_no_const()));
+        }
+
+        MainWindow._windowHandle = nullptr;
+    }
+
+    _allWindows.clear();
+    _ctx->NullWindowStubs.clear();
+    _ctx->RenderTargetTex = nullptr;
+
+    _ctx->ActiveRenderer = nullptr;
+
+    _ctx->EventsQueue = nullptr;
+    _ctx->NextFrameEventsQueue = nullptr;
+    _ctx->KeysMap = nullptr;
+    _ctx->MouseButtonsMap = nullptr;
+    _ctx->ClearColor = {150, 150, 150, 255};
+    _ctx->ActiveRendererType = RenderType::Null;
+
+    _ctx = nullptr;
 }
 
 void Application::OpenLink(string_view link)
@@ -517,7 +580,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     FO_STACK_TRACE_ENTRY();
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
-        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
+        _imguiEffect = _ctx->ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
             const auto file = resources.ReadFile(path);
             FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
             return file.GetStr();
@@ -557,12 +620,12 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType == RenderType::Null) {
+    if (_ctx->ActiveRendererType == RenderType::Null) {
         auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
         handle->Size = size;
 
         auto* ptr = handle.get();
-        NullWindowStubs.emplace_back(std::move(handle));
+        _ctx->NullWindowStubs.emplace_back(std::move(handle));
 
         return reinterpret_cast<WindowInternalHandle*>(ptr);
     }
@@ -577,7 +640,7 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     }
 
 #if FO_HAVE_OPENGL
-    if (ActiveRendererType == RenderType::OpenGL) {
+    if (_ctx->ActiveRendererType == RenderType::OpenGL) {
 #if !FO_WEB
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, 1);
 #endif
@@ -602,13 +665,13 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
 #endif
 
 #if FO_HAVE_METAL
-    if (ActiveRendererType == RenderType::Metal) {
+    if (_ctx->ActiveRendererType == RenderType::Metal) {
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN, 1);
     }
 #endif
 
 #if FO_HAVE_VULKAN
-    if (ActiveRendererType == RenderType::Vulkan) {
+    if (_ctx->ActiveRendererType == RenderType::Vulkan) {
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, 1);
     }
 #endif
@@ -649,16 +712,16 @@ void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(RenderTargetTex == nullptr);
-    ActiveRenderer->ClearRenderTarget(ClearColor);
+    FO_RUNTIME_ASSERT(_ctx->RenderTargetTex == nullptr);
+    _ctx->ActiveRenderer->ClearRenderTarget(_ctx->ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
     const bool imgui_capture_mouse = io.WantCaptureMouse;
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
-    if (!NextFrameEventsQueue->empty()) {
-        EventsQueue->insert(EventsQueue->end(), NextFrameEventsQueue->begin(), NextFrameEventsQueue->end());
-        NextFrameEventsQueue->clear();
+    if (!_ctx->NextFrameEventsQueue->empty()) {
+        _ctx->EventsQueue->insert(_ctx->EventsQueue->end(), _ctx->NextFrameEventsQueue->begin(), _ctx->NextFrameEventsQueue->end());
+        _ctx->NextFrameEventsQueue->clear();
     }
 
     SDL_PumpEvents();
@@ -669,17 +732,17 @@ void Application::BeginFrame()
         switch (sdl_event.type) {
         case SDL_EVENT_MOUSE_MOTION: {
             InputEvent::MouseMoveEvent ev;
-            const auto screen_pos = WindowPosToScreenPos({iround<int32>(sdl_event.motion.x), iround<int32>(sdl_event.motion.y)});
+            const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32>(sdl_event.motion.x), iround<int32>(sdl_event.motion.y)});
             ev.MouseX = screen_pos.x;
             ev.MouseY = screen_pos.y;
-            const auto vp = ActiveRenderer->GetViewPort();
+            const auto vp = _ctx->ActiveRenderer->GetViewPort();
             const auto x_ratio = numeric_cast<float32>(Settings.ScreenWidth) / numeric_cast<float32>(vp.width);
             const auto y_ratio = numeric_cast<float32>(Settings.ScreenHeight) / numeric_cast<float32>(vp.height);
             ev.DeltaX = iround<int32>(sdl_event.motion.xrel * x_ratio);
             ev.DeltaY = iround<int32>(sdl_event.motion.yrel * y_ratio);
 
             if (!imgui_capture_mouse) {
-                EventsQueue->emplace_back(ev);
+                _ctx->EventsQueue->emplace_back(ev);
             }
 
             io.AddMousePosEvent(numeric_cast<float32>(ev.MouseX), numeric_cast<float32>(ev.MouseY));
@@ -688,18 +751,18 @@ void Application::BeginFrame()
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 InputEvent::MouseDownEvent ev;
-                ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
+                ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
 
                 if (!imgui_capture_mouse) {
-                    EventsQueue->emplace_back(ev);
+                    _ctx->EventsQueue->emplace_back(ev);
                 }
             }
             else {
                 InputEvent::MouseUpEvent ev;
-                ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
+                ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
 
                 if (!imgui_capture_mouse) {
-                    EventsQueue->emplace_back(ev);
+                    _ctx->EventsQueue->emplace_back(ev);
                 }
             }
 
@@ -740,7 +803,7 @@ void Application::BeginFrame()
             ev.Delta = iround<int32>(sdl_event.wheel.y);
 
             if (!imgui_capture_mouse) {
-                EventsQueue->emplace_back(ev);
+                _ctx->EventsQueue->emplace_back(ev);
             }
 
             float32 wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
@@ -751,10 +814,10 @@ void Application::BeginFrame()
         case SDL_EVENT_KEY_DOWN: {
             if (sdl_event.type == SDL_EVENT_KEY_DOWN) {
                 InputEvent::KeyDownEvent ev;
-                ev.Code = (*KeysMap)[sdl_event.key.scancode];
+                ev.Code = (*_ctx->KeysMap)[sdl_event.key.scancode];
 
                 if (!imgui_capture_keyboard) {
-                    EventsQueue->emplace_back(ev);
+                    _ctx->EventsQueue->emplace_back(ev);
                 }
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
@@ -763,10 +826,10 @@ void Application::BeginFrame()
             }
             else {
                 InputEvent::KeyUpEvent ev;
-                ev.Code = (*KeysMap)[sdl_event.key.scancode];
+                ev.Code = (*_ctx->KeysMap)[sdl_event.key.scancode];
 
                 if (!imgui_capture_keyboard) {
-                    EventsQueue->emplace_back(ev);
+                    _ctx->EventsQueue->emplace_back(ev);
                 }
             }
 
@@ -786,14 +849,14 @@ void Application::BeginFrame()
             ev1.Text = sdl_event.text.text;
 
             if (!imgui_capture_keyboard) {
-                EventsQueue->emplace_back(ev1);
+                _ctx->EventsQueue->emplace_back(ev1);
             }
 
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
 
             if (!imgui_capture_keyboard) {
-                EventsQueue->emplace_back(ev2);
+                _ctx->EventsQueue->emplace_back(ev2);
             }
 
             io.AddInputCharactersUTF8(sdl_event.text.text);
@@ -802,10 +865,10 @@ void Application::BeginFrame()
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.drop.data;
-            EventsQueue->emplace_back(ev1);
+            _ctx->EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
-            EventsQueue->emplace_back(ev2);
+            _ctx->EventsQueue->emplace_back(ev2);
         } break;
         case SDL_EVENT_DROP_FILE: {
             if (const auto file_size = fs_file_size(sdl_event.drop.data)) {
@@ -830,10 +893,10 @@ void Application::BeginFrame()
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
                     ev1.Text = strex("{}\n{}{}", sdl_event.drop.data, buf, stripped ? "..." : "");
-                    EventsQueue->emplace_back(ev1);
+                    _ctx->EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
-                    EventsQueue->emplace_back(ev2);
+                    _ctx->EventsQueue->emplace_back(ev2);
                 }
             }
         } break;
@@ -870,7 +933,7 @@ void Application::BeginFrame()
             int32 width = 0;
             int32 height = 0;
             SDL_GetWindowSizeInPixels(resized_window, &width, &height);
-            ActiveRenderer->OnResizeWindow({width, height});
+            _ctx->ActiveRenderer->OnResizeWindow({width, height});
 
             for (auto& window : copy(_allWindows)) {
                 if (static_cast<SDL_Window*>(window->_windowHandle.get()) == resized_window) {
@@ -906,7 +969,7 @@ void Application::BeginFrame()
     _time = cur_time;
 
     // Mouse state
-    if (ActiveRendererType != RenderType::Null) {
+    if (_ctx->ActiveRendererType != RenderType::Null) {
         if (_pendingMouseLeaveFrame != 0 && _pendingMouseLeaveFrame >= ImGui::GetFrameCount() && _mouseButtonsDown == 0) {
             io.AddMousePosEvent(-std::numeric_limits<float32>::max(), -std::numeric_limits<float32>::max());
             _pendingMouseLeaveFrame = 0;
@@ -934,7 +997,7 @@ void Application::BeginFrame()
                 int32 window_y;
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &window_x, &window_y);
 
-                const auto screen_pos = WindowPosToScreenPos({iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
+                const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
                 io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
             }
         }
@@ -952,10 +1015,10 @@ void Application::EndFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(RenderTargetTex == nullptr);
+    FO_RUNTIME_ASSERT(_ctx->RenderTargetTex == nullptr);
 
     // Skip unprocessed events
-    EventsQueue->clear();
+    _ctx->EventsQueue->clear();
 
     // Render ImGui
     ImGui::Render();
@@ -968,7 +1031,7 @@ void Application::EndFrame()
                 if (im_tex->Status == ImTextureStatus_WantCreate) {
                     const auto tex_size = isize(im_tex->Width, im_tex->Height);
                     FO_RUNTIME_ASSERT(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()));
-                    auto font_tex = ActiveRenderer->CreateTexture(tex_size, true, false);
+                    auto font_tex = _ctx->ActiveRenderer->CreateTexture(tex_size, true, false);
                     const auto* tex_data = static_cast<const ucolor*>(im_tex->GetPixels());
                     font_tex->UpdateTextureRegion({}, tex_size, tex_data);
                     im_tex->SetTexID(font_tex.get());
@@ -1039,16 +1102,16 @@ void Application::EndFrame()
                 const auto clip_rect_b = iround<int32>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
-                    ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
+                    _ctx->ActiveRenderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
                     _imguiEffect->DrawBuffer(_imguiDrawBuf.get(), pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TexRef.GetTexID()));
-                    ActiveRenderer->DisableScissor();
+                    _ctx->ActiveRenderer->DisableScissor();
                 }
             }
         }
     }
 
     // Frame complete, swap buffers
-    ActiveRenderer->Present();
+    _ctx->ActiveRenderer->Present();
 
     _onFrameEndDispatcher();
 
@@ -1088,7 +1151,7 @@ auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32 width = 1000;
         int32 height = 1000;
         SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(ResolveWindowHandle()), &width, &height);
@@ -1104,7 +1167,7 @@ void AppWindow::SetSize(isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(ResolveWindowHandle()), size.width, size.height);
     }
     else {
@@ -1136,7 +1199,7 @@ auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32 x = 0;
         int32 y = 0;
         SDL_GetWindowPosition(static_cast<SDL_Window*>(ResolveWindowHandle()), &x, &y);
@@ -1152,7 +1215,7 @@ void AppWindow::SetPosition(ipos32 pos)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_SetWindowPosition(static_cast<SDL_Window*>(ResolveWindowHandle()), pos.x, pos.y);
     }
     else {
@@ -1164,7 +1227,7 @@ auto AppWindow::IsFocused() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
@@ -1177,7 +1240,7 @@ void AppWindow::Minimize()
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_MinimizeWindow(static_cast<SDL_Window*>(ResolveWindowHandle()));
     }
     else {
@@ -1189,7 +1252,7 @@ auto AppWindow::IsFullscreen() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
@@ -1202,7 +1265,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType == RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         auto* window = ResolveWindowStub();
         const bool changed = window->Fullscreen != enable;
         window->Fullscreen = enable;
@@ -1231,7 +1294,7 @@ void AppWindow::Blink()
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType == RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         return;
     }
 
@@ -1244,7 +1307,7 @@ void AppWindow::AlwaysOnTop(bool enable)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType == RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         ResolveWindowStub()->AlwaysOnTop = enable;
         return;
     }
@@ -1278,16 +1341,16 @@ void AppWindow::Destroy()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveRendererType == RenderType::Null) {
-        if (_windowHandle && this != &App->MainWindow) {
-            std::erase_if(NullWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
+        if (_windowHandle && this != &_app->MainWindow) {
+            std::erase_if(_app->_ctx->NullWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
             _windowHandle = nullptr;
         }
 
         return;
     }
 
-    if (_windowHandle && this != &App->MainWindow) {
+    if (_windowHandle && this != &_app->MainWindow) {
         SDL_DestroyWindow(static_cast<SDL_Window*>(_windowHandle.get()));
         _windowHandle = nullptr;
     }
@@ -1299,7 +1362,7 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 
     FO_NON_CONST_METHOD_HINT();
 
-    return ActiveRenderer->CreateTexture(size, linear_filtered, with_depth);
+    return _app->_ctx->ActiveRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
@@ -1308,8 +1371,8 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ActiveRenderer->SetRenderTarget(tex);
-    RenderTargetTex = tex;
+    _app->_ctx->ActiveRenderer->SetRenderTarget(tex);
+    _app->_ctx->RenderTargetTex = tex;
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
@@ -1318,7 +1381,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return RenderTargetTex.get();
+    return _app->_ctx->RenderTargetTex.get();
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -1327,7 +1390,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 
     FO_NON_CONST_METHOD_HINT();
 
-    ActiveRenderer->ClearRenderTarget(color, depth, stencil);
+    _app->_ctx->ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(irect32 rect)
@@ -1336,7 +1399,7 @@ void AppRender::EnableScissor(irect32 rect)
 
     FO_NON_CONST_METHOD_HINT();
 
-    ActiveRenderer->EnableScissor(rect);
+    _app->_ctx->ActiveRenderer->EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
@@ -1345,7 +1408,7 @@ void AppRender::DisableScissor()
 
     FO_NON_CONST_METHOD_HINT();
 
-    ActiveRenderer->DisableScissor();
+    _app->_ctx->ActiveRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
@@ -1354,7 +1417,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 
     FO_NON_CONST_METHOD_HINT();
 
-    return ActiveRenderer->CreateDrawBuffer(is_static);
+    return _app->_ctx->ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
@@ -1363,7 +1426,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 
     FO_NON_CONST_METHOD_HINT();
 
-    return ActiveRenderer->CreateEffect(usage, name, loader);
+    return _app->_ctx->ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
@@ -1372,7 +1435,7 @@ auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, f
 
     FO_NON_CONST_METHOD_HINT();
 
-    return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
+    return _app->_ctx->ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
@@ -1381,7 +1444,7 @@ auto AppRender::IsRenderTargetFlipped() -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    return ActiveRenderer->IsRenderTargetFlipped();
+    return _app->_ctx->ActiveRenderer->IsRenderTargetFlipped();
 }
 
 auto AppInput::GetMousePosition() const -> ipos32
@@ -1391,11 +1454,11 @@ auto AppInput::GetMousePosition() const -> ipos32
     float32 x = 100;
     float32 y = 100;
 
-    if (ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
 
-    return WindowPosToScreenPos({iround<int32>(x), iround<int32>(y)});
+    return WindowPosToScreenPos(const_cast<Renderer*>(_app->_ctx->ActiveRenderer.get()), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, {iround<int32>(x), iround<int32>(y)});
 }
 
 void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
@@ -1404,13 +1467,13 @@ void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (ActiveRendererType != RenderType::Null) {
-        App->Settings.MousePos = pos;
+    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
+        _app->Settings.MousePos = pos;
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
 
         if (relative_to != nullptr) {
-            pos = ScreenPosToWindowPos(pos);
+            pos = ScreenPosToWindowPos(_app->_ctx->ActiveRenderer.get(), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, pos);
 
             SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle.get_no_const()), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
         }
@@ -1428,9 +1491,9 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (!EventsQueue->empty()) {
-        ev = EventsQueue->front();
-        EventsQueue->erase(EventsQueue->begin());
+    if (!_app->_ctx->EventsQueue->empty()) {
+        ev = _app->_ctx->EventsQueue->front();
+        _app->_ctx->EventsQueue->erase(_app->_ctx->EventsQueue->begin());
         return true;
     }
     return false;
@@ -1442,7 +1505,7 @@ void AppInput::ClearEvents()
 
     FO_NON_CONST_METHOD_HINT();
 
-    EventsQueue->clear();
+    _app->_ctx->EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
@@ -1452,10 +1515,10 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
     FO_NON_CONST_METHOD_HINT();
 
     if (push_to_this_frame) {
-        EventsQueue->emplace_back(ev);
+        _app->_ctx->EventsQueue->emplace_back(ev);
     }
     else {
-        NextFrameEventsQueue->emplace_back(ev);
+        _app->_ctx->NextFrameEventsQueue->emplace_back(ev);
     }
 }
 
@@ -1483,7 +1546,7 @@ auto AppAudio::IsEnabled() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return !!AudioStream;
+    return !!_app->_ctx->AudioStream;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
@@ -1493,7 +1556,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_RUNTIME_ASSERT(IsEnabled());
 
     LockDevice();
-    *AudioStreamWriter = std::move(stream_callback);
+    *_app->_ctx->AudioStreamWriter = std::move(stream_callback);
     UnlockDevice();
 }
 
@@ -1510,11 +1573,11 @@ auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uin
     spec.channels = numeric_cast<Uint8>(channels);
     spec.freq = rate;
 
-    if (spec.format != AudioSpec.format || spec.channels != AudioSpec.channels || spec.freq != AudioSpec.freq) {
+    if (spec.format != _app->_ctx->AudioSpec.format || spec.channels != _app->_ctx->AudioSpec.channels || spec.freq != _app->_ctx->AudioSpec.freq) {
         uint8* dst_data;
         int32 dst_len;
 
-        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32>(buf.size()), &AudioSpec, &dst_data, &dst_len)) {
+        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32>(buf.size()), &_app->_ctx->AudioSpec, &dst_data, &dst_len)) {
             return false;
         }
 
@@ -1534,7 +1597,7 @@ void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volum
     FO_RUNTIME_ASSERT(IsEnabled());
 
     const float32 vlume_01 = numeric_cast<float32>(std::clamp(volume, 0, 100)) / 100.0f;
-    SDL_MixAudio(output, buf, AudioSpec.format, numeric_cast<Uint32>(len), vlume_01);
+    SDL_MixAudio(output, buf, _app->_ctx->AudioSpec.format, numeric_cast<Uint32>(len), vlume_01);
 }
 
 void AppAudio::LockDevice()
@@ -1545,7 +1608,7 @@ void AppAudio::LockDevice()
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    SDL_LockAudioStream(AudioStream.get());
+    SDL_LockAudioStream(_app->_ctx->AudioStream.get());
 }
 
 void AppAudio::UnlockDevice()
@@ -1556,7 +1619,7 @@ void AppAudio::UnlockDevice()
 
     FO_RUNTIME_ASSERT(IsEnabled());
 
-    SDL_UnlockAudioStream(AudioStream.get());
+    SDL_UnlockAudioStream(_app->_ctx->AudioStream.get());
 }
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)

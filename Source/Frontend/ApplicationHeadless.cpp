@@ -35,9 +35,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static unique_ptr<Null_Renderer> HeadlessRenderer {};
-static raw_ptr<RenderTexture> HeadlessRenderTarget {};
-static vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
+struct Application::Context
+{
+    unique_ptr<Null_Renderer> HeadlessRenderer {};
+    raw_ptr<RenderTexture> HeadlessRenderTarget {};
+    vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
+};
 
 static constexpr int32 MAX_ATLAS_WIDTH_ = 2048;
 static constexpr int32 MAX_ATLAS_HEIGHT_ = 2048;
@@ -49,9 +52,16 @@ const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
-    Settings {std::move(settings)}
+    Settings {std::move(settings)},
+    MainWindow {this},
+    Render {this},
+    Input {this},
+    Audio {this}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_ctx);
+    _ctx = SafeAlloc::MakeUnique<Context>();
 
     ignore_unused(flags);
     ignore_unused(_time);
@@ -65,9 +75,29 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_nonConstHelper);
     ignore_unused(MainWindow._grabbed);
 
-    HeadlessRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
-    HeadlessRenderer->Init(Settings, nullptr);
+    _ctx->HeadlessRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
+    _ctx->HeadlessRenderer->Init(Settings, nullptr);
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
+}
+
+Application::~Application()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_ctx) {
+        return;
+    }
+
+    _imguiTextures.clear();
+    _imguiEffect = nullptr;
+    _imguiDrawBuf = nullptr;
+    _ctx->HeadlessRenderTarget = nullptr;
+
+    _ctx->HeadlessRenderer = nullptr;
+
+    MainWindow._windowHandle = nullptr;
+    _ctx->HeadlessWindowStubs.clear();
+    _ctx = nullptr;
 }
 
 void Application::OpenLink(string_view link)
@@ -109,7 +139,7 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     handle->Size = size;
 
     auto* ptr = handle.get();
-    HeadlessWindowStubs.emplace_back(std::move(handle));
+    _ctx->HeadlessWindowStubs.emplace_back(std::move(handle));
 
     return reinterpret_cast<WindowInternalHandle*>(ptr);
 }
@@ -287,7 +317,7 @@ void AppWindow::Destroy()
     FO_NON_CONST_METHOD_HINT();
 
     if (_windowHandle && this != &App->MainWindow) {
-        std::erase_if(HeadlessWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
+        std::erase_if(_app->_ctx->HeadlessWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
         _windowHandle = nullptr;
     }
 }
@@ -314,7 +344,7 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderer->CreateTexture(size, linear_filtered, with_depth);
+    return _app->_ctx->HeadlessRenderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
@@ -323,8 +353,8 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 
     FO_NON_CONST_METHOD_HINT();
 
-    HeadlessRenderTarget = tex;
-    HeadlessRenderer->SetRenderTarget(tex);
+    _app->_ctx->HeadlessRenderTarget = tex;
+    _app->_ctx->HeadlessRenderer->SetRenderTarget(tex);
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
@@ -333,7 +363,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderTarget.get();
+    return _app->_ctx->HeadlessRenderTarget.get();
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -342,7 +372,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 
     FO_NON_CONST_METHOD_HINT();
 
-    HeadlessRenderer->ClearRenderTarget(color, depth, stencil);
+    _app->_ctx->HeadlessRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(irect32 rect)
@@ -351,7 +381,7 @@ void AppRender::EnableScissor(irect32 rect)
 
     FO_NON_CONST_METHOD_HINT();
 
-    HeadlessRenderer->EnableScissor(rect);
+    _app->_ctx->HeadlessRenderer->EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
@@ -360,7 +390,7 @@ void AppRender::DisableScissor()
 
     FO_NON_CONST_METHOD_HINT();
 
-    HeadlessRenderer->DisableScissor();
+    _app->_ctx->HeadlessRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
@@ -369,7 +399,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderer->CreateDrawBuffer(is_static);
+    return _app->_ctx->HeadlessRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
@@ -378,7 +408,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderer->CreateEffect(usage, name, file_loader);
+    return _app->_ctx->HeadlessRenderer->CreateEffect(usage, name, file_loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
@@ -387,7 +417,7 @@ auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, f
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
+    return _app->_ctx->HeadlessRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() -> bool
@@ -396,7 +426,7 @@ auto AppRender::IsRenderTargetFlipped() -> bool
 
     FO_NON_CONST_METHOD_HINT();
 
-    return HeadlessRenderer->IsRenderTargetFlipped();
+    return _app->_ctx->HeadlessRenderer->IsRenderTargetFlipped();
 }
 
 auto AppInput::GetMousePosition() const -> ipos32

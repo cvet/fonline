@@ -41,6 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class Application;
+
 FO_DECLARE_EXCEPTION(AppInitException);
 
 ///@ ExportEnum
@@ -285,11 +287,15 @@ public:
     EventObserver<> OnScreenSizeChanged {};
 
 private:
-    AppWindow() = default;
+    explicit AppWindow(Application* app) :
+        _app {app}
+    {
+    }
 
     [[nodiscard]] auto ResolveWindowHandle() const -> WindowInternalHandle*;
     [[nodiscard]] auto ResolveWindowStub() const -> HeadlessWindowStub*;
 
+    raw_ptr<Application> _app;
     raw_ptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
@@ -321,8 +327,12 @@ public:
     void DisableScissor();
 
 private:
-    AppRender() = default;
+    explicit AppRender(Application* app) :
+        _app {app}
+    {
+    }
 
+    raw_ptr<Application> _app;
     int32 _nonConstHelper {};
 };
 
@@ -343,8 +353,12 @@ public:
     void SetClipboardText(string_view text);
 
 private:
-    AppInput() = default;
+    explicit AppInput(Application* app) :
+        _app {app}
+    {
+    }
 
+    raw_ptr<Application> _app;
     string _clipboardTextStorage {};
     int32 _nonConstHelper {};
 };
@@ -368,8 +382,12 @@ public:
     void UnlockDevice();
 
 private:
-    AppAudio() = default;
+    explicit AppAudio(Application* app) :
+        _app {app}
+    {
+    }
 
+    raw_ptr<Application> _app;
     int32 _nonConstHelper {};
 };
 
@@ -386,6 +404,10 @@ class Application final
 {
     friend void InitApp(int32 argc, char** argv, AppInitFlags flags);
     friend class SafeAlloc;
+    friend class AppWindow;
+    friend class AppRender;
+    friend class AppInput;
+    friend class AppAudio;
 
     Application(GlobalSettings&& settings, AppInitFlags flags);
 
@@ -396,7 +418,7 @@ public:
     Application(Application&&) noexcept = delete;
     auto operator=(const Application&) = delete;
     auto operator=(Application&&) noexcept = delete;
-    ~Application() = default;
+    ~Application();
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
     [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
@@ -431,8 +453,11 @@ public:
     AppAudio Audio;
 
 private:
+    struct Context;
+
     auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
 
+    unique_ptr<Context> _ctx {};
     uint64 _time {};
     uint64 _timeFrequency {};
     bool _isTablet {};
@@ -456,7 +481,7 @@ private:
     int32 _nonConstHelper {};
 };
 
-extern raw_ptr<Application> App;
+extern unique_ptr<Application> App;
 extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 
 FO_END_NAMESPACE

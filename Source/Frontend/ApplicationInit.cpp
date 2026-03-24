@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-raw_ptr<Application> App;
+unique_ptr<Application> App {};
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void SetupLogging(bool disable_log_tags);
@@ -89,7 +89,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     }
 
     // Application frontend initialization
-    App = SafeAlloc::MakeRaw<Application>(std::move(settings), flags);
+    App = SafeAlloc::MakeUnique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
     SetBadAllocCallback([]() FO_DEFERRED { App->RequestQuit(); });

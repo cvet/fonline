@@ -434,7 +434,11 @@ private:
 class OpenGL_Renderer final : public Renderer
 {
 public:
+    struct Context;
+
     static constexpr auto RING_BUFFER_LENGTH = 300;
+    OpenGL_Renderer();
+    ~OpenGL_Renderer() override;
 
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
@@ -450,6 +454,9 @@ public:
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
+
+private:
+    unique_ptr<Context> _ctx {};
 };
 
 #endif
@@ -459,6 +466,11 @@ public:
 class Direct3D_Renderer final : public Renderer
 {
 public:
+    struct Context;
+
+    Direct3D_Renderer();
+    ~Direct3D_Renderer() override;
+
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
@@ -473,6 +485,9 @@ public:
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
+
+private:
+    unique_ptr<Context> _ctx {};
 };
 
 #endif
