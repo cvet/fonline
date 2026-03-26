@@ -113,6 +113,12 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 
         if (fatal_error) {
             WriteLog(LogType::Error, "Shutdown!");
+
+#if FO_WEB
+            if (App) {
+                App->RequestQuit();
+            }
+#endif
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !App))) {
@@ -301,7 +307,9 @@ static void PrebakeResources(BakingSettings& settings)
     }
     else {
         if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
-            Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
+            if (!settings.IgnoreMissingBakerWarning) {
+                Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
+            }
         }
         else {
             throw AppInitException("Baker not found. Unable to bake resources");

@@ -53,6 +53,10 @@ void ExitApp(bool success) noexcept
 #else
     std::exit(code);
 #endif
+
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 }
 
 extern auto IsRunInDebugger() noexcept -> bool

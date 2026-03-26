@@ -3809,6 +3809,23 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	// The object types in templateInstanceTypes that are not also in generatedTemplateTypes are registered template specializations
 	generatedTemplateTypes.PushLast(ot);
 
+	// (FOnline Patch)
+	// These behaviours don't depend on the instantiated object type, but generic function preparation
+	// may need them while generating template constructors/methods, e.g. for autohandle params under
+	// AS_MAX_PORTABILITY. Make them available before GenerateFunctionForTemplateObjectInstance runs.
+	ot->beh.addref = templateType->beh.addref;
+	if( scriptFunctions[ot->beh.addref] ) scriptFunctions[ot->beh.addref]->AddRefInternal();
+	ot->beh.release = templateType->beh.release;
+	if( scriptFunctions[ot->beh.release] ) scriptFunctions[ot->beh.release]->AddRefInternal();
+	ot->beh.gcGetRefCount = templateType->beh.gcGetRefCount;
+	if( scriptFunctions[ot->beh.gcGetRefCount] ) scriptFunctions[ot->beh.gcGetRefCount]->AddRefInternal();
+	ot->beh.gcSetFlag = templateType->beh.gcSetFlag;
+	if( scriptFunctions[ot->beh.gcSetFlag] ) scriptFunctions[ot->beh.gcSetFlag]->AddRefInternal();
+	ot->beh.gcGetFlag = templateType->beh.gcGetFlag;
+	if( scriptFunctions[ot->beh.gcGetFlag] ) scriptFunctions[ot->beh.gcGetFlag]->AddRefInternal();
+	ot->beh.getWeakRefFlag = templateType->beh.getWeakRefFlag;
+	if( scriptFunctions[ot->beh.getWeakRefFlag] ) scriptFunctions[ot->beh.getWeakRefFlag]->AddRefInternal();
+
 	// Any child funcdefs must be copied to the template instance (with adjustments in case of template subtypes)
 	// This must be done before resolving other methods, to make sure the other methods that may refer to the
 	// templated funcdef will resolve to the new funcdef
@@ -3922,9 +3939,10 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		if (scriptFunctions[ot->beh.gcReleaseAllReferences]) scriptFunctions[ot->beh.gcReleaseAllReferences]->AddRefInternal();
 	}
 
+	// (FOnline Patch) moved upper
 	// For the last behaviours no unique copy is generated. It is not expected that
 	// anyone will need to see the correct objectType for these to implement them
-	ot->beh.addref = templateType->beh.addref;
+	/*ot->beh.addref = templateType->beh.addref;
 	if( scriptFunctions[ot->beh.addref] ) scriptFunctions[ot->beh.addref]->AddRefInternal();
 	ot->beh.release = templateType->beh.release;
 	if( scriptFunctions[ot->beh.release] ) scriptFunctions[ot->beh.release]->AddRefInternal();
@@ -3935,7 +3953,7 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	ot->beh.gcGetFlag = templateType->beh.gcGetFlag;
 	if( scriptFunctions[ot->beh.gcGetFlag] ) scriptFunctions[ot->beh.gcGetFlag]->AddRefInternal();
 	ot->beh.getWeakRefFlag = templateType->beh.getWeakRefFlag;
-	if( scriptFunctions[ot->beh.getWeakRefFlag] ) scriptFunctions[ot->beh.getWeakRefFlag]->AddRefInternal();
+	if( scriptFunctions[ot->beh.getWeakRefFlag] ) scriptFunctions[ot->beh.getWeakRefFlag]->AddRefInternal();*/
 
 	// As the new template type is instantiated, the engine should
 	// generate new functions to substitute the ones with the template subtype.

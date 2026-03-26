@@ -570,7 +570,7 @@ static auto Ipos_FitToRect(const ipos32& self, irect32 rect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return self.x >= rect.x && self.y >= rect.x && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
+    return self.x >= rect.x && self.y >= rect.y && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
 static void Isize_ConstructWandH(isize32* self, int32 width, int32 height)
@@ -718,7 +718,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "uint get_uhash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetUHash), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr hstring empty_hstring;
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetZero<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "hstring hstr() const", FO_SCRIPT_FUNC_THIS(String_ToHashedString), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "hstring hstr() const", FO_SCRIPT_GENERIC(String_ToHashedString), FO_SCRIPT_GENERIC_CONV));
 
     // Register any
     FO_AS_VERIFY(as_engine->RegisterObjectType("any", sizeof(any_t), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<any_t>()));

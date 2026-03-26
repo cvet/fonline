@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="application/wasm">
+  <link rel="icon" href="data:,">
   <title>$TITLE$</title>
   <style>
     .emscripten {
@@ -86,6 +87,47 @@
         transform: rotate(360deg);
       }
     }
+
+    .fo-error-panel {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: 16px;
+      bottom: 16px;
+      z-index: 100000;
+      background: rgba(18, 20, 24, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+    }
+
+    .fo-error-title {
+      color: #ffb4b4;
+      font: 600 18px Segoe UI, sans-serif;
+    }
+
+    .fo-error-text {
+      flex: 1;
+      width: 100%;
+      box-sizing: border-box;
+      resize: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      background: #111318;
+      color: #f3f4f6;
+      padding: 12px;
+      font: 13px Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .fo-error-actions {
+      display: flex;
+      gap: 8px;
+    }
   </style>
 </head>
 
@@ -102,27 +144,190 @@
   <div class="emscripten_border">
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
   </div>
+  <div id="fo-error-panel" class="fo-error-panel">
+    <div id="fo-error-title" class="fo-error-title">Error</div>
+    <textarea id="fo-error-text" class="fo-error-text" readonly></textarea>
+    <div class="fo-error-actions">
+      <button type="button" id="fo-error-copy">Copy</button>
+      <button type="button" id="fo-error-close">Close</button>
+    </div>
+  </div>
   <hr />
 
   <script type='text/javascript'>
     var statusElement = document.getElementById('status');
     var progressElement = document.getElementById('progress');
     var spinnerElement = document.getElementById('spinner');
+    var errorPanelElement = document.getElementById('fo-error-panel');
+    var errorTitleElement = document.getElementById('fo-error-title');
+    var errorTextElement = document.getElementById('fo-error-text');
+    var errorCopyButton = document.getElementById('fo-error-copy');
+    var errorCloseButton = document.getElementById('fo-error-close');
+    var recentLogEntries = [];
+    var errorEntries = [];
+    var maxLogEntries = 200;
+    var originalConsole = {
+      log: console.log.bind(console),
+      info: console.info ? console.info.bind(console) : console.log.bind(console),
+      warn: console.warn ? console.warn.bind(console) : console.log.bind(console),
+      error: console.error ? console.error.bind(console) : console.log.bind(console)
+    };
+
+    function formatLogText(args) {
+      return Array.prototype.slice.call(args).map(function (part) {
+        if (typeof part === 'string') {
+          return part;
+        }
+        if (part instanceof Error) {
+          return part.stack || part.message || String(part);
+        }
+
+        try {
+          return JSON.stringify(part);
+        }
+        catch (_) {
+          return String(part);
+        }
+      }).join(' ');
+    }
+
+    function pushLogEntry(level, text) {
+      if (!text) {
+        return;
+      }
+
+      recentLogEntries.push('[' + level + '] ' + text);
+      if (recentLogEntries.length > maxLogEntries) {
+        recentLogEntries.splice(0, recentLogEntries.length - maxLogEntries);
+      }
+    }
+
+    function buildErrorText() {
+      var sections = [];
+
+      if (errorEntries.length !== 0) {
+        sections.push(errorEntries.join('\n\n'));
+      }
+      if (recentLogEntries.length !== 0) {
+        sections.push('=== Recent log ===\n' + recentLogEntries.join('\n'));
+      }
+
+      return sections.join('\n\n');
+    }
+
+    function captureConsole(level) {
+      return function () {
+        var text = formatLogText(arguments);
+        pushLogEntry(level, text);
+        originalConsole[level](...arguments);
+      };
+    }
+
+    console.log = captureConsole('log');
+    console.info = captureConsole('info');
+    console.warn = captureConsole('warn');
+    console.error = captureConsole('error');
+
+    function copyErrorText() {
+      if (!errorTextElement.value) {
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(errorTextElement.value).catch(function () {
+          errorTextElement.focus();
+          errorTextElement.select();
+          document.execCommand('copy');
+        });
+        return;
+      }
+
+      errorTextElement.focus();
+      errorTextElement.select();
+      document.execCommand('copy');
+    }
+
+    function showErrorPanel(title, text, append) {
+      if (!append) {
+        errorEntries = [];
+      }
+
+      if (text) {
+        errorEntries.push(text);
+      }
+
+      errorTextElement.value = buildErrorText();
+      errorTitleElement.textContent = title || 'Error';
+      errorPanelElement.style.display = 'flex';
+      spinnerElement.style.display = 'none';
+      statusElement.textContent = title || 'Error';
+    }
+
+    function showLogPanel() {
+      errorTextElement.value = buildErrorText() || 'Log is empty';
+      errorTitleElement.textContent = 'Log';
+      errorPanelElement.style.display = 'flex';
+    }
+
+    function toggleLogPanel() {
+      if (errorPanelElement.style.display === 'flex') {
+        errorPanelElement.style.display = 'none';
+        return;
+      }
+
+      showLogPanel();
+    }
+
+    window.foShowError = function (title, text, append) {
+      showErrorPanel(title, text, append === true);
+    };
+
+    errorCopyButton.addEventListener('click', copyErrorText);
+    errorCloseButton.addEventListener('click', function () {
+      errorPanelElement.style.display = 'none';
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.defaultPrevented || event.repeat) {
+        return;
+      }
+
+      if (event.key === 'F8') {
+        event.preventDefault();
+        toggleLogPanel();
+      }
+    });
+
     var Module = {
-      preRun: [],
+      preRun: [function () {
+        if (typeof FS !== 'undefined') {
+          FS.chdir('/');
+        }
+      }],
       postRun: [],
+      onRuntimeInitialized: function () {
+        Module.setStatus('');
+      },
 
       print: function (text) {
         if (arguments.length > 1) {
           text = Array.prototype.slice.call(arguments).join(' ');
         }
+
+        pushLogEntry('stdout', text);
       },
 
       printErr: function (text) {
         if (arguments.length > 1) {
           text = Array.prototype.slice.call(arguments).join(' ');
         }
-        console.error(text);
+
+        pushLogEntry('stderr', text);
+        originalConsole.error(text);
+
+        if (typeof text === 'string' && (text.indexOf('exception') !== -1 || text.indexOf('Exception') !== -1 || text.indexOf('error') !== -1 || text.indexOf('Error') !== -1)) {
+          window.foShowError('Runtime Error', text, true);
+        }
       },
 
       canvas: (function () {
@@ -175,18 +380,47 @@
 
     Module.setStatus('Downloading...');
 
-    window.onerror = function () {
-      Module.setStatus('Exception thrown, see JavaScript console');
-      spinnerElement.style.display = 'none';
+    window.onerror = function (message, source, lineno, colno, error) {
+      var details = [];
+
+      if (message) {
+        details.push(String(message));
+      }
+      if (source) {
+        details.push(String(source) + ':' + String(lineno || 0) + ':' + String(colno || 0));
+      }
+      if (error && error.stack) {
+        details.push(String(error.stack));
+      }
+
+      window.foShowError('JavaScript Error', details.join('\n\n') || 'Unknown JavaScript error');
+      Module.setStatus('JavaScript Error');
       Module.setStatus = function (text) {
         if (text) {
           Module.printErr('[post-exception status] ' + text);
         }
       };
+
+      return false;
     };
+
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event.reason;
+      var text = 'Unhandled promise rejection';
+
+      if (reason && reason.stack) {
+        text += '\n\n' + String(reason.stack);
+      }
+      else if (typeof reason !== 'undefined') {
+        text += '\n\n' + String(reason);
+      }
+
+      pushLogEntry('promise', text);
+      window.foShowError('JavaScript Error', text, true);
+    });
   </script>
-  <script async type="text/javascript" src="$RESOURCESJS$"></script>
-  <script async type="text/javascript" src="$MAINJS$"></script>
+  <script type="text/javascript" src="$RESOURCESJS$"></script>
+  <script type="text/javascript" src="$MAINJS$"></script>
 </body>
 
 </html>

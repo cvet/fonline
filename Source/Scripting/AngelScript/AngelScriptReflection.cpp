@@ -59,13 +59,41 @@ static auto GetTypeInfoById(AngelScript::asIScriptEngine* engine, int32 typeId) 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto dt = dynamic_cast<AngelScript::asCScriptEngine*>(engine)->GetDataTypeFromTypeId(typeId);
+    return engine->GetTypeInfoById(typeId);
+}
 
-    if (dt.IsValid()) {
-        return dt.GetTypeInfo();
+static auto GetRefTypeInfoById(AngelScript::asIScriptEngine* engine, int32 typeId) -> AngelScript::asITypeInfo*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* type_info = GetTypeInfoById(engine, typeId);
+
+    if (type_info == nullptr || (type_info->GetFlags() & AngelScript::asOBJ_REF) == 0) {
+        return nullptr;
     }
 
-    return nullptr;
+    return type_info;
+}
+
+static auto DescribeTypeId(AngelScript::asIScriptEngine* engine, int32 typeId) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* type_info = GetTypeInfoById(engine, typeId);
+    const auto* decl = engine->GetTypeDeclaration(typeId, true);
+
+    return strex("typeId={}, decl='{}', isHandle={}, isObj={}, flags=0x{:X}", typeId, decl != nullptr ? decl : "<null>", (typeId & AngelScript::asTYPEID_OBJHANDLE) != 0, (typeId & AngelScript::asTYPEID_MASK_OBJECT) != 0, type_info != nullptr ? type_info->GetFlags() : 0);
+}
+
+static auto DescribeTypeInfo(AngelScript::asIScriptEngine* engine, AngelScript::asITypeInfo* typeInfo) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (typeInfo == nullptr) {
+        return "<null>";
+    }
+
+    return strex("typeId={}, decl='{}', flags=0x{:X}", typeInfo->GetTypeId(), engine->GetTypeDeclaration(typeInfo->GetTypeId(), true), typeInfo->GetFlags());
 }
 
 ScriptType::ScriptType(AngelScript::asITypeInfo* ti) :
@@ -304,56 +332,59 @@ auto ScriptType::GetEnumValues() const -> ScriptArray*
     return result;
 }
 
-void ScriptType::Instantiate(void* out, int32 out_type_id) const
+void ScriptType::Instantiate(void** out, int32 out_type_id) const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* engine = _typeInfo->GetEngine();
+    auto* out_type_info = GetRefTypeInfoById(engine, out_type_id);
 
-    if ((out_type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        throw ScriptException("Invalid 'instance' argument, not an handle");
+    if (out_type_info == nullptr) {
+        throw ScriptException(strex("Invalid 'instance' argument, not an handle ({})", DescribeTypeId(engine, out_type_id)));
     }
-    if (*static_cast<void**>(out) != nullptr) {
-        throw ScriptException("Invalid 'instance' argument, handle must be null");
+    if (*out != nullptr) {
+        throw ScriptException(strex("Invalid 'instance' argument, handle must be null ({})", DescribeTypeId(engine, out_type_id)));
     }
-    if (!_typeInfo->DerivesFrom(GetTypeInfoById(engine, out_type_id))) {
-        throw ScriptException("Invalid 'instance' argument, incompatible types");
+    if (!_typeInfo->DerivesFrom(out_type_info)) {
+        throw ScriptException(strex("Invalid 'instance' argument, incompatible types (instance: {}, expected='{}')", DescribeTypeId(engine, out_type_id), _typeInfo->GetName()));
     }
 
-    *static_cast<void**>(out) = engine->CreateScriptObject(_typeInfo.get());
+    *out = engine->CreateScriptObject(_typeInfo.get());
 }
 
-void ScriptType::InstantiateCopy(void* in, int32 in_type_id, void* out, int32 out_type_id) const
+void ScriptType::InstantiateCopy(void* in, int32 in_type_id, void** out, int32 out_type_id) const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* engine = _typeInfo->GetEngine();
+    auto* out_type_info = GetRefTypeInfoById(engine, out_type_id);
+    auto* in_type_info = GetRefTypeInfoById(engine, in_type_id);
 
-    if ((out_type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        throw ScriptException("Invalid 'instance' argument, not an handle");
+    if (out_type_info == nullptr) {
+        throw ScriptException(strex("Invalid 'instance' argument, not an handle ({})", DescribeTypeId(engine, out_type_id)));
     }
-    if (*static_cast<void**>(out) != nullptr) {
-        throw ScriptException("Invalid 'instance' argument, handle must be null");
+    if (*out != nullptr) {
+        throw ScriptException(strex("Invalid 'instance' argument, handle must be null ({})", DescribeTypeId(engine, out_type_id)));
     }
-    if (!_typeInfo->DerivesFrom(GetTypeInfoById(engine, out_type_id))) {
-        throw ScriptException("Invalid 'instance' argument, incompatible types");
+    if (!_typeInfo->DerivesFrom(out_type_info)) {
+        throw ScriptException(strex("Invalid 'instance' argument, incompatible types (instance: {}, expected='{}')", DescribeTypeId(engine, out_type_id), _typeInfo->GetName()));
     }
 
-    if ((in_type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        throw ScriptException("Invalid 'copyFrom' argument, not an handle");
+    if (in_type_info == nullptr) {
+        throw ScriptException(strex("Invalid 'copyFrom' argument, not an handle ({})", DescribeTypeId(engine, in_type_id)));
     }
     if (*static_cast<void**>(in) == nullptr) {
-        throw ScriptException("Invalid 'copyFrom' argument, handle must be not null");
+        throw ScriptException(strex("Invalid 'copyFrom' argument, handle must be not null ({})", DescribeTypeId(engine, in_type_id)));
     }
 
     in = *static_cast<void**>(in);
     const auto* in_obj = cast_from_void<AngelScript::asIScriptObject*>(in);
 
     if (in_obj->GetObjectType() != _typeInfo) {
-        throw ScriptException("Invalid 'copyFrom' argument, incompatible types");
+        throw ScriptException(strex("Invalid 'copyFrom' argument, incompatible runtime type (copyFrom: {}, runtime: {}, expected='{}')", DescribeTypeId(engine, in_type_id), DescribeTypeInfo(engine, in_obj->GetObjectType()), _typeInfo->GetName()));
     }
 
-    *static_cast<void**>(out) = engine->CreateScriptObjectCopy(in, _typeInfo.get());
+    *out = engine->CreateScriptObjectCopy(in, _typeInfo.get());
 }
 
 static auto ScriptTypeOfTemplateCallback(AngelScript::asITypeInfo* ot, bool& dont_garbage_collect) -> bool
@@ -544,6 +575,30 @@ static void RegisterTypeMethod(AngelScript::asIScriptEngine* engine, const char*
     FO_AS_VERIFY(engine->RegisterObjectMethod("typeof<T>", declaration, func_pointer, FO_SCRIPT_METHOD_CONV));
 }
 
+static void ScriptType_Instantiate_Generic(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* self = reinterpret_cast<ScriptType*>(gen->GetObject());
+    auto** out = reinterpret_cast<void**>(gen->GetArgAddress(0));
+    const auto out_type_id = gen->GetArgTypeId(0);
+
+    self->Instantiate(out, out_type_id);
+}
+
+static void ScriptType_InstantiateCopy_Generic(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* self = reinterpret_cast<ScriptType*>(gen->GetObject());
+    auto* in = gen->GetArgAddress(0);
+    const auto in_type_id = gen->GetArgTypeId(0);
+    auto** out = reinterpret_cast<void**>(gen->GetArgAddress(1));
+    const auto out_type_id = gen->GetArgTypeId(1);
+
+    self->InstantiateCopy(in, in_type_id, out, out_type_id);
+}
+
 void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
@@ -580,8 +635,10 @@ void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine)
     RegisterTypeMethod(as_engine, "bool implements(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, Implements));
     RegisterTypeMethod(as_engine, "bool opEquals(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, Equals));
     RegisterTypeMethod(as_engine, "bool derivesFrom(const type@+ other) const", FO_SCRIPT_METHOD(ScriptType, DerivesFrom));
-    RegisterTypeMethod(as_engine, "void instantiate(?&out instance) const", FO_SCRIPT_METHOD(ScriptType, Instantiate));
-    RegisterTypeMethod(as_engine, "void instantiate(?&in copyFrom, ?&out instance) const", FO_SCRIPT_METHOD(ScriptType, InstantiateCopy));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("type", "void instantiate(?&out instance) const", FO_SCRIPT_GENERIC(ScriptType_Instantiate_Generic), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("typeof<T>", "void instantiate(?&out instance) const", FO_SCRIPT_GENERIC(ScriptType_Instantiate_Generic), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("type", "void instantiate(?&in copyFrom, ?&out instance) const", FO_SCRIPT_GENERIC(ScriptType_InstantiateCopy_Generic), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("typeof<T>", "void instantiate(?&in copyFrom, ?&out instance) const", FO_SCRIPT_GENERIC(ScriptType_InstantiateCopy_Generic), FO_SCRIPT_GENERIC_CONV));
     RegisterTypeMethod(as_engine, "int get_methodsCount() const", FO_SCRIPT_METHOD(ScriptType, GetMethodsCount));
     RegisterTypeMethod(as_engine, "string getMethodDeclaration(int index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", FO_SCRIPT_METHOD(ScriptType, GetMethodDeclaration));
     RegisterTypeMethod(as_engine, "int get_propertiesCount() const", FO_SCRIPT_METHOD(ScriptType, GetPropertiesCount));

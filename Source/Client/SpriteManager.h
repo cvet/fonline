@@ -295,8 +295,6 @@ public:
     void ClearFonts();
 
 private:
-    static constexpr int32 FONT_BUF_LEN = 0x5000;
-    static constexpr int32 FONT_MAX_LINES = 1000;
     static constexpr int32 FORMAT_TYPE_DRAW = 0;
     static constexpr int32 FORMAT_TYPE_SPLIT = 1;
     static constexpr int32 FORMAT_TYPE_LCOUNT = 2;
@@ -331,20 +329,41 @@ private:
         raw_ptr<const FontData> CurFont {};
         uint32 Flags {};
         irect32 Rect {};
-        char Str[FONT_BUF_LEN] {};
+        vector<char> Str {};
         raw_ptr<char> PStr {};
         int32 LinesAll {1};
         int32 LinesInRect {};
         int32 CurX {};
         int32 CurY {};
         int32 MaxCurX {};
-        ucolor ColorDots[FONT_BUF_LEN] {};
-        int32 LineWidth[FONT_MAX_LINES] {};
-        int32 LineSpaceWidth[FONT_MAX_LINES] {};
+        vector<ucolor> ColorDots {};
+        vector<int32> LineWidth {};
+        vector<int32> LineSpaceWidth {};
         int32 OffsColDots {};
         ucolor DefColor {COLOR_TEXT};
         raw_ptr<vector<string>> StrLines {};
         bool IsError {};
+
+        void Prepare(string_view str)
+        {
+            const auto str_len = str.length();
+            const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
+            const auto max_lines = std::max<size_t>(str_len + 1, 1);
+
+            Str.assign(max_chars, '\0');
+            ColorDots.assign(max_chars, ucolor::clear);
+            LineWidth.assign(max_lines, 0);
+            LineSpaceWidth.assign(max_lines, 0);
+            PStr = Str.data();
+            LinesAll = 1;
+            LinesInRect = 0;
+            CurX = 0;
+            CurY = 0;
+            MaxCurX = 0;
+            OffsColDots = 0;
+            StrLines = nullptr;
+            IsError = false;
+        }
     };
 
     auto GetFont(int32 num) -> FontData*;

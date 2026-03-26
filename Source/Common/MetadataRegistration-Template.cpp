@@ -59,6 +59,8 @@ FO_BEGIN_NAMESPACE
 
 ///@ CodeGen Global
 
+///@ CodeGen RegisterHelpers
+
 #if !STUB_MODE
 #if SERVER_REGISTRATION
 void RegisterServerMetadata(EngineMetadata* meta, const FileSystem* resources)
@@ -80,8 +82,6 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(meta);
-
-    const auto resolve_type = [&](string_view type_str) { return meta->ResolveComplexType(type_str); };
 
 #if SERVER_REGISTRATION
     meta->RegisterSide(EngineSideKind::ServerSide);

@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -385,7 +386,7 @@ def run_bash(command: str, cwd: str | Path | None = None, env: Mapping[str, str]
 
 def run_windows_cmd(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', command)
-	subprocess.check_call(['cmd', '/d', '/s', '/c', command], cwd=cwd, env=dict(env) if env is not None else None)
+	subprocess.check_call(['cmd', '/d', '/c', command], cwd=cwd, env=dict(env) if env is not None else None)
 
 
 def resolve_windows_build(platform_name: str) -> tuple[str, str | None]:
@@ -435,8 +436,16 @@ def run_in_emsdk_env(command: Sequence[str], workspace: Path, cwd: str | Path | 
 		emscripten_env = emscripten_root / 'emsdk_env.bat'
 		if not emscripten_env.is_file():
 			raise SystemExit(f'Emscripten environment script not found: {emscripten_env}')
-		full_command = f'call "{emscripten_env}" >nul && {join_windows_args(command)}'
-		run_windows_cmd(full_command, cwd=cwd, env=env)
+		with tempfile.NamedTemporaryFile('w', suffix='.cmd', delete=False, encoding='utf-8') as script_file:
+			script_file.write('@echo off\n')
+			script_file.write(f'call "{emscripten_env}" >nul\n')
+			script_file.write('if errorlevel 1 exit /b %errorlevel%\n')
+			script_file.write(f'{join_windows_args(command)}\n')
+			temp_script = Path(script_file.name)
+		try:
+			run(['cmd', '/d', '/c', str(temp_script)], cwd=cwd, env=env)
+		finally:
+			temp_script.unlink(missing_ok=True)
 	else:
 		emscripten_env = emscripten_root / 'emsdk_env.sh'
 		if not emscripten_env.is_file():
@@ -748,6 +757,8 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 		'Raw+WebServer',
 		'-config',
 		'LocalTest',
+		'-zip-compress-level',
+		'1',
 		'-output',
 		str(output_root),
 	]

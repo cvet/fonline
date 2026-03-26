@@ -200,6 +200,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(BakingSettings, virtual BaseSettings);
 FIXED_SETTING(bool, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, SingleThreadBaking, false); // If true, single-threaded baking is enabled
+FIXED_SETTING(bool, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
 FIXED_SETTING(vector<string>, RawCopyFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Raw copy file extensions
 FIXED_SETTING(vector<string>, ProtoFileExtensions, "fopro", "fomap"); // Proto file extensions
 FIXED_SETTING(vector<string>, BakeLanguages, "engl"); // Bake languages

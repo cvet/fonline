@@ -305,8 +305,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     else {
         return ParseValidatedScalarValue(str, value_type);
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 auto AnyData::ReadToken(const char* str, string& result) -> const char*

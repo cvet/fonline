@@ -1384,7 +1384,7 @@ static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     ScriptArray* clone = ScriptArray::Create(ti);
@@ -1406,7 +1406,7 @@ static void ScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     arr = *other;
@@ -1421,7 +1421,7 @@ static void ScriptArray_InsertArrAt(ScriptArray& arr, int32 index, const ScriptA
     }
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     arr.InsertAt(index, *other);
@@ -1432,7 +1432,7 @@ static void ScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* othe
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     arr.InsertAt(0, *other);
@@ -1443,7 +1443,7 @@ static void ScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     arr.InsertAt(arr.GetSize(), *other);
@@ -1454,7 +1454,7 @@ static auto ScriptArray_Equals(ScriptArray& arr, const ScriptArray* other) -> bo
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Array is null");
+        throw ScriptException("Array arg is null");
     }
 
     return arr == *other;
@@ -1474,7 +1474,7 @@ void RegisterAngelScriptArray(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int&in)", FO_SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*), ScriptArray*), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int&in, int length)", FO_SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*, int32), ScriptArray*), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int&in, int length, const T&in value)", FO_SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*, int32, void*), ScriptArray*), FO_SCRIPT_FUNC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", FO_SCRIPT_FUNC(ScriptArray_Factory), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_FACTORY, "array<T>@ f(int&in, const array<T>@+)", FO_SCRIPT_FUNC(ScriptArray_Factory), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_LIST_FACTORY, "array<T>@ f(int&in type, int&in list) {repeat T}", FO_SCRIPT_FUNC_EXT(ScriptArray::Create, (AngelScript::asITypeInfo*, void*), ScriptArray*), FO_SCRIPT_FUNC_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptArray, AddRef), FO_SCRIPT_METHOD_CONV));

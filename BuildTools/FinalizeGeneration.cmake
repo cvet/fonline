@@ -1011,8 +1011,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h"
-        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptWrappedCall-Include.h")
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h")
     add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
     target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
     target_link_libraries(AngelScriptScripting EssentialsLib AngelScriptCore AngelScriptPreprocessor)

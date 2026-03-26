@@ -279,22 +279,25 @@ static void ScriptObject_Construct_Generic(asIScriptGeneric *gen)
 	ScriptObject_Construct(objType, self);
 }
 
-#endif
+#else
 
-static void ScriptObject_GetWeakRefFlag_GenericCompat(asIScriptGeneric *gen) // (FOnline Patch)
+static void ScriptObject_GetWeakRefFlag_Generic(asIScriptGeneric *gen) // (FOnline Patch)
 {
 	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
 	*(asILockableSharedBool**)gen->GetAddressOfReturnLocation() = self->GetWeakRefFlag();
 }
 
-static void ScriptObject_Assignment_GenericCompat(asIScriptGeneric *gen) // (FOnline Patch)
+static void ScriptObject_Assignment_Generic(asIScriptGeneric *gen) // (FOnline Patch)
 {
 	asCScriptObject *other = *(asCScriptObject**)gen->GetAddressOfArg(0);
 	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
 
 	*self = *other;
+
 	*(asCScriptObject**)gen->GetAddressOfReturnLocation() = self;
 }
+
+#endif
 
 void RegisterScriptObject(asCScriptEngine *engine)
 {
@@ -308,10 +311,10 @@ void RegisterScriptObject(asCScriptEngine *engine)
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_CONSTRUCT, "void f(int&in)", asFUNCTION(ScriptObject_Construct), asCALL_CDECL_OBJLAST, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ADDREF, "void f()", asMETHOD(asCScriptObject,AddRef), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_RELEASE, "void f()", asMETHOD(asCScriptObject,Release), asCALL_THISCALL, 0); asASSERT( r >= 0 );
-	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in)", asFUNCTION(ScriptObject_Assignment_GenericCompat), asCALL_GENERIC); asASSERT( r >= 0 ); // (FOnline Patch)
+	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in)", asFUNCTION(ScriptObject_Assignment_Generic), asCALL_GENERIC); asASSERT( r >= 0 ); // (FOnline Patch)
 
 	// Weakref behaviours
-	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GET_WEAKREF_FLAG, "int &f()", asFUNCTION(ScriptObject_GetWeakRefFlag_GenericCompat), asCALL_GENERIC, 0); asASSERT( r >= 0 ); // (FOnline Patch)
+	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GET_WEAKREF_FLAG, "int &f()", asFUNCTION(ScriptObject_GetWeakRefFlag_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 ); // (FOnline Patch)
 	
 	// Register GC behaviours
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(asCScriptObject,GetRefCount), asCALL_THISCALL, 0); asASSERT( r >= 0 );

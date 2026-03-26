@@ -1017,7 +1017,7 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Dict is null");
+        throw ScriptException("Dict arg is null");
     }
 
     ScriptDict* clone = ScriptDict::Create(ti);
@@ -1039,7 +1039,7 @@ static auto ScriptDict_Equals(const ScriptDict& dict, const ScriptDict* other) -
     FO_STACK_TRACE_ENTRY();
 
     if (other == nullptr) {
-        throw ScriptException("Dict is null");
+        throw ScriptException("Dict arg is null");
     }
 
     return dict == *other;

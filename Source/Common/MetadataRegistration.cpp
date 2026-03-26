@@ -35,6 +35,16 @@
 
 FO_BEGIN_NAMESPACE
 
+static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+
 void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
@@ -75,8 +85,22 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
 
     reader.VerifyEnd();
 
-    // Enums
-    for (const auto& tokens : engine_data["Enum"]) {
+    RegisterDynamicMetadataEnums(meta, engine_data["Enum"]);
+    RegisterDynamicMetadataEntities(meta, engine_data["Entity"]);
+    RegisterDynamicMetadataEntityHolders(meta, engine_data["EntityHolder"]);
+    RegisterDynamicMetadataFixedTypes(meta, engine_data["FixedType"]);
+    RegisterDynamicMetadataProperties(meta, engine_data["Property"]);
+    RegisterDynamicMetadataEvents(meta, engine_data["Event"]);
+    RegisterDynamicMetadataRemoteCalls(meta, engine_data["RemoteCall"]);
+    RegisterDynamicMetadataSettings(meta, engine_data["Setting"]);
+    RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
+}
+
+static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 2);
         FO_RUNTIME_ASSERT(tokens.size() % 2 == 0);
         const auto& enum_name = tokens[0];
@@ -102,9 +126,13 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
             }
         }
     }
+}
 
-    // Entities
-    for (const auto& tokens : engine_data["Entity"]) {
+static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(!tokens.empty());
         const auto name = tokens[0];
         const auto flags = span(tokens).subspan(1);
@@ -115,17 +143,13 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
 
         meta->RegisterEntityType(name, false, is_global, has_protos, has_statics, has_abstract);
     }
+}
 
-    // Fixed types
-    for (const auto& tokens : engine_data["FixedType"]) {
-        FO_RUNTIME_ASSERT(!tokens.empty());
-        const auto name = tokens[0];
+static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        meta->RegisterFixedType(name, false);
-    }
-
-    // Entity holders
-    for (const auto& tokens : engine_data["EntityHolder"]) {
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 4);
         const auto target = tokens[0];
         const auto holder_entity = tokens[1];
@@ -148,9 +172,24 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
             meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
         }
     }
+}
 
-    // Properties
-    for (const auto& tokens : engine_data["Property"]) {
+static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
+        FO_RUNTIME_ASSERT(!tokens.empty());
+
+        meta->RegisterFixedType(tokens[0], false);
+    }
+}
+
+static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 4);
         const auto entity_name = tokens[0];
         auto* prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
@@ -160,9 +199,13 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
         const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32>(prop->GetRegIndex()));
     }
+}
 
-    // Events
-    for (const auto& tokens : engine_data["Event"]) {
+static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 3);
         FO_RUNTIME_ASSERT((tokens.size() - 3) % 2 == 0);
         const auto entity_name = tokens[0];
@@ -178,9 +221,13 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
 
         meta->RegisterEntityEvent(entity_name, std::move(event));
     }
+}
 
-    // Remote calls
-    for (const auto& tokens : engine_data["RemoteCall"]) {
+static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 3);
         FO_RUNTIME_ASSERT((tokens.size() - 3) % 2 == 0);
         RemoteCallDesc remote_call;
@@ -201,18 +248,26 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
             meta->RegisterOutboundRemoteCall(std::move(remote_call));
         }
     }
+}
 
-    // Settings
-    for (const auto& tokens : engine_data["Setting"]) {
+static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 2);
         const auto name = tokens[0];
         const auto& type = meta->GetBaseType(tokens[1]);
 
         meta->RegisterGameSetting(name, type);
     }
+}
 
-    // Migration rules
-    for (const auto& tokens : engine_data["MigrationRule"]) {
+static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 4);
 
         meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);

@@ -1638,8 +1638,8 @@ def append_ref_method_registration(
     setter: bool = False,
 ) -> None:
     register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
-        '.Args = {' + ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type) + '")}' for p in params) + '}, ' +
-        '.Ret = ' + ('resolve_type("' + meta_type_to_unified_type(ret) + '")' if ret != 'void' else '{' + '}') + ', ' +
+        '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type) + '")}' for p in params) + '}, ' +
+        '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(ret) + '")' if ret != 'void' else '{' + '}') + ', ' +
             '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); }' if is_stub else ''))
     if not is_stub:
         is_property = getter or setter
@@ -1663,50 +1663,123 @@ def calc_unique_zone_name(zone_names: list[str], name: str) -> str:
     return name if count == 0 else name + '_' + str(count + 1)
 
 
-def append_ref_type_registration(register_lines: list[str], target: str, is_stub: bool) -> None:
-    allowed_targets = get_allowed_registration_targets(target)
+def sanitize_cpp_identifier(name: str) -> str:
+    result = ''.join(char if char.isalnum() else '_' for char in name)
+    if not result:
+        return 'Generated'
+    if result[0].isdigit():
+        return '_' + result
+    return result
 
-    register_lines.append('// Ref types')
-    for ref_type_tag in codegen_tags['ExportRefType']:
-        if ref_type_tag.target in allowed_targets:
-            register_lines.append('meta->RegisterRefType("' + ref_type_tag.name + '");')
+
+def make_unique_cpp_identifier(used_names: set[str], prefix: str, name: str) -> str:
+    base_name = prefix + sanitize_cpp_identifier(name)
+    unique_name = base_name
+    suffix = 2
+
+    while unique_name in used_names:
+        unique_name = base_name + '_' + str(suffix)
+        suffix += 1
+
+    used_names.add(unique_name)
+    return unique_name
+
+
+def append_static_function(lines: list[str], signature: str, body_lines: list[str], add_break: bool = False) -> None:
+    lines.append(signature)
+    lines.append('{')
+    for body_line in body_lines:
+        lines.append(('    ' + body_line) if body_line else '')
+    lines.append('}')
+    lines.append('')
+
+
+def append_enum_registration(helper_lines: list[str], register_lines: list[str]) -> None:
+    used_names: set[str] = set()
+
+    for enum_tag in codegen_tags['ExportEnum']:
+        function_name = make_unique_cpp_identifier(used_names, 'RegisterEnum_', enum_tag.group_name)
+        body_lines = ['meta->RegisterEnumGroup("' + enum_tag.group_name + '", "' + enum_tag.underlying_type + '",', '{']
+        for key_value in enum_tag.key_values:
+            body_lines.append('    {"' + key_value.key + '", ' + require_enum_value_text(key_value) + '},')
+        body_lines.append('});')
+
+        append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
+        register_lines.append(function_name + '(meta);')
+
+    if codegen_tags['ExportEnum']:
+        register_lines.append('')
+
+
+def append_value_type_registration(helper_lines: list[str], register_lines: list[str]) -> None:
+    if not codegen_tags['ExportValueType']:
+        return
+
+    body_lines: list[str] = []
+
+    for value_type_tag in codegen_tags['ExportValueType']:
+        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '");')
+
+    body_lines.append('')
+
+    for value_type_tag in codegen_tags['ExportValueType']:
+        body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
+        for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
+            field_type, field_name = layout_entry.split('-')
+            body_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
+        body_lines.append('} });')
+        body_lines.append('')
+
+    append_static_function(helper_lines, 'static void RegisterValueTypes(EngineMetadata* meta)', body_lines)
+    register_lines.append('RegisterValueTypes(meta);')
     register_lines.append('')
+
+
+def append_ref_type_registration(helper_lines: list[str], register_lines: list[str], target: str, is_stub: bool) -> None:
+    allowed_targets = get_allowed_registration_targets(target)
+    used_names: set[str] = set()
 
     for ref_type_tag in codegen_tags['ExportRefType']:
         if ref_type_tag.target not in allowed_targets:
             continue
 
-        register_lines.append('meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {')
+        function_name = make_unique_cpp_identifier(used_names, 'RegisterRefType_', ref_type_tag.name)
+        body_lines = ['meta->RegisterRefType("' + ref_type_tag.name + '");',
+                '',
+                'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
         if 'RefCounted' in ref_type_tag.flags:
-            append_ref_call_registration(register_lines, '__AddRef', 'static void Call(' + ref_type_tag.name + '* self) { self->AddRef(); }', is_stub)
-            append_ref_call_registration(register_lines, '__Release', 'static void Call(' + ref_type_tag.name + '* self) { self->Release(); }', is_stub)
+            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(' + ref_type_tag.name + '* self) { self->AddRef(); }', is_stub)
+            append_ref_call_registration(body_lines, '__Release', 'static void Call(' + ref_type_tag.name + '* self) { self->Release(); }', is_stub)
 
         if 'HasFactory' in ref_type_tag.flags:
-            register_lines.append('    MethodDesc{ .Name = "__Factory", ' +
-                    '.Ret = resolve_type("' + ref_type_tag.name + '"), .Call = [](FuncCallData& call) {' +
+            body_lines.append('    MethodDesc{ .Name = "__Factory", ' +
+                    '.Ret = meta->ResolveComplexType("' + ref_type_tag.name + '"), .Call = [](FuncCallData& call) {' +
                     (' ignore_unused(call); } },' if is_stub else ''))
             if not is_stub:
-                register_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
-                register_lines.append('        struct Wrapped { ' + 'static auto Call() -> ' + ref_type_tag.name + '* ' +
+                body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
+                body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ' + ref_type_tag.name + '* ' +
                         '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
-                register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
-                register_lines.append('    } },')
+                body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
+                body_lines.append('    } },')
 
         for field in ref_type_tag.fields:
-            append_ref_method_registration(register_lines, ref_type_tag, field.name, field.field_type, [], is_stub, getter=True)
-            append_ref_method_registration(register_lines, ref_type_tag, field.name, 'void', [MethodArg(field.field_type, 'value')], is_stub, setter=True)
+            append_ref_method_registration(body_lines, ref_type_tag, field.name, field.field_type, [], is_stub, getter=True)
+            append_ref_method_registration(body_lines, ref_type_tag, field.name, 'void', [MethodArg(field.field_type, 'value')], is_stub, setter=True)
         for method in ref_type_tag.methods:
-            append_ref_method_registration(register_lines, ref_type_tag, method.name, method.ret, method.args, is_stub)
-        register_lines.append('});')
+            append_ref_method_registration(body_lines, ref_type_tag, method.name, method.ret, method.args, is_stub)
+        body_lines.append('});')
+
+        append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
+        register_lines.append(function_name + '(meta);')
+
+    if any(ref_type_tag.target in allowed_targets for ref_type_tag in codegen_tags['ExportRefType']):
         register_lines.append('')
 
 
 def append_entity_type_registration(register_lines: list[str], target: str) -> None:
     register_lines.append('// Entity types')
     register_lines.append('unordered_map<string, PropertyRegistrator*> registrators;')
-    register_lines.append('PropertyRegistrator* registrator = nullptr;')
-    register_lines.append('')
     for entity in game_entities:
         if not entity_allowed(entity, target):
             continue
@@ -1724,26 +1797,39 @@ def get_register_flags(value_type: str, name: str, access: str, base_flags: list
     return [access, meta_type_to_unified_type(value_type), name] + base_flags
 
 
-def append_property_registration(register_lines: list[str], target: str) -> None:
-    register_lines.append('// Properties')
+def append_property_registration(helper_lines: list[str], register_lines: list[str], target: str) -> None:
+    used_names: set[str] = set()
+
     for entity in game_entities:
         if not entity_allowed(entity, target):
             continue
-        register_lines.append('registrator = registrators["' + entity + '"];')
+
+        body_lines: list[str] = []
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
-                register_lines.append('registrator->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
-        register_lines.append('')
+                body_lines.append('registrator->RegisterProperty({' + ', '.join(['"' + register_flag + '"' for register_flag in get_register_flags(prop_tag.property_type, prop_tag.name, prop_tag.access, prop_tag.flags)]) + '});')
+
+        if not body_lines:
+            continue
+
+        function_name = make_unique_cpp_identifier(used_names, 'RegisterProperties_', entity)
+        append_static_function(helper_lines, 'static void ' + function_name + '(PropertyRegistrator* registrator)', body_lines)
+        register_lines.append(function_name + '(registrators["' + entity + '"]);')
+
+    register_lines.append('')
 
 
-def append_method_registration(global_lines: list[str], register_lines: list[str], target: str, is_stub: bool) -> None:
+def append_method_registration(extern_lines: list[str], helper_lines: list[str], register_lines: list[str], target: str, is_stub: bool) -> None:
     allowed_targets = get_allowed_registration_targets(target)
+    used_names: set[str] = set()
+    method_chunk_size = 20
 
-    register_lines.append('// Methods')
-    register_lines.append('vector<MethodDesc> methods;')
-    register_lines.append('methods.reserve(256);')
     for entity in game_entities:
         zone_names: list[str] = []
+        body_lines = ['vector<MethodDesc> methods;',
+                'methods.reserve(256);']
+        has_methods = False
+        method_blocks: list[list[str]] = []
 
         for method_tag in codegen_tags['ExportMethod']:
             if method_tag.target not in allowed_targets or (method_tag.entity != entity and method_tag.entity != 'Entity'):
@@ -1754,64 +1840,99 @@ def append_method_registration(global_lines: list[str], register_lines: list[str
             if 'TimeEventRelated' in method_tag.flags and not game_entities_info[entity].has_time_events:
                 continue
 
+            has_methods = True
             registration_info = resolve_method_registration_info(entity, method_tag, target)
             if not is_stub:
-                global_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
+                extern_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ');')
-            register_lines.append('methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
-                    '.Args = {' + ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in method_tag.args) + '}, ' +
-                    '.Ret = ' + ('resolve_type("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
-                    '.Call = [](FuncCallData& call) {')
+
+            method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
+                    '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in method_tag.args) + '}, ' +
+                    '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
+                    '.Call = [](FuncCallData& call) {']
             if not is_stub:
-                register_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
-                register_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
+                method_body_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
             else:
-                register_lines.append('    ignore_unused(call);')
-            register_lines.append('}' +
+                method_body_lines.append('    ignore_unused(call);')
+            method_body_lines.append('}' +
                     (', .GlobalGetter = true' if 'GlobalGetter' in method_tag.flags else '') +
                     (', .Getter = true' if 'Getter' in method_tag.flags or 'GlobalGetter' in method_tag.flags else '') +
                     (', .Setter = true' if 'Setter' in method_tag.flags else '') +
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
                     ' });')
-        register_lines.append('meta->RegisterEntityMethods("' + entity + '", std::move(methods));')
-        register_lines.append('methods.clear();')
-        register_lines.append('')
+            method_blocks.append(method_body_lines)
+
+        if not has_methods:
+            continue
+
+        chunk_function_names: list[str] = []
+        for chunk_index in range(0, len(method_blocks), method_chunk_size):
+            chunk_methods = method_blocks[chunk_index:chunk_index + method_chunk_size]
+            chunk_body_lines: list[str] = []
+            for method_block in chunk_methods:
+                chunk_body_lines.extend(method_block)
+
+            chunk_function_name = make_unique_cpp_identifier(used_names, 'AddMethods_' + entity + '_', 'Chunk_' + str(chunk_index // method_chunk_size + 1))
+            append_static_function(helper_lines, 'static void ' + chunk_function_name + '(vector<MethodDesc>& methods, EngineMetadata* meta)', chunk_body_lines)
+            chunk_function_names.append(chunk_function_name)
+
+        for chunk_function_name in chunk_function_names:
+            body_lines.append(chunk_function_name + '(methods, meta);')
+        body_lines.append('meta->RegisterEntityMethods("' + entity + '", std::move(methods));')
+        function_name = make_unique_cpp_identifier(used_names, 'RegisterMethods_', entity)
+        append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
+        register_lines.append(function_name + '(meta);')
+
     register_lines.append('')
 
 
-def append_event_registration(register_lines: list[str], target: str) -> None:
+def append_event_registration(helper_lines: list[str], register_lines: list[str], target: str) -> None:
     allowed_targets = get_allowed_registration_targets(target)
+    used_names: set[str] = set()
 
-    register_lines.append('// Events')
     for entity in game_entities:
+        body_lines: list[str] = []
+
         for event_tag in codegen_tags['ExportEvent']:
             if event_tag.target in allowed_targets and event_tag.entity == entity:
-                resolved_args = ', '.join('{"' + p.name + '", resolve_type("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
-                register_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
+                resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
+                body_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
                         '.Args = {' + resolved_args + '}, .Exported = true, .Deferred = false });')
+
+        if not body_lines:
+            continue
+
+        function_name = make_unique_cpp_identifier(used_names, 'RegisterEvents_', entity)
+        append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
+        register_lines.append(function_name + '(meta);')
+
     register_lines.append('')
 
 
-def append_migration_rule_registration(register_lines: list[str]) -> None:
-    register_lines.append('// Migration rules')
-    register_lines.append('const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };')
-    register_lines.append('')
-    register_lines.append('meta->RegisterMigrationRules({')
+def append_migration_rule_registration(helper_lines: list[str], register_lines: list[str]) -> None:
+    if not codegen_tags['MigrationRule']:
+        return
+
+    body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };', '', 'meta->RegisterMigrationRules({']
     for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'])):
-        register_lines.append('    {')
-        register_lines.append('        to_hstring("' + source_type + '"), {')
+        body_lines.append('    {')
+        body_lines.append('        to_hstring("' + source_type + '"), {')
         for source_name in sorted(set(rule_tag.args[1] for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0] == source_type)):
-            register_lines.append('            {')
-            register_lines.append('                to_hstring("' + source_name + '"), {')
+            body_lines.append('            {')
+            body_lines.append('                to_hstring("' + source_name + '"), {')
             for rule_tag in codegen_tags['MigrationRule']:
                 if rule_tag.args[0] == source_type and rule_tag.args[1] == source_name:
-                    register_lines.append('                    {to_hstring("' + rule_tag.args[2] + '"), to_hstring("' + rule_tag.args[3] + '")},')
-            register_lines.append('                },')
-            register_lines.append('            },')
-        register_lines.append('        },')
-        register_lines.append('    },')
-    register_lines.append('});')
+                    body_lines.append('                    {to_hstring("' + rule_tag.args[2] + '"), to_hstring("' + rule_tag.args[3] + '")},')
+            body_lines.append('                },')
+            body_lines.append('            },')
+        body_lines.append('        },')
+        body_lines.append('    },')
+    body_lines.append('});')
+
+    append_static_function(helper_lines, 'static void RegisterMigrationRulesSection(EngineMetadata* meta)', body_lines)
+    register_lines.append('RegisterMigrationRulesSection(meta);')
     register_lines.append('')
 
 
@@ -1831,47 +1952,26 @@ def build_common_header_include_lines() -> list[str]:
     return ['#include "' + common_header + '"' for common_header in args.commonheader]
 
 def generate_metadata_registration(target: str, is_stub: bool) -> None:
-    global_lines: list[str] = []
+    extern_lines: list[str] = []
+    helper_lines: list[str] = []
     register_lines: list[str] = []
-    
-    # Enums
-    register_lines.append('// Enums')
-    for enum_tag in codegen_tags['ExportEnum']:
-        register_lines.append('meta->RegisterEnumGroup("' + enum_tag.group_name + '", "' + enum_tag.underlying_type + '",')
-        register_lines.append('{')
-        for key_value in enum_tag.key_values:
-            register_lines.append('    {"' + key_value.key + '", ' + require_enum_value_text(key_value) + '},')
-        register_lines.append('});')
-        register_lines.append('')
-    
-    # Value types
-    register_lines.append('// Value types')
-    for value_type_tag in codegen_tags['ExportValueType']:
-        register_lines.append('meta->RegisterValueType("' + value_type_tag.name + '");')
-    register_lines.append('')
-    
-    for value_type_tag in codegen_tags['ExportValueType']:
-        register_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
-        for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
-            field_type, field_name = layout_entry.split('-')
-            register_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
-        register_lines.append('} });')
-        register_lines.append('')
-    
-    append_ref_type_registration(register_lines, target, is_stub)
+
+    append_enum_registration(helper_lines, register_lines)
+    append_value_type_registration(helper_lines, register_lines)
+    append_ref_type_registration(helper_lines, register_lines, target, is_stub)
     append_entity_type_registration(register_lines, target)
-    append_property_registration(register_lines, target)
-    append_method_registration(global_lines, register_lines, target, is_stub)
-    append_event_registration(register_lines, target)
-    append_migration_rule_registration(register_lines)
+    append_property_registration(helper_lines, register_lines, target)
+    append_method_registration(extern_lines, helper_lines, register_lines, target, is_stub)
+    append_event_registration(helper_lines, register_lines, target)
+    append_migration_rule_registration(helper_lines, register_lines)
     include_lines = build_common_header_include_lines()
     
     generated_output.create_file('MetadataRegistration-' + target + ('Stub' if is_stub else '') + '.cpp', args.genoutput)
     generated_output.write_codegen_template('MetadataRegistration')
     generated_output.insert_codegen_lines(register_lines, 'Register')
-    generated_output.insert_codegen_lines(global_lines, 'Global')
+    generated_output.insert_codegen_lines(helper_lines, 'RegisterHelpers')
+    generated_output.insert_codegen_lines(extern_lines, 'Global')
     generated_output.insert_codegen_lines(include_lines, 'Includes')
-    
     generated_output.insert_codegen_lines(get_registration_define_lines(target, is_stub), 'Defines')
 
 def run_metadata_registration_codegen() -> None:

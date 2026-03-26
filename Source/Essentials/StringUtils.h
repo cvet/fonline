@@ -38,7 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Todo: refactor code to use strvex over strex where it possible
 class strvex
 {
 public:

@@ -1932,7 +1932,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    fi.PStr = fi.Str;
+    fi.PStr = fi.Str.data();
 
     auto* str = fi.PStr.get();
     auto flags = fi.Flags;
@@ -1960,7 +1960,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
     string buf;
 
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
-        dots = fi.ColorDots;
+        dots = fi.ColorDots.data();
     }
 
     constexpr int32 dots_history_len = 10;
@@ -2012,7 +2012,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
         str_++;
     }
 
-    StrCopy(fi.PStr.get(), FONT_BUF_LEN, buf);
+    StrCopy(fi.PStr.get(), fi.Str.size(), buf);
 
     // Skip lines
     auto skip_line = IsBitSet(flags, FT_SKIPLINES(0)) ? flags >> 16 : 0;
@@ -2071,7 +2071,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                 i_advance = 1;
 
                 if (fmt_type == FORMAT_TYPE_DRAW) {
-                    for (auto k = i, l = FONT_BUF_LEN - (j - i); k < l; k++) {
+                    for (auto k = i, l = numeric_cast<int32>(fi.ColorDots.size()) - (j - i); k < l; k++) {
                         fi.ColorDots[k] = fi.ColorDots[k + (j - i)];
                     }
                 }
@@ -2099,7 +2099,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                     StrInsert(&str[i], "\n", 0);
 
                     if (fmt_type == FORMAT_TYPE_DRAW) {
-                        for (auto k = FONT_BUF_LEN - 1; k > i; k--) {
+                        for (auto k = numeric_cast<int32>(fi.ColorDots.size()) - 1; k > i; k--) {
                             fi.ColorDots[k] = fi.ColorDots[k - 1];
                         }
                     }
@@ -2120,7 +2120,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                     if (j > ii) {
                         StrEraseInterval(&str[ii], j - ii);
                         if (fmt_type == FORMAT_TYPE_DRAW) {
-                            for (auto k = ii, l = FONT_BUF_LEN - (j - ii); k < l; k++) {
+                            for (auto k = ii, l = numeric_cast<int32>(fi.ColorDots.size()) - (j - ii); k < l; k++) {
                                 fi.ColorDots[k] = fi.ColorDots[k + (j - ii)];
                             }
                         }
@@ -2210,12 +2210,6 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 
     if (fi.LinesInRect == 0) {
         fi.LinesInRect = fi.LinesAll;
-    }
-
-    if (fi.LinesAll > FONT_MAX_LINES) {
-        WriteLog("error5 {}", fi.LinesAll);
-        fi.IsError = true;
-        return;
     }
 
     if (fmt_type == FORMAT_TYPE_SPLIT) {
@@ -2363,7 +2357,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     color = ApplyColorBrightness(color);
 
     auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = flags, .Rect = rect};
-    StrCopy(fi.Str, str);
+    fi.Prepare(str);
+    StrCopy(fi.Str.data(), fi.Str.size(), str);
     fi.DefColor = color;
 
     FormatText(fi, FORMAT_TYPE_DRAW);
@@ -2547,7 +2542,8 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
     }
 
     auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = {0, 0, size.width, size.height}};
-    StrCopy(fi.Str, str);
+    fi.Prepare(str);
+    StrCopy(fi.Str.data(), fi.Str.size(), str);
 
     FormatText(fi, FORMAT_TYPE_LCOUNT);
 
@@ -2612,7 +2608,8 @@ auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, u
     }
 
     auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = flags, .Rect = {0, 0, size}};
-    StrCopy(fi.Str, str);
+    fi.Prepare(str);
+    StrCopy(fi.Str.data(), fi.Str.size(), str);
 
     FormatText(fi, FORMAT_TYPE_LCOUNT);
 
@@ -2643,7 +2640,8 @@ auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -
     }
 
     auto& fi = _fontFormatInfoBuf = {.CurFont = font, .Flags = 0, .Rect = rect};
-    StrCopy(fi.Str, cstr);
+    fi.Prepare(cstr);
+    StrCopy(fi.Str.data(), fi.Str.size(), cstr);
     fi.StrLines = &result;
 
     FormatText(fi, FORMAT_TYPE_SPLIT);

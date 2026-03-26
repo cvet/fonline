@@ -3160,7 +3160,7 @@ void asCCompiler::CompileDeclaration(asCScriptNode *decl, asCByteCode *bc)
 	if( builder->engine->ep.disallowValueAssignForRefType && // (FOnline Patch)
 		type.GetTypeInfo() &&
 		(type.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE) &&
-		!type.IsReference() &&
+		//!type.IsReference() &&
 		!type.IsObjectHandle() )
 	{
 		type.MakeHandle(true);
@@ -13186,7 +13186,7 @@ int asCCompiler::CompileFunctionCall(asCScriptNode *node, asCExprContext *ctx, a
 		return -1;
 	}
 
-	if (symbolType == SL_CLASSPROPACCESS || symbolType == SL_CLASSPROP) // (FOnline Patch)
+	/*if (symbolType == SL_CLASSPROPACCESS || symbolType == SL_CLASSPROP) // (FOnline Patch)
 	{
 		builder->GetObjectMethodDescriptions(name.AddressOf(), CastToObjectType(lookupResult.type.dataType.GetTypeInfo()), funcs, objIsConst, scope, node, script);
 		if (funcs.GetLength() != 0)
@@ -13198,7 +13198,7 @@ int asCCompiler::CompileFunctionCall(asCScriptNode *node, asCExprContext *ctx, a
 		if (funcs.GetLength() != 0)
 			symbolType = SL_GLOBALFUNC;
 		funcs.SetLength(0);
-	}
+	}*/
 
 	// Is the symbol matching a variable/property?
 	if (symbolType == SL_LOCALCONST || symbolType == SL_LOCALVAR ||

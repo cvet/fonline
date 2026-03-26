@@ -57,6 +57,10 @@ static void MainEntry([[maybe_unused]] void* data)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (App->IsQuitRequested()) {
+        return;
+    }
+
     try {
 #if FO_WEB
         // Wait file system synchronization
@@ -65,7 +69,21 @@ static void MainEntry([[maybe_unused]] void* data)
         }
 #endif
 
-        App->BeginFrame();
+        try {
+            App->BeginFrame();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
+
+        auto end_frame = scope_success([&]() {
+            try {
+                App->EndFrame();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        });
 
         // Synchronize files and start client
         if (!Data->Client) {
@@ -74,7 +92,6 @@ static void MainEntry([[maybe_unused]] void* data)
                 if (!Data->ResourcesSynced) {
                     if (!IsPackaged()) {
                         Data->ResourcesSynced = true;
-                        App->EndFrame();
                         return;
                     }
 
@@ -83,7 +100,6 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
-                        App->EndFrame();
                         return;
                     }
 
@@ -120,8 +136,6 @@ static void MainEntry([[maybe_unused]] void* data)
                 Data->Client.reset();
             }
         }
-
-        App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

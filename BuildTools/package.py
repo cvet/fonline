@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-config', dest='config', required=True, help='config name')
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
+	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
 	return parser.parse_args()
 
 
@@ -137,7 +138,7 @@ class Packager:
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
 		self.server_res_dir = self.fomain.mainSection().getStr('ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('ClientResources')
-		self.zip_compress_level = self.fomain.mainSection().getInt('ZipCompressLevel')
+		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
 	def has_pack(self, name: str) -> bool:
@@ -201,10 +202,23 @@ class Packager:
 
 	def prepare_output(self) -> None:
 		log('Output to', self.target_output_path)
-		shutil.rmtree(self.target_output_path, True)
+		if os.path.isdir(self.target_output_path):
+			for entry_name in os.listdir(self.target_output_path):
+				entry_path = os.path.join(self.target_output_path, entry_name)
+				if os.path.isdir(entry_path) and not os.path.islink(entry_path):
+					shutil.rmtree(entry_path, True)
+				else:
+					try:
+						os.remove(entry_path)
+					except FileNotFoundError:
+						pass
+		else:
+			shutil.rmtree(self.target_output_path, True)
+			if os.path.isfile(self.target_output_path):
+				os.remove(self.target_output_path)
 		if os.path.isfile(self.target_output_path + '.zip'):
 			os.remove(self.target_output_path + '.zip')
-		os.makedirs(self.target_output_path)
+		os.makedirs(self.target_output_path, exist_ok=True)
 
 	def cleanup_output(self) -> None:
 		if self.target_output_path:
@@ -215,7 +229,11 @@ class Packager:
 			abs_dir = os.path.join(os.path.abspath(input_dir), subdir)
 			if os.path.isdir(abs_dir):
 				build_hash_path = os.path.join(abs_dir, input_type + '.build-hash')
-				assert os.path.isfile(build_hash_path), 'Build hash file ' + build_hash_path + ' not found'
+				if not os.path.isfile(build_hash_path):
+					if self.args.platform == 'Web' and os.path.isfile(os.path.join(abs_dir, input_type + '.js')) and os.path.isfile(os.path.join(abs_dir, input_type + '.wasm')):
+						log('Build hash file NOT found, use existing web binary output', abs_dir)
+						return abs_dir
+					assert os.path.isfile(build_hash_path), 'Build hash file ' + build_hash_path + ' not found'
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
 					build_hash = file.read().strip()
 				assert build_hash == self.args.buildhash, 'Build hash file ' + build_hash_path + ' has wrong hash'
@@ -439,7 +457,9 @@ class Packager:
 		wasm_output_path = os.path.join(self.target_output_path, bin_out_name + '.wasm')
 		shutil.copy(os.path.join(bin_path, bin_name + '.wasm'), wasm_output_path)
 
-		self.patch_packaged_binary(wasm_output_path)
+		self.patch_embedded(wasm_output_path)
+		self.patch_config(wasm_output_path)
+		self.patch_packaged_mark(wasm_output_path)
 
 		index_path = os.path.join(self.target_output_path, 'index.html')
 		shutil.copy(os.path.join(self.build_tools_path, 'web', 'default-index.html'), index_path)

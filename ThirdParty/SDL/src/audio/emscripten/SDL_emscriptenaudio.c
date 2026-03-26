@@ -104,6 +104,9 @@ static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
     MAIN_THREAD_EM_ASM({
         var SDL3 = Module['SDL3'];
         if ($0) {
+            if (SDL3.audio_recording === undefined) { // (FOnline Patch)
+                SDL3.audio_recording = {};
+            }
             if (SDL3.audio_recording.silenceTimer !== undefined) {
                 clearInterval(SDL3.audio_recording.silenceTimer);
             }
@@ -122,6 +125,9 @@ static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
             }
             SDL3.audio_recording = undefined;
         } else {
+            if (SDL3.audio_playback === undefined) { // (FOnline Patch)
+                SDL3.audio_playback = {};
+            }
             if (SDL3.audio_playback.scriptProcessorNode != undefined) {
                 SDL3.audio_playback.scriptProcessorNode.disconnect();
             }
@@ -221,6 +227,9 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
 
         MAIN_THREAD_EM_ASM({
             var SDL3 = Module['SDL3'];
+            if (SDL3.audio_recording === undefined) { // (FOnline Patch)
+                SDL3.audio_recording = {};
+            }
             var have_microphone = function(stream) {
                 //console.log('SDL audio recording: we have a microphone! Replacing silence callback.');
                 if (SDL3.audio_recording.silenceTimer !== undefined) {
@@ -265,6 +274,9 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
         // setup a ScriptProcessorNode
         MAIN_THREAD_EM_ASM({
             var SDL3 = Module['SDL3'];
+            if (SDL3.audio_playback === undefined) { // (FOnline Patch)
+                SDL3.audio_playback = {};
+            }
             SDL3.audio_playback.scriptProcessorNode = SDL3.audioContext['createScriptProcessor']($1, 0, $0);
             SDL3.audio_playback.scriptProcessorNode['onaudioprocess'] = function (e) {
                 if ((SDL3 === undefined) || (SDL3.audio_playback === undefined)) { return; }

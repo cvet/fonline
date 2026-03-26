@@ -336,7 +336,7 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 
 	isReadOnly = tmpIsReadOnly;
 
-	isObjectHandle = at && (at->flags & asOBJ_IMPLICIT_HANDLE); // (FOnline Patch)
+	isObjectHandle = (at->flags & asOBJ_IMPLICIT_HANDLE) != 0; // (FOnline Patch) isObjectHandle = false;
 	isConstHandle = false;
 	
 	typeInfo = at;

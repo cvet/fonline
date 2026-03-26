@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import http.server
 import os
 import socketserver
 import sys
+
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
+class NoCacheHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self) -> None:
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        super().end_headers()
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -17,8 +30,9 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def maybe_fork(enable_fork: bool) -> None:
-    if enable_fork and hasattr(os, 'fork'):
-        if os.fork():
+    fork = getattr(os, 'fork', None)
+    if enable_fork and callable(fork):
+        if fork():
             sys.exit(0)
 
 
@@ -26,9 +40,10 @@ def main() -> None:
     args = create_parser().parse_args()
     maybe_fork(args.fork)
 
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(('', args.port), handler) as httpd:
-        print('Serving at port', args.port)
+    serve_dir = os.path.dirname(os.path.realpath(__file__))
+    handler = functools.partial(NoCacheHttpRequestHandler, directory=serve_dir)
+    with ReusableTCPServer(('', args.port), handler) as httpd:
+        print('Serving', serve_dir, 'at port', args.port)
         httpd.serve_forever()
 
 

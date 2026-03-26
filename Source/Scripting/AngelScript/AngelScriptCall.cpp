@@ -317,13 +317,13 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
             const bool is_array = is_ref_type && as_ret_type->GetName() == string_view("array");
             const bool is_dict = is_ref_type && as_ret_type->GetName() == string_view("dict");
 
-            if (is_ref_type && !is_array && !is_dict) {
-                *static_cast<void**>(call.RetData) = nullptr;
-            }
-            else if (is_ref_type) {
+            if (is_array || is_dict) {
                 void* ret_obj = as_engine->CreateScriptObject(as_ret_type);
                 FO_RUNTIME_ASSERT(ret_obj);
                 *static_cast<void**>(call.RetData) = ret_obj;
+            }
+            else if (is_ref_type) {
+                *static_cast<void**>(call.RetData) = nullptr;
             }
             else if (is_value_type) {
                 void* ret_obj = as_engine->CreateScriptObject(as_ret_type);
@@ -346,11 +346,13 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
     catch (...) {
         if (ret_type_id != AngelScript::asTYPEID_VOID && (ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
             FO_RUNTIME_ASSERT(call.RetData);
-            void* ret_obj = *static_cast<void**>(call.RetData);
+            auto* as_engine = gen->GetEngine();
+            const auto* as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
+            FO_RUNTIME_ASSERT(as_ret_type);
+            const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
+            void* ret_obj = is_ref_type ? *static_cast<void**>(call.RetData) : call.RetData;
 
             if (ret_obj != nullptr) {
-                auto* as_engine = gen->GetEngine();
-                const auto* as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
                 as_engine->ReleaseScriptObject(ret_obj, as_ret_type);
             }
         }
@@ -427,19 +429,22 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                 if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
                     const auto* as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
                     FO_RUNTIME_ASSERT(as_ret_type);
+                    const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
                     void* ret_obj = ctx->GetReturnObject();
 
-                    if ((ret_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-                        *static_cast<void**>(call.RetData) = ret_obj;
-                        as_engine->AddRefScriptObject(ret_obj, as_ret_type);
+                    if (is_ref_type) {
+                        void*& cur_obj = *static_cast<void**>(call.RetData);
+
+                        if (cur_obj != nullptr) {
+                            as_engine->ReleaseScriptObject(cur_obj, as_ret_type);
+                        }
+
+                        cur_obj = ret_obj;
+                        as_engine->AddRefScriptObject(cur_obj, as_ret_type);
                     }
                     else {
-                        if (ret_obj != nullptr) {
-                            FO_AS_VERIFY(as_engine->AssignScriptObject(*static_cast<void**>(call.RetData), ret_obj, as_ret_type));
-                        }
-                        else {
-                            *static_cast<void**>(call.RetData) = as_engine->CreateScriptObject(as_ret_type);
-                        }
+                        FO_RUNTIME_ASSERT(ret_obj);
+                        FO_AS_VERIFY(as_engine->AssignScriptObject(call.RetData, ret_obj, as_ret_type));
                     }
                 }
                 else {
@@ -538,21 +543,22 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                 if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
                     const auto* as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
                     FO_RUNTIME_ASSERT(as_ret_type);
-                    void*& cur_obj = *static_cast<void**>(call.RetData);
+                    const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
                     void* ret_obj = ctx->GetReturnObject();
 
-                    if (cur_obj != nullptr && ret_obj != nullptr) {
-                        FO_AS_VERIFY(as_engine->AssignScriptObject(cur_obj, ret_obj, as_ret_type));
-                    }
-                    else {
+                    if (is_ref_type) {
+                        void*& cur_obj = *static_cast<void**>(call.RetData);
+
                         if (cur_obj != nullptr) {
                             as_engine->ReleaseScriptObject(cur_obj, as_ret_type);
-                            cur_obj = nullptr;
                         }
-                        if (ret_obj != nullptr) {
-                            cur_obj = as_engine->CreateScriptObjectCopy(ret_obj, as_ret_type);
-                            FO_RUNTIME_ASSERT(cur_obj);
-                        }
+
+                        cur_obj = ret_obj;
+                        as_engine->AddRefScriptObject(cur_obj, as_ret_type);
+                    }
+                    else {
+                        FO_RUNTIME_ASSERT(ret_obj);
+                        FO_AS_VERIFY(as_engine->AssignScriptObject(call.RetData, ret_obj, as_ret_type));
                     }
                 }
                 else {
