@@ -76,7 +76,7 @@ FO_BEGIN_NAMESPACE
         } \
     } while (0)
 
-#define GL(expr) GL_CTX(expr, _ctx)
+#define GL(expr) GL_CTX(expr, _ctx.get())
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
@@ -108,7 +108,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
 #endif
 
 #define GL_HAS_CTX(extension, ctx) ((ctx)->OGL_##extension)
-#define GL_HAS(extension) GL_HAS_CTX(extension, _ctx)
+#define GL_HAS(extension) GL_HAS_CTX(extension, _ctx.get())
 
 struct OpenGL_Renderer::Context
 {
@@ -138,7 +138,7 @@ struct OpenGL_Renderer::Context
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(isize32 size, bool linear_filtered, bool with_depth, raw_ptr<OpenGL_Renderer::Context> ctx) :
+    OpenGL_Texture(isize32 size, bool linear_filtered, bool with_depth, OpenGL_Renderer::Context* ctx) :
         RenderTexture(size, linear_filtered, with_depth),
         _ctx {ctx}
     {
@@ -160,7 +160,7 @@ private:
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    OpenGL_DrawBuffer(bool is_static, raw_ptr<OpenGL_Renderer::Context> ctx);
+    OpenGL_DrawBuffer(bool is_static, OpenGL_Renderer::Context* ctx);
     ~OpenGL_DrawBuffer() override;
 
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
@@ -178,7 +178,7 @@ class OpenGL_Effect final : public RenderEffect
     friend class OpenGL_Renderer;
 
 public:
-    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, raw_ptr<OpenGL_Renderer::Context> ctx) :
+    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, OpenGL_Renderer::Context* ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -873,11 +873,11 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
     }
 }
 
-static void EnableVertAtribs(raw_ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
+static void EnableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(usage);
+    ignore_unused(ctx, usage);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -909,11 +909,11 @@ static void EnableVertAtribs(raw_ptr<OpenGL_Renderer::Context> ctx, EffectUsage 
     }
 }
 
-static void DisableVertAtribs(raw_ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
+static void DisableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(usage);
+    ignore_unused(ctx, usage);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -930,7 +930,7 @@ static void DisableVertAtribs(raw_ptr<OpenGL_Renderer::Context> ctx, EffectUsage
     }
 }
 
-OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static, raw_ptr<OpenGL_Renderer::Context> ctx) :
+OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static, OpenGL_Renderer::Context* ctx) :
     RenderDrawBuffer(is_static),
     _ctx {ctx}
 {
@@ -1000,7 +1000,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         GL(glBindVertexArray(VertexArrObj));
         GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-        EnableVertAtribs(_ctx, usage);
+        EnableVertAtribs(_ctx.get(), usage);
         GL(glBindVertexArray(0));
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
@@ -1147,7 +1147,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     else {
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
-        EnableVertAtribs(_ctx, _usage);
+        EnableVertAtribs(_ctx.get(), _usage);
     }
 
     // Uniforms
@@ -1296,7 +1296,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         GL(glBindVertexArray(0));
     }
     else {
-        DisableVertAtribs(_ctx, _usage);
+        DisableVertAtribs(_ctx.get(), _usage);
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }

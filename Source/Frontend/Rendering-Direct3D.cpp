@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 class Direct3D_Texture final : public RenderTexture
 {
 public:
-    Direct3D_Texture(isize32 size, bool linear_filtered, bool with_depth, raw_ptr<Direct3D_Renderer::Context> ctx) :
+    Direct3D_Texture(isize32 size, bool linear_filtered, bool with_depth, Direct3D_Renderer::Context* ctx) :
         RenderTexture(size, linear_filtered, with_depth),
         _ctx {ctx}
     {
@@ -76,7 +76,7 @@ private:
 class Direct3D_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    Direct3D_DrawBuffer(bool is_static, raw_ptr<Direct3D_Renderer::Context> ctx) :
+    Direct3D_DrawBuffer(bool is_static, Direct3D_Renderer::Context* ctx) :
         RenderDrawBuffer(is_static),
         _ctx {ctx}
     {
@@ -103,7 +103,7 @@ class Direct3D_Effect final : public RenderEffect
     friend class Direct3D_Renderer;
 
 public:
-    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, raw_ptr<Direct3D_Renderer::Context> ctx) :
+    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader, Direct3D_Renderer::Context* ctx) :
         RenderEffect(usage, name, loader),
         _ctx {ctx}
     {
@@ -384,7 +384,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
     // Samplers
     {
-        const auto create_sampler = [](D3D11_FILTER filter) {
+        const auto create_sampler = [&](D3D11_FILTER filter) {
             D3D11_SAMPLER_DESC sampler_desc = {};
             sampler_desc.Filter = filter;
             sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -1040,6 +1040,9 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 
     FO_RUNTIME_ASSERT(Size.is_valid_pos(pos));
 
+    auto* ctx = _ctx.get_no_const();
+    auto* d3d_device_context = ctx->D3DDeviceContext.get();
+
     D3D11_BOX src_box;
     src_box.left = pos.x;
     src_box.top = pos.y;
@@ -1048,15 +1051,15 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     src_box.front = 0;
     src_box.back = 1;
 
-    _ctx->D3DDeviceContext->CopySubresourceRegion(_ctx->OnePixStagingTex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(ctx->OnePixStagingTex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    const auto d3d_map_staging_texture = _ctx->D3DDeviceContext->Map(_ctx->OnePixStagingTex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
+    const auto d3d_map_staging_texture = d3d_device_context->Map(ctx->OnePixStagingTex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     const auto result = *static_cast<ucolor*>(tex_resource.pData);
 
-    _ctx->D3DDeviceContext->Unmap(_ctx->OnePixStagingTex.get(), 0);
+    d3d_device_context->Unmap(ctx->OnePixStagingTex.get(), 0);
 
     return result;
 }
@@ -1071,6 +1074,10 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     FO_RUNTIME_ASSERT(pos.y >= 0);
     FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
     FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+
+    auto* ctx = _ctx.get_no_const();
+    auto* d3d_device = ctx->D3DDevice.get();
+    auto* d3d_device_context = ctx->D3DDeviceContext.get();
 
     vector<ucolor> result;
     result.resize(numeric_cast<size_t>(size.width) * size.height);
@@ -1089,7 +1096,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     staging_desc.MiscFlags = 0;
 
     ID3D11Texture2D* staging_tex = nullptr;
-    const auto d3d_create_staging_tex = _ctx->D3DDevice->CreateTexture2D(&staging_desc, nullptr, &staging_tex);
+    const auto d3d_create_staging_tex = d3d_device->CreateTexture2D(&staging_desc, nullptr, &staging_tex);
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_create_staging_tex));
 
     D3D11_BOX src_box;
@@ -1100,10 +1107,10 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     src_box.front = 0;
     src_box.back = 1;
 
-    _ctx->D3DDeviceContext->CopySubresourceRegion(staging_tex, 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(staging_tex, 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    const auto d3d_map_staging_texture = _ctx->D3DDeviceContext->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
+    const auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     for (int32 i = 0; i < size.height; i++) {
@@ -1111,7 +1118,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
         MemCopy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
-    _ctx->D3DDeviceContext->Unmap(staging_tex, 0);
+    d3d_device_context->Unmap(staging_tex, 0);
     staging_tex->Release();
 
     return result;
