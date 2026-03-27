@@ -79,12 +79,12 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
         _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, tex_size, {}, true);
     }
 
-    _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);
-    _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::MapSprites);
-    _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::MapSprites);
-    _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::MapSprites);
-    _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::MapSprites);
-    _picHexMask = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::MapSprites);
+    _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
+    _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex2.png", AtlasType::MapSprites);
+    _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex3.png", AtlasType::MapSprites);
+    _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track1.png", AtlasType::MapSprites);
+    _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track2.png", AtlasType::MapSprites);
+    _picHexMask = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex_Mask.png", AtlasType::MapSprites);
 
     if (_picHexMask) {
         const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
