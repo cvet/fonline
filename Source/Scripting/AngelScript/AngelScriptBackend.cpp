@@ -547,7 +547,7 @@ void AngelScriptBackend::BindRequiredStuff()
             }
         });
 
-        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.ScriptOverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32> line, string_view function_name) {
+        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32> line, string_view function_name) {
             if (_debuggerEndpointServer != nullptr) {
                 nlohmann::json body;
                 body["reason"] = reason;

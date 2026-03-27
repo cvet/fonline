@@ -152,6 +152,26 @@ static void DrawEditableEntry(string_view name, T& entry)
 }
 
 GlobalSettings::GlobalSettings(bool baking_mode) :
+    Common {static_cast<CommonSettings&>(*this)},
+    CommonGameplay {static_cast<CommonGameplaySettings&>(*this)},
+    ServerGameplay {static_cast<ServerGameplaySettings&>(*this)},
+    Network {static_cast<NetworkSettings&>(*this)},
+    ServerNetwork {static_cast<ServerNetworkSettings&>(*this)},
+    ClientNetwork {static_cast<ClientNetworkSettings&>(*this)},
+    Audio {static_cast<AudioSettings&>(*this)},
+    View {static_cast<ViewSettings&>(*this)},
+    Geometry {static_cast<GeometrySettings&>(*this)},
+    Render {static_cast<RenderSettings&>(*this)},
+    Timer {static_cast<TimerSettings&>(*this)},
+    Baking {static_cast<BakingSettings&>(*this)},
+    Critter {static_cast<CritterSettings&>(*this)},
+    CritterView {static_cast<CritterViewSettings&>(*this)},
+    Hex {static_cast<HexSettings&>(*this)},
+    Platform {static_cast<PlatformSettings&>(*this)},
+    Input {static_cast<InputSettings&>(*this)},
+    Mapper {static_cast<MapperSettings&>(*this)},
+    Client {static_cast<ClientSettings&>(*this)},
+    Server {static_cast<ServerSettings&>(*this)},
     _bakingMode {baking_mode}
 {
     FO_STACK_TRACE_ENTRY();
@@ -160,42 +180,41 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         // Auto settings
         _appliedSettings.emplace("ApplyConfig");
         _appliedSettings.emplace("ApplySubConfig");
-        _appliedSettings.emplace("UnpackagedSubConfig");
-        _appliedSettings.emplace("CommandLine");
-        _appliedSettings.emplace("CommandLineArgs");
-        _appliedSettings.emplace("GitBranch");
-        _appliedSettings.emplace("GitCommit");
-        _appliedSettings.emplace("CompatibilityVersion");
-        _appliedSettings.emplace("WebBuild");
-        _appliedSettings.emplace("WindowsBuild");
-        _appliedSettings.emplace("LinuxBuild");
-        _appliedSettings.emplace("MacOsBuild");
-        _appliedSettings.emplace("AndroidBuild");
-        _appliedSettings.emplace("IOsBuild");
-        _appliedSettings.emplace("DesktopBuild");
-        _appliedSettings.emplace("TabletBuild");
-        _appliedSettings.emplace("MapHexagonal");
-        _appliedSettings.emplace("MapSquare");
-        _appliedSettings.emplace("MapDirCount");
-        _appliedSettings.emplace("Packaged");
-        _appliedSettings.emplace("DebugBuild");
-        _appliedSettings.emplace("RenderDebug");
-        _appliedSettings.emplace("MonitorWidth");
-        _appliedSettings.emplace("MonitorHeight");
-        _appliedSettings.emplace("ClientResourceEntries");
-        _appliedSettings.emplace("MapperResourceEntries");
-        _appliedSettings.emplace("ServerResourceEntries");
-        _appliedSettings.emplace("MousePos");
-        _appliedSettings.emplace("DummyIntVec");
-        _appliedSettings.emplace("Ping");
-        _appliedSettings.emplace("ScrollMouseUp");
-        _appliedSettings.emplace("ScrollMouseDown");
-        _appliedSettings.emplace("ScrollMouseLeft");
-        _appliedSettings.emplace("ScrollMouseRight");
-        _appliedSettings.emplace("ScrollKeybUp");
-        _appliedSettings.emplace("ScrollKeybDown");
-        _appliedSettings.emplace("ScrollKeybLeft");
-        _appliedSettings.emplace("ScrollKeybRight");
+        _appliedSettings.emplace("Common.UnpackagedSubConfig");
+        _appliedSettings.emplace("Common.CommandLine");
+        _appliedSettings.emplace("Common.CommandLineArgs");
+        _appliedSettings.emplace("Common.GitBranch");
+        _appliedSettings.emplace("Common.GitCommit");
+        _appliedSettings.emplace("Network.CompatibilityVersion");
+        _appliedSettings.emplace("Platform.WebBuild");
+        _appliedSettings.emplace("Platform.WindowsBuild");
+        _appliedSettings.emplace("Platform.LinuxBuild");
+        _appliedSettings.emplace("Platform.MacOsBuild");
+        _appliedSettings.emplace("Platform.AndroidBuild");
+        _appliedSettings.emplace("Platform.IOsBuild");
+        _appliedSettings.emplace("Platform.DesktopBuild");
+        _appliedSettings.emplace("Platform.TabletBuild");
+        _appliedSettings.emplace("Geometry.MapHexagonal");
+        _appliedSettings.emplace("Geometry.MapSquare");
+        _appliedSettings.emplace("Geometry.MapDirCount");
+        _appliedSettings.emplace("Common.Packaged");
+        _appliedSettings.emplace("Common.DebugBuild");
+        _appliedSettings.emplace("Render.RenderDebug");
+        _appliedSettings.emplace("View.MonitorWidth");
+        _appliedSettings.emplace("View.MonitorHeight");
+        _appliedSettings.emplace("Baking.ClientResourceEntries");
+        _appliedSettings.emplace("Baking.MapperResourceEntries");
+        _appliedSettings.emplace("Baking.ServerResourceEntries");
+        _appliedSettings.emplace("Input.MousePos");
+        _appliedSettings.emplace("ClientNetwork.Ping");
+        _appliedSettings.emplace("Hex.ScrollMouseUp");
+        _appliedSettings.emplace("Hex.ScrollMouseDown");
+        _appliedSettings.emplace("Hex.ScrollMouseLeft");
+        _appliedSettings.emplace("Hex.ScrollMouseRight");
+        _appliedSettings.emplace("Hex.ScrollKeybUp");
+        _appliedSettings.emplace("Hex.ScrollKeybDown");
+        _appliedSettings.emplace("Hex.ScrollKeybLeft");
+        _appliedSettings.emplace("Hex.ScrollKeybRight");
     }
 }
 
@@ -328,8 +347,8 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#define FIXED_SETTING(type, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
-#define VARIABLE_SETTING(type, name, ...) name = {__VA_ARGS__}
+#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
 #include "Settings-Include.h"
     FO_DISABLE_WARNINGS_POP()
 }
@@ -509,11 +528,13 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define SET_SETTING(sett) \
     SetEntry(sett, value, append); \
     break
-#define FIXED_SETTING(type, name, ...) \
+#define FIXED_SETTING(type, group, name, ...) \
     case const_hash(#name): \
+    case const_hash(#group "." #name): \
         SET_SETTING(const_cast<type&>(name))
-#define VARIABLE_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, group, name, ...) \
     case const_hash(#name): \
+    case const_hash(#group "." #name): \
         SET_SETTING(name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
@@ -667,8 +688,8 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     };
 
-#define FIXED_SETTING(type, name, ...) add_setting(#name, name)
-#define VARIABLE_SETTING(type, name, ...) add_setting(#name, name)
+#define FIXED_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
+#define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
@@ -680,19 +701,19 @@ void GlobalSettings::Draw(bool editable)
 {
     FO_STACK_TRACE_ENTRY();
 
-#define FIXED_SETTING(type, name, ...) \
+#define FIXED_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#name, const_cast<type&>(name)); \
+        DrawEditableEntry(#group "." #name, const_cast<type&>(name)); \
     } \
     else { \
-        DrawEntry(#name, name); \
+        DrawEntry(#group "." #name, name); \
     }
-#define VARIABLE_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#name, name); \
+        DrawEditableEntry(#group "." #name, name); \
     } \
     else { \
-        DrawEntry(#name, name); \
+        DrawEntry(#group "." #name, name); \
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()

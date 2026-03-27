@@ -89,13 +89,34 @@ protected:
         auto operator=(const name&) -> name& = delete; \
         auto operator=(name&&) noexcept -> name& = delete
 #define SETTING_GROUP_END() }
-#define FIXED_SETTING(type, name, ...) const type name = {}
-#define VARIABLE_SETTING(type, name, ...) type name = {}
+#define FIXED_SETTING(type, group, name, ...) const type name = {}
+#define VARIABLE_SETTING(type, group, name, ...) type name = {}
 #include "Settings-Include.h"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
 public:
+    CommonSettings& Common;
+    CommonGameplaySettings& CommonGameplay;
+    ServerGameplaySettings& ServerGameplay;
+    NetworkSettings& Network;
+    ServerNetworkSettings& ServerNetwork;
+    ClientNetworkSettings& ClientNetwork;
+    AudioSettings& Audio;
+    ViewSettings& View;
+    GeometrySettings& Geometry;
+    RenderSettings& Render;
+    TimerSettings& Timer;
+    BakingSettings& Baking;
+    CritterSettings& Critter;
+    CritterViewSettings& CritterView;
+    HexSettings& Hex;
+    PlatformSettings& Platform;
+    InputSettings& Input;
+    MapperSettings& Mapper;
+    ClientSettings& Client;
+    ServerSettings& Server;
+
     explicit GlobalSettings(bool baking_mode);
     GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;

@@ -36,6 +36,9 @@
 
 FO_BEGIN_NAMESPACE
 
+extern auto GetServerSettings() -> unordered_set<string>;
+extern auto GetClientSettings() -> unordered_set<string>;
+
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
@@ -187,18 +190,18 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
             auto tokens = strvex(line).tokenize();
 
             if (tokens.empty()) {
-                throw MetadataBakerException("Invalid codegen tag: empty tag", files[i].GetDiskPath(), line_number);
+                throw MetadataBakerException("Invalid codegen tag: empty tag", files[i].GetPath(), line_number);
             }
 
             string_view tag_name = tokens.front();
             tokens.erase(tokens.begin());
 
             if (!valid_codegen_tags.contains(tag_name)) {
-                throw MetadataBakerException("Invalid codegen tag: unknown tag name", files[i].GetDiskPath(), line_number, tag_name);
+                throw MetadataBakerException("Invalid codegen tag: unknown tag name", files[i].GetPath(), line_number, tag_name);
             }
 
             CodeGenTagDesc tag_desc;
-            tag_desc.SourceFile = files[i].GetDiskPath();
+            tag_desc.SourceFile = files[i].GetPath();
             tag_desc.LineNumber = line_number;
             tag_desc.Tokens = std::move(tokens);
             ctx.CodeGenTags[string(tag_name)].emplace_back(std::move(tag_desc));
@@ -1024,6 +1027,31 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
     FO_STACK_TRACE_ENTRY();
 
     vector<vector<string>> result_tag_setting;
+    const auto known_settings = ctx.Target == "Server" ? GetServerSettings() : GetClientSettings();
+
+    const auto resolve_setting_name = [&](const CodeGenTagDesc& tag_desc, string_view name) -> string {
+        if (name.find('.') != string_view::npos) {
+            return string(name);
+        }
+
+        vector<string> matches;
+
+        for (const auto& setting_name : known_settings) {
+            if (setting_name == name || setting_name.ends_with(strex(".{}", name))) {
+                matches.emplace_back(setting_name);
+            }
+        }
+
+        if (matches.empty()) {
+            return string(name);
+        }
+
+        if (matches.size() != 1) {
+            throw MetadataBakerException("Invalid Setting codegen tag: ambiguous setting name", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        }
+
+        return std::move(matches.front());
+    };
 
     for (const auto& tag_desc : ctx.CodeGenTags["Setting"]) {
         if (tag_desc.Tokens.size() < 3) {
@@ -1037,7 +1065,27 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
         }
 
         const auto type_str = tag_desc.Tokens[1];
-        const auto name = tag_desc.Tokens[2];
+        string raw_name;
+
+        for (size_t i = 2; i < tag_desc.Tokens.size(); i++) {
+            const auto token = tag_desc.Tokens[i];
+
+            if (token == ".") {
+                if (!raw_name.empty() && raw_name.back() != '.') {
+                    raw_name += '.';
+                }
+
+                continue;
+            }
+
+            if (!raw_name.empty() && raw_name.back() != '.') {
+                raw_name += '.';
+            }
+
+            raw_name += token;
+        }
+
+        const auto name = resolve_setting_name(tag_desc, raw_name);
 
         if (!ctx.Meta->IsValidBaseType(type_str)) {
             throw MetadataBakerException("Invalid Setting codegen tag: invalid type", tag_desc.SourceFile, tag_desc.LineNumber, type_str);
@@ -1050,7 +1098,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
         }
 
         vector<string> tag_tokens;
-        tag_tokens.emplace_back(name);
+        tag_tokens.emplace_back(std::move(name));
         tag_tokens.emplace_back(type_str);
         result_tag_setting.emplace_back(std::move(tag_tokens));
     }

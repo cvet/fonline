@@ -38,15 +38,15 @@ bool IsTimeoutActive(synctime timeout)
 
 timespan GameMinutes(int value)
 {
-    return timespan(value * 60 / Settings.TimeMultiplier, SecondsPlace);
+    return timespan(value * 60 / Settings.WorldTime.Multiplier, SecondsPlace);
 }
 timespan GameHours(int value)
 {
-    return timespan(value * 3600 / Settings.TimeMultiplier, SecondsPlace);
+    return timespan(value * 3600 / Settings.WorldTime.Multiplier, SecondsPlace);
 }
 timespan GameDays(int value)
 {
-    return timespan(value * 86400 / Settings.TimeMultiplier, SecondsPlace);
+    return timespan(value * 86400 / Settings.WorldTime.Multiplier, SecondsPlace);
 }
 
 }

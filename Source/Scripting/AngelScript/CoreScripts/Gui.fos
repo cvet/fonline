@@ -11,9 +11,9 @@ namespace Gui
 ///@ Enum MessageBoxType Default
 ///@ Enum MessageBoxType All
 
-///@ Setting Client CursorType Cursor
-///@ Setting Client CursorType DraggableCursor
-///@ Setting Client bool MsgboxInvert
+///@ Setting Client CursorType Gui.Cursor
+///@ Setting Client CursorType Gui.DraggableCursor
+///@ Setting Client bool Gui.MsgboxInvert
 
 // Anchor styles
 ///@ Enum AnchorStyle None = 0
@@ -818,7 +818,7 @@ class Object
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MouseButton::Left) {
-            bool draggableCursor = (Settings.DraggableCursor != CursorType::Default && Settings.Cursor == Settings.DraggableCursor);
+            bool draggableCursor = (Settings.Gui.DraggableCursor != CursorType::Default && Settings.Gui.Cursor == Settings.Gui.DraggableCursor);
             if (draggableCursor) {
                 _IsDragged = true;
                 _DragChanged();
@@ -1077,7 +1077,7 @@ class Object
         // Base data
         _Size = _BaseSize;
         ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
-        isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+        isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.View.ScreenWidth, Settings.View.ScreenHeight);
         isize parentBaseSize = _Parent != null ? _Parent._BaseSize : _BaseSize;
 
         // Dock
@@ -2327,7 +2327,7 @@ class Screen : Panel
         _IsOnTop = true;
 
         // Set screen cursor
-        Settings.Cursor = _Cursor;
+        Settings.Gui.Cursor = _Cursor;
 
         // Base behaviour
         Panel::_Appear();
@@ -2339,7 +2339,7 @@ class Screen : Panel
         _IsOnTop = false;
 
         // Store cursor
-        _Cursor = Settings.Cursor;
+        _Cursor = Settings.Gui.Cursor;
         if (_AvailableCursors.find(_Cursor) == -1) {
             _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
         }
@@ -2352,14 +2352,14 @@ class Screen : Panel
     {
         if (button == MouseButton::Right) {
             if (_AvailableCursors.length() > 0) {
-                CursorType curCursor = Settings.Cursor;
+                CursorType curCursor = Settings.Gui.Cursor;
                 int curCursorIndex = _AvailableCursors.find(curCursor);
                 if (curCursorIndex != -1) {
                     curCursorIndex++;
                     if (curCursorIndex >= _AvailableCursors.length()) {
                         curCursorIndex = 0;
                     }
-                    Settings.Cursor = _AvailableCursors[curCursorIndex];
+                    Settings.Gui.Cursor = _AvailableCursors[curCursorIndex];
                 }
             }
         }
@@ -2381,7 +2381,7 @@ class Screen : Panel
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
                     ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
-                    isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+                    isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.View.ScreenWidth, Settings.View.ScreenHeight);
                     ipos prevPos = newPos;
 
                     if (newPos.x < parentAbsolutePos.x) {
@@ -2752,7 +2752,7 @@ class MessageBox : Text
     {
         Text::_Show(params);
 
-        _InvertMessages = Settings.MsgboxInvert;
+        _InvertMessages = Settings.Gui.MsgboxInvert;
         _GenerateText();
     }
 
@@ -2777,7 +2777,7 @@ class MessageBox : Text
     {
         if (_CursorHidden) {
             _CursorHidden = false;
-            Settings.HideCursor = false;
+            Settings.Gui.HideCursor = false;
         }
 
         Text::_Remove();
@@ -2787,9 +2787,9 @@ class MessageBox : Text
     {
         Text::_Hover();
 
-        if (!Settings.HideCursor) {
+        if (!Settings.Gui.HideCursor) {
             _CursorHidden = true;
-            Settings.HideCursor = true;
+            Settings.Gui.HideCursor = true;
         }
     }
 
@@ -2799,7 +2799,7 @@ class MessageBox : Text
 
         if (_CursorHidden) {
             _CursorHidden = false;
-            Settings.HideCursor = false;
+            Settings.Gui.HideCursor = false;
         }
     }
 
@@ -3113,7 +3113,7 @@ class Console : TextInput
         }
 
         // Trim history length
-        int historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.ConsoleHistorySize);
+        int historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.Input.ConsoleHistorySize);
         while (_History.length() > historyMaxLength) {
             _History.removeAt(0);
         }
@@ -3419,14 +3419,14 @@ void ShowScreen(GuiScreen screenNum)
 
 void ShowScreen(GuiScreen screenNum, dict<string, any> params)
 {
-    Settings.ScrollMouseUp = false;
-    Settings.ScrollMouseRight = false;
-    Settings.ScrollMouseDown = false;
-    Settings.ScrollMouseLeft = false;
-    Settings.ScrollKeybUp = false;
-    Settings.ScrollKeybRight = false;
-    Settings.ScrollKeybDown = false;
-    Settings.ScrollKeybLeft = false;
+    Settings.Hex.ScrollMouseUp = false;
+    Settings.Hex.ScrollMouseRight = false;
+    Settings.Hex.ScrollMouseDown = false;
+    Settings.Hex.ScrollMouseLeft = false;
+    Settings.Hex.ScrollKeybUp = false;
+    Settings.Hex.ScrollKeybRight = false;
+    Settings.Hex.ScrollKeybDown = false;
+    Settings.Hex.ScrollKeybLeft = false;
 
     // Manage multiinstance
     for (int i = Screens.length() - 1; i >= 0; i--) {

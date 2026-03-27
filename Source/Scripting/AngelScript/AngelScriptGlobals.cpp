@@ -359,6 +359,49 @@ static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
     engine->Settings.SetCustomSetting(name, any_t(std::move(value)));
 }
 
+static void Setting_GetGroup(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (gen->GetAddressOfReturnLocation()) void*(gen->GetObject());
+}
+
+static auto SplitSettingPath(string_view setting_name) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> path;
+    size_t prev_pos = 0;
+
+    while (prev_pos <= setting_name.size()) {
+        const auto pos = setting_name.find('.', prev_pos);
+
+        if (pos == string_view::npos) {
+            path.emplace_back(setting_name.substr(prev_pos));
+            break;
+        }
+
+        path.emplace_back(setting_name.substr(prev_pos, pos - prev_pos));
+        prev_pos = pos + 1;
+    }
+
+    return path;
+}
+
+static auto MakeScriptSettingGroupTypeName(const vector<string>& path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string result = "GlobalSettingsGroup";
+
+    for (const auto& part : path) {
+        result += '_';
+        result += part;
+    }
+
+    return result;
+}
+
 void RegisterAngelScriptEnums(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
@@ -448,7 +491,40 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectType("GlobalSettings", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOHANDLE));
     FO_AS_VERIFY(as_engine->RegisterGlobalProperty("GlobalSettings Settings", cast_to_void(meta)));
 
-    const auto register_engine_setting = [&]<typename T>(const char* name, T& data, bool writeble) {
+    unordered_map<string, string> setting_group_types;
+    setting_group_types.emplace("", "GlobalSettings");
+
+    const auto ensure_setting_group = [&](const vector<string>& path) -> const string& {
+        FO_RUNTIME_ASSERT(!path.empty());
+
+        string current_path;
+        string parent_path;
+
+        for (const auto& part : path) {
+            if (!current_path.empty()) {
+                current_path += '.';
+            }
+
+            current_path += part;
+
+            if (!setting_group_types.contains(current_path)) {
+                const auto partial_path = SplitSettingPath(current_path);
+                const auto type_name = MakeScriptSettingGroupTypeName(partial_path);
+                const auto& parent_type = setting_group_types.at(parent_path);
+
+                FO_AS_VERIFY(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(parent_type.c_str(), strex("{}@ get_{}() const", type_name, part).c_str(), FO_SCRIPT_GENERIC(Setting_GetGroup), FO_SCRIPT_GENERIC_CONV));
+
+                setting_group_types.emplace(current_path, type_name);
+            }
+
+            parent_path = current_path;
+        }
+
+        return setting_group_types.at(current_path);
+    };
+
+    const auto register_engine_setting = [&]<typename T>(const char* owner_type, const char* name, T& data, bool writeble) {
         string type_str;
 
         if constexpr (std::is_same_v<T, int32>) {
@@ -471,10 +547,10 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
         }
 
         if (!type_str.empty()) {
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
 
             if (writeble) {
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
             }
         }
     };
@@ -482,15 +558,27 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     static GlobalSettings dummy_settings(false);
     GlobalSettings& settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : dummy_settings;
 
-#define FIXED_SETTING(type, name, ...) register_engine_setting.operator()<type>(#name, const_cast<type&>(settings.name), false)
-#define VARIABLE_SETTING(type, name, ...) register_engine_setting.operator()<type>(#name, settings.name, true)
+#define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}).c_str(), #name, const_cast<type&>(settings.name), false)
+#define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}).c_str(), #name, settings.name, true)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("{} get_{}()", MakeScriptTypeName(*setting_type), setting_name).c_str(), FO_SCRIPT_GENERIC(Setting_GetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("void set_{}({} value)", setting_name, MakeScriptTypeName(*setting_type)).c_str(), FO_SCRIPT_GENERIC(Setting_SetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
+        const auto path = SplitSettingPath(setting_name);
+        FO_RUNTIME_ASSERT(!path.empty());
+
+        string owner_type = "GlobalSettings";
+
+        if (path.size() > 1) {
+            const vector<string> group_path(path.begin(), path.end() - 1);
+            owner_type = ensure_setting_group(group_path);
+        }
+
+        const auto& accessor_name = path.back();
+
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("{} get_{}()", MakeScriptTypeName(*setting_type), accessor_name).c_str(), FO_SCRIPT_GENERIC(Setting_GetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("void set_{}({} value)", accessor_name, MakeScriptTypeName(*setting_type)).c_str(), FO_SCRIPT_GENERIC(Setting_SetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
     }
 }
 

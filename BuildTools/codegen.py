@@ -756,11 +756,12 @@ def parse_settings_entry(line: str, valid_types: set[str]) -> SettingsEntry:
     setting_type = line[:line.find('(')]
     assert setting_type in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + setting_type
     setting_args = [token.strip().strip('"') for token in line[line.find('(') + 1:line.find(')')].split(',')]
+    assert len(setting_args) >= 3, 'Invalid setting args count'
     return SettingsEntry(
         'fix' if setting_type == 'FIXED_SETTING' else 'var',
         engine_type_to_meta_type(setting_args[0], valid_types),
-        setting_args[1],
-        setting_args[2:],
+        setting_args[1] + '.' + setting_args[2],
+        setting_args[3:],
         setting_comment,
     )
 
@@ -1239,6 +1240,10 @@ def parse_export_settings_tags(valid_types: set[str]) -> None:
 
             group_name = parse_settings_group_name(settings_context[0])
             settings = parse_settings_entries(settings_context, valid_types, compatibility_hasher)
+
+            for setting in settings:
+                expected_prefix = group_name + '.'
+                assert setting.name.startswith(expected_prefix), 'Invalid setting subgroup ' + setting.name + ', expected prefix ' + expected_prefix
 
             codegen_tags['ExportSettings'].append(ExportSettingsTag(group_name, target, settings, export_flags, comment))
             hash_recursive(compatibility_hasher, (group_name, target, export_flags))
