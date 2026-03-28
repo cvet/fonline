@@ -92,6 +92,7 @@ public:
     void Unlock();
     void DrawGui(string_view server_name);
 
+    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
     auto LoginPlayer(Player* unlogined_player, string_view name) -> Player*;
 
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
@@ -212,7 +213,6 @@ private:
     void SyncPoint();
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ServerConnection* connection);
@@ -272,8 +272,6 @@ private:
     vector<string> _logLines {};
     LanguagePack _defaultLang {};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<shared_ptr<NetworkServerConnection>> _newConnections {};
-    mutable std::mutex _newConnectionsLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};

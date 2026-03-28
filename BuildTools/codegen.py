@@ -693,11 +693,15 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
 
 
 def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg]]:
+    line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = tag_context.rfind(')')
-    ret_space = tag_context.rfind(' ', 0, brace_open_pos)
-    function_name = tag_context[ret_space:brace_open_pos]
     function_args = tag_context[brace_open_pos + 1:brace_close_pos]
+
+    function_token_index = find_token_index(line_tokens, '(')
+    assert function_token_index > 1, tag_context
+    function_name = line_tokens[function_token_index - 1]
+    ret = engine_type_to_meta_type(''.join(line_tokens[1:function_token_index - 1]), valid_types)
 
     function_tokens = function_name.split('_')
     assert len(function_tokens) == 3, function_name
@@ -707,7 +711,6 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     entity = function_tokens[1]
     assert entity in game_entities + ['Entity'], entity
     name = function_tokens[2]
-    ret = engine_type_to_meta_type(tag_context[tag_context.rfind(' ', 0, ret_space - 1):ret_space].strip(), valid_types)
     return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True)
 
 

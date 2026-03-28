@@ -463,28 +463,10 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
-            vector<refcount_ptr<Player>> new_players;
-
-            {
-                std::scoped_lock locker(_newConnectionsLocker);
-
-                while (!_newConnections.empty()) {
-                    auto conn = std::move(_newConnections.back());
-                    _newConnections.pop_back();
-
-                    auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, SafeAlloc::MakeUnique<ServerConnection>(Settings, conn));
-                    new_players.emplace_back(std::move(new_player));
-                }
-            }
-
             vector<refcount_ptr<Player>> unlogined_players;
 
             {
                 std::scoped_lock locker {_unloginedPlayersLocker};
-
-                if (!new_players.empty()) {
-                    _unloginedPlayers.insert(_unloginedPlayers.end(), new_players.begin(), new_players.end());
-                }
 
                 unlogined_players = _unloginedPlayers;
             }
@@ -700,17 +682,6 @@ void ServerEngine::Shutdown()
         _unloginedPlayers.clear();
     }
 
-    // New connections
-    {
-        std::scoped_lock locker {_newConnectionsLocker};
-
-        for (auto& connection : _newConnections) {
-            connection->Disconnect();
-        }
-
-        _newConnections.clear();
-    }
-
     // Shutdown servers
     for (auto& conn_server : _connectionServers) {
         conn_server->Shutdown();
@@ -917,9 +888,19 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
         return;
     }
 
-    std::scoped_lock locker(_newConnectionsLocker);
+    CreateUnloginedPlayer(std::move(net_connection));
+}
 
-    _newConnections.emplace_back(net_connection);
+auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker {_unloginedPlayersLocker};
+
+    auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
+    auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
+    _unloginedPlayers.emplace_back(std::move(new_player));
+    return _unloginedPlayers.back().get();
 }
 
 void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
@@ -930,6 +911,7 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
 
     if (connection->IsHardDisconnected()) {
         std::scoped_lock locker {_unloginedPlayersLocker};
+
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
         unlogined_player->MarkAsDestroyed();
         return;
@@ -1143,6 +1125,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_GAMEINFO: {
         std::scoped_lock locker {_unloginedPlayersLocker};
+
         string str = strex("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
             _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.GetFrameTime(), GameTime.GetFrameTime() - _stats.ServerStartTime);
         logcb(str);
@@ -1896,6 +1879,7 @@ auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Pl
 
     {
         std::scoped_lock locker {_unloginedPlayersLocker};
+
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
 

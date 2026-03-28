@@ -778,6 +778,13 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, Cri
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
+{
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    return server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
 {
     if (name.empty()) {
@@ -796,74 +803,16 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unlo
     return server->LoginPlayer(unloginedPlayer, name);
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API Player* Server_Game_CreatePlayer(ServerEngine* server, string_view name)
-{
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
-    }
-    if (strvex(name).trim() != name) {
-        throw ScriptException("Wrong player name (trimmed space)");
-    }
-    if (!strvex(name).is_valid_utf8()) {
-        throw ScriptException("Wrong player name encoding");
-    }
-
-    const auto player_id = server->MakePlayerId(name);
-
-    if (server->EntityMngr.GetPlayer(player_id) != nullptr) {
-        throw ScriptException("Player is already loaded");
-    }
-
-    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).Empty()) {
-        throw ScriptException("Player already exists, use GetPlayer");
-    }
-
-    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    auto player = SafeAlloc::MakeRefCounted<Player>(server, player_id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
-    auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, server->Hashes, *server);
-    player_doc.Emplace("_Name", string(name));
-    server->DbStorage.Insert(server->PlayersCollectionName, player_id, player_doc);
-
-    player->SetName(name);
-    player->AddRef();
-    return player.get();
-}
-
-///@ ExportMethod PassOwnership
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, string_view name)
 {
     if (name.empty()) {
         throw ScriptException("Empty player name");
     }
 
-    // Check existence
     const auto id = server->MakePlayerId(name);
-    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
-
-    if (doc.Empty()) {
-        return nullptr;
-    }
-
-    // Find online
-    refcount_ptr<Player> player = server->EntityMngr.GetPlayer(id);
-
-    if (player) {
-        player->AddRef();
-        return player.get();
-    }
-
-    // Load from db
-    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    player = SafeAlloc::MakeRefCounted<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
-    player->SetName(name);
-
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, server->Hashes, *server)) {
-        throw ScriptException("Player data db read failed");
-    }
-
-    player->AddRef();
-    return player.get();
+    auto* player = server->EntityMngr.GetPlayer(id);
+    return player;
 }
 
 ///@ ExportMethod
@@ -1172,6 +1121,24 @@ FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* e
     }
 
     return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* server, string_view playerName)
+{
+    if (playerName.empty()) {
+        throw ScriptException("Player name arg is empty");
+    }
+
+    const auto id = server->MakePlayerId(playerName);
+    auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
