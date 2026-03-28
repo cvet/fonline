@@ -962,6 +962,10 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool e
     FO_RUNTIME_ASSERT(entity);
     FO_RUNTIME_ASSERT(entity->GetId());
 
+    if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
+        throw GenericException("Can't change persistence of player", player->GetId());
+    }
+
     if (persistent) {
         if (explicitly_requested) {
             entity->SetExplicitlyPersistent(true);
@@ -971,9 +975,6 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool e
         MakePersistentRecursive(entity, processed);
     }
     else {
-        unordered_set<const ServerEntity*> validated;
-        ValidateCanMakeNonPersistent(entity, validated);
-
         if (explicitly_requested) {
             entity->SetExplicitlyPersistent(false);
         }
@@ -981,29 +982,6 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool e
         unordered_set<ServerEntity*> processed;
         MakeNonPersistentRecursive(entity, processed);
     }
-}
-
-void EntityManager::ValidateCanMakeNonPersistent(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(entity->GetId());
-
-    if (processed.contains(entity)) {
-        return;
-    }
-
-    processed.emplace(entity);
-
-    if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
-        throw GenericException("Can't make player temporary", player->GetId());
-    }
-    if (const auto* cr = dynamic_cast<const Critter*>(entity); cr != nullptr && cr->GetControlledByPlayer()) {
-        throw GenericException("Can't make player critter temporary", cr->GetId());
-    }
-
-    ForEachPersistentChildEntity(const_cast<ServerEntity*>(entity), [this, &processed](ServerEntity* child) { ValidateCanMakeNonPersistent(child, processed); });
 }
 
 void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed)

@@ -133,7 +133,6 @@ public:
     void DestroyAllEntities();
 
 private:
-    void ValidateCanMakeNonPersistent(const ServerEntity* entity, unordered_set<const ServerEntity*>& processed) const;
     void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
