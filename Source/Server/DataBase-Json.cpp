@@ -21,7 +21,7 @@ public:
     explicit DbJson(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
-        _jsonIndent {db_settings.DataBaseJsonIndent}
+        _jsonIndent {db_settings.JsonIndent}
     {
         (void)fs_create_directories(storage_dir);
         StartCommitThread();

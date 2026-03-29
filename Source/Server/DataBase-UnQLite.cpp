@@ -25,7 +25,7 @@ public:
     explicit DbUnQLite(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
-        _openFlags {UNQLITE_OPEN_CREATE | (db_settings.DataBaseUnQLiteOmitJournaling ? UNQLITE_OPEN_OMIT_JOURNALING : 0)}
+        _openFlags {UNQLITE_OPEN_CREATE | (db_settings.UnQLiteOmitJournaling ? UNQLITE_OPEN_OMIT_JOURNALING : 0)}
     {
         FO_STACK_TRACE_ENTRY();
 

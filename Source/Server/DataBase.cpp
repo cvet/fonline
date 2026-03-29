@@ -161,10 +161,10 @@ void DataBase::DrawGui()
 
 DataBaseImpl::DataBaseImpl(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) :
     _settings {&db_settings},
-    _opLogEnabled {_settings->DataBaseOpLogEnabled},
-    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->DataBasePanicOpLogSizeThreshold)},
-    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->DataBaseReconnectRetryPeriod, 1)}},
-    _panicShutdownTimeout {std::chrono::milliseconds {_settings->DataBasePanicShutdownTimeout}},
+    _opLogEnabled {_settings->OpLogEnabled},
+    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->PanicOpLogSizeThreshold)},
+    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->ReconnectRetryPeriod, 1)}},
+    _panicShutdownTimeout {std::chrono::milliseconds {_settings->PanicShutdownTimeout}},
     _panicCallback {std::move(panic_callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -178,7 +178,7 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     }
 
-    if (_settings->DataBaseOpLogPath.empty()) {
+    if (_settings->OpLogPath.empty()) {
         throw DataBaseException("Empty oplog path in settings");
     }
 
@@ -251,8 +251,8 @@ void DataBaseImpl::InitializeOpLogs()
         return std::move(handle);
     };
 
-    _pendingChangesLog = open_log_file(_settings->DataBaseOpLogPath, "pending database changes file");
-    _committedChangesLog = open_log_file(strex(_settings->DataBaseOpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    _pendingChangesLog = open_log_file(_settings->OpLogPath, "pending database changes file");
+    _committedChangesLog = open_log_file(strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
@@ -282,7 +282,7 @@ void DataBaseImpl::RestorePendingChanges()
         const size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBaseOpLogPath);
+            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->OpLogPath);
         }
     }
 
@@ -333,7 +333,7 @@ void DataBaseImpl::RestorePendingChanges()
                         InsertRecord(collection_name, record_id, doc);
                     }
                     else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", id_value, _settings->DataBaseOpLogPath);
+                        throw DataBaseException("Pending database insert replay conflict", id_value, _settings->OpLogPath);
                     }
                 }
                 else if (!DoesDocumentContain(current_doc, doc)) {
@@ -354,7 +354,7 @@ void DataBaseImpl::RestorePendingChanges()
         throw;
     }
     catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBaseOpLogPath);
+        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->OpLogPath);
     }
 
     FO_RUNTIME_ASSERT(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount());
@@ -362,10 +362,10 @@ void DataBaseImpl::RestorePendingChanges()
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBaseOpLogPath);
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
     }
     if (!_committedChangesLog->Truncate()) {
-        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBaseOpLogPath).replace(".oplog", "-committed.oplog").str());
+        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
     }
 
     OnPendingChangesRestored();
@@ -389,11 +389,8 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_backendFailed) {
+    if (!InValidState()) {
         throw DataBaseException("Database backend is in failed state");
-    }
-    if (_panicStarted) {
-        throw DataBaseException("Database is in panic state");
     }
 
     {

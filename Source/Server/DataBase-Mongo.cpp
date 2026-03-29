@@ -21,15 +21,15 @@ public:
 
     explicit DbMongo(DataBaseSettings& db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _escapeDot {db_settings.DataBaseMongoEscapeChar.empty() ? '\0' : db_settings.DataBaseMongoEscapeChar.front()}
+        _escapeDot {db_settings.MongoEscapeChar.empty() ? '\0' : db_settings.MongoEscapeChar.front()}
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (db_settings.DataBaseMongoEscapeChar.length() > 1) {
-            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings.DataBaseMongoEscapeChar);
+        if (db_settings.MongoEscapeChar.length() > 1) {
+            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings.MongoEscapeChar);
         }
         if (_escapeDot == '.') {
-            throw DataBaseException("DbMongo escape char can't be '.'", db_settings.DataBaseMongoEscapeChar);
+            throw DataBaseException("DbMongo escape char can't be '.'", db_settings.MongoEscapeChar);
         }
 
         mongoc_init();

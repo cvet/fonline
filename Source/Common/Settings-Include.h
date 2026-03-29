@@ -314,7 +314,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings, virtual DataBaseSettings);
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
