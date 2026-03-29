@@ -1310,6 +1310,7 @@ list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CO
 
 add_custom_target(BakeResources
     COMMAND ${bakeResources} -ForceBaking False
+    COMMAND ${CMAKE_COMMAND} -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash" -DGIT_ROOT="${FO_GIT_ROOT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/WriteBuildHash.cmake"
     DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
@@ -1317,6 +1318,7 @@ list(APPEND FO_COMMANDS_GROUP BakeResources)
 
 add_custom_target(ForceBakeResources
     COMMAND ${bakeResources} -ForceBaking True
+    COMMAND ${CMAKE_COMMAND} -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash" -DGIT_ROOT="${FO_GIT_ROOT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/WriteBuildHash.cmake"
     DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")

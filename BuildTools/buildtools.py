@@ -712,10 +712,16 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 
 
 def resolve_build_hash(env: Mapping[str, str]) -> str:
-	output_root = Path(env['FO_OUTPUT'])
-	build_hash_path = output_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash'
-	build_hash = read_first_line(build_hash_path)
-	assert build_hash, f'Build hash not found at {build_hash_path}; build the web client first'
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	result = subprocess.run(
+		['git', 'rev-parse', 'HEAD'],
+		cwd=project_root,
+		capture_output=True,
+		text=True,
+	)
+	assert result.returncode == 0, f'Failed to get git hash: {result.stderr.strip()}'
+	build_hash = result.stdout.strip()
+	assert build_hash, 'git rev-parse HEAD returned empty hash'
 	return build_hash
 
 

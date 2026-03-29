@@ -98,7 +98,7 @@ macro(WriteBuildHash target)
 	endif()
 
 	add_custom_command(TARGET ${target} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E remove -f "${dir}/${target}.build-hash")
-	add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E echo_append ${FO_BUILD_HASH} > "${dir}/${target}.build-hash")
+	add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -DHASH_FILE="${dir}/${target}.build-hash" -DGIT_ROOT="${FO_GIT_ROOT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/WriteBuildHash.cmake")
 endmacro()
 
 # Some info about build
