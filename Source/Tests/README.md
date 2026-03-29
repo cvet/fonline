@@ -49,7 +49,7 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 ## Running code coverage
 
-The repository now has a dedicated `FO_CODE_COVERAGE` workflow for the engine test binary `LF_CodeCoverage`.
+The repository now has a dedicated `FO_CODE_COVERAGE` workflow for the engine test binary `LF_CodeCoverage`, and the generated report reflects the full `Engine/Source` tree.
 
 - CMake target that executes the instrumented binary: `RunCodeCoverage`
 - CMake target that builds the local report from collected data: `GenerateCodeCoverageReport`

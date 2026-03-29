@@ -16,21 +16,35 @@ import xml.etree.ElementTree as ET
 
 
 EXCLUDED_SOURCE_FRAGMENTS = (
-    "/Engine/Source/Applications/",
-    "/Engine/Source/Tests/",
     "/ThirdParty/",
     "/GeneratedSource/",
 )
+
+SOURCE_FILE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".inl",
+    ".ipp",
+    ".m",
+    ".mm",
+}
 
 
 @dataclass
 class FileCoverage:
     path: Path
     hits_by_line: dict[int, int] = field(default_factory=dict)
+    total_lines_override: int | None = None
 
     @property
     def total_lines(self) -> int:
-        return len(self.hits_by_line)
+        measured_lines = len(self.hits_by_line)
+        if self.total_lines_override is None:
+            return measured_lines
+        return max(measured_lines, self.total_lines_override)
 
     @property
     def covered_lines(self) -> int:
@@ -111,6 +125,73 @@ def is_relevant_source(path: Path, workspace_root: Path) -> bool:
 
 def ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
+
+
+def iter_relevant_source_files(workspace_root: Path) -> Iterable[Path]:
+    source_root = workspace_root / "Engine" / "Source"
+
+    for path in sorted(source_root.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in SOURCE_FILE_EXTENSIONS:
+            continue
+        if is_relevant_source(path, workspace_root):
+            yield path
+
+
+def estimate_source_lines(path: Path) -> int:
+    content = path.read_text(encoding="utf-8-sig", errors="ignore")
+    total = 0
+    in_block_comment = False
+
+    for raw_line in content.splitlines():
+        remaining = raw_line.strip()
+
+        while remaining:
+            if in_block_comment:
+                block_end = remaining.find("*/")
+                if block_end == -1:
+                    remaining = ""
+                    break
+                remaining = remaining[block_end + 2 :].strip()
+                in_block_comment = False
+                continue
+
+            if remaining.startswith("//"):
+                remaining = ""
+                break
+
+            line_comment = remaining.find("//")
+            block_start = remaining.find("/*")
+
+            if line_comment != -1 and (block_start == -1 or line_comment < block_start):
+                remaining = remaining[:line_comment].strip()
+                break
+
+            if block_start == -1:
+                break
+
+            block_end = remaining.find("*/", block_start + 2)
+            if block_end == -1:
+                remaining = remaining[:block_start].strip()
+                in_block_comment = True
+                break
+
+            remaining = (remaining[:block_start] + " " + remaining[block_end + 2 :]).strip()
+
+        if remaining:
+            total += 1
+
+    return total
+
+
+def add_missing_source_files(coverage: dict[str, FileCoverage], workspace_root: Path) -> dict[str, FileCoverage]:
+    for path in iter_relevant_source_files(workspace_root):
+        relative_path = repo_relative_path(path, workspace_root)
+        if relative_path is None or relative_path in coverage:
+            continue
+
+        coverage[relative_path] = FileCoverage(path=path, total_lines_override=estimate_source_lines(path))
+
+    return coverage
 
 
 def raw_directory(output_dir: Path) -> Path:
@@ -413,8 +494,6 @@ def collect_gcc_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
         lcov,
         "--remove",
         str(extracted_info),
-        f"{args.workspace_root / 'Engine' / 'Source' / 'Tests'}/*",
-        f"{args.workspace_root / 'Engine' / 'Source' / 'Applications'}/*",
         "*/ThirdParty/*",
         "*/GeneratedSource/*",
         "--output-file",
@@ -474,11 +553,17 @@ def write_summary(summary_path: Path, coverage: dict[str, FileCoverage]) -> str:
         f"Files analyzed: {len(coverage)}",
         f"Uncovered lines: {uncovered_lines}",
         "",
-        "Least covered files:",
+        "Files:",
+        "  Coverage  Covered/Total  Uncovered  File",
     ]
 
-    for relative_path, entry in sorted_files[:20]:
-        lines.append(f"  {entry.line_rate * 100:6.2f}%  {entry.covered_lines:5d}/{entry.total_lines:5d}  {relative_path}")
+    for relative_path, entry in sorted_files:
+        lines.append(
+            f"  {entry.line_rate * 100:7.2f}%  "
+            f"{entry.covered_lines:5d}/{entry.total_lines:5d}  "
+            f"{entry.uncovered_lines:9d}  "
+            f"{relative_path}"
+        )
 
     summary_text = "\n".join(lines) + "\n"
     summary_path.write_text(summary_text, encoding="utf-8")
@@ -630,6 +715,8 @@ def generate_report(args: argparse.Namespace) -> None:
         coverage = collect_msvc_report(args)
     else:
         raise SystemExit(f"Unsupported coverage backend: {args.backend}")
+
+    coverage = add_missing_source_files(coverage, args.workspace_root)
 
     if not coverage:
         raise SystemExit("Coverage data was collected, but no engine source files matched the current filters.")
