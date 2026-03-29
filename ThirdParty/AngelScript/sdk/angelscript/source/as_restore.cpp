@@ -2549,6 +2549,62 @@ void asCReader::ReadByteCode(asCScriptFunction *func)
 		asDWORD *bc = func->scriptData->byteCode.AddressOf() + pos;
 		pos += len;
 
+		// (FOnline Patch)
+		if( b == asBC_ALLOC )
+		{
+			memset(bc, 0, len * sizeof(asDWORD));
+			*(asBYTE*)(bc) = b;
+
+			// Store ALLOC in a platform-neutral layout: arg count, type index, ctor index.
+			asWORD w = ReadEncodedUInt16();
+			*(((asWORD*)bc) + 1) = w;
+
+			*(asPWORD*)(bc + 1) = (asPWORD)ReadEncodedUInt();
+			*(int*)(bc + 1 + AS_PTR_SIZE) = (int)ReadEncodedUInt();
+
+			numInstructions--;
+			continue;
+		}
+
+		// (FOnline Patch)
+		if(
+			(b == asBC_REFCPY || b == asBC_OBJTYPE || b == asBC_JitEntry || b == asBC_FuncPtr || b == asBC_PGA || b == asBC_PshGPtr || b == asBC_LDG || b == asBC_PshG4))
+		{
+			memset(bc, 0, len * sizeof(asDWORD));
+			*(asBYTE*)(bc) = b;
+			*(asPWORD*)(bc + 1) = (asPWORD)ReadEncodedUInt();
+
+			numInstructions--;
+			continue;
+		}
+
+		// (FOnline Patch)
+		if(
+			(b == asBC_RefCpyV || b == asBC_LdGRdR4 || b == asBC_CpyGtoV4 || b == asBC_CpyVtoG4 || b == asBC_FREE))
+		{
+			memset(bc, 0, len * sizeof(asDWORD));
+			*(asBYTE*)(bc) = b;
+
+			asWORD w = ReadEncodedUInt16();
+			*(((asWORD*)bc) + 1) = w;
+			*(asPWORD*)(bc + 1) = (asPWORD)ReadEncodedUInt();
+
+			numInstructions--;
+			continue;
+		}
+
+		// (FOnline Patch)
+		if( b == asBC_SetG4 )
+		{
+			memset(bc, 0, len * sizeof(asDWORD));
+			*(asBYTE*)(bc) = b;
+			*(asPWORD*)(bc + 1) = (asPWORD)ReadEncodedUInt();
+			*(asDWORD*)(bc + 1 + AS_PTR_SIZE) = ReadEncodedUInt();
+
+			numInstructions--;
+			continue;
+		}
+
 		switch( asBCInfo[b].type )
 		{
 		case asBCTYPE_NO_ARG:
@@ -3836,13 +3892,13 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			calledFunc = func->GetCalledFunction(n);
 			break;
 		}
-		else if( bc == asBC_REFCPY ||
-				 bc == asBC_COPY )
+		else if( (bc == asBC_REFCPY || bc == asBC_COPY) && offset == 1 ) // (FOnline Patch)
 		{
-			// In this case we know there is only 1 pointer on the stack above
-			// asASSERT( offset == 1 ); // (FOnline Patch)
+			// Simple case: exactly 1 pointer on the stack above
 			return offset - (1 - AS_PTR_SIZE);
 		}
+		// (FOnline Patch) When offset > 1, there are multiple items on the stack.
+		// Fall through to scan for the actual CALL and count all pointer slots.
 
 		// Keep track of the stack size between the
 		// instruction that needs to be adjusted and the call
@@ -5115,13 +5171,13 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			}
 			break;
 		}
-		else if( bc == asBC_REFCPY ||
-				 bc == asBC_COPY )
+		else if( (bc == asBC_REFCPY || bc == asBC_COPY) && offset == AS_PTR_SIZE ) // (FOnline Patch)
 		{
-			// In this case we know there is only 1 pointer on the stack above
-			asASSERT( offset == AS_PTR_SIZE );
+			// Simple case: exactly 1 pointer on the stack above
 			return offset + (1 - AS_PTR_SIZE);
 		}
+		// (FOnline Patch) When offset > AS_PTR_SIZE, there are multiple items on
+		// the stack. Fall through to scan for the actual CALL and count all slots.
 
 		// Keep track of the stack size between the
 		// instruction that needs to be adjusted and the call
@@ -5479,6 +5535,66 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 
 		// TODO: bytecode: Must make sure that floats and doubles are always stored the same way regardless of platform.
 		//                 Some platforms may not use the IEEE 754 standard, in which case it is necessary to encode the values
+
+		// (FOnline Patch)
+		if( c == asBC_ALLOC )
+		{
+			// Store ALLOC in a platform-neutral layout: arg count, type index, ctor index.
+			asBYTE b = (asBYTE)c;
+			WriteData(&b, 1);
+
+			short w = *(((short*)tmpBC) + 1);
+			WriteEncodedInt64(w);
+
+			WriteEncodedInt64((int)*(asPWORD*)(tmpBC + 1));
+			WriteEncodedInt64(*(int*)(tmpBC + 1 + AS_PTR_SIZE));
+
+			bc += asBCTypeSize[asBCInfo[c].type];
+			length -= asBCTypeSize[asBCInfo[c].type];
+			continue;
+		}
+
+		// (FOnline Patch)
+		if(
+			(c == asBC_REFCPY || c == asBC_OBJTYPE || c == asBC_JitEntry || c == asBC_FuncPtr || c == asBC_PGA || c == asBC_PshGPtr || c == asBC_LDG || c == asBC_PshG4))
+		{
+			asBYTE b = (asBYTE)c;
+			WriteData(&b, 1);
+			WriteEncodedInt64((int)*(asPWORD*)(tmpBC + 1));
+
+			bc += asBCTypeSize[asBCInfo[c].type];
+			length -= asBCTypeSize[asBCInfo[c].type];
+			continue;
+		}
+
+		// (FOnline Patch)
+		if(
+			(c == asBC_RefCpyV || c == asBC_LdGRdR4 || c == asBC_CpyGtoV4 || c == asBC_CpyVtoG4 || c == asBC_FREE))
+		{
+			asBYTE b = (asBYTE)c;
+			WriteData(&b, 1);
+
+			short w = *(((short*)tmpBC) + 1);
+			WriteEncodedInt64(w);
+			WriteEncodedInt64((int)*(asPWORD*)(tmpBC + 1));
+
+			bc += asBCTypeSize[asBCInfo[c].type];
+			length -= asBCTypeSize[asBCInfo[c].type];
+			continue;
+		}
+
+		// (FOnline Patch)
+		if( c == asBC_SetG4 )
+		{
+			asBYTE b = (asBYTE)c;
+			WriteData(&b, 1);
+			WriteEncodedInt64((int)*(asPWORD*)(tmpBC + 1));
+			WriteEncodedInt64(*(asDWORD*)(tmpBC + 1 + AS_PTR_SIZE));
+
+			bc += asBCTypeSize[asBCInfo[c].type];
+			length -= asBCTypeSize[asBCInfo[c].type];
+			continue;
+		}
 
 		// Now store the instruction in the smallest possible way
 		switch( asBCInfo[c].type )

@@ -1666,6 +1666,9 @@ void asCCompiler::CompileInitAsCopy(asCDataType &dt, int offset, asCExprContext 
 {
 	asASSERT(isVarGlobOrMem == asVGM_VARIABLE || isVarGlobOrMem == asVGM_MEMBER);
 
+	if( dt.GetTypeInfo() && (dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE) && !dt.IsObjectHandle() ) // (FOnline Patch)
+		dt.MakeHandle(true);
+
 	bool isObjectOnHeap = derefDestination ? false : IsVariableOnHeap(offset);
 
 	// Use copy constructor if available.

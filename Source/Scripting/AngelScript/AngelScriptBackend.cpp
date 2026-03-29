@@ -54,6 +54,10 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr uint32 AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
+static constexpr uint8 AS_BYTECODE_POINTER_SIZE = sizeof(void*);
+static constexpr uint8 AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
+
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
 {
     FO_STACK_TRACE_ENTRY();
@@ -295,6 +299,22 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
+    const auto container_magic = reader.Read<uint32>();
+
+    if (container_magic != AS_BYTECODE_CONTAINER_MAGIC) {
+        throw ScriptException("Incompatible script bytecode container");
+    }
+
+    const auto source_pointer_size = reader.Read<uint8>();
+    const auto source_endian_tag = reader.Read<uint8>();
+
+    if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
+        WriteLog("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
+    }
+    if (source_endian_tag != AS_BYTECODE_ENDIAN_TAG) {
+        WriteLog("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
+    }
+
     vector<AngelScript::asBYTE> buf(reader.Read<uint32>());
     MemCopy(buf.data(), reader.ReadPtr<AngelScript::asBYTE>(buf.size()), buf.size());
 
@@ -319,6 +339,42 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);
+    }
+
+    // Validate loaded bytecode (especially useful for cross-platform loads)
+    {
+        const auto func_count = mod->GetFunctionCount();
+        for (AngelScript::asUINT fi = 0; fi < static_cast<AngelScript::asUINT>(func_count); fi++) {
+            auto* func = mod->GetFunctionByIndex(fi);
+            if (func == nullptr) {
+                continue;
+            }
+
+            // Walk the bytecode to verify instruction boundaries are well-formed
+            AngelScript::asUINT bc_length = 0;
+            auto* bc = func->GetByteCode(&bc_length);
+            if (bc == nullptr || bc_length == 0) {
+                continue;
+            }
+
+            AngelScript::asUINT pos = 0;
+            while (pos < bc_length) {
+                const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
+                const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
+                if (instr_size == 0 || pos + instr_size > bc_length) {
+                    WriteLog("Bytecode validation error in '{}': invalid instruction at pos {}, opcode {}, size {}, bc_length {}", func->GetName(), pos, static_cast<int>(opcode), instr_size, bc_length);
+                    throw ScriptException("Bytecode validation failed - invalid instruction boundary");
+                }
+                pos += instr_size;
+            }
+
+            if (pos != bc_length) {
+                WriteLog("Bytecode validation error in '{}': instructions don't fill bytecode exactly (pos={}, length={})", func->GetName(), pos, bc_length);
+                throw ScriptException("Bytecode validation failed - instruction boundary mismatch");
+            }
+        }
+
+        WriteLog("Bytecode validation passed for {} functions", func_count);
     }
 }
 
@@ -494,6 +550,9 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
     vector<uint8> data;
     auto writer = DataWriter(data);
+    writer.Write<uint32>(AS_BYTECODE_CONTAINER_MAGIC);
+    writer.Write<uint8>(AS_BYTECODE_POINTER_SIZE);
+    writer.Write<uint8>(AS_BYTECODE_ENDIAN_TAG);
     writer.Write<uint32>(numeric_cast<uint32>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
     writer.Write<uint32>(numeric_cast<uint32>(lnt_data.size()));
