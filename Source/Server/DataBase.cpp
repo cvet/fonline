@@ -460,6 +460,10 @@ void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Do
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (doc.Empty()) {
+        throw DataBaseException("Cannot insert empty document");
+    }
+
     {
         std::scoped_lock locker {_stateLocker};
 

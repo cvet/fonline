@@ -345,7 +345,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
 
             if (globals_doc.Empty()) {
-                DbStorage.Insert(GameCollectionName, ident_t {1}, {});
+                AnyData::Document doc;
+                doc.Emplace("_Name", string("Globals"));
+                DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
                 SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
             }
             else {
