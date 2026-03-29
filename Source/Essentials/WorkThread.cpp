@@ -32,7 +32,7 @@
 //
 
 #include "WorkThread.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "GlobalData.h"
 #include "Platform.h"
 #include "StackTrace.h"

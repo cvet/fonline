@@ -176,11 +176,10 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
-        DbStorage = ConnectToDataBase(Settings.DbStorage);
-
-        if (!DbStorage) {
-            throw ServerInitException("Can't init storage data base", Settings.DbStorage);
-        }
+        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, [] {
+            FO_RUNTIME_ASSERT(App);
+            App->RequestQuit(false);
+        });
 
         return std::nullopt;
     });
@@ -409,8 +408,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             throw;
         }
 
-        // Commit initial database changes
-        DbStorage.CommitChanges(true);
+        // Start automatic committing only after successful initialization
+        DbStorage.StartCommitChanges();
+        DbStorage.WaitCommitChanges();
 
         // Advance time after initialization
         FrameAdvance();
@@ -555,17 +555,6 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             return std::chrono::milliseconds {0};
         });
 
-        // Commit data to storage
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
-
-            if (DbStorage.GetCommitJobsCount() < numeric_cast<size_t>(Settings.DataBaseMaxCommitJobs)) {
-                DbStorage.CommitChanges(false);
-            }
-
-            return std::chrono::milliseconds {Settings.DataBaseCommitPeriod};
-        });
-
         // Clients log
         _mainWorker.AddJob([this]() FO_DEFERRED {
             FO_STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
@@ -659,7 +648,7 @@ void ServerEngine::Shutdown()
     EntityMngr.DestroyInnerEntities(this);
     EntityMngr.DestroyAllEntities();
     ShutdownBackends();
-    DbStorage.CommitChanges(true);
+    DbStorage.WaitCommitChanges();
 
     // Logging clients
     SetLogCallback("LogToClients", nullptr);
@@ -874,7 +863,7 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
     buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
     buf += strex("Compress ratio: {}\n", numeric_cast<float64>(_stats.DataReal) / numeric_cast<float64>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-    buf += strex("DB commit jobs: {}/{}\n", DbStorage.GetCommitJobsCount(), Settings.DataBaseCommitPeriod);
+    buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
     return buf;
 }

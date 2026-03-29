@@ -46,7 +46,7 @@
 #include "Containers.h"
 #include "StringUtils.h"
 #include "Platform.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "SafeArithmetics.h"
 #include "DataSerialization.h"
 #include "HashedString.h"

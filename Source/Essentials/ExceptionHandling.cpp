@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "BaseLogging.h"
 #include "GlobalData.h"
 #include "StringUtils.h"
