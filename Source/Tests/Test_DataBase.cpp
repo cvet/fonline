@@ -357,11 +357,11 @@ namespace
 
     void ConfigureRecoverySettings(GlobalSettings& settings, string_view oplog_path)
     {
-        const_cast<bool&>(settings.DataBaseOpLogEnabled) = true;
-        const_cast<string&>(settings.DataBaseOpLogPath) = string(oplog_path);
-        const_cast<int32&>(settings.DataBaseReconnectRetryPeriod) = 20;
-        const_cast<int32&>(settings.DataBasePanicOpLogSizeThreshold) = 1024 * 1024;
-        const_cast<int32&>(settings.DataBasePanicShutdownTimeout) = 1;
+        const_cast<bool&>(settings.OpLogEnabled) = true;
+        const_cast<string&>(settings.OpLogPath) = string(oplog_path);
+        const_cast<int32&>(settings.ReconnectRetryPeriod) = 20;
+        const_cast<int32&>(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
+        const_cast<int32&>(settings.PanicShutdownTimeout) = 1;
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
