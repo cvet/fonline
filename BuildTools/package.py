@@ -136,9 +136,9 @@ class Packager:
 		self.pack_args = set(self.args.pack.split('+'))
 		self.output_path = os.path.realpath(self.args.output if self.args.output else os.getcwd()).rstrip('\\/')
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
-		self.server_res_dir = self.fomain.mainSection().getStr('ServerResources')
-		self.client_res_dir = self.fomain.mainSection().getStr('ClientResources')
-		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('ZipCompressLevel')
+		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
+		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
+		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
 	def has_pack(self, name: str) -> bool:
@@ -310,7 +310,7 @@ class Packager:
 		log('Embedded config length', len(self.config_data))
 
 	def prepare_resources(self) -> None:
-		bake_output = self.fomain.mainSection().getStr('BakeOutput')
+		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
 		self.baking_path = self.get_input(bake_output, 'Resources')
 		log('Baking input', self.baking_path)
 
