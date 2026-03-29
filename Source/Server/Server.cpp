@@ -941,6 +941,7 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
             switch (msg) {
             case NetMessage::Ping:
                 Process_Ping(connection);
+                unlogined_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile:
                 Process_UpdateFile(connection);
@@ -1004,6 +1005,7 @@ void ServerEngine::ProcessPlayer(Player* player)
         switch (msg) {
         case NetMessage::Ping:
             Process_Ping(connection);
+            player->Send_TimeSync();
             break;
 
         case NetMessage::SendCommand:
