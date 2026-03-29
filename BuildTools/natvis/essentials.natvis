@@ -111,4 +111,39 @@
     </Expand>
   </Type>
 
+  <Type Name="fo::timespan">
+    <DisplayString Condition="_value == 0">0 ns</DisplayString>
+    <DisplayString>{_value} ns / {_value / 1000} us / {_value / 1000000} ms / {_value / 1000000000} s</DisplayString>
+    <Expand>
+      <Item Name="nanoseconds">_value</Item>
+      <Item Name="microseconds">_value / 1000</Item>
+      <Item Name="milliseconds">_value / 1000000</Item>
+      <Item Name="seconds">_value / 1000000000</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::nanotime">
+    <DisplayString Condition="_value == 0">0 ns (steady time)</DisplayString>
+    <DisplayString>{_value} ns / {_value / 1000} us / {_value / 1000000} ms / {_value / 1000000000} s since steady epoch</DisplayString>
+    <Expand>
+      <Item Name="raw">_value</Item>
+      <Item Name="nanoseconds">_value</Item>
+      <Item Name="microseconds">_value / 1000</Item>
+      <Item Name="milliseconds">_value / 1000000</Item>
+      <Item Name="seconds">_value / 1000000000</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::synctime">
+    <DisplayString Condition="_value == 0">0 ms (sync time)</DisplayString>
+    <DisplayString>{_value} ms / {_value / 1000} s / {_value / 60000} min / {_value / 3600000} h since sync epoch</DisplayString>
+    <Expand>
+      <Item Name="raw">_value</Item>
+      <Item Name="milliseconds">_value</Item>
+      <Item Name="seconds">_value / 1000</Item>
+      <Item Name="minutes">_value / 60000</Item>
+      <Item Name="hours">_value / 3600000</Item>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>
