@@ -4,6 +4,11 @@ exports.deactivate = exports.activate = void 0;
 const vscode = require("vscode");
 const COMMAND_ID = 'fonline-tools.showTools';
 const STATUS_BAR_TEXT = '$(tools) FOnline Tools';
+const TASK_GROUP_SEPARATOR = '::';
+const PLATFORM_TAG_PATTERN = /\[(windows|linux|macos|win32|win64|osx|darwin)\]/gi;
+const PLATFORM_DEBUG_TYPES = {
+    cppvsdbg: ['windows'],
+};
 function getWorkspaceFolder() {
     var _a;
     return (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0];
@@ -24,6 +29,113 @@ function decodeUtf8(bytes) {
     }
     return decodeURIComponent(encoded);
 }
+function getHostPlatform() {
+    const platform = getNodePlatform();
+    if (platform === 'win32') {
+        return 'windows';
+    }
+    if (platform === 'linux') {
+        return 'linux';
+    }
+    if (platform === 'darwin') {
+        return 'macos';
+    }
+    return 'unknown';
+}
+function getExplicitPlatforms(value) {
+    const platforms = [];
+    if (value.windows !== undefined) {
+        platforms.push('windows');
+    }
+    if (value.linux !== undefined) {
+        platforms.push('linux');
+    }
+    if (value.osx !== undefined) {
+        platforms.push('macos');
+    }
+    return platforms;
+}
+function normalizeTaggedPlatform(rawPlatform) {
+    const platform = rawPlatform.trim().toLowerCase();
+    if (platform === 'windows' || platform === 'win32' || platform === 'win64') {
+        return 'windows';
+    }
+    if (platform === 'linux') {
+        return 'linux';
+    }
+    if (platform === 'macos' || platform === 'osx' || platform === 'darwin') {
+        return 'macos';
+    }
+    return undefined;
+}
+function extractPlatformTags(text) {
+    const result = new Set();
+    for (const match of text.matchAll(PLATFORM_TAG_PATTERN)) {
+        const platform = match[1] ? normalizeTaggedPlatform(match[1]) : undefined;
+        if (platform) {
+            result.add(platform);
+        }
+    }
+    return Array.from(result);
+}
+function stripPlatformTags(text) {
+    return text.replace(PLATFORM_TAG_PATTERN, '').replace(/\s{2,}/g, ' ').trim();
+}
+function extractPlatformQualifiers(text) {
+    var _a;
+    const result = new Set();
+    const matches = text.matchAll(/\(([^)]+)\)/g);
+    for (const match of matches) {
+        const rawQualifier = (_a = match[1]) === null || _a === void 0 ? void 0 : _a.trim().toLowerCase();
+        if (!rawQualifier) {
+            continue;
+        }
+        const firstWord = rawQualifier.split(/\s+/)[0];
+        if (firstWord === 'windows' || firstWord === 'win32' || firstWord === 'win64') {
+            result.add('windows');
+        }
+        else if (firstWord === 'linux') {
+            result.add('linux');
+        }
+        else if (firstWord === 'macos' || firstWord === 'osx' || firstWord === 'darwin') {
+            result.add('macos');
+        }
+    }
+    return Array.from(result);
+}
+function matchesCurrentPlatform(taggedPlatforms, explicitPlatforms, qualifiedPlatforms) {
+    const hostPlatform = getHostPlatform();
+    if (taggedPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return taggedPlatforms.includes(hostPlatform);
+    }
+    if (qualifiedPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return qualifiedPlatforms.includes(hostPlatform);
+    }
+    if (explicitPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return explicitPlatforms.includes(hostPlatform);
+    }
+    return true;
+}
+function isTaskDefinitionSupported(definition) {
+    var _a;
+    return matchesCurrentPlatform(extractPlatformTags((_a = definition.label) !== null && _a !== void 0 ? _a : ''), getExplicitPlatforms(definition), extractPlatformQualifiers((_a = definition.label) !== null && _a !== void 0 ? _a : ''));
+}
+function isLaunchDefinitionSupported(definition) {
+    var _a, _b;
+    const debugTypePlatforms = (_a = PLATFORM_DEBUG_TYPES[(_b = definition.type) !== null && _b !== void 0 ? _b : '']) !== null && _a !== void 0 ? _a : [];
+    if (!matchesCurrentPlatform(extractPlatformTags(definition.name !== null && definition.name !== void 0 ? definition.name : ''), getExplicitPlatforms(definition), extractPlatformQualifiers(definition.name !== null && definition.name !== void 0 ? definition.name : ''))) {
+        return false;
+    }
+    return matchesCurrentPlatform([], debugTypePlatforms, []);
+}
+function isLaunchCompoundSupported(compound, allowedConfigNames) {
+    var _a, _b;
+    if (!matchesCurrentPlatform(extractPlatformTags((_a = compound.name) !== null && _a !== void 0 ? _a : ''), getExplicitPlatforms(compound), extractPlatformQualifiers((_a = compound.name) !== null && _a !== void 0 ? _a : ''))) {
+        return false;
+    }
+    const configurations = (_b = compound.configurations) !== null && _b !== void 0 ? _b : [];
+    return configurations.length !== 0 && configurations.every(configName => allowedConfigNames.has(configName));
+}
 async function readWorkspaceTaskLabels() {
     const workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {
@@ -34,7 +146,9 @@ async function readWorkspaceTaskLabels() {
     if (!parsed) {
         return new Set();
     }
-    return new Set(((parsed.tasks !== null && parsed.tasks !== void 0 ? parsed.tasks : []).flatMap(task => task.label ? [task.label] : [])));
+    return new Set(((parsed.tasks !== null && parsed.tasks !== void 0 ? parsed.tasks : [])
+        .filter(isTaskDefinitionSupported)
+        .flatMap(task => task.label ? [task.label] : [])));
 }
 function isMainWorkspaceTask(task, workspaceFolder) {
     const scope = task.scope;
@@ -150,6 +264,18 @@ function sortPicks(picks) {
         return left.label.localeCompare(right.label);
     });
 }
+function parseGroupedTaskName(taskName) {
+    const separatorIndex = taskName.indexOf(TASK_GROUP_SEPARATOR);
+    if (separatorIndex <= 0) {
+        return undefined;
+    }
+    const groupLabel = stripPlatformTags(taskName.slice(0, separatorIndex).trim());
+    const itemLabel = stripPlatformTags(taskName.slice(separatorIndex + TASK_GROUP_SEPARATOR.length).trim());
+    if (!groupLabel || !itemLabel) {
+        return undefined;
+    }
+    return { groupLabel, itemLabel };
+}
 async function showSubmenu(title, placeHolder, picks) {
     if (picks.length === 0) {
         void vscode.window.showInformationMessage(`No ${title.toLowerCase()} entries found.`);
@@ -197,31 +323,52 @@ async function getTaskPicks() {
         return [];
     }
     const tasks = await vscode.tasks.fetchTasks();
-    return tasks
+    const taskPicks = tasks
         .filter(task => allowedLabels.has(task.name) && isMainWorkspaceTask(task, workspaceFolder))
         .map(task => ({
-        label: task.name,
+        label: stripPlatformTags(task.name),
         description: 'Task',
         run: () => vscode.tasks.executeTask(task),
     }));
+    const groupedTaskEntries = new Map();
+    const directTaskPicks = [];
+    for (const pick of taskPicks) {
+        const groupedName = parseGroupedTaskName(pick.label);
+        if (!groupedName) {
+            directTaskPicks.push(pick);
+            continue;
+        }
+        const groupPicks = groupedTaskEntries.get(groupedName.groupLabel) ?? [];
+        groupPicks.push(Object.assign(Object.assign({}, pick), { label: groupedName.itemLabel }));
+        groupedTaskEntries.set(groupedName.groupLabel, groupPicks);
+    }
+    const groupedTaskPicks = Array.from(groupedTaskEntries.entries()).map(([groupLabel, groupPicks]) => ({
+        label: `${groupLabel} ...`,
+        description: 'Task Group',
+        run: () => showSubmenu(groupLabel, `Run a task from ${groupLabel}`, groupPicks),
+    }));
+    return [...directTaskPicks, ...groupedTaskPicks];
 }
 function getLaunchPicks() {
     var _a, _b;
     const workspaceFolder = getWorkspaceFolder();
     const launchConfig = vscode.workspace.getConfiguration('launch', workspaceFolder === null || workspaceFolder === void 0 ? void 0 : workspaceFolder.uri);
-    const configurations = (_a = launchConfig.get('configurations')) !== null && _a !== void 0 ? _a : [];
-    const compounds = (_b = launchConfig.get('compounds')) !== null && _b !== void 0 ? _b : [];
+    const configurations = ((_a = launchConfig.get('configurations')) !== null && _a !== void 0 ? _a : [])
+        .filter(isLaunchDefinitionSupported);
+    const allowedConfigNames = new Set(configurations.flatMap(config => config.name ? [config.name] : []));
+    const compounds = ((_b = launchConfig.get('compounds')) !== null && _b !== void 0 ? _b : [])
+        .filter(compound => isLaunchCompoundSupported(compound, allowedConfigNames));
     const configPicks = configurations
         .filter(config => !!config.name)
         .map(config => ({
-        label: config.name,
+        label: stripPlatformTags(config.name),
         description: 'Launch',
         run: () => vscode.debug.startDebugging(workspaceFolder, config.name),
     }));
     const compoundPicks = compounds
         .filter(compound => !!compound.name)
         .map(compound => ({
-        label: compound.name,
+        label: stripPlatformTags(compound.name),
         description: 'Launch Compound',
         run: () => vscode.debug.startDebugging(workspaceFolder, compound.name),
     }));

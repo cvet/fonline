@@ -1008,6 +1008,14 @@ def read_text_strip_bom(path: Path) -> tuple[str, bool]:
 	return data.decode('utf-8-sig'), has_bom
 
 
+def detect_line_ending(content: str) -> str:
+	return '\r\n' if '\r\n' in content else '\n'
+
+
+def normalize_line_endings(content: str, line_ending: str) -> str:
+	return content.replace('\r\n', '\n').replace('\r', '\n').replace('\n', line_ending)
+
+
 def write_text_utf8(path: Path, content: str) -> None:
 	path.write_bytes(content.encode('utf-8'))
 
@@ -1042,6 +1050,7 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 
 		original, has_bom = read_text_strip_bom(path)
 		formatted = strip_text_bom(subprocess.check_output([clang_format, str(path)], text=True, encoding='utf-8'))
+		formatted = normalize_line_endings(formatted, detect_line_ending(original))
 		if original == formatted and not has_bom:
 			continue
 

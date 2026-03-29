@@ -525,16 +525,34 @@ add_compile_definitions(FO_WINDOWS=${FO_WINDOWS} FO_LINUX=${FO_LINUX} FO_MAC=${F
 add_compile_definitions(FO_HAVE_OPENGL=${FO_HAVE_OPENGL} FO_OPENGL_ES=${FO_OPENGL_ES} FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D} FO_HAVE_METAL=${FO_HAVE_METAL} FO_HAVE_VULKAN=${FO_HAVE_VULKAN})
 
 if(FO_CODE_COVERAGE)
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	set(FO_COVERAGE_VARIANT "")
+
+	if(MSVC)
+		add_compile_options_C_CXX(/Od)
+		add_compile_options_C_CXX(/Zi)
+		add_link_options(/PROFILE)
+
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			set(FO_COVERAGE_VARIANT "ClangCl")
+		else()
+			set(FO_COVERAGE_VARIANT "MSVC")
+		endif()
+	elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		add_compile_options_C_CXX(-O0)
-		add_compile_options_C_CXX(-fprofile)
-		add_compile_options_C_CXX(-instr-generate)
+		add_compile_options_C_CXX(-fprofile-instr-generate)
 		add_compile_options_C_CXX(-fcoverage-mapping)
+		add_link_options(-fprofile-instr-generate)
+		set(FO_COVERAGE_VARIANT "Clang")
 	elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		add_compile_options_C_CXX(-O0)
 		add_compile_options_C_CXX(--coverage)
 		add_link_options(--coverage)
+		set(FO_COVERAGE_VARIANT "GCC")
+	else()
+		AbortMessage("Code coverage is not configured for the selected compiler")
 	endif()
+
+	set(FO_COVERAGE_OUTPUT "${FO_OUTPUT_PATH}/CodeCoverage/${FO_COVERAGE_VARIANT}/${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
 endif()
 
 # Output path

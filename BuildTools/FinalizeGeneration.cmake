@@ -1226,6 +1226,20 @@ if(FO_BUILD_BAKER)
 endif()
 
 if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+    set(FO_CODE_COVERAGE_BACKEND "")
+
+    if(FO_CODE_COVERAGE)
+        if(MSVC)
+            set(FO_CODE_COVERAGE_BACKEND "msvc")
+        elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            set(FO_CODE_COVERAGE_BACKEND "llvm")
+        elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            set(FO_CODE_COVERAGE_BACKEND "gcc")
+        else()
+            AbortMessage("Code coverage backend is not configured for the selected compiler")
+        endif()
+    endif()
+
     macro(SetupTestBuild name)
         set(target ${FO_DEV_NAME}_${name})
         StatusMessage("+ ${target}")
@@ -1251,10 +1265,62 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         target_link_libraries(${target} "ClientLib" "ServerLib")
         target_link_libraries(${target} "AppHeadless")
 
-        add_custom_target(Run${name}
-            COMMAND ${target}
-            COMMENT "Run ${name}")
-        list(APPEND FO_COMMANDS_GROUP "Run${name}")
+        if("${name}" STREQUAL "CodeCoverage")
+            set(coverageTool ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codecoverage.py")
+
+            add_custom_target(CleanCodeCoverageData
+                COMMAND ${coverageTool} clean
+                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
+                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                    --binary "$<TARGET_FILE:${target}>"
+                    --backend "${FO_CODE_COVERAGE_BACKEND}"
+                    --output-dir "${FO_COVERAGE_OUTPUT}"
+                DEPENDS ${target}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                COMMENT "Clean code coverage data")
+            list(APPEND FO_COMMANDS_GROUP CleanCodeCoverageData)
+
+            add_custom_target(Run${name}
+                COMMAND ${coverageTool} run
+                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
+                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                    --binary "$<TARGET_FILE:${target}>"
+                    --backend "${FO_CODE_COVERAGE_BACKEND}"
+                    --output-dir "${FO_COVERAGE_OUTPUT}"
+                DEPENDS ${target}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                COMMENT "Run ${name}")
+            list(APPEND FO_COMMANDS_GROUP "Run${name}")
+
+            add_custom_target(GenerateCodeCoverageReport
+                COMMAND ${coverageTool} report
+                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
+                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                    --binary "$<TARGET_FILE:${target}>"
+                    --backend "${FO_CODE_COVERAGE_BACKEND}"
+                    --output-dir "${FO_COVERAGE_OUTPUT}"
+                DEPENDS Run${name}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                COMMENT "Generate code coverage report")
+            list(APPEND FO_COMMANDS_GROUP GenerateCodeCoverageReport)
+
+            add_custom_target(AnalyzeCodeCoverage
+                COMMAND ${coverageTool} full
+                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
+                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                    --binary "$<TARGET_FILE:${target}>"
+                    --backend "${FO_CODE_COVERAGE_BACKEND}"
+                    --output-dir "${FO_COVERAGE_OUTPUT}"
+                DEPENDS ${target}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                COMMENT "Run code coverage and generate report")
+            list(APPEND FO_COMMANDS_GROUP AnalyzeCodeCoverage)
+        else()
+            add_custom_target(Run${name}
+                COMMAND ${target}
+                COMMENT "Run ${name}")
+            list(APPEND FO_COMMANDS_GROUP "Run${name}")
+        endif()
     endmacro()
 
     if(FO_UNIT_TESTS)

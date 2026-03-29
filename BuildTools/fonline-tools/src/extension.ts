@@ -7,6 +7,36 @@ type ToolPick = vscode.QuickPickItem & {
     run(): PromiseLike<unknown>;
 };
 
+type GroupedTaskName = {
+    groupLabel: string;
+    itemLabel: string;
+};
+
+type HostPlatform = 'windows' | 'linux' | 'macos' | 'unknown';
+
+type WorkspaceTaskDefinition = {
+    label?: string;
+    windows?: unknown;
+    linux?: unknown;
+    osx?: unknown;
+};
+
+type WorkspaceLaunchDefinition = {
+    name?: string;
+    type?: string;
+    windows?: unknown;
+    linux?: unknown;
+    osx?: unknown;
+};
+
+type WorkspaceLaunchCompound = {
+    name?: string;
+    configurations?: string[];
+    windows?: unknown;
+    linux?: unknown;
+    osx?: unknown;
+};
+
 type CMakeExecutableTarget = {
     name?: string;
     path?: string;
@@ -21,6 +51,12 @@ type CMakeBuildPreset = {
 
 type CMakePresetsFile = {
     buildPresets?: CMakeBuildPreset[];
+};
+
+const TASK_GROUP_SEPARATOR = '::';
+const PLATFORM_TAG_PATTERN = /\[(windows|linux|macos|win32|win64|osx|darwin)\]/gi;
+const PLATFORM_DEBUG_TYPES: Record<string, HostPlatform[]> = {
+    cppvsdbg: ['windows'],
 };
 
 function decodeUtf8(bytes: Uint8Array): string {
@@ -47,6 +83,142 @@ async function readJsonFile<T>(fileUri: vscode.Uri): Promise<T | undefined> {
     }
 }
 
+function getHostPlatform(): HostPlatform {
+    const platform = getNodePlatform();
+    if (platform === 'win32') {
+        return 'windows';
+    }
+    if (platform === 'linux') {
+        return 'linux';
+    }
+    if (platform === 'darwin') {
+        return 'macos';
+    }
+    return 'unknown';
+}
+
+function getExplicitPlatforms(value: {windows?: unknown; linux?: unknown; osx?: unknown}): HostPlatform[] {
+    const platforms: HostPlatform[] = [];
+    if (value.windows !== undefined) {
+        platforms.push('windows');
+    }
+    if (value.linux !== undefined) {
+        platforms.push('linux');
+    }
+    if (value.osx !== undefined) {
+        platforms.push('macos');
+    }
+    return platforms;
+}
+
+function normalizeTaggedPlatform(rawPlatform: string): HostPlatform | undefined {
+    const platform = rawPlatform.trim().toLowerCase();
+    if (platform === 'windows' || platform === 'win32' || platform === 'win64') {
+        return 'windows';
+    }
+    if (platform === 'linux') {
+        return 'linux';
+    }
+    if (platform === 'macos' || platform === 'osx' || platform === 'darwin') {
+        return 'macos';
+    }
+    return undefined;
+}
+
+function extractPlatformTags(text: string): HostPlatform[] {
+    const result = new Set<HostPlatform>();
+
+    for (const match of text.matchAll(PLATFORM_TAG_PATTERN)) {
+        const platform = match[1] ? normalizeTaggedPlatform(match[1]) : undefined;
+        if (platform) {
+            result.add(platform);
+        }
+    }
+
+    return Array.from(result);
+}
+
+function stripPlatformTags(text: string): string {
+    return text.replace(PLATFORM_TAG_PATTERN, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+function extractPlatformQualifiers(text: string): HostPlatform[] {
+    const result = new Set<HostPlatform>();
+    const matches = text.matchAll(/\(([^)]+)\)/g);
+
+    for (const match of matches) {
+        const rawQualifier = match[1]?.trim().toLowerCase();
+        if (!rawQualifier) {
+            continue;
+        }
+
+        const firstWord = rawQualifier.split(/\s+/)[0];
+        if (firstWord === 'windows' || firstWord === 'win32' || firstWord === 'win64') {
+            result.add('windows');
+        }
+        else if (firstWord === 'linux') {
+            result.add('linux');
+        }
+        else if (firstWord === 'macos' || firstWord === 'osx' || firstWord === 'darwin') {
+            result.add('macos');
+        }
+    }
+
+    return Array.from(result);
+}
+
+function matchesCurrentPlatform(taggedPlatforms: HostPlatform[], explicitPlatforms: HostPlatform[], qualifiedPlatforms: HostPlatform[]): boolean {
+    const hostPlatform = getHostPlatform();
+
+    if (taggedPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return taggedPlatforms.includes(hostPlatform);
+    }
+
+    if (qualifiedPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return qualifiedPlatforms.includes(hostPlatform);
+    }
+
+    if (explicitPlatforms.length !== 0 && hostPlatform !== 'unknown') {
+        return explicitPlatforms.includes(hostPlatform);
+    }
+
+    return true;
+}
+
+function isTaskDefinitionSupported(definition: WorkspaceTaskDefinition): boolean {
+    return matchesCurrentPlatform(
+        extractPlatformTags(definition.label ?? ''),
+        getExplicitPlatforms(definition),
+        extractPlatformQualifiers(definition.label ?? ''),
+    );
+}
+
+function isLaunchDefinitionSupported(definition: WorkspaceLaunchDefinition): boolean {
+    const debugTypePlatforms = PLATFORM_DEBUG_TYPES[definition.type ?? ''] ?? [];
+    if (!matchesCurrentPlatform(
+        extractPlatformTags(definition.name ?? ''),
+        getExplicitPlatforms(definition),
+        extractPlatformQualifiers(definition.name ?? ''),
+    )) {
+        return false;
+    }
+
+    return matchesCurrentPlatform([], debugTypePlatforms, []);
+}
+
+function isLaunchCompoundSupported(compound: WorkspaceLaunchCompound, allowedConfigNames: Set<string>): boolean {
+    if (!matchesCurrentPlatform(
+        extractPlatformTags(compound.name ?? ''),
+        getExplicitPlatforms(compound),
+        extractPlatformQualifiers(compound.name ?? ''),
+    )) {
+        return false;
+    }
+
+    const configurations = compound.configurations ?? [];
+    return configurations.length !== 0 && configurations.every(configName => allowedConfigNames.has(configName));
+}
+
 async function readWorkspaceTaskLabels(): Promise<Set<string>> {
     const workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {
@@ -54,12 +226,16 @@ async function readWorkspaceTaskLabels(): Promise<Set<string>> {
     }
 
     const tasksUri = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'tasks.json');
-    const parsed = await readJsonFile<{ tasks?: Array<{ label?: string }> }>(tasksUri);
+    const parsed = await readJsonFile<{ tasks?: WorkspaceTaskDefinition[] }>(tasksUri);
     if (!parsed) {
         return new Set();
     }
 
-    return new Set((parsed.tasks ?? []).flatMap(task => task.label ? [task.label] : []));
+    return new Set(
+        (parsed.tasks ?? [])
+            .filter(isTaskDefinitionSupported)
+            .flatMap(task => task.label ? [task.label] : []),
+    );
 }
 
 function isMainWorkspaceTask(task: vscode.Task, workspaceFolder: vscode.WorkspaceFolder): boolean {
@@ -198,6 +374,21 @@ function sortPicks(picks: ToolPick[]): ToolPick[] {
     });
 }
 
+function parseGroupedTaskName(taskName: string): GroupedTaskName | undefined {
+    const separatorIndex = taskName.indexOf(TASK_GROUP_SEPARATOR);
+    if (separatorIndex <= 0) {
+        return undefined;
+    }
+
+    const groupLabel = stripPlatformTags(taskName.slice(0, separatorIndex).trim());
+    const itemLabel = stripPlatformTags(taskName.slice(separatorIndex + TASK_GROUP_SEPARATOR.length).trim());
+    if (!groupLabel || !itemLabel) {
+        return undefined;
+    }
+
+    return {groupLabel, itemLabel};
+}
+
 async function showSubmenu(title: string, placeHolder: string, picks: ToolPick[]): Promise<void> {
     if (picks.length === 0) {
         void vscode.window.showInformationMessage(`No ${title.toLowerCase()} entries found.`);
@@ -253,25 +444,51 @@ async function getTaskPicks(): Promise<ToolPick[]> {
 
     const tasks = await vscode.tasks.fetchTasks();
 
-    return tasks
+    const taskPicks = tasks
         .filter(task => allowedLabels.has(task.name) && isMainWorkspaceTask(task, workspaceFolder))
         .map(task => ({
-            label: task.name,
+            label: stripPlatformTags(task.name),
             description: 'Task',
             run: () => vscode.tasks.executeTask(task),
         }));
+
+    const groupedTaskEntries = new Map<string, ToolPick[]>();
+    const directTaskPicks: ToolPick[] = [];
+
+    for (const pick of taskPicks) {
+        const groupedName = parseGroupedTaskName(pick.label);
+        if (!groupedName) {
+            directTaskPicks.push(pick);
+            continue;
+        }
+
+        const groupPicks = groupedTaskEntries.get(groupedName.groupLabel) ?? [];
+        groupPicks.push({...pick, label: groupedName.itemLabel});
+        groupedTaskEntries.set(groupedName.groupLabel, groupPicks);
+    }
+
+    const groupedTaskPicks = Array.from(groupedTaskEntries.entries()).map(([groupLabel, groupPicks]) => ({
+        label: `${groupLabel} ...`,
+        description: 'Task Group',
+        run: () => showSubmenu(groupLabel, `Run a task from ${groupLabel}`, groupPicks),
+    } satisfies ToolPick));
+
+    return [...directTaskPicks, ...groupedTaskPicks];
 }
 
 function getLaunchPicks(): ToolPick[] {
     const workspaceFolder = getWorkspaceFolder();
     const launchConfig = vscode.workspace.getConfiguration('launch', workspaceFolder?.uri);
-    const configurations = launchConfig.get<Array<{ name?: string }>>('configurations') ?? [];
-    const compounds = launchConfig.get<Array<{ name?: string }>>('compounds') ?? [];
+    const configurations = (launchConfig.get<WorkspaceLaunchDefinition[]>('configurations') ?? [])
+        .filter(isLaunchDefinitionSupported);
+    const allowedConfigNames = new Set<string>(configurations.flatMap(config => config.name ? [config.name] : []));
+    const compounds = (launchConfig.get<WorkspaceLaunchCompound[]>('compounds') ?? [])
+        .filter(compound => isLaunchCompoundSupported(compound, allowedConfigNames));
 
     const configPicks = configurations
         .filter(config => !!config.name)
         .map(config => ({
-            label: config.name!,
+            label: stripPlatformTags(config.name!),
             description: 'Launch',
             run: () => vscode.debug.startDebugging(workspaceFolder, config.name!),
         } satisfies ToolPick));
@@ -279,7 +496,7 @@ function getLaunchPicks(): ToolPick[] {
     const compoundPicks = compounds
         .filter(compound => !!compound.name)
         .map(compound => ({
-            label: compound.name!,
+            label: stripPlatformTags(compound.name!),
             description: 'Launch Compound',
             run: () => vscode.debug.startDebugging(workspaceFolder, compound.name!),
         } satisfies ToolPick));
