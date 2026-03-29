@@ -1594,12 +1594,11 @@ void ServerEngine::UnloadCritterInnerEntities(Critter* cr)
 
         item->MarkAsDestroyed();
         EntityMngr.UnregisterItem(item, false);
-
-        cr->RemoveItem(item);
     };
 
     for (auto* item : copy_hold_ref(cr->GetInvItems())) {
         unload_item(item);
+        cr->RemoveItem(item);
     }
 }
 
