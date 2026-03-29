@@ -34,7 +34,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 

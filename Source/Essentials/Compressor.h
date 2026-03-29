@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 
 FO_BEGIN_NAMESPACE
 

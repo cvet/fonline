@@ -32,7 +32,7 @@
 //
 
 #include "TimeRelated.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "GlobalData.h"
 
 FO_BEGIN_NAMESPACE

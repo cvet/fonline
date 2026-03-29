@@ -273,6 +273,18 @@ FIXED_SETTING(bool, Platform, DesktopBuild); // Desktop build (read only)
 FIXED_SETTING(bool, Platform, TabletBuild); // Tablet build (read only)
 SETTING_GROUP_END();
 
+///@ ExportSettings Server
+SETTING_GROUP(DataBaseSettings, virtual BaseSettings);
+FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
+FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
+FIXED_SETTING(int32, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
+FIXED_SETTING(int32, DataBase, PanicOpLogSizeThreshold, 10000000); // Pending database changes file size threshold in bytes after which panic is triggered
+FIXED_SETTING(int32, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdown timeout in milliseconds after database panic callback before forced termination
+FIXED_SETTING(bool, DataBase, UnQLiteOmitJournaling, true); // If true, UnQLite opens collections without journaling
+FIXED_SETTING(int32, DataBase, JsonIndent, 4); // JSON backend indentation, 0 for compact output
+FIXED_SETTING(string, DataBase, MongoEscapeChar, ":"); // Single character used to replace dots in Mongo document keys
+SETTING_GROUP_END();
+
 ///@ ExportSettings Client
 SETTING_GROUP(InputSettings, virtual BaseSettings);
 VARIABLE_SETTING(int32, Input, DoubleClickTime, 500); // Double-click time in milliseconds
@@ -302,7 +314,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings, virtual DataBaseSettings);
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
@@ -312,8 +324,6 @@ FIXED_SETTING(int32, Server, MaxServerLogLines, 1000); // Maximum server log lin
 FIXED_SETTING(int32, Server, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
 FIXED_SETTING(int32, Server, LoopsPerSecondCap, 1000); // Loops per second cap
 FIXED_SETTING(int32, Server, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds
-FIXED_SETTING(int32, Server, DataBaseCommitPeriod, 10); // Database commit period in seconds
-FIXED_SETTING(int32, Server, DataBaseMaxCommitJobs, 100); // Maximum database commit jobs
 FIXED_SETTING(int32, Server, LoopAverageTimeInterval, 1000); // Loop average time interval in milliseconds
 FIXED_SETTING(bool, Server, WriteHealthFile, false); // If true, health file is written
 FIXED_SETTING(bool, Server, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled

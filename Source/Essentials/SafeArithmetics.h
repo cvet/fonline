@@ -34,7 +34,7 @@
 #pragma once
 
 #include "BasicCore.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 
 FO_BEGIN_NAMESPACE
 

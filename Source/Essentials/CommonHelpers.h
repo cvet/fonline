@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "MemorySystem.h"
 #include "SmartPointers.h"
 #include "StackTrace.h"
