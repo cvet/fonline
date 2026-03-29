@@ -72,4 +72,8 @@ The local Windows web debug flow uses these shared commands:
 - `buildtools.py build web client RelWithDebInfo`
 - `buildtools.py package-web-debug`
 
+For an optimized browser build use:
+
+- `buildtools.py build web client Release`
+
 The packaged browser build is emitted into `Workspace/web-debug/LF-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.

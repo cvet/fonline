@@ -33,6 +33,7 @@
 
 #include "NetworkClient.h"
 
+#include "WebRelated.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
@@ -105,11 +106,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     port++;
 
     if (!_settings->SecuredWebSockets) {
-        EM_ASM(Module['websocket']['url'] = 'ws://');
+        WebRelated::SetWebSocketScheme(false);
         WriteLog("Connecting to server 'ws://{}:{}'", host, port);
     }
     else {
-        EM_ASM(Module['websocket']['url'] = 'wss://');
+        WebRelated::SetWebSocketScheme(true);
         WriteLog("Connecting to server 'wss://{}:{}'", host, port);
     }
 

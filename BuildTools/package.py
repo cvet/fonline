@@ -230,10 +230,7 @@ class Packager:
 			if os.path.isdir(abs_dir):
 				build_hash_path = os.path.join(abs_dir, input_type + '.build-hash')
 				if not os.path.isfile(build_hash_path):
-					if self.args.platform == 'Web' and os.path.isfile(os.path.join(abs_dir, input_type + '.js')) and os.path.isfile(os.path.join(abs_dir, input_type + '.wasm')):
-						log('Build hash file NOT found, use existing web binary output', abs_dir)
-						return abs_dir
-					assert os.path.isfile(build_hash_path), 'Build hash file ' + build_hash_path + ' not found'
+					continue
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
 					build_hash = file.read().strip()
 				assert build_hash == self.args.buildhash, 'Build hash file ' + build_hash_path + ' has wrong hash'
@@ -461,6 +458,19 @@ class Packager:
 		self.patch_config(wasm_output_path)
 		self.patch_packaged_mark(wasm_output_path)
 
+		web_loading_image = self.fomain.mainSection().getStr('Web.LoadingImage', '')
+		web_background_color = self.fomain.mainSection().getStr('Web.BackgroundColor', 'rgb(0, 0, 0)')
+		if not web_background_color:
+			web_background_color = 'rgb(0, 0, 0)'
+		web_loading_image_out = ''
+		web_loading_image_style = 'display:none;'
+		if web_loading_image:
+			web_loading_image_path = (Path(self.args.maincfg).resolve().parent / web_loading_image).resolve()
+			assert web_loading_image_path.is_file(), f'Web loading image not found: {web_loading_image_path}'
+			web_loading_image_out = 'web-loading-image' + web_loading_image_path.suffix.lower()
+			web_loading_image_style = ''
+			shutil.copy(web_loading_image_path, os.path.join(self.target_output_path, web_loading_image_out))
+
 		index_path = os.path.join(self.target_output_path, 'index.html')
 		shutil.copy(os.path.join(self.build_tools_path, 'web', 'default-index.html'), index_path)
 
@@ -491,6 +501,9 @@ class Packager:
 
 		patch_file(index_path, '$TITLE$', self.args.nicename)
 		patch_file(index_path, '$LOADING$', self.args.nicename)
+		patch_file(index_path, '$BACKGROUND_COLOR$', web_background_color)
+		patch_file(index_path, '$LOADING_IMAGE$', web_loading_image_out if web_loading_image_out else 'data:,')
+		patch_file(index_path, '$LOADING_IMAGE_STYLE$', web_loading_image_style)
 		patch_file(index_path, '$RESOURCESJS$', 'Resources.js')
 		patch_file(index_path, '$MAINJS$', bin_out_name + '.js')
 

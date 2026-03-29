@@ -7,6 +7,13 @@
   <link rel="icon" href="data:,">
   <title>$TITLE$</title>
   <style>
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: $BACKGROUND_COLOR$;
+    }
+
     .emscripten {
       padding-right: 0;
       margin-left: auto;
@@ -25,6 +32,9 @@
 
     div.emscripten_border {
       border: 0px none;
+      width: fit-content;
+      position: fixed;
+      overflow: hidden;
     }
 
     /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
@@ -35,17 +45,22 @@
     .spinner {
       height: 50px;
       width: 50px;
-      margin: 0px auto;
+      display: block;
+      object-fit: contain;
       -webkit-animation: rotation .8s linear infinite;
       -moz-animation: rotation .8s linear infinite;
       -o-animation: rotation .8s linear infinite;
       animation: rotation 0.8s linear infinite;
-      border-left: 10px solid rgb(0, 150, 240);
-      border-right: 10px solid rgb(0, 150, 240);
-      border-bottom: 10px solid rgb(0, 150, 240);
-      border-top: 10px solid rgb(100, 0, 200);
-      border-radius: 100%;
-      background-color: rgb(200, 100, 250);
+    }
+
+    .fo-loading-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 1000;
     }
 
     @-webkit-keyframes rotation {
@@ -132,16 +147,14 @@
 </head>
 
 <body>
-  <hr />
-  <figure style="overflow:visible;" id="spinner">
-    <div class="spinner"></div>
-    <center style="margin-top:0.5em"><strong>$LOADING$</strong></center>
-  </figure>
   <div class="emscripten" id="status">Downloading...</div>
   <div class="emscripten">
     <progress value="0" max="100" id="progress" hidden=1></progress>
   </div>
-  <div class="emscripten_border">
+  <div class="fo-loading-overlay" id="spinner">
+    <img class="spinner" id="spinner-image" src="$LOADING_IMAGE$" style="$LOADING_IMAGE_STYLE$" alt="Loading" />
+  </div>
+  <div class="emscripten_border" id="game-shell">
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
   </div>
   <div id="fo-error-panel" class="fo-error-panel">
@@ -152,12 +165,12 @@
       <button type="button" id="fo-error-close">Close</button>
     </div>
   </div>
-  <hr />
 
   <script type='text/javascript'>
     var statusElement = document.getElementById('status');
     var progressElement = document.getElementById('progress');
     var spinnerElement = document.getElementById('spinner');
+    var spinnerImageElement = document.getElementById('spinner-image');
     var errorPanelElement = document.getElementById('fo-error-panel');
     var errorTitleElement = document.getElementById('fo-error-title');
     var errorTextElement = document.getElementById('fo-error-text');
@@ -166,6 +179,7 @@
     var recentLogEntries = [];
     var errorEntries = [];
     var maxLogEntries = 200;
+    var hasLoadingImage = spinnerImageElement && spinnerImageElement.getAttribute('src') && spinnerImageElement.getAttribute('src') !== 'data:,';
     var originalConsole = {
       log: console.log.bind(console),
       info: console.info ? console.info.bind(console) : console.log.bind(console),
@@ -259,14 +273,21 @@
       errorTextElement.value = buildErrorText();
       errorTitleElement.textContent = title || 'Error';
       errorPanelElement.style.display = 'flex';
-      spinnerElement.style.display = 'none';
+      setSpinnerVisible(false);
       statusElement.textContent = title || 'Error';
+      statusElement.style.display = 'block';
     }
 
     function showLogPanel() {
       errorTextElement.value = buildErrorText() || 'Log is empty';
       errorTitleElement.textContent = 'Log';
       errorPanelElement.style.display = 'flex';
+    }
+
+    function setSpinnerVisible(visible) {
+      var show = visible && !!hasLoadingImage;
+      spinnerElement.hidden = !show;
+      spinnerElement.style.display = show ? 'flex' : 'none';
     }
 
     function toggleLogPanel() {
@@ -342,13 +363,13 @@
         if (!Module.setStatus.last) {
           Module.setStatus.last = { time: Date.now(), text: '' };
         }
-        if (text === Module.setStatus.text) {
+        if (text === Module.setStatus.last.text) {
           return;
         }
 
         var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
         var now = Date.now();
-        if (m && now - Date.now() < 30) {
+        if (m && now - Module.setStatus.last.time < 30) {
           return; // if this is a progress update, skip it if too soon
         }
 
@@ -357,24 +378,31 @@
           progressElement.value = parseInt(m[2]) * 100;
           progressElement.max = parseInt(m[4]) * 100;
           progressElement.hidden = false;
-          spinnerElement.hidden = false;
+          setSpinnerVisible(true);
+          statusElement.style.display = 'block';
         } else {
           progressElement.value = null;
           progressElement.max = null;
           progressElement.hidden = true;
           if (!text) {
-            spinnerElement.hidden = true;
+            setSpinnerVisible(false);
+            statusElement.style.display = 'none';
+          } else {
+            setSpinnerVisible(false);
+            statusElement.style.display = 'block';
           }
         }
 
         statusElement.innerHTML = text;
+        Module.setStatus.last.time = now;
+        Module.setStatus.last.text = text;
       },
 
       totalDependencies: 0,
 
       monitorRunDependencies: function (left) {
         this.totalDependencies = Math.max(this.totalDependencies, left);
-        Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete');
+        Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
       }
     };
 

@@ -36,6 +36,7 @@
 #include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
+#include "WebRelated.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -46,7 +47,6 @@ static void SetupLogging(bool disable_log_tags);
 static auto LoadSettings(int32 argc, char** argv) -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
-static void SetupWebClipboard();
 
 void InitApp(int32 argc, char** argv, AppInitFlags flags)
 {
@@ -98,7 +98,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     SetupSignals();
 
     // Set up clipboard events for web
-    SetupWebClipboard();
+    WebRelated::SetupClipboard();
 
     // Init mouse pos
     App->Settings.MousePos = App->Input.GetMousePosition();
@@ -304,47 +304,6 @@ static void SetupSignals()
 #if FO_LINUX || FO_MAC
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
-#endif
-}
-
-#if FO_WEB
-FO_END_NAMESPACE
-extern "C"
-{
-    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
-    {
-        return FO_NAMESPACE App->Input.GetClipboardText().c_str();
-    }
-    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
-    {
-        FO_NAMESPACE App->Input.SetClipboardText(text);
-    }
-}
-FO_BEGIN_NAMESPACE
-#endif
-
-static void SetupWebClipboard()
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WEB
-    // clang-format off
-    MAIN_THREAD_EM_ASM({
-        var canvas = document.querySelector(UTF8ToString($0));
-        if (canvas) {
-            canvas.addEventListener("copy", (event) => {
-                const text = _Emscripten_ClipboardGet();
-                event.clipboardData.setData("text/plain", UTF8ToString(text));
-                event.preventDefault();
-            });
-            canvas.addEventListener("paste", (event) => {
-                const text = event.clipboardData.getData('text/plain');
-                _Emscripten_ClipboardSet(text);
-                event.preventDefault();
-            });
-        }
-    }, WEB_CANVAS_ID.c_str());
-    // clang-format on
 #endif
 }
 

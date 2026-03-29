@@ -250,8 +250,6 @@ struct InputEvent
     }
 };
 
-constexpr string_view_nt WEB_CANVAS_ID = "#canvas";
-
 struct HeadlessWindowStub
 {
     isize32 Size {1000, 1000};

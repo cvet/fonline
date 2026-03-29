@@ -34,6 +34,7 @@
 #include "Application.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
+#include "WebRelated.h"
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_audio.h"
@@ -133,10 +134,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "1");
 
-    if constexpr (FO_WEB) {
-        SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
-        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WEB_CANVAS_ID.c_str());
-    }
+    WebRelated::ApplyApplicationHints();
 
     // Initialize input events
     if (SDL_WasInit(SDL_INIT_EVENTS) == 0 && !SDL_InitSubSystem(SDL_INIT_EVENTS)) {
@@ -411,26 +409,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         _ctx->ClearColor = {0, 0, 0, 255};
     }
 
-#if FO_WEB
-    // Adaptive size
-    int32 window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
-    int32 window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
-    Settings.ScreenWidth = std::clamp(window_w - 200, 1024, 1920);
-    Settings.ScreenHeight = std::clamp(window_h - 100, 768, 1080);
-
-    // Fixed size
-    int32 fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
-    int32 fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
-
-    if (fixed_w) {
-        Settings.ScreenWidth = fixed_w;
-    }
-    if (fixed_h) {
-        Settings.ScreenHeight = fixed_h;
-    }
-
-    Settings.Fullscreen = false;
-#endif
+    WebRelated::ApplyWindowSettings(Settings);
 
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
     _allWindows.emplace_back(&MainWindow);
@@ -1191,6 +1170,8 @@ void AppWindow::SetScreenSize(isize32 size)
         App->Settings.ScreenWidth = size.width;
         App->Settings.ScreenHeight = size.height;
 
+        WebRelated::ApplyCanvasLayout(App->Settings);
+
         _onScreenSizeChangedDispatcher();
     }
 }
@@ -1637,93 +1618,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
 #if FO_WEB || FO_ANDROID || FO_IOS
 #if FO_WEB
     const auto web_message = traceback.empty() ? string(message) : strex("{}\n\n{}", message, traceback);
-    MAIN_THREAD_EM_ASM(
-        {
-            const title = UTF8ToString($0);
-            const text = UTF8ToString($1);
-
-            if (typeof window.foShowError == = 'function') {
-                window.foShowError(title, text, false);
-                return;
-            }
-
-            let panel = document.getElementById('fo-error-panel');
-            let textarea = document.getElementById('fo-error-text');
-
-            if (!panel) {
-                panel = document.createElement('div');
-                panel.id = 'fo-error-panel';
-                panel.style.position = 'fixed';
-                panel.style.left = '16px';
-                panel.style.right = '16px';
-                panel.style.top = '16px';
-                panel.style.bottom = '16px';
-                panel.style.zIndex = '100000';
-                panel.style.background = 'rgba(18, 20, 24, 0.96)';
-                panel.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                panel.style.borderRadius = '8px';
-                panel.style.padding = '16px';
-                panel.style.display = 'flex';
-                panel.style.flexDirection = 'column';
-                panel.style.gap = '12px';
-
-                const heading = document.createElement('div');
-                heading.id = 'fo-error-title';
-                heading.style.color = '#ffb4b4';
-                heading.style.font = '600 18px Segoe UI, sans-serif';
-                panel.appendChild(heading);
-
-                textarea = document.createElement('textarea');
-                textarea.id = 'fo-error-text';
-                textarea.readOnly = true;
-                textarea.style.flex = '1';
-                textarea.style.width = '100%';
-                textarea.style.boxSizing = 'border-box';
-                textarea.style.resize = 'none';
-                textarea.style.border = '1px solid rgba(255, 255, 255, 0.18)';
-                textarea.style.borderRadius = '6px';
-                textarea.style.background = '#111318';
-                textarea.style.color = '#f3f4f6';
-                textarea.style.padding = '12px';
-                textarea.style.font = '13px Consolas, monospace';
-                panel.appendChild(textarea);
-
-                const buttons = document.createElement('div');
-                buttons.style.display = 'flex';
-                buttons.style.gap = '8px';
-
-                const copyButton = document.createElement('button');
-                copyButton.textContent = 'Copy';
-                copyButton.onclick = async() =>
-                {
-                    try {
-                        await navigator.clipboard.writeText(textarea.value);
-                    }
-                    catch {
-                        textarea.focus();
-                        textarea.select();
-                        document.execCommand('copy');
-                    }
-                };
-                buttons.appendChild(copyButton);
-
-                const closeButton = document.createElement('button');
-                closeButton.textContent = 'Close';
-                closeButton.onclick = () =>
-                {
-                    panel.style.display = 'none';
-                };
-                buttons.appendChild(closeButton);
-
-                panel.appendChild(buttons);
-                document.body.appendChild(panel);
-            }
-
-            document.getElementById('fo-error-title').textContent = title;
-            textarea.value = text;
-            panel.style.display = 'flex';
-        },
-        title, web_message.c_str());
+    WebRelated::ShowError(title, web_message);
 #else
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, string(message).c_str(), nullptr);
 #endif

@@ -712,18 +712,11 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 
 
 def resolve_build_hash(env: Mapping[str, str]) -> str:
-	project_root = Path(env['FO_PROJECT_ROOT'])
 	output_root = Path(env['FO_OUTPUT'])
-	for candidate in [
-		project_root / 'Baking' / 'Resources.build-hash',
-		output_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash',
-		project_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash',
-	]:
-		build_hash = read_first_line(candidate)
-		if build_hash:
-			return build_hash
-
-	raise SystemExit('Build hash not found; bake resources and build the web client first')
+	build_hash_path = output_root / 'Binaries' / 'Client-Web-wasm' / 'LF_Client.build-hash'
+	build_hash = read_first_line(build_hash_path)
+	assert build_hash, f'Build hash not found at {build_hash_path}; build the web client first'
+	return build_hash
 
 
 def package_web_debug(env: Mapping[str, str]) -> None:
@@ -732,9 +725,7 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 	output_root = Path(env['FO_WORKSPACE']) / 'web-debug'
 	package_script = Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / 'package.py'
 	build_hash = resolve_build_hash(env)
-	input_roots = [project_root]
-	if output_root_input != project_root:
-		input_roots.append(output_root_input)
+	input_roots = [output_root_input, project_root]
 
 	command = [
 		sys.executable,
@@ -756,7 +747,7 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 		'-pack',
 		'Raw+WebServer',
 		'-config',
-		'LocalTest',
+		'RemoteSceneLaunch',
 		'-zip-compress-level',
 		'1',
 		'-output',
@@ -769,7 +760,7 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 
 
 def web_package_dir(env: Mapping[str, str]) -> Path:
-	return Path(env['FO_WORKSPACE']) / 'web-debug' / 'LF-Client-LocalTest-Web'
+	return Path(env['FO_WORKSPACE']) / 'web-debug' / 'LF-Client-RemoteSceneLaunch-Web'
 
 
 def resolve_android_abi(platform_name: str) -> str:

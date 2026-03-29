@@ -36,6 +36,7 @@
 #if FO_HAVE_OPENGL
 
 #include "Application.h"
+#include "WebRelated.h"
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
@@ -255,7 +256,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(WebRelated::CanvasSelector.c_str(), &attr);
     FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int32>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);

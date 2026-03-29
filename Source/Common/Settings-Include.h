@@ -195,6 +195,21 @@ FIXED_SETTING(int32, Render, ImGuiFontTextureSize, 256); // Minimum ImGui textur
 FIXED_SETTING(int32, Render, SpriteHitValue, 127); // If alpha is greather then hit test is passed
 SETTING_GROUP_END();
 
+///@ ExportSettings Client
+SETTING_GROUP(WebSettings, virtual RenderSettings);
+FIXED_SETTING(bool, Web, AutoResize, true); // If true, web screen resolution is recalculated on browser window resize
+FIXED_SETTING(string, Web, LoadingImage, ""); // Loading image path for web page, relative to main fomain file
+FIXED_SETTING(string, Web, BackgroundColor, "rgb(0, 0, 0)"); // Background color for the web page around the game screen
+FIXED_SETTING(int32, Web, ScreenHeightPercent, 75); // Web canvas height as a percentage of page height
+FIXED_SETTING(float32, Web, AspectFactor, 0.75f); // Web canvas height-to-width factor, width = height / factor
+FIXED_SETTING(float32, Web, HorizontalPosFactor, 0.5f); // Horizontal position factor in free page width, 0 = left, 0.5 = center, 1 = right
+FIXED_SETTING(float32, Web, VerticalPosFactor, 0.25f); // Vertical position factor in free page height, 0 = top, 0.5 = center, 1 = bottom
+FIXED_SETTING(int32, Web, MinWidth, 1024); // Minimum adaptive web width in pixels
+FIXED_SETTING(int32, Web, MinHeight, 768); // Minimum adaptive web height in pixels
+FIXED_SETTING(int32, Web, MaxWidth, 1920); // Maximum adaptive web width in pixels
+FIXED_SETTING(int32, Web, MaxHeight, 1080); // Maximum adaptive web height in pixels
+SETTING_GROUP_END();
+
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual BaseSettings);
 FIXED_SETTING(int32, Timer, DebuggingDeltaTimeCap, 100); // Debugging delta time cap in milliseconds
@@ -301,7 +316,7 @@ VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles co
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
 FIXED_SETTING(int32, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
@@ -314,7 +329,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings, virtual DataBaseSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings);
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled

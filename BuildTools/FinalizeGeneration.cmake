@@ -602,6 +602,8 @@ list(APPEND FO_ESSENTIALS_SOURCE
 list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
+    "${FO_ENGINE_ROOT}/Source/Common/WebRelated.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/WebRelated.h"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/AnyData.h"
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.cpp"
@@ -880,6 +882,7 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 list(APPEND FO_TESTS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"

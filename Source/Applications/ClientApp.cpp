@@ -38,6 +38,7 @@
 #include "MetadataRegistration.h"
 #include "Settings.h"
 #include "Updater.h"
+#include "WebRelated.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"
@@ -62,12 +63,9 @@ static void MainEntry([[maybe_unused]] void* data)
     }
 
     try {
-#if FO_WEB
-        // Wait file system synchronization
-        if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+        if (!WebRelated::IsPersistentDataReady()) {
             return;
         }
-#endif
 
         try {
             App->BeginFrame();
@@ -162,8 +160,8 @@ int main(int argc, char** argv) // Handled by SDL
         App->SetMainLoopCallback(MainEntry);
 
 #elif FO_WEB
-        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
-        emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
+        WebRelated::InitializePersistentData();
+        WebRelated::StartMainLoop(MainEntry, nullptr);
 
 #elif FO_ANDROID
         while (!App->IsQuitRequested()) {

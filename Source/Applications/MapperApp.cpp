@@ -37,6 +37,7 @@
 #include "Baker.h"
 #include "Mapper.h"
 #include "Settings.h"
+#include "WebRelated.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"
@@ -56,12 +57,9 @@ static void MapperEntry([[maybe_unused]] void* data)
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WEB
-    // Wait file system synchronization
-    if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+    if (!WebRelated::IsPersistentDataReady()) {
         return;
     }
-#endif
 
     try {
         App->BeginFrame();
@@ -111,8 +109,8 @@ int main(int argc, char** argv) // Handled by SDL
         App->SetMainLoopCallback(MapperEntry);
 
 #elif FO_WEB
-        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
-        emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
+        WebRelated::InitializePersistentData();
+        WebRelated::StartMainLoop(MapperEntry, nullptr);
 
 #elif FO_ANDROID
         while (!App->IsQuitRequested()) {
