@@ -143,6 +143,30 @@ EM_JS(void, WebSetupClipboardImpl, (const char* canvas_selector), {
         });
     }
 
+    // Request clipboard-read permission on first user interaction so the browser
+    // shows the permission dialog before the user actually needs to paste
+    function requestClipboardPermission() {
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            return;
+        }
+
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'clipboard-read' }).then((status) => {
+                if (status.state === 'prompt') {
+                    navigator.clipboard.readText().then(() => {}, () => {});
+                }
+            }, () => {
+                navigator.clipboard.readText().then(() => {}, () => {});
+            });
+        } else {
+            navigator.clipboard.readText().then(() => {}, () => {});
+        }
+    }
+
+    if (canvas) {
+        canvas.addEventListener('pointerdown', requestClipboardPermission, { once: true });
+    }
+
     // Capturing-phase paste handler on document to block browser paste events
     // Without this, the browser fires a separate paste event that SDL may process as TEXT_INPUT
     document.addEventListener('paste', (event) => {
