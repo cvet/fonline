@@ -53,6 +53,15 @@ TEST_CASE("ExceptionHandling")
         CHECK(formatted.find("- ...and 2 more entries") != string::npos);
     }
 
+    SECTION("FormatStackTraceWithNoCallsReturnsHeaderOnly")
+    {
+        const StackTraceData st {};
+
+        const auto formatted = FormatStackTrace(st);
+
+        CHECK(formatted == "Stack trace (most recent call first):");
+    }
+
     SECTION("SetExceptionCallbackReplacesAndClearsCallback")
     {
         const auto prev_callback = GetExceptionCallback();

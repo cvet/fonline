@@ -82,6 +82,26 @@ TEST_CASE("Platform")
         CHECK(func == nullptr);
 #endif
     }
+
+    SECTION("GetFuncAddrReturnsNullForMissingSymbol")
+    {
+        const void* func = Platform::GetFuncAddr(nullptr, "lf_missing_platform_symbol_for_tests");
+        CHECK(func == nullptr);
+    }
+
+    SECTION("LoadModuleReturnsNullForMissingLibrary")
+    {
+        void* module = Platform::LoadModule("lf_missing_platform_module_for_tests");
+        CHECK(module == nullptr);
+        Platform::UnloadModule(module);
+    }
+
+    SECTION("InfoHelpersAreSafeToCall")
+    {
+        Platform::InfoLog("platform test log");
+        Platform::SetThreadName("platform-test-thread");
+        SUCCEED();
+    }
 }
 
 FO_END_NAMESPACE

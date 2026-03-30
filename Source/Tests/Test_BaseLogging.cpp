@@ -37,59 +37,31 @@
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("Containers")
+TEST_CASE("BaseLogging")
 {
-    SECTION("Concepts")
+    SECTION("LogToFileWritesMessages")
     {
-        STATIC_REQUIRE(vector_collection<vector<int32>>);
-        STATIC_REQUIRE(vector_collection<small_vector<int32, 4>>);
-        STATIC_REQUIRE(map_collection<map<int32, int32>>);
-        STATIC_REQUIRE(map_collection<unordered_map<int32, int32>>);
-    }
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "base.log";
 
-    SECTION("StringHash")
-    {
-        FO_HASH_NAMESPACE hash<string> hasher;
-        CHECK(hasher(string {"hash-me"}) == hasher(string_view {"hash-me"}));
-    }
+        std::filesystem::create_directories(log_path.parent_path());
 
-    SECTION("VectorFormatterInt")
-    {
-        const vector<int32> values = {1, 2, 3};
-        const auto text = std::format("{}", values);
-        CHECK(text == "1 2 3");
-    }
+        LogToFile(string(log_path.string()));
+        WriteBaseLog("alpha\n");
+        WriteBaseLog("beta");
 
-    SECTION("VectorFormatterString")
-    {
-        const vector<string> values = {"one", "two", "three"};
-        const auto text = std::format("{}", values);
-        CHECK(text == "one two three");
-    }
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
 
-    SECTION("VectorFormatterBool")
-    {
-        const vector<bool> values = {true, false, true};
-        const auto text = std::format("{}", values);
-        CHECK(text == "True False True");
-    }
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        CHECK(content == "alpha\nbeta");
 
-    SECTION("VectorFormatterEmpty")
-    {
-        const vector<int32> values;
-        const auto text = std::format("{}", values);
-        CHECK(text.empty());
-    }
+#if FO_LINUX || FO_MAC
+        LogToFile("/dev/null");
+#endif
 
-    SECTION("SmallVectorFormatter")
-    {
-        small_vector<int32, 4> values;
-        values.push_back(7);
-        values.push_back(8);
-        values.push_back(9);
-
-        const auto text = std::format("{}", values);
-        CHECK(text == "7 8 9");
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
     }
 }
 

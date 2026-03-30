@@ -71,6 +71,41 @@ TEST_CASE("MemorySystem")
         CHECK(zero_array[3] == 0);
     }
 
+    SECTION("MakeRefCountedPreservesInitialOwnership")
+    {
+        struct TestRefCounted final : RefCounted<TestRefCounted>
+        {
+            TestRefCounted(int32 value_, int32* destroyed_) noexcept :
+                Value {value_},
+                Destroyed {destroyed_}
+            {
+            }
+
+            ~TestRefCounted() { ++*Destroyed; }
+
+            int32 Value {};
+            int32* Destroyed {};
+        };
+
+        int32 destroyed = 0;
+
+        {
+            auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);
+            REQUIRE(ptr);
+            CHECK(ptr->Value == 42);
+
+            {
+                auto copy = ptr;
+                REQUIRE(copy);
+                CHECK(copy->Value == 42);
+            }
+
+            CHECK(destroyed == 0);
+        }
+
+        CHECK(destroyed == 1);
+    }
+
     SECTION("MemoryOpsHandleOverlapAndZeroSizedCompare")
     {
         char buf[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};

@@ -103,6 +103,17 @@ TEST_CASE("StrongType")
 
         CHECK(value.underlying_value() == 77);
     }
+
+    SECTION("StreamExtractionFailureResetsToDefault")
+    {
+        std::istringstream input {"oops"};
+        test_meter value {55};
+
+        input >> value;
+
+        CHECK(input.fail());
+        CHECK(value.underlying_value() == 0);
+    }
 }
 
 FO_END_NAMESPACE

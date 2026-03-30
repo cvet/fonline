@@ -78,9 +78,14 @@ using vector = std::vector<T, SafeAllocator<T>>;
 
 // Template helpers
 template<typename T>
-concept vector_collection = specialization_of<T, std::vector> || has_member<T, &T::inlined> /*small_vector test*/;
+concept vector_collection = specialization_of<T, std::vector> || requires(const T& value) {
+    { value.inlined() } -> std::convertible_to<bool>;
+};
 template<typename T>
-concept map_collection = specialization_of<T, std::map> || specialization_of<T, std::unordered_map> || specialization_of<T, ankerl::unordered_dense::segmented_map>;
+concept map_collection = specialization_of<T, std::map> || specialization_of<T, std::unordered_map> || specialization_of<T, ankerl::unordered_dense::segmented_map> || requires(const T& value, const typename T::key_type& key) {
+    typename T::mapped_type;
+    { value.contains(key) } -> std::convertible_to<bool>;
+};
 
 // String formatter
 FO_END_NAMESPACE

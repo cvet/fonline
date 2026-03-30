@@ -68,6 +68,15 @@ TEST_CASE("NetBuffer")
         CHECK(out_buf.GetDataSize() == sizeof(uint32));
     }
 
+    SECTION("DiscardWriteBufTooMuchResetsAndThrows")
+    {
+        NetOutBuffer out_buf {8, false};
+        out_buf.Write<uint32>(111);
+
+        CHECK_THROWS_AS(out_buf.DiscardWriteBuf(sizeof(uint32) + 1), NetBufferException);
+        CHECK(out_buf.GetDataSize() == 0);
+    }
+
     SECTION("MessageFramingHandlesPartialInput")
     {
         NetOutBuffer out_buf {8, false};
@@ -140,6 +149,20 @@ TEST_CASE("NetBuffer")
         in_buf.AddData({reinterpret_cast<const uint8*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
+    }
+
+    SECTION("InvalidMessageLengthThrowsAndResetsBuffer")
+    {
+        NetInBuffer in_buf {8};
+        const uint32 signature = NetBuffer::NETMSG_SIGNATURE;
+        const uint32 invalid_len = sizeof(uint32) + sizeof(uint32) + sizeof(NetMessage) - 1;
+
+        in_buf.AddData({reinterpret_cast<const uint8*>(&signature), sizeof(signature)});
+        in_buf.AddData({reinterpret_cast<const uint8*>(&invalid_len), sizeof(invalid_len)});
+
+        CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
+        CHECK(in_buf.GetDataSize() == 0);
+        CHECK(in_buf.GetReadPos() == 0);
     }
 }
 

@@ -283,7 +283,8 @@ template<std::ranges::range T, typename U>
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    vector<decltype(transfromer(nullptr))> vec;
+    using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
+    vector<result_type> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));

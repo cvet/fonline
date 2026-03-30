@@ -133,6 +133,9 @@ TEST_CASE("CommonHelpers")
         const auto filtered = vec_filter(values, [](int32 v) { return v % 2 == 1; });
         CHECK(filtered == vector<int32> {5, 1, 3});
 
+        const auto transformed = vec_transform(values, [](int32 v) -> int32 { return v * 10; });
+        CHECK(transformed == vector<int32> {50, 10, 30, 20});
+
         const auto sorted = vec_sorted(values, [](int32 l, int32 r) { return l < r; });
         CHECK(sorted == vector<int32> {1, 2, 3, 5});
 
@@ -142,6 +145,16 @@ TEST_CASE("CommonHelpers")
         const set<int32> uniq = {9, 8, 7};
         const auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
+    }
+
+    SECTION("VecTransformSupportsPointerLikeValues")
+    {
+        vector<unique_ptr<TestDerived>> values;
+        values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
+        values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
+
+        const auto transformed = vec_transform(values, [](const auto& entry) -> int32 { return entry->Value; });
+        CHECK(transformed == vector<int32> {4, 9});
     }
 
     SECTION("CopyHoldRefPreservesPointerVector")

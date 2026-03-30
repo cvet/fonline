@@ -73,6 +73,10 @@ extern void LogToFile(string_view path)
 {
     std::scoped_lock locker(BaseLogging->LogLocker);
 
+    if (BaseLogging->LogFileHandle.is_open()) {
+        BaseLogging->LogFileHandle.close();
+    }
+
     BaseLogging->LogFileHandle.open(std::string(path), std::ios::out | std::ios::binary | std::ios::trunc);
 
     if (!BaseLogging->LogFileHandle) {

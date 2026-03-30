@@ -50,6 +50,32 @@ namespace
     public:
         explicit PtrDerived(int32 value) { Value = value; }
     };
+
+    class RefCountedValue final
+    {
+    public:
+        RefCountedValue(int32 value, int32* destroy_count) noexcept :
+            Value {value},
+            DestroyCount {destroy_count}
+        {
+        }
+
+        void AddRef() noexcept { ++RefCount; }
+
+        void Release() noexcept
+        {
+            --RefCount;
+
+            if (RefCount == 0) {
+                ++*DestroyCount;
+                delete this;
+            }
+        }
+
+        int32 RefCount {};
+        int32 Value {};
+        int32* DestroyCount {};
+    };
 }
 
 TEST_CASE("SmartPointers")
@@ -105,6 +131,58 @@ TEST_CASE("SmartPointers")
         }
 
         CHECK(deleted_value == 15);
+    }
+
+    SECTION("RefcountPtrTracksReferencesAndReleaseOwnership")
+    {
+        int32 destroy_count = 0;
+        auto* raw = new RefCountedValue {33, &destroy_count};
+
+        {
+            refcount_ptr<RefCountedValue> ptr {raw};
+            REQUIRE(ptr);
+            CHECK(raw->RefCount == 1);
+
+            {
+                refcount_ptr<RefCountedValue> copy = ptr;
+                REQUIRE(copy);
+                CHECK(raw->RefCount == 2);
+                CHECK(copy->Value == 33);
+            }
+
+            CHECK(raw->RefCount == 1);
+
+            RefCountedValue* released = ptr.release_ownership();
+            CHECK_FALSE(ptr);
+            REQUIRE(released == raw);
+            CHECK(raw->RefCount == 1);
+
+            raw->Release();
+        }
+
+        CHECK(destroy_count == 1);
+    }
+
+    SECTION("SharedAndWeakAliasesPropagateConstCorrectly")
+    {
+        shared_ptr<PtrDerived> shared {std::make_shared<PtrDerived>(91)};
+        weak_ptr<PtrDerived> weak = shared;
+
+        REQUIRE(shared);
+        CHECK(shared.use_count() == 1);
+        CHECK(weak.use_count() == 1);
+
+        auto locked = weak.lock();
+        REQUIRE(locked);
+        CHECK(locked->Value == 91);
+        CHECK(shared.use_count() == 2);
+
+        locked.reset();
+        shared.reset();
+
+        CHECK_FALSE(shared);
+        CHECK(weak.use_count() == 0);
+        CHECK_FALSE(weak.lock());
     }
 }
 

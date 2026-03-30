@@ -116,6 +116,28 @@ TEST_CASE("WorkThread")
         CHECK_FALSE(second_job_called.load());
         CHECK(worker.GetJobsCount() == 0);
     }
+
+    SECTION("ClearRemovesQueuedJobsWhilePaused")
+    {
+        WorkThread worker {"ClearWorker"};
+        std::atomic_bool executed = false;
+
+        worker.Pause();
+        worker.AddJob([&]() -> optional<timespan> {
+            executed = true;
+            return std::nullopt;
+        });
+
+        CHECK(worker.GetJobsCount() == 1);
+
+        worker.Clear();
+        CHECK(worker.GetJobsCount() == 0);
+
+        worker.Resume();
+        worker.Wait();
+
+        CHECK_FALSE(executed.load());
+    }
 }
 
 FO_END_NAMESPACE

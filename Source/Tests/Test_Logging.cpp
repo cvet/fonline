@@ -80,6 +80,26 @@ TEST_CASE("Logging")
         CHECK(callback_count == 0);
     }
 
+    SECTION("CallbackReentrancyIsPrevented")
+    {
+        vector<string> captured;
+
+        SetLogCallback("reentrant", [&](string_view message) {
+            captured.emplace_back(message);
+
+            if (captured.size() == 1) {
+                WriteLogMessage(LogType::Info, "nested callback log");
+            }
+        });
+
+        WriteLogMessage(LogType::Info, "outer callback log");
+
+        REQUIRE(captured.size() == 1);
+        CHECK(captured.front().find("outer callback log") != string::npos);
+
+        SetLogCallback("reentrant", {});
+    }
+
     SetLogCallback("", {});
 }
 

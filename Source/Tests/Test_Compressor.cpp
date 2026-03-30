@@ -66,6 +66,17 @@ TEST_CASE("Compressor")
         CHECK_THROWS_AS((Compressor::Decompress(invalid, 2)), DecompressException);
     }
 
+    SECTION("DecompressExpandsBufferWhenApproximationIsTooSmall")
+    {
+        vector<uint8> src(4096, 0x2A);
+
+        const auto compressed = Compressor::Compress(src);
+        REQUIRE(compressed.size() < src.size());
+
+        const auto restored = Compressor::Decompress(compressed, 1);
+        CHECK(restored == src);
+    }
+
     SECTION("StreamRoundtrip")
     {
         vector<uint8> part1;
