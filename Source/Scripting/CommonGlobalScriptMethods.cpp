@@ -693,7 +693,7 @@ FO_SCRIPT_API void Common_Game_StopCurrentTimeEvent(BaseEngine* engine)
 FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(BaseEngine* engine, timespan repeat)
 {
     if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, repeat, std::nullopt);
+        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, repeat, std::nullopt);
     }
 }
 
@@ -701,7 +701,7 @@ FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(BaseEngine* engine, timesp
 FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, any_t data)
 {
     if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
+        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
     }
 }
 
@@ -709,7 +709,7 @@ FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, any_t
 FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, readonly_vector<any_t> data)
 {
     if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(engine, {}, te->Id, std::nullopt, to_vector(data));
+        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, to_vector(data));
     }
 }
 
