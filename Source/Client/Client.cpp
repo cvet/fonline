@@ -57,7 +57,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
-    Keyb(Settings, SprMngr),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
@@ -183,7 +182,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
-    Keyb(Settings, SprMngr),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
@@ -476,7 +474,6 @@ void ClientEngine::ProcessInputEvents()
     else {
         Settings.MousePos = App->Input.GetMousePosition();
 
-        Keyb.Lost();
         OnInputLost.Fire();
     }
 }
@@ -495,30 +492,10 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
 
-        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
-            Keyb.CtrlDwn = true;
-        }
-        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
-            Keyb.AltDwn = true;
-        }
-        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
-            Keyb.ShiftDwn = true;
-        }
-
         OnKeyDown.Fire(key_code, key_text);
     }
     else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
         const auto key_code = ev.KeyUp.Code;
-
-        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
-            Keyb.CtrlDwn = false;
-        }
-        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
-            Keyb.AltDwn = false;
-        }
-        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
-            Keyb.ShiftDwn = false;
-        }
 
         OnKeyUp.Fire(key_code);
     }

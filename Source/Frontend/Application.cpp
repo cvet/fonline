@@ -799,6 +799,20 @@ void Application::BeginFrame()
                     _ctx->EventsQueue->emplace_back(ev);
                 }
 
+#if !FO_WEB
+                // Desktop paste: read system clipboard and inject as KeyCode::Text
+                // On web, paste is handled by the JS capturing handler in WebRelated.cpp
+                if (ev.Code == KeyCode::V && (sdl_event.key.mod & SDL_KMOD_CTRL) != 0 && !imgui_capture_keyboard) {
+                    InputEvent::KeyDownEvent paste_ev;
+                    paste_ev.Code = KeyCode::Text;
+                    paste_ev.Text = SDL_GetClipboardText();
+                    _ctx->EventsQueue->emplace_back(paste_ev);
+                    InputEvent::KeyUpEvent paste_ev2;
+                    paste_ev2.Code = KeyCode::Text;
+                    _ctx->EventsQueue->emplace_back(paste_ev2);
+                }
+#endif
+
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
                     RequestQuit();
                 }
@@ -813,9 +827,13 @@ void Application::BeginFrame()
             }
 
             const auto sdl_key_mods = sdl_event.key.mod;
-            io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & SDL_KMOD_CTRL) != 0);
-            io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & SDL_KMOD_SHIFT) != 0);
-            io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & SDL_KMOD_ALT) != 0);
+            Input._ctrlDown = (sdl_key_mods & SDL_KMOD_CTRL) != 0;
+            Input._shiftDown = (sdl_key_mods & SDL_KMOD_SHIFT) != 0;
+            Input._altDown = (sdl_key_mods & SDL_KMOD_ALT) != 0;
+
+            io.AddKeyEvent(ImGuiMod_Ctrl, Input._ctrlDown);
+            io.AddKeyEvent(ImGuiMod_Shift, Input._shiftDown);
+            io.AddKeyEvent(ImGuiMod_Alt, Input._altDown);
             io.AddKeyEvent(ImGuiMod_Super, (sdl_key_mods & SDL_KMOD_GUI) != 0);
 
             ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.key);
@@ -904,6 +922,9 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_WINDOW_FOCUS_LOST: {
             io.AddFocusEvent(false);
+            Input._shiftDown = false;
+            Input._ctrlDown = false;
+            Input._altDown = false;
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
             auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
@@ -1510,6 +1531,7 @@ void AppInput::SetClipboardText(string_view text)
     FO_NON_CONST_METHOD_HINT();
 
     SDL_SetClipboardText(string(text).c_str());
+    WebRelated::SyncClipboardToSystem(text);
 }
 
 auto AppInput::GetClipboardText() -> const string&

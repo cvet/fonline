@@ -343,6 +343,9 @@ public:
 
     [[nodiscard]] auto GetMousePosition() const -> ipos32;
     [[nodiscard]] auto GetClipboardText() -> const string&;
+    [[nodiscard]] auto IsShiftDown() const noexcept -> bool { return _shiftDown; }
+    [[nodiscard]] auto IsCtrlDown() const noexcept -> bool { return _ctrlDown; }
+    [[nodiscard]] auto IsAltDown() const noexcept -> bool { return _altDown; }
 
     auto PollEvent(InputEvent& ev) -> bool;
     void ClearEvents();
@@ -359,6 +362,9 @@ private:
     raw_ptr<Application> _app;
     string _clipboardTextStorage {};
     int32 _nonConstHelper {};
+    bool _shiftDown {};
+    bool _ctrlDown {};
+    bool _altDown {};
 };
 
 class AppAudio final

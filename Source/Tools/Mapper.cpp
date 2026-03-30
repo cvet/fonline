@@ -775,7 +775,6 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     }
 
     if (!SprMngr.IsWindowFocused()) {
-        Keyb.Lost();
         OnInputLost.Fire();
         if (!PendingSelectionMoveEntries.empty()) {
             CommitPendingSelectionMove();
@@ -1016,30 +1015,10 @@ void MapperEngine::HandleMapperKeyboardEvent(const InputEvent& ev)
     PressedKeys[static_cast<int32>(dikup)] = false;
     PressedKeys[static_cast<int32>(dikdw)] = true;
 
-    if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol) {
-        Keyb.CtrlDwn = true;
-    }
-    else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu) {
-        Keyb.AltDwn = true;
-    }
-    else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift) {
-        Keyb.ShiftDwn = true;
-    }
-
-    if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol) {
-        Keyb.CtrlDwn = false;
-    }
-    else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu) {
-        Keyb.AltDwn = false;
-    }
-    else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift) {
-        Keyb.ShiftDwn = false;
-    }
-
     const auto block_hotkeys = IsImGuiTextInputActive();
     HandlePrimaryMapperHotkeys(dikdw, block_hotkeys);
 
-    if (!block_hotkeys && !Keyb.AltDwn && !Keyb.CtrlDwn && !Keyb.ShiftDwn && (dikdw == KeyCode::F11 || dikdw == KeyCode::F12)) {
+    if (!block_hotkeys && !App->Input.IsAltDown() && !App->Input.IsCtrlDown() && !App->Input.IsShiftDown() && (dikdw == KeyCode::F11 || dikdw == KeyCode::F12)) {
         return;
     }
 
@@ -1057,7 +1036,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (block_hotkeys || Keyb.AltDwn || Keyb.CtrlDwn || Keyb.ShiftDwn) {
+    if (block_hotkeys || App->Input.IsAltDown() || App->Input.IsCtrlDown() || App->Input.IsShiftDown()) {
         return;
     }
 
@@ -1148,7 +1127,7 @@ void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (block_hotkeys || !Keyb.ShiftDwn) {
+    if (block_hotkeys || !App->Input.IsShiftDown()) {
         return;
     }
 
@@ -1183,7 +1162,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (block_hotkeys || !Keyb.CtrlDwn) {
+    if (block_hotkeys || !App->Input.IsCtrlDown()) {
         return;
     }
 
@@ -3612,7 +3591,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
         return true;
     }
 
-    if (Keyb.ShiftDwn) {
+    if (App->Input.IsShiftDown()) {
         for (auto& selected_entity : SelectedEntities) {
             if (auto* cr = dynamic_cast<CritterHexView*>(selected_entity.get()); cr != nullptr) {
                 auto hex = cr->GetHex();
@@ -3632,7 +3611,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
             }
         }
     }
-    else if (!Keyb.CtrlDwn) {
+    else if (!App->Input.IsCtrlDown()) {
         SelectClear();
     }
 
@@ -3808,7 +3787,7 @@ void MapperEngine::HandleSelectionMouseDrag()
         auto offs_x = Settings.MousePos.x - SelectPos.x;
         auto offs_y = Settings.MousePos.y - SelectPos.y;
 
-        if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
+        if (SelectMove(!App->Input.IsShiftDown(), offs_hx, offs_hy, offs_x, offs_y)) {
             SelectHex1 = _curMap->GetSize().from_raw_pos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
             SelectPos.x += offs_x;
             SelectPos.y += offs_y;
@@ -4304,7 +4283,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             auto ox = item->GetOffset().x + offs_x;
             auto oy = item->GetOffset().y + offs_y;
 
-            if (Keyb.AltDwn) {
+            if (App->Input.IsAltDown()) {
                 ox = oy = 0;
             }
 

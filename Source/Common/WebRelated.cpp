@@ -141,13 +141,48 @@ EM_JS(void, WebSetupClipboardImpl, (const char* canvas_selector), {
             event.clipboardData.setData('text/plain', UTF8ToString(Number(text)));
             event.preventDefault();
         });
-        canvas.addEventListener('paste', (event) => {
-            const text = event.clipboardData.getData('text/plain');
-            const text_ptr = stringToNewUTF8(text);
-            _Emscripten_ClipboardSet(text_ptr);
-            _free(text_ptr);
+    }
+
+    // Capturing-phase paste handler on document to block browser paste events
+    // Without this, the browser fires a separate paste event that SDL may process as TEXT_INPUT
+    document.addEventListener('paste', (event) => {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+    }, true);
+
+    // Capturing-phase handler on document to intercept Ctrl+V before SDL
+    document.addEventListener('keydown', (event) => {
+        if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) {
+            return;
+        }
+
+        if (event.code === 'KeyV') {
+            event.stopImmediatePropagation();
             event.preventDefault();
-        });
+
+            if (event.repeat) {
+                return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then((text) => {
+                    if (text) {
+                        _Emscripten_InjectPasteTextOwned(stringToNewUTF8(text));
+                    }
+                }, () => {
+                    _Emscripten_InjectPasteText(_Emscripten_ClipboardGet());
+                });
+            } else {
+                _Emscripten_InjectPasteText(_Emscripten_ClipboardGet());
+            }
+        }
+    }, true);
+});
+
+EM_JS(void, WebSyncClipboardToSystemImpl, (const char* text_ptr), {
+    var text = UTF8ToString(Number(text_ptr));
+    if (text && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
     }
 });
 
@@ -263,6 +298,22 @@ extern "C"
         FO_NAMESPACE App->Input.SetClipboardText(text);
     }
 
+    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
+    {
+        using FO_NAMESPACE InputEvent;
+        using FO_NAMESPACE KeyCode;
+
+        FO_NAMESPACE App->Input.SetClipboardText(text);
+        FO_NAMESPACE App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, text})}, false);
+        FO_NAMESPACE App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})}, false);
+    }
+
+    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text)
+    {
+        Emscripten_InjectPasteText(text);
+        free(text);
+    }
+
     EMSCRIPTEN_KEEPALIVE void Emscripten_OnWindowResized()
     {
         if (FO_NAMESPACE App == nullptr) {
@@ -374,6 +425,15 @@ namespace WebRelated
     {
 #if FO_WEB
         WebSetupClipboardImpl(CanvasSelector.c_str());
+#endif
+    }
+
+    void SyncClipboardToSystem(string_view text)
+    {
+#if FO_WEB
+        WebSyncClipboardToSystemImpl(string(text).c_str());
+#else
+        ignore_unused(text);
 #endif
     }
 

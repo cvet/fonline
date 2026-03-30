@@ -47,6 +47,7 @@ namespace WebRelated
     extern void ApplyWindowSettings(WebSettings& settings);
     extern void ApplyCanvasLayout(WebSettings& settings) noexcept;
     extern void SetupClipboard();
+    extern void SyncClipboardToSystem(string_view text);
     extern void InitializePersistentData();
     extern auto IsPersistentDataReady() noexcept -> bool;
     extern void StartMainLoop(void (*entry)(void*), void* data) noexcept;

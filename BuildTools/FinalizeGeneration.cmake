@@ -733,8 +733,6 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ItemHexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/ItemView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ItemView.h"
-    "${FO_ENGINE_ROOT}/Source/Client/Keyboard.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/Keyboard.h"
     "${FO_ENGINE_ROOT}/Source/Client/LocationView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/LocationView.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.cpp"

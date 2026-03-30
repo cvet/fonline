@@ -49,7 +49,6 @@
 #include "ImGuiStuff.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
-#include "Keyboard.h"
 #include "LocationView.h"
 #include "MapView.h"
 #include "NetBuffer.h"
@@ -245,7 +244,6 @@ public:
     SpriteManager SprMngr;
     ResourceManager ResMngr;
     SoundManager SndMngr;
-    Keyboard Keyb;
     CacheStorage Cache;
 
     bool CanDrawInScripts {};

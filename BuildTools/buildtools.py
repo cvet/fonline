@@ -197,6 +197,13 @@ def resolve_env() -> EnvMap:
 	return env
 
 
+def discover_fomain(project_root: Path) -> Path:
+	"""Find the single *.fomain file in the project root."""
+	candidates = list(project_root.glob('*.fomain'))
+	assert len(candidates) == 1, f'Expected exactly one .fomain file in {project_root}, found {len(candidates)}'
+	return candidates[0]
+
+
 def apply_env(env: Mapping[str, str]) -> None:
 	for key, value in env.items():
 		if value:
@@ -725,7 +732,14 @@ def resolve_build_hash(env: Mapping[str, str]) -> str:
 	return build_hash
 
 
-def package_web_debug(env: Mapping[str, str]) -> None:
+def package_web_debug(env: Mapping[str, str], devname: str, configs: Sequence[str]) -> None:
+	for config in configs:
+		_package_web_debug_config(env, devname, config)
+
+
+def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str) -> None:
+	import foconfig
+
 	project_root = Path(env['FO_PROJECT_ROOT'])
 	output_root_input = Path(env['FO_OUTPUT'])
 	output_root = Path(env['FO_WORKSPACE']) / 'web-debug'
@@ -733,17 +747,22 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 	build_hash = resolve_build_hash(env)
 	input_roots = [output_root_input, project_root]
 
+	fomain_path = discover_fomain(project_root)
+	fomain = foconfig.ConfigParser()
+	fomain.loadFromFile(fomain_path)
+	nicename = fomain.mainSection().getStr('Common.GameName')
+
 	command = [
 		sys.executable,
 		str(package_script),
 		'-maincfg',
-		str(project_root / 'LastFrontier.fomain'),
+		str(fomain_path),
 		'-buildhash',
 		build_hash,
 		'-devname',
-		'LF',
+		devname,
 		'-nicename',
-		'LastFrontier',
+		nicename,
 		'-target',
 		'Client',
 		'-platform',
@@ -753,7 +772,7 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 		'-pack',
 		'Raw+WebServer',
 		'-config',
-		'RemoteSceneLaunch',
+		config,
 		'-zip-compress-level',
 		'1',
 		'-output',
@@ -765,8 +784,8 @@ def package_web_debug(env: Mapping[str, str]) -> None:
 	run(command)
 
 
-def web_package_dir(env: Mapping[str, str]) -> Path:
-	return Path(env['FO_WORKSPACE']) / 'web-debug' / 'LF-Client-RemoteSceneLaunch-Web'
+def web_package_dir(env: Mapping[str, str], devname: str, config: str) -> Path:
+	return Path(env['FO_WORKSPACE']) / 'web-debug' / f'{devname}-Client-{config}-Web'
 
 
 def resolve_android_abi(platform_name: str) -> str:
@@ -1107,7 +1126,8 @@ def create_parser() -> argparse.ArgumentParser:
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
-	package_web_parser.set_defaults(no_args=True)
+	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
+	package_web_parser.add_argument('configs', nargs='+', help='config names to package (e.g. RemoteSceneLaunch LocalTest)')
 
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
 	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
@@ -1155,7 +1175,7 @@ def main() -> None:
 		prepare_workspace(args.parts, args.check, env)
 		return
 	if args.command == 'package-web-debug':
-		package_web_debug(env)
+		package_web_debug(env, args.devname, args.configs)
 		return
 	if args.command == 'host-check':
 		issues = check_host_tools(args.host)

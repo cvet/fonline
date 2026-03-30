@@ -501,7 +501,30 @@ function getLaunchPicks(): ToolPick[] {
             run: () => vscode.debug.startDebugging(workspaceFolder, compound.name!),
         } satisfies ToolPick));
 
-    return [...configPicks, ...compoundPicks];
+    const allPicks = [...configPicks, ...compoundPicks];
+
+    const groupedEntries = new Map<string, ToolPick[]>();
+    const directPicks: ToolPick[] = [];
+
+    for (const pick of allPicks) {
+        const groupedName = parseGroupedTaskName(pick.label);
+        if (!groupedName) {
+            directPicks.push(pick);
+            continue;
+        }
+
+        const groupPicks = groupedEntries.get(groupedName.groupLabel) ?? [];
+        groupPicks.push({...pick, label: groupedName.itemLabel});
+        groupedEntries.set(groupedName.groupLabel, groupPicks);
+    }
+
+    const groupedPicks = Array.from(groupedEntries.entries()).map(([groupLabel, groupPicks]) => ({
+        label: `${groupLabel} ...`,
+        description: 'Launch Group',
+        run: () => showSubmenu(groupLabel, `Run a launch configuration from ${groupLabel}`, groupPicks),
+    } satisfies ToolPick));
+
+    return [...directPicks, ...groupedPicks];
 }
 
 async function showToolsPicker(): Promise<void> {
