@@ -88,6 +88,19 @@ TEST_CASE("HashedString")
         CHECK_FALSE(static_cast<bool>(unresolved));
     }
 
+    SECTION("ResolveHashNoThrowPreservesFailureOnSuccess")
+    {
+        HashStorage storage;
+
+        const auto hs = storage.ToHashedString("known_value");
+        bool failed = true;
+        const auto resolved = storage.ResolveHash(hs.as_hash(), &failed);
+
+        CHECK(failed);
+        CHECK(resolved == hs);
+        CHECK(resolved.as_str() == "known_value");
+    }
+
     SECTION("ResolveHashThrows")
     {
         HashStorage storage;
@@ -103,6 +116,36 @@ TEST_CASE("HashedString")
 
         const auto unresolved = storage.ResolveHash(Hashing::MurmurHash2("missing", 7), nullptr);
         CHECK_FALSE(static_cast<bool>(unresolved));
+    }
+
+    SECTION("ResolveHashNoThrowZeroHashPreservesFailure")
+    {
+        HashStorage storage;
+
+        bool failed = true;
+        const auto resolved = storage.ResolveHash(0, &failed);
+
+        CHECK(failed);
+        CHECK_FALSE(static_cast<bool>(resolved));
+    }
+
+    SECTION("ResolveHashNoThrowStickyFailureFlow")
+    {
+        HashStorage storage;
+
+        const auto hs = storage.ToHashedString("known_flow");
+        bool failed = false;
+
+        CHECK_FALSE(static_cast<bool>(storage.ResolveHash(Hashing::MurmurHash2("missing", 7), &failed)));
+        CHECK(failed);
+
+        const auto resolved = storage.ResolveHash(hs.as_hash(), &failed);
+        CHECK(failed);
+        CHECK(resolved == hs);
+
+        const auto zero_resolved = storage.ResolveHash(0, &failed);
+        CHECK(failed);
+        CHECK_FALSE(static_cast<bool>(zero_resolved));
     }
 
     SECTION("EmptyStringToHashedString")

@@ -2176,6 +2176,78 @@ TEST_CASE("PropertiesStructDictConversions")
     CHECK(restored.SaveToText(nullptr) == text_data);
 }
 
+TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    Properties empty_props(&registrator);
+    const auto empty_doc = PropertiesSerializator::SaveToDocument(&empty_props, nullptr, hashes, resolver);
+    CHECK(empty_doc.Empty());
+
+    Properties proto(&registrator);
+    proto.SetValue<int32>(counter_prop, 7);
+    proto.SetValue<string>(title_prop, "proto title");
+
+    Properties props(&registrator, &proto);
+    props.SetValue<string>(title_prop, "shift lead");
+    props.SetValue<bool>(enabled_prop, true);
+
+    const auto doc = PropertiesSerializator::SaveToDocument(&props, &proto, hashes, resolver);
+    CHECK(doc.Size() == 2);
+    CHECK_FALSE(doc.Contains("Counter"));
+    REQUIRE(doc.Contains("Title"));
+    REQUIRE(doc.Contains("Enabled"));
+    CHECK(doc["Title"].AsString() == "shift lead");
+    CHECK(doc["Enabled"].AsBool());
+}
+
+TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentLoadEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Document doc;
+    doc.Emplace("$version", int64 {3});
+    doc.Emplace("_meta", string {"ignored"});
+    doc.Emplace("Counter", int64 {15});
+    doc.Emplace("Title", string {"  south gate  "});
+    doc.Emplace("UnknownField", int64 {99});
+
+    Properties props(&registrator);
+    CHECK(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<int32>(counter_prop) == 15);
+    CHECK(props.GetValue<string>(title_prop) == "  south gate  ");
+}
+
+TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Document doc;
+    doc.Emplace("Counter", string {"wrong-type"});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<int32>(counter_prop) == 0);
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
 TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 {
     PropertiesPerfFixture fixture;

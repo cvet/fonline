@@ -278,7 +278,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
         return false;
     }
 
-    for (size_t i = _curPos; i < _buf.size() - fragment.size(); i++) {
+    for (size_t i = _curPos; i <= _buf.size() - fragment.size(); i++) {
         if (_buf[i] == std::bit_cast<uint8>(fragment[0])) {
             bool not_match = false;
 

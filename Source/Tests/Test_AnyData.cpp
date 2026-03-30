@@ -287,6 +287,27 @@ TEST_CASE("AnyData")
         CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
+    SECTION("CarriageReturnIsStripped")
+    {
+        const string text {"line1\rline2\nline3"};
+        const string normalized_text {"line1line2\nline3"};
+        const auto encoded = AnyData::ValueToString(AnyData::Value {text});
+
+        CHECK(StringEscaping::CodeString(text) == "\"line1line2\\nline3\"");
+        CHECK(StringEscaping::DecodeString("\"line1\\rline2\\nline3\"") == normalized_text);
+        CHECK(encoded == normalized_text);
+        CHECK(AnyData::ParseValue(encoded, false, false, AnyData::ValueType::String).AsString() == normalized_text);
+
+        AnyData::Dict dict;
+        dict.Emplace("payload", string {"head\r\ntail"});
+
+        AnyData::Dict normalized_dict;
+        normalized_dict.Emplace("payload", string {"head\ntail"});
+
+        const auto encoded_dict = AnyData::ValueToString(dict.Copy());
+        CHECK(normalized_dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
+    }
+
     SECTION("DictKeysAreDecodedAndDuplicateKeysRejected")
     {
         AnyData::Dict dict;

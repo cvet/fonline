@@ -113,6 +113,36 @@ TEST_CASE("TimeRelated")
         CHECK(meter.GetDuration().milliseconds() >= paused);
     }
 
+    SECTION("TimeMeterResumeWithoutPause")
+    {
+        TimeMeter meter;
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+
+        const auto before_resume = meter.GetDuration().milliseconds();
+        meter.Resume();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        const auto after_resume = meter.GetDuration().milliseconds();
+
+        CHECK(before_resume >= 1);
+        CHECK(after_resume >= before_resume);
+    }
+
+    SECTION("TimeMeterPauseIsIdempotent")
+    {
+        TimeMeter meter;
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+
+        meter.Pause();
+        const auto first_pause = meter.GetDuration().milliseconds();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        meter.Pause();
+        const auto second_pause = meter.GetDuration().milliseconds();
+
+        CHECK(second_pause == first_pause);
+    }
+
     SECTION("DurationFormatterBranches")
     {
         const auto us_text = std::format("{}", timespan {std::chrono::nanoseconds {1234}});

@@ -37,68 +37,26 @@
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("ExtendedTypes")
+TEST_CASE("BasicCore")
 {
-    SECTION("UColor")
-    {
-        const ucolor c1 {1, 2, 3, 4};
-        CHECK(c1.comp.r == 1);
-        CHECK(c1.comp.g == 2);
-        CHECK(c1.comp.b == 3);
-        CHECK(c1.comp.a == 4);
+    char buf[64];
 
-        const ucolor c2 {1, 2, 3, 4};
-        const ucolor c3 {2, 2, 3, 4};
-        CHECK(c1 == c2);
-        CHECK((c1 < c3 || c3 < c1));
+    SECTION("ItoaDecimal")
+    {
+        CHECK(string(ItoA(0, buf, 10)) == "0");
+        CHECK(string(ItoA(123456789, buf, 10)) == "123456789");
+        CHECK(string(ItoA(-987654321, buf, 10)) == "-987654321");
     }
 
-    SECTION("IPosISize")
+    SECTION("ItoaDecimalMinInt64")
     {
-        ipos32 p {10, 20};
-        p += ipos32 {1, 2};
-        CHECK(p == ipos32 {11, 22});
-
-        CHECK((p - ipos32 {1, 2}) == ipos32 {10, 20});
-        CHECK((p + 3) == ipos32 {14, 25});
-
-        const isize32 sz {5, 6};
-        CHECK(sz.square() == 30);
-        CHECK(sz.is_valid_pos(0, 0));
-        CHECK(sz.is_valid_pos(4, 5));
-        CHECK_FALSE(sz.is_valid_pos(5, 0));
-        CHECK_FALSE(sz.is_valid_pos(-1, 0));
+        CHECK(string(ItoA(std::numeric_limits<int64>::min(), buf, 10)) == "-9223372036854775808");
     }
 
-    SECTION("IRect")
+    SECTION("ItoaHex")
     {
-        const irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
-        CHECK(r.pos() == ipos32 {3, 4});
-        CHECK(r.size() == isize32 {10, 20});
-        CHECK_FALSE(r.is_zero());
-        CHECK(irect32 {}.is_zero());
-
-        const irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        const irect32 expanded = r.expanded(other);
-        CHECK(expanded == irect32(3, 2, 12, 22));
-
-        irect32 expanded_in_place {r};
-        expanded_in_place.expand(other);
-        CHECK(expanded_in_place == expanded);
-    }
-
-    SECTION("FPosFSizeFRect")
-    {
-        const fpos32 p1 {3.0f, 4.0f};
-        CHECK(is_float_equal(p1.dist(), 5.0f));
-        CHECK(p1.round<int32>() == ipos32 {3, 4});
-
-        const fsize32 s1 {2.5f, 4.0f};
-        CHECK(is_float_equal(s1.square(), 10.0f));
-
-        const frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
-        CHECK(fr.pos() == fpos32 {1.0f, 2.0f});
-        CHECK(fr.size() == fsize32 {3.0f, 4.0f});
+        CHECK(string(ItoA(0x7fff, buf, 16)) == "7fff");
+        CHECK(string(ItoA(0x1234abcd, buf, 16)) == "1234abcd");
     }
 }
 

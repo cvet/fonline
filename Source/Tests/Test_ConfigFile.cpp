@@ -55,6 +55,11 @@ static auto BuildConfigBenchmarkInput(int32 section_count, int32 keys_per_sectio
     return input;
 }
 
+static auto MakeBraceEntryKey(HashStorage& hashes, string_view base, string_view offset) -> string
+{
+    return strex("{}", hashes.ToHashedString(base).as_int32() + hashes.ToHashedString(offset).as_int32()).str();
+}
+
 TEST_CASE("ConfigFile")
 {
     SECTION("StoresViewsAndOwnedHookResults")
@@ -140,12 +145,30 @@ TEST_CASE("ConfigFile")
         CHECK(config.GetAsStr("Section", "Text") == "base \"quoted # hash\"");
     }
 
+    SECTION("PreservesCommentCharactersAfterEscapedQuotesInsideDoubleQuotes")
+    {
+        const string source = "[Section]\nText = \"quoted \\\" # hash\" # strip this\nOther = value\n";
+        const ConfigFile config {"Test.cfg", source, nullptr};
+
+        CHECK(config.GetAsStr("Section", "Text") == "\"quoted \\\" # hash\"");
+        CHECK(config.GetAsStr("Section", "Other") == "value");
+    }
+
     SECTION("SupportsBraceFormatEntries")
     {
         const string source = "[Section]\n{100}{20}{Payload}\n";
         const ConfigFile config {"Test.cfg", source, nullptr};
 
         CHECK(config.GetAsStr("Section", "120") == "Payload");
+    }
+
+    SECTION("SupportsHashResolvedBraceFormatEntries")
+    {
+        HashStorage hashes;
+        const string source = "[Section]\n{BaseKey}{OffsetKey}{Payload}\n";
+        const ConfigFile config {"Test.cfg", source, &hashes};
+
+        CHECK(config.GetAsStr("Section", MakeBraceEntryKey(hashes, "BaseKey", "OffsetKey")) == "Payload");
     }
 
     SECTION("IgnoresIncompleteBraceFormatEntries")
@@ -179,6 +202,13 @@ TEST_CASE("ConfigFile")
         REQUIRE(sections.size() == 1);
         CHECK(sections[0]->at("$Name") == "One");
         CHECK(sections[0]->at("Name") == "Base Two");
+    }
+
+    SECTION("GetSectionReturnsFirstRepeatedSection")
+    {
+        ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n", nullptr};
+
+        CHECK(config.GetSection("ProtoItem").at("$Name") == "One");
     }
 
     SECTION("AppendsIntoMissingKeyWithoutLeadingSpace")

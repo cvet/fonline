@@ -1,0 +1,175 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "catch_amalgamated.hpp"
+
+#include "DataSerialization.h"
+#include "EngineBase.h"
+#include "Test_BakerHelpers.h"
+
+FO_BEGIN_NAMESPACE
+
+static void InitProtoTestMetadata(EngineMetadata& meta)
+{
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterEntityType("Item", true, false, true, true, true);
+    meta.RegisterEntityType("Critter", true, false, true, true, true);
+}
+
+static auto MakeProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8>
+{
+    vector<uint8> props_data;
+    set<hstring> str_hashes;
+
+    if (type_name == meta.Hashes.ToHashedString("Item")) {
+        ProtoItem proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+    }
+    else if (type_name == meta.Hashes.ToHashedString("Critter")) {
+        ProtoCritter proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+    }
+    else {
+        FO_RUNTIME_ASSERT(false);
+    }
+
+    vector<uint8> protos_data;
+    auto writer = DataWriter(protos_data);
+
+    writer.Write<uint32>(uint32 {0}); // string hashes
+    ignore_unused(str_hashes);
+    writer.Write<uint32>(uint32 {1}); // types count
+    writer.Write<uint32>(uint32 {1}); // protos count
+    writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+    writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+    writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+    writer.WritePtr(proto_name.data(), proto_name.length());
+    writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+    writer.WritePtr(props_data.data(), props_data.size());
+
+    return protos_data;
+}
+
+TEST_CASE("ProtoManager")
+{
+    SECTION("BuiltInProtoLookupsAcceptEntityAndProtoTypeNames")
+    {
+        EngineMetadata meta {[] { }};
+        InitProtoTestMetadata(meta);
+
+        const hstring item_type = meta.Hashes.ToHashedString("Item");
+        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        const hstring critter_type = meta.Hashes.ToHashedString("Critter");
+        const hstring proto_critter_type = meta.Hashes.ToHashedString("ProtoCritter");
+        const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
+        const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, meta.GetPropertyRegistrator(item_type));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, meta.GetPropertyRegistrator(critter_type));
+        meta.RegisterProto(item_type, item_proto);
+        meta.RegisterProto(critter_type, critter_proto);
+
+        REQUIRE(meta.GetProtoItem(knife_pid) == item_proto.get());
+        REQUIRE(meta.GetProtoCritter(raider_pid) == critter_proto.get());
+
+        CHECK(meta.GetProtoEntity(item_type, knife_pid) == item_proto.get());
+        CHECK(meta.GetProtoEntity(proto_item_type, knife_pid) == item_proto.get());
+        CHECK(meta.GetProtoEntity(critter_type, raider_pid) == critter_proto.get());
+        CHECK(meta.GetProtoEntity(proto_critter_type, raider_pid) == critter_proto.get());
+
+        const auto& item_protos = meta.GetProtoEntities(proto_item_type);
+        const auto& critter_protos = meta.GetProtoEntities(proto_critter_type);
+
+        REQUIRE(item_protos.size() == 1);
+        REQUIRE(critter_protos.size() == 1);
+        CHECK(item_protos.at(knife_pid).get() == item_proto.get());
+        CHECK(critter_protos.at(raider_pid).get() == critter_proto.get());
+        CHECK(meta.GetProtoItems().at(knife_pid) == item_proto.get());
+        CHECK(meta.GetProtoCritters().at(raider_pid) == critter_proto.get());
+    }
+
+    SECTION("MigrationRulesRedirectProtoLookups")
+    {
+        EngineMetadata meta {[] { }};
+        InitProtoTestMetadata(meta);
+
+        const hstring item_type = meta.Hashes.ToHashedString("Item");
+        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
+        const hstring legacy_pid = meta.Hashes.ToHashedString("LegacyKnife");
+
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, meta.GetPropertyRegistrator(item_type));
+        meta.RegisterProto(item_type, item_proto);
+        meta.RegisterMigrationRule("Proto", "Item", "LegacyKnife", "Knife");
+
+        CHECK(meta.GetProtoItem(legacy_pid) == item_proto.get());
+        CHECK(meta.GetProtoEntity(item_type, legacy_pid) == item_proto.get());
+        CHECK(meta.GetProtoEntity(proto_item_type, legacy_pid) == item_proto.get());
+    }
+
+    SECTION("UnknownTypeCollectionReturnsEmptyReference")
+    {
+        EngineMetadata meta {[] { }};
+        InitProtoTestMetadata(meta);
+
+        const hstring map_type = meta.Hashes.ToHashedString("Map");
+
+        CHECK(meta.GetProtoEntity(map_type, meta.Hashes.ToHashedString("Missing")) == nullptr);
+        CHECK(meta.GetProtoEntities(map_type).empty());
+    }
+
+    SECTION("LoadFromResourcesRegistersBuiltInProtoData")
+    {
+        EngineMetadata meta {[] { }};
+        InitProtoTestMetadata(meta);
+
+        auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoTestPack");
+        source->AddFile("test.fopro-bin-server", MakeProtoResourceBlob(meta, meta.Hashes.ToHashedString("Item"), "LoadedKnife"));
+
+        FileSystem resources;
+        resources.AddCustomSource(std::move(source));
+        meta.RegisterProtos(resources);
+
+        const hstring loaded_pid = meta.Hashes.ToHashedString("LoadedKnife");
+        const hstring item_type = meta.Hashes.ToHashedString("Item");
+        const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+
+        REQUIRE(meta.GetProtoItem(loaded_pid) != nullptr);
+        CHECK(meta.GetProtoItem(loaded_pid)->GetName() == string_view {"LoadedKnife"});
+        CHECK(meta.GetProtoItem(loaded_pid)->GetTypeName() == item_type);
+        CHECK(meta.GetProtoEntity(item_type, loaded_pid) == meta.GetProtoItem(loaded_pid));
+        CHECK(meta.GetProtoEntity(proto_item_type, loaded_pid) == meta.GetProtoItem(loaded_pid));
+        CHECK(meta.GetProtoItems().contains(loaded_pid));
+    }
+}
+
+FO_END_NAMESPACE

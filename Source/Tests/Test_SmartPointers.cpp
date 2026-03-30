@@ -29,76 +29,82 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
+#include "SmartPointers.h"
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("ExtendedTypes")
+namespace
 {
-    SECTION("UColor")
+    class PtrBase
     {
-        const ucolor c1 {1, 2, 3, 4};
-        CHECK(c1.comp.r == 1);
-        CHECK(c1.comp.g == 2);
-        CHECK(c1.comp.b == 3);
-        CHECK(c1.comp.a == 4);
+    public:
+        virtual ~PtrBase() = default;
+        int32 Value {};
+    };
 
-        const ucolor c2 {1, 2, 3, 4};
-        const ucolor c3 {2, 2, 3, 4};
-        CHECK(c1 == c2);
-        CHECK((c1 < c3 || c3 < c1));
+    class PtrDerived final : public PtrBase
+    {
+    public:
+        explicit PtrDerived(int32 value) { Value = value; }
+    };
+}
+
+TEST_CASE("SmartPointers")
+{
+    SECTION("RawPtrSupportsMoveResetAndDynCast")
+    {
+        PtrDerived value {42};
+        raw_ptr<PtrBase> base_ptr {&value};
+
+        REQUIRE(base_ptr);
+        CHECK(base_ptr->Value == 42);
+
+        raw_ptr<PtrBase> moved_ptr {std::move(base_ptr)};
+        CHECK_FALSE(base_ptr);
+        REQUIRE(moved_ptr);
+        CHECK(moved_ptr.get() == &value);
+
+        raw_ptr<PtrDerived> derived_ptr = moved_ptr.dyn_cast<PtrDerived>();
+        REQUIRE(derived_ptr);
+        CHECK(derived_ptr->Value == 42);
+
+        moved_ptr.reset();
+        CHECK_FALSE(moved_ptr);
     }
 
-    SECTION("IPosISize")
+    SECTION("UniquePtrReleaseTransfersOwnership")
     {
-        ipos32 p {10, 20};
-        p += ipos32 {1, 2};
-        CHECK(p == ipos32 {11, 22});
+        unique_ptr<PtrDerived> ptr {new PtrDerived {77}};
 
-        CHECK((p - ipos32 {1, 2}) == ipos32 {10, 20});
-        CHECK((p + 3) == ipos32 {14, 25});
+        REQUIRE(ptr);
+        CHECK(ptr->Value == 77);
 
-        const isize32 sz {5, 6};
-        CHECK(sz.square() == 30);
-        CHECK(sz.is_valid_pos(0, 0));
-        CHECK(sz.is_valid_pos(4, 5));
-        CHECK_FALSE(sz.is_valid_pos(5, 0));
-        CHECK_FALSE(sz.is_valid_pos(-1, 0));
+        PtrDerived* raw = ptr.release();
+        CHECK_FALSE(ptr);
+        REQUIRE(raw != nullptr);
+        CHECK(raw->Value == 77);
+
+        delete raw;
     }
 
-    SECTION("IRect")
+    SECTION("UniqueDelPtrRunsCustomDeleter")
     {
-        const irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
-        CHECK(r.pos() == ipos32 {3, 4});
-        CHECK(r.size() == isize32 {10, 20});
-        CHECK_FALSE(r.is_zero());
-        CHECK(irect32 {}.is_zero());
+        int32 deleted_value = 0;
 
-        const irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        const irect32 expanded = r.expanded(other);
-        CHECK(expanded == irect32(3, 2, 12, 22));
+        {
+            unique_del_ptr<int32> ptr {new int32 {15}, [&](int32* value) {
+                                           deleted_value = *value;
+                                           delete value;
+                                       }};
 
-        irect32 expanded_in_place {r};
-        expanded_in_place.expand(other);
-        CHECK(expanded_in_place == expanded);
-    }
+            REQUIRE(ptr);
+            CHECK(*ptr == 15);
+        }
 
-    SECTION("FPosFSizeFRect")
-    {
-        const fpos32 p1 {3.0f, 4.0f};
-        CHECK(is_float_equal(p1.dist(), 5.0f));
-        CHECK(p1.round<int32>() == ipos32 {3, 4});
-
-        const fsize32 s1 {2.5f, 4.0f};
-        CHECK(is_float_equal(s1.square(), 10.0f));
-
-        const frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
-        CHECK(fr.pos() == fpos32 {1.0f, 2.0f});
-        CHECK(fr.size() == fsize32 {3.0f, 4.0f});
+        CHECK(deleted_value == 15);
     }
 }
 

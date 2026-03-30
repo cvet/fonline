@@ -55,6 +55,15 @@ namespace
 
         int32 Value {};
     };
+
+    class TestRefCounter final
+    {
+    public:
+        void AddRef() { ++RefCount; }
+        void Release() { --RefCount; }
+
+        int32 RefCount {};
+    };
 }
 
 TEST_CASE("CommonHelpers")
@@ -133,6 +142,27 @@ TEST_CASE("CommonHelpers")
         const set<int32> uniq = {9, 8, 7};
         const auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
+    }
+
+    SECTION("CopyHoldRefPreservesPointerVector")
+    {
+        TestRefCounter first;
+        TestRefCounter second;
+        vector<TestRefCounter*> refs = {&first, &second};
+
+        {
+            auto held = copy_hold_ref(refs);
+
+            CHECK(refs.size() == 2);
+            CHECK(refs[0] == &first);
+            CHECK(refs[1] == &second);
+            CHECK(first.RefCount == 1);
+            CHECK(second.RefCount == 1);
+        }
+
+        CHECK(refs.size() == 2);
+        CHECK(first.RefCount == 0);
+        CHECK(second.RefCount == 0);
     }
 }
 

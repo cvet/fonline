@@ -129,6 +129,10 @@ void TimeMeter::Pause() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_paused) {
+        return;
+    }
+
     _pausedDuration = GetDuration();
     _paused = true;
 }
@@ -136,6 +140,10 @@ void TimeMeter::Pause() noexcept
 void TimeMeter::Resume() noexcept
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_paused) {
+        return;
+    }
 
     _startTime = nanotime::now() - _pausedDuration;
     _paused = false;

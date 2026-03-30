@@ -73,6 +73,9 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         cmd_str = args.substr(0, space);
         args.erase(0, cmd_str.length());
     }
+    else {
+        args.clear();
+    }
     istringstream args_str(args);
 
     uint8 cmd = 0;
@@ -206,9 +209,13 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_ADDNPC: {
         int16 hex_x = 0;
         int16 hex_y = 0;
-        uint8 dir = 0;
+        uint16 dir = 0;
         string proto_name;
         if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
+            logcb("Invalid arguments. Example: addnpc hx hy dir name");
+            break;
+        }
+        if (dir > std::numeric_limits<uint8>::max()) {
             logcb("Invalid arguments. Example: addnpc hx hy dir name");
             break;
         }
@@ -218,7 +225,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.Write(mpos(hex_x, hex_y));
-        buf.Write(dir);
+        buf.Write(numeric_cast<uint8>(dir));
         buf.Write(pid);
         buf.EndMsg();
     } break;

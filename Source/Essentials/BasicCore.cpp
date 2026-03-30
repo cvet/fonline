@@ -130,6 +130,7 @@ extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
 {
     int32 i = 0;
     bool is_negative = false;
+    uint64 unsigned_num = 0;
 
     if (num == 0) {
         buf[i++] = '0';
@@ -139,13 +140,20 @@ extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
 
     if (num < 0 && base == 10) {
         is_negative = true;
-        num = -num;
-    }
+        unsigned_num = static_cast<uint64>(-(num + 1)) + 1;
 
-    while (num != 0) {
-        const auto rem = num % base;
-        buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
-        num = num / base;
+        while (unsigned_num != 0) {
+            const auto rem = unsigned_num % static_cast<uint64>(base);
+            buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
+            unsigned_num /= static_cast<uint64>(base);
+        }
+    }
+    else {
+        while (num != 0) {
+            const auto rem = num % base;
+            buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
+            num = num / base;
+        }
     }
 
     if (is_negative) {

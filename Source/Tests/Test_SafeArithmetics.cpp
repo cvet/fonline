@@ -68,6 +68,28 @@ TEST_CASE("SafeArithmetics")
         CHECK(checked_div<float32>(1.0f, std::numeric_limits<float32>::epsilon() * 2.0f) > 0.0f);
     }
 
+    SECTION("CheckedIntegerOverflow")
+    {
+        CHECK(checked_add<int32>(100, 23) == 123);
+        CHECK(checked_sub<int32>(100, 23) == 77);
+        CHECK(checked_mul<int32>(12, 11) == 132);
+
+        CHECK_THROWS_AS((checked_add<int32>(std::numeric_limits<int32>::max(), 1)), OverflowException);
+        CHECK_THROWS_AS((checked_add<int32>(std::numeric_limits<int32>::min(), -1)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<int32>(std::numeric_limits<int32>::min(), 1)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<int32>(std::numeric_limits<int32>::max(), -1)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<int32>(std::numeric_limits<int32>::max(), 2)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<int32>(std::numeric_limits<int32>::min(), -1)), OverflowException);
+
+        CHECK(checked_add<uint32>(10u, 20u) == 30u);
+        CHECK(checked_sub<uint32>(20u, 10u) == 10u);
+        CHECK(checked_mul<uint32>(12u, 11u) == 132u);
+
+        CHECK_THROWS_AS((checked_add<uint32>(std::numeric_limits<uint32>::max(), 1u)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<uint32>(0u, 1u)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<uint32>(std::numeric_limits<uint32>::max(), 2u)), OverflowException);
+    }
+
     SECTION("Lerp")
     {
         CHECK(lerp(10.0f, 20.0f, 0.5f) == 15.0f);

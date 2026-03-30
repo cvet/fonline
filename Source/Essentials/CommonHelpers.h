@@ -150,7 +150,7 @@ template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<T>
 {
-    auto ref_vec = ref_hold_vector<T>(std::move(value));
+    auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
         ref_vec.add(ref);
     }

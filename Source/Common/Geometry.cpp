@@ -329,7 +329,8 @@ auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<int16>(dir_angle < 0 ? 360 - (-dir_angle % 360) : dir_angle % 360);
+    const int32 mod = dir_angle % 360;
+    return numeric_cast<int16>(mod < 0 ? mod + 360 : mod);
 }
 
 auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool

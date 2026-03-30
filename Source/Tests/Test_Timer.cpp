@@ -29,76 +29,63 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
+#include "Timer.h"
 
 FO_BEGIN_NAMESPACE
 
-TEST_CASE("ExtendedTypes")
+TEST_CASE("GameTimer")
 {
-    SECTION("UColor")
-    {
-        const ucolor c1 {1, 2, 3, 4};
-        CHECK(c1.comp.r == 1);
-        CHECK(c1.comp.g == 2);
-        CHECK(c1.comp.b == 3);
-        CHECK(c1.comp.a == 4);
+    GlobalSettings settings {false};
 
-        const ucolor c2 {1, 2, 3, 4};
-        const ucolor c3 {2, 2, 3, 4};
-        CHECK(c1 == c2);
-        CHECK((c1 < c3 || c3 < c1));
+    SECTION("SynchronizedTimeThrowsBeforeInitialization")
+    {
+        GameTimer timer {settings};
+
+        CHECK_FALSE(timer.IsTimeSynchronized());
+        CHECK_THROWS_AS(timer.GetSynchronizedTime(), TimeNotSyncException);
     }
 
-    SECTION("IPosISize")
+    SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
-        ipos32 p {10, 20};
-        p += ipos32 {1, 2};
-        CHECK(p == ipos32 {11, 22});
+        GameTimer timer {settings};
+        const nanotime initial_time = timer.GetFrameTime();
 
-        CHECK((p - ipos32 {1, 2}) == ipos32 {10, 20});
-        CHECK((p + 3) == ipos32 {14, 25});
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        timer.FrameAdvance();
 
-        const isize32 sz {5, 6};
-        CHECK(sz.square() == 30);
-        CHECK(sz.is_valid_pos(0, 0));
-        CHECK(sz.is_valid_pos(4, 5));
-        CHECK_FALSE(sz.is_valid_pos(5, 0));
-        CHECK_FALSE(sz.is_valid_pos(-1, 0));
+        CHECK(timer.GetFrameTime() >= initial_time);
+        CHECK(timer.GetFrameDeltaTime() >= timespan {});
     }
 
-    SECTION("IRect")
+    SECTION("SynchronizedTimeMovesForwardAfterAdvance")
     {
-        const irect32 r {ipos32 {3, 4}, isize32 {10, 20}};
-        CHECK(r.pos() == ipos32 {3, 4});
-        CHECK(r.size() == isize32 {10, 20});
-        CHECK_FALSE(r.is_zero());
-        CHECK(irect32 {}.is_zero());
+        GameTimer timer {settings};
+        const synctime sync_base {123456};
 
-        const irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        const irect32 expanded = r.expanded(other);
-        CHECK(expanded == irect32(3, 2, 12, 22));
+        timer.SetSynchronizedTime(sync_base);
+        CHECK(timer.IsTimeSynchronized());
+        CHECK(timer.GetSynchronizedTime() == sync_base);
 
-        irect32 expanded_in_place {r};
-        expanded_in_place.expand(other);
-        CHECK(expanded_in_place == expanded);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        timer.FrameAdvance();
+
+        CHECK(timer.GetSynchronizedTime() >= sync_base);
     }
 
-    SECTION("FPosFSizeFRect")
+    SECTION("FramesPerSecondBecomesAvailableAfterOneSecondWindow")
     {
-        const fpos32 p1 {3.0f, 4.0f};
-        CHECK(is_float_equal(p1.dist(), 5.0f));
-        CHECK(p1.round<int32>() == ipos32 {3, 4});
+        GameTimer timer {settings};
 
-        const fsize32 s1 {2.5f, 4.0f};
-        CHECK(is_float_equal(s1.square(), 10.0f));
+        timer.FrameAdvance();
+        CHECK(timer.GetFramesPerSecond() == 0);
 
-        const frect32 fr {1.0f, 2.0f, 3.0f, 4.0f};
-        CHECK(fr.pos() == fpos32 {1.0f, 2.0f});
-        CHECK(fr.size() == fsize32 {3.0f, 4.0f});
+        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+        timer.FrameAdvance();
+
+        CHECK(timer.GetFramesPerSecond() >= 1);
     }
 }
 

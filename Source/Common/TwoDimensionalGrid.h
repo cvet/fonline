@@ -125,7 +125,7 @@ public:
 
         for (int64 y = 0; y < std::max(prev_height, base::_size.height); y++) {
             for (int64 x = 0; x < std::max(prev_width, base::_size.width); x++) {
-                if (x >= base::_size.width && y >= base::_size.height && x < prev_width && y < prev_height) {
+                if ((x >= base::_size.width || y >= base::_size.height) && x < prev_width && y < prev_height) {
                     const auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
 
                     if (it != _cells.end()) {

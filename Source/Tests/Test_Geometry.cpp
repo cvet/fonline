@@ -73,9 +73,13 @@ TEST_CASE("GeometryHelper")
         CHECK(dir == d);
         CHECK(GeometryHelper::NormalizeAngle(angle + 360 * 2) == angle);
     }
+    CHECK(GeometryHelper::AngleToDir(-360) == 0);
+    CHECK(GeometryHelper::AngleToDir(360) == 0);
+    CHECK(GeometryHelper::AngleToDir(719) == GeometryHelper::AngleToDir(-1));
     CHECK(GeometryHelper::NormalizeAngle(721) == 1);
     CHECK(GeometryHelper::NormalizeAngle(-1) == 359);
-    CHECK(GeometryHelper::NormalizeAngle(-360) == 360);
+    CHECK(GeometryHelper::NormalizeAngle(-360) == 0);
+    CHECK(GeometryHelper::NormalizeAngle(-720) == 0);
     CHECK(GeometryHelper::NormalizeAngle(-721) == 359);
 
     // CheckDist

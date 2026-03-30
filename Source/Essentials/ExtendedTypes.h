@@ -345,7 +345,7 @@ struct irect
         const T y1 = std::min(y, other.y);
         const T x2 = std::max(x + width, other.x + other.width);
         const T y2 = std::max(y + height, other.y + other.height);
-        return irect(x1, y1, x2 - y2, y2 - y1);
+        return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
     T x {};

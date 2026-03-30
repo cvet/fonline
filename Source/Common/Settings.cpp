@@ -542,7 +542,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     switch (const_hash(setting_name.c_str())) {
 #include "Settings-Include.h"
     default:
-        _customSettings[setting_name] = any_t(setting_value);
+        _customSettings[setting_name] = any_t(string(value));
         break;
     }
 
