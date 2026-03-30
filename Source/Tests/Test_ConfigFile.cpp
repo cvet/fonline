@@ -87,6 +87,18 @@ TEST_CASE("ConfigFile")
         CHECK(moved.GetAsStr("ProtoItem", "Name") == "Value");
     }
 
+    SECTION("PreservesViewsAfterMoveAssignment")
+    {
+        ConfigFile source {"Test.fomap", "[ProtoItem]\n$Name = Assigned\nName = Payload\n", nullptr};
+        ConfigFile target {"Other.fomap", "[Other]\nValue = Legacy\n", nullptr};
+
+        target = std::move(source);
+
+        CHECK(target.HasSection("ProtoItem"));
+        CHECK(target.GetAsStr("ProtoItem", "$Name") == "Assigned");
+        CHECK(target.GetAsStr("ProtoItem", "Name") == "Payload");
+    }
+
     SECTION("CollectsSectionContent")
     {
         const string source = "[ShaderCommon]\nline_1 \\\nline_2\nvalue # keep content before comment stripping\n\n[VertexShader]\nvoid main() {}\n";
@@ -96,18 +108,49 @@ TEST_CASE("ConfigFile")
         CHECK(config.GetSectionContent("VertexShader") == "void main() {}\n");
     }
 
+    SECTION("CollectsSectionContentForTabContinuedLines")
+    {
+        const string source = "[ShaderCommon]\nline_1\t\\\nline_2\n";
+        const ConfigFile config {"Effect.fofx", source, nullptr, ConfigFileOption::CollectContent};
+
+        CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
+    }
+
+    SECTION("ParsesCrLfLinesAndContinuation")
+    {
+        const string source = "[ShaderCommon]\r\nline_1 \\\r\nline_2\r\n[Section]\r\nKey = Value\r\n";
+        const ConfigFile config {"Effect.fofx", source, nullptr, ConfigFileOption::CollectContent};
+
+        CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
+        CHECK(config.GetAsStr("Section", "Key") == "Value");
+    }
+
     SECTION("ParsesBoolIntsAndDefaults")
     {
         const string source = "[Section]\nEnabled = true\nDisabled = FALSE\nCount = 42\nName = Value\n";
         const ConfigFile config {"Test.cfg", source, nullptr};
 
+        CHECK(config.GetNameHint() == "Test.cfg");
         CHECK(config.GetAsInt("Section", "Enabled") == 1);
         CHECK(config.GetAsInt("Section", "Disabled") == 0);
+        CHECK(config.GetAsInt("Section", "Enabled", 99) == 1);
+        CHECK(config.GetAsInt("Section", "Disabled", 99) == 0);
         CHECK(config.GetAsInt("Section", "Count") == 42);
+        CHECK(config.GetAsInt("Section", "Missing") == 0);
         CHECK(config.GetAsInt("Section", "Missing", 11) == 11);
         CHECK(config.GetAsStr("Section", "Name") == "Value");
         CHECK(config.GetAsStr("Section", "Missing") == string_view {});
         CHECK(config.GetAsStr("Section", "Missing", "Fallback") == "Fallback");
+    }
+
+    SECTION("TreatsFormFeedAndVerticalTabAsConfigWhitespace")
+    {
+        const string source = "[Section]\n\fCount\v=\f42\v\n\vEnabled\f=\vtrue\f\nText\f=\vValue\f\n";
+        const ConfigFile config {"Test.cfg", source, nullptr};
+
+        CHECK(config.GetAsInt("Section", "Count") == 42);
+        CHECK(config.GetAsInt("Section", "Enabled") == 1);
+        CHECK(config.GetAsStr("Section", "Text") == "Value");
     }
 
     SECTION("PreservesEscapedCommentCharacters")
@@ -218,6 +261,13 @@ TEST_CASE("ConfigFile")
         CHECK(config.GetAsStr("ProtoItem", "Name") == "Two");
     }
 
+    SECTION("IgnoresEmptyAppendedValueForExistingKey")
+    {
+        ConfigFile config {"Items.fopro", "[ProtoItem]\nName = Base\nName +=    # ignored\n", nullptr};
+
+        CHECK(config.GetAsStr("ProtoItem", "Name") == "Base");
+    }
+
     SECTION("StopsAfterFirstSectionWhenRequested")
     {
         ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n", nullptr, ConfigFileOption::ReadFirstSection};
@@ -247,10 +297,15 @@ TEST_CASE("ConfigFile")
 
         const auto* existing_section = config.GetSectionKeyValues("ProtoItem");
         const auto* missing_section = config.GetSectionKeyValues("Missing");
+        vector<map<string_view, string_view>*> missing_sections = config.GetSections("Missing");
+        auto& all_sections = config.GetSections();
 
         REQUIRE(existing_section != nullptr);
         CHECK(existing_section->at("$Name") == "One");
         CHECK(missing_section == nullptr);
+        CHECK(missing_sections.empty());
+        CHECK(all_sections.size() == 2);
+        CHECK(all_sections.begin()->first.empty());
         CHECK(config.HasKey("ProtoItem", "$Name"));
         CHECK_FALSE(config.HasKey("ProtoItem", "Missing"));
         CHECK_FALSE(config.HasKey("Missing", "$Name"));
@@ -267,6 +322,15 @@ TEST_CASE("ConfigFile")
         CHECK(sections[1]->at(string_view {}) == "void main2() {}\n");
     }
 
+    SECTION("ReturnsEmptyCollectedContentForMissingOrEmptySections")
+    {
+        ConfigFile config {"Effect.fofx", "[Empty]\n[Filled]\nvalue\n", nullptr, ConfigFileOption::CollectContent};
+
+        CHECK(config.GetSectionContent("Empty").empty());
+        CHECK(config.GetSectionContent("Missing").empty());
+        CHECK(config.GetSectionContent("Filled") == "value\n");
+    }
+
     SECTION("IgnoresMalformedSectionsAndEntries")
     {
         const string source = "[]\nNoSeparator\n[ValidSection\n[Good]\nKey = Value\n";
@@ -274,6 +338,18 @@ TEST_CASE("ConfigFile")
 
         CHECK_FALSE(config.HasSection("ValidSection"));
         CHECK(config.HasSection("Good"));
+        CHECK(config.GetAsStr("Good", "Key") == "Value");
+    }
+
+    SECTION("IgnoresEntriesWithEmptyTrimmedKeys")
+    {
+        const string source = "[Good]\n   = Ignored\n\t+= IgnoredToo\nKey = Value\n";
+        ConfigFile config {"Test.cfg", source, nullptr};
+        const auto* section = config.GetSectionKeyValues("Good");
+
+        REQUIRE(section != nullptr);
+        CHECK(section->size() == 1);
+        CHECK_FALSE(config.HasKey("Good", string_view {}));
         CHECK(config.GetAsStr("Good", "Key") == "Value");
     }
 

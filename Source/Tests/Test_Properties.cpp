@@ -48,6 +48,28 @@ namespace
     public:
         TestNameResolver()
         {
+            auto make_int8 = []() {
+                BaseTypeDesc type;
+                type.Name = "int8";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = true;
+                type.IsInt8 = true;
+                type.Size = sizeof(int8);
+                return type;
+            };
+
+            auto make_int16 = []() {
+                BaseTypeDesc type;
+                type.Name = "int16";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = true;
+                type.IsInt16 = true;
+                type.Size = sizeof(int16);
+                return type;
+            };
+
             auto make_int32 = []() {
                 BaseTypeDesc type;
                 type.Name = "int32";
@@ -56,6 +78,50 @@ namespace
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
                 type.Size = sizeof(int32);
+                return type;
+            };
+
+            auto make_int64 = []() {
+                BaseTypeDesc type;
+                type.Name = "int64";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = true;
+                type.IsInt64 = true;
+                type.Size = sizeof(int64);
+                return type;
+            };
+
+            auto make_uint8 = []() {
+                BaseTypeDesc type;
+                type.Name = "uint8";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = false;
+                type.IsUInt8 = true;
+                type.Size = sizeof(uint8);
+                return type;
+            };
+
+            auto make_uint16 = []() {
+                BaseTypeDesc type;
+                type.Name = "uint16";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = false;
+                type.IsUInt16 = true;
+                type.Size = sizeof(uint16);
+                return type;
+            };
+
+            auto make_uint32 = []() {
+                BaseTypeDesc type;
+                type.Name = "uint32";
+                type.IsPrimitive = true;
+                type.IsInt = true;
+                type.IsSignedInt = false;
+                type.IsUInt32 = true;
+                type.Size = sizeof(uint32);
                 return type;
             };
 
@@ -75,6 +141,16 @@ namespace
                 type.IsFloat = true;
                 type.IsSingleFloat = true;
                 type.Size = sizeof(float32);
+                return type;
+            };
+
+            auto make_float64 = []() {
+                BaseTypeDesc type;
+                type.Name = "float64";
+                type.IsPrimitive = true;
+                type.IsFloat = true;
+                type.IsDoubleFloat = true;
+                type.Size = sizeof(float64);
                 return type;
             };
 
@@ -149,9 +225,16 @@ namespace
                 return type;
             };
 
+            _types.emplace("int8", make_int8());
+            _types.emplace("int16", make_int16());
             _types.emplace("int32", make_int32());
+            _types.emplace("int64", make_int64());
+            _types.emplace("uint8", make_uint8());
+            _types.emplace("uint16", make_uint16());
+            _types.emplace("uint32", make_uint32());
             _types.emplace("bool", make_bool());
             _types.emplace("float32", make_float32());
+            _types.emplace("float64", make_float64());
             _types.emplace("string", make_string());
             _types.emplace("hstring", make_hstring());
             _types.emplace("ProtoItem", make_proto("ProtoItem"));
@@ -994,7 +1077,6 @@ TEST_CASE("PropertiesOverlay")
         vector<uint8> full_data;
         set<hstring> str_hashes;
         proto.StoreAllData(full_data, str_hashes);
-
         Properties derived(&registrator, &proto);
         CHECK_THROWS(derived.RestoreAllData(full_data));
 
@@ -1705,6 +1787,68 @@ TEST_CASE("PropertiesCustomAccessors")
     CHECK_THROWS(props.SetValue(virtual_without_setter_prop, prop_data));
 }
 
+TEST_CASE("PropertyRawDataStorageModes")
+{
+    SECTION("SmallAllocAndSetAsUseOwnedStorage")
+    {
+        PropertyRawData data;
+
+        data.SetAs<int32>(1234);
+
+        CHECK(data.GetSize() == sizeof(int32));
+        CHECK(data.GetAs<int32>() == 1234);
+
+        *data.GetPtrAs<int32>() = 4321;
+        CHECK(data.GetAs<int32>() == 4321);
+    }
+
+    SECTION("PassAliasesExternalDataUntilStoreIfPassed")
+    {
+        int32 external_value = 55;
+        PropertyRawData data;
+
+        data.Pass(&external_value, sizeof(external_value));
+
+        CHECK(data.GetAs<int32>() == 55);
+
+        external_value = 77;
+        CHECK(data.GetAs<int32>() == 77);
+
+        data.StoreIfPassed();
+        CHECK(data.GetAs<int32>() == 77);
+
+        external_value = 99;
+        CHECK(data.GetAs<int32>() == 77);
+
+        *data.GetPtrAs<int32>() = 101;
+        CHECK(data.GetAs<int32>() == 101);
+        CHECK(external_value == 99);
+    }
+
+    SECTION("LargeAllocUsesDynamicOwnedBuffer")
+    {
+        PropertyRawData data;
+        array<uint8, PropertyRawData::LOCAL_BUF_SIZE + 8> source {};
+
+        for (size_t i = 0; i < source.size(); i++) {
+            source[i] = numeric_cast<uint8>(i % 251);
+        }
+
+        data.Set(source.data(), source.size());
+
+        CHECK(data.GetSize() == source.size());
+
+        auto* stored = data.GetPtrAs<uint8>();
+        REQUIRE(stored != nullptr);
+        CHECK(std::equal(source.begin(), source.end(), stored));
+
+        source[0] = 255;
+        source.back() = 254;
+        CHECK(stored[0] != source[0]);
+        CHECK(stored[data.GetSize() - 1] != source.back());
+    }
+}
+
 TEST_CASE("PropertiesTextRoundTrip")
 {
     HashStorage hashes;
@@ -1761,6 +1905,174 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     from_any.SetValueAsAnyProps(enum_prop->GetRegIndex(), any_t {string {"ModeA"}});
     CHECK(from_any.GetValue<hstring>(hash_prop) == hashes.ToHashedString("beta"));
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+}
+
+TEST_CASE("PropertiesNumericWidthConversions")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("NumericWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {string {"-12"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int16_prop, AnyData::Value {float64 {345.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int32_prop, AnyData::Value {string {"True"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int64_prop, AnyData::Value {true}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {string {"7"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint16_prop, AnyData::Value {float64 {1024.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint32_prop, AnyData::Value {string {"false"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {int64 {2}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {float64 {0.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"True"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {string {"1.25"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {string {"False"}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {true}, hashes, resolver));
+
+    CHECK(props.GetValue<int8>(int8_prop) == -12);
+    CHECK(props.GetValue<int16>(int16_prop) == 345);
+    CHECK(props.GetValue<int32>(int32_prop) == 1);
+    CHECK(props.GetValue<int64>(int64_prop) == 1);
+    CHECK(props.GetValue<uint8>(uint8_prop) == 7);
+    CHECK(props.GetValue<uint16>(uint16_prop) == 1024);
+    CHECK(props.GetValue<uint32>(uint32_prop) == 0);
+    CHECK(props.GetValue<bool>(bool_prop));
+    CHECK(props.GetValue<float32>(float32_prop) == Catch::Approx(1.25f));
+    CHECK(props.GetValue<float64>(float64_prop) == Catch::Approx(0.0));
+    CHECK(props.GetValue<string>(string_prop) == "true");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, string_prop, hashes, resolver) == "true");
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
+}
+
+TEST_CASE("PropertiesTextScalarWidthConversions")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("NumericTextWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "-12", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, int16_prop, "345", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "9876543210", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "7", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, uint16_prop, "1024", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, uint32_prop, "65536", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, "1.25", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float64_prop, "2.5", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "True", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "not-bool", hashes, resolver));
+
+    CHECK(props.GetValue<int8>(int8_prop) == -12);
+    CHECK(props.GetValue<int16>(int16_prop) == 345);
+    CHECK(props.GetValue<int64>(int64_prop) == 9876543210);
+    CHECK(props.GetValue<uint8>(uint8_prop) == 7);
+    CHECK(props.GetValue<uint16>(uint16_prop) == 1024);
+    CHECK(props.GetValue<uint32>(uint32_prop) == 65536);
+    CHECK(props.GetValue<float32>(float32_prop) == Catch::Approx(1.25f));
+    CHECK(props.GetValue<float64>(float64_prop) == Catch::Approx(2.5));
+    CHECK_FALSE(props.GetValue<bool>(bool_prop));
+
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, int8_prop, hashes, resolver) == "-12");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, int16_prop, hashes, resolver) == "345");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, int64_prop, hashes, resolver) == "9876543210");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, uint8_prop, hashes, resolver) == "7");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, uint16_prop, hashes, resolver) == "1024");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, uint32_prop, hashes, resolver) == "65536");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, float32_prop, hashes, resolver) == "1.25");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, float64_prop, hashes, resolver) == "2.5");
+    CHECK(PropertiesSerializator::SavePropertyToText(&props, bool_prop, hashes, resolver) == "False");
+}
+
+TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("PrimitiveDictKeyEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* labels_prop = registrator.RegisterProperty({"Common", "int8=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    const auto* flags_prop = registrator.RegisterProperty({"Common", "uint16=>bool", "Flags", "Mutable", "Persistent", "PublicSync"});
+    const auto* samples_prop = registrator.RegisterProperty({"Common", "float64=>int8[]", "Samples", "Mutable", "Persistent", "PublicSync"});
+
+    const auto labels_value = []() {
+        AnyData::Dict labels;
+        labels.Emplace("-7", string {"low"});
+        labels.Emplace("12", string {"ridge line"});
+        return AnyData::Value {std::move(labels)};
+    }();
+
+    const auto flags_value = []() {
+        AnyData::Dict flags;
+        flags.Emplace("7", true);
+        flags.Emplace("1024", false);
+        return AnyData::Value {std::move(flags)};
+    }();
+
+    const auto samples_value = []() {
+        AnyData::Array low_samples;
+        low_samples.EmplaceBack(int64 {-3});
+        low_samples.EmplaceBack(int64 {0});
+
+        AnyData::Array high_samples;
+        high_samples.EmplaceBack(int64 {4});
+        high_samples.EmplaceBack(int64 {9});
+
+        AnyData::Dict samples;
+        samples.Emplace("-0.5", AnyData::Value {std::move(low_samples)});
+        samples.Emplace("1.25", AnyData::Value {std::move(high_samples)});
+        return AnyData::Value {std::move(samples)};
+    }();
+
+    Properties props(&registrator);
+    props.SetValueAsAnyProps(labels_prop->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
+    props.SetValueAsAnyProps(flags_prop->GetRegIndex(), any_t {AnyData::ValueToString(flags_value)});
+    props.SetValueAsAnyProps(samples_prop->GetRegIndex(), any_t {AnyData::ValueToString(samples_value)});
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == labels_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, flags_prop, hashes, resolver) == flags_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, samples_prop, hashes, resolver) == samples_value);
+
+    const auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("Labels"));
+    REQUIRE(text_data.contains("Flags"));
+    REQUIRE(text_data.contains("Samples"));
+    CHECK(text_data.at("Labels").find("-7") != string::npos);
+    CHECK(text_data.at("Labels").find("ridge line") != string::npos);
+    CHECK(text_data.at("Flags").find("1024") != string::npos);
+    CHECK(text_data.at("Flags").find("False") != string::npos);
+    CHECK(text_data.at("Samples").find("-0.5") != string::npos);
+    CHECK(text_data.at("Samples").find("\"-3 0\"") != string::npos);
+    CHECK(text_data.at("Samples").find("\"4 9\"") != string::npos);
+
+    Properties restored(&registrator);
+    restored.ApplyFromText(text_data);
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, labels_prop, hashes, resolver) == labels_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, flags_prop, hashes, resolver) == flags_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, samples_prop, hashes, resolver) == samples_value);
+    CHECK(restored.SaveToText(nullptr) == text_data);
 }
 
 TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
@@ -1826,6 +2138,66 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 
     CHECK(str_hashes.contains(hashes.ToHashedString("knife")));
     CHECK(str_hashes.contains(hashes.ToHashedString("pistol")));
+}
+
+TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("InvalidTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
+    const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
+    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, hash_prop, AnyData::Value {int64 {42}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {true}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64 {99}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"not-bool"}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {int64 {10}}, hashes, resolver));
+
+    AnyData::Array invalid_numeric_values;
+    invalid_numeric_values.EmplaceBack(string {"not-a-number"});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {std::move(invalid_numeric_values)}, hashes, resolver));
+
+    AnyData::Array invalid_tags;
+    invalid_tags.EmplaceBack(AnyData::Value {AnyData::Dict {}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, tags_prop, AnyData::Value {std::move(invalid_tags)}, hashes, resolver));
+
+    AnyData::Dict invalid_labels;
+    invalid_labels.Emplace("alpha", AnyData::Value {AnyData::Array {}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, labels_prop, AnyData::Value {std::move(invalid_labels)}, hashes, resolver));
+
+    AnyData::Dict invalid_loot_sets;
+    invalid_loot_sets.Emplace("default", AnyData::Value {string {"knife"}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, loot_sets_prop, AnyData::Value {std::move(invalid_loot_sets)}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
+
+    AnyData::Dict invalid_leader_value_type;
+    invalid_leader_value_type.Emplace("north", AnyData::Value {true});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_value_type)}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {string {""}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, item_prop, AnyData::Value {string {"missing_proto"}}, hashes, resolver));
+
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, map_prop, AnyData::Value {string {""}}, hashes, resolver));
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, map_prop, hashes, resolver) == AnyData::Value {string {""}});
+
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64 {1}}, hashes, resolver));
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
 TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
@@ -2176,6 +2548,56 @@ TEST_CASE("PropertiesStructDictConversions")
     CHECK(restored.SaveToText(nullptr) == text_data);
 }
 
+TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("InvalidStructEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    const auto* patrol_prop = registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    AnyData::Dict invalid_leader_from_array;
+    AnyData::Array short_waypoint;
+    short_waypoint.EmplaceBack(int64 {10});
+    short_waypoint.EmplaceBack(float64 {1.5});
+    invalid_leader_from_array.Emplace("north", AnyData::Value {std::move(short_waypoint)});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_from_array)}, hashes, resolver));
+
+    AnyData::Dict invalid_leader_from_string;
+    invalid_leader_from_string.Emplace("south", AnyData::Value {string {"20 2.5"}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_from_string)}, hashes, resolver));
+
+    AnyData::Dict invalid_patrol_type;
+    invalid_patrol_type.Emplace("1", AnyData::Value {string {"not-an-array"}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, patrol_prop, AnyData::Value {std::move(invalid_patrol_type)}, hashes, resolver));
+
+    AnyData::Dict invalid_patrol_shape;
+    AnyData::Array malformed_path;
+    malformed_path.EmplaceBack(string {"10 1.0"});
+    invalid_patrol_shape.Emplace("2", AnyData::Value {std::move(malformed_path)});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, patrol_prop, AnyData::Value {std::move(invalid_patrol_shape)}, hashes, resolver));
+}
+
+TEST_CASE("PropertiesSerializatorRejectsInvalidTextStructShapes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("InvalidTextStructEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* waypoint_prop = registrator.RegisterProperty({"Common", "Waypoint", "WaypointValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, waypoint_prop, "10 1.5", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, waypoint_prop, "10 1.5 True extra", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, leader_prop, "\"north\" \"10 1.5\"", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, leader_prop, "\"north\" \"10 1.5 True extra\"", hashes, resolver));
+}
+
 TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 {
     HashStorage hashes;
@@ -2245,6 +2667,147 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
     Properties props(&registrator);
     CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
     CHECK(props.GetValue<int32>(counter_prop) == 0);
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Document doc;
+    doc.Emplace("Counter", AnyData::Value {AnyData::Dict {}});
+    doc.Emplace("Title", AnyData::Value {AnyData::Array {}});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<int32>(counter_prop) == 0);
+    CHECK(props.GetValue<string>(title_prop).empty());
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Document doc;
+    doc.Emplace("HashValue", AnyData::Value {AnyData::Array {}});
+    doc.Emplace("ItemProto", AnyData::Value {int64 {7}});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<hstring>(hash_prop) == hstring {});
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {string {""}});
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentCollectionTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
+    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Document doc;
+    doc.Emplace("Values", string {"not-an-array"});
+    doc.Emplace("Labels", AnyData::Value {AnyData::Array {}});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<vector<int32>>(values_prop).empty());
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentDictArrayTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* checkpoints_prop = registrator.RegisterProperty({"Common", "bool=>int32[]", "Checkpoints", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Dict invalid_checkpoints;
+    invalid_checkpoints.Emplace("True", string {"not-an-array"});
+
+    AnyData::Document doc;
+    doc.Emplace("Checkpoints", AnyData::Value {std::move(invalid_checkpoints)});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, checkpoints_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentStringCollectionInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Array invalid_tags;
+    invalid_tags.EmplaceBack(AnyData::Value {AnyData::Dict {}});
+
+    AnyData::Dict invalid_labels;
+    invalid_labels.Emplace("alpha", AnyData::Value {AnyData::Array {}});
+
+    AnyData::Document doc;
+    doc.Emplace("Tags", AnyData::Value {std::move(invalid_tags)});
+    doc.Emplace("Labels", AnyData::Value {std::move(invalid_labels)});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<vector<string>>(tags_prop).empty());
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
+    CHECK(props.GetValue<bool>(enabled_prop));
+}
+
+TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerDictArrayStringValues")
+{
+    HashStorage hashes;
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("DocumentDictArrayStringInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* mode_tags_prop = registrator.RegisterProperty({"Common", "Mode=>string[]", "ModeTags", "Mutable", "Persistent", "PublicSync"});
+    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Array invalid_mode_tags_entries;
+    invalid_mode_tags_entries.EmplaceBack(AnyData::Value {AnyData::Dict {}});
+
+    AnyData::Dict invalid_mode_tags;
+    invalid_mode_tags.Emplace("ModeA", AnyData::Value {std::move(invalid_mode_tags_entries)});
+
+    AnyData::Document doc;
+    doc.Emplace("ModeTags", AnyData::Value {std::move(invalid_mode_tags)});
+    doc.Emplace("Enabled", true);
+
+    Properties props(&registrator);
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, mode_tags_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
 }
 

@@ -54,6 +54,20 @@ TEST_CASE("TextPack")
         CHECK(pack.GetStr(9999).empty());
     }
 
+    SECTION("LoadFromStringSupportsHashedKeysAndOffsets")
+    {
+        HashStorage hashes;
+        TextPack pack;
+
+        const auto base_hash = hashes.ToHashedString("QuestEntry").as_int32();
+        const auto offset_hash = hashes.ToHashedString("Suffix").as_int32();
+        const string input = "{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}";
+
+        REQUIRE(pack.LoadFromString(input, hashes));
+        CHECK(pack.GetStr(base_hash, 0) == "Base");
+        CHECK(pack.GetStr(base_hash + offset_hash, 0) == "Combined");
+    }
+
     SECTION("BinaryRoundtripPreservesEntries")
     {
         TextPack pack;
@@ -106,6 +120,129 @@ TEST_CASE("TextPack")
 
         CHECK(pack.GetSize() == 0);
         CHECK(pack.GetStr(7).empty());
+    }
+
+    SECTION("MergeEraseAndIntersectionTrackSharedKeys")
+    {
+        TextPack base_pack;
+        base_pack.AddStr(1, string_view {"BaseOne"});
+        base_pack.AddStr(2, string_view {"BaseTwo"});
+
+        TextPack incoming_pack;
+        incoming_pack.AddStr(2, string_view {"IncomingTwo"});
+        incoming_pack.AddStr(3, string_view {"IncomingThree"});
+
+        CHECK(base_pack.CheckIntersections(incoming_pack));
+
+        base_pack.Merge(incoming_pack);
+
+        CHECK(base_pack.GetSize() == 4);
+        CHECK(base_pack.GetStrCount(2) == 2);
+        CHECK(base_pack.GetStr(2, 0) == "BaseTwo");
+        CHECK(base_pack.GetStr(2, 1) == "IncomingTwo");
+        CHECK(base_pack.GetStr(3, 0) == "IncomingThree");
+
+        base_pack.EraseStr(2);
+
+        CHECK(base_pack.GetStrCount(2) == 0);
+        CHECK(base_pack.GetStr(2).empty());
+        CHECK(base_pack.GetSize() == 2);
+
+        TextPack disjoint_pack;
+        disjoint_pack.AddStr(99, string_view {"OnlyHere"});
+        CHECK_FALSE(base_pack.CheckIntersections(disjoint_pack));
+    }
+
+    SECTION("GetStrSkipOutOfRangeReturnsEmptyString")
+    {
+        TextPack pack;
+        pack.AddStr(5, string_view {"Alpha"});
+        pack.AddStr(5, string_view {"Beta"});
+
+        CHECK(pack.GetStr(5, 0) == "Alpha");
+        CHECK(pack.GetStr(5, 1) == "Beta");
+        CHECK(pack.GetStr(5, 2).empty());
+        CHECK(pack.GetStr(42, 0).empty());
+    }
+
+    SECTION("MalformedLoadFromStringReportsFailureAfterKeepingValidEntries")
+    {
+        HashStorage hashes;
+        TextPack pack;
+
+        const string input = "{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}";
+
+        CHECK_FALSE(pack.LoadFromString(input, hashes));
+        CHECK(pack.GetStr(10, 0) == "Valid");
+        CHECK(pack.GetStr(20).empty());
+        CHECK(pack.GetStr(30, 0) == "StillValid");
+        CHECK(pack.GetSize() == 2);
+    }
+
+    SECTION("FixPacksAddsMissingLanguagesAndNormalizesAgainstBase")
+    {
+        vector<string> bake_languages {"engl", "russ", "germ"};
+        vector<pair<string, map<string, TextPack>>> lang_packs;
+
+        TextPack engl_dialogs;
+        engl_dialogs.AddStr(1, string_view {"Hello"});
+        engl_dialogs.AddStr(2, string_view {"World"});
+
+        TextPack engl_items;
+        engl_items.AddStr(10, string_view {"Item"});
+
+        TextPack russ_dialogs;
+        russ_dialogs.AddStr(2, string_view {"Mir"});
+        russ_dialogs.AddStr(3, string_view {"Extra"});
+
+        TextPack unsupported_dialogs;
+        unsupported_dialogs.AddStr(1, string_view {"Hola"});
+
+        lang_packs.emplace_back("engl", map<string, TextPack> {});
+        lang_packs[0].second.emplace("Dialogs", engl_dialogs);
+        lang_packs[0].second.emplace("Items", engl_items);
+
+        lang_packs.emplace_back("russ", map<string, TextPack> {});
+        lang_packs[1].second.emplace("Dialogs", russ_dialogs);
+
+        lang_packs.emplace_back("span", map<string, TextPack> {});
+        lang_packs[2].second.emplace("Dialogs", unsupported_dialogs);
+
+        TextPack::FixPacks(bake_languages, lang_packs);
+
+        REQUIRE(lang_packs.size() == 3);
+        CHECK(lang_packs[0].first == "engl");
+        CHECK(lang_packs[1].first == "russ");
+        CHECK(lang_packs[2].first == "germ");
+
+        const auto& russ_pack = lang_packs[1].second;
+        REQUIRE(russ_pack.size() == 2);
+        CHECK(russ_pack.contains("Dialogs"));
+        CHECK(russ_pack.contains("Items"));
+        CHECK(russ_pack.at("Dialogs").GetStr(1, 0) == "Hello");
+        CHECK(russ_pack.at("Dialogs").GetStr(2, 0) == "Mir");
+        CHECK(russ_pack.at("Dialogs").GetStr(3).empty());
+        CHECK(russ_pack.at("Items").GetStr(10, 0) == "Item");
+
+        const auto& germ_pack = lang_packs[2].second;
+        REQUIRE(germ_pack.size() == 2);
+        CHECK(germ_pack.at("Dialogs").GetStr(1, 0) == "Hello");
+        CHECK(germ_pack.at("Dialogs").GetStr(2, 0) == "World");
+        CHECK(germ_pack.at("Items").GetStr(10, 0) == "Item");
+    }
+
+    SECTION("FixPacksBootstrapsDefaultLanguageWhenInputIsEmpty")
+    {
+        vector<string> bake_languages {"engl", "russ"};
+        vector<pair<string, map<string, TextPack>>> lang_packs;
+
+        TextPack::FixPacks(bake_languages, lang_packs);
+
+        REQUIRE(lang_packs.size() == 2);
+        CHECK(lang_packs[0].first == "engl");
+        CHECK(lang_packs[1].first == "russ");
+        CHECK(lang_packs[0].second.empty());
+        CHECK(lang_packs[1].second.empty());
     }
 }
 

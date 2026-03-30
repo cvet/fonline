@@ -86,6 +86,19 @@ TEST_CASE("DataSerialization")
         CHECK_THROWS_AS(reader.VerifyEnd(), DataReadingException);
     }
 
+    SECTION("EmptyReadersAcceptVerifyEndAndZeroSizePointers")
+    {
+        vector<uint8> buf;
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.ReadPtr<uint8>(0) == nullptr);
+        CHECK_NOTHROW(reader.VerifyEnd());
+
+        MutableDataReader mutable_reader {span<uint8> {buf.data(), buf.size()}};
+        CHECK(mutable_reader.ReadPtr<uint8>(0) == nullptr);
+        CHECK_NOTHROW(mutable_reader.VerifyEnd());
+    }
+
     SECTION("MutableDataReader")
     {
         vector<uint8> buf;
@@ -135,6 +148,34 @@ TEST_CASE("DataSerialization")
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
+    SECTION("ZeroSizeBufferedReadDoesNotModifyTargetOrAdvance")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint16>(static_cast<uint16>(0xABCD));
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        array<uint8, 3> target = {7, 8, 9};
+
+        reader.ReadPtr(target.data(), 0);
+        CHECK(target == array<uint8, 3> {7, 8, 9});
+        CHECK(reader.Read<uint16>() == static_cast<uint16>(0xABCD));
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("ReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint16>(static_cast<uint16>(0xCAFE));
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        array<uint8, 4> target = {1, 2, 3, 4};
+
+        CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
+        CHECK(target == array<uint8, 4> {1, 2, 3, 4});
+    }
+
     SECTION("MutableDataReaderBounds")
     {
         vector<uint8> buf;
@@ -159,6 +200,62 @@ TEST_CASE("DataSerialization")
         array<uint8, 2> temp = {1, 2};
         reader.ReadPtr(temp.data(), 0);
         CHECK(temp == array<uint8, 2> {1, 2});
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("MutableReadPtrToBufferThrowsWithoutModifyingTargetWhenOutOfBounds")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint8>(static_cast<uint8>(42));
+
+        MutableDataReader reader {span<uint8> {buf.data(), buf.size()}};
+        array<uint8, 3> target = {9, 8, 7};
+
+        CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
+        CHECK(target == array<uint8, 3> {9, 8, 7});
+    }
+
+    SECTION("ZeroSizeWritePtrDoesNotGrowBuffer")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+        writer.Write<uint32>(0x11223344u);
+
+        const size_t initial_size = buf.size();
+        const array<uint8, 3> source = {5, 6, 7};
+
+        writer.WritePtr(source.data(), 0);
+
+        CHECK(buf.size() == initial_size);
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.Read<uint32>() == 0x11223344u);
+        CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("LargeWritePtrGrowsBufferAndPreservesData")
+    {
+        vector<uint8> buf;
+        DataWriter writer {buf};
+
+        vector<uint8> source(DataWriter::BUF_RESERVE_SIZE + 17, static_cast<uint8>(0x5A));
+        source.front() = 1;
+        source.back() = 2;
+
+        writer.Write<uint8>(static_cast<uint8>(0x11));
+        writer.WritePtr(source.data(), source.size());
+
+        CHECK(buf.size() == source.size() + sizeof(uint8));
+
+        DataReader reader {const_span<uint8> {buf.data(), buf.size()}};
+        CHECK(reader.Read<uint8>() == static_cast<uint8>(0x11));
+
+        const auto* raw = reader.ReadPtr<uint8>(source.size());
+        REQUIRE(raw != nullptr);
+        CHECK(raw[0] == 1);
+        CHECK(raw[source.size() - 1] == 2);
+        CHECK(raw[source.size() / 2] == static_cast<uint8>(0x5A));
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 }
