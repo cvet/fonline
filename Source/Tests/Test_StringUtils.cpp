@@ -98,17 +98,17 @@ TEST_CASE("StringUtils")
     {
         CHECK(strex("").is_valid_utf8());
         CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
-        CHECK(strex(" приВЕт   ").is_valid_utf8());
-        CHECK(strex(" приВЕт   ").is_valid_utf8());
-        CHECK(strex(" Привет   ").compare_ignore_case_utf8(" приВЕт   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8(" тттввв   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8("еее"));
-        CHECK(strex(" Привет   ").length_utf8() == 10);
-        CHECK(strex("еее").length_utf8() == 3);
-        CHECK(strex(" Привет   ").compare_ignore_case_utf8(" ПРИВЕТ   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8(" ПРЕТТТ   "));
-        CHECK(strex(" ПриВЕТ   ").lower_utf8() == " привет   ");
-        CHECK(strex(" ПриВет   ").upper_utf8() == " ПРИВЕТ   ");
+        CHECK(strex(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   ").is_valid_utf8());
+        CHECK(strex(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   ").is_valid_utf8());
+        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   "));
+        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" Ñ‚Ñ‚Ñ‚Ð²Ð²Ð²   "));
+        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8("ÐµÐµÐµ"));
+        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").length_utf8() == 10);
+        CHECK(strex("ÐµÐµÐµ").length_utf8() == 3);
+        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" ÐŸÐ Ð˜Ð’Ð•Ð¢   "));
+        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" ÐŸÐ Ð•Ð¢Ð¢Ð¢   "));
+        CHECK(strex(" ÐŸÑ€Ð¸Ð’Ð•Ð¢   ").lower_utf8() == " Ð¿Ñ€Ð¸Ð²ÐµÑ‚   ");
+        CHECK(strex(" ÐŸÑ€Ð¸Ð’ÐµÑ‚   ").upper_utf8() == " ÐŸÐ Ð˜Ð’Ð•Ð¢   ");
     }
 
     SECTION("StartsWith")
@@ -291,8 +291,8 @@ TEST_CASE("StringUtils")
     {
         CHECK(strex().parse_wide_char(L"Hello").str() == "Hello");
         CHECK(strex("Hello").parse_wide_char(L"World").str() == "HelloWorld");
-        CHECK(strex().parse_wide_char(L"HelloМир").to_wide_char() == L"HelloМир");
-        CHECK(strex("Мир").parse_wide_char(L"Мир").to_wide_char() == L"МирМир");
+        CHECK(strex().parse_wide_char(L"HelloÐœÐ¸Ñ€").to_wide_char() == L"HelloÐœÐ¸Ñ€");
+        CHECK(strex("ÐœÐ¸Ñ€").parse_wide_char(L"ÐœÐ¸Ñ€").to_wide_char() == L"ÐœÐ¸Ñ€ÐœÐ¸Ñ€");
     }
 #endif
 }

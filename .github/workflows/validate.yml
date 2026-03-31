@@ -1,14 +1,24 @@
 name: validate
 
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
-    branches:
-    - master
+    branches: [master]
   pull_request:
 
 jobs:
   check-formatting:
+    name: Check formatting
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v6
     - uses: DoozyX/clang-format-lint-action@v0.20
@@ -17,13 +27,21 @@ jobs:
         extensions: 'h,cpp,fos'
         clangFormatVersion: 20
   unit-tests:
+    name: Run unit tests
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh packages linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
+    name: Run code coverage
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh packages linux
@@ -33,6 +51,7 @@ jobs:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
   windows:
+    name: Windows validate (${{ matrix.app }})
     runs-on: windows-2025
     strategy:
       fail-fast: false
@@ -49,58 +68,67 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
+    name: Ubuntu validate (${{ matrix.app }})
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        app:
-        - linux-client
-        - linux-gcc-client
-        - android-arm-client
-        - android-arm64-client
-        - web-client
-        - linux-server
-        - linux-gcc-server
-        - linux-editor
-        - linux-gcc-editor
-        - linux-mapper
-        - linux-gcc-mapper
-        - linux-ascompiler
-        - linux-gcc-ascompiler
-        - linux-baker
-        - linux-gcc-baker
+        include:
+        - app: linux-client
+          prepare: linux
+        - app: linux-gcc-client
+          prepare: linux
+        - app: android-arm-client
+          prepare: android
+        - app: android-arm64-client
+          prepare: android-arm64
+        - app: web-client
+          prepare: web
+        - app: linux-server
+          prepare: linux
+        - app: linux-gcc-server
+          prepare: linux
+        - app: linux-editor
+          prepare: linux
+        - app: linux-gcc-editor
+          prepare: linux
+        - app: linux-mapper
+          prepare: linux
+        - app: linux-gcc-mapper
+          prepare: linux
+        - app: linux-ascompiler
+          prepare: linux
+        - app: linux-gcc-ascompiler
+          prepare: linux
+        - app: linux-baker
+          prepare: linux
+        - app: linux-gcc-baker
+          prepare: linux
     steps:
     - uses: actions/checkout@v6
-    - if: ${{startsWith(matrix.app, 'linux-')}}
-      run: BuildTools/prepare-workspace.sh packages linux
-    - if: ${{startsWith(matrix.app, 'web-')}}
-      run: BuildTools/prepare-workspace.sh packages web
-    - if: ${{startsWith(matrix.app, 'android-arm-')}}
-      run: BuildTools/prepare-workspace.sh packages android
-    - if: ${{startsWith(matrix.app, 'android-arm64-')}}
-      run: BuildTools/prepare-workspace.sh packages android-arm64
-    - if: ${{startsWith(matrix.app, 'android-x86-')}}
-      run: BuildTools/prepare-workspace.sh packages android-x86
-    - run: BuildTools/validate.sh ${{matrix.app}}
-  macos-intel:
-    runs-on: macos-26-intel
-    strategy:
-      fail-fast: false
-      matrix:
-        app:
-        - mac-client
-        - ios-client
-    steps:
-    - uses: actions/checkout@v6
+    - run: BuildTools/prepare-workspace.sh packages ${{ matrix.prepare }}
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
-    runs-on: macos-26
+    name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        app:
-        - mac-client
-        - ios-client
+        include:
+        - runner: macos-26-intel
+          app: mac-client
+        - runner: macos-26-intel
+          app: ios-client
+        - runner: macos-26
+          app: mac-client
+        - runner: macos-26
+          app: ios-client
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.sh ${{matrix.app}}

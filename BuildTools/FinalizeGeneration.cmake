@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 3.22)
 
 # Force some variables for internal debugging purposes
 if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
-    set(FO_ENABLE_3D ${FO_FORCE_ENABLE_3D})
+    SetValue(FO_ENABLE_3D ${FO_FORCE_ENABLE_3D})
 endif()
 
 # Configuration checks
-if(FO_CODE_COVERAGE AND (FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR OR FO_BUILD_ASCOMPILER OR FO_BUILD_BAKER OR FO_UNIT_TESTS))
+if(FO_CODE_COVERAGE AND (
+    FO_BUILD_CLIENT OR
+    FO_BUILD_SERVER OR
+    FO_BUILD_MAPPER OR
+    FO_BUILD_EDITOR OR
+    FO_BUILD_ASCOMPILER OR
+    FO_BUILD_BAKER OR
+    FO_UNIT_TESTS))
     AbortMessage("Code coverage build can not be mixed with other builds")
 endif()
 
@@ -19,102 +26,104 @@ StatusMessage("Third-party libs:")
 
 # Rpmalloc
 if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
-    StatusMessage("+ Rpmalloc")
-    set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
-    set(FO_RPMALLOC_SOURCE
+    SetValue(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
+    SetValue(FO_RPMALLOC_SOURCE
         "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.c"
         "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.h"
         "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
-    include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
-    add_library(rpmalloc STATIC EXCLUDE_FROM_ALL ${FO_RPMALLOC_SOURCE})
-    add_compile_definitions(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
-    add_compile_definitions(ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
-    target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    list(APPEND FO_ESSENTIALS_LIBS rpmalloc)
-    DisableLibWarnings(rpmalloc)
+    AddStaticThirdPartyLibrary(rpmalloc
+        SOURCE_LIST FO_RPMALLOC_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS
+        INCLUDE_DIRS "${FO_RPMALLOC_DIR}/rpmalloc")
+    AddCompileDefinitionsList(
+        FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
+        ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
+    TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
 else()
-    add_compile_definitions(FO_HAVE_RPMALLOC=0)
+    AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)
 endif()
 
 # SDL
 StatusMessage("+ SDL")
-set(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "Forced by FOnline" FORCE)
-set(SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY} CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_SDL_DIR}" EXCLUDE_FROM_ALL)
-include_directories("${FO_SDL_DIR}/include")
-list(APPEND FO_RENDER_LIBS SDL3-static SDL_uclibc)
+SetValue(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
+SetBoolCacheValues(
+    SDL_TEST_LIBRARY OFF
+    SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY})
+AddSubdirectory("${FO_SDL_DIR}" EXCLUDE_FROM_ALL)
+AddIncludeDirectories("${FO_SDL_DIR}/include")
+AppendList(FO_RENDER_LIBS SDL3-static SDL_uclibc)
 DisableLibWarnings(SDL3-static SDL_uclibc)
 
 # Tracy profiler
 StatusMessage("+ Tracy")
-set(FO_TRACY_DIR "${FO_ENGINE_ROOT}/ThirdParty/tracy")
-add_compile_definitions($<${expr_TracyEnabled}:TRACY_ENABLE>)
-add_compile_definitions($<${expr_TracyOnDemand}:TRACY_ON_DEMAND>)
-add_compile_definitions(FO_TRACY=${expr_TracyEnabled})
-set(TRACY_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_TRACY_DIR}" EXCLUDE_FROM_ALL)
-include_directories("${FO_TRACY_DIR}/public")
-list(APPEND FO_ESSENTIALS_LIBS TracyClient)
+SetValue(FO_TRACY_DIR "${FO_ENGINE_ROOT}/ThirdParty/tracy")
+AddCompileDefinitionsList(
+    $<${expr_TracyEnabled}:TRACY_ENABLE>
+    $<${expr_TracyOnDemand}:TRACY_ON_DEMAND>
+    FO_TRACY=${expr_TracyEnabled})
+SetBoolCacheValues(TRACY_STATIC ON)
+AddSubdirectory("${FO_TRACY_DIR}" EXCLUDE_FROM_ALL)
+AddIncludeDirectories("${FO_TRACY_DIR}/public")
+AppendList(FO_ESSENTIALS_LIBS TracyClient)
 DisableLibWarnings(TracyClient)
 
 # Zlib
 StatusMessage("+ Zlib")
-set(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
-set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_ZLIB_DIR}" EXCLUDE_FROM_ALL)
-include_directories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
-set(FO_ZLIB_CONTRIB_SOURCE
+SetValue(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
+SetBoolCacheValues(ZLIB_BUILD_EXAMPLES OFF)
+AddSubdirectory("${FO_ZLIB_DIR}" EXCLUDE_FROM_ALL)
+AddIncludeDirectories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
+SetValue(FO_ZLIB_CONTRIB_SOURCE
     "${FO_ZLIB_DIR}/contrib/minizip/unzip.c"
     "${FO_ZLIB_DIR}/contrib/minizip/unzip.h"
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.c"
     "${FO_ZLIB_DIR}/contrib/minizip/ioapi.h")
-add_library(zlibcontrib STATIC EXCLUDE_FROM_ALL ${FO_ZLIB_CONTRIB_SOURCE})
-list(APPEND FO_ESSENTIALS_LIBS zlibstatic zlibcontrib)
+AddStaticThirdPartyLibrary(zlibcontrib
+    SOURCE_LIST FO_ZLIB_CONTRIB_SOURCE)
+AppendList(FO_ESSENTIALS_LIBS zlibstatic zlibcontrib)
 DisableLibWarnings(zlibstatic zlibcontrib)
-set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
-set(ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
-set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
-set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "Forced by FOnline" FORCE)
-add_library(ZLIB::ZLIB ALIAS zlibstatic)
+SetStringCacheValues(
+    ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}"
+    ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}"
+    ZLIB_LIBRARY "zlibstatic")
+SetBoolCacheValues(ZLIB_USE_STATIC_LIBS ON)
+AddLibrary(ZLIB::ZLIB ALIAS zlibstatic)
 
 # LibPNG
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ LibPNG")
-    set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/libpng")
-    set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_FRAMEWORK OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_TOOLS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_DEBUG OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_HARDWARE_OPTIMIZATIONS ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(PNG_BUILD_ZLIB OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ld-version-script OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(AWK IGNORE CACHE STRING "Forced by FOnline" FORCE)
-    add_subdirectory("${FO_PNG_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_PNG_DIR}")
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
-    list(APPEND FO_BAKER_LIBS png_static)
-    list(APPEND FO_DUMMY_TARGETS png_genfiles)
+    SetValue(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/libpng")
+    SetBoolCacheValues(
+        PNG_SHARED OFF
+        PNG_STATIC ON
+        PNG_FRAMEWORK OFF
+        PNG_TESTS OFF
+        PNG_TOOLS OFF
+        PNG_DEBUG OFF
+        PNG_HARDWARE_OPTIMIZATIONS ON
+        PNG_BUILD_ZLIB OFF
+        ld-version-script OFF)
+    SetStringCacheValues(AWK IGNORE)
+    AddSubdirectory("${FO_PNG_DIR}" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_PNG_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
+    AppendList(FO_BAKER_LIBS png_static)
+    AppendList(FO_DUMMY_TARGETS png_genfiles)
     DisableLibWarnings(png_static)
 endif()
 
 # Ogg
-StatusMessage("+ Ogg")
-set(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
-set(FO_OGG_SOURCE
+SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
+SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
     "${FO_OGG_DIR}/src/framing.c")
-include_directories("${FO_OGG_DIR}/include")
-add_library(Ogg STATIC EXCLUDE_FROM_ALL ${FO_OGG_SOURCE})
-list(APPEND FO_CLIENT_LIBS Ogg)
-DisableLibWarnings(Ogg)
+AddStaticThirdPartyLibrary(Ogg
+    SOURCE_LIST FO_OGG_SOURCE
+    APPEND_TO FO_CLIENT_LIBS
+    INCLUDE_DIRS "${FO_OGG_DIR}/include")
 
 # Vorbis
-StatusMessage("+ Vorbis")
-set(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
-set(FO_VORBIS_SOURCE
+SetValue(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
+SetValue(FO_VORBIS_SOURCE
     "${FO_VORBIS_DIR}/lib/analysis.c"
     "${FO_VORBIS_DIR}/lib/bitrate.c"
     "${FO_VORBIS_DIR}/lib/block.c"
@@ -137,17 +146,15 @@ set(FO_VORBIS_SOURCE
     "${FO_VORBIS_DIR}/lib/vorbisenc.c"
     "${FO_VORBIS_DIR}/lib/vorbisfile.c"
     "${FO_VORBIS_DIR}/lib/window.c")
-include_directories("${FO_VORBIS_DIR}/include")
-include_directories("${FO_VORBIS_DIR}/lib")
-add_library(Vorbis STATIC EXCLUDE_FROM_ALL ${FO_VORBIS_SOURCE})
-target_link_libraries(Vorbis Ogg)
-list(APPEND FO_CLIENT_LIBS Vorbis)
-DisableLibWarnings(Vorbis)
+AddStaticThirdPartyLibrary(Vorbis
+    SOURCE_LIST FO_VORBIS_SOURCE
+    APPEND_TO FO_CLIENT_LIBS
+    INCLUDE_DIRS "${FO_VORBIS_DIR}/include" "${FO_VORBIS_DIR}/lib"
+    LINK_LIBS Ogg)
 
 # Theora
-StatusMessage("+ Theora")
-set(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
-set(FO_THEORA_SOURCE
+SetValue(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
+SetValue(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/apiwrapper.c"
     "${FO_THEORA_DIR}/lib/bitpack.c"
     "${FO_THEORA_DIR}/lib/cpu.c"
@@ -172,150 +179,154 @@ set(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/rate.c"
     "${FO_THEORA_DIR}/lib/state.c"
     "${FO_THEORA_DIR}/lib/tokenize.c")
-include_directories("${FO_THEORA_DIR}/include")
-add_library(Theora STATIC EXCLUDE_FROM_ALL ${FO_THEORA_SOURCE})
-list(APPEND FO_CLIENT_LIBS Theora)
-DisableLibWarnings(Theora)
+AddStaticThirdPartyLibrary(Theora
+    SOURCE_LIST FO_THEORA_SOURCE
+    APPEND_TO FO_CLIENT_LIBS
+    INCLUDE_DIRS "${FO_THEORA_DIR}/include")
 
 # Acm
-StatusMessage("+ Acm")
-set(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-include_directories("${FO_ACM_DIR}")
-set(FO_ACM_SOURCE
+SetValue(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
+SetValue(FO_ACM_SOURCE
     "${FO_ACM_DIR}/acmstrm.cpp"
     "${FO_ACM_DIR}/acmstrm.h")
-add_library(AcmDecoder STATIC EXCLUDE_FROM_ALL ${FO_ACM_SOURCE})
-list(APPEND FO_CLIENT_LIBS AcmDecoder)
-DisableLibWarnings(AcmDecoder)
+AddStaticThirdPartyLibrary(AcmDecoder
+    SOURCE_LIST FO_ACM_SOURCE
+    APPEND_TO FO_CLIENT_LIBS
+    INCLUDE_DIRS "${FO_ACM_DIR}")
 
 # GLEW
 if(FO_USE_GLEW)
-    StatusMessage("+ GLEW")
-    set(FO_GLEW_DIR "${FO_ENGINE_ROOT}/ThirdParty/GLEW")
-    set(FO_GLEW_SOURCE
+    SetValue(FO_GLEW_DIR "${FO_ENGINE_ROOT}/ThirdParty/GLEW")
+    SetValue(FO_GLEW_SOURCE
         "${FO_GLEW_DIR}/GL/glew.c"
         "${FO_GLEW_DIR}/GL/glew.h"
         "${FO_GLEW_DIR}/GL/glxew.h"
         "${FO_GLEW_DIR}/GL/wglew.h")
-    include_directories("${FO_GLEW_DIR}")
-    add_library(GLEW STATIC EXCLUDE_FROM_ALL ${FO_GLEW_SOURCE})
-    add_compile_definitions(GLEW_STATIC)
-    target_compile_definitions(GLEW PRIVATE "GLEW_STATIC")
-    list(APPEND FO_RENDER_LIBS GLEW)
-    DisableLibWarnings(GLEW)
+    AddStaticThirdPartyLibrary(GLEW
+        SOURCE_LIST FO_GLEW_SOURCE
+        APPEND_TO FO_RENDER_LIBS
+        INCLUDE_DIRS "${FO_GLEW_DIR}")
+    AddCompileDefinitionsList(GLEW_STATIC)
+    TargetCompileDefinitions(GLEW PRIVATE "GLEW_STATIC")
 endif()
 
 # GLM
 StatusMessage("+ GLM")
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/glm")
-list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
+AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
+AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
 
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
-    StatusMessage("+ ufbx")
-    set(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
-    include_directories("${FO_UFBX_DIR}")
-    set(FO_UFBX_SOURCE
+    SetValue(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
+    SetValue(FO_UFBX_SOURCE
         "${FO_UFBX_DIR}/ufbx.h"
         "${FO_UFBX_DIR}/ufbx.c")
-    add_library(ufbx STATIC EXCLUDE_FROM_ALL ${FO_UFBX_SOURCE})
-    target_compile_definitions(ufbx PUBLIC "UFBX_NO_STDIO")
-    target_compile_definitions(ufbx PUBLIC "UFBX_EXTERNAL_MALLOC")
-    list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbx.natvis>")
-    list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbxi.natvis>")
-
-    list(APPEND FO_BAKER_LIBS ufbx)
-    DisableLibWarnings(ufbx)
+    AddStaticThirdPartyLibrary(ufbx
+        SOURCE_LIST FO_UFBX_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_UFBX_DIR}")
+    TargetCompileDefinitions(ufbx PUBLIC "UFBX_NO_STDIO")
+    TargetCompileDefinitions(ufbx PUBLIC "UFBX_EXTERNAL_MALLOC")
+    AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbx.natvis>")
+    AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_UFBX_DIR}/misc/ufbxi.natvis>")
 endif()
 
 # Json
 StatusMessage("+ Json")
-set(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
-include_directories("${FO_JSON_DIR}")
+SetValue(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
+AddIncludeDirectories("${FO_JSON_DIR}")
 
 # LibreSSL
 if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ LibreSSL")
-    set(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
-    set(LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(LIBRESSL_APPS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(LIBRESSL_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_ASM ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_EXTRATESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_NC OFF CACHE BOOL "Forced by FOnline" FORCE)
-    add_subdirectory("${FO_LIBRESSL_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_LIBRESSL_DIR}/include")
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto")
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
-    set(LIBRESSL_FOUND ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(LIBRESSL_LIBRARIES "ssl;crypto;tls" CACHE STRING "Forced by FOnline" FORCE)
-    set(LIBRESSL_INCLUDE_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
-    set(LIBRESSL_LIBRARY_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
-    list(APPEND FO_SERVER_LIBS ssl crypto tls)
-    list(APPEND FO_DUMMY_TARGETS compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
+    SetValue(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
+    SetBoolCacheValues(
+        LIBRESSL_SKIP_INSTALL ON
+        LIBRESSL_APPS OFF
+        LIBRESSL_TESTS OFF
+        ENABLE_ASM ON
+        ENABLE_EXTRATESTS OFF
+        ENABLE_NC OFF)
+    AddSubdirectory("${FO_LIBRESSL_DIR}" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories(
+        "${FO_LIBRESSL_DIR}/include"
+        "${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto"
+        "${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
+    SetBoolCacheValues(LIBRESSL_FOUND ON)
+    SetStringCacheValues(
+        LIBRESSL_LIBRARIES "ssl;crypto;tls"
+        LIBRESSL_INCLUDE_DIRS ""
+        LIBRESSL_LIBRARY_DIRS "")
+    AppendList(FO_SERVER_LIBS ssl crypto tls)
+    AppendList(FO_DUMMY_TARGETS compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
     DisableLibWarnings(ssl crypto tls compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
 endif()
 
 # Asio & Websockets
 if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ Asio")
-    set(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
-    include_directories("${FO_ASIO_DIR}/include")
+    SetValue(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
+    AddIncludeDirectories("${FO_ASIO_DIR}/include")
 
     if(NOT FO_DISABLE_WEB_SOCKETS)
         StatusMessage("+ Websockets")
-        set(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
-        include_directories("${FO_WEBSOCKETS_DIR}")
-        add_compile_definitions(FO_HAVE_WEB_SOCKETS=1)
+        SetValue(FO_WEBSOCKETS_DIR "${FO_ENGINE_ROOT}/ThirdParty/websocketpp")
+        AddIncludeDirectories("${FO_WEBSOCKETS_DIR}")
+        AddCompileDefinitionsList(FO_HAVE_WEB_SOCKETS=1)
     endif()
 
-    add_compile_definitions(FO_HAVE_ASIO=1)
+    AddCompileDefinitionsList(FO_HAVE_ASIO=1)
 else()
-    add_compile_definitions(FO_HAVE_ASIO=0)
-    add_compile_definitions(FO_HAVE_WEB_SOCKETS=0)
+    AddCompileDefinitionsList(
+        FO_HAVE_ASIO=0
+        FO_HAVE_WEB_SOCKETS=0)
 endif()
 
 # MongoDB & Bson
 if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ Bson")
-    set(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
+    SetValue(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
-    set(ENABLE_STATIC BUILD_ONLY CACHE STRING "Forced by FOnline" FORCE)
-    set(ENABLE_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_SRV OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_UNINSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_TESTS OFF CACHE STRING "Forced by FOnline" FORCE)
-    set(ENABLE_EXAMPLES OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_SSL OFF CACHE STRING "Forced by FOnline" FORCE)
-    set(ENABLE_SASL OFF CACHE STRING "Forced by FOnline" FORCE)
-    set(ENABLE_ZLIB SYSTEM CACHE STRING "Forced by FOnline" FORCE)
-    set(ENABLE_CLIENT_SIDE_ENCRYPTION OFF CACHE STRING "Forced by FOnline" FORCE)
-    set(USE_BUNDLED_UTF8PROC ON CACHE BOOL "Forced by FOnline" FORCE)
+    SetStringCacheValues(
+        ENABLE_STATIC BUILD_ONLY
+        ENABLE_TESTS OFF
+        ENABLE_SSL OFF
+        ENABLE_SASL OFF
+        ENABLE_ZLIB SYSTEM
+        ENABLE_CLIENT_SIDE_ENCRYPTION OFF)
+    SetBoolCacheValues(
+        ENABLE_SHARED OFF
+        ENABLE_SRV OFF
+        ENABLE_UNINSTALL OFF
+        ENABLE_EXAMPLES OFF
+        USE_BUNDLED_UTF8PROC ON)
 
     if(NOT FO_DISABLE_MONGO)
         StatusMessage("+ MongoDB")
-        set(ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE)
-        add_compile_definitions(FO_HAVE_MONGO=1)
+        SetStringCacheValues(ENABLE_MONGOC ON)
+        AddCompileDefinitionsList(FO_HAVE_MONGO=1)
     else()
-        set(ENABLE_MONGOC OFF CACHE STRING "Forced by FOnline" FORCE)
-        add_compile_definitions(FO_HAVE_MONGO=0)
+        SetStringCacheValues(ENABLE_MONGOC OFF)
+        AddCompileDefinitionsList(FO_HAVE_MONGO=0)
     endif()
 
-    add_subdirectory("${FO_MONGODB_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_MONGODB_DIR}" EXCLUDE_FROM_ALL)
 
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson")
-    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libbson/src")
-    target_compile_definitions(bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
-    add_compile_definitions(BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN)
-    list(APPEND FO_SERVER_LIBS bson_static)
+    AddIncludeDirectories(
+        "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libbson/src")
+    TargetCompileDefinitions(bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
+    AddCompileDefinitionsList(BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN)
+    AppendList(FO_SERVER_LIBS bson_static)
     DisableLibWarnings(bson_static)
 
     if(ENABLE_MONGOC)
-        include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc")
-        include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
-        target_compile_definitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
-        list(APPEND FO_SERVER_LIBS mongoc_static)
-        list(APPEND FO_DUMMY_TARGETS utf8proc_obj)
+        AddIncludeDirectories(
+            "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc"
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
+        TargetCompileDefinitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
+        AppendList(FO_SERVER_LIBS mongoc_static)
+        AppendList(FO_DUMMY_TARGETS utf8proc_obj)
         DisableLibWarnings(mongoc_static utf8proc_obj)
     endif()
 endif()
@@ -323,21 +334,20 @@ endif()
 # Unqlite
 if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
     StatusMessage("+ Unqlite")
-    set(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
-    add_subdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_UNQLITE_DIR}")
-    list(APPEND FO_COMMON_LIBS unqlite)
+    SetValue(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
+    AddSubdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_UNQLITE_DIR}")
+    AppendList(FO_COMMON_LIBS unqlite)
     DisableLibWarnings(unqlite)
-    target_compile_definitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
-    add_compile_definitions(FO_HAVE_UNQLITE=1)
+    TargetCompileDefinitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
+    AddCompileDefinitionsList(FO_HAVE_UNQLITE=1)
 else()
-    add_compile_definitions(FO_HAVE_UNQLITE=0)
+    AddCompileDefinitionsList(FO_HAVE_UNQLITE=0)
 endif()
 
 # Dear ImGui
-StatusMessage("+ Dear ImGui")
-set(FO_DEAR_IMGUI_DIR "${FO_ENGINE_ROOT}/ThirdParty/imgui")
-set(FO_IMGUI_SOURCE
+SetValue(FO_DEAR_IMGUI_DIR "${FO_ENGINE_ROOT}/ThirdParty/imgui")
+SetValue(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imconfig.h"
     "${FO_DEAR_IMGUI_DIR}/imgui.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui.h"
@@ -350,32 +360,30 @@ set(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
     "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiConfig.h")
-include_directories("${FO_DEAR_IMGUI_DIR}")
-include_directories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
-add_library(imgui STATIC EXCLUDE_FROM_ALL ${FO_IMGUI_SOURCE})
-target_compile_definitions(imgui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
-add_compile_definitions("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
-list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_DEAR_IMGUI_DIR}/misc/debuggers/imgui.natvis>")
-
-list(APPEND FO_COMMON_LIBS imgui)
-DisableLibWarnings(imgui)
+AddIncludeDirectories("${FO_ENGINE_ROOT}/Source/Common/ImGuiExt")
+AddStaticThirdPartyLibrary(imgui
+    SOURCE_LIST FO_IMGUI_SOURCE
+    APPEND_TO FO_COMMON_LIBS
+    INCLUDE_DIRS "${FO_DEAR_IMGUI_DIR}")
+TargetCompileDefinitions(imgui PRIVATE "IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
+AddCompileDefinitionsList("IMGUI_USER_CONFIG=\"ImGuiConfig.h\"")
+AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_DEAR_IMGUI_DIR}/misc/debuggers/imgui.natvis>")
 
 # Catch2
-StatusMessage("+ Catch2")
-set(FO_CATCH2_DIR "${FO_ENGINE_ROOT}/ThirdParty/Catch2")
-include_directories("${FO_CATCH2_DIR}")
-set(FO_CATCH2_SOURCE
+SetValue(FO_CATCH2_DIR "${FO_ENGINE_ROOT}/ThirdParty/Catch2")
+SetValue(FO_CATCH2_SOURCE
     "${FO_CATCH2_DIR}/catch_amalgamated.cpp"
     "${FO_CATCH2_DIR}/catch_amalgamated.hpp")
-add_library(Catch2 STATIC EXCLUDE_FROM_ALL ${FO_CATCH2_SOURCE})
-target_compile_definitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
-list(APPEND FO_TESTING_LIBS Catch2)
-DisableLibWarnings(Catch2)
+AddStaticThirdPartyLibrary(Catch2
+    SOURCE_LIST FO_CATCH2_SOURCE
+    APPEND_TO FO_TESTING_LIBS
+    INCLUDE_DIRS "${FO_CATCH2_DIR}")
+TargetCompileDefinitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
 
 # Backward-cpp
 if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
-    set(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
-    include_directories("${FO_BACKWARDCPP_DIR}")
+    SetValue(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
+    AddIncludeDirectories("${FO_BACKWARDCPP_DIR}")
 
     if(NOT FO_WINDOWS)
         check_include_file("libunwind.h" haveLibUnwind)
@@ -385,7 +393,7 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
             StatusMessage("+ Backward-cpp (with libunwind)")
         elseif(haveBFD)
             StatusMessage("+ Backward-cpp (with bfd)")
-            list(APPEND FO_ESSENTIALS_SYSTEM_LIBS bfd)
+            AppendList(FO_ESSENTIALS_SYSTEM_LIBS bfd)
         else()
             StatusMessage("+ Backward-cpp")
         endif()
@@ -396,137 +404,155 @@ endif()
 
 # Spark
 StatusMessage("+ Spark")
-set(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
-set(SPARK_STATIC_BUILD ON CACHE BOOL "Forced by FOnline" FORCE)
-add_subdirectory("${FO_SPARK_DIR}/projects/engine/core" EXCLUDE_FROM_ALL)
-add_subdirectory("${FO_SPARK_DIR}/projects/external/pugi" EXCLUDE_FROM_ALL)
-include_directories("${FO_SPARK_DIR}/spark/include")
-include_directories("${FO_SPARK_DIR}/thirdparty/PugiXML")
-list(APPEND FO_CLIENT_LIBS SPARK_Core PugiXML)
+SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
+SetBoolCacheValues(SPARK_STATIC_BUILD ON)
+AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" EXCLUDE_FROM_ALL)
+AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
+AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
 DisableLibWarnings(SPARK_Core PugiXML)
 
 # glslang & SPIRV-Cross
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ glslang")
-    set(FO_GLSLANG_DIR "${FO_ENGINE_ROOT}/ThirdParty/glslang")
-    set(GLSLANG_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(BUILD_EXTERNAL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(BUILD_WERROR OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SKIP_GLSLANG_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_SPIRV ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_HLSL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_SPVREMAPPER OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_AMD_EXTENSIONS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_NV_EXTENSIONS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_RTTI ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_EXCEPTIONS ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_OPT OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ENABLE_PCH OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(ALLOW_EXTERNAL_SPIRV_TOOLS OFF CACHE BOOL "Forced by FOnline" FORCE)
+    SetValue(FO_GLSLANG_DIR "${FO_ENGINE_ROOT}/ThirdParty/glslang")
+    SetBoolCacheValues(
+        GLSLANG_TESTS OFF
+        GLSLANG_ENABLE_INSTALL OFF
+        BUILD_EXTERNAL OFF
+        BUILD_WERROR OFF
+        SKIP_GLSLANG_INSTALL ON
+        ENABLE_SPIRV ON
+        ENABLE_HLSL OFF
+        ENABLE_GLSLANG_BINARIES OFF
+        ENABLE_SPVREMAPPER OFF
+        ENABLE_AMD_EXTENSIONS OFF
+        ENABLE_NV_EXTENSIONS OFF
+        ENABLE_RTTI ON
+        ENABLE_EXCEPTIONS ON
+        ENABLE_OPT OFF
+        ENABLE_PCH OFF
+        ALLOW_EXTERNAL_SPIRV_TOOLS OFF)
 
     if(FO_WEB)
-        set(ENABLE_GLSLANG_WEB ON CACHE BOOL "Forced by FOnline" FORCE)
-        set(ENABLE_GLSLANG_WEB_DEVEL ON CACHE BOOL "Forced by FOnline" FORCE)
-        set(ENABLE_EMSCRIPTEN_SINGLE_FILE ON CACHE BOOL "Forced by FOnline" FORCE)
-        set(ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF CACHE BOOL "Forced by FOnline" FORCE)
+        SetBoolCacheValues(
+            ENABLE_GLSLANG_WEB ON
+            ENABLE_GLSLANG_WEB_DEVEL ON
+            ENABLE_EMSCRIPTEN_SINGLE_FILE ON
+            ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
 
-    add_subdirectory("${FO_GLSLANG_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_GLSLANG_DIR}/glslang/Public")
-    include_directories("${FO_GLSLANG_DIR}/SPIRV")
-    list(APPEND FO_BAKER_LIBS glslang glslang-default-resource-limits OSDependent SPIRV GenericCodeGen MachineIndependent)
-    DisableLibWarnings(glslang glslang-default-resource-limits OSDependent SPIRV GenericCodeGen MachineIndependent)
+    AddSubdirectory("${FO_GLSLANG_DIR}" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_GLSLANG_DIR}/glslang/Public" "${FO_GLSLANG_DIR}/SPIRV")
+    AppendList(FO_BAKER_LIBS
+        glslang
+        glslang-default-resource-limits
+        OSDependent
+        SPIRV
+        GenericCodeGen
+        MachineIndependent)
+    DisableLibWarnings(
+        glslang
+        glslang-default-resource-limits
+        OSDependent
+        SPIRV
+        GenericCodeGen
+        MachineIndependent)
 
     StatusMessage("+ SPIRV-Cross")
-    set(FO_SPIRV_CROSS_DIR "${FO_ENGINE_ROOT}/ThirdParty/SPIRV-Cross")
-    set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_CLI OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_GLSL ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_HLSL ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_MSL ON CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_CPP OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_REFLECT OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_C_API OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_CROSS_ENABLE_UTIL OFF CACHE BOOL "Forced by FOnline" FORCE)
-    set(SPIRV_SKIP_TESTS ON CACHE BOOL "Forced by FOnline" FORCE)
-    add_subdirectory("${FO_SPIRV_CROSS_DIR}" EXCLUDE_FROM_ALL)
-    include_directories("${FO_SPIRV_CROSS_DIR}")
-    include_directories("${FO_SPIRV_CROSS_DIR}/include")
-    list(APPEND FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
+    SetValue(FO_SPIRV_CROSS_DIR "${FO_ENGINE_ROOT}/ThirdParty/SPIRV-Cross")
+    SetBoolCacheValues(
+        SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS OFF
+        SPIRV_CROSS_STATIC ON
+        SPIRV_CROSS_SHARED OFF
+        SPIRV_CROSS_CLI OFF
+        SPIRV_CROSS_ENABLE_TESTS OFF
+        SPIRV_CROSS_ENABLE_GLSL ON
+        SPIRV_CROSS_ENABLE_HLSL ON
+        SPIRV_CROSS_ENABLE_MSL ON
+        SPIRV_CROSS_ENABLE_CPP OFF
+        SPIRV_CROSS_ENABLE_REFLECT OFF
+        SPIRV_CROSS_ENABLE_C_API OFF
+        SPIRV_CROSS_ENABLE_UTIL OFF
+        SPIRV_SKIP_TESTS ON)
+    AddSubdirectory("${FO_SPIRV_CROSS_DIR}" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
+    AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
 endif()
 
 # small_vector
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
-list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/support/visualstudio/small_vector.natvis>")
+AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gch")
+AppendList(FO_ESSENTIALS_SOURCE
+    "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/support/visualstudio/small_vector.natvis>")
 
 # unordered_dense
-include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
-list(APPEND FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis>")
+AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
+AppendList(FO_ESSENTIALS_SOURCE
+    "$<$<BOOL:${MSVC}>:${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/natvis/unordered_dense.natvis>")
 
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
     StatusMessage("+ AngelScript")
 
     # AngelScript core
-    set(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
-    set(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore" CACHE STRING "Forced by FOnline" FORCE)
-    set(AS_DISABLE_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE)
-    add_subdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
-    target_compile_definitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
-    target_compile_definitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
-    target_compile_definitions(AngelScriptCore PUBLIC $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
-    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include")
-    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
-    list(APPEND FO_COMMON_LIBS AngelScriptCore)
+    SetValue(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
+    SetStringCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
+    SetBoolCacheValues(AS_DISABLE_INSTALL ON)
+    AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
+    TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
+    TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
+    TargetCompileDefinitions(
+        AngelScriptCore PUBLIC
+        $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
+    TargetIncludeDirectories(AngelScriptCore PUBLIC
+        "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include"
+        "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
+    AppendList(FO_COMMON_LIBS AngelScriptCore)
     DisableLibWarnings(AngelScriptCore)
 
     # AngelScript preprocessor
-    set(FO_ANGELSCRIPT_PREPROCESSOR_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/preprocessor")
-    add_library(AngelScriptPreprocessor STATIC EXCLUDE_FROM_ALL
+    SetValue(FO_ANGELSCRIPT_PREPROCESSOR_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/preprocessor")
+    SetValue(FO_ANGELSCRIPT_PREPROCESSOR_SOURCE
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.h"
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.cpp")
-    target_include_directories(AngelScriptCore PUBLIC "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
-    list(APPEND FO_COMMON_LIBS AngelScriptPreprocessor)
-    DisableLibWarnings(AngelScriptPreprocessor)
+    AddStaticThirdPartyLibrary(AngelScriptPreprocessor
+        SOURCE_LIST FO_ANGELSCRIPT_PREPROCESSOR_SOURCE
+        APPEND_TO FO_COMMON_LIBS)
+    TargetIncludeDirectories(AngelScriptCore PUBLIC
+        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 
 # Mono scripting
 if(FO_MONO_SCRIPTING)
     StatusMessage("+ Mono")
 
-    set(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
-    set(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+    SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
+    SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
 
-    set(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
-    file(MAKE_DIRECTORY ${FO_DOTNET_DIR})
+    SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    FileMakeDirectory(${FO_DOTNET_DIR})
 
-    include_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
-    link_directories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
+    AddIncludeDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
+    AddLinkDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
 
     if(FO_WINDOWS)
-        set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
+        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
     else()
-        set(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
+        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
     endif()
 
-    add_custom_command(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
+    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
         COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
         WORKING_DIRECTORY ${FO_DOTNET_DIR}
         COMMENT "Setup Mono")
 
-    add_custom_target(SetupMono
+    AddCommandTarget(SetupMono
         DEPENDS ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
         WORKING_DIRECTORY ${FO_DOTNET_DIR})
-    list(APPEND FO_COMMANDS_GROUP SetupMono)
-    list(APPEND FO_GEN_DEPENDENCIES SetupMono)
+    AppendList(FO_GEN_DEPENDENCIES SetupMono)
 
-    list(APPEND FO_COMMON_SYSTEM_LIBS
+    AppendList(FO_COMMON_SYSTEM_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
         mono-component-diagnostics_tracing-stub-static
@@ -534,20 +560,23 @@ if(FO_MONO_SCRIPTING)
         mono-component-marshal-ilgen-stub-static)
 
     if(FO_WINDOWS)
-        list(APPEND FO_COMMON_SYSTEM_LIBS bcrypt)
+        AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
     elseif(FO_WEB)
-        list(APPEND FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
     endif()
 endif()
 
 # App icon
-set(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
-get_filename_component(FO_APP_ICON ${FO_APP_ICON} REALPATH)
-set(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
-configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
+SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
+GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
+SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+configure_file(
+    "${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt"
+    ${FO_RC_FILE}
+    FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
 
 # Engine sources
-list(APPEND FO_ESSENTIALS_SOURCE
+AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Essentials.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/Essentials.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.cpp"
@@ -599,7 +628,7 @@ list(APPEND FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis>")
 
-list(APPEND FO_COMMON_SOURCE
+AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Common.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Common.h"
     "${FO_ENGINE_ROOT}/Source/Common/WebRelated.cpp"
@@ -662,7 +691,7 @@ list(APPEND FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
-list(APPEND FO_SERVER_BASE_SOURCE
+AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/CritterManager.cpp"
@@ -708,7 +737,7 @@ list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp")
 
-list(APPEND FO_CLIENT_BASE_SOURCE
+AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/3dAnimation.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/3dAnimation.h"
     "${FO_ENGINE_ROOT}/Source/Client/3dStuff.cpp"
@@ -776,15 +805,15 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientLocationScriptMethods.cpp")
 
-list(APPEND FO_SERVER_SOURCE
+AppendList(FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp")
 
-list(APPEND FO_CLIENT_SOURCE
+AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp")
 
-list(APPEND FO_EDITOR_SOURCE
+AppendList(FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.h"
@@ -801,13 +830,13 @@ list(APPEND FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.cpp")
 
-list(APPEND FO_MAPPER_SOURCE
+AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp")
 
-list(APPEND FO_BAKER_SOURCE
+AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
@@ -836,7 +865,7 @@ list(APPEND FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
 
-list(APPEND FO_SOURCE_META_FILES
+AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
     "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
@@ -879,7 +908,7 @@ list(APPEND FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
-list(APPEND FO_TESTS_SOURCE
+AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
@@ -941,29 +970,29 @@ list(APPEND FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
 
 # Code generation
-include(FindPython3)
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+IncludeFile(FindPython3)
+RequirePackage(Python3 REQUIRED COMPONENTS Interpreter)
 
-list(APPEND FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
+AppendList(FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
 
-list(APPEND FO_CODEGEN_META_SOURCE
+AppendList(FO_CODEGEN_META_SOURCE
     ${FO_SOURCE_META_FILES}
     ${FO_MONO_SOURCE})
 
 foreach(entry ${FO_CODEGEN_META_SOURCE})
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry})
+    AppendList(FO_CODEGEN_COMMAND_ARGS -meta ${entry})
 endforeach()
 
 foreach(entry ${FO_ADDED_COMMON_HEADERS})
-    list(APPEND FO_CODEGEN_COMMAND_ARGS -commonheader ${entry})
+    AppendList(FO_CODEGEN_COMMAND_ARGS -commonheader ${entry})
 endforeach()
 
-list(APPEND FO_CODEGEN_OUTPUT
+AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
@@ -975,46 +1004,50 @@ list(APPEND FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
 
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
+FileWrite("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 
 foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
-    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "${entry}\n")
+    FileAppend("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "${entry}\n")
 endforeach()
 
-set(FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py" "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+SetValue(FO_CODEGEN_COMMAND
+    ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py"
+    "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+SetValue(codegenTouchCommand
+    ${CMAKE_COMMAND}
+    -E touch
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch")
 
-add_custom_command(OUTPUT ${FO_CODEGEN_OUTPUT}
+AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
-    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
+    COMMAND ${codegenTouchCommand}
     DEPENDS ${FO_CODEGEN_META_SOURCE}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 
-add_custom_target(CodeGeneration
+AddCommandTarget(CodeGeneration
     DEPENDS ${FO_CODEGEN_OUTPUT}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-list(APPEND FO_COMMANDS_GROUP CodeGeneration)
-list(APPEND FO_GEN_DEPENDENCIES CodeGeneration)
+AppendList(FO_GEN_DEPENDENCIES CodeGeneration)
 
-add_custom_target(ForceCodeGeneration
+AddCommandTarget(ForceCodeGeneration
+    COMMAND_ARGS
     COMMAND ${FO_CODEGEN_COMMAND}
-    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
+    COMMAND ${codegenTouchCommand}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-list(APPEND FO_COMMANDS_GROUP ForceCodeGeneration)
 
 # Core libs
 StatusMessage("Core libs:")
 
-StatusMessage("+ EssentialsLib")
-add_library(EssentialsLib STATIC EXCLUDE_FROM_ALL ${FO_ESSENTIALS_SOURCE})
-target_link_libraries(EssentialsLib  ${FO_ESSENTIALS_SYSTEM_LIBS} ${FO_ESSENTIALS_LIBS})
-add_dependencies(EssentialsLib ${FO_GEN_DEPENDENCIES})
-list(APPEND FO_CORE_LIBS_GROUP EssentialsLib)
+AddCoreStaticLibrary(EssentialsLib FO_ESSENTIALS_SOURCE
+    APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+    LINK_LIBS ${FO_ESSENTIALS_SYSTEM_LIBS} ${FO_ESSENTIALS_LIBS})
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     StatusMessage("+ AngelScriptScripting")
-    set(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
-    add_library(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
+    SetValue(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    AddLibrary(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.cpp"
@@ -1045,27 +1078,30 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h")
-    add_dependencies(AngelScriptScripting ${FO_GEN_DEPENDENCIES})
-    target_include_directories(AngelScriptScripting PUBLIC "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
-    target_link_libraries(AngelScriptScripting EssentialsLib AngelScriptCore AngelScriptPreprocessor)
-    list(APPEND FO_CORE_LIBS_GROUP AngelScriptScripting)
+    AddDependencies(AngelScriptScripting
+        ${FO_GEN_DEPENDENCIES})
+    TargetIncludeDirectories(AngelScriptScripting PUBLIC
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
+    TargetLinkLibraries(AngelScriptScripting
+        EssentialsLib
+        AngelScriptCore
+        AngelScriptPreprocessor)
+    AppendList(FO_CORE_LIBS_GROUP AngelScriptScripting)
 endif()
 
 if(FO_BUILD_COMMON_LIB)
-    StatusMessage("+ AppHeadless")
-    add_library(AppHeadless STATIC EXCLUDE_FROM_ALL
+    SetValue(FO_APP_HEADLESS_SOURCE
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
-    add_dependencies(AppHeadless ${FO_GEN_DEPENDENCIES})
-    list(APPEND FO_CORE_LIBS_GROUP AppHeadless)
+    AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
 
     if(NOT FO_HEADLESS_ONLY)
-        StatusMessage("+ AppFrontend")
-        add_library(AppFrontend STATIC EXCLUDE_FROM_ALL
+        SetValue(FO_APP_FRONTEND_SOURCE
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
@@ -1074,60 +1110,48 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
-        add_dependencies(AppFrontend ${FO_GEN_DEPENDENCIES})
-        target_link_libraries(AppFrontend ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
-        list(APPEND FO_CORE_LIBS_GROUP AppFrontend)
+        AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
+            APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+            LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
     endif()
 
-    StatusMessage("+ CommonLib")
-    add_library(CommonLib STATIC EXCLUDE_FROM_ALL ${FO_COMMON_SOURCE})
-    add_dependencies(CommonLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(CommonLib EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP CommonLib)
+    AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
 
     if(FO_ANGELSCRIPT_SCRIPTING)
-        target_link_libraries(CommonLib AngelScriptScripting)
+        TargetLinkLibraries(CommonLib AngelScriptScripting)
     endif()
 endif()
 
 if(FO_BUILD_CLIENT_LIB)
-    StatusMessage("+ ClientLib")
-    add_library(ClientLib STATIC EXCLUDE_FROM_ALL ${FO_CLIENT_SOURCE})
-    add_dependencies(ClientLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(ClientLib CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP ClientLib)
+    AddCoreStaticLibrary(ClientLib FO_CLIENT_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
 endif()
 
 if(FO_BUILD_SERVER_LIB)
-    StatusMessage("+ ServerLib")
-    add_library(ServerLib STATIC EXCLUDE_FROM_ALL ${FO_SERVER_SOURCE})
-    add_dependencies(ServerLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(ServerLib CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP ServerLib)
+    AddCoreStaticLibrary(ServerLib FO_SERVER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
 endif()
 
 if(FO_BUILD_MAPPER_LIB)
-    StatusMessage("+ MapperLib")
-    add_library(MapperLib STATIC EXCLUDE_FROM_ALL ${FO_MAPPER_SOURCE})
-    add_dependencies(MapperLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(MapperLib ClientLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP MapperLib)
+    AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS ClientLib CommonLib)
 endif()
 
 if(FO_BUILD_BAKER_LIB)
-    StatusMessage("+ BakerLib")
-    add_library(BakerLib STATIC EXCLUDE_FROM_ALL ${FO_BAKER_SOURCE})
-    add_dependencies(BakerLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
-    list(APPEND FO_CORE_LIBS_GROUP BakerLib)
+    AddCoreStaticLibrary(BakerLib FO_BAKER_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
 endif()
 
 if(FO_BUILD_EDITOR_LIB)
-    StatusMessage("+ EditorLib")
-    add_library(EditorLib STATIC EXCLUDE_FROM_ALL ${FO_EDITOR_SOURCE})
-    add_dependencies(EditorLib ${FO_GEN_DEPENDENCIES})
-    target_link_libraries(EditorLib BakerLib CommonLib)
-    list(APPEND FO_CORE_LIBS_GROUP EditorLib)
+    AddCoreStaticLibrary(EditorLib FO_EDITOR_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS BakerLib CommonLib)
 endif()
 
 # Applications
@@ -1135,216 +1159,214 @@ StatusMessage("Applications:")
 
 if(FO_BUILD_CLIENT)
     if(NOT FO_BUILD_LIBRARY)
-        StatusMessage("+ ${FO_DEV_NAME}_Client")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Client")
-        add_executable(${FO_DEV_NAME}_Client WIN32 "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp" ${FO_RC_FILE})
-
         # Todo: cmake make bundles for Mac and iOS
         # add_executable( ${FO_DEV_NAME}_Client MACOSX_BUNDLE ... ${FO_RC_FILE} )
-        set_target_properties(${FO_DEV_NAME}_Client PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
+        AddExecutableApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
+            WIN32
+            OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+            WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+            OUTPUT_NAME ${FO_DEV_NAME}_Client
+            TESTING_APP 0
+            LINK_LIBS "AppFrontend" "ClientLib"
+            EXTRA_SOURCES ${FO_RC_FILE}
+            WRITE_BUILD_HASH)
     else()
-        StatusMessage("+ ${FO_DEV_NAME}_Client (shared library)")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Client")
-        add_library(${FO_DEV_NAME}_Client SHARED "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp")
-        set_target_properties(${FO_DEV_NAME}_Client PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT})
+        AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
+            OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+            OUTPUT_NAME ${FO_DEV_NAME}_Client
+            TESTING_APP 0
+            LINK_LIBS "AppFrontend" "ClientLib"
+            WRITE_BUILD_HASH)
     endif()
-
-    set_target_properties(${FO_DEV_NAME}_Client PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Client")
-    set_target_properties(${FO_DEV_NAME}_Client PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Client "AppFrontend" "ClientLib")
-    WriteBuildHash(${FO_DEV_NAME}_Client)
 endif()
 
 if(FO_BUILD_SERVER)
-    StatusMessage("+ ${FO_DEV_NAME}_Server")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Server")
-    add_executable(${FO_DEV_NAME}_Server WIN32 "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp" ${FO_RC_FILE})
-    set_target_properties(${FO_DEV_NAME}_Server PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_Server PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Server")
-    set_target_properties(${FO_DEV_NAME}_Server PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Server "AppFrontend" "ServerLib" "ClientLib")
-    WriteBuildHash(${FO_DEV_NAME}_Server)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_Server
+        "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_SERVER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_Server
+        TESTING_APP 0
+        LINK_LIBS "AppFrontend" "ServerLib" "ClientLib"
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
 
-    StatusMessage("+ ${FO_DEV_NAME}_ServerHeadless")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ServerHeadless")
-    add_executable(${FO_DEV_NAME}_ServerHeadless "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp")
-    set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ServerHeadless")
-    set_target_properties(${FO_DEV_NAME}_ServerHeadless PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_ServerHeadless "AppHeadless" "ServerLib" "ClientLib")
-    WriteBuildHash(${FO_DEV_NAME}_ServerHeadless)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ServerHeadless
+        "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
+        OUTPUT_DIR ${FO_SERVER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
+        TESTING_APP 0
+        LINK_LIBS "AppHeadless" "ServerLib" "ClientLib"
+        WRITE_BUILD_HASH)
 
     if(FO_WINDOWS)
-        StatusMessage("+ ${FO_DEV_NAME}_ServerService")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ServerService")
-        add_executable(${FO_DEV_NAME}_ServerService "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp")
-        set_target_properties(${FO_DEV_NAME}_ServerService PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-        set_target_properties(${FO_DEV_NAME}_ServerService PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ServerService")
-        set_target_properties(${FO_DEV_NAME}_ServerService PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-        target_link_libraries(${FO_DEV_NAME}_ServerService "AppHeadless" "ServerLib")
-        WriteBuildHash(${FO_DEV_NAME}_ServerService)
+        AddExecutableApplication(
+            ${FO_DEV_NAME}_ServerService
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp"
+            OUTPUT_DIR ${FO_SERVER_OUTPUT}
+            WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+            OUTPUT_NAME ${FO_DEV_NAME}_ServerService
+            TESTING_APP 0
+            LINK_LIBS "AppHeadless" "ServerLib"
+            WRITE_BUILD_HASH)
     else()
-        StatusMessage("+ ${FO_DEV_NAME}_ServerDaemon")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ServerDaemon")
-        add_executable(${FO_DEV_NAME}_ServerDaemon "${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp")
-        set_target_properties(${FO_DEV_NAME}_ServerDaemon PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-        set_target_properties(${FO_DEV_NAME}_ServerDaemon PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ServerDaemon")
-        set_target_properties(${FO_DEV_NAME}_ServerDaemon PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-        target_link_libraries(${FO_DEV_NAME}_ServerDaemon "AppHeadless" "ServerLib")
-        WriteBuildHash(${FO_DEV_NAME}_ServerDaemon)
+        AddExecutableApplication(
+            ${FO_DEV_NAME}_ServerDaemon
+            "${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp"
+            OUTPUT_DIR ${FO_SERVER_OUTPUT}
+            WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+            OUTPUT_NAME ${FO_DEV_NAME}_ServerDaemon
+            TESTING_APP 0
+            LINK_LIBS "AppHeadless" "ServerLib"
+            WRITE_BUILD_HASH)
     endif()
 endif()
 
 if(FO_BUILD_EDITOR)
-    StatusMessage("+ ${FO_DEV_NAME}_Editor")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Editor")
-    add_executable(${FO_DEV_NAME}_Editor WIN32 "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp" ${FO_RC_FILE})
-    set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_EDITOR_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Editor")
-    set_target_properties(${FO_DEV_NAME}_Editor PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Editor "AppFrontend" "EditorLib" "MapperLib" "BakerLib" "ClientLib" "ServerLib")
-    WriteBuildHash(${FO_DEV_NAME}_Editor)
+    AddExecutableApplication(${FO_DEV_NAME}_Editor "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_EDITOR_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_Editor
+        TESTING_APP 0
+        LINK_LIBS "AppFrontend" "EditorLib" "MapperLib" "BakerLib" "ClientLib" "ServerLib"
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_MAPPER)
-    StatusMessage("+ ${FO_DEV_NAME}_Mapper")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Mapper")
-    add_executable(${FO_DEV_NAME}_Mapper WIN32 "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp" ${FO_RC_FILE})
-    set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_MAPPER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Mapper")
-    set_target_properties(${FO_DEV_NAME}_Mapper PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Mapper "AppFrontend" "MapperLib" "ClientLib" "BakerLib")
-    WriteBuildHash(${FO_DEV_NAME}_Mapper)
+    AddExecutableApplication(${FO_DEV_NAME}_Mapper "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp"
+        WIN32
+        OUTPUT_DIR ${FO_MAPPER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_Mapper
+        TESTING_APP 0
+        LINK_LIBS "AppFrontend" "MapperLib" "ClientLib" "BakerLib"
+        EXTRA_SOURCES ${FO_RC_FILE}
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_ASCOMPILER)
-    StatusMessage("+ ${FO_DEV_NAME}_ASCompiler")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_ASCompiler")
-    add_executable(${FO_DEV_NAME}_ASCompiler "${FO_ENGINE_ROOT}/Source/Applications/ASCompilerApp.cpp")
-    add_dependencies(${FO_DEV_NAME}_ASCompiler ${FO_GEN_DEPENDENCIES})
-    set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_ASCOMPILER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_ASCompiler")
-    set_target_properties(${FO_DEV_NAME}_ASCompiler PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_ASCompiler "AppHeadless" "BakerLib")
-    WriteBuildHash(${FO_DEV_NAME}_ASCompiler)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ASCompiler
+        "${FO_ENGINE_ROOT}/Source/Applications/ASCompilerApp.cpp"
+        OUTPUT_DIR ${FO_ASCOMPILER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ASCompiler
+        TESTING_APP 0
+        LINK_LIBS "AppHeadless" "BakerLib"
+        DEPENDS ${FO_GEN_DEPENDENCIES}
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_BAKER)
-    StatusMessage("+ ${FO_DEV_NAME}_Baker")
-    list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Baker")
-    add_executable(${FO_DEV_NAME}_Baker "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp")
-    set_target_properties(${FO_DEV_NAME}_Baker PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_OUTPUT_PATH})
-    set_target_properties(${FO_DEV_NAME}_Baker PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Baker")
-    set_target_properties(${FO_DEV_NAME}_Baker PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0")
-    target_link_libraries(${FO_DEV_NAME}_Baker "AppHeadless" "BakerLib")
-    WriteBuildHash(${FO_DEV_NAME}_Baker)
+    AddExecutableApplication(${FO_DEV_NAME}_Baker "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
+        OUTPUT_DIR ${FO_BAKER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_Baker
+        TESTING_APP 0
+        LINK_LIBS "AppHeadless" "BakerLib"
+        WRITE_BUILD_HASH)
 
     if(NOT FO_WEB)
-        StatusMessage("+ ${FO_DEV_NAME}_BakerLib")
-        list(APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_BakerLib")
-        add_library(${FO_DEV_NAME}_BakerLib SHARED "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp")
-        set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT} LIBRARY_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT} PREFIX "")
-        set_target_properties(${FO_DEV_NAME}_BakerLib PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_BakerLib")
-        target_link_libraries(${FO_DEV_NAME}_BakerLib PRIVATE "BakerLib")
-        WriteBuildHash(${FO_DEV_NAME}_BakerLib)
+        AddSharedApplication(${FO_DEV_NAME}_BakerLib "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp"
+            OUTPUT_DIR ${FO_BAKER_OUTPUT}
+            OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
+            LINK_LIBS PRIVATE "BakerLib"
+            EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
+            PREFIX ""
+            WRITE_BUILD_HASH)
     endif()
 endif()
 
 if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
-    set(FO_CODE_COVERAGE_BACKEND "")
+    SetValue(FO_CODE_COVERAGE_BACKEND "")
 
     if(FO_CODE_COVERAGE)
         if(MSVC)
-            set(FO_CODE_COVERAGE_BACKEND "msvc")
+            SetValue(FO_CODE_COVERAGE_BACKEND "msvc")
         elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            set(FO_CODE_COVERAGE_BACKEND "llvm")
+            SetValue(FO_CODE_COVERAGE_BACKEND "llvm")
         elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            set(FO_CODE_COVERAGE_BACKEND "gcc")
+            SetValue(FO_CODE_COVERAGE_BACKEND "gcc")
         else()
             AbortMessage("Code coverage backend is not configured for the selected compiler")
         endif()
     endif()
 
     macro(SetupTestBuild name)
-        set(target ${FO_DEV_NAME}_${name})
-        StatusMessage("+ ${target}")
-        list(APPEND FO_APPLICATIONS_GROUP ${target})
-        add_executable(${target}
-            "${FO_ENGINE_ROOT}/Source/Applications/TestingApp.cpp"
+        SetValue(target ${FO_DEV_NAME}_${name})
+        SetValue(testBuildSources
             ${FO_TESTS_SOURCE}
             "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp"
-            "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp")
-        add_dependencies(${target} ${FO_GEN_DEPENDENCIES})
-        set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_TESTS_OUTPUT})
-        set_target_properties(${target} PROPERTIES OUTPUT_NAME ${target})
-        set_target_properties(${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1")
-        target_link_libraries(${target} "BakerLib" "EditorLib" "MapperLib" "${FO_TESTING_LIBS}")
-
-        target_sources(${target} PRIVATE
+            "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp")
-        target_link_libraries(${target} "ClientLib" "ServerLib")
-        target_link_libraries(${target} "AppHeadless")
+
+        AddExecutableApplication(
+            ${target}
+            "${FO_ENGINE_ROOT}/Source/Applications/TestingApp.cpp"
+            OUTPUT_DIR ${FO_TESTS_OUTPUT}
+            WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
+            OUTPUT_NAME ${target}
+            TESTING_APP 1
+            LINK_LIBS
+                "BakerLib"
+                "EditorLib"
+                "MapperLib"
+                ${FO_TESTING_LIBS}
+                "ClientLib"
+                "ServerLib"
+                "AppHeadless"
+            DEPENDS ${FO_GEN_DEPENDENCIES}
+            EXTRA_SOURCES ${testBuildSources})
 
         if("${name}" STREQUAL "CodeCoverage")
-            set(coverageTool ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codecoverage.py")
+            SetValue(coverageTool
+                ${Python3_EXECUTABLE}
+                "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codecoverage.py")
+            SetValue(coverageToolArgs
+                --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
+                --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                --binary "$<TARGET_FILE:${target}>"
+                --backend "${FO_CODE_COVERAGE_BACKEND}"
+                --output-dir "${FO_COVERAGE_OUTPUT}")
 
-            add_custom_target(CleanCodeCoverageData
-                COMMAND ${coverageTool} clean
-                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
-                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
-                    --binary "$<TARGET_FILE:${target}>"
-                    --backend "${FO_CODE_COVERAGE_BACKEND}"
-                    --output-dir "${FO_COVERAGE_OUTPUT}"
+            AddCommandTarget(CleanCodeCoverageData
+                COMMAND_ARGS COMMAND ${coverageTool} clean ${coverageToolArgs}
                 DEPENDS ${target}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Clean code coverage data")
-            list(APPEND FO_COMMANDS_GROUP CleanCodeCoverageData)
 
-            add_custom_target(Run${name}
-                COMMAND ${coverageTool} run
-                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
-                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
-                    --binary "$<TARGET_FILE:${target}>"
-                    --backend "${FO_CODE_COVERAGE_BACKEND}"
-                    --output-dir "${FO_COVERAGE_OUTPUT}"
+            AddCommandTarget(Run${name}
+                COMMAND_ARGS COMMAND ${coverageTool} run ${coverageToolArgs}
                 DEPENDS ${target}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run ${name}")
-            list(APPEND FO_COMMANDS_GROUP "Run${name}")
 
-            add_custom_target(GenerateCodeCoverageReport
-                COMMAND ${coverageTool} report
-                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
-                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
-                    --binary "$<TARGET_FILE:${target}>"
-                    --backend "${FO_CODE_COVERAGE_BACKEND}"
-                    --output-dir "${FO_COVERAGE_OUTPUT}"
+            AddCommandTarget(GenerateCodeCoverageReport
+                COMMAND_ARGS COMMAND ${coverageTool} report ${coverageToolArgs}
                 DEPENDS Run${name}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Generate code coverage report")
-            list(APPEND FO_COMMANDS_GROUP GenerateCodeCoverageReport)
 
-            add_custom_target(AnalyzeCodeCoverage
-                COMMAND ${coverageTool} full
-                    --workspace-root "${CMAKE_CURRENT_SOURCE_DIR}"
-                    --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
-                    --binary "$<TARGET_FILE:${target}>"
-                    --backend "${FO_CODE_COVERAGE_BACKEND}"
-                    --output-dir "${FO_COVERAGE_OUTPUT}"
+            AddCommandTarget(AnalyzeCodeCoverage
+                COMMAND_ARGS COMMAND ${coverageTool} full ${coverageToolArgs}
                 DEPENDS ${target}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run code coverage and generate report")
-            list(APPEND FO_COMMANDS_GROUP AnalyzeCodeCoverage)
         else()
-            add_custom_target(Run${name}
-                COMMAND ${target}
+            AddCommandTarget(Run${name}
+                COMMAND_ARGS COMMAND ${target}
                 COMMENT "Run ${name}")
-            list(APPEND FO_COMMANDS_GROUP "Run${name}")
         endif()
     endmacro()
 
@@ -1358,62 +1380,66 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 endif()
 
 # Scripts compilation
-set(compileASScripts "")
-set(compileMonoScripts "")
+SetValue(foMainConfigArgs -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")
+SetValue(compileASScripts "")
+SetValue(compileMonoScripts "")
 
 if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
     # Compile AngelScript scripts
     if(FO_ANGELSCRIPT_SCRIPTING)
-        set(compileASScripts ${FO_DEV_NAME}_ASCompiler)
+        SetValue(compileASScripts ${FO_DEV_NAME}_ASCompiler ${foMainConfigArgs})
 
-        list(APPEND compileASScripts -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")
-
-        add_custom_target(CompileAngelScript
-            COMMAND ${compileASScripts}
+        AddCommandTarget(CompileAngelScript
+            COMMAND_ARGS COMMAND ${compileASScripts}
             DEPENDS ForceCodeGeneration
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Compile AngelScript scripts")
-        list(APPEND FO_COMMANDS_GROUP CompileAngelScript)
     endif()
 
     # Compile Mono scripts
     if(FO_MONO_SCRIPTING)
-        set(monoCompileCommands "")
+        SetValue(monoCompileCommands "")
 
         foreach(entry ${FO_MONO_ASSEMBLIES})
-            list(APPEND monoCompileCommands -assembly ${entry})
+            AppendList(monoCompileCommands -assembly ${entry})
         endforeach()
 
-        set(compileMonoScripts ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands})
+        SetValue(compileMonoScripts
+            ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/compile-mono-scripts.py"
+            ${monoCompileCommands})
 
-        add_custom_target(CompileMonoScripts
-            COMMAND ${compileMonoScripts}
+        AddCommandTarget(CompileMonoScripts
+            COMMAND_ARGS COMMAND ${compileMonoScripts}
             SOURCES ${FO_MONO_SOURCE}
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Compile Mono scripts")
-        list(APPEND FO_COMMANDS_GROUP CompileMonoScripts)
     endif()
 endif()
 
 # Baking
-set(bakeResources "${FO_DEV_NAME}_Baker")
-list(APPEND bakeResources -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}" -ApplySubConfig "NONE")
+SetValue(bakeResources "${FO_DEV_NAME}_Baker" ${foMainConfigArgs})
+SetValue(resourceBuildHashCommand
+    ${CMAKE_COMMAND}
+    -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash"
+    -DGIT_ROOT="${FO_GIT_ROOT}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/WriteBuildHash.cmake")
 
-add_custom_target(BakeResources
+AddCommandTarget(BakeResources
+    COMMAND_ARGS
     COMMAND ${bakeResources} -ForceBaking False
-    COMMAND ${CMAKE_COMMAND} -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash" -DGIT_ROOT="${FO_GIT_ROOT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/WriteBuildHash.cmake"
+    COMMAND ${resourceBuildHashCommand}
     DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
-list(APPEND FO_COMMANDS_GROUP BakeResources)
 
-add_custom_target(ForceBakeResources
+AddCommandTarget(ForceBakeResources
+    COMMAND_ARGS
     COMMAND ${bakeResources} -ForceBaking True
-    COMMAND ${CMAKE_COMMAND} -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash" -DGIT_ROOT="${FO_GIT_ROOT}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/WriteBuildHash.cmake"
+    COMMAND ${resourceBuildHashCommand}
     DEPENDS ForceCodeGeneration
     WORKING_DIRECTORY ${FO_OUTPUT_PATH}
     COMMENT "Bake resources")
-list(APPEND FO_COMMANDS_GROUP ForceBakeResources)
 
 # Packaging
 StatusMessage("Packages:")
@@ -1421,75 +1447,94 @@ StatusMessage("Packages:")
 foreach(package ${FO_PACKAGES})
     StatusMessage("+ Package ${package}")
 
-    add_custom_target(MakePackage-${package}
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
+    SetValue(packageBaseCommands
+        ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/package.py"
+        -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"
+        -buildhash "${FO_BUILD_HASH}"
+        -devname "${FO_DEV_NAME}"
+        -nicename "${FO_NICE_NAME}")
+
+    AddCommandTarget(MakePackage-${package}
+        COMMAND_ARGS COMMAND ${CMAKE_COMMAND} -E rm -rf "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         COMMENT "Make package ${package}")
-    list(APPEND FO_COMMANDS_GROUP "MakePackage-${package}")
 
     foreach(entry ${Package_${package}_Parts})
-        set(packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/package.py")
+        SetValue(packageCommands ${packageBaseCommands})
 
-        list(APPEND packageCommands -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
-        list(APPEND packageCommands -buildhash "${FO_BUILD_HASH}")
-        list(APPEND packageCommands -devname "${FO_DEV_NAME}")
-        list(APPEND packageCommands -nicename "${FO_NICE_NAME}")
+        StringReplace("," ";" entry ${entry})
+        ListGet(entry 0 target)
+        ListGet(entry 1 platform)
+        ListGet(entry 2 arch)
+        ListGet(entry 3 pack)
+        ListGet(entry 4 customConfig)
 
-        string(REPLACE "," ";" entry ${entry})
-        list(GET entry 0 target)
-        list(GET entry 1 platform)
-        list(GET entry 2 arch)
-        list(GET entry 3 pack)
-        list(GET entry 4 customConfig)
-
-        list(APPEND packageCommands -target "${target}")
-        list(APPEND packageCommands -platform "${platform}")
-        list(APPEND packageCommands -arch "${arch}")
-        list(APPEND packageCommands -pack "${pack}")
+        AppendList(packageCommands -target "${target}")
+        AppendList(packageCommands -platform "${platform}")
+        AppendList(packageCommands -arch "${arch}")
+        AppendList(packageCommands -pack "${pack}")
 
         if(customConfig)
-            set(config ${customConfig})
+            SetValue(config ${customConfig})
         else()
-            set(config ${Package_${package}_Config})
+            SetValue(config ${Package_${package}_Config})
         endif()
 
-        list(APPEND packageCommands -config "${config}")
-        list(APPEND packageCommands -input ${FO_OUTPUT_PATH})
-        list(APPEND packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
+        AppendList(packageCommands
+            -config "${config}"
+            -input ${FO_OUTPUT_PATH}
+            -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
 
         StatusMessage("  ${target} for ${platform}-${arch} in ${pack} with ${config} config")
-        add_custom_command(TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands})
+        AddCustomCommand(TARGET MakePackage-${package} POST_BUILD
+            COMMAND ${packageCommands})
     endforeach()
 endforeach()
 
 # Copy ReSharper config
 if(MSVC)
     if(FO_RESHARPER_SETTINGS)
-        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_RESHARPER_SETTINGS}" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings" COPY_ON_ERROR)
+        FileCreateLink(
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_RESHARPER_SETTINGS}"
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings"
+            COPY_ON_ERROR)
     else()
-        file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/ReSharper.sln.DotSettings" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings" COPY_ON_ERROR)
+        FileCreateLink(
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/ReSharper.sln.DotSettings"
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.sln.DotSettings"
+            COPY_ON_ERROR)
     endif()
 endif()
 
 # Setup targets grouping
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications")
-set_property(TARGET ${FO_CORE_LIBS_GROUP} PROPERTY FOLDER "CoreLibs")
-set_property(TARGET ${FO_COMMANDS_GROUP} PROPERTY FOLDER "Commands")
-set_property(TARGET ${FO_ESSENTIALS_LIBS} ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty")
-set_property(TARGET ${FO_DUMMY_TARGETS} PROPERTY FOLDER "ThirdParty/Dummy")
+SetGlobalProperty(USE_FOLDERS ON)
+SetTargetsFolder("Applications" ${FO_APPLICATIONS_GROUP})
+SetTargetsFolder("CoreLibs" ${FO_CORE_LIBS_GROUP})
+SetTargetsFolder("Commands" ${FO_COMMANDS_GROUP})
+SetTargetsFolder(
+    "ThirdParty"
+    ${FO_ESSENTIALS_LIBS}
+    ${FO_COMMON_LIBS}
+    ${FO_BAKER_LIBS}
+    ${FO_SERVER_LIBS}
+    ${FO_CLIENT_LIBS}
+    ${FO_RENDER_LIBS}
+    ${FO_TESTING_LIBS}
+    ${FO_DUMMY_TARGETS})
+SetTargetsFolder("ThirdParty/Dummy" ${FO_DUMMY_TARGETS})
 
 # Print cached variables
 if(FO_VERBOSE_BUILD)
-    get_cmake_property(FO_CACHE_VARIABLES CACHE_VARIABLES)
-    list(SORT FO_CACHE_VARIABLES)
+    GetCMakeProperty(FO_CACHE_VARIABLES CACHE_VARIABLES)
+    ListSort(FO_CACHE_VARIABLES)
 
     StatusMessage("Forced variables:")
 
     foreach(varName ${FO_CACHE_VARIABLES})
-        get_property(str CACHE ${varName} PROPERTY HELPSTRING)
-        get_property(type CACHE ${varName} PROPERTY TYPE)
-        string(FIND "${str}" "Forced by FOnline" forced)
+        GetCacheProperty(str ${varName} HELPSTRING)
+        GetCacheProperty(type ${varName} TYPE)
+        StringFind("${str}" "Forced by FOnline" forced)
 
         if(NOT "${forced}" STREQUAL "-1")
             StatusMessage("- ${varName}: '${${varName}}' type: '${type}'")
@@ -1499,11 +1544,14 @@ if(FO_VERBOSE_BUILD)
     StatusMessage("Default variables:")
 
     foreach(varName ${FO_CACHE_VARIABLES})
-        get_property(str CACHE ${varName} PROPERTY HELPSTRING)
-        get_property(type CACHE ${varName} PROPERTY TYPE)
-        string(FIND "${str}" "Forced by FOnline" forced)
+        GetCacheProperty(str ${varName} HELPSTRING)
+        GetCacheProperty(type ${varName} TYPE)
+        StringFind("${str}" "Forced by FOnline" forced)
 
-        if("${forced}" STREQUAL "-1" AND NOT "${type}" STREQUAL "INTERNAL" AND NOT "${type}" STREQUAL "STATIC" AND NOT "${type}" STREQUAL "UNINITIALIZED")
+        if("${forced}" STREQUAL "-1" AND
+            NOT "${type}" STREQUAL "INTERNAL" AND
+            NOT "${type}" STREQUAL "STATIC" AND
+            NOT "${type}" STREQUAL "UNINITIALIZED")
             StatusMessage("- ${varName}: '${${varName}}' docstring: '${str}' type: '${type}'")
         endif()
     endforeach()

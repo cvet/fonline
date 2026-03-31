@@ -310,11 +310,11 @@ void RunScenario()
 )";
 
     // Extended script exercises:
-    // - PtrSizedVal (platform-dependent value type on stack) → COPY, stack adjustment
-    // - Global property access → PGA, LDG, PshG4, CpyGtoV4, CpyVtoG4, SetG4
-    // - Mixed-type function parameters → ALLOC, FREE, REFCPY, various GET instructions
-    // - Function pointers → FuncPtr, CallPtr
-    // - Multiple value-type locals → stack layout normalization
+    // - PtrSizedVal (platform-dependent value type on stack) Ã¢â€ â€™ COPY, stack adjustment
+    // - Global property access Ã¢â€ â€™ PGA, LDG, PshG4, CpyGtoV4, CpyVtoG4, SetG4
+    // - Mixed-type function parameters Ã¢â€ â€™ ALLOC, FREE, REFCPY, various GET instructions
+    // - Function pointers Ã¢â€ â€™ FuncPtr, CallPtr
+    // - Multiple value-type locals Ã¢â€ â€™ stack layout normalization
     static constexpr string_view PortableFormatTestScript = R"(
 class Container
 {
@@ -438,7 +438,7 @@ void RunScenario()
     Lookup lk = Lookup();
     lk.Fallback = 100;
 
-    // Method call: this + PtrSizedVal ref + int ref → GETREF offset bug scenario
+    // Method call: this + PtrSizedVal ref + int ref Ã¢â€ â€™ GETREF offset bug scenario
     PtrSizedVal key1 = CreatePtrSizedVal(42);
     int r1 = lk.Get(key1, 10);
     ObserveResource(r1);  // 42 + 10 = 52
@@ -465,7 +465,7 @@ void RunScenario()
     // Chain: use result of one lookup as default for the next
     PtrSizedVal key5 = CreatePtrSizedVal(100);
     int chained = lk.Get(key5, lk.Get(key1, 0));
-    ObserveResource(chained);  // key5==Fallback → defVal = lk.Get(key1, 0) = 42+0 = 42
+    ObserveResource(chained);  // key5==Fallback Ã¢â€ â€™ defVal = lk.Get(key1, 0) = 42+0 = 42
 }
 )";
 
@@ -600,7 +600,7 @@ TEST_CASE("AngelScriptBytecode", "[.][angelscript][bytecode]")
     SECTION("GetRefOffsetAdjustmentWithMultiplePtrSizedArgs")
     {
         // Regression test for AdjustGetOffset REFCPY early-return bug.
-        // On 64-bit build → 32-bit load, GETREF offsets for reference parameters
+        // On 64-bit build Ã¢â€ â€™ 32-bit load, GETREF offsets for reference parameters
         // past multiple pointer-sized stack items were miscalculated, causing crashes.
         // The fix guards the REFCPY shortcut with offset == 1 (reader) / offset == AS_PTR_SIZE (writer).
 
