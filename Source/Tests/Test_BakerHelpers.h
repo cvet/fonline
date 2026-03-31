@@ -62,20 +62,11 @@ namespace BakerTests
         [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
         [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
 
-        void AddFile(string_view path, string_view content, uint64 write_time = 1)
-        {
-            AddFile(path, vector<uint8> {content.begin(), content.end()}, write_time);
-        }
+        void AddFile(string_view path, string_view content, uint64 write_time = 1) { AddFile(path, vector<uint8> {content.begin(), content.end()}, write_time); }
 
-        void AddFile(string_view path, vector<uint8> data, uint64 write_time = 1)
-        {
-            _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time};
-        }
+        void AddFile(string_view path, vector<uint8> data, uint64 write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
 
-        [[nodiscard]] auto IsFileExists(string_view path) const -> bool override
-        {
-            return _entries.contains(string(path));
-        }
+        [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _entries.contains(string(path)); }
 
         [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override
         {
@@ -165,25 +156,13 @@ namespace BakerTests
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
 
-        void AddSourceFile(string_view path, string_view content, uint64 write_time = 1)
-        {
-            _sourceData->AddFile(path, content, write_time);
-        }
+        void AddSourceFile(string_view path, string_view content, uint64 write_time = 1) { _sourceData->AddFile(path, content, write_time); }
 
-        void AddBakedFile(string_view path, string_view content, uint64 write_time = 1)
-        {
-            _bakedData->AddFile(path, content, write_time);
-        }
+        void AddBakedFile(string_view path, string_view content, uint64 write_time = 1) { _bakedData->AddFile(path, content, write_time); }
 
-        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection
-        {
-            return SourceFiles.GetAllFiles();
-        }
+        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
 
-        [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection
-        {
-            return FileCollection(vector<FileHeader> {});
-        }
+        [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
 
         auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext>
         {
@@ -197,9 +176,7 @@ namespace BakerTests
                 .Settings = &Settings,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
-                .WriteData = [this](string_view path, const_span<uint8> data) {
-                    Outputs[string(path)] = vector<uint8> {data.begin(), data.end()};
-                },
+                .WriteData = [this](string_view path, const_span<uint8> data) { Outputs[string(path)] = vector<uint8> {data.begin(), data.end()}; },
                 .BakedFiles = &BakedFiles,
                 .ForceSyncMode = true,
             });
@@ -224,7 +201,7 @@ namespace BakerTests
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
-        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64) { return true; }, [](string_view, const_span<uint8>) { }, &rig.BakedFiles);
+        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64) { return true; }, [](string_view, const_span<uint8>) {}, &rig.BakedFiles);
     }
 }
 

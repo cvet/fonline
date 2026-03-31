@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -147,25 +148,17 @@ WINDOWS_BUILD_BY_PLATFORM = {
 }
 
 FORMAT_PATTERNS = [
-	'Applications/*.cpp',
-	'Client/*.cpp', 'Client/*.h',
-	'Common/*.cpp', 'Common/*.h',
-	'Common/ImGuiExt/*.cpp', 'Common/ImGuiExt/*.h',
-	'Essentials/*.cpp', 'Essentials/*.h',
-	'Server/*.cpp', 'Server/*.h',
-	'Tools/*.cpp', 'Tools/*.h',
-	'Scripting/*.cpp',
-	'Scripting/AngelScript/*.cpp', 'Scripting/AngelScript/*.h',
-	'Scripting/AngelScript/CoreScripts/*.fos',
-	'Frontend/*.cpp', 'Frontend/*.h',
-	'Tests/*.cpp',
+	'**/*.cpp',
+	'**/*.h',
+	'**/*.fos',
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
+CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'7',
-		['clang', 'clang-format', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
+		'8',
+		['clang', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
 		'6',
@@ -1317,9 +1310,19 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 def discover_clang_format() -> str:
 	for executable in ('clang-format-20', 'clang-format'):
 		path = shutil.which(executable)
-		if path:
+		if not path:
+			continue
+
+		try:
+			version_output = subprocess.check_output([path, '--version'], text=True, encoding='utf-8', errors='replace')
+		except (OSError, subprocess.CalledProcessError):
+			continue
+
+		match = CLANG_FORMAT_VERSION_RE.search(version_output)
+		if match is not None and int(match.group(1)) == 20:
 			return path
-	raise SystemExit('clang-format not found')
+
+	raise SystemExit('clang-format version 20 not found in system PATH')
 
 
 def read_text_strip_bom(path: Path) -> tuple[str, bool]:
