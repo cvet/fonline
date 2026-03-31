@@ -138,6 +138,8 @@ TEST_CASE("CommonUtilities")
         CHECK(stored_pixels[0] == pixels[0].rgba);
         CHECK(stored_pixels[1] == pixels[1].rgba);
 
+        input.close();
+
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }

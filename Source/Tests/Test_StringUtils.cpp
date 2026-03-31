@@ -96,19 +96,27 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
+        constexpr string_view hello_lower = " \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_upper = " \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   ";
+        constexpr string_view other_word = " \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   ";
+        constexpr string_view three_e = "\xD0\xB5\xD0\xB5\xD0\xB5";
+        constexpr string_view upper_source = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   ";
+        constexpr string_view upper_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   ";
+
         CHECK(strex("").is_valid_utf8());
         CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
-        CHECK(strex(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   ").is_valid_utf8());
-        CHECK(strex(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   ").is_valid_utf8());
-        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" Ð¿Ñ€Ð¸Ð’Ð•Ñ‚   "));
-        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" Ñ‚Ñ‚Ñ‚Ð²Ð²Ð²   "));
-        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8("ÐµÐµÐµ"));
-        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").length_utf8() == 10);
-        CHECK(strex("ÐµÐµÐµ").length_utf8() == 3);
-        CHECK(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" ÐŸÐ Ð˜Ð’Ð•Ð¢   "));
-        CHECK_FALSE(strex(" ÐŸÑ€Ð¸Ð²ÐµÑ‚   ").compare_ignore_case_utf8(" ÐŸÐ Ð•Ð¢Ð¢Ð¢   "));
-        CHECK(strex(" ÐŸÑ€Ð¸Ð’Ð•Ð¢   ").lower_utf8() == " Ð¿Ñ€Ð¸Ð²ÐµÑ‚   ");
-        CHECK(strex(" ÐŸÑ€Ð¸Ð’ÐµÑ‚   ").upper_utf8() == " ÐŸÐ Ð˜Ð’Ð•Ð¢   ");
+        CHECK(strex(hello_lower).is_valid_utf8());
+        CHECK(strex(hello_lower).is_valid_utf8());
+        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_lower));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(other_word));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(three_e));
+        CHECK(strex(hello_mixed).length_utf8() == 10);
+        CHECK(strex(three_e).length_utf8() == 3);
+        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_upper));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(" \xD0\x9F\xD0\xA0\xD0\x95\xD0\xA2\xD0\xA2\xD0\xA2   "));
+        CHECK(strex(upper_source).lower_utf8() == hello_lower);
+        CHECK(strex(upper_mixed).upper_utf8() == hello_upper);
     }
 
     SECTION("StartsWith")

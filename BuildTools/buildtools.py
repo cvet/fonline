@@ -287,12 +287,16 @@ def stringify_args(*args: object) -> list[str]:
 	return [str(arg) for arg in args]
 
 
+def to_cmake_path(path: str | Path) -> str:
+	return str(path).replace('\\', '/')
+
+
 def make_unix_makefiles_configure_cmd(*args: object) -> list[str]:
 	return ['cmake', '-G', 'Unix Makefiles', *stringify_args(*args)]
 
 
 def make_emsdk_configure_cmd(toolchain_file: Path, *args: object) -> list[str]:
-	configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + str(toolchain_file), *stringify_args(*args)]
+	configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + to_cmake_path(toolchain_file), *stringify_args(*args)]
 	if os.name == 'nt':
 		configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
 	else:
@@ -301,7 +305,7 @@ def make_emsdk_configure_cmd(toolchain_file: Path, *args: object) -> list[str]:
 
 
 def make_android_configure_cmd(toolchain_file: str, toolchain_settings: Sequence[str], *args: object) -> list[str]:
-	return make_unix_makefiles_configure_cmd(f'-DCMAKE_TOOLCHAIN_FILE={toolchain_file}', *toolchain_settings, *args)
+	return make_unix_makefiles_configure_cmd(f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(toolchain_file)}', *toolchain_settings, *args)
 
 
 def make_xcode_configure_cmd(cmake_bin: str, *args: object) -> list[str]:
@@ -784,7 +788,7 @@ def reset_build_dir(build_dir: Path) -> None:
 
 
 def make_toolset_cmake_args(output_path: str, config_name: str | None = None) -> list[str]:
-	return [f'-DFO_OUTPUT_PATH={output_path}', *build_flag_args('toolset', config=config_name)]
+	return [f'-DFO_OUTPUT_PATH={to_cmake_path(output_path)}', *build_flag_args('toolset', config=config_name)]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
@@ -801,7 +805,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 			'-A',
 			'x64',
 			*make_toolset_cmake_args(output),
-			project_root,
+			to_cmake_path(project_root),
 		], cwd=build_dir)
 		return
 
@@ -1126,25 +1130,25 @@ def make_platform_configure_cmd(
 	env: Mapping[str, str],
 ) -> list[str]:
 	if platform_name == 'linux':
-		return make_unix_makefiles_configure_cmd(*configure_args, source_path)
+		return make_unix_makefiles_configure_cmd(*configure_args, to_cmake_path(source_path))
 	if platform_name == 'web':
 		toolchain_file = resolve_emscripten_toolchain(env)
 		configure_cmd = make_emsdk_configure_cmd(toolchain_file, *configure_args)
-		configure_cmd.append(source_path)
+		configure_cmd.append(to_cmake_path(source_path))
 		return configure_cmd
 	if platform_name in ANDROID_PLATFORMS:
-		toolchain_file = f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake'
+		toolchain_file = to_cmake_path(f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake')
 		toolchain_settings = make_android_toolchain_settings(platform_name, env)
-		return make_android_configure_cmd(toolchain_file, toolchain_settings, *configure_args, source_path)
+		return make_android_configure_cmd(toolchain_file, toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name in APPLE_PLATFORMS:
 		cmake_bin = resolve_apple_cmake()
 		if platform_name == 'mac':
-			return make_xcode_configure_cmd(cmake_bin, *configure_args, source_path)
+			return make_xcode_configure_cmd(cmake_bin, *configure_args, to_cmake_path(source_path))
 		toolchain_settings = make_ios_toolchain_settings(env)
 		ios_toolchain = resolve_buildtools_cmake_path(env, 'ios.toolchain.cmake')
-		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={ios_toolchain}', *toolchain_settings, *configure_args, source_path)
+		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(ios_toolchain)}', *toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name.startswith('win'):
-		return make_windows_configure_cmd(platform_name, *configure_args, source_path)
+		return make_windows_configure_cmd(platform_name, *configure_args, to_cmake_path(source_path))
 	raise SystemExit(f'Unsupported platform: {platform_name}')
 
 
@@ -1218,7 +1222,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		build_dir,
 		config,
 		env,
-		extra_cmake_args=[f'-DFO_OUTPUT_PATH={output}'],
+		extra_cmake_args=[f'-DFO_OUTPUT_PATH={to_cmake_path(output)}'],
 	)
 
 	ready_path.touch()
