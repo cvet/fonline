@@ -36,6 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr float32 EGG_ENABLED_FLAG = 1.0f;
+
 Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {&spr_mngr},
     _size {size},
@@ -309,25 +311,29 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
         vbuf[vpos].TexU = 0.0f;
         vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = 0.0f;
         vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
         vbuf[vpos].TexU = 0.0f;
         vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
         vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
         vbuf[vpos].TexU = 1.0f;
         vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = width_to_f;
         vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
         vbuf[vpos].TexU = 1.0f;
         vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
-        vbuf[vpos].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos].EggFlags[1] = 0.0f;
     }
     else {
         const auto rect_from = region_from != nullptr ? *region_from : frect32(0.0f, 0.0f, width_from_f, height_from_f);
@@ -340,25 +346,29 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x;
         vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
         vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
-        vbuf[vpos++].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
         vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
-        vbuf[vpos].EggTexU = 0.0f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos].EggFlags[1] = 0.0f;
     }
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.FlushRenderTarget.get();
@@ -541,8 +551,20 @@ void SpriteManager::Flush()
     for (auto& dip : _dipQueue) {
         FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
 
-        if (_sprEgg) {
-            dip.SourceEffect->EggTex = _sprEgg->GetAtlas()->GetTexture();
+        if (dip.SourceEffect->IsNeedEggBuf()) {
+            auto& egg_buf = dip.SourceEffect->EggBuf.emplace();
+
+            for (size_t slot_index = 0; slot_index < EGG_SLOT_COUNT; slot_index++) {
+                const auto& egg = _eggSlots[slot_index];
+                const auto data_index = slot_index * 4;
+
+                egg_buf.EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
+                egg_buf.EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
+                egg_buf.EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
+                egg_buf.EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+            }
+
+            egg_buf.EggData[8] = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         }
 
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf.get(), ipos, dip.IndicesCount, dip.MainTexture.get());
@@ -694,7 +716,8 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     v0.PosY = pos.y + size.height;
     v0.TexU = tex_left;
     v0.TexV = tex_bottom;
-    v0.EggTexU = 0.0f;
+    v0.EggFlags[0] = 0.0f;
+    v0.EggFlags[1] = 0.0f;
     v0.Color = color;
 
     auto& v1 = vbuf[vpos++];
@@ -702,7 +725,8 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     v1.PosY = pos.y;
     v1.TexU = tex_left;
     v1.TexV = tex_top;
-    v1.EggTexU = 0.0f;
+    v1.EggFlags[0] = 0.0f;
+    v1.EggFlags[1] = 0.0f;
     v1.Color = color;
 
     auto& v2 = vbuf[vpos++];
@@ -710,7 +734,8 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     v2.PosY = pos.y;
     v2.TexU = tex_right;
     v2.TexV = tex_top;
-    v2.EggTexU = 0.0f;
+    v2.EggFlags[0] = 0.0f;
+    v2.EggFlags[1] = 0.0f;
     v2.Color = color;
 
     auto& v3 = vbuf[vpos++];
@@ -718,7 +743,8 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     v3.PosY = pos.y + size.height;
     v3.TexU = tex_right;
     v3.TexV = tex_bottom;
-    v3.EggTexU = 0.0f;
+    v3.EggFlags[0] = 0.0f;
+    v3.EggFlags[1] = 0.0f;
     v3.Color = color;
 
     if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -802,28 +828,32 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
             vbuf[vpos].PosY = yy + local_height;
             vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
             vbuf[vpos].TexV = local_bottom;
-            vbuf[vpos].EggTexU = 0.0f;
+            vbuf[vpos].EggFlags[0] = 0.0f;
+            vbuf[vpos].EggFlags[1] = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
             vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
-            vbuf[vpos].EggTexU = 0.0f;
+            vbuf[vpos].EggFlags[0] = 0.0f;
+            vbuf[vpos].EggFlags[1] = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
-            vbuf[vpos].EggTexU = 0.0f;
+            vbuf[vpos].EggFlags[0] = 0.0f;
+            vbuf[vpos].EggFlags[1] = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy + local_height;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = local_bottom;
-            vbuf[vpos].EggTexU = 0.0f;
+            vbuf[vpos].EggFlags[0] = 0.0f;
+            vbuf[vpos].EggFlags[1] = 0.0f;
             vbuf[vpos++].Color = color;
 
             if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -868,28 +898,82 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpo
     points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rb.x), iround<int32>(rb.y)}, .PointColor = color});
 }
 
-void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
+void SpriteManager::InvalidateEgg(TransparentEggSlot slot)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _eggValid = false;
-    _eggHex = {};
-    _eggOffset = {};
-
-    auto any_spr = LoadSprite(egg_name, atlas_type);
-    FO_RUNTIME_ASSERT(any_spr);
-
-    _sprEgg = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
-    FO_RUNTIME_ASSERT(_sprEgg);
-
-    const auto x = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[0] * _sprEgg->GetAtlasRect().x);
-    const auto y = iround<int32>(_sprEgg->GetAtlas()->GetTexture()->SizeData[1] * _sprEgg->GetAtlasRect().y);
-    _eggData = _sprEgg->GetAtlas()->GetTexture()->GetTextureRegion({x, y}, _sprEgg->GetSize());
+    _eggSlots[static_cast<size_t>(slot)] = {};
 }
 
-auto SpriteManager::CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool
+void SpriteManager::InvalidateEgg()
 {
     FO_STACK_TRACE_ENTRY();
+
+    InvalidateEgg(TransparentEggSlot::Primary);
+    InvalidateEgg(TransparentEggSlot::Secondary);
+}
+
+void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, const MapSprite* mspr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto slot_index = static_cast<size_t>(slot);
+
+    if (mspr == nullptr) {
+        InvalidateEgg(slot);
+        return;
+    }
+
+    const auto rect = mspr->GetViewRect();
+
+    if (rect.width <= 0 || rect.height <= 0) {
+        InvalidateEgg(slot);
+        _eggSlots[slot_index].Hex = hex;
+        return;
+    }
+
+    const auto rect_width = std::max(numeric_cast<float32>(rect.width), 1.0f);
+    const auto rect_height = std::max(numeric_cast<float32>(rect.height), 1.0f);
+    auto& egg = _eggSlots[slot_index];
+    const auto egg_width = std::max(rect_width + numeric_cast<float32>(_settings->EggEllipseWidthExt), 1.0f);
+    const auto egg_height = std::max(rect_height + numeric_cast<float32>(_settings->EggEllipseHeightExt), 1.0f);
+
+    egg.Center.x = numeric_cast<float32>(rect.x) + rect_width * 0.5f;
+    egg.Center.y = numeric_cast<float32>(rect.y) + rect_height * 0.5f;
+    egg.Radius.width = egg_width * 0.5f;
+    egg.Radius.height = egg_height * 0.5f;
+    egg.Hex = hex;
+    egg.Valid = true;
+}
+
+void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto slot_index = static_cast<size_t>(slot);
+    auto& egg = _eggSlots[slot_index];
+
+    if (radius.width <= 0.0f || radius.height <= 0.0f) {
+        InvalidateEgg(slot);
+        egg.Hex = hex;
+        return;
+    }
+
+    egg.Center = center;
+    egg.Radius = radius;
+    egg.Hex = hex;
+    egg.Valid = true;
+}
+
+auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& egg = _eggSlots[static_cast<size_t>(slot)];
+
+    if (!egg.Valid) {
+        return false;
+    }
 
     if (appearence == EggAppearenceType::None) {
         return false;
@@ -898,28 +982,28 @@ auto SpriteManager::CheckEggAppearence(mpos hex, EggAppearenceType appearence) c
         return true;
     }
 
-    if (_eggHex.y == hex.y && (hex.x % 2) != 0 && (_eggHex.x % 2) == 0) {
+    if (egg.Hex.y == hex.y && (hex.x % 2) != 0 && (egg.Hex.x % 2) == 0) {
         hex.y--;
     }
 
     switch (appearence) {
     case EggAppearenceType::ByX:
-        if (hex.x >= _eggHex.x) {
+        if (hex.x >= egg.Hex.x) {
             return true;
         }
         break;
     case EggAppearenceType::ByY:
-        if (hex.y >= _eggHex.y) {
+        if (hex.y >= egg.Hex.y) {
             return true;
         }
         break;
     case EggAppearenceType::ByXAndY:
-        if (hex.x >= _eggHex.x || hex.y >= _eggHex.y) {
+        if (hex.x >= egg.Hex.x || hex.y >= egg.Hex.y) {
             return true;
         }
         break;
     case EggAppearenceType::ByXOrY:
-        if (hex.x >= _eggHex.x && hex.y >= _eggHex.y) {
+        if (hex.x >= egg.Hex.x && hex.y >= egg.Hex.y) {
             return true;
         }
         break;
@@ -930,27 +1014,15 @@ auto SpriteManager::CheckEggAppearence(mpos hex, EggAppearenceType appearence) c
     return false;
 }
 
-void SpriteManager::SetEgg(mpos hex, const MapSprite* mspr)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto* spr = mspr->GetSprite();
-    FO_RUNTIME_ASSERT(spr);
-
-    const auto hex_offset = mspr->GetHexOffset();
-    const auto* phex_offset = mspr->GetPHexOffset();
-    const auto* pspr_offset = mspr->GetPSprOffset();
-    _eggOffset.x = hex_offset.x + phex_offset->x + pspr_offset->x + spr->GetOffset().x - _sprEgg->GetSize().width / 2;
-    _eggOffset.y = hex_offset.y + phex_offset->y + pspr_offset->y + spr->GetOffset().y - _sprEgg->GetSize().height / 2 - spr->GetSize().height / 2;
-    _eggHex = hex;
-    _eggValid = true;
-}
-
 void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<PrimitivePoint> debug_borders;
+
+    for (auto& egg : _eggSlots) {
+        egg.DrawOffset = {numeric_cast<float32>(draw_area.x), numeric_cast<float32>(draw_area.y)};
+    }
 
     for (const auto& mspr : mspr_list.GetActiveSprites()) {
         FO_RUNTIME_ASSERT(mspr->IsValid());
@@ -994,9 +1066,12 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         if (light != nullptr) {
             const auto mix_light = [](ucolor& c, const ucolor* l, const ucolor* l2) {
-                c.comp.r = numeric_cast<uint8>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
-                c.comp.g = numeric_cast<uint8>(std::min(c.comp.g + (l->comp.g + l2->comp.g) / 2, 255));
-                c.comp.b = numeric_cast<uint8>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
+                const auto r2 = l2 != nullptr ? l2->comp.r : l->comp.r;
+                const auto g2 = l2 != nullptr ? l2->comp.g : l->comp.g;
+                const auto b2 = l2 != nullptr ? l2->comp.b : l->comp.b;
+                c.comp.r = numeric_cast<uint8>(std::min(c.comp.r + (l->comp.r + r2) / 2, 255));
+                c.comp.g = numeric_cast<uint8>(std::min(c.comp.g + (l->comp.g + g2) / 2, 255));
+                c.comp.b = numeric_cast<uint8>(std::min(c.comp.b + (l->comp.b + b2) / 2, 255));
             };
 
             mix_light(color_r, light, mspr->GetLightRight());
@@ -1028,41 +1103,19 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32 yf = numeric_cast<float32>(mspr_rect.y);
         const float32 wf = numeric_cast<float32>(spr->GetSize().width);
         const float32 hf = numeric_cast<float32>(spr->GetSize().height);
+        const auto start_vpos = _spritesDrawBuf->VertCount;
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
         // Setup egg
-        if (use_egg && _eggValid && ind_count == 6 && CheckEggAppearence(mspr->GetHex(), mspr->GetEggAppearence())) {
-            int32 x1 = mspr_rect.x - _eggOffset.x + draw_area.x;
-            int32 y1 = mspr_rect.y - _eggOffset.y + draw_area.y;
-            int32 x2 = x1 + spr->GetSize().width;
-            int32 y2 = y1 + spr->GetSize().height;
+        const bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr->GetHex(), mspr->GetEggAppearence());
+        const bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr->GetHex(), mspr->GetEggAppearence());
 
-            if (x1 < _sprEgg->GetSize().width - 100 && y1 < _sprEgg->GetSize().height - 100 && x2 >= 100 && y2 >= 100) {
-                const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
+        if (use_first_egg || use_second_egg) {
+            auto& vbuf = _spritesDrawBuf->Vertices;
 
-                if (atlas_spr != nullptr) {
-                    x1 = std::max(x1, 0);
-                    y1 = std::max(y1, 0);
-                    x2 = std::min(x2, _sprEgg->GetSize().width);
-                    y2 = std::min(y2, _sprEgg->GetSize().height);
-
-                    const auto x1_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x1) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
-                    const auto x2_f = _sprEgg->GetAtlasRect().x + numeric_cast<float32>(x2) / _sprEgg->GetAtlas()->GetTexture()->SizeData[0];
-                    const auto y1_f = _sprEgg->GetAtlasRect().y + numeric_cast<float32>(y1) / _sprEgg->GetAtlas()->GetTexture()->SizeData[1];
-                    const auto y2_f = _sprEgg->GetAtlasRect().y + numeric_cast<float32>(y2) / _sprEgg->GetAtlas()->GetTexture()->SizeData[1];
-
-                    auto& vbuf = _spritesDrawBuf->Vertices;
-                    const auto vpos = _spritesDrawBuf->VertCount;
-
-                    vbuf[vpos - 4].EggTexU = x1_f;
-                    vbuf[vpos - 4].EggTexV = y2_f;
-                    vbuf[vpos - 3].EggTexU = x1_f;
-                    vbuf[vpos - 3].EggTexV = y1_f;
-                    vbuf[vpos - 2].EggTexU = x2_f;
-                    vbuf[vpos - 2].EggTexV = y1_f;
-                    vbuf[vpos - 1].EggTexU = x2_f;
-                    vbuf[vpos - 1].EggTexV = y2_f;
-                }
+            for (size_t i = start_vpos; i < _spritesDrawBuf->VertCount; i++) {
+                vbuf[i].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
+                vbuf[i].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
             }
         }
 
@@ -1158,24 +1211,36 @@ auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool
     return spr->IsHitTest(pos);
 }
 
-auto SpriteManager::IsEggTransp(ipos32 pos) const -> bool
+auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_eggValid) {
-        return false;
+    for (size_t slot_index = 0; slot_index < EGG_SLOT_COUNT; slot_index++) {
+        const auto& egg = _eggSlots[slot_index];
+        const auto slot = slot_index == 0 ? TransparentEggSlot::Primary : TransparentEggSlot::Secondary;
+
+        if (!egg.Valid) {
+            continue;
+        }
+        if (!CheckEggAppearence(slot, hex, appearence)) {
+            continue;
+        }
+        if (egg.Radius.width <= 0.0f || egg.Radius.height <= 0.0f) {
+            continue;
+        }
+
+        const auto dx = (numeric_cast<float32>(pos.x) - egg.Center.x) / egg.Radius.width;
+        const auto dy = (numeric_cast<float32>(pos.y) - egg.Center.y) / egg.Radius.height;
+        const auto egg_alpha_raw = std::clamp(dx * dx + dy * dy, 0.0f, 1.0f);
+        const auto transition_start = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+        const auto egg_alpha = egg_alpha_raw <= transition_start ? 0.0f : (egg_alpha_raw - transition_start) / (1.0f - transition_start);
+
+        if (!CheckHitTest(iround<int32>(egg_alpha * 255.0f))) {
+            return true;
+        }
     }
 
-    const auto ox = pos.x - _eggOffset.x;
-    const auto oy = pos.y - _eggOffset.y;
-    const auto size = _sprEgg->GetSize();
-
-    if (ox < 0 || oy < 0 || ox >= size.width || oy >= size.height) {
-        return false;
-    }
-
-    const auto egg_color = _eggData.at(oy * size.width + ox);
-    return !CheckHitTest(numeric_cast<int32>(egg_color.comp.a));
+    return false;
 }
 
 void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const irect32* draw_area, RenderEffect* custom_effect)
@@ -1308,28 +1373,32 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     vbuf[vpos].PosY = borders.y + borders.height;
     vbuf[vpos].TexU = textureuv.x;
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
-    vbuf[vpos].EggTexU = 0.0f;
+    vbuf[vpos].EggFlags[0] = 0.0f;
+    vbuf[vpos].EggFlags[1] = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
     vbuf[vpos].PosX = borders.x;
     vbuf[vpos].PosY = borders.y;
     vbuf[vpos].TexU = textureuv.x;
     vbuf[vpos].TexV = textureuv.y;
-    vbuf[vpos].EggTexU = 0.0f;
+    vbuf[vpos].EggFlags[0] = 0.0f;
+    vbuf[vpos].EggFlags[1] = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y;
     vbuf[vpos].TexU = textureuv.x + textureuv.width;
     vbuf[vpos].TexV = textureuv.y;
-    vbuf[vpos].EggTexU = 0.0f;
+    vbuf[vpos].EggFlags[0] = 0.0f;
+    vbuf[vpos].EggFlags[1] = 0.0f;
     vbuf[vpos++].Color = contour_color;
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y + borders.height;
     vbuf[vpos].TexU = textureuv.x + textureuv.width;
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
-    vbuf[vpos].EggTexU = 0.0f;
+    vbuf[vpos].EggFlags[0] = 0.0f;
+    vbuf[vpos].EggFlags[1] = 0.0f;
     vbuf[vpos].Color = contour_color;
 
     auto& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
@@ -2475,7 +2544,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v0.PosY = numeric_cast<float32>(y + h);
             v0.TexU = x1;
             v0.TexV = y2;
-            v0.EggTexU = 0.0f;
+            v0.EggFlags[0] = 0.0f;
+            v0.EggFlags[1] = 0.0f;
             v0.Color = color;
 
             auto& v1 = vbuf[vpos++];
@@ -2483,7 +2553,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v1.PosY = numeric_cast<float32>(y);
             v1.TexU = x1;
             v1.TexV = y1;
-            v1.EggTexU = 0.0f;
+            v1.EggFlags[0] = 0.0f;
+            v1.EggFlags[1] = 0.0f;
             v1.Color = color;
 
             auto& v2 = vbuf[vpos++];
@@ -2491,7 +2562,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v2.PosY = numeric_cast<float32>(y);
             v2.TexU = x2;
             v2.TexV = y1;
-            v2.EggTexU = 0.0f;
+            v2.EggFlags[0] = 0.0f;
+            v2.EggFlags[1] = 0.0f;
             v2.Color = color;
 
             auto& v3 = vbuf[vpos++];
@@ -2499,7 +2571,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v3.PosY = numeric_cast<float32>(y + h);
             v3.TexU = x2;
             v3.TexV = y2;
-            v3.EggTexU = 0.0f;
+            v3.EggFlags[0] = 0.0f;
+            v3.EggFlags[1] = 0.0f;
             v3.Color = color;
 
             curx += l.XAdvance;

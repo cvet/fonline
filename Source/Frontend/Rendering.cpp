@@ -178,8 +178,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
-        _posEggTex[pass] = pass_info.GetAsInt("EffectInfo", "EggTex", -1);
-        _needEggTex |= _posEggTex[pass] != -1;
+        _posEggBuf[pass] = pass_info.GetAsInt("EffectInfo", "EggBuf", -1);
+        _needEggBuf |= _posEggBuf[pass] != -1;
         _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
         _needProjBuf |= _posProjBuf[pass] != -1;
         _posMainTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);

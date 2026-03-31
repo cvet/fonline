@@ -128,6 +128,7 @@ public:
 
     raw_ptr<ID3D11Buffer> Cb_ProjBuf {};
     raw_ptr<ID3D11Buffer> Cb_MainTexBuf {};
+    raw_ptr<ID3D11Buffer> Cb_EggBuf {};
     raw_ptr<ID3D11Buffer> Cb_ContourBuf {};
     raw_ptr<ID3D11Buffer> Cb_TimeBuf {};
     raw_ptr<ID3D11Buffer> Cb_RandomValueBuf {};
@@ -703,7 +704,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, EggTexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, EggFlags)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
                 const auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), d3d_effect->InputLayout[pass].get_pp());
@@ -1278,6 +1279,7 @@ Direct3D_Effect::~Direct3D_Effect()
     }
     SAFE_RELEASE(Cb_ProjBuf);
     SAFE_RELEASE(Cb_MainTexBuf);
+    SAFE_RELEASE(Cb_EggBuf);
     SAFE_RELEASE(Cb_ContourBuf);
     SAFE_RELEASE(Cb_TimeBuf);
     SAFE_RELEASE(Cb_RandomValueBuf);
@@ -1374,6 +1376,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     }
     CBUF_UPLOAD_BUFFER(ProjBuf);
     CBUF_UPLOAD_BUFFER(MainTexBuf);
+    CBUF_UPLOAD_BUFFER(EggBuf);
     CBUF_UPLOAD_BUFFER(ContourBuf);
     CBUF_UPLOAD_BUFFER(TimeBuf);
     CBUF_UPLOAD_BUFFER(RandomValueBuf);
@@ -1385,7 +1388,6 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
 #endif
 #undef CBUF_UPLOAD_BUFFER
 
-    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex ? EggTex.get() : _ctx->DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
     const auto draw_count = numeric_cast<UINT>(indices_to_draw.value_or(d3d_dbuf->IndCount));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
@@ -1424,6 +1426,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     }
         CBUF_SET_BUFFER(ProjBuf);
         CBUF_SET_BUFFER(MainTexBuf);
+        CBUF_SET_BUFFER(EggBuf);
         CBUF_SET_BUFFER(ContourBuf);
         CBUF_SET_BUFFER(TimeBuf);
         CBUF_SET_BUFFER(RandomValueBuf);
@@ -1447,11 +1450,6 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         if (_posMainTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posMainTex[pass], 1, main_tex->ShaderTexView.get_pp());
             _ctx->D3DDeviceContext->PSSetSamplers(_posMainTex[pass], 1, find_tex_sampler(main_tex));
-        }
-
-        if (_posEggTex[pass] != -1) {
-            _ctx->D3DDeviceContext->PSSetShaderResources(_posEggTex[pass], 1, egg_tex->ShaderTexView.get_pp());
-            _ctx->D3DDeviceContext->PSSetSamplers(_posEggTex[pass], 1, find_tex_sampler(egg_tex));
         }
 
 #if FO_ENABLE_3D
@@ -1497,6 +1495,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     }
         CBUF_UNSET_BUFFER(ProjBuf);
         CBUF_UNSET_BUFFER(MainTexBuf);
+        CBUF_UNSET_BUFFER(EggBuf);
         CBUF_UNSET_BUFFER(ContourBuf);
         CBUF_UNSET_BUFFER(TimeBuf);
         CBUF_UNSET_BUFFER(RandomValueBuf);
@@ -1511,11 +1510,6 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         if (_posMainTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posMainTex[pass], 1, &null_res);
             _ctx->D3DDeviceContext->PSSetSamplers(_posMainTex[pass], 1, &null_sampler);
-        }
-
-        if (_posEggTex[pass] != -1) {
-            _ctx->D3DDeviceContext->PSSetShaderResources(_posEggTex[pass], 1, &null_res);
-            _ctx->D3DDeviceContext->PSSetSamplers(_posEggTex[pass], 1, &null_sampler);
         }
 
 #if FO_ENABLE_3D

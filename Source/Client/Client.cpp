@@ -71,7 +71,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
 #endif
 
-    SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));

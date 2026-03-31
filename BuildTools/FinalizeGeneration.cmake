@@ -882,6 +882,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"
+    "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.h"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/Item.h"
     "${FO_ENGINE_ROOT}/Source/Server/Location.h"

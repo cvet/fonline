@@ -592,6 +592,34 @@ FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos&
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, mpos hex, ipos32 hexOffset, isize32 eggSize)
+{
+    self->SetTransparentEgg(slot, hex, hexOffset, eggSize, false);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, CritterView* cr)
+{
+    const auto* cr_hex = dynamic_cast<CritterHexView*>(cr);
+
+    if (cr_hex == nullptr || cr_hex->GetMap() != self || !cr_hex->IsMapSpriteValid()) {
+        self->ClearTransparentEgg(slot);
+        return;
+    }
+
+    const auto rect = cr_hex->GetViewRect();
+    const auto hex_pos = self->GetHexMapPos(cr_hex->GetHex());
+    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_pos.x, rect.y + rect.height / 2 - hex_pos.y};
+    self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_ClearTransparentEgg(MapView* self, TransparentEggSlot slot)
+{
+    self->ClearTransparentEgg(slot);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;

@@ -120,7 +120,8 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     v0.PosY = pos.y + pos.height;
     v0.TexU = _atlasRect.x;
     v0.TexV = _atlasRect.y + _atlasRect.height;
-    v0.EggTexU = 0.0f;
+    v0.EggFlags[0] = 0.0f;
+    v0.EggFlags[1] = 0.0f;
     v0.Color = std::get<0>(colors);
 
     auto& v1 = vbuf[vpos++];
@@ -128,7 +129,8 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     v1.PosY = pos.y;
     v1.TexU = _atlasRect.x;
     v1.TexV = _atlasRect.y;
-    v1.EggTexU = 0.0f;
+    v1.EggFlags[0] = 0.0f;
+    v1.EggFlags[1] = 0.0f;
     v1.Color = std::get<0>(colors);
 
     auto& v2 = vbuf[vpos++];
@@ -136,7 +138,8 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     v2.PosY = pos.y;
     v2.TexU = _atlasRect.x + _atlasRect.width;
     v2.TexV = _atlasRect.y;
-    v2.EggTexU = 0.0f;
+    v2.EggFlags[0] = 0.0f;
+    v2.EggFlags[1] = 0.0f;
     v2.Color = std::get<1>(colors);
 
     auto& v3 = vbuf[vpos++];
@@ -144,7 +147,8 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     v3.PosY = pos.y + pos.height;
     v3.TexU = _atlasRect.x + _atlasRect.width;
     v3.TexV = _atlasRect.y + _atlasRect.height;
-    v3.EggTexU = 0.0f;
+    v3.EggFlags[0] = 0.0f;
+    v3.EggFlags[1] = 0.0f;
     v3.Color = std::get<1>(colors);
 
     return 6;

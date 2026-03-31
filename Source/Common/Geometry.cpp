@@ -591,31 +591,112 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipo
     const int32 h = _settings->MapHexLineHeight;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        const int32 ty = pos.y / h;
-        const int32 num = ty * half_w - pos.x;
-        const int32 rx = -(-num / w - (-num % w != 0 && (-num < 0) != (w < 0) ? 1 : 0));
-        const int32 ry = ty - (rx < 0 ? rx - 1 : rx) / 2;
+        // Hex centers form a lattice with basis vectors:
+        //   v1 = (half_w, h)  — direction of ry++
+        //   v2 = (w, 0)       — direction of rx-- (horizontal neighbor)
+        // Pixel position = a * v1 + b * v2
+        // Solving: a = py / h, b = (px - a * half_w) / w
+        const float32 fh = numeric_cast<float32>(h);
+        const float32 fw = numeric_cast<float32>(w);
+        const float32 fhw = numeric_cast<float32>(half_w);
+
+        const float32 fa = numeric_cast<float32>(pos.y) / fh;
+        const float32 fb = (numeric_cast<float32>(pos.x) - fa * fhw) / fw;
+        const float32 fc = -(fa + fb);
+
+        // Cube coordinate rounding
+        int32 ra = iround<int32>(fa);
+        int32 rb = iround<int32>(fb);
+        int32 rc = iround<int32>(fc);
+
+        if (ra + rb + rc != 0) {
+            const float32 da = std::abs(numeric_cast<float32>(ra) - fa);
+            const float32 db = std::abs(numeric_cast<float32>(rb) - fb);
+            const float32 dc = std::abs(numeric_cast<float32>(rc) - fc);
+
+            if (da > db && da > dc) {
+                ra = -(rb + rc);
+            }
+            else if (db > dc) {
+                rb = -(ra + rc);
+            }
+            else {
+                rc = -(ra + rb);
+            }
+        }
+
+        // Hex center from lattice coordinates
+        int32 cx = ra * half_w + rb * w;
+        int32 cy = ra * h;
+        int32 dx = pos.x - cx;
+        int32 dy = pos.y - cy;
+
+        // Verify point is inside the hex using edge constraints
+        // Pointy-top hex vertices relative to center:
+        //   top (0, -H/2), upper-right (half_w, -H/4), lower-right (half_w, H/4),
+        //   bottom (0, H/2), lower-left (-half_w, H/4), upper-left (-half_w, -H/4)
+        // Three symmetric constraint pairs:
+        //   |dx| <= half_w
+        //   |dx * hq - dy * half_w| <= limit
+        //   |dx * hq + dy * half_w| <= limit
+        // where hq = MapHexHeight / 4, limit = 2 * half_w * hq
+        const int32 hq = _settings->MapHexHeight / 4;
+        const int32 limit = 2 * half_w * hq;
+
+        const auto is_inside_hex = [half_w, hq, limit](int32 lx, int32 ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
+
+        if (!is_inside_hex(dx, dy)) {
+            // Check 6 neighbors in lattice space: (±1,0), (0,±1), (+1,-1), (-1,+1)
+            static constexpr ipos32 neighbor_offsets[] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, -1}, {-1, 1}};
+
+            for (const auto& off : neighbor_offsets) {
+                const int32 na = ra + off.x;
+                const int32 nb = rb + off.y;
+                const int32 ncx = na * half_w + nb * w;
+                const int32 ncy = na * h;
+                const int32 ndx = pos.x - ncx;
+                const int32 ndy = pos.y - ncy;
+
+                if (is_inside_hex(ndx, ndy)) {
+                    ra = na;
+                    rb = nb;
+                    cx = ncx;
+                    cy = ncy;
+                    dx = ndx;
+                    dy = ndy;
+                    break;
+                }
+            }
+        }
+
+        // Convert lattice (a, b) back to engine hex coordinates (rx, ry)
+        // From: a = ry + floor(rx/2), b = -rx
+        const int32 rx = -rb;
+        const int32 ry = ra - (rx < 0 ? rx - 1 : rx) / 2;
         const ipos32 raw_hex = {rx, ry};
 
         if (hex_offset != nullptr) {
-            const int32 hx_adj = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
-            const int32 base_x = raw_hex.y * half_w - raw_hex.x * w + half_w * hx_adj;
-            const int32 base_y = raw_hex.y * h + h * hx_adj;
-            *hex_offset = {pos.x - base_x, pos.y - base_y};
+            *hex_offset = {dx, dy};
         }
 
         return raw_hex;
     }
     else {
-        const int32 ty = pos.y / h;
-        const int32 tx = pos.x / half_w;
-        const int32 rx = (ty - tx) / 2;
-        const int32 ry = (ty + tx) / 2;
+        // Rhomboid/diamond grid
+        // Cell (rx, ry) center: cx = (ry - rx) * half_w, cy = (ry + rx) * h
+        // Oblique coordinate transform:
+        //   u = px / half_w + py / h = 2 * ry (at center)
+        //   v = -px / half_w + py / h = 2 * rx (at center)
+        const float32 u = numeric_cast<float32>(pos.x) / numeric_cast<float32>(half_w) + numeric_cast<float32>(pos.y) / numeric_cast<float32>(h);
+        const float32 v = -numeric_cast<float32>(pos.x) / numeric_cast<float32>(half_w) + numeric_cast<float32>(pos.y) / numeric_cast<float32>(h);
+
+        const int32 ry = iround<int32>(u * 0.5f);
+        const int32 rx = iround<int32>(v * 0.5f);
         const ipos32 raw_hex = {rx, ry};
 
         if (hex_offset != nullptr) {
-            const int32 base_x = (raw_hex.y - raw_hex.x) * half_w;
-            const int32 base_y = (raw_hex.y + raw_hex.x) * h;
+            const int32 base_x = (ry - rx) * half_w;
+            const int32 base_y = (ry + rx) * h;
             *hex_offset = {pos.x - base_x, pos.y - base_y};
         }
 

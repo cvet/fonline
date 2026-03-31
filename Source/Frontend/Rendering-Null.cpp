@@ -242,10 +242,6 @@ public:
         if (_needMainTex) {
             const RenderTexture* main_tex = custom_tex != nullptr ? custom_tex : MainTex.get();
 
-            if (main_tex == nullptr) {
-                main_tex = EggTex.get();
-            }
-
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
                 auto& main_tex_buf = MainTexBuf = MainTexBuffer();
                 const float32* size_data = main_tex != nullptr ? main_tex->SizeData : GetFallbackTextureSizeData();

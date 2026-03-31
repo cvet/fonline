@@ -185,6 +185,9 @@ FIXED_SETTING(int32, Render, WalkAnimBaseSpeed, 60); // Walk animation base spee
 FIXED_SETTING(int32, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 FIXED_SETTING(float32, Render, ModelProjFactor, 40.0f); // Model projection factor
+FIXED_SETTING(int32, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
+FIXED_SETTING(int32, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
+FIXED_SETTING(float32, Render, EggTransparencyTransitionFactor, 0.9f); // Fraction of egg mask kept fully transparent before linear fade to opaque
 FIXED_SETTING(bool, Render, AtlasLinearFiltration, false); // If true, atlas linear filtration is enabled
 FIXED_SETTING(int32, Render, DefaultParticleDrawWidth, 128); // Default particle draw width
 FIXED_SETTING(int32, Render, DefaultParticleDrawHeight, 128); // Default particle draw height

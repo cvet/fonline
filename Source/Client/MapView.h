@@ -239,6 +239,8 @@ public:
     void SwitchShowHex();
     void MarkBlockedHexes();
     void SetHiddenRoof(mpos hex);
+    void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
+    void ClearTransparentEgg(TransparentEggSlot slot);
 
     auto AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32 draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8* palpha, bool* callback) -> MapSprite*;
 
@@ -255,6 +257,15 @@ public:
     auto SaveToText() const -> string;
 
 private:
+    struct TransparentEggInfo
+    {
+        mpos Hex {};
+        ipos32 HexOffset {};
+        isize32 Size {};
+        bool ApplySizeExt {};
+        bool Valid {};
+    };
+
     void ProcessScroll(float32 dt);
     void ProcessZoom(float32 dt);
     void RefreshMinZoom();
@@ -287,6 +298,9 @@ private:
     void InvalidateSpriteChain(Field& field);
 
     void PrepareFogToDraw();
+
+    void UpdateTransparentEgg(TransparentEggSlot slot);
+    void UpdateTransparentEggs();
 
     void ProcessLighting();
     void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32 distance, uint8 flags, int32 intensity, const ipos32* offset);
@@ -348,8 +362,6 @@ private:
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
-    shared_ptr<Sprite> _picHexMask {};
-    vector<ucolor> _picHexMaskData {};
     shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
@@ -402,6 +414,8 @@ private:
     bool _needRebuildLightPrimitives {};
 
     int32 _hiddenRoofNum {};
+
+    array<TransparentEggInfo, SpriteManager::EGG_SLOT_COUNT> _transparentEggs {};
 
     unordered_set<hstring> _fastPids {};
     unordered_set<hstring> _ignorePids {};

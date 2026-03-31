@@ -132,8 +132,7 @@ struct Vertex2D
     ucolor Color {};
     float32 TexU {};
     float32 TexV {};
-    float32 EggTexU {};
-    float32 EggTexV {};
+    float32 EggFlags[2] {};
 };
 static_assert(std::is_standard_layout_v<Vertex2D>);
 static_assert(sizeof(Vertex2D) == 32);
@@ -222,6 +221,11 @@ public:
         float32 MainTexSize[4] {}; // vec4
     };
 
+    struct EggBuffer
+    {
+        float32 EggData[12] {}; // vec4[3], center.xy radius.xy per slot + params
+    };
+
     struct ContourBuffer
     {
         float32 SpriteBorder[4] {}; // vec4
@@ -266,6 +270,7 @@ public:
 
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
+    static_assert(sizeof(EggBuffer) % 16 == 0 && sizeof(EggBuffer) == 48);
     static_assert(sizeof(ContourBuffer) % 16 == 0 && sizeof(ContourBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 32);
     static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
@@ -275,7 +280,7 @@ public:
     static_assert(sizeof(ModelTexBuffer) % 16 == 0 && sizeof(ModelTexBuffer) == 256);
     static_assert(sizeof(ModelAnimBuffer) % 16 == 0 && sizeof(ModelAnimBuffer) == 32);
 #endif
-    // Total size: 3984
+    // Total size: 4000
     // Need fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float32))
 
     RenderEffect(const RenderEffect&) = delete;
@@ -289,9 +294,9 @@ public:
     [[nodiscard]] auto GetPassCount() const -> size_t { return _passCount; }
 
     [[nodiscard]] auto IsNeedMainTex() const -> bool { return _needMainTex; }
-    [[nodiscard]] auto IsNeedEggTex() const -> bool { return _needEggTex; }
     [[nodiscard]] auto IsNeedProjBuf() const -> bool { return _needProjBuf; }
     [[nodiscard]] auto IsNeedMainTexBuf() const -> bool { return _needMainTexBuf; }
+    [[nodiscard]] auto IsNeedEggBuf() const -> bool { return _needEggBuf; }
     [[nodiscard]] auto IsNeedContourBuf() const -> bool { return _needContourBuf; }
     [[nodiscard]] auto IsNeedTimeBuf() const -> bool { return _needTimeBuf; }
     [[nodiscard]] auto IsNeedRandomValueBuf() const -> bool { return _needRandomValueBuf; }
@@ -308,7 +313,6 @@ public:
 
     // Input data
     raw_ptr<const RenderTexture> MainTex {};
-    raw_ptr<const RenderTexture> EggTex {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
     raw_ptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
@@ -319,6 +323,7 @@ public:
 
     optional<ProjBuffer> ProjBuf {};
     optional<MainTexBuffer> MainTexBuf {};
+    optional<EggBuffer> EggBuf {};
     optional<ContourBuffer> ContourBuf {};
     optional<TimeBuffer> TimeBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
@@ -338,7 +343,7 @@ protected:
     EffectUsage _usage;
 
     bool _needMainTex {};
-    bool _needEggTex {};
+    bool _needEggBuf {};
     bool _needProjBuf {};
     bool _needMainTexBuf {};
     bool _needContourBuf {};
@@ -363,7 +368,7 @@ protected:
 #endif
 
     int32 _posMainTex[EFFECT_MAX_PASSES] {};
-    int32 _posEggTex[EFFECT_MAX_PASSES] {};
+    int32 _posEggBuf[EFFECT_MAX_PASSES] {};
     int32 _posProjBuf[EFFECT_MAX_PASSES] {};
     int32 _posMainTexBuf[EFFECT_MAX_PASSES] {};
     int32 _posContourBuf[EFFECT_MAX_PASSES] {};

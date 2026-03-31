@@ -98,7 +98,8 @@ namespace SPK::FO
 
         v.TexU = tu;
         v.TexV = tv;
-        v.EggTexU = 0.0f;
+        v.EggFlags[0] = 0.0f;
+        v.EggFlags[1] = 0.0f;
     }
 
     void SparkRenderBuffer::Render(size_t vertices, RenderEffect* effect) const

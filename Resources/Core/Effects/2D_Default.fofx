@@ -6,36 +6,50 @@ layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
 layout(location = 2) in vec2 InTexCoord;
-layout(location = 3) in vec2 InTexEggCoord;
+layout(location = 3) in vec2 InEggData;
 
 layout(location = 0) out vec4 Color;
 layout(location = 1) out vec2 TexCoord;
-layout(location = 2) out vec2 TexEggCoord;
+layout(location = 2) out vec2 EggFlag;
+layout(location = 3) out vec2 ScreenPos;
 
 void main(void)
 {
     gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
-    TexEggCoord = InTexEggCoord;
+    EggFlag = InEggData;
+    ScreenPos = InPosition.xy;
 }
 
 [FragmentShader]
 layout(binding = 0) uniform sampler2D MainTex;
-layout(binding = 1) uniform sampler2D EggTex;
+layout(binding = 1, std140) uniform EggBuf { vec4 EggData[3]; };
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;
-layout(location = 2) in vec2 TexEggCoord;
+layout(location = 2) in vec2 EggFlag;
+layout(location = 3) in vec2 ScreenPos;
 
 layout(location = 0) out vec4 FragColor;
+
+float GetEggAlpha(vec4 eggData, float transitionStart)
+{
+    vec2 eggCoord = (ScreenPos - eggData.xy) / eggData.zw;
+    float radialAlpha = clamp(dot(eggCoord, eggCoord), 0.0, 1.0);
+    return radialAlpha <= transitionStart ? 0.0 : (radialAlpha - transitionStart) / (1.0 - transitionStart);
+}
 
 void main(void)
 {
     vec4 texColor = texture(MainTex, TexCoord);
+    float transitionStart = clamp(EggData[2].x, 0.0, 0.9999);
     FragColor.rgb = (texColor.rgb * Color.rgb) * 2.0;
     FragColor.a = texColor.a * Color.a;
-    if (TexEggCoord.x > 0.0) {
-        FragColor.a *= texture(EggTex, TexEggCoord).a;
+    if (EggFlag.x > 0.0 && EggData[0].z > 0.0 && EggData[0].w > 0.0) {
+        FragColor.a *= GetEggAlpha(EggData[0], transitionStart);
+    }
+    if (EggFlag.y > 0.0 && EggData[1].z > 0.0 && EggData[1].w > 0.0) {
+        FragColor.a *= GetEggAlpha(EggData[1], transitionStart);
     }
 }

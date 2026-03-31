@@ -263,7 +263,6 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         continue; \
     }
                 CHECK_TEX("MainTex");
-                CHECK_TEX("EggTex");
 #if FO_ENABLE_3D
                 for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
                     CHECK_TEX(strex("ModelTex{}", j).strv());
@@ -286,6 +285,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
     }
             CHECK_BUF(ProjBuf);
             CHECK_BUF(MainTexBuf);
+            CHECK_BUF(EggBuf);
             CHECK_BUF(ContourBuf);
             CHECK_BUF(TimeBuf);
             CHECK_BUF(RandomValueBuf);

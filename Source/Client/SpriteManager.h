@@ -83,6 +83,13 @@ static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 class SpriteManager;
 class AtlasSprite;
 
+///@ ExportEnum
+enum class TransparentEggSlot : uint8
+{
+    Primary = 0,
+    Secondary = 1,
+};
+
 class Sprite : public std::enable_shared_from_this<Sprite>
 {
 public:
@@ -164,6 +171,8 @@ class SpriteManager final
     friend class Sprite;
 
 public:
+    static constexpr size_t EGG_SLOT_COUNT = 2;
+
     SpriteManager() = delete;
     SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver);
     SpriteManager(const SpriteManager&) = delete;
@@ -186,8 +195,7 @@ public:
     [[nodiscard]] auto Random(int32 min_value, int32 max_value) -> int32;
     [[nodiscard]] auto CheckHitTest(int32 value) const -> bool { return value > _settings->SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool;
-    [[nodiscard]] auto IsEggTransp(ipos32 pos) const -> bool;
-    [[nodiscard]] auto CheckEggAppearence(mpos hex, EggAppearenceType appearence) const -> bool;
+    [[nodiscard]] auto IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
 
@@ -224,12 +232,24 @@ public:
     void Flush();
 
     void DrawContours();
-    void InitializeEgg(hstring egg_name, AtlasType atlas_type);
-    void SetEgg(mpos hex, const MapSprite* mspr);
-    void EggNotValid() { _eggValid = false; }
+
+    void SetEgg(TransparentEggSlot slot, mpos hex, const MapSprite* mspr);
+    void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius);
+    void InvalidateEgg(TransparentEggSlot slot);
+    void InvalidateEgg();
 
 private:
+    struct EggSlot
+    {
+        bool Valid {};
+        mpos Hex {};
+        fpos32 Center {};
+        fsize32 Radius {};
+        fpos32 DrawOffset {};
+    };
+
     [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
+    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
 
     void RefreshScissor();
     void EnableScissor();
@@ -268,11 +288,7 @@ private:
 
     bool _contoursAdded {};
 
-    bool _eggValid {};
-    mpos _eggHex {};
-    ipos32 _eggOffset {};
-    shared_ptr<AtlasSprite> _sprEgg {};
-    vector<ucolor> _eggData {};
+    EggSlot _eggSlots[EGG_SLOT_COUNT] {};
 
     ipos32 _windowSizeDiff {};
 

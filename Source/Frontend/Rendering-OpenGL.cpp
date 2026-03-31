@@ -192,6 +192,7 @@ public:
 
     GLuint Ubo_ProjBuf {};
     GLuint Ubo_MainTexBuf {};
+    GLuint Ubo_EggBuf {};
     GLuint Ubo_ContourBuf {};
     GLuint Ubo_TimeBuf {};
     GLuint Ubo_RandomValueBuf {};
@@ -903,7 +904,7 @@ static void EnableVertAtribs(OpenGL_Renderer::Context* ctx, EffectUsage usage)
     GL_CTX(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, PosX))), ctx);
     GL_CTX(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Color))), ctx);
     GL_CTX(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))), ctx);
-    GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))), ctx);
+    GL_CTX(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggFlags))), ctx);
 
     for (GLuint i = 0; i <= 3; i++) {
         GL_CTX(glEnableVertexAttribArray(i), ctx);
@@ -1081,6 +1082,7 @@ OpenGL_Effect::~OpenGL_Effect()
     }
         UBO_DELETE_BUFFER(ProjBuf);
         UBO_DELETE_BUFFER(MainTexBuf);
+        UBO_DELETE_BUFFER(EggBuf);
         UBO_DELETE_BUFFER(ContourBuf);
         UBO_DELETE_BUFFER(TimeBuf);
         UBO_DELETE_BUFFER(RandomValueBuf);
@@ -1175,6 +1177,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     }
         UBO_UPLOAD_BUFFER(ProjBuf);
         UBO_UPLOAD_BUFFER(MainTexBuf);
+        UBO_UPLOAD_BUFFER(EggBuf);
         UBO_UPLOAD_BUFFER(ContourBuf);
         UBO_UPLOAD_BUFFER(TimeBuf);
         UBO_UPLOAD_BUFFER(RandomValueBuf);
@@ -1187,7 +1190,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #undef UBO_UPLOAD_BUFFER
     }
 
-    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex ? EggTex.get() : _ctx->DummyTexture.get());
     const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(vindex_t));
 
@@ -1205,6 +1207,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     }
             UBO_BIND_BUFFER(ProjBuf);
             UBO_BIND_BUFFER(MainTexBuf);
+            UBO_BIND_BUFFER(EggBuf);
             UBO_BIND_BUFFER(ContourBuf);
             UBO_BIND_BUFFER(TimeBuf);
             UBO_BIND_BUFFER(RandomValueBuf);
@@ -1222,12 +1225,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (_posMainTex[pass] != -1) {
             GL(glActiveTexture(GL_TEXTURE0 + _posMainTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
-            GL(glActiveTexture(GL_TEXTURE0));
-        }
-
-        if (_posEggTex[pass] != -1) {
-            GL(glActiveTexture(GL_TEXTURE0 + _posEggTex[pass]));
-            GL(glBindTexture(GL_TEXTURE_2D, egg_tex->TexId));
             GL(glActiveTexture(GL_TEXTURE0));
         }
 

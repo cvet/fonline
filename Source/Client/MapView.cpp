@@ -84,15 +84,6 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex3.png", AtlasType::MapSprites);
     _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track1.png", AtlasType::MapSprites);
     _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track2.png", AtlasType::MapSprites);
-    _picHexMask = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex_Mask.png", AtlasType::MapSprites);
-
-    if (_picHexMask) {
-        const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
-        FO_RUNTIME_ASSERT(atlas_spr);
-        const auto mask_x = iround<int32>(numeric_cast<float32>(atlas_spr->GetAtlas()->GetTexture()->Size.width) * atlas_spr->GetAtlasRect().x);
-        const auto mask_y = iround<int32>(numeric_cast<float32>(atlas_spr->GetAtlas()->GetTexture()->Size.height) * atlas_spr->GetAtlasRect().y);
-        _picHexMaskData = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({mask_x, mask_y}, atlas_spr->GetSize());
-    }
 
     _mapSize = GetSize();
 
@@ -973,7 +964,7 @@ void MapView::RebuildMapNow()
     ShowHexLines(0, _hVisible);
 
     _rebuildMap = false;
-    _engine->SprMngr.EggNotValid();
+    _engine->SprMngr.InvalidateEgg();
     _needRebuildLightPrimitives = true;
     _needReapplyLights = true;
     _engine->OnRenderMap.Fire();
@@ -2348,6 +2339,66 @@ auto MapView::GetHexMapPos(mpos hex) const -> ipos32
     return {hex_offset.x, hex_offset.y};
 }
 
+void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_mapSize.is_valid_pos(hex)) {
+        ClearTransparentEgg(slot);
+        return;
+    }
+
+    auto& egg = _transparentEggs[static_cast<size_t>(slot)];
+    egg.Hex = hex;
+    egg.HexOffset = hex_offset;
+    egg.Size = egg_size;
+    egg.ApplySizeExt = apply_size_ext;
+    egg.Valid = true;
+
+    UpdateTransparentEgg(slot);
+}
+
+void MapView::ClearTransparentEgg(TransparentEggSlot slot)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _transparentEggs[static_cast<size_t>(slot)] = {};
+    _engine->SprMngr.InvalidateEgg(slot);
+}
+
+void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& egg = _transparentEggs[static_cast<size_t>(slot)];
+
+    if (!egg.Valid) {
+        _engine->SprMngr.InvalidateEgg(slot);
+        return;
+    }
+    if (!_mapSize.is_valid_pos(egg.Hex)) {
+        _engine->SprMngr.InvalidateEgg(slot);
+        return;
+    }
+
+    const auto hex_pos = GetHexMapPos(egg.Hex);
+    const auto center_x = hex_pos.x + egg.HexOffset.x;
+    const auto center_y = hex_pos.y + egg.HexOffset.y;
+    const auto egg_width_ext = egg.ApplySizeExt ? numeric_cast<float32>(_engine->Settings.EggEllipseWidthExt) : 0.0f;
+    const auto egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32>(_engine->Settings.EggEllipseHeightExt) : 0.0f;
+    float32 radius_w = std::max((numeric_cast<float32>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
+    float32 radius_h = std::max((numeric_cast<float32>(egg.Size.height) + egg_height_ext) * 0.5f, 1.0f);
+    _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32>(center_x), numeric_cast<float32>(center_y)}, {radius_w, radius_h});
+}
+
+void MapView::UpdateTransparentEggs()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    UpdateTransparentEgg(TransparentEggSlot::Primary);
+    UpdateTransparentEgg(TransparentEggSlot::Secondary);
+}
+
 void MapView::DrawMap()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2356,6 +2407,7 @@ void MapView::DrawMap()
         RebuildMapNow();
     }
 
+    UpdateTransparentEggs();
     ProcessLighting();
     PrepareFogToDraw();
     _mapSprites.SortIfNeeded();
@@ -3274,28 +3326,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
     const ipos32 pos = ScreenToMapPos(screen_pos);
     const ipos32 screen_offset = _engine->Geometry.GetHexPos(_screenRawHex);
     ipos32 offset;
-    ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
-
-    // Correct with hex color mask
-    if (_picHexMask) {
-        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->GetSize().width - 1);
-        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->GetSize().height - 1);
-        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->GetSize().width + mask_x];
-        const uint8 mask_color_r = mask_color.comp.r;
-
-        if (mask_color_r == 50) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
-        }
-        else if (mask_color_r == 100) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 0);
-        }
-        else if (mask_color_r == 150) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 3 : 4);
-        }
-        else if (mask_color_r == 200) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 2u);
-        }
-    }
+    const ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);
@@ -3318,7 +3349,6 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
     vector<pair<ItemHexView*, const MapSprite*>> pix_item_egg;
 
     const auto pos = ScreenToMapPos(screen_pos);
-    const auto is_egg = _engine->SprMngr.IsEggTransp(pos);
 
     const auto process_sprite = [&](ItemHexView* item, const MapSprite* mspr) {
         const irect32 rect = mspr->GetDrawRect();
@@ -3341,7 +3371,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32 extra_ran
             }
         }
 
-        if (is_egg && _engine->SprMngr.CheckEggAppearence(mspr->GetHex(), mspr->GetEggAppearence())) {
+        if (_engine->SprMngr.IsEggTransp(pos, mspr->GetHex(), mspr->GetEggAppearence())) {
             pix_item_egg.emplace_back(item, mspr);
         }
         else {

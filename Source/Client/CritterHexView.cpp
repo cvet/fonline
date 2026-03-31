@@ -775,10 +775,6 @@ void CritterHexView::RefreshOffs()
 
     const auto hex_offset = GetHexOffset();
     _sprOffset = ipos32(hex_offset) + _offsExt.round<int32>() + _offsAnim;
-
-    if (IsMapSpriteValid() && GetIsChosen()) {
-        _engine->SprMngr.SetEgg(GetHex(), GetMapSprite());
-    }
 }
 
 auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
