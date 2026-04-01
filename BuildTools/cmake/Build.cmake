@@ -461,10 +461,6 @@ macro(AddSharedApplication target sourceFile)
 	set(appSharedProperties
 		LIBRARY_OUTPUT_DIRECTORY ${APP_SHARED_OUTPUT_DIR})
 
-	if(APP_SHARED_NO_PREFIX)
-		AppendList(appSharedProperties PREFIX "")
-	endif()
-
 	if(APP_SHARED_EXTRA_PROPERTIES)
 		AppendList(appSharedProperties ${APP_SHARED_EXTRA_PROPERTIES})
 	endif()
@@ -481,4 +477,8 @@ macro(AddSharedApplication target sourceFile)
 	endif()
 
 	SetupApplicationTarget(${target} ${appSharedArgs})
+
+	if(APP_SHARED_NO_PREFIX)
+		SetTargetProperties(${target} PREFIX "")
+	endif()
 endmacro()
