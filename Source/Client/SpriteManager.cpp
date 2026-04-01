@@ -552,19 +552,19 @@ void SpriteManager::Flush()
         FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
 
         if (dip.SourceEffect->IsNeedEggBuf()) {
-            auto& egg_buf = dip.SourceEffect->EggBuf.emplace();
+            auto& egg_buf = dip.SourceEffect->EggBuf = RenderEffect::EggBuffer();
 
             for (size_t slot_index = 0; slot_index < EGG_SLOT_COUNT; slot_index++) {
                 const auto& egg = _eggSlots[slot_index];
                 const auto data_index = slot_index * 4;
 
-                egg_buf.EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
-                egg_buf.EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
-                egg_buf.EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
-                egg_buf.EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+                egg_buf->EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
+                egg_buf->EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
+                egg_buf->EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
+                egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
             }
 
-            egg_buf.EggData[8] = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+            egg_buf->EggData[8] = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         }
 
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf.get(), ipos, dip.IndicesCount, dip.MainTexture.get());
