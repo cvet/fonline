@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Geometry.h"
+#include "Movement.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
@@ -65,7 +66,13 @@ FO_SCRIPT_API void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsMoving(Critter* self)
 {
-    return self->IsMoving() || self->TargetMoving.State == MovingState::InProgress;
+    return self->IsMoving();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API MovingContext* Server_Critter_GetMovingContext(Critter* self)
+{
+    return self->GetMovingContext();
 }
 
 ///@ ExportMethod
@@ -698,52 +705,92 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
     return self->GetPlayer() != nullptr;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_MoveToCritter(Critter* self, Critter* target, int32 cut, int32 speed)
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32 cut, int32 speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
 {
-    if (target == nullptr) {
-        throw ScriptException("Critter arg is null");
+    auto* engine = self->GetEngine();
+    auto* map = engine->EntityMngr.GetMap(self->GetMapId());
+
+    if (map == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+    if (!gagCallabck) {
+        throw ScriptException("Gag callback must be provided");
     }
 
-    self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::InProgress;
-    self->TargetMoving.TargId = target->GetId();
-    self->TargetMoving.TargHex = target->GetHex();
-    self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = numeric_cast<uint16>(speed);
-}
+    self->StopMoving();
 
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_MoveToHex(Critter* self, mpos hex, int32 cut, int32 speed)
-{
-    self->TargetMoving = {};
-    self->TargetMoving.State = MovingState::InProgress;
-    self->TargetMoving.TargHex = hex;
-    self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = numeric_cast<uint16>(speed);
+    if (speed == 0) {
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<uint8> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        failed_moving->Complete(MovingState::CantMove);
+        return failed_moving.release_ownership();
+    }
+
+    FindPathInput input;
+    input.TargetMap = map;
+    input.FromCritter = self;
+    input.FromHex = self->GetHex();
+    input.ToHex = hex;
+    input.Multihex = self->GetMultihex();
+    input.Cut = cut;
+
+    if (gagCallabck) {
+        // Todo: use move only function
+        input.GagCallaback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](Item* gag) mutable { return gag_callback->Call(self, gag) && gag_callback->GetResult(); };
+    }
+
+    const auto find_path = engine->MapMngr.FindPath(input);
+
+    if (find_path.Result != FindPathOutput::ResultType::Ok) {
+        auto state = MovingState::InternalError;
+
+        switch (find_path.Result) {
+        case FindPathOutput::ResultType::AlreadyHere:
+            state = MovingState::Success;
+            break;
+        case FindPathOutput::ResultType::TooFar:
+            state = MovingState::HexTooFar;
+            break;
+        case FindPathOutput::ResultType::HexBusy:
+            state = MovingState::HexBusy;
+            break;
+        case FindPathOutput::ResultType::HexBusyRing:
+            state = MovingState::HexBusyRing;
+            break;
+        case FindPathOutput::ResultType::NoWay:
+            state = MovingState::Deadlock;
+            break;
+        case FindPathOutput::ResultType::TraceFailed:
+            state = MovingState::TraceFailed;
+            break;
+        default:
+            break;
+        }
+
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<uint8> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        if (state == MovingState::HexBusy || state == MovingState::HexBusyRing) {
+            failed_moving->SetBlockHexes(self->GetHex(), hex);
+        }
+        failed_moving->Complete(state);
+        return failed_moving.release_ownership();
+    }
+
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), ipos16 {});
+    engine->StartCritterMoving(self, moving, nullptr);
+    return moving.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self)
 {
-    return self->TargetMoving.State;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self, ident_t& gagId)
-{
-    gagId = self->TargetMoving.GagEntityId;
-
-    return self->TargetMoving.State;
+    return self->GetMovingState();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 {
-    self->TargetMoving = {};
-
     if (self->IsMoving()) {
-        self->ClearMove();
+        self->StopMoving(MovingState::Stopped);
         self->SendAndBroadcast_Moving();
     }
 }

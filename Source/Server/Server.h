@@ -104,6 +104,7 @@ public:
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
+    void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
     void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
     void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
 

@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#include "Settings.h"
-
 FO_BEGIN_NAMESPACE
 
 // Todo: make hex position customizable, to allow to add third Z coordinate
@@ -108,24 +106,23 @@ FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 class GeometryHelper final
 {
 public:
-    explicit GeometryHelper(GeometrySettings& settings);
+    GeometryHelper() = delete;
     GeometryHelper(const GeometryHelper&) = delete;
-    GeometryHelper(GeometryHelper&&) = default;
+    GeometryHelper(GeometryHelper&&) = delete;
     auto operator=(const GeometryHelper&) -> GeometryHelper& = delete;
     auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
-    ~GeometryHelper() = default;
+    ~GeometryHelper() = delete;
 
-    [[nodiscard]] auto GetYProj() const -> float32;
-    [[nodiscard]] auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32;
-    [[nodiscard]] auto GetHexPos(mpos hex) const -> ipos32;
-    [[nodiscard]] auto GetHexPos(ipos32 raw_hex) const -> ipos32;
-    [[nodiscard]] auto GetHexAxialCoord(mpos hex) const -> ipos32;
-    [[nodiscard]] auto GetHexAxialCoord(ipos32 raw_hex) const -> ipos32;
-    [[nodiscard]] auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) const -> ipos32;
-    [[nodiscard]] auto GetHexOffset(mpos from_hex, mpos to_hex) const -> ipos32;
-    [[nodiscard]] auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32;
-    [[nodiscard]] auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;
-
+    [[nodiscard]] static auto GetYProj() -> float32;
+    [[nodiscard]] static auto GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32;
+    [[nodiscard]] static auto GetHexPos(mpos hex) -> ipos32;
+    [[nodiscard]] static auto GetHexPos(ipos32 raw_hex) -> ipos32;
+    [[nodiscard]] static auto GetHexAxialCoord(mpos hex) -> ipos32;
+    [[nodiscard]] static auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
+    [[nodiscard]] static auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) -> ipos32;
+    [[nodiscard]] static auto GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32;
+    [[nodiscard]] static auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32;
+    [[nodiscard]] static auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;
     [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;
     [[nodiscard]] static auto GetDistance(ipos32 hex1, ipos32 hex2) -> int32;
@@ -152,9 +149,6 @@ public:
     static auto MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool;
     static void MoveHexAroundAwayUnsafe(ipos32& hex, int32 index);
     static void ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
-
-private:
-    raw_ptr<GeometrySettings> _settings;
 };
 
 FO_END_NAMESPACE

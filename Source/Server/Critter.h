@@ -38,6 +38,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "Geometry.h"
+#include "Movement.h"
 #include "ServerEntity.h"
 
 FO_BEGIN_NAMESPACE
@@ -47,25 +48,6 @@ class MapManager;
 class Item;
 class Map;
 class Location;
-
-///@ ExportEnum
-enum class MovingState : uint8
-{
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    InternalError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    HexBusyRing = 9,
-    Deadlock = 10,
-    TraceFailed = 11,
-    NotAlive = 12,
-    Attached = 13,
-};
 
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
@@ -101,7 +83,13 @@ public:
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapGroup() -> span<raw_ptr<Critter>>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> auto& { return _globalMapGroup; }
-    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return _moving != nullptr; }
+    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32 { return _movingUid; }
+    [[nodiscard]] auto GetMoving() const noexcept -> MovingContext* { return const_cast<MovingContext*>(_moving.get()); }
+    [[nodiscard]] auto GetMoving() noexcept -> MovingContext* { return _moving.get(); }
+    [[nodiscard]] auto GetMovingContext() const noexcept -> const MovingContext* { return _moving ? _moving.get() : _lastMoving.get(); }
+    [[nodiscard]] auto GetMovingContext() noexcept -> MovingContext* { return _moving ? _moving.get() : _lastMoving.get(); }
+    [[nodiscard]] auto GetMovingState() const noexcept -> MovingState { return _moving ? MovingState::InProgress : (_lastMoving ? _lastMoving->GetCompleteReason() : MovingState::Success); }
 
     auto AddVisibleCritter(Critter* cr) -> bool;
     auto RemoveVisibleCritter(Critter* cr) -> bool;
@@ -116,9 +104,10 @@ public:
     auto CheckVisibleItem(ident_t item_id) const noexcept -> bool;
 
     void MarkIsForPlayer();
+    void SetMoving(refcount_ptr<MovingContext> moving);
+    void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(Player* player);
     void DetachPlayer();
-    void ClearMove();
     void AttachToCritter(Critter* cr);
     void DetachFromCritter();
     void MoveAttachedCritters();
@@ -200,36 +189,12 @@ public:
     ident_t ViewMapLocId {};
     int32 ViewMapLocEnt {};
 
-    struct TargetMovingData
-    {
-        MovingState State {MovingState::Success};
-        ident_t TargId {};
-        mpos TargHex {};
-        int32 Cut {};
-        uint16 Speed {};
-        int32 TraceDist {};
-        ident_t GagEntityId {};
-    } TargetMoving {};
-
-    struct MovingData
-    {
-        uint32 Uid {};
-        uint16 Speed {};
-        vector<uint8> Steps {};
-        vector<uint16> ControlSteps {};
-        nanotime StartTime {};
-        timespan OffsetTime {};
-        mpos StartHex {};
-        mpos EndHex {};
-        float32 WholeTime {};
-        float32 WholeDist {};
-        ipos16 StartHexOffset {};
-        ipos16 EndHexOffset {};
-    } Moving {};
-
     vector<raw_ptr<Critter>> AttachedCritters {};
 
 private:
+    uint32 _movingUid {};
+    refcount_ptr<MovingContext> _moving {};
+    refcount_ptr<MovingContext> _lastMoving {};
     refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
     vector<raw_ptr<Item>> _invItems {};

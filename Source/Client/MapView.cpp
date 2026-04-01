@@ -61,7 +61,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
 
     _name = strex("{}_{}", proto->GetName(), id);
 
-    _maxScroll = {_engine->Settings.MapHexWidth, _engine->Settings.MapHexLineHeight * 2};
+    _maxScroll = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
     _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
     _viewSize = fsize32(_screenSize);
 
@@ -434,10 +434,9 @@ auto MapView::GetViewSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& settings = _engine->Settings;
     const auto zoom = GetSpritesZoom();
-    const auto screen_hexes_width = _screenSize.width / settings.MapHexWidth + ((_screenSize.width % settings.MapHexWidth) != 0 ? 1 : 0);
-    const auto screen_hexes_height = _screenSize.height / settings.MapHexLineHeight + ((_screenSize.height % settings.MapHexLineHeight) != 0 ? 1 : 0);
+    const auto screen_hexes_width = _screenSize.width / GameSettings::MAP_HEX_WIDTH + ((_screenSize.width % GameSettings::MAP_HEX_WIDTH) != 0 ? 1 : 0);
+    const auto screen_hexes_height = _screenSize.height / GameSettings::MAP_HEX_LINE_HEIGHT + ((_screenSize.height % GameSettings::MAP_HEX_LINE_HEIGHT) != 0 ? 1 : 0);
     const auto view_hexes_width = is_float_equal(zoom, 1.0f) ? screen_hexes_width : iround<int32>(std::ceil(numeric_cast<float32>(screen_hexes_width) / zoom));
     const auto view_hexes_height = is_float_equal(zoom, 1.0f) ? screen_hexes_height : iround<int32>(std::ceil(numeric_cast<float32>(screen_hexes_height) / zoom));
 
@@ -908,8 +907,8 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
                     const auto* spr = item->GetSprite();
 
                     if (spr != nullptr) {
-                        const auto x = field.Offset.x + _engine->Settings.MapHexWidth / 2 - spr->GetOffset().x;
-                        const auto y = field.Offset.y + _engine->Settings.MapHexHeight / 2 - spr->GetOffset().y;
+                        const auto x = field.Offset.x + GameSettings::MAP_HEX_WIDTH / 2 - spr->GetOffset().x;
+                        const auto y = field.Offset.y + GameSettings::MAP_HEX_HEIGHT / 2 - spr->GetOffset().y;
                         const auto rect = irect32(ipos32(x, y), spr->GetSize());
                         result = result.has_value() ? result->expanded(rect) : rect;
                     }
@@ -1144,7 +1143,7 @@ void MapView::ShowHex(const ViewField& vf)
     if (_isShowTrack && GetHexTrack(hex) != 0) {
         const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
         auto* mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, //
-            {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
+            {GameSettings::MAP_HEX_WIDTH / 2, (GameSettings::MAP_HEX_HEIGHT / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
             spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
         AddSpriteToChain(field, mspr);
     }
@@ -1218,7 +1217,7 @@ void MapView::ShowHex(const ViewField& vf)
 
             const auto* spr = pattern->Sprites.at((hex.y * (pattern->Sprites.size() / 5) + hex.x) % pattern->Sprites.size()).get();
             auto* mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
-                {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
+                {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
                 spr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, mspr);
         }
@@ -1229,12 +1228,12 @@ void MapView::ShowHex(const ViewField& vf)
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {
-            const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+            const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
             if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
                 const auto& spr = _picTrack1;
                 auto* mspr = _mapSprites.AddSprite(DrawOrderType::Last, hex, //
-                    {_engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
+                    {GameSettings::MAP_HEX_WIDTH / 2, (GameSettings::MAP_HEX_HEIGHT / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
                     spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
                 AddSpriteToChain(field, mspr);
             }
@@ -1901,8 +1900,8 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     }
 
     ipos32 center_pos = GetHexMapPos(ls->Hex);
-    center_pos.x += _engine->Settings.MapHexWidth / 2;
-    center_pos.y += _engine->Settings.MapHexHeight / 2;
+    center_pos.x += GameSettings::MAP_HEX_WIDTH / 2;
+    center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
     const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get()};
 
@@ -1916,7 +1915,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const uint8 alpha = std::get<1>(fan_hex);
         const bool use_offsets = std::get<2>(fan_hex);
 
-        const auto [ox, oy] = _engine->Geometry.GetHexOffset(ls->Hex, hex);
+        const auto [ox, oy] = GeometryHelper::GetHexOffset(ls->Hex, hex);
         const ipos32 pos = {center_pos.x + ox, center_pos.y + oy};
         const ucolor color = ucolor(ls->CenterColor, alpha);
         const ipos32* offset = use_offsets ? ls->Offset.get() : nullptr;
@@ -1941,7 +1940,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const auto& cur = points[i];
         const auto& next = points[i + 1];
 
-        if ((next.PointPos - cur.PointPos).idist() > _engine->Settings.MapHexWidth) {
+        if ((next.PointPos - cur.PointPos).idist() > GameSettings::MAP_HEX_WIDTH) {
             soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
             soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
 
@@ -1981,17 +1980,17 @@ auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 
     FO_RUNTIME_ASSERT(spr);
 
-    const auto left = std::max(spr->GetSize().width / 2 + spr->GetOffset().x + offset.x + _maxScroll.width - _wLeft * _engine->Settings.MapHexWidth, 0);
-    const auto right = std::max(spr->GetSize().width / 2 - spr->GetOffset().x - offset.x + _maxScroll.width - _wRight * _engine->Settings.MapHexWidth, 0);
-    const auto top = std::max(0 + spr->GetOffset().y + offset.y + _maxScroll.height - _hTop * _engine->Settings.MapHexLineHeight, 0);
-    const auto bottom = std::max(spr->GetSize().height - spr->GetOffset().y - offset.y + _maxScroll.height - _hBottom * _engine->Settings.MapHexLineHeight, 0);
+    const auto left = std::max(spr->GetSize().width / 2 + spr->GetOffset().x + offset.x + _maxScroll.width - _wLeft * GameSettings::MAP_HEX_WIDTH, 0);
+    const auto right = std::max(spr->GetSize().width / 2 - spr->GetOffset().x - offset.x + _maxScroll.width - _wRight * GameSettings::MAP_HEX_WIDTH, 0);
+    const auto top = std::max(0 + spr->GetOffset().y + offset.y + _maxScroll.height - _hTop * GameSettings::MAP_HEX_LINE_HEIGHT, 0);
+    const auto bottom = std::max(spr->GetSize().height - spr->GetOffset().y - offset.y + _maxScroll.height - _hBottom * GameSettings::MAP_HEX_LINE_HEIGHT, 0);
 
     if (left != 0 || right != 0 || top != 0 || bottom != 0) {
-        _wLeft += left / _engine->Settings.MapHexWidth + (left % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
-        _wRight += right / _engine->Settings.MapHexWidth + (right % _engine->Settings.MapHexWidth != 0 ? 1 : 0);
-        _hTop += top / _engine->Settings.MapHexLineHeight + (top % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
+        _wLeft += left / GameSettings::MAP_HEX_WIDTH + (left % GameSettings::MAP_HEX_WIDTH != 0 ? 1 : 0);
+        _wRight += right / GameSettings::MAP_HEX_WIDTH + (right % GameSettings::MAP_HEX_WIDTH != 0 ? 1 : 0);
+        _hTop += top / GameSettings::MAP_HEX_LINE_HEIGHT + (top % GameSettings::MAP_HEX_LINE_HEIGHT != 0 ? 1 : 0);
         _hTop += _hTop % 2;
-        _hBottom += bottom / _engine->Settings.MapHexLineHeight + (bottom % _engine->Settings.MapHexLineHeight != 0 ? 1 : 0);
+        _hBottom += bottom / GameSettings::MAP_HEX_LINE_HEIGHT + (bottom % GameSettings::MAP_HEX_LINE_HEIGHT != 0 ? 1 : 0);
 
         if (!_mapLoading) {
             RebuildMap();
@@ -2098,7 +2097,7 @@ void MapView::RecacheScrollBlocks()
         for (const auto hy : iterate_range(_mapSize.height)) {
             const mpos hex = {hx, hy};
             const auto& field = _hexField->GetCellForReading(hex);
-            const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+            const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
             bool is_on_scroll_block = false;
 
@@ -2254,11 +2253,11 @@ void MapView::InitView()
 
     // Assign view coords
     size_t vpos = 0;
-    auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
+    auto oy = -GameSettings::MAP_HEX_LINE_HEIGHT * _hTop;
 
     for (auto yv = 0; yv < _hVisible; yv++) {
         auto cur_hex = row_hex;
-        auto ox = -(_wLeft * _engine->Settings.MapHexWidth) + (yv % 2 != 0 ? _engine->Settings.MapHexWidth / 2 : 0);
+        auto ox = -(_wLeft * GameSettings::MAP_HEX_WIDTH) + (yv % 2 != 0 ? GameSettings::MAP_HEX_WIDTH / 2 : 0);
 
         for (auto xv = 0; xv < _wVisible; xv++) {
             auto& vf = _viewField[vpos];
@@ -2267,11 +2266,11 @@ void MapView::InitView()
             vf.Offset = {ox, oy};
             vf.RawHex = cur_hex;
 
-            ox += _engine->Settings.MapHexWidth;
+            ox += GameSettings::MAP_HEX_WIDTH;
             GeometryHelper::MoveHexByDirUnsafe(cur_hex, 1);
         }
 
-        oy += _engine->Settings.MapHexLineHeight;
+        oy += GameSettings::MAP_HEX_LINE_HEIGHT;
         GeometryHelper::MoveHexByDirUnsafe(row_hex, yv % 2 == 0 ? 2 : 3);
     }
 }
@@ -2317,25 +2316,25 @@ auto MapView::GetCenterRawHex() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ipos32 lt_pos = _engine->Geometry.GetHexPos(_screenRawHex);
+    const ipos32 lt_pos = GeometryHelper::GetHexPos(_screenRawHex);
     const ipos32 center_offset = ipos32(iround<int32>(_viewSize.width) / 2, iround<int32>(_viewSize.height) / 2);
-    return _engine->Geometry.GetHexPosCoord(lt_pos + center_offset);
+    return GeometryHelper::GetHexPosCoord(lt_pos + center_offset);
 }
 
 auto MapView::ConvertToScreenRawHex(ipos32 center_raw_hex) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ipos32 center_pos = _engine->Geometry.GetHexPos(center_raw_hex);
+    const ipos32 center_pos = GeometryHelper::GetHexPos(center_raw_hex);
     const ipos32 center_offset = ipos32(iround<int32>(_viewSize.width) / 2, iround<int32>(_viewSize.height) / 2);
-    return _engine->Geometry.GetHexPosCoord(center_pos - center_offset);
+    return GeometryHelper::GetHexPosCoord(center_pos - center_offset);
 }
 
 auto MapView::GetHexMapPos(mpos hex) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hex_offset = _engine->Geometry.GetHexOffset(_screenRawHex, ipos32(hex));
+    const auto hex_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(hex));
     return {hex_offset.x, hex_offset.y};
 }
 
@@ -2537,8 +2536,8 @@ void MapView::PrepareFogToDraw()
             const auto base_hex = chosen->GetHex();
             const int32 chosen_dir = chosen->GetDir();
             const auto dist_shoot = _shootBordersDist;
-            const auto half_hw = _engine->Settings.MapHexWidth / 2;
-            const auto half_hh = _engine->Settings.MapHexHeight / 2;
+            const auto half_hw = GameSettings::MAP_HEX_WIDTH / 2;
+            const auto half_hh = GameSettings::MAP_HEX_HEIGHT / 2;
 
             const ipos32 base_pos = GetHexMapPos(base_hex);
             const auto center_look_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, 0}, .PointOffset = chosen->GetSpriteOffsetPtr()};
@@ -2645,7 +2644,7 @@ auto MapView::IsOutsideArea(mpos hex) const -> bool
     const irect32 scroll_area = GetScrollAxialArea();
 
     if (!scroll_area.is_zero()) {
-        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+        const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
         if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
             axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
@@ -2687,7 +2686,7 @@ void MapView::ProcessScroll(float32 dt)
         const auto* cr = GetCritter(_autoScrollSoftLockedCritter);
 
         if (cr != nullptr && cr->GetHex() != _autoScrollCritterLastHex) {
-            const auto hex_offset = _engine->Geometry.GetHexOffset(_autoScrollCritterLastHex, cr->GetHex());
+            const auto hex_offset = GeometryHelper::GetHexOffset(_autoScrollCritterLastHex, cr->GetHex());
             ApplyScrollOffset(hex_offset - ipos32(_autoScrollCritterLastHexOffset) + ipos32(cr->GetHexOffset()), _autoScrollLockSpeed, true);
             _autoScrollCritterLastHex = cr->GetHex();
             _autoScrollCritterLastHexOffset = cr->GetHexOffset();
@@ -2858,16 +2857,16 @@ void MapView::InstantScroll(fpos32 scroll)
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {
-            const fpos32 screen_pos = fpos32(_engine->Geometry.GetHexPos(_screenRawHex));
-            const ipos32 half_hex = {_engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2};
+            const fpos32 screen_pos = fpos32(GeometryHelper::GetHexPos(_screenRawHex));
+            const ipos32 half_hex = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
             const float32 zoom = GetSpritesZoom();
             const fpos32 view_size = fpos32(numeric_cast<float32>(_screenSize.width), numeric_cast<float32>(_screenSize.height)) / zoom;
             const fpos32 lt_pos = screen_pos + _scrollOffset;
             const fpos32 rb_pos = screen_pos + view_size + _scrollOffset;
-            const float32 area_l = numeric_cast<float32>(scroll_area.x * _engine->Settings.MapHexWidth / 2 + half_hex.x);
-            const float32 area_t = numeric_cast<float32>(scroll_area.y * _engine->Settings.MapHexLineHeight + half_hex.y);
-            const float32 area_r = numeric_cast<float32>((scroll_area.x + scroll_area.width) * _engine->Settings.MapHexWidth / 2 + half_hex.x);
-            const float32 area_b = numeric_cast<float32>((scroll_area.y + scroll_area.height) * _engine->Settings.MapHexLineHeight + half_hex.y);
+            const float32 area_l = numeric_cast<float32>(scroll_area.x * GameSettings::MAP_HEX_WIDTH / 2 + half_hex.x);
+            const float32 area_t = numeric_cast<float32>(scroll_area.y * GameSettings::MAP_HEX_LINE_HEIGHT + half_hex.y);
+            const float32 area_r = numeric_cast<float32>((scroll_area.x + scroll_area.width) * GameSettings::MAP_HEX_WIDTH / 2 + half_hex.x);
+            const float32 area_b = numeric_cast<float32>((scroll_area.y + scroll_area.height) * GameSettings::MAP_HEX_LINE_HEIGHT + half_hex.y);
 
             if (lt_pos.x - area_l < 0.0f) {
                 _scrollOffset.x -= lt_pos.x - area_l;
@@ -2919,7 +2918,7 @@ void MapView::ScrollToHex(mpos hex, ipos16 hex_offset, int32 speed, bool can_sto
 {
     FO_STACK_TRACE_ENTRY();
 
-    const ipos32 hex_pos = _engine->Geometry.GetHexOffset(GetCenterRawHex(), ipos32(hex));
+    const ipos32 hex_pos = GeometryHelper::GetHexOffset(GetCenterRawHex(), ipos32(hex));
     _autoScrollActive = false;
     ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset(), speed, can_stop);
 }
@@ -2982,8 +2981,8 @@ void MapView::RefreshMinZoom()
 
     if (const irect32 scroll_area = GetScrollAxialArea(); !scroll_area.is_zero()) {
         constexpr float32 min_zoom_bias = 1.1f;
-        const float32 min_zoom_x = numeric_cast<float32>(_screenSize.width) / numeric_cast<float32>(scroll_area.width * (_engine->Settings.MapHexWidth / 2)) * min_zoom_bias;
-        const float32 min_zoom_y = numeric_cast<float32>(_screenSize.height) / numeric_cast<float32>(scroll_area.height * _engine->Settings.MapHexLineHeight) * min_zoom_bias;
+        const float32 min_zoom_x = numeric_cast<float32>(_screenSize.width) / numeric_cast<float32>(scroll_area.width * (GameSettings::MAP_HEX_WIDTH / 2)) * min_zoom_bias;
+        const float32 min_zoom_y = numeric_cast<float32>(_screenSize.height) / numeric_cast<float32>(scroll_area.height * GameSettings::MAP_HEX_LINE_HEIGHT) * min_zoom_bias;
         _minZoomScroll = std::max(min_zoom_x, min_zoom_y);
     }
     else {
@@ -3249,7 +3248,7 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
     cr->SetHex(to_hex);
 
     if (smoothly) {
-        const auto hex_offset = _engine->Geometry.GetHexOffset(to_hex, cur_hex);
+        const auto hex_offset = GeometryHelper::GetHexOffset(to_hex, cur_hex);
 
         cr->AddExtraOffs(hex_offset);
     }
@@ -3324,9 +3323,30 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
     FO_STACK_TRACE_ENTRY();
 
     const ipos32 pos = ScreenToMapPos(screen_pos);
-    const ipos32 screen_offset = _engine->Geometry.GetHexPos(_screenRawHex);
+    const ipos32 screen_offset = GeometryHelper::GetHexPos(_screenRawHex);
     ipos32 offset;
-    const ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
+    ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
+
+    // Correct with hex color mask
+    if (_picHexMask) {
+        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->GetSize().width - 1);
+        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->GetSize().height - 1);
+        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->GetSize().width + mask_x];
+        const uint8 mask_color_r = mask_color.comp.r;
+
+        if (mask_color_r == 50) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
+        }
+        else if (mask_color_r == 100) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 0);
+        }
+        else if (mask_color_r == 150) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 3 : 4);
+        }
+        else if (mask_color_r == 200) {
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 2u);
+        }
+    }
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);
@@ -3975,7 +3995,7 @@ void MapView::InstantScrollTo(mpos center_hex)
     FO_RUNTIME_ASSERT(!_viewField.empty());
 
     const ipos32 new_screen_hex = ConvertToScreenRawHex(ipos32(center_hex));
-    const ipos32 offset_to_new_pos = _engine->Geometry.GetHexOffset(_screenRawHex, new_screen_hex);
+    const ipos32 offset_to_new_pos = GeometryHelper::GetHexOffset(_screenRawHex, new_screen_hex);
     InstantScroll(fpos32(offset_to_new_pos));
 }
 
@@ -3996,7 +4016,7 @@ auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order
 
     auto& field = _hexField->GetCellForWriting(hex);
     auto* mspr = _mapSprites.AddSprite(draw_order, _mapSize.clamp_pos(hex.x, hex.y + draw_order_hy_offset), //
-        {(_engine->Settings.MapHexWidth / 2) + offset.x, (_engine->Settings.MapHexHeight / 2) + offset.y}, &field.Offset, spr, nullptr, //
+        {(GameSettings::MAP_HEX_WIDTH / 2) + offset.x, (GameSettings::MAP_HEX_HEIGHT / 2) + offset.y}, &field.Offset, spr, nullptr, //
         poffset, palpha, nullptr, callback);
     AddSpriteToChain(field, mspr);
     return mspr;

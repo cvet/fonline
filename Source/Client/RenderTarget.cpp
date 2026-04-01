@@ -115,8 +115,8 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
         tex_size.height += _settings->ScreenHeight;
     }
     else if (rt->_sizeKind == RenderTarget::SizeKindType::Map) {
-        tex_size.width += _settings->ScreenWidth + _settings->MapHexWidth;
-        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + _settings->MapHexLineHeight * 2;
+        tex_size.width += _settings->ScreenWidth + GameSettings::MAP_HEX_WIDTH;
+        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + GameSettings::MAP_HEX_LINE_HEIGHT * 2;
     }
 
     tex_size.width = std::max(tex_size.width, 1);

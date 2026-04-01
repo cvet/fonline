@@ -796,16 +796,41 @@ def find_token_index(tokens: list[str], value: str, start: int = 0) -> int:
         return -1
 
 
+def find_first_token_index(tokens: list[str], values: set[str], start: int = 0) -> int:
+    for index in range(start, len(tokens)):
+        if tokens[index] in values:
+            return index
+    return -1
+
+
+def skip_leading_attributes(tokens: list[str], start: int = 0) -> int:
+    index = start
+    while index + 1 < len(tokens) and tokens[index] == '[' and tokens[index + 1] == '[':
+        index += 2
+        while index + 1 < len(tokens) and not (tokens[index] == ']' and tokens[index + 1] == ']'):
+            index += 1
+        assert index + 1 < len(tokens), 'Unterminated attribute specifier'
+        index += 2
+    return index
+
+
 def parse_exported_ref_type_method(stripped_line: str, line_tokens: list[str], function_token_index: int, valid_types: set[str]) -> RefTypeMethod:
-    if line_tokens[0] == 'auto':
+    decl_begin = skip_leading_attributes(line_tokens)
+    assert function_token_index - 1 >= decl_begin, 'Invalid function definition'
+
+    decl_tokens = line_tokens[decl_begin:function_token_index - 1]
+    assert decl_tokens, 'Invalid function declaration'
+
+    if decl_tokens[-1] == 'auto':
         signature_end = line_tokens.index(')', function_token_index)
-        assert line_tokens[signature_end + 1] == '-'
-        assert line_tokens[signature_end + 2] == '>'
-        declaration_end = line_tokens.index(';', signature_end + 2)
-        return_type = ''.join(line_tokens[signature_end + 3:declaration_end])
+        arrow_index = find_token_index(line_tokens, '-', signature_end + 1)
+        assert arrow_index != -1 and arrow_index + 1 < len(line_tokens), 'Invalid trailing return declaration'
+        assert line_tokens[arrow_index + 1] == '>'
+        declaration_end = find_first_token_index(line_tokens, {'{', ';'}, arrow_index + 2)
+        assert declaration_end != -1, 'Invalid trailing return declaration'
+        return_type = ''.join(line_tokens[arrow_index + 2:declaration_end])
     else:
-        assert line_tokens[0] == 'void'
-        return_type = 'void'
+        return_type = ''.join(decl_tokens)
 
     function_begin = stripped_line.index('(')
     function_end = stripped_line.index(')')

@@ -573,8 +573,7 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
     }
 
     const auto hex_pos = self->GetHexMapPos(hex);
-    const auto& settings = self->GetEngine()->Settings;
-    const ipos32 hex_center = {settings.MapHexWidth / 2, settings.MapHexHeight / 2};
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     const auto screen_pos = self->MapToScreenPos(hex_pos + hex_center);
     return screen_pos;
 }

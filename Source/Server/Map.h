@@ -92,10 +92,8 @@ public:
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool;
     [[nodiscard]] auto IsBlockItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;
-    [[nodiscard]] auto IsGagItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
-    [[nodiscard]] auto GetGagItemOnHex(mpos hex) const noexcept -> const Item*;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_items.empty(); }
     [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>> { return _items; }
     [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>;
@@ -136,6 +134,8 @@ public:
     void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(mpos hex);
     void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
+    auto CheckGagItems(mpos hex, int32 radius, const function<bool(Item*)>& gag_callback) -> bool;
+    auto CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> bool;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
@@ -149,10 +149,10 @@ private:
     {
         bool HasCritter {};
         bool HasBlockCritter {};
-        bool HasGagItem {};
         bool HasTriggerItem {};
         bool HasNoMoveItem {};
         bool HasNoShootItem {};
+        bool HasGagItem {};
         bool MoveBlocked {};
         bool ShootBlocked {};
         vector<raw_ptr<Critter>> Critters {};

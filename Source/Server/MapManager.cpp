@@ -257,7 +257,7 @@ void MapManager::LoadFromResources()
                 for (const auto hx : iterate_range(map_size.width)) {
                     for (const auto hy : iterate_range(map_size.height)) {
                         const mpos hex = {hx, hy};
-                        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+                        const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
                         // Is hex on scroll block line
                         if ((axial_hex.x >= scroll_area.x - scroll_block_size && axial_hex.x <= scroll_area.x + scroll_block_size) || //
@@ -698,18 +698,17 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 
     FindPathOutput output;
 
-    // Checks
-    if (input.TraceDist > 0 && input.TraceCr == nullptr) {
-        output.Result = FindPathOutput::ResultType::TraceTargetNullptr;
-        return output;
-    }
-
     auto& map = input.TargetMap;
+    FO_RUNTIME_ASSERT(map);
 
-    if (map == nullptr) {
-        output.Result = FindPathOutput::ResultType::MapNotFound;
-        return output;
-    }
+    const auto check_for_gags = [&](mpos hex, int32 multihex) -> bool {
+        if (multihex == 0) {
+            return map->CheckGagItem(hex, input.GagCallaback);
+        }
+        else {
+            return map->CheckGagItems(hex, multihex, input.GagCallaback);
+        }
+    };
 
     const auto map_size = map->GetSize();
 
@@ -721,9 +720,11 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
         output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
     }
-    if (input.Cut == 0 && !map->IsHexesMovable(input.ToHex, input.Multihex, input.TraceCr.get())) {
-        output.Result = FindPathOutput::ResultType::HexBusy;
-        return output;
+    if (input.Cut == 0 && !map->IsHexesMovable(input.ToHex, input.Multihex, nullptr)) {
+        if (!check_for_gags(input.ToHex, 0)) {
+            output.Result = FindPathOutput::ResultType::HexBusy;
+            return output;
+        }
     }
 
     // Ring check
@@ -733,10 +734,7 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 
         for (; i < hexes_around; i++) {
             if (auto ring_hex = input.ToHex; GeometryHelper::MoveHexAroundAway(ring_hex, i, map_size)) {
-                if (map->IsGagItemOnHex(ring_hex)) {
-                    break;
-                }
-                if (map->IsHexMovable(ring_hex)) {
+                if (map->IsHexMovable(ring_hex) || check_for_gags(ring_hex, 0)) {
                     break;
                 }
             }
@@ -798,24 +796,14 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
                 const auto next_hex = map_size.from_raw_pos(raw_next_hex);
                 auto& grid_cell = grid_at(next_hex);
 
-                if (grid_cell != 0) {
-                    continue;
-                }
-
-                if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter.get())) {
-                    next_hexes.emplace_back(next_hex);
-                    grid_cell = next_hex_index;
-                }
-                else if (input.CheckGagItems && map->IsGagItemOnHex(next_hex)) {
-                    gag_hexes.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
-                }
-                else if (input.CheckCritter && map->IsCritterOnHex(next_hex, CritterFindType::NonDead)) {
-                    cr_hexes.emplace_back(next_hex);
-                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
-                }
-                else {
-                    grid_cell = -1;
+                if (grid_cell == 0) {
+                    if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter.get()) || check_for_gags(next_hex, input.Multihex)) {
+                        next_hexes.emplace_back(next_hex);
+                        grid_cell = next_hex_index;
+                    }
+                    else {
+                        grid_cell = -1;
+                    }
                 }
             }
         }
@@ -990,119 +978,6 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
         }
     }
 
-    // Check for closed door and critter
-    if (input.CheckCritter || input.CheckGagItems) {
-        mpos check_hex = input.FromHex;
-
-        for (size_t i = 0; i < raw_steps.size(); i++) {
-            const auto prev_check_hex = check_hex;
-
-            const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
-            FO_RUNTIME_ASSERT(move_ok);
-
-            if (input.CheckGagItems && map->IsGagItemOnHex(check_hex)) {
-                const Item* item = map->GetGagItemOnHex(check_hex);
-
-                if (item == nullptr) {
-                    continue;
-                }
-
-                output.GagItemId = item->GetId();
-                to_hex = prev_check_hex;
-                raw_steps.resize(i);
-                break;
-            }
-
-            if (input.CheckCritter && map->IsCritterOnHex(check_hex, CritterFindType::NonDead)) {
-                const Critter* cr = map->GetCritterOnHex(check_hex, CritterFindType::NonDead);
-
-                if (cr == nullptr || cr == input.FromCritter) {
-                    continue;
-                }
-
-                output.GagCritterId = cr->GetId();
-                to_hex = prev_check_hex;
-                raw_steps.resize(i);
-                break;
-            }
-        }
-    }
-
-    // Trace
-    if (input.TraceDist != 0) {
-        vector<int32> trace_seq;
-        const mpos targ_hex = input.TraceCr->GetHex();
-        bool trace_ok = false;
-
-        trace_seq.resize(raw_steps.size() + 4);
-
-        mpos check_hex = input.FromHex;
-
-        for (size_t i = 0; i < raw_steps.size(); i++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(check_hex, raw_steps[i], map_size);
-            FO_RUNTIME_ASSERT(move_ok);
-
-            if (map->IsGagItemOnHex(check_hex)) {
-                trace_seq[i + 2 - 2] += 1;
-                trace_seq[i + 2 - 1] += 2;
-                trace_seq[i + 2 - 0] += 3;
-                trace_seq[i + 2 + 1] += 2;
-                trace_seq[i + 2 + 2] += 1;
-            }
-        }
-
-        TracePathInput trace;
-        trace.TraceMap = map;
-        trace.TargetHex = targ_hex;
-        trace.FindCr = input.TraceCr;
-
-        for (int32 k = 0; k < 5; k++) {
-            mpos check_hex2 = input.FromHex;
-
-            for (size_t i = 0; i < raw_steps.size() - 1; i++) {
-                const auto move_ok2 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i], map_size);
-                FO_RUNTIME_ASSERT(move_ok2);
-
-                if (k < 4 && trace_seq[i + 2] != k) {
-                    continue;
-                }
-                if (k == 4 && trace_seq[i + 2] < 4) {
-                    continue;
-                }
-
-                if (!GeometryHelper::CheckDist(check_hex2, targ_hex, input.TraceDist)) {
-                    continue;
-                }
-
-                trace.StartHex = check_hex2;
-                const auto treace_output = TracePath(trace);
-
-                if (treace_output.IsCritterFound) {
-                    raw_steps.resize(i + 1);
-                    const auto move_ok3 = GeometryHelper::MoveHexByDir(check_hex2, raw_steps[i + 1], map_size);
-                    FO_RUNTIME_ASSERT(move_ok3);
-                    to_hex = check_hex2;
-                    trace_ok = true;
-                    break;
-                }
-            }
-
-            if (trace_ok) {
-                break;
-            }
-        }
-
-        if (!trace_ok && !output.GagItemId && !output.GagCritterId) {
-            output.Result = FindPathOutput::ResultType::TraceFailed;
-            return output;
-        }
-
-        if (trace_ok) {
-            output.GagItemId = {};
-            output.GagCritterId = {};
-        }
-    }
-
     if (raw_steps.empty()) {
         output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
@@ -1215,7 +1090,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
     auto* prev_map = prev_map_id ? _engine->EntityMngr.GetMap(prev_map_id) : nullptr;
     FO_RUNTIME_ASSERT(!prev_map_id || !!prev_map);
 
-    cr->ClearMove();
+    cr->StopMoving();
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();

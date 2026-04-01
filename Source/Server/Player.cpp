@@ -279,7 +279,7 @@ void Player::Send_Moving(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!from_cr->Moving.Steps.empty()) {
+    if (from_cr->IsMoving()) {
         auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
 
         out_buf->Write(from_cr->GetId());
@@ -302,7 +302,7 @@ void Player::Send_MovingSpeed(const Critter* from_cr)
     auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
 
     out_buf->Write(from_cr->GetId());
-    out_buf->Write(from_cr->Moving.Speed);
+    out_buf->Write(from_cr->GetMoving()->GetSpeed());
 }
 
 void Player::Send_Dir(const Critter* from_cr)
@@ -614,23 +614,29 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    out_buf.Write(iround<int32>(std::ceil(cr->Moving.WholeTime)));
-    out_buf.Write((_engine->GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<int32>());
-    out_buf.Write(cr->Moving.Speed);
-    out_buf.Write(cr->Moving.StartHex);
-    out_buf.Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
+    FO_RUNTIME_ASSERT(cr->IsMoving());
 
-    for (const auto step : cr->Moving.Steps) {
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+
+    out_buf.Write(iround<int32>(std::ceil(moving->GetWholeTime())));
+    moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
+    out_buf.Write(iround<int32>(moving->GetElapsedTime()));
+    out_buf.Write(moving->GetSpeed());
+    out_buf.Write(moving->GetStartHex());
+    out_buf.Write(numeric_cast<uint16>(moving->GetSteps().size()));
+
+    for (const auto step : moving->GetSteps()) {
         out_buf.Write(step);
     }
 
-    out_buf.Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
+    out_buf.Write(numeric_cast<uint16>(moving->GetControlSteps().size()));
 
-    for (const auto control_step : cr->Moving.ControlSteps) {
+    for (const auto control_step : moving->GetControlSteps()) {
         out_buf.Write(control_step);
     }
 
-    out_buf.Write(cr->Moving.EndHexOffset);
+    out_buf.Write(moving->GetEndHexOffset());
 }
 
 FO_END_NAMESPACE

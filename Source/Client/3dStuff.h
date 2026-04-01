@@ -214,7 +214,6 @@ private:
     raw_ptr<NameResolver> _nameResolver;
     raw_ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
-    GeometryHelper _geometry;
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone>> _loadedModels {};
