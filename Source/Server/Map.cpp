@@ -685,8 +685,9 @@ void Map::RecacheHexFlags(Field& field)
                 field.HasNoMoveItem = true;
                 movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
-            if (!field.HasNoShootItem && !item->GetShootThru()) {
+            if (!item->GetShootThru()) {
                 field.HasNoShootItem = true;
+                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
             if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
                 field.HasTriggerItem = true;
@@ -696,7 +697,7 @@ void Map::RecacheHexFlags(Field& field)
 
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
     field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
-    field.MovableWithGag = movable_with_gag.value_or(false) && !(field.ShootBlocked || field.HasBlockCritter || field.ManualBlock);
+    field.MovableWithGag = movable_with_gag.value_or(false) && !(field.HasBlockCritter || field.ManualBlock);
 }
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
