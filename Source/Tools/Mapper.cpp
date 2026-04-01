@@ -3654,7 +3654,7 @@ void MapperEngine::HandleLeftMouseUp()
                 vector<mpos> hexes;
 
                 if (SelectAxialGrid) {
-                    hexes = Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize());
+                    hexes = GeometryHelper::GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize());
                 }
                 else {
                     const auto map_size = _curMap->GetSize();
@@ -3759,7 +3759,7 @@ void MapperEngine::HandleSelectionMouseDrag()
     if (MouseHoldMode == INT_SELECT) {
         if (SelectHex1 != SelectHex2) {
             if (SelectAxialGrid) {
-                for (const auto hex : Geometry.GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
+                for (const auto hex : GeometryHelper::GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
                     _curMap->GetHexTrack(hex) = 1;
                 }
             }

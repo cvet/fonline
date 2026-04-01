@@ -671,10 +671,9 @@ void Map::RecacheHexFlags(Field& field)
     field.HasBlockCritter = false;
     field.HasTriggerItem = false;
     field.HasNoMoveItem = false;
-    field.HasGagItem = false;
+    field.MovableWithGag = false;
     field.HasNoShootItem = false;
-
-    field.HasCritter = !field.Critters.empty();
+    optional<bool> movable_with_gag;
 
     if (_engine->Settings.CritterBlockHex && field.HasCritter) {
         field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
@@ -682,11 +681,9 @@ void Map::RecacheHexFlags(Field& field)
 
     if (!field.Items.empty()) {
         for (const auto& item : field.Items) {
-            if (!field.HasNoMoveItem && !item->GetNoBlock()) {
+            if (!item->GetNoBlock()) {
                 field.HasNoMoveItem = true;
-            }
-            if (!field.HasGagItem && item->GetIsGag()) {
-                field.HasGagItem = true;
+                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
             if (!field.HasNoShootItem && !item->GetShootThru()) {
                 field.HasNoShootItem = true;
@@ -699,6 +696,7 @@ void Map::RecacheHexFlags(Field& field)
 
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
     field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
+    field.MovableWithGag = movable_with_gag.value_or(false) && !(field.ShootBlocked || field.HasBlockCritter || field.ManualBlock);
 }
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
@@ -1030,7 +1028,7 @@ auto Map::CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> b
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    if (!field.HasGagItem) {
+    if (!field.MovableWithGag) {
         return false;
     }
 

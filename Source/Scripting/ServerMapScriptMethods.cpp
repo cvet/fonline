@@ -880,7 +880,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallaback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](Item* gag) mutable { return gag_callback->Call(gag) && gag_callback->GetResult(); };
+        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](Item* gag) mutable { return gag_callback->Call(gag) && gag_callback->GetResult(); };
     }
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
@@ -913,7 +913,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallaback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](Item* gag) mutable { return gag_callback->Call(cr, gag) && gag_callback->GetResult(); };
+        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](Item* gag) mutable { return gag_callback->Call(cr, gag) && gag_callback->GetResult(); };
     }
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);

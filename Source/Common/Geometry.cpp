@@ -633,8 +633,8 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
         //   |dx| <= half_w
         //   |dx * hq - dy * half_w| <= limit
         //   |dx * hq + dy * half_w| <= limit
-        // where hq = MapHexHeight / 4, limit = 2 * half_w * hq
-        const int32 hq = _settings->MapHexHeight / 4;
+        // where hq = MAP_HEX_HEIGHT / 4, limit = 2 * half_w * hq
+        constexpr int32 hq = GameSettings::MAP_HEX_HEIGHT / 4;
         const int32 limit = 2 * half_w * hq;
 
         const auto is_inside_hex = [half_w, hq, limit](int32 lx, int32 ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };

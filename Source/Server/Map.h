@@ -152,7 +152,7 @@ private:
         bool HasTriggerItem {};
         bool HasNoMoveItem {};
         bool HasNoShootItem {};
-        bool HasGagItem {};
+        bool MovableWithGag {};
         bool MoveBlocked {};
         bool ShootBlocked {};
         vector<raw_ptr<Critter>> Critters {};

@@ -168,18 +168,14 @@ TEST_CASE("GeometryHelper")
 
 TEST_CASE("GetHexPos and GetHexPosCoord")
 {
-    GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
-    GeometryHelper geo {settings.Geometry};
-
-    const int32 w = settings.Geometry.MapHexWidth;
-    const int32 half_w = w / 2;
-    const int32 h = settings.Geometry.MapHexLineHeight;
-    const int32 hex_h = settings.Geometry.MapHexHeight;
+    constexpr int32 w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32 half_w = w / 2;
+    constexpr int32 h = GameSettings::MAP_HEX_LINE_HEIGHT;
+    constexpr int32 hex_h = GameSettings::MAP_HEX_HEIGHT;
 
     SECTION("GetHexPos origin")
     {
-        const ipos32 pos = geo.GetHexPos(ipos32 {0, 0});
+        const ipos32 pos = GeometryHelper::GetHexPos(ipos32 {0, 0});
         CHECK(pos.x == 0);
         CHECK(pos.y == 0);
     }
@@ -188,7 +184,7 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int16 rx = 0; rx < 10; rx++) {
             for (int16 ry = 0; ry < 10; ry++) {
-                CHECK(geo.GetHexPos(mpos {rx, ry}) == geo.GetHexPos(ipos32 {rx, ry}));
+                CHECK(GeometryHelper::GetHexPos(mpos {rx, ry}) == GeometryHelper::GetHexPos(ipos32 {rx, ry}));
             }
         }
     }
@@ -197,9 +193,9 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int32 rx = -5; rx <= 5; rx++) {
             for (int32 ry = -5; ry <= 5; ry++) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
                 ipos32 offset;
-                const ipos32 result = geo.GetHexPosCoord(center, &offset);
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center, &offset);
                 INFO("rx=" << rx << " ry=" << ry << " center=" << center.x << "," << center.y);
                 CHECK(result.x == rx);
                 CHECK(result.y == ry);
@@ -213,13 +209,13 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int32 rx = -3; rx <= 3; rx++) {
             for (int32 ry = -3; ry <= 3; ry++) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
 
                 // Small offsets within hex interior
                 for (int32 dx = -2; dx <= 2; dx++) {
                     for (int32 dy = -2; dy <= 2; dy++) {
                         ipos32 offset;
-                        const ipos32 result = geo.GetHexPosCoord({center.x + dx, center.y + dy}, &offset);
+                        const ipos32 result = GeometryHelper::GetHexPosCoord({center.x + dx, center.y + dy}, &offset);
                         INFO("rx=" << rx << " ry=" << ry << " dx=" << dx << " dy=" << dy);
                         CHECK(result.x == rx);
                         CHECK(result.y == ry);
@@ -239,16 +235,16 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
 
         for (int32 rx = -test_range; rx <= test_range; rx++) {
             for (int32 ry = -test_range; ry <= test_range; ry++) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
 
                 // Scan full hex bounding box area
                 for (int32 px = center.x - half_w; px <= center.x + half_w; px++) {
                     for (int32 py = center.y - hex_h / 2; py <= center.y + hex_h / 2; py++) {
                         ipos32 offset;
-                        const ipos32 result = geo.GetHexPosCoord({px, py}, &offset);
+                        const ipos32 result = GeometryHelper::GetHexPosCoord({px, py}, &offset);
 
                         // Verify the result is self-consistent: center + offset == input pixel
-                        const ipos32 result_center = geo.GetHexPos(result);
+                        const ipos32 result_center = GeometryHelper::GetHexPos(result);
                         INFO("px=" << px << " py=" << py << " result=" << result.x << "," << result.y);
                         CHECK(result_center.x + offset.x == px);
                         CHECK(result_center.y + offset.y == py);
@@ -270,9 +266,9 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
 
         for (int32 px = scan_min; px < scan_max; px++) {
             for (int32 py = scan_min; py < scan_max; py++) {
-                const ipos32 hex_here = geo.GetHexPosCoord({px, py});
-                const ipos32 hex_right = geo.GetHexPosCoord({px + 1, py});
-                const ipos32 hex_down = geo.GetHexPosCoord({px, py + 1});
+                const ipos32 hex_here = GeometryHelper::GetHexPosCoord({px, py});
+                const ipos32 hex_right = GeometryHelper::GetHexPosCoord({px + 1, py});
+                const ipos32 hex_down = GeometryHelper::GetHexPosCoord({px, py + 1});
 
                 // Moving one pixel should change hex by at most 1
                 const int32 dist_right = GeometryHelper::GetDistance(hex_here, hex_right);
@@ -286,13 +282,13 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
 
     SECTION("GetHexPosCoord without hex_offset (nullptr)")
     {
-        const ipos32 center = geo.GetHexPos(ipos32 {3, 4});
-        const ipos32 result = geo.GetHexPosCoord(center, nullptr);
+        const ipos32 center = GeometryHelper::GetHexPos(ipos32 {3, 4});
+        const ipos32 result = GeometryHelper::GetHexPosCoord(center, nullptr);
         CHECK(result.x == 3);
         CHECK(result.y == 4);
 
         // Also via default argument
-        const ipos32 result2 = geo.GetHexPosCoord(center);
+        const ipos32 result2 = GeometryHelper::GetHexPosCoord(center);
         CHECK(result2.x == 3);
         CHECK(result2.y == 4);
     }
@@ -301,8 +297,8 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int32 rx = -10; rx <= 0; rx++) {
             for (int32 ry = -10; ry <= 0; ry++) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
-                const ipos32 result = geo.GetHexPosCoord(center);
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center);
                 INFO("rx=" << rx << " ry=" << ry);
                 CHECK(result.x == rx);
                 CHECK(result.y == ry);
@@ -315,9 +311,9 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
         const int32 coords[] = {-100, -50, 0, 50, 100};
         for (int32 rx : coords) {
             for (int32 ry : coords) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
                 ipos32 offset;
-                const ipos32 result = geo.GetHexPosCoord(center, &offset);
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center, &offset);
                 INFO("rx=" << rx << " ry=" << ry);
                 CHECK(result.x == rx);
                 CHECK(result.y == ry);
@@ -335,9 +331,9 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
                     for (int32 by = 0; by < 5; by++) {
                         const ipos32 from_raw {ax, ay};
                         const ipos32 to_raw {bx, by};
-                        const ipos32 pixel_from = geo.GetHexPos(from_raw);
-                        const ipos32 pixel_to = geo.GetHexPos(to_raw);
-                        const ipos32 hex_offset = geo.GetHexOffset(from_raw, to_raw);
+                        const ipos32 pixel_from = GeometryHelper::GetHexPos(from_raw);
+                        const ipos32 pixel_to = GeometryHelper::GetHexPos(to_raw);
+                        const ipos32 hex_offset = GeometryHelper::GetHexOffset(from_raw, to_raw);
                         CHECK(hex_offset.x == pixel_to.x - pixel_from.x);
                         CHECK(hex_offset.y == pixel_to.y - pixel_from.y);
                     }
@@ -352,7 +348,7 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
             for (int16 ay = 0; ay < 5; ay++) {
                 for (int16 bx = 0; bx < 5; bx++) {
                     for (int16 by = 0; by < 5; by++) {
-                        CHECK(geo.GetHexOffset(mpos {ax, ay}, mpos {bx, by}) == geo.GetHexOffset(ipos32 {ax, ay}, ipos32 {bx, by}));
+                        CHECK(GeometryHelper::GetHexOffset(mpos {ax, ay}, mpos {bx, by}) == GeometryHelper::GetHexOffset(ipos32 {ax, ay}, ipos32 {bx, by}));
                     }
                 }
             }
@@ -363,8 +359,8 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int32 rx = -5; rx <= 5; rx++) {
             for (int32 ry = -5; ry <= 5; ry++) {
-                const ipos32 axial = geo.GetHexAxialCoord(ipos32 {rx, ry});
-                const ipos32 pixel = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 axial = GeometryHelper::GetHexAxialCoord(ipos32 {rx, ry});
+                const ipos32 pixel = GeometryHelper::GetHexPos(ipos32 {rx, ry});
                 INFO("rx=" << rx << " ry=" << ry);
                 CHECK(axial.x == pixel.x / half_w);
                 CHECK(axial.y == pixel.y / h);
@@ -376,7 +372,7 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     {
         for (int16 rx = 0; rx < 10; rx++) {
             for (int16 ry = 0; ry < 10; ry++) {
-                CHECK(geo.GetHexAxialCoord(mpos {rx, ry}) == geo.GetHexAxialCoord(ipos32 {rx, ry}));
+                CHECK(GeometryHelper::GetHexAxialCoord(mpos {rx, ry}) == GeometryHelper::GetHexAxialCoord(ipos32 {rx, ry}));
             }
         }
     }
@@ -386,7 +382,7 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
         // Test points at hex vertices - should resolve to valid hexes
         for (int32 rx = -3; rx <= 3; rx++) {
             for (int32 ry = -3; ry <= 3; ry++) {
-                const ipos32 center = geo.GetHexPos(ipos32 {rx, ry});
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
 
                 if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                     // Pointy-top hex vertices
@@ -401,8 +397,8 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
 
                     for (const auto& v : vertices) {
                         ipos32 offset;
-                        const ipos32 result = geo.GetHexPosCoord(v, &offset);
-                        const ipos32 result_center = geo.GetHexPos(result);
+                        const ipos32 result = GeometryHelper::GetHexPosCoord(v, &offset);
+                        const ipos32 result_center = GeometryHelper::GetHexPos(result);
                         INFO("rx=" << rx << " ry=" << ry << " vertex=" << v.x << "," << v.y);
                         CHECK(result_center.x + offset.x == v.x);
                         CHECK(result_center.y + offset.y == v.y);

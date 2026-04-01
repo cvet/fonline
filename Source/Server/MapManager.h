@@ -60,7 +60,7 @@ struct FindPathInput
     mpos NewToHex {};
     int32 Multihex {};
     int32 Cut {};
-    function<bool(Item*)> GagCallaback {};
+    function<bool(Item*)> GagCallback {};
 };
 
 struct FindPathOutput

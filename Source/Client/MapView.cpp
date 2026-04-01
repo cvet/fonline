@@ -3325,28 +3325,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
     const ipos32 pos = ScreenToMapPos(screen_pos);
     const ipos32 screen_offset = GeometryHelper::GetHexPos(_screenRawHex);
     ipos32 offset;
-    ipos32 raw_hex = _engine->Geometry.GetHexPosCoord(screen_offset + pos, &offset);
-
-    // Correct with hex color mask
-    if (_picHexMask) {
-        const int32 mask_x = std::clamp(offset.x, 0, _picHexMask->GetSize().width - 1);
-        const int32 mask_y = std::clamp(offset.y, 0, _picHexMask->GetSize().height - 1);
-        const ucolor mask_color = _picHexMaskData[mask_y * _picHexMask->GetSize().width + mask_x];
-        const uint8 mask_color_r = mask_color.comp.r;
-
-        if (mask_color_r == 50) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
-        }
-        else if (mask_color_r == 100) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 0);
-        }
-        else if (mask_color_r == 150) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 3 : 4);
-        }
-        else if (mask_color_r == 200) {
-            GeometryHelper::MoveHexByDirUnsafe(raw_hex, 2u);
-        }
-    }
+    ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos, &offset);
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);

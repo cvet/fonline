@@ -714,9 +714,6 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
     if (map == nullptr) {
         throw ScriptException("Critter is not on map");
     }
-    if (!gagCallabck) {
-        throw ScriptException("Gag callback must be provided");
-    }
 
     self->StopMoving();
 
@@ -736,7 +733,7 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallaback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](Item* gag) mutable { return gag_callback->Call(self, gag) && gag_callback->GetResult(); };
+        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](Item* gag) mutable { return gag_callback->Call(self, gag) && gag_callback->GetResult(); };
     }
 
     const auto find_path = engine->MapMngr.FindPath(input);

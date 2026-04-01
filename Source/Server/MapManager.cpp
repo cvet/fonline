@@ -703,10 +703,10 @@ auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
 
     const auto check_for_gags = [&](mpos hex, int32 multihex) -> bool {
         if (multihex == 0) {
-            return map->CheckGagItem(hex, input.GagCallaback);
+            return map->CheckGagItem(hex, input.GagCallback);
         }
         else {
-            return map->CheckGagItems(hex, multihex, input.GagCallaback);
+            return map->CheckGagItems(hex, multihex, input.GagCallback);
         }
     };
 
