@@ -104,7 +104,7 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
     const auto buf = SendCallback();
 
-    if (!buf.empty()) {
+    if (_send && !buf.empty()) {
         _send(buf);
     }
 }

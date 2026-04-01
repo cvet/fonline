@@ -35,7 +35,9 @@
 
 #include "Common.h"
 
+#include "AngelScriptScripting.h"
 #include "Baker.h"
+#include "DataSerialization.h"
 #include "DataSource.h"
 #include "FileSystem.h"
 #include "Settings.h"
@@ -44,6 +46,65 @@ FO_BEGIN_NAMESPACE
 
 namespace BakerTests
 {
+    template<typename T, typename U>
+    inline void OverrideSetting(T& setting, U&& value)
+    {
+        using setting_type = std::remove_cvref_t<T>;
+        const_cast<setting_type&>(setting) = setting_type {std::forward<U>(value)};
+    }
+
+    inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
+    {
+        settings.ScreenWidth = 320;
+        settings.ScreenHeight = 200;
+        settings.DisableAudio = true;
+        OverrideSetting(settings.NullRenderer, true);
+        OverrideSetting(settings.UseDummyEffects, true);
+        OverrideSetting(settings.EggSpriteName, string {});
+        OverrideSetting(settings.CritterStubSpriteName, string {});
+        OverrideSetting(settings.ItemStubSpriteName, string {});
+    }
+
+    inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
+    {
+        OverrideSetting(settings.DisableNetworking, true);
+        OverrideSetting(settings.OpLogEnabled, false);
+    }
+
+    inline auto MakeEmptyMetadataBlob() -> vector<uint8>
+    {
+        vector<uint8> metadata;
+        auto writer = DataWriter(metadata);
+        writer.Write<uint16>(uint16 {0});
+        return metadata;
+    }
+
+    template<typename ProtoType>
+    inline auto MakeSingleProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8>
+    {
+        vector<uint8> props_data;
+        set<hstring> str_hashes;
+
+        ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+
+        vector<uint8> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32>(uint32 {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
+
+        return protos_data;
+    }
+
     class MemoryDataSource final : public DataSource
     {
     public:
@@ -138,6 +199,47 @@ namespace BakerTests
         string _packName {};
         unordered_map<string, Entry> _entries {};
     };
+
+    class MemoryFileSet final
+    {
+    public:
+        explicit MemoryFileSet(string pack_name)
+        {
+            auto ds = SafeAlloc::MakeUnique<MemoryDataSource>(std::move(pack_name));
+            _dataSource = ds.get();
+            _fileSystem.AddCustomSource(std::move(ds));
+        }
+
+        void AddTextFile(string_view path, string_view content, uint64 write_time = 1) { _dataSource->AddFile(path, content, write_time); }
+
+        void AddBinaryFile(string_view path, vector<uint8> content, uint64 write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
+
+        [[nodiscard]] auto ReadFile(string_view path) const -> File { return _fileSystem.ReadFile(path); }
+
+        [[nodiscard]] auto GetFileSystem() const -> const FileSystem& { return _fileSystem; }
+
+    private:
+        raw_ptr<MemoryDataSource> _dataSource {};
+        FileSystem _fileSystem {};
+    };
+
+    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8>
+    {
+        MemoryFileSet source_files {string(pack_name)};
+        vector<File> files;
+        files.reserve(script_files.size());
+
+        for (const auto& [path, content] : script_files) {
+            source_files.AddTextFile(path, content);
+        }
+
+        for (const auto& [path, content] : script_files) {
+            ignore_unused(content);
+            files.emplace_back(source_files.ReadFile(path));
+        }
+
+        return CompileAngelScript(meta, files, std::move(message_callback));
+    }
 
     class TestRig final
     {

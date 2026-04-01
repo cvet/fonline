@@ -56,14 +56,19 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    ResMngr(Resources, SprMngr, *this),
+    ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EffectMngr.LoadDefaultEffects();
+    if (Settings.UseDummyEffects) {
+        EffectMngr.LoadMinimalEffects();
+    }
+    else {
+        EffectMngr.LoadDefaultEffects();
+    }
 
     // Init sprite subsystems
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
@@ -180,7 +185,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     BaseEngine(settings, std::move(resources), mapper_registrator),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    ResMngr(Resources, SprMngr, *this),
+    ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Cache(Settings.CacheResources),
     _conn(Settings)

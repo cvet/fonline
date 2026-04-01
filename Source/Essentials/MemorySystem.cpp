@@ -390,7 +390,7 @@ extern auto FreeBackupMemoryChunk() noexcept -> bool
         }
 
         if (BackupMemoryChunksCount.compare_exchange_strong(cur_size, cur_size - 1)) {
-            BackupMemoryChunks[cur_size].reset();
+            BackupMemoryChunks[cur_size - 1].reset();
             return true;
         }
     }

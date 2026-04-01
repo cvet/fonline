@@ -409,15 +409,30 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
             _includeDeep++;
 
-            file_path = file_name;
             data.resize(0);
 
-            if (_includeDeep == 1) {
-                const auto it = _scriptFiles->find(string(file_name));
-                FO_RUNTIME_ASSERT(it != _scriptFiles->end());
+            const auto load_from_memory = [&](string_view path) -> bool {
+                const auto it = _scriptFiles->find(string(path));
+
+                if (it == _scriptFiles->end()) {
+                    return false;
+                }
 
                 data.resize(it->second.size());
                 MemCopy(data.data(), it->second.data(), it->second.size());
+                file_path = string(path);
+                return true;
+            };
+
+            if (!dir.empty()) {
+                const auto combined_path = strex(dir).combine_path(file_name).str();
+
+                if (load_from_memory(combined_path)) {
+                    return true;
+                }
+            }
+
+            if (load_from_memory(file_name)) {
                 return true;
             }
 
@@ -442,7 +457,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
     for (const auto& script_file : files) {
         string script_name = string(script_file.GetNameNoExt());
-        string script_path = string(script_file.GetDiskPath());
+        string script_path = script_file.GetDataSource()->IsDiskDir() ? string(script_file.GetDiskPath()) : string(script_file.GetPath());
         string script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');

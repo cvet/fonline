@@ -488,7 +488,7 @@ void RunScenario()
     }
 }
 
-TEST_CASE("AngelScriptBytecode", "[.][angelscript][bytecode]")
+TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 {
     SECTION("SaveLoadPreservesGeneratedScriptCopyBehavior")
     {

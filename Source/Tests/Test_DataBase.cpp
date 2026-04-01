@@ -800,6 +800,34 @@ TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
     CheckRecoveryLogsCleared(recovery_logs);
 }
 
+TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"restore-update-apply"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":3,\"added\":9}\n");
+
+    const auto collection = hashes.ToHashedString("test_collection");
+    {
+        TestDataBase db {settings};
+        db.SetStrictRecordSemantics();
+        db.PrimeRecord(collection, ident_t {1001}, MakeDoc({{"value", 1}, {"other", 7}}));
+        db.InitializeOpLogs();
+
+        REQUIRE_NOTHROW(db.RestorePendingChanges());
+
+        const auto doc = db.SnapshotRecord(collection, ident_t {1001});
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 3);
+        CHECK(doc["other"].AsInt64() == 7);
+        CHECK(doc["added"].AsInt64() == 9);
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
 TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
 {
     GlobalSettings settings {false};
@@ -878,5 +906,195 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
 
     CheckRecoveryLogsCleared(recovery_logs);
 }
+
+TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"json-roundtrip"};
+    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto first_id = ident_t {1001};
+    const auto second_id = ident_t {1002};
+    const_cast<int32&>(settings.JsonIndent) = 2;
+    auto db = ConnectToDataBase(settings, strex("JSON {}", storage_dir).str(), nullptr);
+
+    db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
+    db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    auto ids = db.GetAllIds(collection);
+    std::sort(ids.begin(), ids.end());
+
+    REQUIRE(ids.size() == 2);
+    CHECK(ids[0] == first_id);
+    CHECK(ids[1] == second_id);
+
+    const auto first_doc = db.Get(collection, first_id);
+    REQUIRE(!first_doc.Empty());
+    CHECK(first_doc["value"].AsInt64() == 1);
+    CHECK(first_doc["other"].AsInt64() == 7);
+
+    const auto json_content = fs_read_file(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
+    REQUIRE(json_content.has_value());
+    CHECK(json_content->find("\n  \"value\"") != string::npos);
+
+    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Delete(collection, second_id);
+    db.WaitCommitChanges();
+
+    const auto updated_doc = db.Get(collection, first_id);
+    REQUIRE(!updated_doc.Empty());
+    CHECK(updated_doc["value"].AsInt64() == 3);
+    CHECK(updated_doc["other"].AsInt64() == 7);
+    CHECK_FALSE(db.Valid(collection, second_id));
+
+    ids = db.GetAllIds(collection);
+    REQUIRE(ids.size() == 1);
+    CHECK(ids.front() == first_id);
+    CHECK_FALSE(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
+}
+
+TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"json-errors"};
+    const auto storage_dir = storage_dir_scope.Dir() / "storage";
+    const auto collection_dir = storage_dir / "test_collection";
+    const auto collection = hashes.ToHashedString("test_collection");
+    std::filesystem::create_directories(collection_dir);
+
+    auto db = ConnectToDataBase(settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), nullptr);
+
+    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "0.json"), "{}"));
+    REQUIRE_THROWS_AS(db.GetAllIds(collection), DataBaseException);
+
+    REQUIRE(std::filesystem::remove(collection_dir / "0.json"));
+    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "1001.json"), "{"));
+    REQUIRE_THROWS_AS(db.Get(collection, ident_t {1001}), DataBaseException);
+}
+
+TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto first_id = ident_t {1001};
+    const auto second_id = ident_t {1002};
+    auto db = ConnectToDataBase(settings, "Memory", nullptr);
+
+    CHECK(db.InValidState());
+    CHECK(db.GetAllIds(collection).empty());
+    CHECK_FALSE(db.Valid(collection, first_id));
+    CHECK(db.Get(collection, first_id).Empty());
+
+    db.StartCommitChanges();
+    db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
+    db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
+    db.WaitCommitChanges();
+
+    auto ids = db.GetAllIds(collection);
+    std::sort(ids.begin(), ids.end());
+
+    REQUIRE(ids.size() == 2);
+    CHECK(ids[0] == first_id);
+    CHECK(ids[1] == second_id);
+
+    auto doc = db.Get(collection, first_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+    CHECK(doc["other"].AsInt64() == 7);
+
+    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Delete(collection, second_id);
+    db.WaitCommitChanges();
+
+    doc = db.Get(collection, first_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 3);
+    CHECK(doc["other"].AsInt64() == 7);
+    CHECK_FALSE(db.Valid(collection, second_id));
+    CHECK(db.Get(collection, second_id).Empty());
+
+    ids = db.GetAllIds(collection);
+    REQUIRE(ids.size() == 1);
+    CHECK(ids.front() == first_id);
+}
+
+TEST_CASE("DataBaseConnectionValidationAndMetrics")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto record_id = ident_t {1001};
+
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Unknown", nullptr), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "JSON", nullptr), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Memory extra", nullptr), DataBaseException);
+
+    auto db = ConnectToDataBase(settings, "Memory", nullptr);
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.WaitCommitChanges();
+
+    const auto doc = db.Get(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+    CHECK(db.GetDbRequestsPerMinute() >= 1);
+}
+
+#if FO_HAVE_UNQLITE
+TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
+    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto first_id = ident_t {1001};
+    const auto second_id = ident_t {1002};
+    auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), nullptr);
+
+    CHECK(db.InValidState());
+    CHECK(db.GetAllIds(collection).empty());
+    CHECK_FALSE(db.Valid(collection, first_id));
+    CHECK(db.Get(collection, first_id).Empty());
+
+    db.StartCommitChanges();
+    db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
+    db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
+    db.WaitCommitChanges();
+
+    auto ids = db.GetAllIds(collection);
+    std::sort(ids.begin(), ids.end());
+
+    REQUIRE(ids.size() == 2);
+    CHECK(ids[0] == first_id);
+    CHECK(ids[1] == second_id);
+
+    auto doc = db.Get(collection, first_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+    CHECK(doc["other"].AsInt64() == 7);
+
+    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Delete(collection, second_id);
+    db.WaitCommitChanges();
+
+    doc = db.Get(collection, first_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 3);
+    CHECK(doc["other"].AsInt64() == 7);
+    CHECK_FALSE(db.Valid(collection, second_id));
+    CHECK(db.Get(collection, second_id).Empty());
+
+    ids = db.GetAllIds(collection);
+    REQUIRE(ids.size() == 1);
+    CHECK(ids.front() == first_id);
+    CHECK(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
+}
+#endif
 
 FO_END_NAMESPACE

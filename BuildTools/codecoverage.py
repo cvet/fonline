@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import html
 import os
 import re
@@ -18,6 +19,7 @@ import xml.etree.ElementTree as ET
 EXCLUDED_SOURCE_FRAGMENTS = (
     "/ThirdParty/",
     "/GeneratedSource/",
+    "/Applications/",
 )
 
 SOURCE_FILE_EXTENSIONS = {
@@ -216,7 +218,8 @@ def clean_outputs(args: argparse.Namespace) -> None:
     remove_matching_files(args.build_dir, ("*.gcda", "*.profraw", "*.profdata", "*.coverage"))
 
     if args.output_dir.exists():
-        shutil.rmtree(args.output_dir)
+        with contextlib.suppress(FileNotFoundError):
+            shutil.rmtree(args.output_dir)
 
     ensure_directory(raw_directory(args.output_dir))
     ensure_directory(reports_directory(args.output_dir))
@@ -371,20 +374,32 @@ def xml_escape(value: str) -> str:
     return html.escape(value, quote=True)
 
 
+def make_binary_command(args: argparse.Namespace) -> list[str]:
+    command = [str(args.binary)]
+
+    if not any(arg == "--order" or arg.startswith("--order=") for arg in args.binary_args):
+        command.extend(("--order", "decl"))
+
+    command.extend(args.binary_args)
+    return command
+
+
 def run_binary(args: argparse.Namespace) -> None:
     ensure_directory(raw_directory(args.output_dir))
     ensure_directory(reports_directory(args.output_dir))
 
+    binary_command = make_binary_command(args)
+
     if args.backend == "gcc":
         remove_matching_files(args.build_dir, ("*.gcda",))
-        run([str(args.binary), *args.binary_args], cwd=args.workspace_root)
+        run(binary_command, cwd=args.workspace_root)
         return
 
     if args.backend == "llvm":
         remove_matching_files(args.output_dir, ("*.profraw", "*.profdata"))
         env = os.environ.copy()
         env["LLVM_PROFILE_FILE"] = str(raw_directory(args.output_dir) / "lf-code-coverage-%p.profraw")
-        run([str(args.binary), *args.binary_args], cwd=args.workspace_root, env=env)
+        run(binary_command, cwd=args.workspace_root, env=env)
         return
 
     if args.backend == "msvc":
@@ -400,8 +415,7 @@ def run_binary(args: argparse.Namespace) -> None:
             str(settings_path),
             "--output",
             str(coverage_path),
-            str(args.binary),
-            *args.binary_args,
+            *binary_command,
         ], cwd=args.workspace_root)
         return
 
@@ -541,7 +555,7 @@ def collect_msvc_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
     return parse_cobertura(cobertura_path, args.workspace_root)
 
 
-def write_summary(summary_path: Path, coverage: dict[str, FileCoverage]) -> str:
+def write_summary(summary_path: Path, coverage: dict[str, FileCoverage], untouched: list[str]) -> str:
     total_lines = sum(entry.total_lines for entry in coverage.values())
     covered_lines = sum(entry.covered_lines for entry in coverage.values())
     uncovered_lines = total_lines - covered_lines
@@ -565,12 +579,18 @@ def write_summary(summary_path: Path, coverage: dict[str, FileCoverage]) -> str:
             f"{relative_path}"
         )
 
+    if untouched:
+        lines.append("")
+        lines.append(f"Source files not touched by coverage run ({len(untouched)}):")
+        for path in untouched:
+            lines.append(f"  {path}")
+
     summary_text = "\n".join(lines) + "\n"
     summary_path.write_text(summary_text, encoding="utf-8")
     return summary_text
 
 
-def write_html_report(report_path: Path, coverage: dict[str, FileCoverage]) -> None:
+def write_html_report(report_path: Path, coverage: dict[str, FileCoverage], untouched: list[str]) -> None:
     total_lines = sum(entry.total_lines for entry in coverage.values())
     covered_lines = sum(entry.covered_lines for entry in coverage.values())
     line_rate = 0.0 if total_lines == 0 else covered_lines / total_lines
@@ -586,6 +606,15 @@ def write_html_report(report_path: Path, coverage: dict[str, FileCoverage]) -> N
             f"<td>{entry.uncovered_lines}</td>"
             "</tr>"
         )
+
+    untouched_section = ""
+    if untouched:
+        untouched_rows = "\n".join(f"        <li>{html.escape(path)}</li>" for path in untouched)
+        untouched_section = f'''
+    <h2 style="margin-top:32px;font-size:20px;">Source files not touched by coverage run ({len(untouched)})</h2>
+    <ul style="background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:24px 24px 24px 40px;font-size:14px;">
+{untouched_rows}
+    </ul>'''
 
     report = f'''<!DOCTYPE html>
 <html lang="en">
@@ -696,6 +725,7 @@ def write_html_report(report_path: Path, coverage: dict[str, FileCoverage]) -> N
         {''.join(rows)}
       </tbody>
     </table>
+    {untouched_section}
   </main>
 </body>
 </html>
@@ -721,11 +751,15 @@ def generate_report(args: argparse.Namespace) -> None:
     if not coverage:
         raise SystemExit("Coverage data was collected, but no engine source files matched the current filters.")
 
+    untouched = sorted(path for path, entry in coverage.items() if entry.total_lines_override is not None)
+    for path in untouched:
+        del coverage[path]
+
     report_dir = reports_directory(args.output_dir)
     summary_path = report_dir / "summary.txt"
     html_path = report_dir / "index.html"
-    summary_text = write_summary(summary_path, coverage)
-    write_html_report(html_path, coverage)
+    summary_text = write_summary(summary_path, coverage, untouched)
+    write_html_report(html_path, coverage, untouched)
     print(summary_text, end="")
     log("HTML report:", html_path)
 

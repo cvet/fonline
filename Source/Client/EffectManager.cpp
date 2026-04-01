@@ -56,6 +56,15 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
             return file.GetStr();
         }
 
+        if (_settings->UseDummyEffects) {
+            if (strex(path2).ends_with(".fofx")) {
+                return "[Effect]\nPasses = 1\n";
+            }
+            if (path2.find(".fofx-") != string::npos && strex(path2).ends_with("-info")) {
+                return "[EffectInfo]\nMainTex = 0\nEggTex = 1\nProjBuf = 2\nMainTexBuf = 3\n";
+            }
+        }
+
         BreakIntoDebugger();
         WriteLog("Effect file '{}' not found", path2);
         return {};

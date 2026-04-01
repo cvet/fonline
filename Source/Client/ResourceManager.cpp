@@ -40,8 +40,38 @@ FO_BEGIN_NAMESPACE
 
 static constexpr uint32 ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint32 ANIM_FLAG_LAST_FRAME = 0x02;
+static constexpr isize32 DUMMY_SPRITE_SIZE {1, 1};
+static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
 
-ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) :
+static auto MakeBuiltInDummyAtlasSprite(SpriteManager& spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto [atlas, atlas_node, pos] = spr_mngr.GetAtlasMngr().FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
+    auto* tex = atlas->GetTexture();
+
+    tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, &DUMMY_SPRITE_COLOR);
+    tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, &DUMMY_SPRITE_COLOR);
+    tex->UpdateTextureRegion({pos.x, pos.y + 1}, {1, 1}, &DUMMY_SPRITE_COLOR);
+
+    const ucolor vertical_border[3] = {DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR};
+    tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, vertical_border);
+    tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, vertical_border);
+
+    atlas->GetRenderTarget()->ClearLastPixelPicks();
+
+    frect32 atlas_rect;
+    atlas_rect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->GetSize().width);
+    atlas_rect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->GetSize().height);
+    atlas_rect.width = 1.0f / numeric_cast<float32>(atlas->GetSize().width);
+    atlas_rect.height = 1.0f / numeric_cast<float32>(atlas->GetSize().height);
+
+    vector<bool> hit_test_data(1, spr_mngr.CheckHitTest(numeric_cast<int32>(DUMMY_SPRITE_COLOR.comp.a)));
+    return SafeAlloc::MakeShared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, atlas_node, atlas_rect, std::move(hit_test_data));
+}
+
+ResourceManager::ResourceManager(RenderSettings& settings, FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) :
+    _settings {&settings},
     _resources {&resources},
     _sprMngr {&spr_mngr},
     _animNameResolver {&anim_name_resolver}
@@ -61,14 +91,24 @@ void ResourceManager::IndexFiles()
         }
     }
 
-    auto any_spr = _sprMngr->LoadSprite("CritterStub.png", AtlasType::MapSprites);
+    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : nullptr;
+
+    if (!any_spr) {
+        any_spr = MakeBuiltInDummyAtlasSprite(*_sprMngr, AtlasType::MapSprites);
+    }
+
     auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_RUNTIME_ASSERT(atlas_spr);
     _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
     FO_RUNTIME_ASSERT(_critterDummyAnimFrames);
 
-    _itemHexDummyAnim = _sprMngr->LoadSprite("ItemStub.png", AtlasType::MapSprites);
+    _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName, AtlasType::MapSprites, true) : nullptr;
+
+    if (!_itemHexDummyAnim) {
+        _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(*_sprMngr, AtlasType::MapSprites);
+    }
+
     FO_RUNTIME_ASSERT(_itemHexDummyAnim);
 }
 

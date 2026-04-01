@@ -519,8 +519,6 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                     dict->Set(elem.first, elem.second);
                 }
 
-                FO_AS_VERIFY(ctx->SetArgObject(i, dict));
-
                 if (arg_type.IsMutable) {
                     mutable_data[i] = dict;
                     FO_AS_VERIFY(ctx->SetArgAddress(i, static_cast<void*>(&mutable_data[i])));

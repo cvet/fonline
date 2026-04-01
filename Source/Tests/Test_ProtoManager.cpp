@@ -45,40 +45,6 @@ static void InitProtoTestMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Critter", true, false, true, true, true);
 }
 
-static auto MakeProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8>
-{
-    vector<uint8> props_data;
-    set<hstring> str_hashes;
-
-    if (type_name == meta.Hashes.ToHashedString("Item")) {
-        ProtoItem proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
-    }
-    else if (type_name == meta.Hashes.ToHashedString("Critter")) {
-        ProtoCritter proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
-    }
-    else {
-        FO_RUNTIME_ASSERT(false);
-    }
-
-    vector<uint8> protos_data;
-    auto writer = DataWriter(protos_data);
-
-    writer.Write<uint32>(uint32 {0}); // string hashes
-    ignore_unused(str_hashes);
-    writer.Write<uint32>(uint32 {1}); // types count
-    writer.Write<uint32>(uint32 {1}); // protos count
-    writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
-    writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
-    writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
-    writer.WritePtr(proto_name.data(), proto_name.length());
-    writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
-    writer.WritePtr(props_data.data(), props_data.size());
-
-    return protos_data;
-}
-
 TEST_CASE("ProtoManager")
 {
     SECTION("BuiltInProtoLookupsAcceptEntityAndProtoTypeNames")
@@ -153,7 +119,7 @@ TEST_CASE("ProtoManager")
         InitProtoTestMetadata(meta);
 
         auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoTestPack");
-        source->AddFile("test.fopro-bin-server", MakeProtoResourceBlob(meta, meta.Hashes.ToHashedString("Item"), "LoadedKnife"));
+        source->AddFile("test.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(meta, meta.Hashes.ToHashedString("Item"), "LoadedKnife"));
 
         FileSystem resources;
         resources.AddCustomSource(std::move(source));

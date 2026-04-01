@@ -152,7 +152,7 @@ namespace NativeDataProvider
             _ptrs {vec_transform(cont, [](auto&& e) -> pair<void*, void*> { return {cast_to_void(&e.first), cast_to_void(&e.second)}; })}
         {
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
-            _addCallback = [&](void* key, void* value) FO_DEFERRED { cont.emplace_back(*cast_from_void<const typename T::key_type*>(key), *cast_from_void<typename T::mapped_type*>(value)); };
+            _addCallback = [&](void* key, void* value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key), *cast_from_void<typename T::mapped_type*>(value)); };
         }
 
         // Const dict
@@ -556,6 +556,17 @@ public:
             _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type});
             _engineTypes.emplace(typeid(vector<raw_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true});
         }
+    }
+
+    template<typename TKey, typename TValue>
+        requires(!std::is_pointer_v<TKey> && !std::is_pointer_v<TValue>)
+    void MapEngineDictType(const BaseTypeDesc& key_type, const BaseTypeDesc& value_type)
+    {
+        using raw_key_t = std::remove_cvref_t<TKey>;
+        using raw_value_t = std::remove_cvref_t<TValue>;
+
+        _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type});
+        _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type, .IsMutable = true});
     }
 
 private:

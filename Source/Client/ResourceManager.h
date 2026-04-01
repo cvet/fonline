@@ -46,7 +46,7 @@ class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
+    ResourceManager(RenderSettings& settings, FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
@@ -72,6 +72,7 @@ private:
     void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
     void FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
 
+    raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
     raw_ptr<SpriteManager> _sprMngr;
     raw_ptr<AnimationResolver> _animNameResolver;

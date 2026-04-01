@@ -99,7 +99,20 @@ void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resour
     MapEngineType<string>(meta->GetBaseType("string"));
     MapEngineType<hstring>(meta->GetBaseType("hstring"));
     MapEngineType<any_t>(meta->GetBaseType("any"));
+    MapEngineType<GameProperty>(meta->GetBaseType("GameProperty"));
+    MapEngineType<PlayerProperty>(meta->GetBaseType("PlayerProperty"));
+    MapEngineType<ItemProperty>(meta->GetBaseType("ItemProperty"));
+    MapEngineType<CritterProperty>(meta->GetBaseType("CritterProperty"));
+    MapEngineType<MapProperty>(meta->GetBaseType("MapProperty"));
+    MapEngineType<LocationProperty>(meta->GetBaseType("LocationProperty"));
     MapEngineType<Entity>(meta->GetBaseType("Entity"));
+
+    MapEngineDictType<int32, int32>(meta->GetBaseType("int32"), meta->GetBaseType("int32"));
+    MapEngineDictType<string, string>(meta->GetBaseType("string"), meta->GetBaseType("string"));
+    MapEngineDictType<ItemProperty, int32>(meta->GetBaseType("ItemProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<CritterProperty, int32>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<CritterProperty, any_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("any"));
+    MapEngineDictType<LocationProperty, any_t>(meta->GetBaseType("LocationProperty"), meta->GetBaseType("any"));
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(meta, resources);
