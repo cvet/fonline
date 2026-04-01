@@ -51,7 +51,7 @@ class EntityManager;
 class ItemManager;
 class CritterManager;
 
-struct FindPathInput // Todo: make FindPathInput pointer fields raw_ptr
+struct FindPathInput
 {
     raw_ptr<Map> TargetMap {};
     raw_ptr<Critter> FromCritter {};
@@ -60,10 +60,7 @@ struct FindPathInput // Todo: make FindPathInput pointer fields raw_ptr
     mpos NewToHex {};
     int32 Multihex {};
     int32 Cut {};
-    int32 TraceDist {};
-    bool CheckCritter {};
-    bool CheckGagItems {};
-    raw_ptr<Critter> TraceCr {};
+    function<bool(Item*)> GagCallback {};
 };
 
 struct FindPathOutput
@@ -73,7 +70,6 @@ struct FindPathOutput
         Unknown = -1,
         Ok = 0,
         AlreadyHere = 2,
-        MapNotFound = 5,
         HexBusy = 6,
         HexBusyRing = 7,
         TooFar = 8,
@@ -81,15 +77,12 @@ struct FindPathOutput
         InternalError = 10,
         InvalidHexes = 11,
         TraceFailed = 12,
-        TraceTargetNullptr = 13,
     };
 
     ResultType Result {ResultType::Unknown};
     vector<uint8> Steps {};
     vector<uint16> ControlSteps {};
     mpos NewToHex {};
-    ident_t GagCritterId {};
-    ident_t GagItemId {};
 };
 
 struct TracePathInput // Todo: make TracePathInput pointer fields raw_ptr

@@ -176,7 +176,6 @@ public:
 
     GlobalSettings& Settings;
     FileSystem Resources;
-    GeometryHelper Geometry;
     GameTimer GameTime;
     TimeEventManager TimeEventMngr;
     unique_del_ptr<uint8> UserData {};

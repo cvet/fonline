@@ -154,23 +154,32 @@ void Critter::DetachPlayer()
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
-void Critter::ClearMove()
+void Critter::SetMoving(refcount_ptr<MovingContext> moving)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Moving.Uid++;
-    Moving.Steps = {};
-    Moving.ControlSteps = {};
-    Moving.StartTime = {};
-    Moving.OffsetTime = {};
-    Moving.Speed = {};
-    Moving.StartHex = {};
-    Moving.EndHex = {};
-    Moving.WholeTime = {};
-    Moving.WholeDist = {};
-    Moving.StartHexOffset = {};
-    Moving.EndHexOffset = {};
+    if (_moving) {
+        _moving->Complete(MovingState::Stopped);
+        _lastMoving = _moving;
+    }
 
+    _moving = std::move(moving);
+    _movingUid++;
+    SetMovingSpeed(numeric_cast<int32>(_moving->GetSpeed()));
+}
+
+void Critter::StopMoving(MovingState reason)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_moving) {
+        return;
+    }
+
+    _moving->Complete(reason);
+    _lastMoving = _moving;
+    _moving.reset();
+    _movingUid++;
     SetMovingSpeed(0);
 }
 
@@ -185,7 +194,7 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(AttachedCritters.empty());
 
     if (IsMoving()) {
-        ClearMove();
+        StopMoving();
         SendAndBroadcast_Moving();
     }
 

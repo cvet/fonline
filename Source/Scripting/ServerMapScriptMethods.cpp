@@ -863,7 +863,7 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& to
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex, int32 cut)
+FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex, int32 cut, ScriptFunc<bool, Item*> gagCallabck)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid from hex args");
@@ -878,6 +878,11 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex
     input.ToHex = toHex;
     input.Cut = cut;
 
+    if (gagCallabck) {
+        // Todo: use move only function
+        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](Item* gag) mutable { return gag_callback->Call(gag) && gag_callback->GetResult(); };
+    }
+
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
@@ -888,7 +893,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex, int32 cut)
+FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex, int32 cut, ScriptFunc<bool, Critter*, Item*> gagCallabck)
 {
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -905,6 +910,11 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
     input.ToHex = toHex;
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
+
+    if (gagCallabck) {
+        // Todo: use move only function
+        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](Item* gag) mutable { return gag_callback->Call(cr, gag) && gag_callback->GetResult(); };
+    }
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 

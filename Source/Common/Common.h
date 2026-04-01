@@ -305,6 +305,10 @@ struct GameSettings
 #else
 #error FO_GEOMETRY not specified
 #endif
+    static constexpr int32 MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
+    static constexpr int32 MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
+    static constexpr int32 MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
+    static constexpr float32 MAP_CAMERA_ANGLE = FO_MAP_CAMERA_ANGLE;
     static constexpr float32 MIN_ZOOM = 0.05f;
     static constexpr float32 MAX_ZOOM = 20.0f;
     static constexpr int32 DEFAULT_MAP_SIZE = 200;

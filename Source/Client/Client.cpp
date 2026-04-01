@@ -35,6 +35,7 @@
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
+#include "Movement.h"
 #include "NetCommand.h"
 #include "ParticleSprites.h"
 
@@ -581,28 +582,31 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(cr->IsMoving());
 
-    if (cr->Moving.Steps.size() > 500) {
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+
+    if (moving->GetSteps().size() > Settings.MaxPathFindLength) {
         BreakIntoDebugger();
-        cr->ClearMove();
+        cr->StopMoving();
         return;
     }
 
     _conn.OutBuf->StartMsg(NetMessage::SendCritterMove);
     _conn.OutBuf->Write(_curMap->GetId());
     _conn.OutBuf->Write(cr->GetId());
-    _conn.OutBuf->Write(cr->Moving.Speed);
-    _conn.OutBuf->Write(cr->Moving.StartHex);
-    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
-    for (const auto step : cr->Moving.Steps) {
+    _conn.OutBuf->Write(moving->GetSpeed());
+    _conn.OutBuf->Write(moving->GetStartHex());
+    _conn.OutBuf->Write(numeric_cast<uint16>(moving->GetSteps().size()));
+    for (const auto step : moving->GetSteps()) {
         _conn.OutBuf->Write(step);
     }
-    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
-    for (const auto control_step : cr->Moving.ControlSteps) {
+    _conn.OutBuf->Write(numeric_cast<uint16>(moving->GetControlSteps().size()));
+    for (const auto control_step : moving->GetControlSteps()) {
         _conn.OutBuf->Write(control_step);
     }
-    _conn.OutBuf->Write(cr->Moving.EndHexOffset);
+    _conn.OutBuf->Write(moving->GetEndHexOffset());
     _conn.OutBuf->EndMsg();
 }
 
@@ -991,18 +995,14 @@ void ClientEngine::Net_OnCritterMoveSpeed()
     if (!cr->IsMoving()) {
         return;
     }
-    if (speed == cr->Moving.Speed) {
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+
+    if (speed == moving->GetSpeed()) {
         return;
     }
 
-    const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
-    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
-
-    cr->Moving.WholeTime /= diff;
-    cr->Moving.StartTime = GameTime.GetFrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {iround<int32>(elapsed_time / diff)};
-    cr->Moving.Speed = speed;
-    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+    moving->ChangeSpeed(speed, GameTime.GetFrameTime());
 
     cr->RefreshView();
 }
@@ -1191,7 +1191,7 @@ void ClientEngine::Net_OnCritterPos()
         return;
     }
 
-    cr->ClearMove();
+    cr->StopMoving();
 
     cr->ChangeLookDirAngle(dir_angle);
     cr->ChangeMoveDirAngle(dir_angle);
@@ -1851,68 +1851,17 @@ void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
         return;
     }
 
-    cr->ClearMove();
+    cr->StopMoving();
 
-    cr->Moving.Speed = speed;
-    cr->Moving.StartTime = GameTime.GetFrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
-    cr->Moving.WholeTime = numeric_cast<float32>(whole_time);
-    cr->Moving.Steps = steps;
-    cr->Moving.ControlSteps = control_steps;
-    cr->Moving.StartHex = start_hex;
-    cr->Moving.StartHexOffset = cr->GetHexOffset();
-    cr->Moving.EndHexOffset = end_hex_offset;
+    auto start_hex_offset = cr->GetHexOffset();
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = Geometry.GetHexOffset(start_hex, cr->GetHex());
-        cr->Moving.StartHexOffset = {numeric_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), numeric_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
+        const auto cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
+        start_hex_offset = {numeric_cast<int16>(start_hex_offset.x + cr_offset.x), numeric_cast<int16>(start_hex_offset.y + cr_offset.y)};
     }
 
-    cr->Moving.WholeDist = 0.0f;
-
-    mpos next_start_hex = start_hex;
-    uint16 control_step_begin = 0;
-
-    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hex = next_start_hex;
-
-        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-
-        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], _curMap->GetSize());
-            FO_RUNTIME_ASSERT(move_ok);
-        }
-
-        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
-
-        if (i == 0) {
-            ox -= cr->Moving.StartHexOffset.x;
-            oy -= cr->Moving.StartHexOffset.y;
-        }
-        if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndHexOffset.x;
-            oy += cr->Moving.EndHexOffset.y;
-        }
-
-        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
-
-        cr->Moving.WholeDist += dist;
-
-        control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hex = hex;
-
-        cr->Moving.EndHex = hex;
-    }
-
-    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
-    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
-
-    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+    cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(_curMap->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32>(whole_time)));
+    cr->GetMoving()->ValidateRuntimeState();
 }
 
 auto ClientEngine::GetEntity(ident_t id) -> ClientEntity*
@@ -2571,7 +2520,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
 
     const auto prev_moving = cr->IsMoving();
 
-    cr->ClearMove();
+    cr->StopMoving();
 
     bool try_move = false;
     mpos hex;
@@ -2607,73 +2556,15 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     }
 
     if (try_move) {
-        cr->Moving.Steps = steps;
-        cr->Moving.ControlSteps = control_steps;
-        cr->Moving.StartTime = GameTime.GetFrameTime();
-        cr->Moving.Speed = numeric_cast<uint16>(speed);
-        cr->Moving.StartHex = cr->GetHex();
-        cr->Moving.EndHex = hex;
-        cr->Moving.StartHexOffset = cr->GetHexOffset();
-        cr->Moving.EndHexOffset = hex_offset;
-
-        cr->Moving.WholeTime = {};
-        cr->Moving.WholeDist = {};
-
-        FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-        const auto base_move_speed = numeric_cast<float32>(cr->Moving.Speed);
-
-        auto next_start_hex = cr->Moving.StartHex;
-        uint16 control_step_begin = 0;
-
-        for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-            auto hex2 = next_start_hex;
-
-            FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-            FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-            for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j], cr->GetMap()->GetSize());
-                FO_RUNTIME_ASSERT(move_ok);
-            }
-
-            auto offset2 = Geometry.GetHexOffset(next_start_hex, hex2);
-
-            if (i == 0) {
-                offset2.x -= cr->Moving.StartHexOffset.x;
-                offset2.y -= cr->Moving.StartHexOffset.y;
-            }
-            if (i == cr->Moving.ControlSteps.size() - 1) {
-                offset2.x += cr->Moving.EndHexOffset.x;
-                offset2.y += cr->Moving.EndHexOffset.y;
-            }
-
-            const auto proj_oy = numeric_cast<float32>(offset2.y) * Geometry.GetYProj();
-            const auto dist = std::sqrt(numeric_cast<float32>(offset2.x * offset2.x) + proj_oy * proj_oy);
-
-            cr->Moving.WholeDist += dist;
-            cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
-
-            control_step_begin = cr->Moving.ControlSteps[i];
-            next_start_hex = hex2;
-
-            if (i == cr->Moving.ControlSteps.size() - 1) {
-                FO_RUNTIME_ASSERT(hex2 == cr->Moving.EndHex);
-            }
-        }
-
-        cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
-        cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
-
-        FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-        FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-        FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-        FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), hex_offset));
+        cr->GetMoving()->ValidateRuntimeState();
 
         cr->RefreshView();
         Net_SendMove(cr);
     }
 
     if (prev_moving && !cr->IsMoving()) {
-        cr->ClearMove();
+        cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
     }

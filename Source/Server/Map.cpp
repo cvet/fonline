@@ -549,15 +549,6 @@ auto Map::IsTriggerItemOnHex(mpos hex) const noexcept -> bool
     return field.HasTriggerItem;
 }
 
-auto Map::IsGagItemOnHex(mpos hex) const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField->GetCellForReading(hex);
-
-    return field.HasGagItem;
-}
-
 auto Map::GetItem(ident_t item_id) noexcept -> Item*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -581,25 +572,6 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
 
     for (auto& item : field2.Items) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
-            return item.get();
-        }
-    }
-
-    return nullptr;
-}
-
-auto Map::GetGagItemOnHex(mpos hex) const noexcept -> const Item*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField->GetCellForReading(hex);
-
-    if (field.Items.empty()) {
-        return nullptr;
-    }
-
-    for (const auto& item : field.Items) {
-        if (item->GetIsGag()) {
             return item.get();
         }
     }
@@ -697,12 +669,11 @@ void Map::RecacheHexFlags(Field& field)
 
     field.HasCritter = false;
     field.HasBlockCritter = false;
-    field.HasGagItem = false;
     field.HasTriggerItem = false;
     field.HasNoMoveItem = false;
+    field.MovableWithGag = false;
     field.HasNoShootItem = false;
-
-    field.HasCritter = !field.Critters.empty();
+    optional<bool> movable_with_gag;
 
     if (_engine->Settings.CritterBlockHex && field.HasCritter) {
         field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
@@ -710,14 +681,13 @@ void Map::RecacheHexFlags(Field& field)
 
     if (!field.Items.empty()) {
         for (const auto& item : field.Items) {
-            if (!field.HasNoMoveItem && !item->GetNoBlock()) {
+            if (!item->GetNoBlock()) {
                 field.HasNoMoveItem = true;
+                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
-            if (!field.HasNoShootItem && !item->GetShootThru()) {
+            if (!item->GetShootThru()) {
                 field.HasNoShootItem = true;
-            }
-            if (!field.HasGagItem && item->GetIsGag()) {
-                field.HasGagItem = true;
+                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
             if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
                 field.HasTriggerItem = true;
@@ -727,6 +697,7 @@ void Map::RecacheHexFlags(Field& field)
 
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
     field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
+    field.MovableWithGag = movable_with_gag.value_or(false) && !(field.HasBlockCritter || field.ManualBlock);
 }
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
@@ -948,7 +919,7 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     const irect32 scroll_area = GetScrollAxialArea();
 
     if (!scroll_area.is_zero()) {
-        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+        const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
         if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
             axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
@@ -1030,6 +1001,47 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
             }
         }
     }
+}
+
+auto Map::CheckGagItems(mpos hex, int32 radius, const function<bool(Item*)>& gag_callback) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
+
+    for (int32 i = 0; i < hexes_around; i++) {
+        if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
+            if (IsHexMovable(check_hex)) {
+                continue;
+            }
+            if (!CheckGagItem(check_hex, gag_callback)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+auto Map::CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (!field.MovableWithGag) {
+        return false;
+    }
+
+    auto& field2 = _hexField->GetCellForWriting(hex);
+
+    for (auto& item : field2.Items) {
+        if (item->GetIsGag() && (!gag_callback || !gag_callback(item.get()))) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE

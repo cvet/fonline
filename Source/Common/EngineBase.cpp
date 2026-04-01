@@ -1133,7 +1133,6 @@ BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const M
     GameProperties(GetInitRef()),
     Settings {settings},
     Resources {std::move(resources)},
-    Geometry(settings),
     GameTime(settings),
     TimeEventMngr(*this),
     _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(this)}

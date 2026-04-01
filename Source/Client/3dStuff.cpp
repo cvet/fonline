@@ -176,7 +176,6 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
     _nameResolver {&name_resolver},
     _animNameResolver {&anim_name_resolver},
     _textureLoader {tex_loader},
-    _geometry(settings),
     _particleMngr(settings, effect_mngr, resources, game_time, std::move(tex_loader))
 {
     FO_STACK_TRACE_ENTRY();

@@ -36,6 +36,7 @@
 #include "EffectManager.h"
 #include "ItemView.h"
 #include "MapView.h"
+#include "Movement.h"
 #include "ResourceManager.h"
 #include "Settings.h"
 
@@ -94,21 +95,26 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
     }
 }
 
-void CritterHexView::ClearMove()
+void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Moving.Steps = {};
-    Moving.ControlSteps = {};
-    Moving.StartTime = {};
-    Moving.OffsetTime = {};
-    Moving.Speed = {};
-    Moving.StartHex = {};
-    Moving.EndHex = {};
-    Moving.WholeTime = {};
-    Moving.WholeDist = {};
-    Moving.StartHexOffset = {};
-    Moving.EndHexOffset = {};
+    if (_moving != nullptr) {
+        _moving->Complete(MovingState::Stopped);
+    }
+
+    _moving = std::move(moving);
+}
+
+void CritterHexView::StopMoving()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_moving != nullptr) {
+        _moving->Complete(MovingState::Stopped);
+    }
+
+    _moving = nullptr;
 }
 
 void CritterHexView::MoveAttachedCritters()
@@ -143,14 +149,14 @@ void CritterHexView::Action(CritterAction action, int32 action_data, Entity* con
     switch (action) {
     case CritterAction::Knockout:
         SetCondition(CritterCondition::Knockout);
-        ClearMove();
+        StopMoving();
         break;
     case CritterAction::StandUp:
         SetCondition(CritterCondition::Alive);
         break;
     case CritterAction::Dead: {
         SetCondition(CritterCondition::Dead);
-        ClearMove();
+        StopMoving();
 
 #if FO_ENABLE_3D
         if (_model) {
@@ -281,7 +287,7 @@ void CritterHexView::RefreshView(bool no_smooth)
         const auto scale = scale_factor != 0 ? numeric_cast<float32>(scale_factor) / 1000.0f : 1.0f;
         _model->SetScale(scale, scale, scale);
 
-        const auto moving_speed = iround<int32>(numeric_cast<float32>(Moving.Speed) / scale);
+        const auto moving_speed = IsMoving() ? iround<int32>(numeric_cast<float32>(GetMoving()->GetSpeed()) / scale) : 0;
         _model->UpdatePose(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
     }
 #endif
@@ -323,7 +329,7 @@ void CritterHexView::RefreshView(bool no_smooth)
             ignore_unused(no_smooth);
 
             if (IsMoving()) {
-                if (Moving.Speed < numeric_cast<uint16>(_engine->Settings.RunAnimStartSpeed)) {
+                if (GetMoving()->GetSpeed() < numeric_cast<uint16>(_engine->Settings.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
                 }
                 else {
@@ -570,153 +576,63 @@ void CritterHexView::ProcessMoving()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!Moving.Steps.empty());
-    FO_RUNTIME_ASSERT(!Moving.ControlSteps.empty());
-    FO_RUNTIME_ASSERT(Moving.WholeTime > 0.0f);
-    FO_RUNTIME_ASSERT(Moving.WholeDist > 0.0f);
+    auto* moving = GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+    moving->ValidateRuntimeState();
 
     if (!IsAlive()) {
-        ClearMove();
+        StopMoving();
         RefreshView();
         return;
     }
 
-    auto normalized_time = (_engine->GameTime.GetFrameTime() - Moving.StartTime + Moving.OffsetTime).to_ms<float32>() / Moving.WholeTime;
-    normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
+    moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
+    const auto progress = moving->EvaluateProgress();
+    const auto prev_hex = GetHex();
 
-    const auto dist_pos = Moving.WholeDist * normalized_time;
+    _map->MoveCritter(this, progress.Hex, false);
 
-    auto start_hex = Moving.StartHex;
-    auto cur_dist = 0.0f;
+    const auto cur_hex = GetHex();
+    const auto moved = cur_hex != prev_hex;
+    const auto hex_offset = GetHexOffset();
 
-    auto done = false;
-    auto control_step_begin = 0;
-    for (size_t i = 0; i < Moving.ControlSteps.size(); i++) {
-        auto hex = start_hex;
-
-        FO_RUNTIME_ASSERT(control_step_begin <= numeric_cast<int32>(Moving.ControlSteps[i]));
-        FO_RUNTIME_ASSERT(Moving.ControlSteps[i] <= Moving.Steps.size());
-        for (auto j = control_step_begin; j < numeric_cast<int32>(Moving.ControlSteps[i]); j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hex, Moving.Steps[j], _map->GetSize());
-            FO_RUNTIME_ASSERT(move_ok);
-        }
-
-        auto&& [ox, oy] = _engine->Geometry.GetHexOffset(start_hex, hex);
-
-        if (i == 0) {
-            ox -= Moving.StartHexOffset.x;
-            oy -= Moving.StartHexOffset.y;
-        }
-        if (i == Moving.ControlSteps.size() - 1) {
-            ox += Moving.EndHexOffset.x;
-            oy += Moving.EndHexOffset.y;
-        }
-
-        const auto proj_oy = numeric_cast<float32>(oy) * _engine->Geometry.GetYProj();
-        auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
-        dist = std::max(dist, 0.0001f);
-
-        if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == Moving.ControlSteps.size() - 1)) {
-            auto normalized_dist = (dist_pos - cur_dist) / dist;
-            normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
-            if (normalized_time == 1.0f) {
-                normalized_dist = 1.0f;
-            }
-
-            // Evaluate current hex
-            const auto step_index_f = normalized_dist * numeric_cast<float32>(Moving.ControlSteps[i] - control_step_begin);
-            const auto step_index = control_step_begin + iround<int32>(step_index_f);
-            FO_RUNTIME_ASSERT(step_index >= control_step_begin);
-            FO_RUNTIME_ASSERT(step_index <= numeric_cast<int32>(Moving.ControlSteps[i]));
-
-            auto hex2 = start_hex;
-
-            for (auto j2 = control_step_begin; j2 < step_index; j2++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, Moving.Steps[j2], _map->GetSize());
-                FO_RUNTIME_ASSERT(move_ok);
-            }
-
-            const auto prev_hex = GetHex();
-
-            _map->MoveCritter(this, hex2, false);
-
-            const auto cur_hex = GetHex();
-            const auto moved = cur_hex != prev_hex;
-
-            // Evaluate current position
-            auto&& [cr_ox, cr_oy] = _engine->Geometry.GetHexOffset(start_hex, cur_hex);
-
-            if (i == 0) {
-                cr_ox -= Moving.StartHexOffset.x;
-                cr_oy -= Moving.StartHexOffset.y;
-            }
-
-            const auto lerp = [](int32 a, int32 b, float32 t) { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
-
-            auto mx = lerp(0, ox, normalized_dist);
-            auto my = lerp(0, oy, normalized_dist);
-            mx -= numeric_cast<float32>(cr_ox);
-            my -= numeric_cast<float32>(cr_oy);
-
-            const auto mxi = numeric_cast<int16>(iround<int32>(mx));
-            const auto myi = numeric_cast<int16>(iround<int32>(my));
-            const auto hex_offset = GetHexOffset();
-
-            if (moved || hex_offset.x != mxi || hex_offset.y != myi) {
+    if (moved || hex_offset != progress.HexOffset) {
 #if FO_ENABLE_3D
-                if (_model) {
-                    ipos32 model_offset;
+        if (_model) {
+            ipos32 model_offset;
 
-                    if (moved) {
-                        model_offset = _engine->Geometry.GetHexOffset(prev_hex, cur_hex);
-                    }
+            if (moved) {
+                model_offset = GeometryHelper::GetHexOffset(prev_hex, cur_hex);
+            }
 
-                    model_offset.x -= hex_offset.x - mxi;
-                    model_offset.y -= hex_offset.y - myi;
+            model_offset.x -= hex_offset.x - progress.HexOffset.x;
+            model_offset.y -= hex_offset.y - progress.HexOffset.y;
 
-                    _model->MoveModel(model_offset);
-                }
+            _model->MoveModel(model_offset);
+        }
 #endif
 
-                SetHexOffset(ipos16 {mxi, myi});
-                RefreshOffs();
-            }
-
-            // Evaluate dir angle
-            const auto dir_angle_f = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
-            const auto dir_angle = iround<int16>(dir_angle_f);
-
-#if FO_ENABLE_3D
-            if (_model) {
-                if (GetControlledByPlayer()) {
-                    ChangeMoveDirAngle(dir_angle);
-                }
-                else {
-                    ChangeDirAngle(dir_angle);
-                }
-            }
-            else
-#endif
-            {
-                ChangeDir(GeometryHelper::AngleToDir(dir_angle));
-            }
-
-            done = true;
-        }
-
-        if (done) {
-            break;
-        }
-
-        FO_RUNTIME_ASSERT(i < Moving.ControlSteps.size() - 1);
-
-        control_step_begin = Moving.ControlSteps[i];
-        start_hex = hex;
-        cur_dist += dist;
+        SetHexOffset(progress.HexOffset);
+        RefreshOffs();
     }
 
-    if (normalized_time == 1.0f && GetHex() == Moving.EndHex) {
-        ClearMove();
+#if FO_ENABLE_3D
+    if (_model) {
+        if (GetControlledByPlayer()) {
+            ChangeMoveDirAngle(progress.DirAngle);
+        }
+        else {
+            ChangeDirAngle(progress.DirAngle);
+        }
+    }
+    else
+#endif
+    {
+        ChangeDir(GeometryHelper::AngleToDir(progress.DirAngle));
+    }
+
+    if (progress.Completed && GetHex() == moving->GetEndHex()) {
+        StopMoving();
         RefreshView();
     }
 }

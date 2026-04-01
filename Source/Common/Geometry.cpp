@@ -35,12 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-GeometryHelper::GeometryHelper(GeometrySettings& settings) :
-    _settings {&settings}
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
 auto GeometryHelper::GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -502,14 +496,14 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32 index)
     }
 }
 
-auto GeometryHelper::GetYProj() const -> float32
+auto GeometryHelper::GetYProj() -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return 1.0f / std::sin(_settings->MapCameraAngle * DEG_TO_RAD_FLOAT);
+    return 1.0f / std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 }
 
-auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) const -> float32
+auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -533,19 +527,19 @@ auto GeometryHelper::GetLineDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) con
     return angle;
 }
 
-auto GeometryHelper::GetHexPos(mpos hex) const -> ipos32
+auto GeometryHelper::GetHexPos(mpos hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetHexPos(ipos32(hex));
 }
 
-auto GeometryHelper::GetHexPos(ipos32 raw_hex) const -> ipos32
+auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings->MapHexWidth;
-    const int32 h = _settings->MapHexLineHeight;
+    constexpr int32 w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32 h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const int32 hx = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
@@ -562,19 +556,19 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) const -> ipos32
     }
 }
 
-auto GeometryHelper::GetHexAxialCoord(mpos hex) const -> ipos32
+auto GeometryHelper::GetHexAxialCoord(mpos hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetHexAxialCoord(ipos32(hex));
 }
 
-auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) const -> ipos32
+auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings->MapHexWidth;
-    const int32 h = _settings->MapHexLineHeight;
+    constexpr int32 w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32 h = GameSettings::MAP_HEX_LINE_HEIGHT;
     const ipos32 hex_pos = GetHexPos(raw_hex);
     FO_RUNTIME_ASSERT(hex_pos.x % (w / 2) == 0);
     FO_RUNTIME_ASSERT(hex_pos.y % h == 0);
@@ -582,13 +576,13 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) const -> ipos32
     return {hex_pos.x / (w / 2), hex_pos.y / h};
 }
 
-auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipos32
+auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings->MapHexWidth;
-    const int32 half_w = w / 2;
-    const int32 h = _settings->MapHexLineHeight;
+    constexpr int32 w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32 half_w = w / 2;
+    constexpr int32 h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex centers form a lattice with basis vectors:
@@ -639,8 +633,8 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipo
         //   |dx| <= half_w
         //   |dx * hq - dy * half_w| <= limit
         //   |dx * hq + dy * half_w| <= limit
-        // where hq = MapHexHeight / 4, limit = 2 * half_w * hq
-        const int32 hq = _settings->MapHexHeight / 4;
+        // where hq = MAP_HEX_HEIGHT / 4, limit = 2 * half_w * hq
+        constexpr int32 hq = GameSettings::MAP_HEX_HEIGHT / 4;
         const int32 limit = 2 * half_w * hq;
 
         const auto is_inside_hex = [half_w, hq, limit](int32 lx, int32 ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
@@ -704,19 +698,19 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) const -> ipo
     }
 }
 
-auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) const -> ipos32
+auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetHexOffset(ipos32(from_hex), ipos32(to_hex));
 }
 
-auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) const -> ipos32
+auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const int32 w = _settings->MapHexWidth;
-    const int32 h = _settings->MapHexLineHeight;
+    constexpr int32 w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32 h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const int32 dx = to_raw_hex.x - from_raw_hex.x;
@@ -747,8 +741,8 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
         auto [x, y] = GetHexOffset(from_hex, to_hex);
         x = -x;
 
-        const int32 dx = x / _settings->MapHexWidth;
-        const int32 dy = y / _settings->MapHexLineHeight;
+        const int32 dx = x / GameSettings::MAP_HEX_WIDTH;
+        const int32 dy = y / GameSettings::MAP_HEX_LINE_HEIGHT;
         const int32 adx = std::abs(dx);
         const int32 ady = std::abs(dy);
 
@@ -797,8 +791,8 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
             rh = 1;
         }
 
-        const int32 hw = std::abs(rw / (_settings->MapHexWidth / 2)) + ((rw % (_settings->MapHexWidth / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= _settings->MapHexWidth / 2 ? 1 : 0); // Hexes width
-        const int32 hh = std::abs(rh / _settings->MapHexLineHeight) + ((rh % _settings->MapHexLineHeight) != 0 ? 1 : 0) + (std::abs(rh) >= _settings->MapHexLineHeight ? 1 : 0); // Hexes height
+        const int32 hw = std::abs(rw / (GameSettings::MAP_HEX_WIDTH / 2)) + ((rw % (GameSettings::MAP_HEX_WIDTH / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= GameSettings::MAP_HEX_WIDTH / 2 ? 1 : 0); // Hexes width
+        const int32 hh = std::abs(rh / GameSettings::MAP_HEX_LINE_HEIGHT) + ((rh % GameSettings::MAP_HEX_LINE_HEIGHT) != 0 ? 1 : 0) + (std::abs(rh) >= GameSettings::MAP_HEX_LINE_HEIGHT ? 1 : 0); // Hexes height
         int32 shx = numeric_cast<int32>(from_hex.x);
         int32 shy = numeric_cast<int32>(from_hex.y);
 

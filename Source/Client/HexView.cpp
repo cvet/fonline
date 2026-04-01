@@ -51,7 +51,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
 
     FO_RUNTIME_ASSERT(!_mapSprValid);
 
-    const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
+    const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
 
     _mapSpr = mspr;
@@ -70,7 +70,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     _extraMapSpr->remove_if([](auto&& entry) { return !entry.second; });
     auto& entry = _extraMapSpr->emplace_back();
 
-    const auto hex_offset = ipos32 {_map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2};
+    const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
 
     SetupSprite(entry.first.get());

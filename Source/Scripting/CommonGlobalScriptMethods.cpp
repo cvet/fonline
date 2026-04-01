@@ -262,7 +262,7 @@ FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromP
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround<int32>(engine->Geometry.GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
+    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
 
 ///@ ExportMethod
@@ -318,7 +318,7 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, 
 {
     ignore_unused(engine);
 
-    hexOffset = engine->Geometry.GetHexOffset(fromHex, toHex);
+    hexOffset = GeometryHelper::GetHexOffset(fromHex, toHex);
 }
 
 ///@ ExportMethod

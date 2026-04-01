@@ -89,6 +89,18 @@ FO_SCRIPT_API bool Client_Critter_IsMoving(CritterView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API MovingContext* Client_Critter_GetMovingContext(CritterView* self)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->GetMoving();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsModel(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
@@ -464,7 +476,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32 speed)
+FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32 speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -472,10 +484,11 @@ FO_SCRIPT_API void Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 
         throw ScriptException("Critter is not on map");
     }
 
-    const auto ox = numeric_cast<int16>(std::clamp(hexOffset.x, -self->GetEngine()->Settings.MapHexWidth / 2, self->GetEngine()->Settings.MapHexHeight / 2));
-    const auto oy = numeric_cast<int16>(std::clamp(hexOffset.y, -self->GetEngine()->Settings.MapHexHeight / 2, self->GetEngine()->Settings.MapHexHeight / 2));
+    const auto ox = numeric_cast<int16>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const auto oy = numeric_cast<int16>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}}, speed);
+    return hex_cr->GetMoving();
 }
 
 ///@ ExportMethod
