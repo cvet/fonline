@@ -479,6 +479,6 @@ macro(AddSharedApplication target sourceFile)
 	SetupApplicationTarget(${target} ${appSharedArgs})
 
 	if(APP_SHARED_NO_PREFIX)
-		SetTargetProperties(${target} PREFIX "")
+		set_target_properties(${target} PROPERTIES PREFIX "")
 	endif()
 endmacro()
