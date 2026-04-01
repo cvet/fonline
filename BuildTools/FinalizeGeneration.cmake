@@ -1276,9 +1276,10 @@ if(FO_BUILD_BAKER)
         AddSharedApplication(${FO_DEV_NAME}_BakerLib "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp"
             OUTPUT_DIR ${FO_BAKER_OUTPUT}
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
+            TESTING_APP 0
             LINK_LIBS PRIVATE "BakerLib"
             EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
-            PREFIX ""
+            NO_PREFIX
             WRITE_BUILD_HASH)
     endif()
 endif()

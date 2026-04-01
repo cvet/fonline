@@ -451,8 +451,8 @@ macro(AddExecutableApplication target sourceFile)
 endmacro()
 
 macro(AddSharedApplication target sourceFile)
-	set(options WRITE_BUILD_HASH)
-	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP PREFIX)
+	set(options WRITE_BUILD_HASH NO_PREFIX)
+	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_PROPERTIES)
 	ParseArguments(APP_SHARED "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -461,8 +461,8 @@ macro(AddSharedApplication target sourceFile)
 	set(appSharedProperties
 		LIBRARY_OUTPUT_DIRECTORY ${APP_SHARED_OUTPUT_DIR})
 
-	if(DEFINED APP_SHARED_PREFIX)
-		AppendList(appSharedProperties PREFIX "${APP_SHARED_PREFIX}")
+	if(APP_SHARED_NO_PREFIX)
+		AppendList(appSharedProperties PREFIX "")
 	endif()
 
 	if(APP_SHARED_EXTRA_PROPERTIES)
