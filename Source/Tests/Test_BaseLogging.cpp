@@ -43,6 +43,12 @@ TEST_CASE("BaseLogging")
     {
         const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
         const auto log_path = temp_root / "logs" / "base.log";
+        const auto null_log_path =
+#if FO_WINDOWS
+            string_view {"NUL"};
+#else
+            string_view {"/dev/null"};
+#endif
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -56,9 +62,8 @@ TEST_CASE("BaseLogging")
         std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
         CHECK(content == "alpha\nbeta");
 
-#if FO_LINUX || FO_MAC
-        LogToFile("/dev/null");
-#endif
+        input.close();
+        LogToFile(null_log_path);
 
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);

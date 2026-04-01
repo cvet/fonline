@@ -5,6 +5,12 @@
 For build just run from repository root one of the following scripts:  
 *Todo: finalize API and declare here*
 
+## CMake layout
+
+All internal CMake modules now live under `Engine/BuildTools/cmake`.
+The public entry points kept at the `Engine/BuildTools` root are `Init.cmake`, `StartGeneration.cmake`, and `FinalizeGeneration.cmake`.
+The validation project scaffold continues to live under `Engine/BuildTools/validation-project`.
+
 ## Build environment variables
 
 Build scripts (sh/bat) can be called both from current directory (e.g. `./linux.sh`) or repository root (e.g. `BuildTools/linux.sh`).  

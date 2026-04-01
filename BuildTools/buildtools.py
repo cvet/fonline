@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -13,12 +14,60 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Callable, Iterable, Mapping, NotRequired, Sequence, TypedDict
 
 
 EnvMap = dict[str, str]
 FlagMap = dict[str, int]
-ValidationMap = dict[str, str]
+
+
+class ValidationTarget(TypedDict):
+	platform: str
+	target: str
+	config: str
+	compiler: NotRequired[str]
+	run_target: NotRequired[str]
+
+
+def make_flag_map(*enabled_flag_names: str) -> FlagMap:
+	return {flag_name: 1 for flag_name in enabled_flag_names}
+
+
+def make_validation_target(
+	platform_name: str,
+	target_name: str,
+	config_name: str,
+	compiler_name: str | None = None,
+	run_target_name: str | None = None,
+) -> ValidationTarget:
+	validation_target: ValidationTarget = {
+		'platform': platform_name,
+		'target': target_name,
+		'config': config_name,
+	}
+	if compiler_name is not None:
+		validation_target['compiler'] = compiler_name
+	if run_target_name is not None:
+		validation_target['run_target'] = run_target_name
+	return validation_target
+
+
+def make_validation_target_set(
+	name_prefix: str,
+	platform_name: str,
+	target_names: Sequence[str],
+	config_name: str = 'Debug',
+	compiler_name: str | None = None,
+) -> dict[str, ValidationTarget]:
+	return {
+		f'{name_prefix}-{target_name}': make_validation_target(
+			platform_name,
+			target_name,
+			config_name,
+			compiler_name=compiler_name,
+		)
+		for target_name in target_names
+	}
 
 
 FLAG_NAMES = [
@@ -32,80 +81,84 @@ FLAG_NAMES = [
 	'FO_CODE_COVERAGE',
 ]
 
-BUILD_TARGETS = {
-	'client': dict(FO_BUILD_CLIENT=1),
-	'server': dict(FO_BUILD_SERVER=1),
-	'editor': dict(FO_BUILD_EDITOR=1),
-	'mapper': dict(FO_BUILD_MAPPER=1),
-	'ascompiler': dict(FO_BUILD_ASCOMPILER=1),
-	'baker': dict(FO_BUILD_BAKER=1),
-	'unit-tests': dict(FO_UNIT_TESTS=1),
-	'code-coverage': dict(FO_CODE_COVERAGE=1),
-	'toolset': dict(FO_BUILD_ASCOMPILER=1, FO_BUILD_BAKER=1),
-	'full': dict(
-		FO_BUILD_CLIENT=1,
-		FO_BUILD_SERVER=1,
-		FO_BUILD_EDITOR=1,
-		FO_BUILD_MAPPER=1,
-		FO_BUILD_ASCOMPILER=1,
-		FO_BUILD_BAKER=1,
+COMMON_VALIDATION_TARGET_NAMES = ('client', 'server', 'editor', 'mapper', 'ascompiler', 'baker')
+WIN64_CLANG_VALIDATION_TARGET_NAMES = ('client', 'server', 'ascompiler', 'baker')
+
+SINGLE_FLAG_BUILD_TARGETS = {
+	'client': 'FO_BUILD_CLIENT',
+	'server': 'FO_BUILD_SERVER',
+	'editor': 'FO_BUILD_EDITOR',
+	'mapper': 'FO_BUILD_MAPPER',
+	'ascompiler': 'FO_BUILD_ASCOMPILER',
+	'baker': 'FO_BUILD_BAKER',
+	'unit-tests': 'FO_UNIT_TESTS',
+	'code-coverage': 'FO_CODE_COVERAGE',
+}
+
+SINGLE_CLIENT_VALIDATION_PLATFORMS = {
+	'android-arm': 'android',
+	'android-arm64': 'android-arm64',
+	'android-x86': 'android-x86',
+	'web': 'web',
+	'mac': 'mac',
+	'ios': 'ios',
+	'win32': 'win32',
+}
+
+BUILD_TARGETS: dict[str, FlagMap] = {
+	**{target_name: make_flag_map(flag_name) for target_name, flag_name in SINGLE_FLAG_BUILD_TARGETS.items()},
+	'toolset': make_flag_map('FO_BUILD_ASCOMPILER', 'FO_BUILD_BAKER'),
+	'full': make_flag_map(
+		'FO_BUILD_CLIENT',
+		'FO_BUILD_SERVER',
+		'FO_BUILD_EDITOR',
+		'FO_BUILD_MAPPER',
+		'FO_BUILD_ASCOMPILER',
+		'FO_BUILD_BAKER',
 	),
 }
 
-VALIDATION_TARGETS = {
-	'linux-client': dict(platform='linux', target='client', config='Debug'),
-	'linux-gcc-client': dict(platform='linux', target='client', config='Debug', compiler='gcc'),
-	'android-arm-client': dict(platform='android', target='client', config='Debug'),
-	'android-arm64-client': dict(platform='android-arm64', target='client', config='Debug'),
-	'android-x86-client': dict(platform='android-x86', target='client', config='Debug'),
-	'web-client': dict(platform='web', target='client', config='Debug'),
-	'mac-client': dict(platform='mac', target='client', config='Debug'),
-	'ios-client': dict(platform='ios', target='client', config='Debug'),
-	'linux-server': dict(platform='linux', target='server', config='Debug'),
-	'linux-gcc-server': dict(platform='linux', target='server', config='Debug', compiler='gcc'),
-	'linux-editor': dict(platform='linux', target='editor', config='Debug'),
-	'linux-gcc-editor': dict(platform='linux', target='editor', config='Debug', compiler='gcc'),
-	'linux-mapper': dict(platform='linux', target='mapper', config='Debug'),
-	'linux-gcc-mapper': dict(platform='linux', target='mapper', config='Debug', compiler='gcc'),
-	'linux-ascompiler': dict(platform='linux', target='ascompiler', config='Debug'),
-	'linux-gcc-ascompiler': dict(platform='linux', target='ascompiler', config='Debug', compiler='gcc'),
-	'linux-baker': dict(platform='linux', target='baker', config='Debug'),
-	'linux-gcc-baker': dict(platform='linux', target='baker', config='Debug', compiler='gcc'),
-	'win32-client': dict(platform='win32', target='client', config='Debug'),
-	'win64-client': dict(platform='win64', target='client', config='Debug'),
-	'win64-clang-client': dict(platform='win64-clang', target='client', config='Debug'),
-	'win64-server': dict(platform='win64', target='server', config='Debug'),
-	'win64-clang-server': dict(platform='win64-clang', target='server', config='Debug'),
-	'win64-editor': dict(platform='win64', target='editor', config='Debug'),
-	'win64-mapper': dict(platform='win64', target='mapper', config='Debug'),
-	'win64-ascompiler': dict(platform='win64', target='ascompiler', config='Debug'),
-	'win64-clang-ascompiler': dict(platform='win64-clang', target='ascompiler', config='Debug'),
-	'win64-baker': dict(platform='win64', target='baker', config='Debug'),
-	'win64-clang-baker': dict(platform='win64-clang', target='baker', config='Debug'),
-	'unit-tests': dict(platform='linux', target='unit-tests', config='Debug', run_target='RunUnitTests'),
-	'code-coverage': dict(platform='linux', target='code-coverage', config='Debug', compiler='gcc', run_target='RunCodeCoverage'),
+VALIDATION_TARGETS: dict[str, ValidationTarget] = {
+	**make_validation_target_set('linux', 'linux', COMMON_VALIDATION_TARGET_NAMES),
+	**make_validation_target_set('linux-gcc', 'linux', COMMON_VALIDATION_TARGET_NAMES, compiler_name='gcc'),
+	**{
+		f'{name_prefix}-client': make_validation_target(platform_name, 'client', 'Debug')
+		for name_prefix, platform_name in SINGLE_CLIENT_VALIDATION_PLATFORMS.items()
+	},
+	**make_validation_target_set('win64', 'win64', COMMON_VALIDATION_TARGET_NAMES),
+	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
+	'unit-tests': make_validation_target('linux', 'unit-tests', 'Debug', run_target_name='RunUnitTests'),
+	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
+}
+
+ANDROID_PLATFORMS = ('android', 'android-arm64', 'android-x86')
+APPLE_PLATFORMS = ('mac', 'ios')
+
+ANDROID_ABI_BY_PLATFORM = {
+	'android': 'armeabi-v7a',
+	'android-arm64': 'arm64-v8a',
+	'android-x86': 'x86',
+}
+
+WINDOWS_BUILD_BY_PLATFORM = {
+	'win32': ('Win32', None),
+	'win64': ('x64', None),
+	'win32-clang': ('Win32', 'ClangCL'),
+	'win64-clang': ('x64', 'ClangCL'),
 }
 
 FORMAT_PATTERNS = [
-	'Applications/*.cpp',
-	'Client/*.cpp', 'Client/*.h',
-	'Common/*.cpp', 'Common/*.h',
-	'Common/ImGuiExt/*.cpp', 'Common/ImGuiExt/*.h',
-	'Essentials/*.cpp', 'Essentials/*.h',
-	'Server/*.cpp', 'Server/*.h',
-	'Tools/*.cpp', 'Tools/*.h',
-	'Scripting/*.cpp',
-	'Scripting/AngelScript/*.cpp', 'Scripting/AngelScript/*.h',
-	'Scripting/AngelScript/CoreScripts/*.fos',
-	'Frontend/*.cpp', 'Frontend/*.h',
-	'Tests/*.cpp',
+	'**/*.cpp',
+	'**/*.h',
+	'**/*.fos',
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
+CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'7',
-		['clang', 'clang-format', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
+		'8',
+		['clang', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
 		'6',
@@ -156,9 +209,116 @@ def read_first_line(path: Path) -> str:
 		return file.readline().strip()
 
 
+def resolve_buildtools_path(env: Mapping[str, str], *parts: str) -> Path:
+	return Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / Path(*parts)
+
+
+def resolve_buildtools_cmake_path(env: Mapping[str, str], file_name: str) -> Path:
+	return resolve_buildtools_path(env, 'cmake', file_name)
+
+
+def resolve_validation_project_source(env: Mapping[str, str]) -> Path:
+	return resolve_buildtools_path(env, 'validation-project')
+
+
+def resolve_workspace_path(env: Mapping[str, str], *parts: str) -> Path:
+	return Path(env['FO_WORKSPACE']) / Path(*parts)
+
+
+def resolve_toolset_build_dir(env: Mapping[str, str]) -> Path:
+	build_dir_name = 'build-win64-toolset' if os.name == 'nt' else 'build-linux-toolset'
+	return resolve_workspace_path(env, build_dir_name)
+
+
+def resolve_web_debug_root(env: Mapping[str, str]) -> Path:
+	return resolve_workspace_path(env, 'web-debug')
+
+
+def resolve_web_package_dir(env: Mapping[str, str], devname: str, config: str) -> Path:
+	return resolve_web_debug_root(env) / f'{devname}-Client-{config}-Web'
+
+
+def resolve_configure_build_dir(env: Mapping[str, str], platform_name: str, target_name: str, config: str) -> Path:
+	return resolve_workspace_path(env, f'build-{platform_name}-{target_name}-{config}')
+
+
+def resolve_validation_project_workspace(env: Mapping[str, str]) -> Path:
+	return resolve_workspace_path(env, 'validation-project')
+
+
+def resolve_validation_build_dir(env: Mapping[str, str], name: str) -> Path:
+	return resolve_workspace_path(env, f'validate-{name}')
+
+
 def resolve_workspace_emsdk_root(workspace: Path) -> str:
 	emsdk_root = workspace / 'emsdk'
 	return str(emsdk_root) if emsdk_root.is_dir() else ''
+
+
+def resolve_emscripten_toolchain(env: Mapping[str, str]) -> Path:
+	return Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
+
+
+def resolve_apple_cmake() -> str:
+	return shutil.which('cmake') or '/Applications/CMake.app/Contents/bin/cmake'
+
+
+def make_cmake_build_cmd(config: str, target_name: str | None = None, cmake_bin: str = 'cmake') -> list[str]:
+	command = [cmake_bin, '--build', '.', '--config', config]
+	if target_name is not None:
+		command.extend(['--target', target_name])
+	command.append('--parallel')
+	return command
+
+
+def run_cmake_build(build_dir: Path, config: str, env: Mapping[str, str] | None = None) -> None:
+	run(make_cmake_build_cmd(config), cwd=build_dir, env=env)
+
+
+def run_cmake_target(build_dir: Path, config: str, target_name: str, env: Mapping[str, str] | None = None) -> None:
+	run(make_cmake_build_cmd(config, target_name=target_name), cwd=build_dir, env=env)
+
+
+def run_emsdk_cmake_build(workspace: Path, build_dir: Path, config: str) -> None:
+	run_in_emsdk_env(make_cmake_build_cmd(config), workspace, cwd=build_dir)
+
+
+def stringify_args(*args: object) -> list[str]:
+	return [str(arg) for arg in args]
+
+
+def to_cmake_path(path: str | Path) -> str:
+	return str(path).replace('\\', '/')
+
+
+def make_unix_makefiles_configure_cmd(*args: object) -> list[str]:
+	return ['cmake', '-G', 'Unix Makefiles', *stringify_args(*args)]
+
+
+def make_emsdk_configure_cmd(toolchain_file: Path, *args: object) -> list[str]:
+	configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + to_cmake_path(toolchain_file), *stringify_args(*args)]
+	if os.name == 'nt':
+		configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
+	else:
+		configure_cmd[1:1] = ['-G', 'Unix Makefiles']
+	return configure_cmd
+
+
+def make_android_configure_cmd(toolchain_file: str, toolchain_settings: Sequence[str], *args: object) -> list[str]:
+	return make_unix_makefiles_configure_cmd(f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(toolchain_file)}', *toolchain_settings, *args)
+
+
+def make_xcode_configure_cmd(cmake_bin: str, *args: object) -> list[str]:
+	return [cmake_bin, '-G', 'Xcode', *stringify_args(*args)]
+
+
+def make_windows_configure_cmd(platform_name: str, *args: object) -> list[str]:
+	arch, toolset = resolve_windows_build(platform_name)
+	configure_cmd = ['cmake', '-A', arch]
+	if toolset:
+		configure_cmd += ['-T', toolset]
+	configure_cmd += stringify_args(*args)
+	return configure_cmd
 
 
 def resolve_env() -> EnvMap:
@@ -271,57 +431,67 @@ def has_windows_build_tools() -> bool:
 	if not vswhere:
 		return False
 	try:
-		output = subprocess.check_output(
-			[
-				vswhere,
-				'-latest',
-				'-products',
-				'*',
-				'-requires',
-				'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
-				'-property',
-				'installationPath',
-			],
-			text=True,
-			stderr=subprocess.STDOUT,
-		).strip()
+		output = run_capture_text([
+			vswhere,
+			'-latest',
+			'-products',
+			'*',
+			'-requires',
+			'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+			'-property',
+			'installationPath',
+		])
 		return bool(output)
 	except Exception:
 		return False
 
 
-def check_host_tools(host_name: str) -> list[str]:
+def check_linux_host_tools() -> list[str]:
 	issues: list[str] = []
+	if not shutil.which('apt-get'):
+		issues.append('Please use a Debian/Ubuntu host with apt-get available')
+	if not is_running_as_root() and not shutil.which('sudo'):
+		issues.append('Please install sudo or run the preparation script as root')
+	if not shutil.which('cmake'):
+		issues.append('Please install CMake')
+	return issues
 
-	if host_name == 'linux':
-		if not shutil.which('apt-get'):
-			issues.append('Please use a Debian/Ubuntu host with apt-get available')
-		if not is_running_as_root() and not shutil.which('sudo'):
-			issues.append('Please install sudo or run the preparation script as root')
-		if not shutil.which('cmake'):
-			issues.append('Please install CMake')
-		return issues
 
-	if host_name == 'macos':
-		try:
-			subprocess.check_output(['xcode-select', '-p'], text=True, stderr=subprocess.STDOUT).strip()
-		except Exception:
-			issues.append('Please install Xcode from AppStore')
+def check_macos_host_tools() -> list[str]:
+	issues: list[str] = []
+	try:
+		run_capture_text(['xcode-select', '-p'])
+	except Exception:
+		issues.append('Please install Xcode from AppStore')
 
-		if not resolve_macos_cmake():
-			issues.append('Please install CMake from https://cmake.org')
-		return issues
+	if not resolve_macos_cmake():
+		issues.append('Please install CMake from https://cmake.org')
+	return issues
 
-	if host_name == 'windows':
-		if not has_windows_build_tools():
-			issues.append('Please install Visual Studio with C++ Build Tools or Build Tools for Visual Studio')
-		if not shutil.which('cmake'):
-			issues.append('Please install CMake from https://cmake.org')
-		if not (shutil.which('py') or shutil.which('python')):
-			issues.append('Please install Python from https://www.python.org')
-		return issues
 
-	raise SystemExit(f'Unsupported host tools check: {host_name}')
+def check_windows_host_tools() -> list[str]:
+	issues: list[str] = []
+	if not has_windows_build_tools():
+		issues.append('Please install Visual Studio with C++ Build Tools or Build Tools for Visual Studio')
+	if not shutil.which('cmake'):
+		issues.append('Please install CMake from https://cmake.org')
+	if not (shutil.which('py') or shutil.which('python')):
+		issues.append('Please install Python from https://www.python.org')
+	return issues
+
+
+HOST_TOOL_CHECKERS: dict[str, Callable[[], list[str]]] = {
+	'linux': check_linux_host_tools,
+	'macos': check_macos_host_tools,
+	'windows': check_windows_host_tools,
+}
+
+
+def check_host_tools(host_name: str) -> list[str]:
+	host_checker = HOST_TOOL_CHECKERS.get(host_name)
+	if host_checker is None:
+		raise SystemExit(f'Unsupported host tools check: {host_name}')
+	return host_checker()
 
 
 def build_flag_args(target_name: str, config: str | None = None) -> list[str]:
@@ -351,6 +521,41 @@ def remove_tree(path: str | Path) -> None:
 		os.unlink(target)
 
 	shutil.rmtree(path, onexc=handle_remove_readonly)
+
+
+def remove_path_if_exists(path: Path) -> None:
+	if path.is_dir() and not path.is_symlink():
+		remove_tree(path)
+	elif path.exists() or path.is_symlink():
+		path.unlink()
+
+
+def ensure_empty_dir(path: Path) -> None:
+	remove_path_if_exists(path)
+	ensure_dir(path)
+
+
+def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_ok: bool = False) -> None:
+	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok)
+
+
+def download_file(url: str, target_path: Path, label: str) -> None:
+	log(f'Download {label}:', url)
+	urllib.request.urlretrieve(url, target_path)
+
+
+def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:
+	command: list[object] = ['git', 'clone', repo_url]
+	if depth is not None:
+		command.extend(['--depth', str(depth)])
+	if branch_name is not None:
+		command.extend(['--branch', branch_name])
+	command.append(str(target_path))
+	run(command)
+
+
+def resolve_runtime_build_script() -> str:
+	return 'build.cmd' if os.name == 'nt' else './build.sh'
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
@@ -386,26 +591,35 @@ def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, 
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
 
 
+def run_capture_text(
+	cmd: Sequence[object],
+	cwd: str | Path | None = None,
+	env: Mapping[str, str] | None = None,
+	*,
+	log_command: bool = True,
+) -> str:
+	if log_command:
+		log('Run:', ' '.join(str(part) for part in cmd))
+	return subprocess.check_output(
+		[str(part) for part in cmd],
+		cwd=cwd,
+		env=dict(env) if env is not None else None,
+		text=True,
+		encoding='utf-8',
+		stderr=subprocess.STDOUT,
+	).strip()
+
+
 def run_bash(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', command)
 	subprocess.check_call(['bash', '-lc', command], cwd=cwd, env=dict(env) if env is not None else None)
 
 
-def run_windows_cmd(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
-	log('Run:', command)
-	subprocess.check_call(['cmd', '/d', '/c', command], cwd=cwd, env=dict(env) if env is not None else None)
-
-
 def resolve_windows_build(platform_name: str) -> tuple[str, str | None]:
-	if platform_name == 'win32':
-		return 'Win32', None
-	if platform_name == 'win64':
-		return 'x64', None
-	if platform_name == 'win32-clang':
-		return 'Win32', 'ClangCL'
-	if platform_name == 'win64-clang':
-		return 'x64', 'ClangCL'
-	raise SystemExit(f'Invalid Windows build platform: {platform_name}')
+	build = WINDOWS_BUILD_BY_PLATFORM.get(platform_name)
+	if build is None:
+		raise SystemExit(f'Invalid Windows build platform: {platform_name}')
+	return build
 
 
 def join_shell_args(args: Iterable[str]) -> str:
@@ -498,6 +712,55 @@ def mark_workspace_part_ready(workspace: Path, part_name: str, version: str) -> 
 	workspace_version_marker(workspace, part_name).write_text(version + '\n', encoding='utf-8')
 
 
+def ensure_workspace_part(
+	workspace: Path,
+	part_name: str,
+	version: str,
+	check_only: bool,
+	action: Callable[[Mapping[str, str]], None],
+	env: Mapping[str, str],
+	) -> None:
+	if is_workspace_part_ready(workspace, part_name, version):
+		log(f'Workspace part {part_name} is ready ({version})')
+		return
+
+	if check_only:
+		raise SystemExit(f'Workspace part {part_name} is not ready ({version})')
+
+	log(f'Prepare workspace part {part_name} ({version})')
+	action(env)
+	mark_workspace_part_ready(workspace, part_name, version)
+
+
+def run_marker_step(marker_path: Path, action_name: str, action: Callable[[], None]) -> None:
+	if marker_path.exists():
+		return
+	log(action_name)
+	action()
+	marker_path.touch()
+
+
+def reset_marker(marker_path: Path) -> None:
+	remove_path_if_exists(marker_path)
+
+
+def ensure_directory_link(link_path: Path, target_path: str | Path) -> None:
+	if link_path.exists():
+		return
+	if os.name == 'nt':
+		run(['cmd', '/c', 'mklink', '/d', str(link_path), str(target_path)])
+	else:
+		link_path.symlink_to(Path(target_path), target_is_directory=True)
+
+
+def upload_codecov(build_dir: Path, token: str) -> None:
+	codecov_path = build_dir / 'codecov'
+	reset_marker(codecov_path)
+	run(['curl', '-Os', 'https://uploader.codecov.io/latest/linux/codecov'], cwd=build_dir)
+	codecov_path.chmod(codecov_path.stat().st_mode | 0o111)
+	run([str(codecov_path), '-t', token, '--gcov'], cwd=build_dir)
+
+
 def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -> None:
 	version, packages = LINUX_PACKAGE_GROUPS[group_name]
 	if is_workspace_part_ready(workspace, group_name, version):
@@ -518,60 +781,43 @@ def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -
 	mark_workspace_part_ready(workspace, group_name, version)
 
 
+def reset_build_dir(build_dir: Path) -> None:
+	if build_dir.exists():
+		remove_tree(build_dir)
+	ensure_dir(build_dir)
+
+
+def make_toolset_cmake_args(output_path: str, config_name: str | None = None) -> list[str]:
+	return [f'-DFO_OUTPUT_PATH={to_cmake_path(output_path)}', *build_flag_args('toolset', config=config_name)]
+
+
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
-	workspace = Path(env['FO_WORKSPACE'])
 	output = env['FO_OUTPUT']
 	project_root = env['FO_PROJECT_ROOT']
+	build_dir = resolve_toolset_build_dir(env)
+	reset_build_dir(build_dir)
 
 	if os.name == 'nt':
-		build_dir = workspace / 'build-win64-toolset'
-		if build_dir.exists():
-			remove_tree(build_dir)
-		ensure_dir(build_dir)
 		run([
 			'cmake',
 			'-G',
 			'Visual Studio 17 2022',
 			'-A',
 			'x64',
-			f'-DFO_OUTPUT_PATH={output}',
-			'-DFO_BUILD_BAKER=1',
-			'-DFO_BUILD_ASCOMPILER=1',
-			'-DFO_UNIT_TESTS=0',
-			project_root,
+			*make_toolset_cmake_args(output),
+			to_cmake_path(project_root),
 		], cwd=build_dir)
 		return
 
-	build_dir = workspace / 'build-linux-toolset'
-	if build_dir.exists():
-		remove_tree(build_dir)
-	ensure_dir(build_dir)
-	build_env = os.environ.copy()
-	build_env['CC'] = '/usr/bin/clang'
-	build_env['CXX'] = '/usr/bin/clang++'
-	run([
-		'cmake',
-		'-G',
-		'Unix Makefiles',
-		f'-DFO_OUTPUT_PATH={output}',
-		'-DCMAKE_BUILD_TYPE=Release',
-		'-DFO_BUILD_CLIENT=0',
-		'-DFO_BUILD_SERVER=0',
-		'-DFO_BUILD_EDITOR=0',
-		'-DFO_BUILD_MAPPER=0',
-		'-DFO_BUILD_ASCOMPILER=1',
-		'-DFO_BUILD_BAKER=1',
-		'-DFO_UNIT_TESTS=0',
-		'-DFO_CODE_COVERAGE=0',
-		project_root,
-	], cwd=build_dir, env=build_env)
+	build_env = make_linux_build_env()
+	configure_cmd = make_unix_makefiles_configure_cmd(*make_toolset_cmake_args(output, config_name='Release'), project_root)
+	run(configure_cmd, cwd=build_dir, env=build_env)
 
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
 		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
-		log('Run:', ' '.join(str(part) for part in command))
-		subprocess.check_call(command, cwd=emsdk_root)
+		run(command, cwd=emsdk_root)
 	else:
 		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)
 
@@ -579,10 +825,9 @@ def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	emsdk_root = workspace / 'emsdk'
-	if emsdk_root.exists():
-		remove_tree(emsdk_root)
+	remove_path_if_exists(emsdk_root)
 
-	run(['git', 'clone', 'https://github.com/emscripten-core/emsdk.git', str(emsdk_root)])
+	clone_git_repo(emsdk_root, 'https://github.com/emscripten-core/emsdk.git')
 	run_emsdk_command(emsdk_root, 'list')
 	version = build_emscripten_version(env)
 	run_emsdk_command(emsdk_root, 'install', '--build=Release', '--shallow', version)
@@ -597,38 +842,23 @@ def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
 	ndk_source_dir = workspace / version
 	ndk_target_dir = workspace / 'android-ndk'
 
-	if archive_path.exists():
-		archive_path.unlink()
-	if ndk_source_dir.exists():
-		remove_tree(ndk_source_dir)
-	if ndk_target_dir.exists():
-		remove_tree(ndk_target_dir)
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(ndk_source_dir)
+	remove_path_if_exists(ndk_target_dir)
 
 	url = f'https://dl.google.com/android/repository/{archive_name}'
-	log('Download Android NDK:', url)
-	urllib.request.urlretrieve(url, archive_path)
+	download_file(url, archive_path, 'Android NDK')
 	log('Unpack Android NDK:', archive_path)
 	extract_zip_with_permissions(archive_path, workspace)
 	shutil.move(str(ndk_source_dir), str(ndk_target_dir))
-	archive_path.unlink(missing_ok=True)
+	remove_path_if_exists(archive_path)
 
 
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	dotnet_root = workspace / 'dotnet'
-	if dotnet_root.exists():
-		remove_tree(dotnet_root)
-	dotnet_root.mkdir(parents=True, exist_ok=True)
-	run([
-		'git',
-		'clone',
-		'https://github.com/dotnet/runtime.git',
-		'--depth',
-		'1',
-		'--branch',
-		build_dotnet_version(env),
-		str(dotnet_root / 'runtime'),
-	])
+	ensure_empty_dir(dotnet_root)
+	clone_git_repo(dotnet_root / 'runtime', 'https://github.com/dotnet/runtime.git', branch_name=build_dotnet_version(env), depth=1)
 
 
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
@@ -651,21 +881,98 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 	}
 
 	for part_name in parts:
-		version = part_versions[part_name]
-		if is_workspace_part_ready(workspace, part_name, version):
-			log(f'Workspace part {part_name} is ready ({version})')
-			continue
-
-		if check_only:
-			raise SystemExit(f'Workspace part {part_name} is not ready ({version})')
-
-		log(f'Prepare workspace part {part_name} ({version})')
-		part_actions[part_name](env)
-		mark_workspace_part_ready(workspace, part_name, version)
+		ensure_workspace_part(workspace, part_name, part_versions[part_name], check_only, part_actions[part_name], env)
 
 
 def has_feature(features: Sequence[str], *names: str) -> bool:
 	return any(feature in names for feature in features)
+
+
+HOST_DEFAULT_FEATURES = {
+	'linux': ['all'],
+	'windows': ['toolset'],
+	'macos': [],
+}
+
+LINUX_FEATURE_PACKAGE_GROUPS = {
+	'linux': ['linux-packages'],
+	'web': ['web-packages'],
+	'android': ['android-packages'],
+	'android-arm64': ['android-packages'],
+	'android-x86': ['android-packages'],
+	'all': ['linux-packages', 'web-packages', 'android-packages'],
+}
+
+HOST_FEATURE_WORKSPACE_PARTS = {
+	'linux': {
+		'toolset': ['toolset'],
+		'web': ['emscripten'],
+		'android': ['android-ndk'],
+		'android-arm64': ['android-ndk'],
+		'android-x86': ['android-ndk'],
+		'dotnet': ['dotnet'],
+		'all': ['toolset', 'emscripten', 'android-ndk', 'dotnet'],
+	},
+	'windows': {
+		'toolset': ['toolset'],
+		'web': ['emscripten'],
+		'all': ['toolset', 'emscripten'],
+	},
+	'macos': {},
+}
+
+
+def resolve_selected_features(host_name: str, features: Sequence[str]) -> list[str]:
+	selected = list(features)
+	if selected:
+		return selected
+	default_features = HOST_DEFAULT_FEATURES.get(host_name)
+	if default_features is None:
+		raise SystemExit(f'Unsupported host workspace preparation: {host_name}')
+	return list(default_features)
+
+
+def extend_unique(values: list[str], new_values: Sequence[str]) -> None:
+	for value in new_values:
+		if value not in values:
+			values.append(value)
+
+
+def resolve_feature_values(selected: Sequence[str], feature_map: Mapping[str, Sequence[str]]) -> list[str]:
+	resolved: list[str] = []
+	for feature_name, values in feature_map.items():
+		if has_feature(selected, feature_name):
+			extend_unique(resolved, values)
+	return resolved
+
+
+def prepare_linux_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
+	if has_feature(selected, 'packages', 'all'):
+		install_linux_packages('common-packages', workspace, check_only)
+		for package_group in resolve_feature_values(selected, LINUX_FEATURE_PACKAGE_GROUPS):
+			install_linux_packages(package_group, workspace, check_only)
+
+	parts = resolve_feature_values(selected, HOST_FEATURE_WORKSPACE_PARTS['linux'])
+	if parts:
+		prepare_workspace(parts, check_only, env)
+
+
+def prepare_windows_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
+	_ = workspace
+	parts = resolve_feature_values(selected, HOST_FEATURE_WORKSPACE_PARTS['windows'])
+	if parts:
+		prepare_workspace(parts, check_only, env)
+
+
+def prepare_macos_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
+	_ = selected, workspace, check_only, env
+
+
+HOST_WORKSPACE_PREPARERS: dict[str, Callable[[Sequence[str], Path, bool, Mapping[str, str]], None]] = {
+	'linux': prepare_linux_host_workspace,
+	'windows': prepare_windows_host_workspace,
+	'macos': prepare_macos_host_workspace,
+}
 
 
 def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
@@ -680,54 +987,16 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 			print(issue, flush=True)
 		raise SystemExit(1)
 
-	if host_name == 'linux':
-		selected = list(features) if features else ['all']
-		if has_feature(selected, 'packages', 'all'):
-			install_linux_packages('common-packages', workspace, check_only)
-			if has_feature(selected, 'linux', 'all'):
-				install_linux_packages('linux-packages', workspace, check_only)
-			if has_feature(selected, 'web', 'all'):
-				install_linux_packages('web-packages', workspace, check_only)
-			if has_feature(selected, 'android', 'android-arm64', 'android-x86', 'all'):
-				install_linux_packages('android-packages', workspace, check_only)
-
-		if has_feature(selected, 'toolset', 'all'):
-			prepare_workspace(['toolset'], check_only, env)
-		if has_feature(selected, 'web', 'all'):
-			prepare_workspace(['emscripten'], check_only, env)
-		if has_feature(selected, 'android', 'android-arm64', 'android-x86', 'all'):
-			prepare_workspace(['android-ndk'], check_only, env)
-		if has_feature(selected, 'dotnet', 'all'):
-			prepare_workspace(['dotnet'], check_only, env)
-		return
-
-	if host_name == 'windows':
-		selected = list(features) if features else ['toolset']
-		parts: list[str] = []
-		if has_feature(selected, 'toolset', 'all'):
-			parts.append('toolset')
-		if has_feature(selected, 'web', 'all'):
-			parts.append('emscripten')
-		if parts:
-			prepare_workspace(parts, check_only, env)
-		return
-
-	if host_name == 'macos':
-		return
-
-	raise SystemExit(f'Unsupported host workspace preparation: {host_name}')
+	selected = resolve_selected_features(host_name, features)
+	host_preparer = HOST_WORKSPACE_PREPARERS.get(host_name)
+	if host_preparer is None:
+		raise SystemExit(f'Unsupported host workspace preparation: {host_name}')
+	host_preparer(selected, workspace, check_only, env)
 
 
 def resolve_build_hash(env: Mapping[str, str]) -> str:
 	project_root = Path(env['FO_PROJECT_ROOT'])
-	result = subprocess.run(
-		['git', 'rev-parse', 'HEAD'],
-		cwd=project_root,
-		capture_output=True,
-		text=True,
-	)
-	assert result.returncode == 0, f'Failed to get git hash: {result.stderr.strip()}'
-	build_hash = result.stdout.strip()
+	build_hash = run_capture_text(['git', 'rev-parse', 'HEAD'], cwd=project_root)
 	assert build_hash, 'git rev-parse HEAD returned empty hash'
 	return build_hash
 
@@ -742,8 +1011,8 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 
 	project_root = Path(env['FO_PROJECT_ROOT'])
 	output_root_input = Path(env['FO_OUTPUT'])
-	output_root = Path(env['FO_WORKSPACE']) / 'web-debug'
-	package_script = Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / 'package.py'
+	output_root = resolve_web_debug_root(env)
+	package_script = resolve_buildtools_path(env, 'package.py')
 	build_hash = resolve_build_hash(env)
 	input_roots = [output_root_input, project_root]
 
@@ -785,191 +1054,219 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 
 
 def web_package_dir(env: Mapping[str, str], devname: str, config: str) -> Path:
-	return Path(env['FO_WORKSPACE']) / 'web-debug' / f'{devname}-Client-{config}-Web'
+	return resolve_web_package_dir(env, devname, config)
 
 
 def resolve_android_abi(platform_name: str) -> str:
-	if platform_name == 'android':
-		return 'armeabi-v7a'
-	if platform_name == 'android-arm64':
-		return 'arm64-v8a'
-	if platform_name == 'android-x86':
-		return 'x86'
-	raise SystemExit(f'Invalid Android platform: {platform_name}')
+	android_abi = ANDROID_ABI_BY_PLATFORM.get(platform_name)
+	if android_abi is None:
+		raise SystemExit(f'Invalid Android platform: {platform_name}')
+	return android_abi
+
+
+def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
+	build_env = os.environ.copy()
+	if compiler_name == 'gcc':
+		build_env['CC'] = '/usr/bin/gcc'
+		build_env['CXX'] = '/usr/bin/g++'
+	else:
+		build_env['CC'] = '/usr/bin/clang'
+		build_env['CXX'] = '/usr/bin/clang++'
+	return build_env
+
+
+def make_android_toolchain_settings(platform_name: str, env: Mapping[str, str]) -> list[str]:
+	android_abi = resolve_android_abi(platform_name)
+	return [
+		f'-DANDROID_ABI={android_abi}',
+		f'-DANDROID_PLATFORM=android-{env["ANDROID_NATIVE_API_LEVEL_NUMBER"]}',
+		'-DANDROID_STL=c++_static',
+	]
+
+
+def make_ios_toolchain_settings(env: Mapping[str, str]) -> list[str]:
+	return [
+		'-DPLATFORM=SIMULATOR64',
+		f'-DDEPLOYMENT_TARGET={env["FO_IOS_SDK"]}',
+		'-DENABLE_BITCODE=0',
+		'-DENABLE_ARC=0',
+		'-DENABLE_VISIBILITY=0',
+		'-DENABLE_STRICT_TRY_COMPILE=0',
+	]
+
+
+def run_apple_cmake_build(cmake_bin: str, build_dir: Path, config: str) -> None:
+	run(make_cmake_build_cmd(config, cmake_bin=cmake_bin), cwd=build_dir)
+
+
+def make_platform_build_flag_args(platform_name: str, target_name: str, config: str) -> list[str]:
+	if platform_name in ('linux', 'web', *ANDROID_PLATFORMS):
+		return build_flag_args(target_name, config=config)
+	return build_flag_args(target_name)
+
+
+def make_platform_configure_env(platform_name: str, compiler_name: str) -> EnvMap | None:
+	if platform_name == 'linux':
+		return make_linux_build_env(compiler_name)
+	return None
+
+
+def resolve_platform_configure_runner(platform_name: str) -> str:
+	return 'emsdk' if platform_name == 'web' else 'direct'
+
+
+def resolve_platform_build_runner(platform_name: str) -> str:
+	if platform_name == 'web':
+		return 'emsdk'
+	if platform_name in APPLE_PLATFORMS:
+		return 'apple'
+	return 'direct'
+
+
+def make_platform_configure_cmd(
+	platform_name: str,
+	source_path: str,
+	configure_args: Sequence[str],
+	env: Mapping[str, str],
+) -> list[str]:
+	if platform_name == 'linux':
+		return make_unix_makefiles_configure_cmd(*configure_args, to_cmake_path(source_path))
+	if platform_name == 'web':
+		toolchain_file = resolve_emscripten_toolchain(env)
+		configure_cmd = make_emsdk_configure_cmd(toolchain_file, *configure_args)
+		configure_cmd.append(to_cmake_path(source_path))
+		return configure_cmd
+	if platform_name in ANDROID_PLATFORMS:
+		toolchain_file = to_cmake_path(f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake')
+		toolchain_settings = make_android_toolchain_settings(platform_name, env)
+		return make_android_configure_cmd(toolchain_file, toolchain_settings, *configure_args, to_cmake_path(source_path))
+	if platform_name in APPLE_PLATFORMS:
+		cmake_bin = resolve_apple_cmake()
+		if platform_name == 'mac':
+			return make_xcode_configure_cmd(cmake_bin, *configure_args, to_cmake_path(source_path))
+		toolchain_settings = make_ios_toolchain_settings(env)
+		ios_toolchain = resolve_buildtools_cmake_path(env, 'ios.toolchain.cmake')
+		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(ios_toolchain)}', *toolchain_settings, *configure_args, to_cmake_path(source_path))
+	if platform_name.startswith('win'):
+		return make_windows_configure_cmd(platform_name, *configure_args, to_cmake_path(source_path))
+	raise SystemExit(f'Unsupported platform: {platform_name}')
+
+
+def run_platform_build_step(
+	platform_name: str,
+	build_dir: Path,
+	config: str,
+	env: Mapping[str, str],
+	build_env: Mapping[str, str] | None,
+) -> None:
+	build_runner = resolve_platform_build_runner(platform_name)
+	if build_runner == 'emsdk':
+		workspace = Path(env['FO_WORKSPACE'])
+		run_emsdk_cmake_build(workspace, build_dir, config)
+	elif build_runner == 'apple':
+		cmake_bin = resolve_apple_cmake()
+		run_apple_cmake_build(cmake_bin, build_dir, config)
+	else:
+		run_cmake_build(build_dir, config, env=build_env)
+
+
+def run_platform_configure_step(
+	platform_name: str,
+	configure_cmd: Sequence[str],
+	build_dir: Path,
+	env: Mapping[str, str],
+	build_env: Mapping[str, str] | None,
+) -> None:
+	configure_runner = resolve_platform_configure_runner(platform_name)
+	if configure_runner == 'emsdk':
+		workspace = Path(env['FO_WORKSPACE'])
+		run_in_emsdk_env(configure_cmd, workspace, cwd=build_dir)
+	else:
+		run(configure_cmd, cwd=build_dir, env=build_env)
+
+
+def run_platform_configure_build(
+	platform_name: str,
+	target_name: str,
+	source_path: str,
+	build_dir: Path,
+	config: str,
+	env: Mapping[str, str],
+	extra_cmake_args: Sequence[str] = (),
+	compiler_name: str = 'clang',
+) -> None:
+	cmake_args = make_platform_build_flag_args(platform_name, target_name, config)
+	configure_args = [*extra_cmake_args, *cmake_args]
+	build_env = make_platform_configure_env(platform_name, compiler_name)
+	configure_cmd = make_platform_configure_cmd(platform_name, source_path, configure_args, env)
+	run_platform_configure_step(platform_name, configure_cmd, build_dir, env, build_env)
+
+	run_platform_build_step(platform_name, build_dir, config, env, build_env)
 
 
 def configure_build(platform_name: str, target_name: str, config: str, env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	output = env['FO_OUTPUT']
 	project_root = env['FO_PROJECT_ROOT']
-	build_dir = workspace / f'build-{platform_name}-{target_name}-{config}'
+	build_dir = resolve_configure_build_dir(env, platform_name, target_name, config)
 	ensure_dir(workspace)
 	ensure_dir(output)
 	ensure_dir(build_dir)
 	ready_path = build_dir / 'READY'
-	if ready_path.exists():
-		ready_path.unlink()
+	reset_marker(ready_path)
 
-	cmake_args = build_flag_args(target_name, config=config)
-
-	if platform_name == 'linux':
-		build_env = os.environ.copy()
-		build_env['CC'] = '/usr/bin/clang'
-		build_env['CXX'] = '/usr/bin/clang++'
-		run(['cmake', '-G', 'Unix Makefiles', f'-DFO_OUTPUT_PATH={output}', *cmake_args, project_root], cwd=build_dir, env=build_env)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir, env=build_env)
-	elif platform_name == 'web':
-		toolchain_file = Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
-		configure_cmd = [
-			'cmake',
-			'-DCMAKE_TOOLCHAIN_FILE=' + str(toolchain_file),
-			f'-DFO_OUTPUT_PATH={output}',
-			*cmake_args,
-		]
-		if os.name == 'nt':
-			configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
-		else:
-			configure_cmd[1:1] = ['-G', 'Unix Makefiles']
-		configure_cmd.append(project_root)
-		run_in_emsdk_env(configure_cmd, workspace, cwd=build_dir)
-		run_in_emsdk_env(['cmake', '--build', '.', '--config', config, '--parallel'], workspace, cwd=build_dir)
-	elif platform_name in ('android', 'android-arm64', 'android-x86'):
-		android_abi = resolve_android_abi(platform_name)
-		toolchain_file = f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake'
-		toolchain_settings = [
-			f'-DANDROID_ABI={android_abi}',
-			f'-DANDROID_PLATFORM=android-{env["ANDROID_NATIVE_API_LEVEL_NUMBER"]}',
-			'-DANDROID_STL=c++_static',
-		]
-		run(['cmake', '-G', 'Unix Makefiles', f'-DCMAKE_TOOLCHAIN_FILE={toolchain_file}', *toolchain_settings, f'-DFO_OUTPUT_PATH={output}', *cmake_args, project_root], cwd=build_dir)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	elif platform_name in ('mac', 'ios'):
-		cmake_bin = shutil.which('cmake') or '/Applications/CMake.app/Contents/bin/cmake'
-		if platform_name == 'mac':
-			run([cmake_bin, '-G', 'Xcode', f'-DFO_OUTPUT_PATH={output}', *build_flag_args(target_name), project_root], cwd=build_dir)
-			run([cmake_bin, '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-		else:
-			toolchain_settings = [
-				'-DPLATFORM=SIMULATOR64',
-				f'-DDEPLOYMENT_TARGET={env["FO_IOS_SDK"]}',
-				'-DENABLE_BITCODE=0',
-				'-DENABLE_ARC=0',
-				'-DENABLE_VISIBILITY=0',
-				'-DENABLE_STRICT_TRY_COMPILE=0',
-			]
-			run([cmake_bin, '-G', 'Xcode', f'-DCMAKE_TOOLCHAIN_FILE={Path(env["FO_ENGINE_ROOT"]) / "BuildTools" / "ios.toolchain.cmake"}', *toolchain_settings, f'-DFO_OUTPUT_PATH={output}', *build_flag_args(target_name), project_root], cwd=build_dir)
-			run([cmake_bin, '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	elif platform_name.startswith('win'):
-		arch, toolset = resolve_windows_build(platform_name)
-		configure_cmd = ['cmake', '-A', arch]
-		if toolset:
-			configure_cmd += ['-T', toolset]
-		configure_cmd += [f'-DFO_OUTPUT_PATH={output}', *build_flag_args(target_name), project_root]
-		run(configure_cmd, cwd=build_dir)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	else:
-		raise SystemExit(f'Invalid build platform: {platform_name}')
+	run_platform_configure_build(
+		platform_name,
+		target_name,
+		project_root,
+		build_dir,
+		config,
+		env,
+		extra_cmake_args=[f'-DFO_OUTPUT_PATH={to_cmake_path(output)}'],
+	)
 
 	ready_path.touch()
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:
 	workspace = Path(env['FO_WORKSPACE'])
-	validation_root = workspace / 'validation-project'
-	source_root = Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / 'validation-project'
+	validation_root = resolve_validation_project_workspace(env)
+	source_root = resolve_validation_project_source(env)
 	ensure_dir(workspace)
-	shutil.copytree(source_root, validation_root, dirs_exist_ok=True)
+	copy_directory(source_root, validation_root, dirs_exist_ok=True)
 	engine_link = validation_root / 'Engine'
-	if not engine_link.exists():
-		if os.name == 'nt':
-			run(['cmd', '/c', 'mklink', '/d', str(engine_link), env['FO_ENGINE_ROOT']])
-		else:
-			engine_link.symlink_to(Path(env['FO_ENGINE_ROOT']), target_is_directory=True)
+	ensure_directory_link(engine_link, env['FO_ENGINE_ROOT'])
 	return validation_root
 
 
 def run_validation(name: str, env: Mapping[str, str]) -> None:
 	if name not in VALIDATION_TARGETS:
 		raise SystemExit(f'Invalid validation target: {name}')
-	validation: ValidationMap = VALIDATION_TARGETS[name]
+	validation = VALIDATION_TARGETS[name]
 	validation_root = prepare_validation_project(env)
 	platform_name = validation['platform']
 	target_name = validation['target']
 	config = validation['config']
-	workspace = Path(env['FO_WORKSPACE'])
-	build_dir = workspace / f'validate-{name}'
+	build_dir = resolve_validation_build_dir(env, name)
 	ensure_dir(build_dir)
-	cmake_args = build_flag_args(target_name, config=config)
 
-	if platform_name == 'linux':
-		build_env = os.environ.copy()
-		if validation.get('compiler') == 'gcc':
-			build_env['CC'] = '/usr/bin/gcc'
-			build_env['CXX'] = '/usr/bin/g++'
-		else:
-			build_env['CC'] = '/usr/bin/clang'
-			build_env['CXX'] = '/usr/bin/clang++'
-		run(['cmake', '-G', 'Unix Makefiles', *cmake_args, str(validation_root)], cwd=build_dir, env=build_env)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir, env=build_env)
-	elif platform_name == 'web':
-		toolchain_file = Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
-		configure_cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE=' + str(toolchain_file), *cmake_args]
-		if os.name == 'nt':
-			configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
-		else:
-			configure_cmd[1:1] = ['-G', 'Unix Makefiles']
-		configure_cmd.append(str(validation_root))
-		run_in_emsdk_env(configure_cmd, workspace, cwd=build_dir)
-		run_in_emsdk_env(['cmake', '--build', '.', '--config', config, '--parallel'], workspace, cwd=build_dir)
-	elif platform_name in ('android', 'android-arm64', 'android-x86'):
-		android_abi = resolve_android_abi(platform_name)
-		toolchain_file = f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake'
-		toolchain_settings = [
-			f'-DANDROID_ABI={android_abi}',
-			f'-DANDROID_PLATFORM=android-{env["ANDROID_NATIVE_API_LEVEL_NUMBER"]}',
-			'-DANDROID_STL=c++_static',
-		]
-		run(['cmake', '-G', 'Unix Makefiles', f'-DCMAKE_TOOLCHAIN_FILE={toolchain_file}', *toolchain_settings, *cmake_args, str(validation_root)], cwd=build_dir)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	elif platform_name in ('mac', 'ios'):
-		cmake_bin = shutil.which('cmake') or '/Applications/CMake.app/Contents/bin/cmake'
-		if platform_name == 'mac':
-			run([cmake_bin, '-G', 'Xcode', *build_flag_args(target_name), str(validation_root)], cwd=build_dir)
-			run([cmake_bin, '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-		else:
-			toolchain_settings = [
-				'-DPLATFORM=SIMULATOR64',
-				f'-DDEPLOYMENT_TARGET={env["FO_IOS_SDK"]}',
-				'-DENABLE_BITCODE=0',
-				'-DENABLE_ARC=0',
-				'-DENABLE_VISIBILITY=0',
-				'-DENABLE_STRICT_TRY_COMPILE=0',
-			]
-			run([cmake_bin, '-G', 'Xcode', f'-DCMAKE_TOOLCHAIN_FILE={Path(env["FO_ENGINE_ROOT"]) / "BuildTools" / "ios.toolchain.cmake"}', *toolchain_settings, *build_flag_args(target_name), str(validation_root)], cwd=build_dir)
-			run([cmake_bin, '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	elif platform_name.startswith('win'):
-		arch, toolset = resolve_windows_build(platform_name)
-		configure_cmd = ['cmake', '-A', arch]
-		if toolset:
-			configure_cmd += ['-T', toolset]
-		configure_cmd += [*build_flag_args(target_name), str(validation_root)]
-		run(configure_cmd, cwd=build_dir)
-		run(['cmake', '--build', '.', '--config', config, '--parallel'], cwd=build_dir)
-	else:
-		raise SystemExit(f'Unsupported validation platform: {platform_name}')
+	run_platform_configure_build(
+		platform_name,
+		target_name,
+		str(validation_root),
+		build_dir,
+		config,
+		env,
+		compiler_name=validation.get('compiler', 'clang'),
+	)
 
 	run_target = validation.get('run_target')
 	if run_target:
 		log('Run', run_target)
-		run(['cmake', '--build', '.', '--config', config, '--target', run_target, '--parallel'], cwd=build_dir)
+		run_cmake_target(build_dir, config, run_target)
 
 		if name == 'code-coverage' and os.environ.get('CODECOV_TOKEN'):
-			codecov_path = build_dir / 'codecov'
-			if codecov_path.exists():
-				codecov_path.unlink()
-			run(['curl', '-Os', 'https://uploader.codecov.io/latest/linux/codecov'], cwd=build_dir)
-			codecov_path.chmod(codecov_path.stat().st_mode | 0o111)
-			run([str(codecov_path), '-t', os.environ['CODECOV_TOKEN'], '--gcov'], cwd=build_dir)
+			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
@@ -980,34 +1277,35 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	built_marker = workspace / f'BUILT_{triplet}'
 	ready_marker = workspace / f'READY_{triplet}'
 
-	if not clone_marker.exists():
+	def clone_runtime() -> None:
 		if runtime_root.exists():
 			log('Remove previous repository')
-			remove_tree(runtime_root)
+			remove_path_if_exists(runtime_root)
 		dotnet_runtime_root = env.get('FO_DOTNET_RUNTIME_ROOT', '')
 		if dotnet_runtime_root:
 			log('Copy runtime')
-			shutil.copytree(dotnet_runtime_root, runtime_root)
+			copy_directory(dotnet_runtime_root, runtime_root)
 		else:
 			log('Clone runtime')
-			run(['git', 'clone', 'https://github.com/dotnet/runtime.git', '--depth', '1', '--branch', env['FO_DOTNET_RUNTIME'], str(runtime_root)])
-		clone_marker.touch()
+			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1)
 
-	if not built_marker.exists():
-		log('Build runtime')
-		build_script = 'build.cmd' if os.name == 'nt' else './build.sh'
+	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
+
+	def build_runtime() -> None:
+		build_script = resolve_runtime_build_script()
 		run([build_script, '-os', os_name, '-arch', arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
-		built_marker.touch()
 
-	if not ready_marker.exists():
+	run_marker_step(built_marker, 'Build runtime', build_runtime)
+
+	def publish_runtime() -> None:
 		output_dir = workspace / 'output' / 'mono' / triplet
 		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
 		log('Copy from', input_dir, 'to', output_dir)
-		ensure_dir(output_dir)
-		shutil.copytree(input_dir, output_dir, dirs_exist_ok=True)
-		ready_marker.touch()
+		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
+
+	run_marker_step(ready_marker, f'Publish runtime {triplet}', publish_runtime)
 
 	log(f'Runtime {triplet} is ready!')
 
@@ -1016,9 +1314,19 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 def discover_clang_format() -> str:
 	for executable in ('clang-format-20', 'clang-format'):
 		path = shutil.which(executable)
-		if path:
+		if not path:
+			continue
+
+		try:
+			version_output = subprocess.check_output([path, '--version'], text=True, encoding='utf-8', errors='replace')
+		except (OSError, subprocess.CalledProcessError):
+			continue
+
+		match = CLANG_FORMAT_VERSION_RE.search(version_output)
+		if match is not None and int(match.group(1)) == 20:
 			return path
-	raise SystemExit('clang-format not found')
+
+	raise SystemExit('clang-format version 20 not found in system PATH')
 
 
 def read_text_strip_bom(path: Path) -> tuple[str, bool]:
@@ -1033,6 +1341,18 @@ def detect_line_ending(content: str) -> str:
 
 def normalize_line_endings(content: str, line_ending: str) -> str:
 	return content.replace('\r\n', '\n').replace('\r', '\n').replace('\n', line_ending)
+
+
+def normalize_for_comparison(content: str) -> str:
+	return content.replace('\r\n', '\n').replace('\r', '\n')
+
+
+def differs_beyond_line_endings(original: str, formatted: str) -> bool:
+	return normalize_for_comparison(original) != normalize_for_comparison(formatted)
+
+
+def ensure_trailing_newline(content: str, line_ending: str) -> str:
+	return content.rstrip('\r\n') + line_ending
 
 
 def write_text_utf8(path: Path, content: str) -> None:
@@ -1068,13 +1388,15 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 		progress.update(f'Formatting {index}/{total}: {rel_path}')
 
 		original, has_bom = read_text_strip_bom(path)
-		formatted = strip_text_bom(subprocess.check_output([clang_format, str(path)], text=True, encoding='utf-8'))
-		formatted = normalize_line_endings(formatted, detect_line_ending(original))
-		if original == formatted and not has_bom:
+		formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
+		formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
+		if not differs_beyond_line_endings(original, formatted) and not has_bom:
 			continue
 
 		changed += 1
 		write_text_utf8(path, formatted)
+		progress.clear()
+		log('Formatted:', rel_path)
 
 	progress.finish(f'Completed, changed {changed} file(s)')
 	return changed
@@ -1086,11 +1408,10 @@ def format_source(env: Mapping[str, str]) -> None:
 
 
 def build_toolset(target: str, env: Mapping[str, str]) -> None:
-	workspace = Path(env['FO_WORKSPACE'])
-	build_dir = workspace / ('build-win64-toolset' if os.name == 'nt' else 'build-linux-toolset')
+	build_dir = resolve_toolset_build_dir(env)
 	if not build_dir.is_dir():
 		raise SystemExit(f'Toolset build directory not found: {build_dir}')
-	run(['cmake', '--build', '.', '--config', 'Release', '--target', target, '--parallel'], cwd=build_dir)
+	run_cmake_target(build_dir, 'Release', target)
 
 
 def create_parser() -> argparse.ArgumentParser:

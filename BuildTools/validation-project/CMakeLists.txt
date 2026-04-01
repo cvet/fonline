@@ -16,5 +16,5 @@ SetOption(FO_APP_ICON "Engine/Resources/Radiation.ico")
 SetOption(FO_UNIT_TESTS ON)
 SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
-include(Engine/BuildTools/StartGeneration.cmake)
-include(Engine/BuildTools/FinalizeGeneration.cmake)
+StartProjectGeneration()
+FinalizeProjectGeneration()
