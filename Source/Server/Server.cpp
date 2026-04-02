@@ -253,14 +253,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 prop->AddPostSetter(std::move(callback));
             };
 
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::InSneakMode_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::SneakCoefficient_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLook(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
             set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) FO_DEFERRED { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::AlwaysView_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemChangeView(entity, prop); });
+            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHidden(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
             set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
@@ -2426,7 +2421,7 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
             if (prop->IsPublicSync() || prop->IsOwnerSync()) {
                 auto* cr = EntityMngr.GetCritter(item->GetCritterId());
 
-                if (cr != nullptr) {
+                if (cr != nullptr && cr->CheckVisibleItem(item->GetId())) {
                     if (item->CanSendItem(false)) {
                         cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
@@ -2502,11 +2497,10 @@ void ServerEngine::OnSendCustomEntityValue(Entity* entity, const Property* prop)
     });
 }
 
-void ServerEngine::OnSetCritterLook(Entity* entity, const Property* prop)
+void ServerEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // LookDistance, InSneakMode, SneakCoefficient
     auto* cr = dynamic_cast<Critter*>(entity);
     FO_RUNTIME_ASSERT(cr);
 
@@ -2536,38 +2530,32 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
     }
 }
 
-void ServerEngine::OnSetItemChangeView(Entity* entity, const Property* prop)
+void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Hidden, AlwaysView, IsTrap, TrapValue
+    ignore_unused(prop);
+
     auto* item = dynamic_cast<Item*>(entity);
     FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = EntityMngr.GetMap(item->GetMapId());
-
-        if (map != nullptr) {
-            map->ChangeViewItem(item);
-
-            if (prop == item->GetPropertyIsTrap()) {
-                map->RecacheHexFlags(item->GetHex());
-            }
-        }
+        FO_RUNTIME_ASSERT(map);
+        map->ChangeViewItem(item);
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = EntityMngr.GetCritter(item->GetCritterId());
+        FO_RUNTIME_ASSERT(cr);
 
-        if (cr != nullptr) {
-            if (item->GetHidden()) {
-                cr->Send_ChosenRemoveItem(item);
-            }
-            else {
-                cr->Send_ChosenAddItem(item);
-            }
-
-            cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
+        if (item->GetHidden()) {
+            cr->Send_ChosenRemoveItem(item);
         }
+        else {
+            cr->Send_ChosenAddItem(item);
+        }
+
+        cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 }
 
@@ -2749,6 +2737,8 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();

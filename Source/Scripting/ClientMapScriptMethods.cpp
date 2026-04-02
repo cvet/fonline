@@ -790,4 +790,16 @@ FO_SCRIPT_API void Client_Map_SetHiddenRoof(MapView* self, mpos hex)
     self->SetHiddenRoof(hex);
 }
 
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SwitchShowTrack(MapView* self)
+{
+    self->SwitchShowTrack();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SwitchShowHex(MapView* self)
+{
+    self->SwitchShowHex();
+}
+
 FO_END_NAMESPACE

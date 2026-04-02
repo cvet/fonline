@@ -42,6 +42,8 @@
 
 FO_BEGIN_NAMESPACE
 
+extern auto CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) -> bool;
+
 Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
@@ -562,6 +564,28 @@ auto Critter::CheckVisibleItem(ident_t item_id) const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _visibleItems.count(item_id) != 0;
+}
+
+auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(item);
+
+    if (IsDestroyed() || item->IsDestroyed()) {
+        return false;
+    }
+    if (item->GetOwnership() != ItemOwnership::MapHex) {
+        return false;
+    }
+    if (!GetMapId() || item->GetMapId() != GetMapId()) {
+        return false;
+    }
+
+    const auto* map = _engine->EntityMngr.GetMap(GetMapId());
+    FO_RUNTIME_ASSERT(map);
+
+    return CheckItemVisibilityHook(_engine.get(), map, this, item);
 }
 
 void Critter::ChangeDir(uint8 dir)

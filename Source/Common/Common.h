@@ -267,14 +267,6 @@ static_assert(!some_property_plain_type<any_t>);
 // Generic constants
 static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 
-// Look checks
-static constexpr uint32 LOOK_CHECK_DIR = 0x01;
-static constexpr uint32 LOOK_CHECK_SNEAK_DIR = 0x02;
-static constexpr uint32 LOOK_CHECK_TRACE = 0x08;
-static constexpr uint32 LOOK_CHECK_SCRIPT = 0x10;
-static constexpr uint32 LOOK_CHECK_ITEM_SCRIPT = 0x20;
-static constexpr uint32 LOOK_CHECK_TRACE_CLIENT = 0x40;
-
 // Property type in network interaction
 enum class NetProperty : uint8
 {

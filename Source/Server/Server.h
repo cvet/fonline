@@ -147,10 +147,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
@@ -240,9 +236,9 @@ private:
     void OnSendLocationValue(Entity* entity, const Property* prop);
     void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
-    void OnSetCritterLook(Entity* entity, const Property* prop);
+    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop);
+    void OnSetItemHidden(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemMultihexLines(Entity* entity, const Property* prop);
 

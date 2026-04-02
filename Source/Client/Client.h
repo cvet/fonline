@@ -157,7 +157,7 @@ public:
     void RegisterEntity(ClientEntity* entity);
     void UnregisterEntity(ClientEntity* entity);
 
-    auto CustomCall(string_view command, string_view separator) -> string;
+    void DrawMiniMap(int32 zoom, int32 x, int32 y, int32 w, int32 h);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStart);

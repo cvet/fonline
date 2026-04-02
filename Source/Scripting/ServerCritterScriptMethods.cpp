@@ -864,4 +864,12 @@ FO_SCRIPT_API timespan Server_Critter_GetPlayerOfflineTime(Critter* self)
     return self->GetOfflineTime();
 }
 
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_RefreshVisibility(Critter* self)
+{
+    auto& mapMngr = self->GetEngine()->MapMngr;
+    mapMngr.ProcessVisibleCritters(self);
+    mapMngr.ProcessVisibleItems(self);
+}
+
 FO_END_NAMESPACE

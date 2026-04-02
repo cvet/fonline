@@ -64,8 +64,9 @@ int main(int argc, char** argv) // Handled by SDL
 
         list<pair<vector<string>, StackTraceData>> log_buffer;
         std::mutex log_buffer_locker;
+        int32 exception_count = 0;
 
-        SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](string_view str) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
@@ -73,6 +74,10 @@ int main(int argc, char** argv) // Handled by SDL
 
             if (log_buffer.size() > numeric_cast<size_t>(App->Settings.MaxServerLogLines)) {
                 log_buffer.pop_front();
+            }
+
+            if (str.find("Exception") != string_view::npos) {
+                exception_count++;
             }
         });
 
@@ -118,6 +123,11 @@ int main(int argc, char** argv) // Handled by SDL
 
             if (hide_controls) {
                 if (ImGui::Begin("Restore controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
+                    if (exception_count != 0) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+                        ImGui::TextUnformatted(strex("Exceptions caught: {} (see log)", exception_count).c_str());
+                        ImGui::PopStyleColor();
+                    }
                     if (ImGui::Button("Restore controls")) {
                         hide_controls = false;
                     }
@@ -182,6 +192,13 @@ int main(int argc, char** argv) // Handled by SDL
                     else {
                         imgui_progress_btn("Quitting...");
                     }
+
+                    if (exception_count != 0) {
+                        ImGui::Separator();
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+                        ImGui::TextUnformatted(strex("Exceptions caught: {} (see log)", exception_count).c_str());
+                        ImGui::PopStyleColor();
+                    }
                 }
 
                 ImGui::End();
@@ -195,6 +212,7 @@ int main(int argc, char** argv) // Handled by SDL
                         server->DrawGui("Server");
                     }
                     catch (const std::exception& ex) {
+                        exception_count++;
                         ReportExceptionAndContinue(ex);
                     }
                     catch (...) {
@@ -258,6 +276,7 @@ int main(int argc, char** argv) // Handled by SDL
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {
+                    exception_count++;
                     ReportExceptionAndContinue(ex);
                 }
                 catch (...) {

@@ -102,6 +102,7 @@ public:
     auto AddVisibleItem(ident_t item_id) noexcept -> bool;
     auto RemoveVisibleItem(ident_t item_id) noexcept -> bool;
     auto CheckVisibleItem(ident_t item_id) const noexcept -> bool;
+    auto CanSeeItemOnMap(const Item* item) const -> bool;
 
     void MarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);

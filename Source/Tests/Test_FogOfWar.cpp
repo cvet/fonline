@@ -44,7 +44,6 @@ namespace
         FogOfWar::Input input;
         input.FogExtraLength = 0;
         input.FogTransitionDuration = transition_duration;
-        input.LookChecks = 0;
         input.MapHexWidth = 10;
         input.MapHexHeight = 8;
         input.MapSize = {100, 100};
@@ -208,7 +207,6 @@ TEST_CASE("FogOfWar")
         fog.SetBaseDrawOffset({100, 0});
 
         auto input = MakeInput({10, 10}, nanotime {});
-        input.LookChecks = 0x40;
         input.TraceBulletToBlock = [](mpos start, mpos, int32, bool) { return start; };
         fog.Prepare(input);
 

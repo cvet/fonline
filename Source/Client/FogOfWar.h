@@ -62,8 +62,6 @@ public:
         int32 Distance {};
         int32 FogExtraLength {};
         int32 FogTransitionDuration {};
-        uint32 LookChecks {};
-        raw_ptr<const vector<int32>> LookDir {};
         int32 MapHexWidth {};
         int32 MapHexHeight {};
         msize MapSize {};

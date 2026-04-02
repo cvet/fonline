@@ -97,8 +97,6 @@ struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual 
 {
 public:
     CommonSettings& Common;
-    CommonGameplaySettings& CommonGameplay;
-    ServerGameplaySettings& ServerGameplay;
     NetworkSettings& Network;
     ServerNetworkSettings& ServerNetwork;
     ClientNetworkSettings& ClientNetwork;

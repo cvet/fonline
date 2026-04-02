@@ -2521,8 +2521,6 @@ void MapView::PrepareFogToDraw()
     FogOfWar::Input input;
     input.FogExtraLength = _engine->Settings.FogExtraLength;
     input.FogTransitionDuration = _engine->Settings.FogTransitionDuration;
-    input.LookChecks = _engine->Settings.LookChecks;
-    input.LookDir = &_engine->Settings.LookDir;
     input.MapHexWidth = _engine->Settings.MapHexWidth;
     input.MapHexHeight = _engine->Settings.MapHexHeight;
     input.MapSize = _mapSize;
@@ -2779,7 +2777,7 @@ void MapView::InstantScroll(fpos32 scroll)
 
         if (!scroll_area.is_zero()) {
             const fpos32 screen_pos = fpos32(GeometryHelper::GetHexPos(_screenRawHex));
-            const ipos32 half_hex = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+            constexpr ipos32 half_hex = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
             const float32 zoom = GetSpritesZoom();
             const fpos32 view_size = fpos32(numeric_cast<float32>(_screenSize.width), numeric_cast<float32>(_screenSize.height)) / zoom;
             const fpos32 lt_pos = screen_pos + _scrollOffset;
@@ -3241,7 +3239,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
     const ipos32 pos = ScreenToMapPos(screen_pos);
     const ipos32 screen_offset = GeometryHelper::GetHexPos(_screenRawHex);
     ipos32 offset;
-    ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos, &offset);
+    const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos, &offset);
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);

@@ -165,9 +165,6 @@ public:
     ///@ MigrationRule Property Item IsLightThru LightThru
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, LightThru);
-    ///@ MigrationRule Property Item IsAlwaysView AlwaysView
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(bool, AlwaysView);
     ///@ MigrationRule Property Item IsLight LightSource
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, LightSource);
@@ -223,10 +220,6 @@ public:
     FO_ENTITY_PROPERTY(bool, Colorize);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(string, Lexems);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(bool, IsTrap);
-    ///@ ExportProperty Common Mutable OwnerSync Persistent
-    FO_ENTITY_PROPERTY(int16, TrapValue);
 };
 
 class CritterProperties : public EntityProperties
@@ -287,21 +280,15 @@ public:
     FO_ENTITY_PROPERTY(int32, MovingSpeed);
 
     // Todo: exclude critter properties from engine:
-    ///@ ExportProperty Client Mutable
-    FO_ENTITY_PROPERTY(bool, SexTagFemale);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int16, NameOffset);
-    ///@ ExportProperty Server Mutable Persistent
-    FO_ENTITY_PROPERTY(int32, SneakCoefficient);
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32, LookDistance);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(string, Lexems);
-    ///@ ExportProperty Common Mutable OwnerSync Persistent
-    FO_ENTITY_PROPERTY(bool, InSneakMode);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);

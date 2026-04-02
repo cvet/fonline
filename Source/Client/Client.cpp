@@ -2397,107 +2397,23 @@ void ClientEngine::DestroyInnerEntities()
     }
 }
 
-auto ClientEngine::CustomCall(string_view command, string_view separator) -> string
+void ClientEngine::DrawMiniMap(int32 zoom, int32 x, int32 y, int32 w, int32 h)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Parse command
-    vector<string> args;
-    const auto command_str = string(command);
-    istringstream ss(command_str);
-
-    if (!separator.empty()) {
-        string arg;
-        const auto sep = *separator.data();
-
-        while (std::getline(ss, arg, sep)) {
-            args.push_back(arg);
-        }
+    if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
+        _lmapZoom = zoom;
+        _lmapWMap.x = x;
+        _lmapWMap.y = y;
+        _lmapWMap.width = w;
+        _lmapWMap.height = h;
+        LmapPrepareMap();
     }
-    else {
-        args.emplace_back(command);
+    else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
+        LmapPrepareMap();
     }
 
-    if (args.empty()) {
-        throw ScriptException("Empty custom call command");
-    }
-
-    // Execute
-    const auto cmd = args[0];
-
-    if (cmd == "DumpAtlases") {
-        SprMngr.GetAtlasMngr().DumpAtlases();
-    }
-    else if (cmd == "SwitchShowTrack") {
-        if (_curMap) {
-            _curMap->SwitchShowTrack();
-        }
-    }
-    else if (cmd == "SwitchShowHex") {
-        if (_curMap) {
-            _curMap->SwitchShowHex();
-        }
-    }
-    else if (cmd == "SwitchLookBorders") {
-        // _drawLookBorders = !_drawLookBorders;
-        // _rebuildFog = true;
-    }
-    else if (cmd == "SwitchShootBorders") {
-        // _drawShootBorders = !_drawShootBorders;
-        // _rebuildFog = true;
-    }
-    else if (cmd == "GetShootBorders") {
-        // return _drawShootBorders ? "true" : "false";
-    }
-    else if (cmd == "SetShootBorders" && args.size() >= 2) {
-        // auto set = (args[1] == "true");
-        // if (_drawShootBorders != set) {
-        //    _drawShootBorders = set;
-        //    _curMap->RebuildFog();
-        // }
-    }
-    else if (cmd == "BytesSend") {
-        return strex("{}", _conn.GetBytesSend());
-    }
-    else if (cmd == "BytesReceive") {
-        return strex("{}", _conn.GetBytesReceived());
-    }
-    else if (cmd == "SetResolution" && args.size() >= 3) {
-        const int32 w = strex(args[1]).to_int32();
-        const int32 h = strex(args[2]).to_int32();
-
-        SprMngr.SetScreenSize({w, h});
-        SprMngr.SetWindowSize({w, h});
-    }
-    else if (cmd == "RefreshAlwaysOnTop") {
-        SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        const int32 zoom = strex(args[1]).to_int32();
-        const int32 x = strex(args[2]).to_int32();
-        const int32 y = strex(args[3]).to_int32();
-        const int32 w = strex(args[4]).to_int32();
-        const int32 h = strex(args[5]).to_int32();
-
-        if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
-            _lmapZoom = zoom;
-            _lmapWMap.x = x;
-            _lmapWMap.y = y;
-            _lmapWMap.width = w;
-            _lmapWMap.height = h;
-            LmapPrepareMap();
-        }
-        else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
-            LmapPrepareMap();
-        }
-
-        SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
-    }
-    else {
-        throw ScriptException("Invalid custom call command", cmd, args.size());
-    }
-
-    return "";
+    SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
 }
 
 void ClientEngine::Connect()

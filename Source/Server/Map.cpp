@@ -247,28 +247,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
             continue;
         }
 
-        if (!item->GetHidden()) {
-            if (!item->GetAlwaysView()) {
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    continue;
-                }
-            }
-
+        if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
@@ -474,56 +453,13 @@ void Map::ChangeViewItem(Item* item)
         }
 
         if (cr->CheckVisibleItem(item->GetId())) {
-            if (item->GetHidden()) {
+            if (!cr->CanSeeItemOnMap(item)) {
                 cr->RemoveVisibleItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
-            else if (!item->GetAlwaysView()) { // Check distance for non-hide items
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    cr->RemoveVisibleItem(item->GetId());
-                    cr->Send_RemoveItemFromMap(item);
-                    cr->OnItemOnMapDisappeared.Fire(item, nullptr);
-                }
-            }
         }
-        else if (!item->GetHidden()) {
-            if (!item->GetAlwaysView()) { // Check distance for non-hide items
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    continue;
-                }
-            }
-
+        else if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
@@ -571,7 +507,7 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     auto& field2 = _hexField->GetCellForWriting(hex);
 
     for (auto& item : field2.Items) {
-        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
+        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || picker->CanSeeItemOnMap(item.get()))) {
             return item.get();
         }
     }
@@ -633,7 +569,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) -> vector<Item*>
     vector<Item*> triggers;
 
     for (auto& item : field2.Items) {
-        if (item->GetIsTrigger() || item->GetIsTrap()) {
+        if (item->GetIsTrigger()) {
             triggers.emplace_back(item.get());
         }
     }
@@ -689,7 +625,7 @@ void Map::RecacheHexFlags(Field& field)
                 field.HasNoShootItem = true;
                 movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
             }
-            if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
+            if (!field.HasTriggerItem && item->GetIsTrigger()) {
                 field.HasTriggerItem = true;
             }
         }

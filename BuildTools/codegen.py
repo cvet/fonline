@@ -1288,7 +1288,8 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook', 'SetupBakersHook'], 'Invalid engine hook ' + name
+            assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
+                            'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
             hash_recursive(compatibility_hasher, name)
@@ -1605,6 +1606,17 @@ def generate_generic_code() -> None:
         global_lines.append('class BaseBaker;')
         global_lines.append('struct BakingContext;')
         global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
+    if not is_engine_hook_enabled('CheckCritterVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Critter;')
+        global_lines.append('bool CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return true; }')
+    if not is_engine_hook_enabled('CheckItemVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Critter;')
+        global_lines.append('class Item;')
+        global_lines.append('bool CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) { return true; }')
     global_lines.append('')
     
     # Engine properties

@@ -275,15 +275,40 @@ FO_SCRIPT_API int32 Client_Game_GetDistance(ClientEngine* client, ItemView* item
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_CustomCall(ClientEngine* client, string_view command)
+FO_SCRIPT_API void Client_Game_DumpAtlases(ClientEngine* client)
 {
-    return client->CustomCall(command, " ");
+    client->SprMngr.GetAtlasMngr().DumpAtlases();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_CustomCall(ClientEngine* client, string_view command, string_view separator)
+FO_SCRIPT_API void Client_Game_SetResolution(ClientEngine* client, int32 width, int32 height)
 {
-    return client->CustomCall(command, separator);
+    client->SprMngr.SetScreenSize({width, height});
+    client->SprMngr.SetWindowSize({width, height});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_DrawMiniMap(ClientEngine* client, int32 zoom, int32 x, int32 y, int32 w, int32 h)
+{
+    client->DrawMiniMap(zoom, x, y, w, h);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_RefreshAlwaysOnTop(ClientEngine* client)
+{
+    client->SprMngr.SetAlwaysOnTop(client->Settings.AlwaysOnTop);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32 Client_Game_BytesSend(ClientEngine* client)
+{
+    return numeric_cast<uint32>(client->GetConnection().GetBytesSend());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32 Client_Game_BytesReceive(ClientEngine* client)
+{
+    return numeric_cast<uint32>(client->GetConnection().GetBytesReceived());
 }
 
 ///@ ExportMethod

@@ -131,21 +131,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
             auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
 
-            if (IsBitSet(input.LookChecks, LOOK_CHECK_DIR)) {
-                FO_RUNTIME_ASSERT(input.LookDir != nullptr);
-
-                const int32 dir_ = GeometryHelper::GetDir(base_hex, target_hex);
-                auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
-
-                if (ii > GameSettings::MAP_DIR_COUNT / 2) {
-                    ii = GameSettings::MAP_DIR_COUNT - ii;
-                }
-
-                const auto look_dist = dist - dist * (*input.LookDir)[ii] / 100;
-                target_hex = input.TraceBulletToBlock(base_hex, target_hex, look_dist, false);
-            }
-
-            if (IsBitSet(input.LookChecks, LOOK_CHECK_TRACE_CLIENT)) {
+            if (is_shoot) {
                 target_hex = input.TraceBulletToBlock(base_hex, target_hex, 0, true);
             }
 

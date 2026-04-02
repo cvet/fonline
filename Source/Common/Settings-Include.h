@@ -56,22 +56,6 @@ FIXED_SETTING(int32, Script, OverrunReportTime); // Time in milliseconds to repo
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(CommonGameplaySettings, virtual BaseSettings);
-FIXED_SETTING(uint32, CommonGameplay, LookChecks, 0); // Look checks
-FIXED_SETTING(vector<int32>, CommonGameplay, LookDir, 0, 20, 40, 60, 60); // Look direction values
-FIXED_SETTING(vector<int32>, CommonGameplay, LookSneakDir, 90, 60, 30, 0, 0); // Sneak look direction values
-FIXED_SETTING(int32, CommonGameplay, LookMinimum, 6); // Minimum look value
-FIXED_SETTING(bool, CommonGameplay, CritterBlockHex, false); // If true, critters block hexes
-FIXED_SETTING(int32, CommonGameplay, MaxAddUnstackableItems, 10); // Maximum number of unstackable items to add
-FIXED_SETTING(int32, CommonGameplay, MaxPathFindLength, 400); // Maximum pathfinding length
-SETTING_GROUP_END();
-
-///@ ExportSettings Server
-SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings);
-FIXED_SETTING(int32, ServerGameplay, SneakDivider, 6); // Sneak divider value
-SETTING_GROUP_END();
-
-///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32, Network, ServerPort, 4000); // Server port number
 FIXED_SETTING(bool, Network, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
@@ -150,6 +134,8 @@ FIXED_SETTING(float32, Geometry, MapCameraAngle, 25.6589f); // Angle for critter
 FIXED_SETTING(bool, Geometry, MapFreeMovement, false); // If true, free movement on the map is enabled
 FIXED_SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothing
 FIXED_SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
+FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
+FIXED_SETTING(int32, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -241,7 +227,8 @@ FIXED_SETTING(int32, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
+SETTING_GROUP(CritterSettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
+FIXED_SETTING(int32, Critter, MaxAddUnstackableItems, 10); // Maximum number of unstackable items to add
 FIXED_SETTING(vector<bool>, Critter, CritterSlotEnabled, true, true); // Critter slot enabled flags
 FIXED_SETTING(vector<bool>, Critter, CritterSlotSendData, false, true); // Critter slot send data flags
 FIXED_SETTING(vector<bool>, Critter, CritterSlotMultiItem, true, false); // Critter slot multi-item flags
@@ -323,7 +310,7 @@ VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles co
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
 FIXED_SETTING(int32, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
@@ -336,7 +323,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings);
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled

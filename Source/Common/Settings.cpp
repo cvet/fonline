@@ -153,8 +153,6 @@ static void DrawEditableEntry(string_view name, T& entry)
 
 GlobalSettings::GlobalSettings(bool baking_mode) :
     Common {static_cast<CommonSettings&>(*this)},
-    CommonGameplay {static_cast<CommonGameplaySettings&>(*this)},
-    ServerGameplay {static_cast<ServerGameplaySettings&>(*this)},
     Network {static_cast<NetworkSettings&>(*this)},
     ServerNetwork {static_cast<ServerNetworkSettings&>(*this)},
     ClientNetwork {static_cast<ClientNetworkSettings&>(*this)},

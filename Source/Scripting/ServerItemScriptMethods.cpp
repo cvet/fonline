@@ -263,4 +263,15 @@ FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
     return cr;
 }
 
+///@ ExportMethod
+FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
+{
+    if (self->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        FO_RUNTIME_ASSERT(map);
+        map->ChangeViewItem(self);
+        map->RecacheHexFlags(self->GetHex());
+    }
+}
+
 FO_END_NAMESPACE

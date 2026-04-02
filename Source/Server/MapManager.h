@@ -87,7 +87,7 @@ struct FindPathOutput
 
 struct TracePathInput // Todo: make TracePathInput pointer fields raw_ptr
 {
-    raw_ptr<Map> TraceMap {};
+    raw_ptr<const Map> TraceMap {};
     mpos StartHex {};
     mpos TargetHex {};
     int32 MaxDist {};
@@ -141,9 +141,9 @@ public:
     void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir);
 
 private:
-    auto IsCritterSeeCritter(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result) -> bool;
+    auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> bool;
 
-    void ProcessCritterLook(Map* map, Critter* cr, Critter* target, optional<bool>& trace_result);
+    void ProcessCritterLook(Map* map, Critter* cr, Critter* target);
     void Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
     void DestroyMapContent(Map* map);
@@ -151,6 +151,7 @@ private:
 
     raw_ptr<ServerEngine> _engine;
     unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
+    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE

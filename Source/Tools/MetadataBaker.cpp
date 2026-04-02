@@ -1060,6 +1060,10 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
 
         const auto target = tag_desc.Tokens[0];
 
+        if (!(target == "Common" || target == "Server" || target == "Client")) {
+            throw MetadataBakerException("Invalid Setting codegen tag: expected 'Common', 'Server' or 'Client' as target", tag_desc.SourceFile, tag_desc.LineNumber, target);
+        }
+
         if (!(target == "Common" || target == ctx.Target)) {
             continue;
         }
