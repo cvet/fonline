@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        return BakerTests::CompileInlineScripts(&compiler_engine, "CommonMethodsScripts", {{"Scripts/CommonMethods.fos", R"(
+        const auto script_source = string(R"(
 
 namespace CommonMethods
 {
@@ -351,6 +351,8 @@ namespace CommonMethods
         return 0;
     }
 
+ )") + R"(
+
     // ========== Invoke ==========
 
     bool invokeFired = false;
@@ -417,6 +419,7 @@ namespace CommonMethods
         return 0;
     }
 
+ )" + R"(
     // ========== Entity Time Events (Critter) ==========
 
     void OnCritterTimeEvent(Critter cr)
@@ -511,6 +514,7 @@ namespace CommonMethods
         return 0;
     }
 
+ )" + R"(
     // ========== Item Container Ops ==========
 
     int TestItemContainerAddGetItems()
@@ -639,6 +643,7 @@ namespace CommonMethods
         return 0;
     }
 
+ )" + R"(
     // ========== Server Global Methods ==========
 
     int TestGetLocationsOverloads()
@@ -790,6 +795,7 @@ namespace CommonMethods
         return 0;
     }
 
+ )" + R"(
     // ========== Array Time Events with Data ==========
 
     void OnGlobalTimerWithArrayData(array<any> data)
@@ -841,13 +847,14 @@ namespace CommonMethods
     }
 }
 
-)"}},
-            [](string_view message) {
-                const auto message_str = string(message);
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
+ )";
+
+        return BakerTests::CompileInlineScripts(&compiler_engine, "CommonMethodsScripts", {{"Scripts/CommonMethods.fos", script_source}}, [](string_view message) {
+            const auto message_str = string(message);
+            if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos) {
+                throw ScriptSystemException(message_str);
+            }
+        });
     }
 
     static auto MakeResources() -> FileSystem

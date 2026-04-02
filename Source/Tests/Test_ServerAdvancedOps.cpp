@@ -58,9 +58,8 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        return BakerTests::CompileInlineScripts(&compiler_engine, "AdvOpsScripts",
-            {
-                {"Scripts/AdvOps.fos", R"(
+        const auto script_source = string(R"(
+
 namespace AdvOps
 {
     // ========== Location Operations ==========
@@ -440,6 +439,7 @@ namespace AdvOps
         return 0;
     }
 
+ )") + R"(
     // ========== Player ID Operations ==========
 
     int TestPlayerLookup()
@@ -626,6 +626,7 @@ namespace AdvOps
         return 0;
     }
 
+ )" + R"(
     // ========== Dict Operations ==========
 
     int TestDictSetIfNotExist()
@@ -716,6 +717,8 @@ namespace AdvOps
 
         return 0;
     }
+
+ )" + R"(
 
     // ========== String Operations ==========
 
@@ -837,6 +840,7 @@ namespace AdvOps
         return 0;
     }
 
+ )" + R"(
     // ========== Math Operations ==========
 
     int TestRandomRange()
@@ -997,7 +1001,11 @@ namespace AdvOps
         return 0;
     }
 }
-)"},
+)";
+
+        return BakerTests::CompileInlineScripts(&compiler_engine, "AdvOpsScripts",
+            {
+                {"Scripts/AdvOps.fos", script_source},
             },
             [](string_view message) {
                 const auto message_str = string(message);

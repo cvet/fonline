@@ -60,7 +60,6 @@ namespace BakerTests
         settings.DisableAudio = true;
         OverrideSetting(settings.NullRenderer, true);
         OverrideSetting(settings.UseDummyEffects, true);
-        OverrideSetting(settings.EggSpriteName, string {});
         OverrideSetting(settings.CritterStubSpriteName, string {});
         OverrideSetting(settings.ItemStubSpriteName, string {});
     }

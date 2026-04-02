@@ -58,9 +58,8 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        return BakerTests::CompileInlineScripts(&compiler_engine, "EntityOpsScripts",
-            {
-                {"Scripts/EntityOps.fos", R"(
+        const auto script_source = string(R"(
+
 namespace EntityOps
 {
     // ========== Entity Base Operations ==========
@@ -210,6 +209,7 @@ namespace EntityOps
         return 0;
     }
 
+ )") + R"(
     // ========== Database Operations ==========
 
     int TestDatabaseHasRecord()
@@ -392,6 +392,8 @@ namespace EntityOps
 
         return 0;
     }
+
+ )" + R"(
 
     // ========== Advanced Dict Operations ==========
 
@@ -616,6 +618,7 @@ namespace EntityOps
         return 0;
     }
 
+ )" + R"(
     // ========== Global Game Queries ==========
 
     int TestGameGetCrittersVariants()
@@ -692,6 +695,7 @@ namespace EntityOps
         return 0;
     }
 
+ )" + R"(
     // ========== Comprehensive Game Log/Misc ==========
 
     int TestGameLogging()
@@ -758,7 +762,11 @@ namespace EntityOps
         return 0;
     }
 }
-)"},
+)";
+
+        return BakerTests::CompileInlineScripts(&compiler_engine, "EntityOpsScripts",
+            {
+                {"Scripts/EntityOps.fos", script_source},
             },
             [](string_view message) {
                 const auto message_str = string(message);

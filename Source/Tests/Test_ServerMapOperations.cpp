@@ -58,9 +58,8 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        return BakerTests::CompileInlineScripts(&compiler_engine, "MapOpsScripts",
-            {
-                {"Scripts/MapOpsTest.fos", R"(
+        const auto script_source = string(R"(
+
 namespace MapOpsTest
 {
     Location@ CreateTestLocation()
@@ -205,10 +204,18 @@ namespace MapOpsTest
         Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
         if (cr is null) return -3;
 
-        // Get critter on hex
-        Critter@ onHex = map.GetCritter(hex);
-        if (onHex is null) return -4;
-        if (onHex.Id != cr.Id) return -5;
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        array<Critter@> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
+        if (nearby.length() < 1) return -4;
+
+        bool found = false;
+        for (uint i = 0; i < nearby.length(); i++) {
+            if (nearby[i].Id == cr.Id) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return -5;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -267,13 +274,22 @@ namespace MapOpsTest
         Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
         if (cr is null) return -3;
 
-        // Get critters on specific hex
-        array<Critter@> onHex = map.GetCritters(hex, CritterFindType::Any);
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        array<Critter@> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (onHex.length() < 1) return -4;
 
+        bool found = false;
+        for (uint i = 0; i < onHex.length(); i++) {
+            if (onHex[i].Id == cr.Id) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return -5;
+
         // Get critters in radius
-        array<Critter@> inRadius = map.GetCritters(hex, 5, CritterFindType::Any);
-        if (inRadius.length() < 1) return -5;
+        array<Critter@> inRadius = map.GetCrittersInRadius(hex, 5, CritterFindType::Any);
+        if (inRadius.length() < 1) return -6;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -324,6 +340,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )") + R"(
     // ========== Map Hex Operations ==========
 
     int TestMapHexMovable()
@@ -427,7 +444,7 @@ namespace MapOpsTest
 
         mpos from(10, 10);
         mpos to(15, 15);
-        int len = map.GetPathLength(from, to, 0);
+        int len = map.GetPathLength(from, to, 0, null);
         // Path should have positive length between two valid hexes
         if (len <= 0) return -3;
 
@@ -437,7 +454,7 @@ namespace MapOpsTest
         if (cr is null) return -4;
 
         mpos dest(25, 25);
-        int crLen = map.GetPathLength(cr, dest, 0);
+        int crLen = map.GetPathLength(cr, dest, 0, null);
         if (crLen <= 0) return -5;
 
         Game.DestroyLocation(loc);
@@ -505,16 +522,17 @@ namespace MapOpsTest
         array<StaticItem@> allStatic = map.GetStaticItems();
 
         mpos hex(10, 10);
-        array<StaticItem@> onHex = map.GetStaticItems(hex);
+        array<StaticItem@> onHex = map.GetStaticItemsOnHex(hex);
 
         array<StaticItem@> byPid = map.GetStaticItems("TestItem".hstr());
 
-        array<StaticItem@> inRadius = map.GetStaticItems(hex, 5, "TestItem".hstr());
+        array<StaticItem@> inRadius = map.GetStaticItemsInRadius(hex, 5, "TestItem".hstr());
 
         Game.DestroyLocation(loc);
         return 0;
     }
 
+ )" + R"(
     // ========== Map Location Relationship ==========
 
     int TestMapLocationRelationship()
@@ -650,6 +668,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     // ========== Proto-based overloads ==========
 
     int TestMapAddItemByProto()
@@ -768,6 +787,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     // ========== Static item overloads ==========
 
     int TestMapGetStaticItemOverloads()
@@ -781,20 +801,20 @@ namespace MapOpsTest
         mpos hex(10, 10);
 
         // GetStaticItem by hex + pid
-        StaticItem@ byHexPid = map.GetStaticItem(hex, "TestItem".hstr());
+        StaticItem@ byHexPid = map.GetStaticItemOnHex(hex, "TestItem".hstr());
 
         // GetStaticItem by hex + proto
         ProtoItem@ proto = Game.GetProtoItem("TestItem".hstr());
-        StaticItem@ byHexProto = map.GetStaticItem(hex, proto);
+        StaticItem@ byHexProto = map.GetStaticItemOnHex(hex, proto);
 
         // GetStaticItems by hex + proto + radius
-        array<StaticItem@> byRadiusProto = map.GetStaticItems(hex, 5, proto);
+        array<StaticItem@> byRadiusProto = map.GetStaticItemsInRadius(hex, 5, proto);
 
         // GetStaticItems by hex + property
-        array<StaticItem@> byHexProp = map.GetStaticItems(hex, ItemProperty::Count, 0);
+        array<StaticItem@> byHexProp = map.GetStaticItemsOnHex(hex, ItemProperty::Count, 0);
 
         // GetStaticItems by hex + radius + property
-        array<StaticItem@> byRadiusProp = map.GetStaticItems(hex, 5, ItemProperty::Count, 0);
+        array<StaticItem@> byRadiusProp = map.GetStaticItemsInRadius(hex, 5, ItemProperty::Count, 0);
 
         // GetStaticItems by proto
         array<StaticItem@> byProto = map.GetStaticItems(proto);
@@ -842,6 +862,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     // ========== AddItem with properties ==========
 
     int TestMapAddItemWithProperties()
@@ -909,7 +930,11 @@ namespace MapOpsTest
         return 0;
     }
 }
-)"},
+)";
+
+        return BakerTests::CompileInlineScripts(&compiler_engine, "MapOpsScripts",
+            {
+                {"Scripts/MapOpsTest.fos", script_source},
             },
             [](string_view message) {
                 const auto message_str = string(message);

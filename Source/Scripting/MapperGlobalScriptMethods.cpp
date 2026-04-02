@@ -99,14 +99,14 @@ FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItemsOnHex(MapperEngine* mapper, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Mapper_Game_GetCritter(MapperEngine* mapper, mpos hex, CritterFindType findType)
+FO_SCRIPT_API CritterView* Mapper_Game_GetCritterOnHex(MapperEngine* mapper, mpos hex, CritterFindType findType)
 {
     const auto critters = mapper->GetCurMap()->GetCrittersOnHex(hex, findType);
     return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCritters(MapperEngine* mapper, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCrittersOnHex(MapperEngine* mapper, mpos hex, CritterFindType findType)
 {
     return vec_transform(mapper->GetCurMap()->GetCrittersOnHex(hex, findType), [](auto&& cr) -> CritterView* { return cr; });
 }

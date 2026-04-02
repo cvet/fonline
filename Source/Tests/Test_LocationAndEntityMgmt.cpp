@@ -59,7 +59,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        return BakerTests::CompileInlineScripts(&compiler_engine, "LocEntityScripts", {{"Scripts/LocEntity.fos", R"(
+        const auto script_source = string(R"(
 
 namespace LocEntity
 {
@@ -347,6 +347,7 @@ namespace LocEntity
         return 0;
     }
 
+ )") + R"(
     // ========== NPC Queries ==========
 
     int TestNpcQueries()
@@ -427,6 +428,7 @@ namespace LocEntity
         return 0;
     }
 
+ )" + R"(
     // ========== Advanced Item Management ==========
 
     int TestItemMoveToContainer()
@@ -578,6 +580,7 @@ namespace LocEntity
         return 0;
     }
 
+ )" + R"(
     // ========== Server Entity Queries ==========
 
     int TestEntityGetById()
@@ -675,6 +678,7 @@ namespace LocEntity
         return 0;
     }
 
+ )" + R"(
     // ========== Load/Unload Critter ==========
 
     int TestUnloadCritter()
@@ -717,14 +721,15 @@ namespace LocEntity
     }
 }
 
-)"}},
-            [](string_view message) {
-                const auto message_str = string(message);
+)";
 
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
+        return BakerTests::CompileInlineScripts(&compiler_engine, "LocEntityScripts", {{"Scripts/LocEntity.fos", script_source}}, [](string_view message) {
+            const auto message_str = string(message);
+
+            if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
+                throw ScriptSystemException(message_str);
+            }
+        });
     }
 
     static auto MakeResources() -> FileSystem

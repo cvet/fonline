@@ -197,7 +197,6 @@ FIXED_SETTING(string, Render, ImGuiColorStyle); // ImGui theme: Light, Classic, 
 FIXED_SETTING(string, Render, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect for ImGui
 FIXED_SETTING(int32, Render, ImGuiFontTextureSize, 256); // Minimum ImGui texture size
 FIXED_SETTING(int32, Render, SpriteHitValue, 127); // If alpha is greather then hit test is passed
-FIXED_SETTING(string, Render, EggSpriteName, ""); // Sprite used for egg transparency masking, empty value disables egg system
 FIXED_SETTING(string, Render, CritterStubSpriteName, ""); // Fallback critter sprite, empty value uses built-in runtime dummy sprite
 FIXED_SETTING(string, Render, ItemStubSpriteName, ""); // Fallback item sprite, empty value uses built-in runtime dummy sprite
 SETTING_GROUP_END();

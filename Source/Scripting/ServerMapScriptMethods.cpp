@@ -450,7 +450,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, ident_t id)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring pid)
+FO_SCRIPT_API StaticItem* Server_Map_GetStaticItemOnHex(Map* self, mpos hex, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -460,7 +460,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, ProtoItem* proto)
+FO_SCRIPT_API StaticItem* Server_Map_GetStaticItemOnHex(Map* self, mpos hex, ProtoItem* proto)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -474,7 +474,7 @@ FO_SCRIPT_API StaticItem* Server_Map_GetStaticItem(Map* self, mpos hex, ProtoIte
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -485,7 +485,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, hstring pid)
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32 radius, hstring pid)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -495,7 +495,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ProtoItem* proto)
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32 radius, ProtoItem* proto)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -509,7 +509,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(Map* self, mpos hex, ItemProperty property, int32 propertyValue)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -531,7 +531,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(Map* self, mpos hex, int32 radius, ItemProperty property, int32 propertyValue)
+FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32 radius, ItemProperty property, int32 propertyValue)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -600,7 +600,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, ident_t crid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, mpos hex)
+FO_SCRIPT_API Critter* Server_Map_GetCritterOnHex(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -631,7 +631,7 @@ FO_SCRIPT_API Critter* Server_Map_GetCritter(Map* self, CritterProperty property
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersOnHex(Map* self, mpos hex, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -649,7 +649,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, Critt
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, mpos hex, int32 radius, CritterFindType findType)
+FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInRadius(Map* self, mpos hex, int32 radius, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
