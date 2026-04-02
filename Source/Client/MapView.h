@@ -39,6 +39,7 @@
 #include "CritterHexView.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "FogOfWar.h"
 #include "Geometry.h"
 #include "ItemHexView.h"
 #include "MapSprite.h"
@@ -176,8 +177,8 @@ public:
     auto GetHexMapPos(mpos hex) const -> ipos32;
     auto IsOutsideArea(mpos hex) const -> bool;
 
-    void RebuildMap() { _rebuildMap = true; }
-    void RebuildFog() { _rebuildFog = true; }
+    void RebuildMap();
+    void RebuildFog();
     void SetShootBorders(bool enabled, int32 dist);
     auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
@@ -381,12 +382,10 @@ private:
     int32 _hVisible {};
     vector<ViewField> _viewField {};
 
-    bool _rebuildFog {};
-    bool _drawLookBorders {true};
-    bool _drawShootBorders {};
+    FogOfWar _fogLook {FogOfWar::Kind::Look};
+    FogOfWar _fogShoot {FogOfWar::Kind::Shoot};
+    bool _shootBordersEnabled {};
     int32 _shootBordersDist {};
-    vector<PrimitivePoint> _fogLookPoints {};
-    vector<PrimitivePoint> _fogShootPoints {};
 
     ident_t _critterContourCrId {};
     ContourType _critterContour {};

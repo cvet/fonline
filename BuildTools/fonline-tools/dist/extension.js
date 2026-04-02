@@ -39,6 +39,8 @@ var COMMAND_ID = "fonline-tools.showTools";
 var STATUS_BAR_TEXT = "$(tools) FOnline Tools";
 var TASK_GROUP_SEPARATOR = "::";
 var PLATFORM_TAG_PATTERN = /\[(windows|linux|macos|win32|win64|osx|darwin)\]/gi;
+var HIDDEN_TAG_PATTERN = /\[hidden\]/gi;
+var SORT_TAG_PATTERN = /\[sort:(\d+)\]/gi;
 var PLATFORM_DEBUG_TYPES = {
   cppvsdbg: ["windows"]
 };
@@ -110,7 +112,14 @@ function extractPlatformTags(text) {
   return Array.from(result);
 }
 function stripPlatformTags(text) {
-  return text.replace(PLATFORM_TAG_PATTERN, "").replace(/\s{2,}/g, " ").trim();
+  return text.replace(PLATFORM_TAG_PATTERN, "").replace(HIDDEN_TAG_PATTERN, "").replace(SORT_TAG_PATTERN, "").replace(/\s{2,}/g, " ").trim();
+}
+function hasHiddenTag(text) {
+  return /\[hidden\]/i.test(text);
+}
+function extractSortPriority(text) {
+  const match = /\[sort:(\d+)\]/i.exec(text);
+  return match ? parseInt(match[1], 10) : void 0;
 }
 function extractPlatformQualifiers(text) {
   const result = /* @__PURE__ */ new Set();
@@ -194,101 +203,22 @@ function isMainWorkspaceTask(task, workspaceFolder) {
   }
   return !!scope && "uri" in scope && scope.uri.toString() === workspaceFolder.uri.toString();
 }
-function normalizeBuildPresetInheritance(inherits) {
-  if (!inherits) {
-    return [];
-  }
-  return Array.isArray(inherits) ? inherits : [inherits];
-}
 function getNodePlatform() {
   const nodeGlobal = globalThis;
   return nodeGlobal.process?.platform ?? "";
 }
-function getHostBuildPresetName() {
-  return getNodePlatform() === "win32" ? "base-msvc" : "base-ninja";
-}
-function collectBuildTargets(buildPresets, presetName, visited, result) {
-  if (visited.has(presetName)) {
-    return;
-  }
-  visited.add(presetName);
-  const preset = buildPresets.get(presetName);
-  if (!preset) {
-    return;
-  }
-  for (const inheritedPreset of normalizeBuildPresetInheritance(preset.inherits)) {
-    collectBuildTargets(buildPresets, inheritedPreset, visited, result);
-  }
-  for (const target of preset.targets ?? []) {
-    if (!result.includes(target)) {
-      result.push(target);
-    }
-  }
-}
-async function getCMakeBuildTargetPicks() {
-  const workspaceFolder = getWorkspaceFolder();
-  if (!workspaceFolder) {
-    return [];
-  }
-  const presetsUri = vscode.Uri.joinPath(workspaceFolder.uri, "CMakePresets.json");
-  const presets = await readJsonFile(presetsUri);
-  if (!presets?.buildPresets?.length) {
-    return [];
-  }
-  const buildPresets = new Map(
-    presets.buildPresets.filter((preset) => !!preset.name).map((preset) => [preset.name, preset])
-  );
-  const targets = [];
-  collectBuildTargets(buildPresets, getHostBuildPresetName(), /* @__PURE__ */ new Set(), targets);
-  return targets.map((target) => ({
-    label: target,
-    description: "CMake Build Target",
-    run: () => vscode.commands.executeCommand("cmake.buildWithTarget", target)
-  }));
-}
-function normalizeExecutableTargets(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((target) => typeof target === "object" && target !== null);
-}
-async function getCMakeRunTargetPicks() {
-  try {
-    const executableTargets = normalizeExecutableTargets(await vscode.commands.executeCommand("cmake.executableTargets"));
-    return executableTargets.filter((target) => !!target.name).map((target) => ({
-      label: target.name,
-      description: "CMake Run Target",
-      detail: target.path,
-      run: async () => {
-        await vscode.commands.executeCommand("cmake.selectLaunchTarget", target.name);
-        await vscode.commands.executeCommand("cmake.launchTarget");
-      }
-    }));
-  } catch {
-    return [];
-  }
-}
-async function getCMakeDebugTargetPicks() {
-  try {
-    const executableTargets = normalizeExecutableTargets(await vscode.commands.executeCommand("cmake.executableTargets"));
-    return executableTargets.filter((target) => !!target.name).map((target) => ({
-      label: target.name,
-      description: "CMake Debug Target",
-      detail: target.path,
-      run: async () => {
-        await vscode.commands.executeCommand("cmake.selectLaunchTarget", target.name);
-        await vscode.commands.executeCommand("cmake.debugTarget");
-      }
-    }));
-  } catch {
-    return [];
-  }
-}
+var GROUP_DESCRIPTIONS = /* @__PURE__ */ new Set(["Task Group", "Launch Group"]);
 function sortPicks(picks) {
   return [...picks].sort((left, right) => {
-    const descriptionCompare = (left.description ?? "").localeCompare(right.description ?? "");
-    if (descriptionCompare !== 0) {
-      return descriptionCompare;
+    const leftIsGroup = GROUP_DESCRIPTIONS.has(left.description ?? "") ? 1 : 0;
+    const rightIsGroup = GROUP_DESCRIPTIONS.has(right.description ?? "") ? 1 : 0;
+    if (leftIsGroup !== rightIsGroup) {
+      return leftIsGroup - rightIsGroup;
+    }
+    const leftSort = left.sortPriority ?? Infinity;
+    const rightSort = right.sortPriority ?? Infinity;
+    if (leftSort !== rightSort) {
+      return leftSort - rightSort;
     }
     return left.label.localeCompare(right.label);
   });
@@ -320,28 +250,6 @@ async function showSubmenu(title, placeHolder, picks) {
     await selected.run();
   }
 }
-async function getMenuPicks() {
-  const buildTargets = await getCMakeBuildTargetPicks();
-  const runTargets = await getCMakeRunTargetPicks();
-  const debugTargets = await getCMakeDebugTargetPicks();
-  return [
-    {
-      label: "Build Target",
-      description: "Menu",
-      run: () => showSubmenu("Build Target", "Build a CMake target", buildTargets)
-    },
-    {
-      label: "Run Target",
-      description: "Menu",
-      run: () => showSubmenu("Run Target", "Run a CMake target", runTargets)
-    },
-    {
-      label: "Debug Target",
-      description: "Menu",
-      run: () => showSubmenu("Debug Target", "Debug a CMake target", debugTargets)
-    }
-  ];
-}
 async function getTaskPicks() {
   const workspaceFolder = getWorkspaceFolder();
   if (!workspaceFolder) {
@@ -352,9 +260,10 @@ async function getTaskPicks() {
     return [];
   }
   const tasks2 = await vscode.tasks.fetchTasks();
-  const taskPicks = tasks2.filter((task) => allowedLabels.has(task.name) && isMainWorkspaceTask(task, workspaceFolder)).map((task) => ({
+  const taskPicks = tasks2.filter((task) => allowedLabels.has(task.name) && isMainWorkspaceTask(task, workspaceFolder) && !hasHiddenTag(task.name)).map((task) => ({
     label: stripPlatformTags(task.name),
     description: "Task",
+    sortPriority: extractSortPriority(task.name),
     run: () => vscode.tasks.executeTask(task)
   }));
   const groupedTaskEntries = /* @__PURE__ */ new Map();
@@ -382,14 +291,16 @@ function getLaunchPicks() {
   const configurations = (launchConfig.get("configurations") ?? []).filter(isLaunchDefinitionSupported);
   const allowedConfigNames = new Set(configurations.flatMap((config) => config.name ? [config.name] : []));
   const compounds = (launchConfig.get("compounds") ?? []).filter((compound) => isLaunchCompoundSupported(compound, allowedConfigNames));
-  const configPicks = configurations.filter((config) => !!config.name).map((config) => ({
+  const configPicks = configurations.filter((config) => !!config.name && !hasHiddenTag(config.name)).map((config) => ({
     label: stripPlatformTags(config.name),
     description: "Launch",
+    sortPriority: extractSortPriority(config.name),
     run: () => vscode.debug.startDebugging(workspaceFolder, config.name)
   }));
-  const compoundPicks = compounds.filter((compound) => !!compound.name).map((compound) => ({
+  const compoundPicks = compounds.filter((compound) => !!compound.name && !hasHiddenTag(compound.name)).map((compound) => ({
     label: stripPlatformTags(compound.name),
     description: "Launch Compound",
+    sortPriority: extractSortPriority(compound.name),
     run: () => vscode.debug.startDebugging(workspaceFolder, compound.name)
   }));
   const allPicks = [...configPicks, ...compoundPicks];
@@ -412,13 +323,20 @@ function getLaunchPicks() {
   }));
   return [...directPicks, ...groupedPicks];
 }
+var MAX_SORT_HOTKEYS = 9;
+var cachedSortedPicks = [];
+async function refreshSortedPicks() {
+  const allPicks = [...await getTaskPicks(), ...getLaunchPicks()];
+  cachedSortedPicks = allPicks.filter((p) => p.sortPriority !== void 0).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
+  return cachedSortedPicks;
+}
 async function showToolsPicker() {
-  const directPicks = sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
-  const picks = [...directPicks, ...await getMenuPicks()];
+  const picks = sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
   if (picks.length === 0) {
     void vscode.window.showInformationMessage("No FOnline tasks or launch configurations found.");
     return;
   }
+  cachedSortedPicks = picks.filter((p) => p.sortPriority !== void 0).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
   const selected = await vscode.window.showQuickPick(picks, {
     title: "FOnline Tools",
     placeHolder: "Run a task or launch configuration",
@@ -433,6 +351,20 @@ function activate(context) {
   const showToolsCommand = vscode.commands.registerCommand(COMMAND_ID, async () => {
     await showToolsPicker();
   });
+  for (let i = 1; i <= MAX_SORT_HOTKEYS; i++) {
+    const command = vscode.commands.registerCommand(`fonline-tools.runSorted${i}`, async () => {
+      if (cachedSortedPicks.length === 0) {
+        await refreshSortedPicks();
+      }
+      const pick = cachedSortedPicks.find((p) => p.sortPriority === i);
+      if (pick) {
+        await pick.run();
+      } else {
+        void vscode.window.showWarningMessage(`No FOnline item with [sort:${i}] found.`);
+      }
+    });
+    context.subscriptions.push(command);
+  }
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
   statusBarItem.name = "FOnline Tools";
   statusBarItem.text = STATUS_BAR_TEXT;

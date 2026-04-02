@@ -341,40 +341,38 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         throw ScriptException("Can't load binary", as_result);
     }
 
-    // Validate loaded bytecode (especially useful for cross-platform loads)
-    {
-        const auto func_count = mod->GetFunctionCount();
-        for (AngelScript::asUINT fi = 0; fi < static_cast<AngelScript::asUINT>(func_count); fi++) {
-            auto* func = mod->GetFunctionByIndex(fi);
-            if (func == nullptr) {
-                continue;
-            }
+    // Validate loaded bytecode
+    for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
+        auto* func = mod->GetFunctionByIndex(i);
 
-            // Walk the bytecode to verify instruction boundaries are well-formed
-            AngelScript::asUINT bc_length = 0;
-            auto* bc = func->GetByteCode(&bc_length);
-            if (bc == nullptr || bc_length == 0) {
-                continue;
-            }
-
-            AngelScript::asUINT pos = 0;
-            while (pos < bc_length) {
-                const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
-                const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
-                if (instr_size == 0 || pos + instr_size > bc_length) {
-                    WriteLog("Bytecode validation error in '{}': invalid instruction at pos {}, opcode {}, size {}, bc_length {}", func->GetName(), pos, static_cast<int>(opcode), instr_size, bc_length);
-                    throw ScriptException("Bytecode validation failed - invalid instruction boundary");
-                }
-                pos += instr_size;
-            }
-
-            if (pos != bc_length) {
-                WriteLog("Bytecode validation error in '{}': instructions don't fill bytecode exactly (pos={}, length={})", func->GetName(), pos, bc_length);
-                throw ScriptException("Bytecode validation failed - instruction boundary mismatch");
-            }
+        if (func == nullptr) {
+            continue;
         }
 
-        WriteLog("Bytecode validation passed for {} functions", func_count);
+        // Walk the bytecode to verify instruction boundaries are well-formed
+        AngelScript::asUINT bc_length = 0;
+        auto* bc = func->GetByteCode(&bc_length);
+
+        if (bc == nullptr || bc_length == 0) {
+            continue;
+        }
+
+        AngelScript::asUINT pos = 0;
+
+        while (pos < bc_length) {
+            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
+            const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
+
+            if (instr_size == 0 || pos + instr_size > bc_length) {
+                throw ScriptException("Bytecode validation failed - invalid instruction boundary", func->GetName(), pos, opcode, instr_size, bc_length);
+            }
+
+            pos += instr_size;
+        }
+
+        if (pos != bc_length) {
+            throw ScriptException("Bytecode validation failed - instruction boundary mismatch", func->GetName(), pos, bc_length);
+        }
     }
 }
 

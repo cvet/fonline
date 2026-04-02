@@ -305,12 +305,14 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
             exec_result = AngelScript::asEXECUTION_EXCEPTION;
         }
 
-        const auto execution_duration = execution_time.GetDuration();
+        if (_overrunTimeout) {
+            const auto execution_duration = execution_time.GetDuration();
 
-        if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
-            if constexpr (!FO_DEBUG) {
-                const string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
-                WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+            if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
+                if constexpr (!FO_DEBUG) {
+                    const string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
+                    WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+                }
             }
         }
     }

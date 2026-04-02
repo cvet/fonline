@@ -174,6 +174,7 @@ VARIABLE_SETTING(int32, Render, Brightness, 0); // Brightness value
 VARIABLE_SETTING(int32, Render, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)
 VARIABLE_SETTING(int32, Render, FixedFPS, 100); // Fixed frames per second (0 to disable)
 FIXED_SETTING(int32, Render, FogExtraLength, 0); // Extra fog length
+FIXED_SETTING(int32, Render, FogTransitionDuration, 200); // Fog visual transition duration in milliseconds
 FIXED_SETTING(float32, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor

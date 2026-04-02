@@ -31,7 +31,27 @@
       {
         "command": "fonline-tools.showTools",
         "title": "FOnline: Show Tools"
-      }
+      },
+      { "command": "fonline-tools.runSorted1", "title": "FOnline: Run Sorted Item 1" },
+      { "command": "fonline-tools.runSorted2", "title": "FOnline: Run Sorted Item 2" },
+      { "command": "fonline-tools.runSorted3", "title": "FOnline: Run Sorted Item 3" },
+      { "command": "fonline-tools.runSorted4", "title": "FOnline: Run Sorted Item 4" },
+      { "command": "fonline-tools.runSorted5", "title": "FOnline: Run Sorted Item 5" },
+      { "command": "fonline-tools.runSorted6", "title": "FOnline: Run Sorted Item 6" },
+      { "command": "fonline-tools.runSorted7", "title": "FOnline: Run Sorted Item 7" },
+      { "command": "fonline-tools.runSorted8", "title": "FOnline: Run Sorted Item 8" },
+      { "command": "fonline-tools.runSorted9", "title": "FOnline: Run Sorted Item 9" }
+    ],
+    "keybindings": [
+      { "command": "fonline-tools.runSorted1", "key": "ctrl+shift+1", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted2", "key": "ctrl+shift+2", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted3", "key": "ctrl+shift+3", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted4", "key": "ctrl+shift+4", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted5", "key": "ctrl+shift+5", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted6", "key": "ctrl+shift+6", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted7", "key": "ctrl+shift+7", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted8", "key": "ctrl+shift+8", "when": "!inQuickOpen && !suggestWidgetVisible" },
+      { "command": "fonline-tools.runSorted9", "key": "ctrl+shift+9", "when": "!inQuickOpen && !suggestWidgetVisible" }
     ]
   },
   "devDependencies": {
