@@ -43,6 +43,7 @@
 #include "Geometry.h"
 #include "ItemHexView.h"
 #include "MapSprite.h"
+#include "PathFinding.h"
 #include "ScriptSystem.h"
 #include "SpriteManager.h"
 #include "TwoDimensionalGrid.h"
@@ -339,7 +340,6 @@ private:
     unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
     unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
-    vector<int16> _findPathGrid {};
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};

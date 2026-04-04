@@ -749,35 +749,17 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType)
 {
-    TracePathInput trace;
-    trace.TraceMap = self;
-    trace.StartHex = fromHex;
-    trace.TargetHex = toHex;
-    trace.MaxDist = dist;
-    trace.Angle = angle;
-    trace.CollectCritters = true;
-    trace.FindType = findType;
-
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
-    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return cr.get(); });
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
+    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return const_cast<Critter*>(cr.get()); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
-    TracePathInput trace;
-    trace.TraceMap = self;
-    trace.StartHex = fromHex;
-    trace.TargetHex = toHex;
-    trace.MaxDist = dist;
-    trace.Angle = angle;
-    trace.CollectCritters = true;
-    trace.FindType = findType;
-
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
     preBlockHex = trace_output.PreBlock;
     blockHex = trace_output.Block;
-    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return cr.get(); });
+    return vec_transform(trace_output.Critters, [](auto&& cr) -> Critter* { return const_cast<Critter*>(cr.get()); });
 }
 
 ///@ ExportMethod
@@ -830,29 +812,14 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
-    TracePathInput trace;
-    trace.TraceMap = self;
-    trace.StartHex = fromHex;
-    trace.TargetHex = toHex;
-    trace.MaxDist = dist;
-    trace.Angle = angle;
-
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle);
     toHex = trace_output.PreBlock;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetWallHexInPath(Map* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
 {
-    TracePathInput trace;
-    trace.TraceMap = self;
-    trace.StartHex = fromHex;
-    trace.TargetHex = toHex;
-    trace.MaxDist = dist;
-    trace.Angle = angle;
-    trace.CheckLastMovable = true;
-
-    const auto trace_output = self->GetEngine()->MapMngr.TracePath(trace);
+    const auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, true);
 
     if (trace_output.HasLastMovable) {
         toHex = trace_output.LastMovable;
@@ -872,18 +839,17 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toHex
         throw ScriptException("Invalid to hex args");
     }
 
-    FindPathInput input;
-    input.TargetMap = self;
-    input.FromHex = fromHex;
-    input.ToHex = toHex;
-    input.Cut = cut;
+    function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](Item* gag) mutable { return gag_callback->Call(gag) && gag_callback->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](const Item* gag) mutable {
+            auto* gag_non_const = const_cast<Item*>(gag);
+            return gag_cb->Call(gag_non_const) && gag_cb->GetResult();
+        };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(input);
+    const auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -903,20 +869,17 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
         throw ScriptException("Invalid to hex args");
     }
 
-    FindPathInput input;
-    input.TargetMap = self;
-    input.FromCritter = cr;
-    input.FromHex = cr->GetHex();
-    input.ToHex = toHex;
-    input.Multihex = cr->GetMultihex();
-    input.Cut = cut;
+    function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](Item* gag) mutable { return gag_callback->Call(cr, gag) && gag_callback->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](const Item* gag) mutable {
+            auto* gag_non_const = const_cast<Item*>(gag);
+            return gag_cb->Call(cr, gag_non_const) && gag_cb->GetResult();
+        };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(input);
+    const auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;

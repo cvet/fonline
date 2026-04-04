@@ -623,22 +623,19 @@ void MapManager::DestroyMapInternal(Map* map)
     _engine->EntityMngr.UnregisterMap(map);
 }
 
-auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
+auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int32 max_dist, float32 angle, const Critter* find_cr, CritterFindType find_type, bool check_last_movable, bool collect_critters) const -> TraceResult
 {
     FO_STACK_TRACE_ENTRY();
 
-    TracePathOutput output;
+    TraceResult output;
     output.IsFullTrace = false;
     output.IsCritterFound = false;
     output.HasLastMovable = false;
 
-    auto& map = input.TraceMap;
     const auto map_size = map->GetSize();
-    const auto start_hex = input.StartHex;
-    const auto target_hex = input.TargetHex;
-    const auto dist = input.MaxDist != 0 ? input.MaxDist : GeometryHelper::GetDistance(start_hex, target_hex);
+    const auto dist = max_dist != 0 ? max_dist : GeometryHelper::GetDistance(start_hex, target_hex);
 
-    auto tracer = LineTracer(start_hex, target_hex, input.Angle, map_size);
+    auto tracer = LineTracer(start_hex, target_hex, angle, map_size);
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
     bool last_passed_ok = false;
@@ -656,7 +653,7 @@ auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
             tracer.GetNextSquare(next_hex);
         }
 
-        if (input.CheckLastMovable && !last_passed_ok) {
+        if (check_last_movable && !last_passed_ok) {
             if (map->IsHexMovable(next_hex)) {
                 output.LastMovable = next_hex;
                 output.HasLastMovable = true;
@@ -670,19 +667,17 @@ auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
             break;
         }
 
-        if (input.CollectCritters && map->IsCritterOnHex(next_hex, CritterFindType::Any)) {
-            // We just collect critters not modify their so break const
-            auto* map_no_const = const_cast<Map*>(map.get());
-            const auto critters = map_no_const->GetCrittersOnHex(next_hex, input.FindType);
+        if (collect_critters && map->IsCritterOnHex(next_hex, CritterFindType::Any)) {
+            const auto critters = map->GetCrittersOnHex(next_hex, find_type);
 
-            for (auto* cr : critters) {
+            for (const auto* cr : critters) {
                 if (std::ranges::find(output.Critters, cr) == output.Critters.end()) {
                     output.Critters.emplace_back(cr);
                 }
             }
         }
 
-        if (input.FindCr != nullptr && map->IsCritterOnHex(next_hex, input.FindCr.get())) {
+        if (find_cr != nullptr && map->IsCritterOnHex(next_hex, find_cr)) {
             output.IsCritterFound = true;
             break;
         }
@@ -696,370 +691,49 @@ auto MapManager::TracePath(TracePathInput& input) const -> TracePathOutput
     return output;
 }
 
-auto MapManager::FindPath(FindPathInput& input) const -> FindPathOutput
+auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32 multihex, int32 cut, function<bool(const Item*)> gag_callback) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
-    FindPathOutput output;
-
-    auto& map = input.TargetMap;
     FO_RUNTIME_ASSERT(map);
 
-    const auto check_for_gags = [&](mpos hex, int32 multihex) -> bool {
-        if (multihex == 0) {
-            return map->CheckGagItem(hex, input.GagCallback);
-        }
-        else {
-            return map->CheckGagItems(hex, multihex, input.GagCallback);
-        }
-    };
+    // Pre-validate target hex (terrain/items only; critters are always passable)
+    if (cut == 0) {
+        const bool target_movable = multihex > 0 ? map->IsHexesMovable(to_hex, multihex) : map->IsHexMovable(to_hex);
 
-    const auto map_size = map->GetSize();
-
-    if (!map_size.is_valid_pos(input.FromHex) || !map_size.is_valid_pos(input.ToHex)) {
-        output.Result = FindPathOutput::ResultType::InvalidHexes;
-        return output;
-    }
-    if (GeometryHelper::CheckDist(input.FromHex, input.ToHex, input.Cut)) {
-        output.Result = FindPathOutput::ResultType::AlreadyHere;
-        return output;
-    }
-    if (input.Cut == 0 && !map->IsHexesMovable(input.ToHex, input.Multihex, nullptr)) {
-        if (!check_for_gags(input.ToHex, 0)) {
+        if (!target_movable && !map->CheckGagItem(to_hex, gag_callback)) {
+            FindPathOutput output;
             output.Result = FindPathOutput::ResultType::HexBusy;
             return output;
         }
     }
 
-    // Ring check
-    if (input.Cut <= 1 && input.Multihex == 0) {
-        const int32 hexes_around = GeometryHelper::HexesInRadius(1);
-        int32 i = 1;
+    FindPathInput settings;
+    settings.FromHex = from_hex;
+    settings.ToHex = to_hex;
+    settings.MapSize = map->GetSize();
+    settings.MaxLength = _engine->Settings.MaxPathFindLength;
+    settings.Cut = cut;
+    settings.Multihex = multihex;
+    settings.FreeMovement = _engine->Settings.MapFreeMovement;
 
-        for (; i < hexes_around; i++) {
-            if (auto ring_hex = input.ToHex; GeometryHelper::MoveHexAroundAway(ring_hex, i, map_size)) {
-                if (map->IsHexMovable(ring_hex) || check_for_gags(ring_hex, 0)) {
-                    break;
-                }
+    settings.CheckHex = [&](mpos hex) -> HexBlockResult {
+        if (!map->IsHexMovable(hex)) {
+            if (map->CheckGagItem(hex, gag_callback)) {
+                return HexBlockResult::DeferGag;
             }
+
+            return HexBlockResult::Blocked;
         }
 
-        if (i >= hexes_around) {
-            output.Result = FindPathOutput::ResultType::HexBusyRing;
-            return output;
-        }
-    }
-
-    // Prepare grid
-    const auto max_path_find_len = _engine->Settings.MaxPathFindLength;
-    auto path_find_grid = vector<int16>(numeric_cast<size_t>(max_path_find_len * 2 + 2) * (max_path_find_len * 2 + 2));
-    const auto grid_offset = input.FromHex;
-    const auto grid_at = [&](mpos hex) -> int16& { return path_find_grid[((max_path_find_len + 1) + hex.y - grid_offset.y) * (max_path_find_len * 2 + 2) + ((max_path_find_len + 1) + hex.x - grid_offset.x)]; };
-
-    vector<mpos> next_hexes;
-    vector<mpos> cr_hexes;
-    vector<mpos> gag_hexes;
-    next_hexes.reserve(1024);
-    cr_hexes.reserve(64);
-    gag_hexes.reserve(64);
-
-    // Begin search
-    auto to_hex = input.ToHex;
-    grid_at(input.FromHex) = 1;
-    next_hexes.emplace_back(input.FromHex);
-
-    while (true) {
-        bool find_ok = false;
-        const auto next_hexes_round = next_hexes.size();
-        FO_RUNTIME_ASSERT(next_hexes_round != 0);
-
-        for (size_t i = 0; i < next_hexes_round; i++) {
-            const auto cur_hex = next_hexes[i];
-
-            if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
-                to_hex = cur_hex;
-                find_ok = true;
-                break;
-            }
-
-            const auto next_hex_index = numeric_cast<int16>(grid_at(cur_hex) + 1);
-
-            if (next_hex_index > _engine->Settings.MaxPathFindLength) {
-                output.Result = FindPathOutput::ResultType::TooFar;
-                return output;
-            }
-
-            for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
-                auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
-                GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, static_cast<uint8>(j));
-
-                if (!map_size.is_valid_pos(raw_next_hex)) {
-                    continue;
-                }
-
-                const auto next_hex = map_size.from_raw_pos(raw_next_hex);
-                auto& grid_cell = grid_at(next_hex);
-
-                if (grid_cell == 0) {
-                    if (map->IsHexesMovable(next_hex, input.Multihex, input.FromCritter.get()) || check_for_gags(next_hex, input.Multihex)) {
-                        next_hexes.emplace_back(next_hex);
-                        grid_cell = next_hex_index;
-                    }
-                    else {
-                        grid_cell = -1;
-                    }
-                }
-            }
+        if (map->HasLivingCritter(hex, from_cr)) {
+            return HexBlockResult::DeferCritter;
         }
 
-        if (find_ok) {
-            break;
-        }
+        return HexBlockResult::Passable;
+    };
 
-        next_hexes.erase(next_hexes.begin(), next_hexes.begin() + static_cast<ptrdiff_t>(next_hexes_round));
-
-        // Add gag hex after some distance
-        if (!gag_hexes.empty() && !next_hexes.empty()) {
-            const auto last_index = grid_at(next_hexes.back());
-            const auto& gag_hex = gag_hexes.front();
-            const auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
-
-            if (gag_index + 10 < last_index) { // Todo: if path finding not be reworked than migrate magic number to scripts
-                grid_at(gag_hex) = gag_index;
-                next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
-            }
-        }
-
-        // If no way then route through gag/critter
-        if (next_hexes.empty()) {
-            if (!gag_hexes.empty()) {
-                auto& gag_hex = gag_hexes.front();
-                grid_at(gag_hex) ^= 0x4000;
-                next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
-            }
-            else if (!cr_hexes.empty()) {
-                auto& cr_hex = cr_hexes.front();
-                grid_at(cr_hex) ^= 0x4000;
-                next_hexes.emplace_back(cr_hex);
-                cr_hexes.erase(cr_hexes.begin());
-            }
-        }
-
-        if (next_hexes.empty()) {
-            output.Result = FindPathOutput::ResultType::NoWay;
-            return output;
-        }
-    }
-
-    vector<uint8> raw_steps;
-    auto hex_index = grid_at(to_hex);
-    auto cur_hex = to_hex;
-    raw_steps.resize(hex_index - 1);
-    float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
-
-    while (hex_index > 1) {
-        hex_index--;
-
-        const auto find_path_grid = [&](mpos& hex) -> bool {
-            int32 best_step_dir = -1;
-            float32 best_step_angle_diff = 0.0f;
-
-            const auto check_hex = [&](int32 dir, ipos32 step_raw_hex) {
-                if (!map_size.is_valid_pos(step_raw_hex)) {
-                    return;
-                }
-
-                const auto step_hex = map_size.from_raw_pos(step_raw_hex);
-
-                if (grid_at(step_hex) != hex_index) {
-                    return;
-                }
-
-                const float32 angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
-                const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
-
-                if (best_step_dir == -1 || hex_index == 0) {
-                    best_step_dir = dir;
-                    best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
-                }
-                else if (angle_diff < best_step_angle_diff) {
-                    best_step_dir = dir;
-                    best_step_angle_diff = angle_diff;
-                }
-            };
-
-            if ((hex.x % 2) != 0) {
-                check_hex(3, ipos32 {hex.x - 1, hex.y - 1});
-                check_hex(2, ipos32 {hex.x, hex.y - 1});
-                check_hex(5, ipos32 {hex.x, hex.y + 1});
-                check_hex(0, ipos32 {hex.x + 1, hex.y});
-                check_hex(4, ipos32 {hex.x - 1, hex.y});
-                check_hex(1, ipos32 {hex.x + 1, hex.y - 1});
-
-                if (best_step_dir == 3) {
-                    raw_steps[hex_index - 1] = 3;
-                    hex.x--;
-                    hex.y--;
-                    return true;
-                }
-                if (best_step_dir == 2) {
-                    raw_steps[hex_index - 1] = 2;
-                    hex.y--;
-                    return true;
-                }
-                if (best_step_dir == 5) {
-                    raw_steps[hex_index - 1] = 5;
-                    hex.y++;
-                    return true;
-                }
-                if (best_step_dir == 0) {
-                    raw_steps[hex_index - 1] = 0;
-                    hex.x++;
-                    return true;
-                }
-                if (best_step_dir == 4) {
-                    raw_steps[hex_index - 1] = 4;
-                    hex.x--;
-                    return true;
-                }
-                if (best_step_dir == 1) {
-                    raw_steps[hex_index - 1] = 1;
-                    hex.x++;
-                    hex.y--;
-                    return true;
-                }
-            }
-            else {
-                check_hex(3, ipos32 {hex.x - 1, hex.y});
-                check_hex(2, ipos32 {hex.x, hex.y - 1});
-                check_hex(5, ipos32 {hex.x, hex.y + 1});
-                check_hex(0, ipos32 {hex.x + 1, hex.y + 1});
-                check_hex(4, ipos32 {hex.x - 1, hex.y + 1});
-                check_hex(1, ipos32 {hex.x + 1, hex.y});
-
-                if (best_step_dir == 3) {
-                    raw_steps[hex_index - 1] = 3;
-                    hex.x--;
-                    return true;
-                }
-                if (best_step_dir == 2) {
-                    raw_steps[hex_index - 1] = 2;
-                    hex.y--;
-                    return true;
-                }
-                if (best_step_dir == 5) {
-                    raw_steps[hex_index - 1] = 5;
-                    hex.y++;
-                    return true;
-                }
-                if (best_step_dir == 0) {
-                    raw_steps[hex_index - 1] = 0;
-                    hex.x++;
-                    hex.y++;
-                    return true;
-                }
-                if (best_step_dir == 4) {
-                    raw_steps[hex_index - 1] = 4;
-                    hex.x--;
-                    hex.y++;
-                    return true;
-                }
-                if (best_step_dir == 1) {
-                    raw_steps[hex_index - 1] = 1;
-                    hex.x++;
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        if (!find_path_grid(cur_hex)) {
-            output.Result = FindPathOutput::ResultType::InternalError;
-            return output;
-        }
-    }
-
-    if (raw_steps.empty()) {
-        output.Result = FindPathOutput::ResultType::AlreadyHere;
-        return output;
-    }
-
-    if (_engine->Settings.MapFreeMovement) {
-        mpos trace_hex = input.FromHex;
-
-        while (true) {
-            mpos trace_hex2 = to_hex;
-
-            for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
-                mpos next_hex = trace_hex;
-                vector<uint8> direct_steps;
-                bool failed = false;
-
-                while (true) {
-                    uint8 dir = tracer.GetNextHex(next_hex);
-                    direct_steps.emplace_back(dir);
-
-                    if (next_hex == trace_hex2) {
-                        break;
-                    }
-
-                    if (grid_at(next_hex) <= 0) {
-                        failed = true;
-                        break;
-                    }
-                }
-
-                if (failed) {
-                    FO_RUNTIME_ASSERT(i > 0);
-                    GeometryHelper::MoveHexByDir(trace_hex2, GeometryHelper::ReverseDir(raw_steps[i]), map_size);
-                    continue;
-                }
-
-                for (const auto& ds : direct_steps) {
-                    output.Steps.emplace_back(ds);
-                }
-
-                output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
-
-                trace_hex = trace_hex2;
-                break;
-            }
-
-            if (trace_hex2 == to_hex) {
-                break;
-            }
-        }
-    }
-    else {
-        for (size_t i = 0; i < raw_steps.size(); i++) {
-            const auto cur_dir = raw_steps[i];
-            output.Steps.emplace_back(cur_dir);
-
-            for (size_t j = i + 1; j < raw_steps.size(); j++) {
-                if (raw_steps[j] == cur_dir) {
-                    output.Steps.emplace_back(cur_dir);
-                    i++;
-                }
-                else {
-                    break;
-                }
-            }
-
-            output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
-        }
-    }
-
-    FO_RUNTIME_ASSERT(!output.Steps.empty());
-    FO_RUNTIME_ASSERT(!output.ControlSteps.empty());
-
-    output.Result = FindPathOutput::ResultType::Ok;
-    output.NewToHex = to_hex;
-
-    return output;
+    return PathFinding::FindPath(settings);
 }
 
 void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius)

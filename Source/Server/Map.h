@@ -89,7 +89,7 @@ public:
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius) const -> bool;
-    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool;
+    [[nodiscard]] auto HasLivingCritter(mpos hex, const Critter* ignore_cr) const noexcept -> bool;
     [[nodiscard]] auto IsBlockItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
@@ -108,6 +108,7 @@ public:
     [[nodiscard]] auto HasCritters() const noexcept -> bool { return !_critters.empty(); }
     [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>> { return _critters; }
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>;
     [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _playerCritters; }
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _nonPlayerCritters; }
@@ -134,8 +135,8 @@ public:
     void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(mpos hex);
     void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
-    auto CheckGagItems(mpos hex, int32 radius, const function<bool(Item*)>& gag_callback) -> bool;
-    auto CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> bool;
+    auto CheckGagItems(mpos hex, int32 radius, const function<bool(const Item*)>& gag_callback) const -> bool;
+    auto CheckGagItem(mpos hex, const function<bool(const Item*)>& gag_callback) const -> bool;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
@@ -148,7 +149,6 @@ private:
     struct Field
     {
         bool HasCritter {};
-        bool HasBlockCritter {};
         bool HasTriggerItem {};
         bool HasNoMoveItem {};
         bool HasNoShootItem {};

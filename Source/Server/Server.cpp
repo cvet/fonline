@@ -2008,14 +2008,7 @@ void ServerEngine::Process_Move(Player* player)
     const auto cr_hex = cr->GetHex();
 
     if (cr_hex != start_hex) {
-        FindPathInput find_input;
-        find_input.TargetMap = map;
-        find_input.FromCritter = cr;
-        find_input.FromHex = cr_hex;
-        find_input.ToHex = start_hex;
-        find_input.Multihex = cr->GetMultihex();
-
-        const auto find_result = MapMngr.FindPath(find_input);
+        const auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
             BreakIntoDebugger();
@@ -2614,7 +2607,7 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
             }
         }
         else {
-            const auto reason = cr->GetIsAttached() ? MovingState::Attached : (cr->IsAlive() ? MovingState::InternalError : MovingState::NotAlive);
+            const auto reason = cr->GetIsAttached() ? MovingState::Attached : (cr->IsAlive() ? MovingState::GenericError : MovingState::NotAlive);
             cr->StopMoving(reason);
             cr->SendAndBroadcast_Moving();
         }
@@ -2669,7 +2662,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
         const auto multihex = cr->GetMultihex();
 
-        if (map->IsHexesMovable(target_hex, multihex, cr)) {
+        if (map->IsHexesMovable(target_hex, multihex)) {
             map->RemoveCritterFromField(cr);
             cr->SetHex(target_hex);
             map->AddCritterToField(cr);

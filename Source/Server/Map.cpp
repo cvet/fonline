@@ -426,21 +426,19 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     return true;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool
+auto Map::HasLivingCritter(mpos hex, const Critter* ignore_cr) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_engine->Settings.CritterBlockHex) {
-        if (ignore_cr != nullptr && !ignore_cr->IsDead()) {
-            // Todo: make movable checks without critter removing
-            RemoveCritterFromField(ignore_cr);
-            const auto result = IsHexesMovable(hex, radius);
-            AddCritterToField(ignore_cr);
-            return result;
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    for (const auto& cr : field.Critters) {
+        if (!cr->IsDead() && cr.get() != ignore_cr) {
+            return true;
         }
     }
 
-    return IsHexesMovable(hex, radius);
+    return false;
 }
 
 void Map::ChangeViewItem(Item* item)
@@ -603,27 +601,22 @@ void Map::RecacheHexFlags(Field& field)
 {
     FO_STACK_TRACE_ENTRY();
 
-    field.HasCritter = false;
-    field.HasBlockCritter = false;
+    field.HasCritter = !field.Critters.empty();
     field.HasTriggerItem = false;
     field.HasNoMoveItem = false;
     field.MovableWithGag = false;
     field.HasNoShootItem = false;
-    optional<bool> movable_with_gag;
-
-    if (_engine->Settings.CritterBlockHex && field.HasCritter) {
-        field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
-    }
+    field.MovableWithGag = !field.ManualBlock;
 
     if (!field.Items.empty()) {
         for (const auto& item : field.Items) {
             if (!item->GetNoBlock()) {
                 field.HasNoMoveItem = true;
-                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
+                field.MovableWithGag = field.MovableWithGag && item->GetIsGag();
             }
             if (!item->GetShootThru()) {
                 field.HasNoShootItem = true;
-                movable_with_gag = movable_with_gag.value_or(true) && item->GetIsGag();
+                field.MovableWithGag = field.MovableWithGag && item->GetIsGag();
             }
             if (!field.HasTriggerItem && item->GetIsTrigger()) {
                 field.HasTriggerItem = true;
@@ -632,8 +625,8 @@ void Map::RecacheHexFlags(Field& field)
     }
 
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
-    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
-    field.MovableWithGag = movable_with_gag.value_or(false) && !(field.HasBlockCritter || field.ManualBlock);
+    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.ManualBlock;
+    field.MovableWithGag = field.MovableWithGag && (field.HasNoMoveItem || field.HasNoShootItem);
 }
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
@@ -727,6 +720,24 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critte
         auto& field2 = _hexField->GetCellForWriting(hex);
 
         for (auto& cr : field2.Critters) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr.get());
+            }
+        }
+    }
+
+    return critters;
+}
+
+auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<const Critter*> critters;
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (field.HasCritter) {
+        for (const auto& cr : field.Critters) {
             if (cr->CheckFind(find_type)) {
                 critters.emplace_back(cr.get());
             }
@@ -939,7 +950,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
     }
 }
 
-auto Map::CheckGagItems(mpos hex, int32 radius, const function<bool(Item*)>& gag_callback) -> bool
+auto Map::CheckGagItems(mpos hex, int32 radius, const function<bool(const Item*)>& gag_callback) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -959,7 +970,7 @@ auto Map::CheckGagItems(mpos hex, int32 radius, const function<bool(Item*)>& gag
     return true;
 }
 
-auto Map::CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> bool
+auto Map::CheckGagItem(mpos hex, const function<bool(const Item*)>& gag_callback) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -969,9 +980,7 @@ auto Map::CheckGagItem(mpos hex, const function<bool(Item*)>& gag_callback) -> b
         return false;
     }
 
-    auto& field2 = _hexField->GetCellForWriting(hex);
-
-    for (auto& item : field2.Items) {
+    for (const auto& item : field.Items) {
         if (item->GetIsGag() && (!gag_callback || !gag_callback(item.get()))) {
             return false;
         }

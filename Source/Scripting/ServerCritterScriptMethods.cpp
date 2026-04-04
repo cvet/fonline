@@ -723,23 +723,20 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
         return failed_moving.release_ownership();
     }
 
-    FindPathInput input;
-    input.TargetMap = map;
-    input.FromCritter = self;
-    input.FromHex = self->GetHex();
-    input.ToHex = hex;
-    input.Multihex = self->GetMultihex();
-    input.Cut = cut;
+    function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
         // Todo: use move only function
-        input.GagCallback = [gag_callback = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](Item* gag) mutable { return gag_callback->Call(self, gag) && gag_callback->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](const Item* gag) mutable {
+            auto* gag_non_const = const_cast<Item*>(gag);
+            return gag_cb->Call(self, gag_non_const) && gag_cb->GetResult();
+        };
     }
 
-    const auto find_path = engine->MapMngr.FindPath(input);
+    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
-        auto state = MovingState::InternalError;
+        auto state = MovingState::GenericError;
 
         switch (find_path.Result) {
         case FindPathOutput::ResultType::AlreadyHere:
@@ -750,9 +747,6 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
             break;
         case FindPathOutput::ResultType::HexBusy:
             state = MovingState::HexBusy;
-            break;
-        case FindPathOutput::ResultType::HexBusyRing:
-            state = MovingState::HexBusyRing;
             break;
         case FindPathOutput::ResultType::NoWay:
             state = MovingState::Deadlock;
@@ -765,7 +759,7 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
         }
 
         auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<uint8> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
-        if (state == MovingState::HexBusy || state == MovingState::HexBusyRing) {
+        if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
         }
         failed_moving->Complete(state);

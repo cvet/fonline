@@ -40,6 +40,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
+#include "PathFinding.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -51,54 +52,7 @@ class EntityManager;
 class ItemManager;
 class CritterManager;
 
-struct FindPathInput
-{
-    raw_ptr<Map> TargetMap {};
-    raw_ptr<Critter> FromCritter {};
-    mpos FromHex {};
-    mpos ToHex {};
-    mpos NewToHex {};
-    int32 Multihex {};
-    int32 Cut {};
-    function<bool(Item*)> GagCallback {};
-};
-
-struct FindPathOutput
-{
-    enum class ResultType : int8
-    {
-        Unknown = -1,
-        Ok = 0,
-        AlreadyHere = 2,
-        HexBusy = 6,
-        HexBusyRing = 7,
-        TooFar = 8,
-        NoWay = 9,
-        InternalError = 10,
-        InvalidHexes = 11,
-        TraceFailed = 12,
-    };
-
-    ResultType Result {ResultType::Unknown};
-    vector<uint8> Steps {};
-    vector<uint16> ControlSteps {};
-    mpos NewToHex {};
-};
-
-struct TracePathInput // Todo: make TracePathInput pointer fields raw_ptr
-{
-    raw_ptr<const Map> TraceMap {};
-    mpos StartHex {};
-    mpos TargetHex {};
-    int32 MaxDist {};
-    float32 Angle {};
-    raw_ptr<const Critter> FindCr {};
-    CritterFindType FindType {};
-    bool CheckLastMovable {};
-    bool CollectCritters {};
-};
-
-struct TracePathOutput
+struct TraceResult
 {
     bool IsFullTrace {};
     bool IsCritterFound {};
@@ -106,7 +60,7 @@ struct TracePathOutput
     mpos PreBlock {};
     mpos Block {};
     mpos LastMovable {};
-    vector<raw_ptr<Critter>> Critters {};
+    vector<raw_ptr<const Critter>> Critters {};
 };
 
 class MapManager final
@@ -123,8 +77,8 @@ public:
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> FO_NON_NULL StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*;
-    [[nodiscard]] auto FindPath(FindPathInput& input) const -> FindPathOutput;
-    [[nodiscard]] auto TracePath(TracePathInput& input) const -> TracePathOutput;
+    [[nodiscard]] auto FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32 multihex, int32 cut, function<bool(const Item*)> gag_callback = {}) const -> FindPathOutput;
+    [[nodiscard]] auto TracePath(const Map* map, mpos start_hex, mpos target_hex, int32 max_dist = 0, float32 angle = 0.0f, const Critter* find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
 
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;

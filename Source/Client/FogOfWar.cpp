@@ -91,7 +91,6 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     const auto is_shoot = _kind == Kind::Shoot;
     const auto dist = input.FogOrigin.LookDistance + input.FogExtraLength;
     const auto base_hex = input.FogOrigin.BaseHex;
-    const auto chosen_dir = input.FogOrigin.Dir;
     const auto half_hw = input.MapHexWidth / 2;
     const auto half_hh = input.MapHexHeight / 2;
 

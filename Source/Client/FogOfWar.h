@@ -52,7 +52,6 @@ public:
     {
         bool Valid {};
         mpos BaseHex {};
-        int32 Dir {};
         int32 LookDistance {};
     };
 

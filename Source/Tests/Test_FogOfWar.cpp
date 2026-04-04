@@ -50,7 +50,6 @@ namespace
         input.FrameTime = frame_time;
         input.FogOrigin.Valid = true;
         input.FogOrigin.BaseHex = chosen_hex;
-        input.FogOrigin.Dir = 0;
         input.FogOrigin.LookDistance = 1;
         input.TraceBulletToBlock = [](mpos, mpos target_hex, int32, bool) { return target_hex; };
         return input;
