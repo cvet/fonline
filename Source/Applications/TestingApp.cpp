@@ -52,8 +52,11 @@ int32 main(int32 argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
+        IsTestingInProgress = true;
         InitApp(-1, nullptr);
-        return Catch::Session().run(argc, argv);
+        const auto result = Catch::Session().run(argc, argv);
+        IsTestingInProgress = false;
+        return result;
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

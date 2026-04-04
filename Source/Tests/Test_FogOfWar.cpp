@@ -67,7 +67,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(fog.GetPoints().size() == 10);
-        CHECK(fog.GetPoints().front().PointPos.x == 905);
+        CHECK(fog.GetPoints().front().PointPos.x == 21);
         CHECK(fog.GetPoints().front().PointColor.comp.a == 0);
     }
 
@@ -96,7 +96,7 @@ TEST_CASE("FogOfWar")
         CHECK(fog.GetPoints().empty());
     }
 
-    SECTION("Interpolates between previous and rebuilt fog")
+    SECTION("Keeps local fog geometry stable while origin changes")
     {
         FogOfWar fog {FogOfWar::Kind::Look};
         fog.RequestRebuild();
@@ -115,13 +115,12 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
         const auto mid_x = fog.GetPoints().front().PointPos.x;
 
-        CHECK(mid_x > initial_x);
-        CHECK(mid_x < 1905);
+        CHECK(mid_x == initial_x);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
         fog.Prepare(input);
 
-        CHECK(fog.GetPoints().front().PointPos.x == 1905);
+        CHECK(fog.GetPoints().front().PointPos.x == initial_x);
     }
 
     SECTION("Collapses to origin when disabled")
@@ -199,13 +198,14 @@ TEST_CASE("FogOfWar")
         CHECK(fog.GetPoints().front().PointPos.x != center_x);
     }
 
-    SECTION("Blocked edge points use base draw offset")
+    SECTION("Blocked shoot edge points use base draw offset")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog {FogOfWar::Kind::Shoot};
         fog.SetDrawOffset({100, 50});
         fog.SetBaseDrawOffset({100, 0});
 
         auto input = MakeInput({10, 10}, nanotime {});
+        input.Distance = 1;
         input.TraceBulletToBlock = [](mpos start, mpos, int32, bool) { return start; };
         fog.Prepare(input);
 

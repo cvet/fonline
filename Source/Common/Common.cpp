@@ -40,6 +40,7 @@ map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> Interthr
 
 alignas(uint32_t) static volatile constexpr char PACKAGED_MARK[] = "###NOT_PACKAGED###";
 static bool HasNotPackagedMark = strex().assignVolatile(PACKAGED_MARK, sizeof(PACKAGED_MARK)).str().find("NOT_PACKAGED") != string::npos;
+bool IsTestingInProgress {};
 
 auto IsPackaged() -> bool
 {
