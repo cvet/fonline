@@ -1982,8 +1982,21 @@ TEST_CASE("PropertiesTextScalarWidthConversions")
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, uint32_prop, "65536", hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, "1.25", hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float64_prop, "2.5", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "not-number", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, "bad-float", hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "True", hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "not-bool", hashes, resolver));
+    CHECK(props.GetValue<bool>(bool_prop));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "0", hashes, resolver));
+    CHECK_FALSE(props.GetValue<bool>(bool_prop));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "1", hashes, resolver));
+    CHECK(props.GetValue<bool>(bool_prop));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "false", hashes, resolver));
+    CHECK_FALSE(props.GetValue<bool>(bool_prop));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "not-bool", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "Enabled", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "2", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "-1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "0.5", hashes, resolver));
 
     CHECK(props.GetValue<int8>(int8_prop) == -12);
     CHECK(props.GetValue<int16>(int16_prop) == 345);

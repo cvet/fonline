@@ -144,6 +144,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
 static auto NormalizeTopLevelCodedString(string str) -> string
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (str.length() >= 2 && str.front() == '"' && str.back() == '"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
             str = StringEscaping::DecodeString(str);
@@ -155,6 +157,8 @@ static auto NormalizeTopLevelCodedString(string str) -> string
 
 static auto ReadTextTokenView(const char* str, string_view& result) -> const char*
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (str[0] == 0) {
         return nullptr;
     }
@@ -232,6 +236,8 @@ static auto ReadTextTokenView(const char* str, string_view& result) -> const cha
 
 static void AppendRawBytes(vector<uint8>& data, const void* value, size_t size)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto old_size = data.size();
     data.resize(old_size + size);
     MemCopy(data.data() + old_size, value, size);
@@ -239,6 +245,8 @@ static void AppendRawBytes(vector<uint8>& data, const void* value, size_t size)
 
 static void AppendRawString(vector<uint8>& data, string_view str)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto str_len = numeric_cast<uint32>(str.length());
     AppendRawBytes(data, &str_len, sizeof(str_len));
 
@@ -249,6 +257,8 @@ static void AppendRawString(vector<uint8>& data, string_view str)
 
 static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> string_view
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (text.find_first_of("\\\"") == string_view::npos) {
         return text;
     }
@@ -257,48 +267,101 @@ static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> str
     return decoded_storage;
 }
 
+static auto ParseStrictIntText(string_view text) -> int64
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto value = strvex(text);
+    value.trim();
+
+    if (!value.is_number()) {
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+
+    return value.to_int64();
+}
+
+static auto ParseStrictFloatText(string_view text) -> float64
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto value = strvex(text);
+    value.trim();
+
+    if (!value.is_number()) {
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+
+    return value.to_float64();
+}
+
+static auto ParseStrictBoolText(string_view text) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto value = strvex(text);
+    value.trim();
+
+    if (!value.is_explicit_bool() && !value.is_number()) {
+        throw PropertySerializationException("Invalid bool value", text);
+    }
+
+    if (value.is_number()) {
+        const auto int_value = value.to_int64();
+        const auto float_value = value.to_float64();
+
+        if (!is_float_equal(float_value, numeric_cast<float64>(int_value)) || (int_value != 0 && int_value != 1)) {
+            throw PropertySerializationException("Invalid bool numeric value", text);
+        }
+    }
+
+    return value.to_bool();
+}
+
 static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
 
 static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& primitive_type, string_view text)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (primitive_type.IsInt8) {
-        const auto value = numeric_cast<int8>(strvex(text).to_int64());
+        const auto value = numeric_cast<int8>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt16) {
-        const auto value = numeric_cast<int16>(strvex(text).to_int64());
+        const auto value = numeric_cast<int16>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt32) {
-        const auto value = numeric_cast<int32>(strvex(text).to_int64());
+        const auto value = numeric_cast<int32>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt64) {
-        const auto value = numeric_cast<int64>(strvex(text).to_int64());
+        const auto value = numeric_cast<int64>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt8) {
-        const auto value = numeric_cast<uint8>(strvex(text).to_int64());
+        const auto value = numeric_cast<uint8>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt16) {
-        const auto value = numeric_cast<uint16>(strvex(text).to_int64());
+        const auto value = numeric_cast<uint16>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt32) {
-        const auto value = numeric_cast<uint32>(strvex(text).to_int64());
+        const auto value = numeric_cast<uint32>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsSingleFloat) {
-        const auto value = numeric_cast<float32>(strvex(text).to_float64());
+        const auto value = numeric_cast<float32>(ParseStrictFloatText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsDoubleFloat) {
-        const auto value = numeric_cast<float64>(strvex(text).to_float64());
+        const auto value = numeric_cast<float64>(ParseStrictFloatText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsBool) {
-        const auto value = strvex(text).to_bool();
+        const auto value = ParseStrictBoolText(text);
         AppendRawBytes(data, &value, sizeof(value));
     }
     else {
@@ -308,6 +371,8 @@ static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& pri
 
 static void AppendComplexStructFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto decoded = StringEscaping::DecodeString(text);
     const char* s = decoded.c_str();
     string_view token;
@@ -329,6 +394,8 @@ static void AppendComplexStructFromText(vector<uint8>& data, const Property* pro
 
 static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (base_type.IsString) {
         string decoded_storage;
         AppendRawString(data, DecodeTextIfNeeded(text, decoded_storage));
@@ -399,6 +466,8 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, co
 
 static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8>
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
     const char* s = decoded.c_str();
     string_view token;
@@ -424,6 +493,8 @@ static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_ty
 
 static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& primitive_type, const uint8*& pdata)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (primitive_type.IsInt8) {
         result += strex("{}", *reinterpret_cast<const int8*>(pdata));
     }
@@ -463,6 +534,8 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
 
 static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (base_type.IsString) {
         const uint32 str_len = *reinterpret_cast<const uint32*>(pdata);
         pdata += sizeof(str_len);
@@ -514,6 +587,8 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
 
 static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata) -> AnyData::Value
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (base_type.IsString) {
         const uint32 str_len = *reinterpret_cast<const uint32*>(pdata);
         pdata += sizeof(str_len);
