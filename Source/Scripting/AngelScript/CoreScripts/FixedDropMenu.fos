@@ -85,7 +85,7 @@ class FixedDropMenu : Gui::IDropMenu
 
     void MouseDown(MouseButton button)
     {
-        if (MouseBtn == button && Cursor == Settings.Gui.Cursor && SafeSelectedEntity != null) {
+        if (MouseBtn == button && Cursor == Gui::Cursor && SafeSelectedEntity != null) {
             Pressed = true;
             PressedOffsetY = 0;
             MouseStayTick = Game.FrameTime;
@@ -133,7 +133,7 @@ class FixedDropMenu : Gui::IDropMenu
 
     void PostMouseMove(ipos offset)
     {
-        if (Cursor == Settings.Gui.Cursor) {
+        if (Cursor == Gui::Cursor) {
             Entity prevEntity = SafeSelectedEntity;
             SelectedEntity = null;
 
@@ -168,7 +168,7 @@ class FixedDropMenu : Gui::IDropMenu
     void Loop()
     {
         if (SafeSelectedEntity != null) {
-            if (Cursor != Settings.Gui.Cursor) {
+            if (Cursor != Gui::Cursor) {
                 Pressed = false;
                 SelectedEntity = null;
                 ShowButtons.clear();

@@ -11,9 +11,11 @@ namespace Gui
 ///@ Enum MessageBoxType Default
 ///@ Enum MessageBoxType All
 
-///@ Setting Client CursorType Gui.Cursor
-///@ Setting Client CursorType Gui.DraggableCursor
 ///@ Setting Client bool Gui.MsgboxInvert
+
+CursorType Cursor = CursorType::Default;
+CursorType DraggableCursor = CursorType::Default;
+ident CursorData;
 
 // Anchor styles
 ///@ Enum AnchorStyle None = 0
@@ -818,7 +820,7 @@ class Object
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MouseButton::Left) {
-            bool draggableCursor = (Settings.Gui.DraggableCursor != CursorType::Default && Settings.Gui.Cursor == Settings.Gui.DraggableCursor);
+            bool draggableCursor = (DraggableCursor != CursorType::Default && Cursor == DraggableCursor);
             if (draggableCursor) {
                 _IsDragged = true;
                 _DragChanged();
@@ -2312,7 +2314,7 @@ class Screen : Panel
         _IsOnTop = true;
 
         // Set screen cursor
-        Settings.Gui.Cursor = _Cursor;
+        Gui::Cursor = _Cursor;
 
         // Base behaviour
         Panel::_Appear();
@@ -2324,7 +2326,7 @@ class Screen : Panel
         _IsOnTop = false;
 
         // Store cursor
-        _Cursor = Settings.Gui.Cursor;
+        _Cursor = Gui::Cursor;
         if (_AvailableCursors.find(_Cursor) == -1) {
             _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
         }
@@ -2337,14 +2339,14 @@ class Screen : Panel
     {
         if (button == MouseButton::Right) {
             if (_AvailableCursors.length() > 0) {
-                CursorType curCursor = Settings.Gui.Cursor;
+                CursorType curCursor = Gui::Cursor;
                 int curCursorIndex = _AvailableCursors.find(curCursor);
                 if (curCursorIndex != -1) {
                     curCursorIndex++;
                     if (curCursorIndex >= _AvailableCursors.length()) {
                         curCursorIndex = 0;
                     }
-                    Settings.Gui.Cursor = _AvailableCursors[curCursorIndex];
+                    Gui::Cursor = _AvailableCursors[curCursorIndex];
                 }
             }
         }
