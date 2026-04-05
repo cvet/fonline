@@ -13,6 +13,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #include "MetadataBaker.h"
+#include "MetadataRegistration.h"
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -80,6 +81,76 @@ namespace TestSettings
 
         CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool"}) == 2);
         CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool"}) == 1);
+    }
+
+    SECTION("serializes migration rules with dotted names")
+    {
+        rig.AddSourceFile("Scripts/TestMigration.fos", R"(
+namespace TestMigration
+{
+///@ MigrationRule Property Item Weapon.AmmoPid Weapon.Ammo
+///@ MigrationRule Proto Modifier LegacyAchvO9tCm0 Remove
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        const auto& output = rig.Outputs.at("TestPack.fometa-client");
+        DataReader reader(output);
+        const auto tag_count = reader.Read<uint16>();
+
+        vector<vector<string>> migration_entries;
+        vector<vector<string>> settings_entries;
+
+        for (uint16 i = 0; i < tag_count; i++) {
+            const auto tag_name_len = reader.Read<uint16>();
+            const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
+            const string tag_name {tag_name_ptr, tag_name_len};
+            const auto tag_value_count = reader.Read<uint32>();
+
+            for (uint32 j = 0; j < tag_value_count; j++) {
+                const auto value_parts_count = reader.Read<uint32>();
+                vector<string> value_parts;
+                value_parts.reserve(value_parts_count);
+
+                for (uint32 k = 0; k < value_parts_count; k++) {
+                    const auto part_len = reader.Read<uint16>();
+                    const auto* part_ptr = reader.ReadPtr<char>(part_len);
+                    value_parts.emplace_back(part_ptr, part_len);
+                }
+
+                if (tag_name == "MigrationRule") {
+                    migration_entries.emplace_back(std::move(value_parts));
+                }
+                else if (tag_name == "Setting") {
+                    settings_entries.emplace_back(std::move(value_parts));
+                }
+            }
+        }
+
+        reader.VerifyEnd();
+
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "LegacyAchvO9tCm0", "Remove"}) == 1);
+        CHECK(settings_entries.empty());
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ClientSide);
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+
+        const auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"),
+                                                           meta.Hashes.ToHashedString("Item"),
+                                                           meta.Hashes.ToHashedString("Weapon.AmmoPid"));
+        REQUIRE(property_rule.has_value());
+        CHECK(property_rule.value() == meta.Hashes.ToHashedString("Weapon.Ammo"));
+
+        const auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"),
+                                                        meta.Hashes.ToHashedString("Modifier"),
+                                                        meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
+        REQUIRE(proto_rule.has_value());
+        CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
     }
 #endif
 }

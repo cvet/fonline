@@ -232,6 +232,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ParseEvent(ctx);
     ParseRemoteCall(ctx);
     ParseSetting(ctx);
+    ParseMigrationRule(ctx);
     ctx.Meta->FinalizeRegistration();
 
     // Serialize data
@@ -1121,15 +1122,66 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
+        const auto merge_dotted_tokens = [&](const auto tokens) -> string {
+            if (tokens.empty()) {
+                throw MetadataBakerException("Invalid MigrationRule codegen tag: empty rule argument", tag_desc.SourceFile, tag_desc.LineNumber);
+            }
+
+            string value;
+            bool expect_token = true;
+
+            for (const auto token : tokens) {
+                if (token == ".") {
+                    if (expect_token) {
+                        throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed dotted name", tag_desc.SourceFile, tag_desc.LineNumber);
+                    }
+
+                    value += '.';
+                    expect_token = true;
+                    continue;
+                }
+
+                if (!expect_token) {
+                    throw MetadataBakerException("Invalid MigrationRule codegen tag: too many rule arguments", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
+
+                value += token;
+                expect_token = false;
+            }
+
+            if (expect_token) {
+                throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed dotted name", tag_desc.SourceFile, tag_desc.LineNumber);
+            }
+
+            return value;
+        };
+
+        auto last_arg_begin = tag_desc.Tokens.size() - 1;
+
+        while (last_arg_begin > 2 && tag_desc.Tokens[last_arg_begin - 1] == ".") {
+            last_arg_begin -= 2;
+        }
+
+        if (last_arg_begin <= 2) {
+            throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
+        }
+
+        const auto rule_name = string(tag_desc.Tokens[0]);
+        const auto extra_info = string(tag_desc.Tokens[1]);
+        const auto target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
+        const auto replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
+
+        ctx.Meta->RegisterMigrationRule(rule_name, extra_info, target, replacement);
+
         vector<string> tag_tokens;
-        tag_tokens.emplace_back(tag_desc.Tokens[0]);
-        tag_tokens.emplace_back(tag_desc.Tokens[1]);
-        tag_tokens.emplace_back(tag_desc.Tokens[2]);
-        tag_tokens.emplace_back(tag_desc.Tokens[3]);
+        tag_tokens.emplace_back(rule_name);
+        tag_tokens.emplace_back(extra_info);
+        tag_tokens.emplace_back(target);
+        tag_tokens.emplace_back(replacement);
         result_tag_migration_rule.emplace_back(std::move(tag_tokens));
     }
 
-    ctx.ResultTags["Setting"] = std::move(result_tag_migration_rule);
+    ctx.ResultTags["MigrationRule"] = std::move(result_tag_migration_rule);
 }
 
 FO_END_NAMESPACE
