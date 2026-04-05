@@ -126,6 +126,6 @@ Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-s
 
 Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
 
-The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from `LastFrontier.fomain` section `Android.*`.
+The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from `LastFrontier.fomain` section `Android.*`, including `Android.Icon` for the launcher icon PNG source.
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.

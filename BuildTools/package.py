@@ -23,6 +23,21 @@ import foconfig
 
 TARGET_CHOICES = ['Server', 'Client', 'Single', 'Editor', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
+PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
+ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
+ANDROID_ARCH_ALIASES = {
+	'arm': 'arm32',
+	'arm32': 'arm32',
+	'armeabi-v7a': 'arm32',
+	'arm64': 'arm64',
+	'arm64-v8a': 'arm64',
+	'x86': 'x86',
+}
+ANDROID_ABI_BY_ARCH = {
+	'arm32': 'armeabi-v7a',
+	'arm64': 'arm64-v8a',
+	'x86': 'x86',
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,7 +51,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
 	# Windows: win32 win64
 	# Linux: x64
-	# Android: arm arm64 x86
+	# Android: arm32 arm64 x86
 	# macOS: x64
 	# iOS: arm64
 	# Web: wasm
@@ -78,6 +93,20 @@ def patch_file(file_path: str | Path, text_from: str, text_to: str) -> None:
 	content = content.replace(text_from.encode('utf-8'), text_to.encode('utf-8'))
 	with open(file_path, 'wb') as file:
 		file.write(content)
+
+
+def is_png_data(data: bytes) -> bool:
+	return data.startswith(PNG_FILE_SIGNATURE)
+
+
+def normalize_android_arch(arch: str) -> str:
+	canonical_arch = ANDROID_ARCH_ALIASES.get(arch)
+	assert canonical_arch is not None, 'Unknown Android architecture ' + arch
+	return canonical_arch
+
+
+def resolve_android_abi(arch: str) -> str:
+	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
 def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
@@ -153,10 +182,20 @@ class Packager:
 		return path
 
 	def iter_arches(self) -> list[str]:
-		return self.args.arch.split('+')
+		arches = self.args.arch.split('+')
+		if self.args.platform != 'Android':
+			return arches
+
+		normalized_arches: list[str] = []
+		for arch in arches:
+			canonical_arch = normalize_android_arch(arch)
+			if canonical_arch not in normalized_arches:
+				normalized_arches.append(canonical_arch)
+		return normalized_arches
 
 	def build_binary_entry(self, arch: str, variant: BinaryVariant) -> str:
-		entry = self.args.target + '-' + self.args.platform + '-' + arch
+		entry_arch = resolve_android_abi(arch) if self.args.platform == 'Android' else arch
+		entry = self.args.target + '-' + self.args.platform + '-' + entry_arch
 		if variant.profiling == 'TotalProfiling':
 			entry += '-Profiling_Total'
 		elif variant.profiling == 'OnDemandProfiling':
@@ -507,6 +546,35 @@ class Packager:
 		patch_file(index_path, '$RESOURCESJS$', 'Resources.js')
 		patch_file(index_path, '$MAINJS$', bin_out_name + '.js')
 
+	def resolve_config_relative_path(self, config_path: str) -> str:
+		if os.path.isabs(config_path):
+			return config_path
+		return os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(self.args.maincfg)), config_path))
+
+	def try_read_android_icon_png(self, icon_path: str) -> bytes | None:
+		with open(icon_path, 'rb') as file:
+			icon_data = file.read()
+
+		return icon_data if is_png_data(icon_data) else None
+
+	def patch_android_icon(self) -> None:
+		configured_icon = self.fomain.mainSection().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
+		icon_path = self.resolve_config_relative_path(configured_icon)
+		assert os.path.isfile(icon_path), 'Android icon file not found: ' + icon_path
+
+		icon_png_data = self.try_read_android_icon_png(icon_path)
+		assert icon_png_data, 'Android.Icon must point to a PNG file: ' + icon_path
+
+		res_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res')
+
+		for density_dir in ANDROID_ICON_DENSITY_DIRS:
+			icon_output_dir = os.path.join(res_dir, density_dir)
+			os.makedirs(icon_output_dir, exist_ok=True)
+			with open(os.path.join(icon_output_dir, 'ic_launcher.png'), 'wb') as file:
+				file.write(icon_png_data)
+
+		log('Android icon', icon_path)
+
 	def package_android(self) -> None:
 		assert not self.has_pack('NoRes'), 'Android package requires resources'
 
@@ -519,11 +587,12 @@ class Packager:
 
 		# Copy native libraries for each ABI
 		for arch in self.iter_arches():
+			android_abi = resolve_android_abi(arch)
 			variant = BinaryVariant()
 			bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 			log('Binary input', arch, bin_path)
 
-			jni_libs_dir = os.path.join(self.target_output_path, 'app', 'libs', arch)
+			jni_libs_dir = os.path.join(self.target_output_path, 'app', 'libs', android_abi)
 			os.makedirs(jni_libs_dir, exist_ok=True)
 
 			# CMake outputs libLF_Client.so, rename to libmain.so for SDLActivity
@@ -553,7 +622,7 @@ class Packager:
 		compile_sdk = self.fomain.mainSection().getStr('Android.CompileSdk', '35')
 		screen_orientation = self.fomain.mainSection().getStr('Android.ScreenOrientation', 'landscape')
 
-		abi_filters = ', '.join("'" + arch + "'" for arch in self.iter_arches())
+		abi_filters = ', '.join("'" + resolve_android_abi(arch) + "'" for arch in self.iter_arches())
 
 		# Patch template placeholders in build.gradle
 		app_build_gradle = os.path.join(self.target_output_path, 'app', 'build.gradle')
@@ -575,6 +644,7 @@ class Packager:
 		# Patch strings.xml
 		strings_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res', 'values', 'strings.xml')
 		patch_file(strings_path, '$APP_NAME$', self.args.nicename)
+		self.patch_android_icon()
 
 		# Patch LFActivity.java config
 		activity_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', 'com', 'lastfrontier', 'app', 'LFActivity.java')
@@ -613,7 +683,7 @@ class Packager:
 			apk_files = glob.glob(apk_pattern)
 			assert apk_files, 'No APK file found after Gradle build'
 
-			apk_output = os.path.join(self.output_path, self.args.devname + '-' + self.args.target + '.apk')
+			apk_output = os.path.join(self.output_path, os.path.basename(self.target_output_path) + '.apk')
 			shutil.copy(apk_files[0], apk_output)
 			log('APK output', apk_output)
 

@@ -211,6 +211,7 @@ FIXED_SETTING(int32, Android, MinSdk, 23); // Android minimum supported SDK leve
 FIXED_SETTING(int32, Android, TargetSdk, 35); // Android target SDK level for packaging tools
 FIXED_SETTING(int32, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
 FIXED_SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
+FIXED_SETTING(string, Android, Icon, "Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
