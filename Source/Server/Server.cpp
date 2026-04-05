@@ -2414,7 +2414,7 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
             if (prop->IsPublicSync() || prop->IsOwnerSync()) {
                 auto* cr = EntityMngr.GetCritter(item->GetCritterId());
 
-                if (cr != nullptr && cr->CheckVisibleItem(item->GetId())) {
+                if (cr != nullptr) {
                     if (item->CanSendItem(false)) {
                         cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
