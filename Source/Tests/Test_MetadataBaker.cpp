@@ -140,15 +140,11 @@ namespace TestMigration
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        const auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"),
-                                                           meta.Hashes.ToHashedString("Item"),
-                                                           meta.Hashes.ToHashedString("Weapon.AmmoPid"));
+        const auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"), meta.Hashes.ToHashedString("Item"), meta.Hashes.ToHashedString("Weapon.AmmoPid"));
         REQUIRE(property_rule.has_value());
         CHECK(property_rule.value() == meta.Hashes.ToHashedString("Weapon.Ammo"));
 
-        const auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"),
-                                                        meta.Hashes.ToHashedString("Modifier"),
-                                                        meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
+        const auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
         REQUIRE(proto_rule.has_value());
         CHECK(proto_rule.value() == meta.Hashes.ToHashedString("Remove"));
     }
