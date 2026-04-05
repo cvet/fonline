@@ -605,8 +605,8 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
         return;
     }
 
-    const fpos32 mouse_pos = fpos32(App->Input.GetMousePosition());
     const fsize32 screen_size = fsize32(self->GetScreenSize());
+    const fpos32 mouse_pos = App->Input.IsMouseAvailable() ? fpos32(App->Input.GetMousePosition()) : fpos32 {screen_size.width / 2.0f, screen_size.height / 2.0f};
     const float32 mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
     const float32 mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
 

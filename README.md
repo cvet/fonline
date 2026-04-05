@@ -83,7 +83,7 @@ Following Linux packages need to build game for target platforms:
 * Common: `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux: `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
 * Building for Web: `nodejs` `default-jre`
-* Building for Android: `android-sdk` `openjdk-8-jdk` `ant`
+* Building for Android: `openjdk-17-jdk`
 
 Build scripts will download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps

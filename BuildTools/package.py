@@ -508,7 +508,114 @@ class Packager:
 		patch_file(index_path, '$MAINJS$', bin_out_name + '.js')
 
 	def package_android(self) -> None:
-		assert False, 'Android packaging is not supported in this repository state'
+		assert not self.has_pack('NoRes'), 'Android package requires resources'
+
+		bin_name = self.args.devname + '_' + self.args.target
+		log('Setup', bin_name)
+
+		# Copy android-project template to output
+		android_template = os.path.join(self.build_tools_path, 'android-project')
+		shutil.copytree(android_template, self.target_output_path, dirs_exist_ok=True)
+
+		# Copy native libraries for each ABI
+		for arch in self.iter_arches():
+			variant = BinaryVariant()
+			bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
+			log('Binary input', arch, bin_path)
+
+			jni_libs_dir = os.path.join(self.target_output_path, 'app', 'libs', arch)
+			os.makedirs(jni_libs_dir, exist_ok=True)
+
+			# CMake outputs libLF_Client.so, rename to libmain.so for SDLActivity
+			src_so = os.path.join(bin_path, 'lib' + bin_name + '.so')
+			dst_so = os.path.join(jni_libs_dir, 'libmain.so')
+			shutil.copy(src_so, dst_so)
+			log('Native library', src_so, '=>', dst_so)
+
+			# Patch the binary (embedded data, config, packaged mark)
+			self.patch_packaged_binary(dst_so)
+
+		# Move baked resources into assets directory
+		assets_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'assets')
+		os.makedirs(assets_dir, exist_ok=True)
+		client_res_source = os.path.join(self.target_output_path, self.client_res_dir)
+		if os.path.isdir(client_res_source):
+			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
+			shutil.move(client_res_source, assets_res_dir)
+			log('Resources moved to', assets_res_dir)
+
+		# Read Android config from fomain
+		package_name = self.fomain.mainSection().getStr('Android.PackageName', 'com.lastfrontier.app')
+		version_code = self.fomain.mainSection().getStr('Android.VersionCode', '1')
+		version_name = self.args.buildhash[:8] if self.args.buildhash else '1.0'
+		min_sdk = self.fomain.mainSection().getStr('Android.MinSdk', '23')
+		target_sdk = self.fomain.mainSection().getStr('Android.TargetSdk', '35')
+		compile_sdk = self.fomain.mainSection().getStr('Android.CompileSdk', '35')
+		screen_orientation = self.fomain.mainSection().getStr('Android.ScreenOrientation', 'landscape')
+
+		abi_filters = ', '.join("'" + arch + "'" for arch in self.iter_arches())
+
+		# Patch template placeholders in build.gradle
+		app_build_gradle = os.path.join(self.target_output_path, 'app', 'build.gradle')
+		patch_file(app_build_gradle, '$PACKAGE$', package_name)
+		patch_file(app_build_gradle, '$COMPILE_SDK$', compile_sdk)
+		patch_file(app_build_gradle, '$MIN_SDK$', min_sdk)
+		patch_file(app_build_gradle, '$TARGET_SDK$', target_sdk)
+		patch_file(app_build_gradle, '$VERSION_CODE$', version_code)
+		patch_file(app_build_gradle, '$VERSION_NAME$', version_name)
+		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
+
+		# Patch AndroidManifest.xml
+		manifest_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'AndroidManifest.xml')
+		patch_file(manifest_path, '$VERSION_CODE$', version_code)
+		patch_file(manifest_path, '$VERSION_NAME$', version_name)
+		patch_file(manifest_path, '$APP_NAME$', self.args.nicename)
+		patch_file(manifest_path, '$SCREEN_ORIENTATION$', screen_orientation)
+
+		# Patch strings.xml
+		strings_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res', 'values', 'strings.xml')
+		patch_file(strings_path, '$APP_NAME$', self.args.nicename)
+
+		# Patch LFActivity.java config
+		activity_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', 'com', 'lastfrontier', 'app', 'LFActivity.java')
+		patch_file(activity_path, '$CONFIG$', self.args.config)
+
+		android_env = buildtools.resolve_env()
+		android_home = android_env.get('ANDROID_HOME', '') or android_env.get('ANDROID_SDK_ROOT', '')
+		android_ndk_root = android_env.get('ANDROID_NDK_ROOT', '')
+
+		if android_home:
+			local_properties_path = os.path.join(self.target_output_path, 'local.properties')
+			with open(local_properties_path, 'w', encoding='utf-8', newline='\n') as file:
+				file.write('sdk.dir=' + Path(android_home).as_posix() + '\n')
+				if android_ndk_root:
+					file.write('ndk.dir=' + Path(android_ndk_root).as_posix() + '\n')
+			log('Android local.properties', local_properties_path)
+
+		# Build APK if requested
+		if self.has_pack('Apk'):
+			log('Building APK...')
+			gradlew = os.path.join(self.target_output_path, 'gradlew')
+			st = os.stat(gradlew)
+			os.chmod(gradlew, st.st_mode | stat.S_IEXEC)
+
+			gradle_env = os.environ.copy()
+			if android_home:
+				gradle_env['ANDROID_HOME'] = android_home
+				gradle_env['ANDROID_SDK_ROOT'] = android_home
+
+			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
+			result = subprocess.call([gradlew, build_task], cwd=self.target_output_path, env=gradle_env)
+			assert result == 0, 'Gradle build failed'
+
+			build_type = 'debug' if self.has_pack('Debug') else 'release'
+			apk_pattern = os.path.join(self.target_output_path, 'app', 'build', 'outputs', 'apk', build_type, '*.apk')
+			apk_files = glob.glob(apk_pattern)
+			assert apk_files, 'No APK file found after Gradle build'
+
+			apk_output = os.path.join(self.output_path, self.args.devname + '-' + self.args.target + '.apk')
+			shutil.copy(apk_files[0], apk_output)
+			log('APK output', apk_output)
 
 	def package_macos(self) -> None:
 		assert False, 'macOS packaging is not supported in this repository state'

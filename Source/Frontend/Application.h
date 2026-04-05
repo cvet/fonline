@@ -179,6 +179,10 @@ struct InputEvent
         MouseDownEvent,
         MouseUpEvent,
         MouseWheelEvent,
+        TouchTapEvent,
+        TouchDoubleTapEvent,
+        TouchScrollEvent,
+        TouchZoomEvent,
         KeyDownEvent,
         KeyUpEvent,
     } Type {};
@@ -205,6 +209,33 @@ struct InputEvent
     {
         int32 Delta {};
     } MouseWheel {};
+
+    struct TouchTapEvent
+    {
+        int32 TouchX {};
+        int32 TouchY {};
+    } TouchTap {};
+
+    struct TouchDoubleTapEvent
+    {
+        int32 TouchX {};
+        int32 TouchY {};
+    } TouchDoubleTap {};
+
+    struct TouchScrollEvent
+    {
+        int32 TouchX {};
+        int32 TouchY {};
+        int32 DeltaX {};
+        int32 DeltaY {};
+    } TouchScroll {};
+
+    struct TouchZoomEvent
+    {
+        int32 TouchX {};
+        int32 TouchY {};
+        float32 Factor {};
+    } TouchZoom {};
 
     struct KeyDownEvent
     {
@@ -236,6 +267,26 @@ struct InputEvent
     explicit InputEvent(MouseWheelEvent ev) :
         Type {EventType::MouseWheelEvent},
         MouseWheel {ev}
+    {
+    }
+    explicit InputEvent(TouchTapEvent ev) :
+        Type {EventType::TouchTapEvent},
+        TouchTap {ev}
+    {
+    }
+    explicit InputEvent(TouchDoubleTapEvent ev) :
+        Type {EventType::TouchDoubleTapEvent},
+        TouchDoubleTap {ev}
+    {
+    }
+    explicit InputEvent(TouchScrollEvent ev) :
+        Type {EventType::TouchScrollEvent},
+        TouchScroll {ev}
+    {
+    }
+    explicit InputEvent(TouchZoomEvent ev) :
+        Type {EventType::TouchZoomEvent},
+        TouchZoom {ev}
     {
     }
     explicit InputEvent(KeyDownEvent ev) :
@@ -341,6 +392,7 @@ class AppInput final
 public:
     static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
+    [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool;
     [[nodiscard]] auto GetMousePosition() const -> ipos32;
     [[nodiscard]] auto GetClipboardText() -> const string&;
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool { return _shiftDown; }
@@ -351,6 +403,7 @@ public:
     void ClearEvents();
     void SetMousePosition(ipos32 pos, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
+    void SetScreenKeyboardEnabled(bool enabled);
     void SetClipboardText(string_view text);
 
 private:
@@ -457,9 +510,44 @@ public:
     AppAudio Audio;
 
 private:
+    struct TouchPointState
+    {
+        int64 FingerId {-1};
+        ipos32 StartPos {};
+        ipos32 LastPos {};
+        uint64 StartTime {};
+        bool Active {};
+        bool ScrollActive {};
+    };
+
+    struct PendingTouchTapState
+    {
+        ipos32 Pos {};
+        uint64 ReleaseTime {};
+        bool Active {};
+    };
+
+    static constexpr uint32 TOUCH_TAP_MAX_TIME_MS = 250;
+    static constexpr uint32 TOUCH_DOUBLE_TAP_MAX_TIME_MS = 200;
+    static constexpr int32 TOUCH_TAP_MAX_DIST = 12;
+    static constexpr int32 TOUCH_DOUBLE_TAP_MAX_DIST = 48;
+
     struct Context;
 
     auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
+    auto ResolveTouchPos(float32 normalized_x, float32 normalized_y) const -> ipos32;
+    auto GetTouchElapsedMs(uint64 start_time, uint64 end_time) const -> uint32;
+    auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32;
+    auto FindTouchPoint(int64 finger_id) -> TouchPointState*;
+    auto FindOtherTouchPoint(int64 finger_id) -> TouchPointState*;
+    auto AcquireTouchPoint(int64 finger_id) -> TouchPointState*;
+    void ReleaseTouchPoint(int64 finger_id);
+    void ResetTouchGestures();
+    void QueueTouchTap(ipos32 pos);
+    void QueueTouchDoubleTap(ipos32 pos);
+    void QueueTouchScroll(ipos32 pos, ipos32 delta);
+    void QueueTouchZoom(ipos32 pos, float32 factor);
+    void FlushPendingTouchTap();
 
     unique_ptr<Context> _ctx {};
     uint64 _time {};
@@ -468,6 +556,12 @@ private:
     bool _mouseCanUseGlobalState {};
     int32 _pendingMouseLeaveFrame {};
     int32 _mouseButtonsDown {};
+    TouchPointState _touchPrimary {};
+    TouchPointState _touchSecondary {};
+    PendingTouchTapState _pendingTouchTap {};
+    bool _touchPinchActive {};
+    bool _touchTapSuppressed {};
+    float32 _touchLastPinchDistance {};
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};

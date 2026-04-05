@@ -64,6 +64,14 @@ FO_SCRIPT_API ipos32 Client_Game_MousePos(ClientEngine* client)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_IsMouseAvailable(ClientEngine* client)
+{
+    ignore_unused(client);
+
+    return App->Input.IsMouseAvailable();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(ClientEngine* client)
 {
     return client->SprMngr.IsFullscreen();
@@ -1585,19 +1593,9 @@ FO_SCRIPT_API string Client_Game_BuiltInCommand(ClientEngine* client, string_vie
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ClientEngine* client, bool enabled)
 {
-    ignore_unused(client, enabled);
+    ignore_unused(client);
 
-    // Todo: improve SetScreenKeyboard
-    /*if (SDL_HasScreenKeyboardSupport()) {
-        bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
-        bool next = strex(args[1]).to_bool();
-        if (cur != next) {
-            if (next)
-                SDL_StartTextInput();
-            else
-                SDL_StopTextInput();
-        }
-    }*/
+    App->Input.SetScreenKeyboardEnabled(enabled);
 }
 
 FO_END_NAMESPACE

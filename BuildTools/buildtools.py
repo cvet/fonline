@@ -96,7 +96,7 @@ SINGLE_FLAG_BUILD_TARGETS = {
 }
 
 SINGLE_CLIENT_VALIDATION_PLATFORMS = {
-	'android-arm': 'android',
+	'android-arm32': 'android-arm32',
 	'android-arm64': 'android-arm64',
 	'android-x86': 'android-x86',
 	'web': 'web',
@@ -131,11 +131,11 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
-ANDROID_PLATFORMS = ('android', 'android-arm64', 'android-x86')
+ANDROID_PLATFORMS = ('android-arm32', 'android-arm64', 'android-x86')
 APPLE_PLATFORMS = ('mac', 'ios')
 
 ANDROID_ABI_BY_PLATFORM = {
-	'android': 'armeabi-v7a',
+	'android-arm32': 'armeabi-v7a',
 	'android-arm64': 'arm64-v8a',
 	'android-x86': 'x86',
 }
@@ -169,10 +169,16 @@ LINUX_PACKAGE_GROUPS = {
 		['nodejs', 'default-jre'],
 	),
 	'android-packages': (
-		'2',
-		['android-sdk', 'openjdk-8-jdk', 'ant'],
+		'3',
+		['openjdk-17-jdk'],
 	),
 }
+
+ANDROID_REQUIRED_SDK_PACKAGES = (
+	'platform-tools',
+	'build-tools;34.0.0',
+	'platforms;android-35',
+)
 
 
 def log(*parts: object) -> None:
@@ -253,6 +259,19 @@ def resolve_validation_build_dir(env: Mapping[str, str], name: str) -> Path:
 def resolve_workspace_emsdk_root(workspace: Path) -> str:
 	emsdk_root = workspace / 'emsdk'
 	return str(emsdk_root) if emsdk_root.is_dir() else ''
+
+
+def resolve_workspace_android_sdk_root(workspace: Path) -> str:
+	android_sdk_root = workspace / 'android-sdk'
+	return str(android_sdk_root) if android_sdk_root.is_dir() else ''
+
+
+def resolve_android_sdk_host_tag() -> str:
+	if os.name == 'nt':
+		return 'win'
+	if sys.platform == 'darwin':
+		return 'mac'
+	return 'linux'
 
 
 def resolve_emscripten_toolchain(env: Mapping[str, str]) -> Path:
@@ -343,7 +362,11 @@ def resolve_env() -> EnvMap:
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
 	}
 
-	if 'ANDROID_HOME' not in os.environ and Path('/usr/lib/android-sdk').is_dir():
+	workspace_android_sdk = resolve_workspace_android_sdk_root(workspace)
+	if workspace_android_sdk:
+		env['ANDROID_HOME'] = workspace_android_sdk
+		env['ANDROID_SDK_ROOT'] = workspace_android_sdk
+	elif 'ANDROID_HOME' not in os.environ and Path('/usr/lib/android-sdk').is_dir():
 		env['ANDROID_HOME'] = '/usr/lib/android-sdk'
 		env['ANDROID_SDK_ROOT'] = '/usr/lib/android-sdk'
 	else:
@@ -693,6 +716,18 @@ def build_android_ndk_version(env: Mapping[str, str]) -> str:
 	return version
 
 
+def build_android_sdk_version(env: Mapping[str, str]) -> str:
+	version = env.get('ANDROID_SDK_VERSION', '')
+	if not version:
+		raise SystemExit('ANDROID_SDK_VERSION is not configured')
+	return version
+
+
+def build_android_sdk_archive_name(env: Mapping[str, str]) -> str:
+	version = build_android_sdk_version(env)
+	return f'commandlinetools-{resolve_android_sdk_host_tag()}-{version}_latest.zip'
+
+
 def build_dotnet_version(env: Mapping[str, str]) -> str:
 	version = env.get('FO_DOTNET_RUNTIME', '')
 	if not version:
@@ -854,6 +889,51 @@ def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(archive_path)
 
 
+def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	archive_name = build_android_sdk_archive_name(env)
+	archive_path = workspace / archive_name
+	android_sdk_root = workspace / 'android-sdk'
+	extract_root = workspace / 'android-sdk-extract'
+	cmdline_tools_root = android_sdk_root / 'cmdline-tools'
+	cmdline_tools_latest = cmdline_tools_root / 'latest'
+
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(extract_root)
+	remove_path_if_exists(android_sdk_root)
+	ensure_dir(cmdline_tools_root)
+
+	url = f'https://dl.google.com/android/repository/{archive_name}'
+	download_file(url, archive_path, 'Android SDK Command-line Tools')
+	log('Unpack Android SDK Command-line Tools:', archive_path)
+	extract_zip_with_permissions(archive_path, extract_root)
+
+	shutil.move(str(extract_root / 'cmdline-tools'), str(cmdline_tools_latest))
+	remove_path_if_exists(extract_root)
+	remove_path_if_exists(archive_path)
+
+	sdkmanager = cmdline_tools_latest / 'bin' / 'sdkmanager'
+	if not sdkmanager.is_file():
+		raise SystemExit(f'sdkmanager not found after extraction: {sdkmanager}')
+
+	sdk_env = os.environ.copy()
+	sdk_env['ANDROID_HOME'] = str(android_sdk_root)
+	sdk_env['ANDROID_SDK_ROOT'] = str(android_sdk_root)
+
+	run_bash(
+		f'yes | {shlex.quote(str(sdkmanager))} --sdk_root={shlex.quote(str(android_sdk_root))} --licenses >/dev/null',
+		env=sdk_env,
+	)
+	run(
+		[
+			sdkmanager,
+			f'--sdk_root={android_sdk_root}',
+			*ANDROID_REQUIRED_SDK_PACKAGES,
+		],
+		env=sdk_env,
+	)
+
+
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	dotnet_root = workspace / 'dotnet'
@@ -870,12 +950,14 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 	part_versions = {
 		'toolset': build_toolset_version(),
 		'emscripten': build_emscripten_version(env),
+		'android-sdk': build_android_sdk_version(env),
 		'android-ndk': build_android_ndk_version(env),
 		'dotnet': build_dotnet_version(env),
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
 		'emscripten': prepare_emscripten_workspace,
+		'android-sdk': prepare_android_sdk_workspace,
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
 	}
@@ -897,7 +979,7 @@ HOST_DEFAULT_FEATURES = {
 LINUX_FEATURE_PACKAGE_GROUPS = {
 	'linux': ['linux-packages'],
 	'web': ['web-packages'],
-	'android': ['android-packages'],
+	'android-arm32': ['android-packages'],
 	'android-arm64': ['android-packages'],
 	'android-x86': ['android-packages'],
 	'all': ['linux-packages', 'web-packages', 'android-packages'],
@@ -907,11 +989,11 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	'linux': {
 		'toolset': ['toolset'],
 		'web': ['emscripten'],
-		'android': ['android-ndk'],
-		'android-arm64': ['android-ndk'],
-		'android-x86': ['android-ndk'],
+		'android-arm32': ['android-sdk', 'android-ndk'],
+		'android-arm64': ['android-sdk', 'android-ndk'],
+		'android-x86': ['android-sdk', 'android-ndk'],
 		'dotnet': ['dotnet'],
-		'all': ['toolset', 'emscripten', 'android-ndk', 'dotnet'],
+		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet'],
 	},
 	'windows': {
 		'toolset': ['toolset'],
@@ -1055,6 +1137,67 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 
 def web_package_dir(env: Mapping[str, str], devname: str, config: str) -> Path:
 	return resolve_web_package_dir(env, devname, config)
+
+
+def resolve_android_debug_root(env: Mapping[str, str]) -> Path:
+	return resolve_workspace_path(env, 'android-debug')
+
+
+def resolve_android_package_dir(env: Mapping[str, str], devname: str, config: str) -> Path:
+	return resolve_android_debug_root(env) / f'{devname}-Client-{config}-Android'
+
+
+def package_android_debug(env: Mapping[str, str], devname: str, platform_name: str, configs: Sequence[str]) -> None:
+	for config in configs:
+		_package_android_debug_config(env, devname, platform_name, config)
+
+
+def _package_android_debug_config(env: Mapping[str, str], devname: str, platform_name: str, config: str) -> None:
+	import foconfig
+
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	output_root_input = Path(env['FO_OUTPUT'])
+	output_root = resolve_android_debug_root(env)
+	package_script = resolve_buildtools_path(env, 'package.py')
+	build_hash = resolve_build_hash(env)
+	input_roots = [output_root_input, project_root]
+
+	fomain_path = discover_fomain(project_root)
+	fomain = foconfig.ConfigParser()
+	fomain.loadFromFile(fomain_path)
+	nicename = fomain.mainSection().getStr('Common.GameName')
+	android_abi = resolve_android_abi(platform_name)
+
+	command = [
+		sys.executable,
+		str(package_script),
+		'-maincfg',
+		str(fomain_path),
+		'-buildhash',
+		build_hash,
+		'-devname',
+		devname,
+		'-nicename',
+		nicename,
+		'-target',
+		'Client',
+		'-platform',
+		'Android',
+		'-arch',
+		android_abi,
+		'-pack',
+		'Raw',
+		'-config',
+		config,
+		'-zip-compress-level',
+		'1',
+		'-output',
+		str(output_root),
+	]
+	for input_root in input_roots:
+		command.extend(['-input', str(input_root)])
+
+	run(command)
 
 
 def resolve_android_abi(platform_name: str) -> str:
@@ -1443,19 +1586,24 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser.add_argument('target')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-ndk', 'dotnet'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
 	package_web_parser.add_argument('configs', nargs='+', help='config names to package (e.g. RemoteSceneLaunch LocalTest)')
 
+	package_android_parser = subparsers.add_parser('package-android-debug', help='package the local android debug client')
+	package_android_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
+	package_android_parser.add_argument('platform', choices=ANDROID_PLATFORMS, help='Android target platform (e.g. android-arm64)')
+	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
+
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
 	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
 	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
-	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'all'])
+	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android-arm32', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'all'])
 	prepare_host_parser.add_argument('--check', action='store_true')
 
 	return parser
@@ -1497,6 +1645,9 @@ def main() -> None:
 		return
 	if args.command == 'package-web-debug':
 		package_web_debug(env, args.devname, args.configs)
+		return
+	if args.command == 'package-android-debug':
+		package_android_debug(env, args.devname, args.platform, args.configs)
 		return
 	if args.command == 'host-check':
 		issues = check_host_tools(args.host)

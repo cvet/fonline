@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace "com.lastfrontier.app"
+    compileSdkVersion $COMPILE_SDK$
+
+    defaultConfig {
+        applicationId "$PACKAGE$"
+        minSdkVersion $MIN_SDK$
+        targetSdkVersion $TARGET_SDK$
+        versionCode $VERSION_CODE$
+        versionName "$VERSION_NAME$"
+        ndk {
+            abiFilters $ABI_FILTERS$
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    androidResources {
+        noCompress += ['zip']
+    }
+
+    sourceSets.main {
+        jniLibs.srcDir 'libs'
+        assets.srcDirs = ['src/main/assets']
+    }
+
+    lint {
+        abortOnError = false
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+}

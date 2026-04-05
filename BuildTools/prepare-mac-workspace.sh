@@ -12,7 +12,7 @@ fi
 
 BUILDTOOLS_ARGS=(prepare-host-workspace macos)
 CHECK_ONLY=0
-KNOWN_FEATURES=(packages linux web android android-arm64 android-x86 toolset dotnet all)
+KNOWN_FEATURES=(packages linux web android-arm32 android-arm64 android-x86 toolset dotnet all)
 
 for arg in "$@"; do
 	if [[ "$arg" == "check" ]]; then

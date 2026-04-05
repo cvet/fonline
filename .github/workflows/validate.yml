@@ -81,8 +81,8 @@ jobs:
           prepare: linux
         - app: linux-gcc-client
           prepare: linux
-        - app: android-arm-client
-          prepare: android
+        - app: android-arm32-client
+          prepare: android-arm32
         - app: android-arm64-client
           prepare: android-arm64
         - app: web-client

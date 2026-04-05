@@ -101,6 +101,13 @@ static auto ScreenPosToWindowPos(Renderer* renderer, isize32 screen_size, ipos32
     return {win_x, win_y};
 }
 
+static auto MouseIdToImGuiMouseSource(SDL_MouseID mouse_id) noexcept -> ImGuiMouseSource
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return mouse_id == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse;
+}
+
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
     MainWindow {this},
@@ -388,7 +395,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         SDL_DisableScreenSaver();
     }
 
-    if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.HideNativeCursor) {
+    if (IsEnumSet(flags, AppInitFlags::ClientMode) && (Settings.HideNativeCursor || !Input.IsMouseAvailable())) {
         SDL_HideCursor();
     }
 
@@ -424,7 +431,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         MainWindow.AlwaysOnTop(true);
     }
 
-    if (_ctx->ActiveRendererType != RenderType::Null) {
+    if (_ctx->ActiveRendererType != RenderType::Null && !_isTablet) {
         SDL_StartTextInput(static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
     }
 
@@ -454,7 +461,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-    io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+
+    if (Input.IsMouseAvailable()) {
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+    }
 
     platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return App->Input.GetClipboardText().c_str(); };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { App->Input.SetClipboardText(text); };
@@ -687,6 +697,185 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     return sdl_window;
 }
 
+auto Application::ResolveTouchPos(float32 normalized_x, float32 normalized_y) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32 window_width = Settings.ScreenWidth;
+    int32 window_height = Settings.ScreenHeight;
+
+    if (_ctx->ActiveRendererType != RenderType::Null && MainWindow._windowHandle) {
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(MainWindow.ResolveWindowHandle()), &window_width, &window_height);
+    }
+
+    const auto max_x = window_width > 0 ? window_width - 1 : 0;
+    const auto max_y = window_height > 0 ? window_height - 1 : 0;
+    const auto window_x = std::clamp(iround<int32>(normalized_x * numeric_cast<float32>(window_width)), 0, max_x);
+    const auto window_y = std::clamp(iround<int32>(normalized_y * numeric_cast<float32>(window_height)), 0, max_y);
+
+    if (_ctx->ActiveRendererType == RenderType::Null) {
+        return {window_x, window_y};
+    }
+
+    return WindowPosToScreenPos(const_cast<Renderer*>(_ctx->ActiveRenderer.get()), {Settings.ScreenWidth, Settings.ScreenHeight}, {window_x, window_y});
+}
+
+auto Application::GetTouchElapsedMs(uint64 start_time, uint64 end_time) const -> uint32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (end_time <= start_time || _timeFrequency == 0) {
+        return 0;
+    }
+
+    return numeric_cast<uint32>((end_time - start_time) * 1000 / _timeFrequency);
+}
+
+auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto dx = numeric_cast<float32>(to.x - from.x);
+    const auto dy = numeric_cast<float32>(to.y - from.y);
+
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+auto Application::FindTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_touchPrimary.Active && _touchPrimary.FingerId == finger_id) {
+        return &_touchPrimary;
+    }
+    if (_touchSecondary.Active && _touchSecondary.FingerId == finger_id) {
+        return &_touchSecondary;
+    }
+
+    return nullptr;
+}
+
+auto Application::FindOtherTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_touchPrimary.Active && _touchPrimary.FingerId != finger_id) {
+        return &_touchPrimary;
+    }
+    if (_touchSecondary.Active && _touchSecondary.FingerId != finger_id) {
+        return &_touchSecondary;
+    }
+
+    return nullptr;
+}
+
+auto Application::AcquireTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (auto* existing_touch = FindTouchPoint(finger_id); existing_touch != nullptr) {
+        return existing_touch;
+    }
+    if (!_touchPrimary.Active) {
+        return &_touchPrimary;
+    }
+    if (!_touchSecondary.Active) {
+        return &_touchSecondary;
+    }
+
+    return nullptr;
+}
+
+void Application::ReleaseTouchPoint(int64 finger_id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_touchPrimary.FingerId == finger_id) {
+        _touchPrimary = {};
+    }
+    else if (_touchSecondary.FingerId == finger_id) {
+        _touchSecondary = {};
+    }
+}
+
+void Application::ResetTouchGestures()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _touchPrimary = {};
+    _touchSecondary = {};
+    _pendingTouchTap = {};
+    _touchPinchActive = false;
+    _touchTapSuppressed = false;
+    _touchLastPinchDistance = 0.0f;
+}
+
+void Application::QueueTouchTap(ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchTapEvent {pos.x, pos.y});
+}
+
+void Application::QueueTouchDoubleTap(ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchDoubleTapEvent {pos.x, pos.y});
+}
+
+void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchScrollEvent {pos.x, pos.y, delta.x, delta.y});
+}
+
+void Application::QueueTouchZoom(ipos32 pos, float32 factor)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchZoomEvent {pos.x, pos.y, factor});
+}
+
+void Application::FlushPendingTouchTap()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (!_pendingTouchTap.Active) {
+        return;
+    }
+
+    const auto cur_time = SDL_GetPerformanceCounter();
+
+    if (GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time) < TOUCH_DOUBLE_TAP_MAX_TIME_MS) {
+        return;
+    }
+
+    QueueTouchTap(_pendingTouchTap.Pos);
+    _pendingTouchTap = {};
+}
+
 void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -724,6 +913,7 @@ void Application::BeginFrame()
                 _ctx->EventsQueue->emplace_back(ev);
             }
 
+            io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.motion.which));
             io.AddMousePosEvent(numeric_cast<float32>(ev.MouseX), numeric_cast<float32>(ev.MouseY));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -764,19 +954,172 @@ void Application::BeginFrame()
             }
 
             if (mouse_button != -1) {
+                io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.button.which));
                 io.AddMouseButtonEvent(mouse_button, (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN));
                 _mouseButtonsDown = sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? (_mouseButtonsDown | (1 << mouse_button)) : (_mouseButtonsDown & ~(1 << mouse_button));
             }
         } break;
-        case SDL_EVENT_FINGER_MOTION: {
-            throw InvalidCallException("SDL_FINGERMOTION");
-        }
-        case SDL_EVENT_FINGER_DOWN: {
-            throw InvalidCallException("SDL_FINGERDOWN");
-        }
+        case SDL_EVENT_FINGER_MOTION:
+        case SDL_EVENT_FINGER_DOWN:
         case SDL_EVENT_FINGER_UP: {
-            throw InvalidCallException("SDL_FINGERUP");
-        }
+            const auto finger_id = numeric_cast<int64>(sdl_event.tfinger.fingerID);
+            const auto touch_pos = ResolveTouchPos(sdl_event.tfinger.x, sdl_event.tfinger.y);
+
+            if (sdl_event.type == SDL_EVENT_FINGER_DOWN) {
+                const auto cur_time = SDL_GetPerformanceCounter();
+
+                if (_pendingTouchTap.Active) {
+                    const auto tap_elapsed = GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time);
+                    const auto tap_distance = GetTouchDistance(_pendingTouchTap.Pos, touch_pos);
+
+                    if (tap_elapsed >= TOUCH_DOUBLE_TAP_MAX_TIME_MS || tap_distance > numeric_cast<float32>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                        QueueTouchTap(_pendingTouchTap.Pos);
+                        _pendingTouchTap = {};
+                    }
+                }
+
+                auto* touch = AcquireTouchPoint(finger_id);
+
+                if (touch == nullptr) {
+                    ResetTouchGestures();
+                    touch = AcquireTouchPoint(finger_id);
+                }
+
+                FO_RUNTIME_ASSERT(touch);
+                touch->FingerId = finger_id;
+                touch->StartPos = touch_pos;
+                touch->LastPos = touch_pos;
+                touch->StartTime = cur_time;
+                touch->Active = true;
+                touch->ScrollActive = false;
+
+                if (const auto* other_touch = FindOtherTouchPoint(finger_id); other_touch != nullptr) {
+                    _touchPinchActive = true;
+                    _touchTapSuppressed = true;
+                    _touchLastPinchDistance = GetTouchDistance(touch_pos, other_touch->LastPos);
+                    _pendingTouchTap = {};
+                }
+            }
+            else if (sdl_event.type == SDL_EVENT_FINGER_MOTION) {
+                auto* touch = FindTouchPoint(finger_id);
+
+                if (touch == nullptr) {
+                    break;
+                }
+
+                const auto delta = ipos32 {touch_pos.x - touch->LastPos.x, touch_pos.y - touch->LastPos.y};
+                touch->LastPos = touch_pos;
+
+                if (_touchPinchActive) {
+                    const auto* other_touch = FindOtherTouchPoint(finger_id);
+
+                    if (other_touch == nullptr) {
+                        _touchPinchActive = false;
+                        _touchLastPinchDistance = 0.0f;
+                        break;
+                    }
+
+                    const auto pinch_distance = GetTouchDistance(touch->LastPos, other_touch->LastPos);
+
+                    if (_touchLastPinchDistance > 1.0f && pinch_distance > 1.0f) {
+                        const auto factor = pinch_distance / _touchLastPinchDistance;
+
+                        if (!imgui_capture_mouse && std::abs(factor - 1.0f) > 0.01f) {
+                            QueueTouchZoom({(touch->LastPos.x + other_touch->LastPos.x) / 2, (touch->LastPos.y + other_touch->LastPos.y) / 2}, factor);
+                        }
+                    }
+
+                    _touchLastPinchDistance = pinch_distance;
+                    _pendingTouchTap = {};
+                }
+                else {
+                    if (GetTouchDistance(touch->StartPos, touch->LastPos) > numeric_cast<float32>(TOUCH_TAP_MAX_DIST)) {
+                        touch->ScrollActive = true;
+                    }
+
+                    if (touch->ScrollActive) {
+                        _pendingTouchTap = {};
+
+                        if (!imgui_capture_mouse && (delta.x != 0 || delta.y != 0)) {
+                            QueueTouchScroll(touch->LastPos, delta);
+                        }
+                    }
+                }
+            }
+            else {
+                auto* touch = FindTouchPoint(finger_id);
+
+                if (touch == nullptr) {
+                    break;
+                }
+
+                touch->LastPos = touch_pos;
+
+                if (_touchPinchActive) {
+                    ReleaseTouchPoint(finger_id);
+                    _touchPinchActive = false;
+                    _touchLastPinchDistance = 0.0f;
+                    _pendingTouchTap = {};
+
+                    if (auto* remaining_touch = FindOtherTouchPoint(finger_id); remaining_touch != nullptr) {
+                        const auto cur_time = SDL_GetPerformanceCounter();
+                        remaining_touch->StartPos = remaining_touch->LastPos;
+                        remaining_touch->StartTime = cur_time;
+                        remaining_touch->ScrollActive = false;
+                    }
+
+                    if (!_touchPrimary.Active && !_touchSecondary.Active) {
+                        _touchTapSuppressed = false;
+                    }
+
+                    break;
+                }
+
+                if (_touchTapSuppressed) {
+                    ReleaseTouchPoint(finger_id);
+
+                    if (!_touchPrimary.Active && !_touchSecondary.Active) {
+                        _touchTapSuppressed = false;
+                    }
+
+                    break;
+                }
+
+                const auto cur_time = SDL_GetPerformanceCounter();
+                const auto tap_distance = GetTouchDistance(touch->StartPos, touch->LastPos);
+                const auto tap_elapsed = GetTouchElapsedMs(touch->StartTime, cur_time);
+                const bool is_tap = !touch->ScrollActive && tap_distance <= numeric_cast<float32>(TOUCH_TAP_MAX_DIST) && tap_elapsed <= TOUCH_TAP_MAX_TIME_MS;
+
+                ReleaseTouchPoint(finger_id);
+
+                if (!is_tap) {
+                    break;
+                }
+
+                if (_pendingTouchTap.Active) {
+                    const auto previous_tap_elapsed = GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time);
+                    const auto previous_tap_distance = GetTouchDistance(_pendingTouchTap.Pos, touch_pos);
+
+                    if (previous_tap_elapsed <= TOUCH_DOUBLE_TAP_MAX_TIME_MS && previous_tap_distance <= numeric_cast<float32>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                        if (!imgui_capture_mouse) {
+                            QueueTouchDoubleTap(touch_pos);
+                        }
+
+                        _pendingTouchTap = {};
+                        break;
+                    }
+
+                    QueueTouchTap(_pendingTouchTap.Pos);
+                    _pendingTouchTap = {};
+                }
+
+                if (!imgui_capture_mouse) {
+                    _pendingTouchTap.Pos = touch_pos;
+                    _pendingTouchTap.ReleaseTime = cur_time;
+                    _pendingTouchTap.Active = true;
+                }
+            }
+        } break;
         case SDL_EVENT_MOUSE_WHEEL: {
             InputEvent::MouseWheelEvent ev;
             ev.Delta = iround<int32>(sdl_event.wheel.y);
@@ -787,6 +1130,7 @@ void Application::BeginFrame()
 
             float32 wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
             float32 wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
+            io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.wheel.which));
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_EVENT_KEY_UP:
@@ -925,6 +1269,7 @@ void Application::BeginFrame()
             Input._shiftDown = false;
             Input._ctrlDown = false;
             Input._altDown = false;
+            ResetTouchGestures();
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
             auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
@@ -960,6 +1305,8 @@ void Application::BeginFrame()
         }
     }
 
+    FlushPendingTouchTap();
+
     // Setup display size
     io.DisplaySize = ImVec2(numeric_cast<float32>(Settings.ScreenWidth), numeric_cast<float32>(Settings.ScreenHeight));
 
@@ -984,21 +1331,28 @@ void Application::BeginFrame()
 #endif
 
         if (is_app_focused) {
-            if (io.WantSetMousePos) {
-                Input.SetMousePosition({iround<int32>(io.MousePos.x), iround<int32>(io.MousePos.y)}, &MainWindow);
+            if (!Input.IsMouseAvailable()) {
+                if (_mouseButtonsDown == 0) {
+                    io.AddMousePosEvent(-std::numeric_limits<float32>::max(), -std::numeric_limits<float32>::max());
+                }
             }
+            else {
+                if (io.WantSetMousePos) {
+                    Input.SetMousePosition({iround<int32>(io.MousePos.x), iround<int32>(io.MousePos.y)}, &MainWindow);
+                }
 
-            if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
-                float32 mouse_x_global;
-                float32 mouse_y_global;
-                SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
+                if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
+                    float32 mouse_x_global;
+                    float32 mouse_y_global;
+                    SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
 
-                int32 window_x;
-                int32 window_y;
-                SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &window_x, &window_y);
+                    int32 window_x;
+                    int32 window_y;
+                    SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &window_x, &window_y);
 
-                const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
-                io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
+                    const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32>(mouse_x_global) - window_x, iround<int32>(mouse_y_global) - window_y});
+                    io.AddMousePosEvent(numeric_cast<float32>(screen_pos.x), numeric_cast<float32>(screen_pos.y));
+                }
             }
         }
     }
@@ -1449,9 +1803,20 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return _app->_ctx->ActiveRenderer->IsRenderTargetFlipped();
 }
 
+auto AppInput::IsMouseAvailable() const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _app->_ctx->ActiveRendererType != RenderType::Null && !_app->_isTablet;
+}
+
 auto AppInput::GetMousePosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!IsMouseAvailable()) {
+        return _app->Settings.MousePos;
+    }
 
     float32 x = 100;
     float32 y = 100;
@@ -1468,6 +1833,10 @@ void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (!IsMouseAvailable()) {
+        return;
+    }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         _app->Settings.MousePos = pos;
@@ -1521,6 +1890,31 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
     }
     else {
         _app->_ctx->NextFrameEventsQueue->emplace_back(ev);
+    }
+}
+
+void AppInput::SetScreenKeyboardEnabled(bool enabled)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_app->_ctx->ActiveRendererType == RenderType::Null || !_app->MainWindow._windowHandle || !SDL_HasScreenKeyboardSupport()) {
+        return;
+    }
+
+    auto* window = static_cast<SDL_Window*>(_app->MainWindow._windowHandle.get_no_const());
+    const bool text_input_active = SDL_TextInputActive(window);
+
+    if (text_input_active == enabled) {
+        return;
+    }
+
+    if (enabled) {
+        SDL_StartTextInput(window);
+    }
+    else {
+        SDL_StopTextInput(window);
     }
 }
 

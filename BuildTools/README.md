@@ -83,3 +83,49 @@ For an optimized browser build use:
 - `buildtools.py build web client Release`
 
 The packaged browser build is emitted into `Workspace/web-debug/LF-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.
+
+## Android debug workflow
+
+The local Android debug flow uses these shared commands:
+
+Supported Android platform identifiers are `android-arm32`, `android-arm64`, and `android-x86`.
+
+Device deployment is built around ADB over Wi-Fi. The target device must have wireless debugging enabled and be paired with this host if Android requests pairing.
+
+- `buildtools.py build android-arm64 client RelWithDebInfo`
+- `buildtools.py package-android-debug LF android-arm64 LocalTest`
+- `buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch`
+- `android_device.py --workspace-root Workspace connect`
+
+The Android SDK and NDK workspace parts must be prepared first:
+
+- `bash Engine/BuildTools/prepare-workspace.sh android-arm64`
+
+The packaged Android build is emitted into `Workspace/android-debug/LF-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
+
+```bash
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace connect
+cd Workspace/android-debug/LF-Client-LocalTest-Android
+./gradlew assembleDebug
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch --activity com.lastfrontier.app/.LFActivity
+
+# Remote scene launch from host to Android device
+python3 Engine/BuildTools/buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch
+cd Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android
+./gradlew assembleDebug
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-game --activity com.lastfrontier.app/.LFActivity
+```
+
+`launch-game` auto-detects the host LAN IP that reaches the selected Wi-Fi Android device and passes it as a runtime `ClientNetwork.ServerHost` override, which makes the packaged `RemoteSceneLaunch` client connect back to the host server without editing baked config files.
+
+At runtime, `LFActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
+
+Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
+
+Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
+
+The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from `LastFrontier.fomain` section `Android.*`.
+
+`android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.

@@ -190,6 +190,14 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseMove, ipos32 /*offsetPos*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchTap, ipos32 /*screenPos*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchDoubleTap, ipos32 /*screenPos*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchScroll, ipos32 /*screenPos*/, ipos32 /*offsetPos*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchZoom, ipos32 /*screenPos*/, float32 /*factor*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);

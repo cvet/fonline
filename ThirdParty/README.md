@@ -28,8 +28,8 @@
 * zlib - [zlib-1.3.1](https://www.zlib.net)
 
 * android-api [23](https://developer.android.com/tools/releases/platforms)
-* android-ndk [android-ndk-r28](https://developer.android.com/ndk)
-* android-sdk [tools_r25.2.3](https://developer.android.com/tools/releases/platform-tools)
+* android-ndk [android-ndk-r29](https://developer.android.com/ndk)
+* android-sdk [11076708](https://developer.android.com/tools)
 * dotnet-runtime [v9.0.0](https://github.com/dotnet/runtime)
 * emscripten [4.0.6](https://github.com/emscripten-core/emscripten)
 * iOS-sdk [18.0](https://developer.apple.com/ios)

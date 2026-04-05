@@ -56,7 +56,7 @@ if (!(Test-Path $FO_WORKSPACE)) {
 }
 
 $checkOnly = $args -contains "check"
-$knownFeatures = @("packages", "linux", "web", "android", "android-arm64", "android-x86", "toolset", "dotnet", "all")
+$knownFeatures = @("packages", "linux", "web", "android-arm32", "android-arm64", "android-x86", "toolset", "dotnet", "all")
 
 $filteredArgs = @()
 foreach ($arg in $args) {

@@ -144,6 +144,130 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     return reinterpret_cast<WindowInternalHandle*>(ptr);
 }
 
+auto Application::ResolveTouchPos(float32 normalized_x, float32 normalized_y) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(normalized_x);
+    ignore_unused(normalized_y);
+
+    return {0, 0};
+}
+
+auto Application::GetTouchElapsedMs(uint64 start_time, uint64 end_time) const -> uint32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(start_time);
+    ignore_unused(end_time);
+
+    return 0;
+}
+
+auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(from);
+    ignore_unused(to);
+
+    return 0.0f;
+}
+
+auto Application::FindTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(finger_id);
+
+    return nullptr;
+}
+
+auto Application::FindOtherTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(finger_id);
+
+    return nullptr;
+}
+
+auto Application::AcquireTouchPoint(int64 finger_id) -> TouchPointState*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(finger_id);
+
+    return nullptr;
+}
+
+void Application::ReleaseTouchPoint(int64 finger_id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(finger_id);
+}
+
+void Application::ResetTouchGestures()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+}
+
+void Application::QueueTouchTap(ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(pos);
+}
+
+void Application::QueueTouchDoubleTap(ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(pos);
+}
+
+void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(pos);
+    ignore_unused(delta);
+}
+
+void Application::QueueTouchZoom(ipos32 pos, float32 factor)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(pos);
+    ignore_unused(factor);
+}
+
+void Application::FlushPendingTouchTap()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+}
+
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
@@ -429,14 +553,18 @@ auto AppRender::IsRenderTargetFlipped() -> bool
     return _app->_ctx->HeadlessRenderer->IsRenderTargetFlipped();
 }
 
+auto AppInput::IsMouseAvailable() const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return false;
+}
+
 auto AppInput::GetMousePosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto x = 100;
-    constexpr auto y = 100;
-
-    return {x, y};
+    return {0, 0};
 }
 
 void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
@@ -475,6 +603,15 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 
     ignore_unused(ev);
     ignore_unused(push_to_this_frame);
+}
+
+void AppInput::SetScreenKeyboardEnabled(bool enabled)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(enabled);
 }
 
 void AppInput::SetClipboardText(string_view text)

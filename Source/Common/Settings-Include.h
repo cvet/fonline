@@ -203,6 +203,16 @@ FIXED_SETTING(int32, Web, MaxWidth, 1920); // Maximum adaptive web width in pixe
 FIXED_SETTING(int32, Web, MaxHeight, 1080); // Maximum adaptive web height in pixels
 SETTING_GROUP_END();
 
+///@ ExportSettings Client
+SETTING_GROUP(AndroidSettings, virtual BaseSettings);
+FIXED_SETTING(string, Android, PackageName, "com.fonline.app"); // Android application package name for packaging tools
+FIXED_SETTING(int32, Android, VersionCode, 1); // Android application version code for packaging tools
+FIXED_SETTING(int32, Android, MinSdk, 23); // Android minimum supported SDK level for packaging tools
+FIXED_SETTING(int32, Android, TargetSdk, 35); // Android target SDK level for packaging tools
+FIXED_SETTING(int32, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
+FIXED_SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
+SETTING_GROUP_END();
+
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual BaseSettings);
 FIXED_SETTING(int32, Timer, DebuggingDeltaTimeCap, 100); // Debugging delta time cap in milliseconds
@@ -310,7 +320,7 @@ VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles co
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings, virtual AndroidSettings);
 FIXED_SETTING(int32, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
