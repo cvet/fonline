@@ -904,6 +904,7 @@ void ClientEngine::Net_OnAddCritter()
         }
 
         hex_cr->RefreshView(true);
+        hex_cr->RefreshOffs();
     }
 
     OnCritterIn.Fire(cr.get());
@@ -1444,6 +1445,7 @@ void ClientEngine::Net_OnPlaceToGameComplete()
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->RefreshView();
+            hex_chosen->RefreshOffs();
             _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
