@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "FogOfWar.h"
+#include "LineTracer.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -214,6 +215,35 @@ TEST_CASE("FogOfWar")
         CHECK(*fog.GetPoints()[0].PointOffset == ipos32 {100, 0});
         CHECK(fog.GetPoints()[2].PointOffset != nullptr);
         CHECK(*fog.GetPoints()[2].PointOffset == ipos32 {100, 50});
+    }
+
+    SECTION("Blocked shoot rays keep the same whole-distance saturation slope")
+    {
+        FogOfWar fog {FogOfWar::Kind::Shoot};
+
+        auto input = MakeInput({10, 10}, nanotime {});
+        input.FogOrigin.LookDistance = 6;
+        input.Distance = 6;
+        input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32, bool) {
+            constexpr auto block_dist = 3;
+
+            if (GeometryHelper::GetDistance(start, target) <= block_dist) {
+                return target;
+            }
+
+            auto block_hex = start;
+            LineTracer tracer(start, target, 0.0f, map_size);
+
+            for (auto i = 0; i < block_dist; i++) {
+                tracer.GetNextHex(block_hex);
+            }
+
+            return block_hex;
+        };
+        fog.Prepare(input);
+
+        CHECK(!fog.GetPoints().empty());
+        CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8>(3 * 255 / 7));
     }
 }
 

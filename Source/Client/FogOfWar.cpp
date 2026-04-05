@@ -128,17 +128,12 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, numeric_cast<uint8>(dir));
             }
 
-            auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
+            const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
+            const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
+            const auto* edge_offset = target_dist < dist ? &_baseDrawOffset : &_drawOffset;
 
             if (is_shoot) {
-                target_hex = input.TraceBulletToBlock(base_hex, target_hex, 0, true);
-            }
-
-            const auto dist_look = GeometryHelper::GetDistance(base_hex, target_hex);
-            const auto* edge_offset = dist_look < dist ? &_baseDrawOffset : &_drawOffset;
-
-            if (is_shoot) {
-                const auto max_shoot_dist = std::max(std::min(dist_look, input.Distance), 0) + 1;
+                const auto max_shoot_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
                 const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_shoot_dist, true);
                 const auto block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
                 const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
@@ -149,7 +144,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
             }
             else {
                 const auto hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
-                const auto color = ucolor {255, numeric_cast<uint8>(dist_look * 255 / dist), 0, 0};
+                const auto color = ucolor {255, numeric_cast<uint8>(target_dist * 255 / dist), 0, 0};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = edge_offset});
             }
