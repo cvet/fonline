@@ -73,6 +73,7 @@ private:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
+    void Net_OnTimeSync();
     void Net_OnUpdateFileData();
 
     raw_ptr<ClientSettings> _settings;
