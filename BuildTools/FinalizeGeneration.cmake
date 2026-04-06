@@ -1215,7 +1215,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Server
         TESTING_APP 0
-        LINK_LIBS "AppFrontend" "ServerLib" "ClientLib"
+        LINK_LIBS "ServerLib" "ClientLib" "AppFrontend"
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 
@@ -1226,7 +1226,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
         TESTING_APP 0
-        LINK_LIBS "AppHeadless" "ServerLib" "ClientLib"
+        LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
         WRITE_BUILD_HASH)
 
     if(FO_WINDOWS)
@@ -1237,7 +1237,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerService
             TESTING_APP 0
-            LINK_LIBS "AppHeadless" "ServerLib" "ClientLib"
+            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
             WRITE_BUILD_HASH)
     else()
         AddExecutableApplication(
@@ -1247,7 +1247,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerDaemon
             TESTING_APP 0
-            LINK_LIBS "AppHeadless" "ServerLib" "ClientLib"
+            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
             WRITE_BUILD_HASH)
     endif()
 endif()
