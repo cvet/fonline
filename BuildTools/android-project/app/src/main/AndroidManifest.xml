@@ -45,7 +45,7 @@
         android:hardwareAccelerated="true">
 
         <activity
-            android:name="com.lastfrontier.app.LFActivity"
+            android:name=".FOnlineActivity"
             android:label="$APP_NAME$"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleInstance"

@@ -212,6 +212,10 @@ FIXED_SETTING(int32, Android, TargetSdk, 35); // Android target SDK level for pa
 FIXED_SETTING(int32, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
 FIXED_SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
 FIXED_SETTING(string, Android, Icon, "Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
+FIXED_SETTING(string, Android, Keystore, ""); // Android release signing keystore path for packaging tools
+FIXED_SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
+FIXED_SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
+FIXED_SETTING(string, Android, KeyPassword, ""); // Android release signing key password for packaging tools
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

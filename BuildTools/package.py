@@ -38,6 +38,7 @@ ANDROID_ABI_BY_ARCH = {
 	'arm64': 'arm64-v8a',
 	'x86': 'x86',
 }
+ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 
 
 def parse_args() -> argparse.Namespace:
@@ -93,6 +94,10 @@ def patch_file(file_path: str | Path, text_from: str, text_to: str) -> None:
 	content = content.replace(text_from.encode('utf-8'), text_to.encode('utf-8'))
 	with open(file_path, 'wb') as file:
 		file.write(content)
+
+
+def escape_groovy_string(value: str) -> str:
+	return value.replace('\\', '\\\\').replace("'", "\\'").replace('\r', '\\r').replace('\n', '\\n')
 
 
 def is_png_data(data: bytes) -> bool:
@@ -551,6 +556,27 @@ class Packager:
 			return config_path
 		return os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(self.args.maincfg)), config_path))
 
+	def resolve_optional_config_relative_path(self, config_path: str) -> str:
+		return self.resolve_config_relative_path(config_path) if config_path else ''
+
+	def build_android_java_package_path(self, package_name: str) -> str:
+		return os.path.join(*package_name.split('.'))
+
+	def patch_android_activity(self, package_name: str) -> None:
+		template_activity_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template', ANDROID_ACTIVITY_CLASS + '.java')
+		assert os.path.isfile(template_activity_path), 'Android activity template not found: ' + template_activity_path
+
+		output_java_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', self.build_android_java_package_path(package_name))
+		os.makedirs(output_java_dir, exist_ok=True)
+
+		activity_path = os.path.join(output_java_dir, ANDROID_ACTIVITY_CLASS + '.java')
+		shutil.copy(template_activity_path, activity_path)
+		patch_file(activity_path, '$PACKAGE$', package_name)
+		patch_file(activity_path, '$CONFIG$', self.args.config)
+
+		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
+		log('Android activity', activity_path)
+
 	def try_read_android_icon_png(self, icon_path: str) -> bytes | None:
 		with open(icon_path, 'rb') as file:
 			icon_data = file.read()
@@ -614,13 +640,23 @@ class Packager:
 			log('Resources moved to', assets_res_dir)
 
 		# Read Android config from fomain
-		package_name = self.fomain.mainSection().getStr('Android.PackageName', 'com.lastfrontier.app')
+		package_name = self.fomain.mainSection().getStr('Android.PackageName', 'com.fonline.app')
 		version_code = self.fomain.mainSection().getStr('Android.VersionCode', '1')
 		version_name = self.args.buildhash[:8] if self.args.buildhash else '1.0'
 		min_sdk = self.fomain.mainSection().getStr('Android.MinSdk', '23')
 		target_sdk = self.fomain.mainSection().getStr('Android.TargetSdk', '35')
 		compile_sdk = self.fomain.mainSection().getStr('Android.CompileSdk', '35')
 		screen_orientation = self.fomain.mainSection().getStr('Android.ScreenOrientation', 'landscape')
+		release_store_file = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Android.Keystore', ''))
+		release_store_password = self.fomain.mainSection().getStr('Android.KeystorePassword', '')
+		release_key_alias = self.fomain.mainSection().getStr('Android.KeyAlias', '')
+		release_key_password = self.fomain.mainSection().getStr('Android.KeyPassword', '')
+
+		has_release_signing = any((release_store_file, release_store_password, release_key_alias, release_key_password))
+		if has_release_signing:
+			assert all((release_store_file, release_store_password, release_key_alias, release_key_password)), 'Android release signing requires Android.Keystore, Android.KeystorePassword, Android.KeyAlias, and Android.KeyPassword'
+			assert os.path.isfile(release_store_file), 'Android keystore file not found: ' + release_store_file
+			release_store_file = Path(release_store_file).as_posix()
 
 		abi_filters = ', '.join("'" + resolve_android_abi(arch) + "'" for arch in self.iter_arches())
 
@@ -633,6 +669,12 @@ class Packager:
 		patch_file(app_build_gradle, '$VERSION_CODE$', version_code)
 		patch_file(app_build_gradle, '$VERSION_NAME$', version_name)
 		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
+		patch_file(app_build_gradle, '$RELEASE_STORE_FILE$', escape_groovy_string(release_store_file))
+		patch_file(app_build_gradle, '$RELEASE_STORE_PASSWORD$', escape_groovy_string(release_store_password))
+		patch_file(app_build_gradle, '$RELEASE_KEY_ALIAS$', escape_groovy_string(release_key_alias))
+		patch_file(app_build_gradle, '$RELEASE_KEY_PASSWORD$', escape_groovy_string(release_key_password))
+		patch_file(os.path.join(self.target_output_path, 'app', 'proguard-rules.pro'), '$PACKAGE$', package_name)
+		self.patch_android_activity(package_name)
 
 		# Patch AndroidManifest.xml
 		manifest_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'AndroidManifest.xml')
@@ -645,10 +687,6 @@ class Packager:
 		strings_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res', 'values', 'strings.xml')
 		patch_file(strings_path, '$APP_NAME$', self.args.nicename)
 		self.patch_android_icon()
-
-		# Patch LFActivity.java config
-		activity_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', 'com', 'lastfrontier', 'app', 'LFActivity.java')
-		patch_file(activity_path, '$CONFIG$', self.args.config)
 
 		android_env = buildtools.resolve_env()
 		android_home = android_env.get('ANDROID_HOME', '') or android_env.get('ANDROID_SDK_ROOT', '')
@@ -680,11 +718,15 @@ class Packager:
 
 			build_type = 'debug' if self.has_pack('Debug') else 'release'
 			apk_pattern = os.path.join(self.target_output_path, 'app', 'build', 'outputs', 'apk', build_type, '*.apk')
-			apk_files = glob.glob(apk_pattern)
+			apk_files = sorted(glob.glob(apk_pattern))
 			assert apk_files, 'No APK file found after Gradle build'
 
+			preferred_apk_files = [apk_file for apk_file in apk_files if not apk_file.endswith('-unsigned.apk')]
+			selected_apk_file = preferred_apk_files[0] if preferred_apk_files else apk_files[0]
+			assert self.has_pack('Debug') or not selected_apk_file.endswith('-unsigned.apk'), 'Release APK is unsigned'
+
 			apk_output = os.path.join(self.output_path, os.path.basename(self.target_output_path) + '.apk')
-			shutil.copy(apk_files[0], apk_output)
+			shutil.copy(selected_apk_file, apk_output)
 			log('APK output', apk_output)
 
 	def package_macos(self) -> None:

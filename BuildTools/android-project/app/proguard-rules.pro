@@ -1,4 +1,4 @@
-# ProGuard rules for Last Frontier
+# ProGuard rules for Android packaging template
 # Keep SDL native methods
 -keep class org.libsdl.app.** { *; }
--keep class com.lastfrontier.app.** { *; }
+-keep class $PACKAGE$.** { *; }
