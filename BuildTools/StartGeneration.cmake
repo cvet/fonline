@@ -53,6 +53,7 @@ SetBoolCacheValues(
 	BUILD_SHARED_LIBS OFF
 	BUILD_TESTING OFF
 	SKIP_INSTALL_ALL ON) # Generate compile_commands.json
+SetGlobalProperty(USE_FOLDERS ON)
 
 # Check options
 RequireNonEmptyVariables(
