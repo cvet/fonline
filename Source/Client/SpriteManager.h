@@ -174,7 +174,7 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver);
+    SpriteManager(RenderSettings& settings, IAppWindow& window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -187,7 +187,9 @@ public:
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> TextureAtlasManager& { return _atlasMngr; }
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
-    [[nodiscard]] auto GetWindow() noexcept -> AppWindow* { return _window.get(); }
+    [[nodiscard]] auto GetWindow() noexcept -> IAppWindow& { return *_window; }
+    [[nodiscard]] auto GetRender() noexcept -> IAppRender& { return *_render; }
+    [[nodiscard]] auto GetInput() noexcept -> IAppInput& { return *_input; }
     [[nodiscard]] auto GetWindowSize() const -> isize32;
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
@@ -258,11 +260,13 @@ private:
     void CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color);
 
     raw_ptr<RenderSettings> _settings;
-    raw_ptr<AppWindow> _window;
+    raw_ptr<IAppWindow> _window;
     raw_ptr<FileSystem> _resources;
     raw_ptr<GameTimer> _gameTimer;
     RenderTargetManager _rtMngr;
     TextureAtlasManager _atlasMngr;
+    raw_ptr<IAppRender> _render;
+    raw_ptr<IAppInput> _input;
     raw_ptr<EffectManager> _effectMngr;
     raw_ptr<HashResolver> _hashResolver;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};

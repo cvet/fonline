@@ -61,13 +61,15 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(this, weak_from_this());
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver) :
+SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver) :
     _settings {&settings},
-    _window {window},
+    _window {&window},
     _resources {&resources},
     _gameTimer {&game_time},
-    _rtMngr(settings, window, [this]() FO_DEFERRED { Flush(); }),
+    _rtMngr(settings, *_window, [this]() FO_DEFERRED { Flush(); }),
     _atlasMngr(settings, _rtMngr),
+    _render {&_window->GetRender()},
+    _input {&_window->GetInput()},
     _effectMngr {&effect_mngr},
     _hashResolver {&hash_resolver}
 {
@@ -76,18 +78,18 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _flushVertCount = 4096;
     _dipQueue.reserve(1000);
 
-    _spritesDrawBuf = App->Render.CreateDrawBuffer(false);
+    _spritesDrawBuf = _render->CreateDrawBuffer(false);
     _spritesDrawBuf->Vertices.resize(_flushVertCount + 1024);
     _spritesDrawBuf->Indices.resize(_flushVertCount / 4 * 6 + 1024);
-    _primitiveDrawBuf = App->Render.CreateDrawBuffer(false);
+    _primitiveDrawBuf = _render->CreateDrawBuffer(false);
     _primitiveDrawBuf->Vertices.resize(1024);
     _primitiveDrawBuf->Indices.resize(1024);
-    _flushDrawBuf = App->Render.CreateDrawBuffer(false);
+    _flushDrawBuf = _render->CreateDrawBuffer(false);
     _flushDrawBuf->Vertices.resize(4);
     _flushDrawBuf->VertCount = 4;
     _flushDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _flushDrawBuf->IndCount = 6;
-    _contourDrawBuf = App->Render.CreateDrawBuffer(false);
+    _contourDrawBuf = _render->CreateDrawBuffer(false);
     _contourDrawBuf->Vertices.resize(4);
     _contourDrawBuf->VertCount = 4;
     _contourDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
@@ -98,7 +100,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 #endif
     _rtContours = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
 
-    _eventUnsubscriber += App->OnLowMemory += [this]() FO_DEFERRED { CleanupSpriteCache(); };
+    _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
 }
 
 SpriteManager::~SpriteManager()
@@ -181,7 +183,7 @@ void SpriteManager::SetMousePosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    App->Input.SetMousePosition(pos, _window.get());
+    _input->SetMousePosition(pos, _window.get());
 }
 
 auto SpriteManager::IsFullscreen() const -> bool
@@ -301,7 +303,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     const auto width_to_f = numeric_cast<float32>(width_to_i);
     const auto height_to_f = numeric_cast<float32>(height_to_i);
     const auto flip_from = tex->FlippedHeight;
-    const auto flip_to = App->Render.IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->GetTexture()->FlippedHeight;
+    const auto flip_to = _render->IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->GetTexture()->FlippedHeight;
 
     if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices;
@@ -441,7 +443,7 @@ void SpriteManager::EnableScissor()
     const auto& rt_stack = _rtMngr.GetRenderTargetStack();
 
     if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
-        App->Render.EnableScissor(_scissorRect);
+        _render->EnableScissor(_scissorRect);
     }
 }
 
@@ -452,7 +454,7 @@ void SpriteManager::DisableScissor()
     const auto& rt_stack = _rtMngr.GetRenderTargetStack();
 
     if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
-        App->Render.DisableScissor();
+        _render->DisableScissor();
     }
 }
 

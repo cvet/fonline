@@ -132,6 +132,7 @@ public:
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();
     void ApplyAutoSettings();
+    void CopyFrom(const GlobalSettings& other);
     void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
 

@@ -36,6 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
+std::mutex InterthreadListenersLocker;
 map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 alignas(uint32_t) static volatile constexpr char PACKAGED_MARK[] = "###NOT_PACKAGED###";

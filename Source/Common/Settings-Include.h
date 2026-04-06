@@ -179,7 +179,6 @@ FIXED_SETTING(bool, Render, AtlasLinearFiltration, false); // If true, atlas lin
 FIXED_SETTING(int32, Render, DefaultParticleDrawWidth, 128); // Default particle draw width
 FIXED_SETTING(int32, Render, DefaultParticleDrawHeight, 128); // Default particle draw height
 FIXED_SETTING(bool, Render, RecreateClientOnError, false); // If true, client is recreated on error
-FIXED_SETTING(bool, Render, UseDummyEffects, false); // If true, missing client effects use built-in dummy definitions intended for testing with null renderer
 FIXED_SETTING(string, Render, ImGuiColorStyle); // ImGui theme: Light, Classic, Dark
 FIXED_SETTING(string, Render, ImGuiDefaultEffect, "Effects/ImGui_Default.fofx"); // Shader effect for ImGui
 FIXED_SETTING(int32, Render, ImGuiFontTextureSize, 256); // Minimum ImGui texture size

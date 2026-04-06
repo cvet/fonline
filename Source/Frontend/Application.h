@@ -42,6 +42,7 @@
 FO_BEGIN_NAMESPACE
 
 class Application;
+class IAppWindow;
 
 FO_DECLARE_EXCEPTION(AppInitException);
 
@@ -301,6 +302,89 @@ struct InputEvent
     }
 };
 
+class IAppRender
+{
+public:
+    virtual ~IAppRender() = default;
+
+    [[nodiscard]] virtual auto GetRenderTarget() -> RenderTexture* = 0;
+    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
+    [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
+
+    virtual void SetRenderTarget(RenderTexture* tex) = 0;
+    virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
+    virtual void EnableScissor(irect32 rect) = 0;
+    virtual void DisableScissor() = 0;
+};
+
+class IAppInput
+{
+public:
+    virtual ~IAppInput() = default;
+
+    [[nodiscard]] virtual auto IsMouseAvailable() const noexcept -> bool = 0;
+    [[nodiscard]] virtual auto GetMousePosition() const -> ipos32 = 0;
+    [[nodiscard]] virtual auto GetClipboardText() -> const string& = 0;
+    [[nodiscard]] virtual auto IsShiftDown() const noexcept -> bool = 0;
+    [[nodiscard]] virtual auto IsCtrlDown() const noexcept -> bool = 0;
+    [[nodiscard]] virtual auto IsAltDown() const noexcept -> bool = 0;
+
+    virtual auto PollEvent(InputEvent& ev) -> bool = 0;
+    virtual void ClearEvents() = 0;
+    virtual void SetMousePosition(ipos32 pos, const IAppWindow* relative_to = nullptr) = 0;
+    virtual void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) = 0;
+    virtual void SetScreenKeyboardEnabled(bool enabled) = 0;
+    virtual void SetClipboardText(string_view text) = 0;
+};
+
+class IAppAudio
+{
+public:
+    using AudioStreamCallback = function<void(uint8, span<uint8>)>;
+
+    virtual ~IAppAudio() = default;
+
+    [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
+
+    virtual auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool = 0;
+    virtual void SetSource(AudioStreamCallback stream_callback) = 0;
+    virtual void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume) = 0;
+    virtual void LockDevice() = 0;
+    virtual void UnlockDevice() = 0;
+};
+
+class IAppWindow
+{
+public:
+    virtual ~IAppWindow() = default;
+
+    [[nodiscard]] virtual auto GetSize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetScreenSize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetPosition() const -> ipos32 = 0;
+    [[nodiscard]] virtual auto IsFocused() const -> bool = 0;
+    [[nodiscard]] virtual auto IsFullscreen() const -> bool = 0;
+    [[nodiscard]] virtual auto GetRender() noexcept -> IAppRender& = 0;
+    [[nodiscard]] virtual auto GetInput() noexcept -> IAppInput& = 0;
+    [[nodiscard]] virtual auto GetAudio() noexcept -> IAppAudio& = 0;
+    [[nodiscard]] virtual auto GetOnWindowSizeChanged() noexcept -> EventObserver<>& = 0;
+    [[nodiscard]] virtual auto GetOnScreenSizeChanged() noexcept -> EventObserver<>& = 0;
+    [[nodiscard]] virtual auto GetOnLowMemory() noexcept -> EventObserver<>& = 0;
+    [[nodiscard]] virtual auto GetWindowHandleForInput() const -> WindowInternalHandle* = 0;
+
+    virtual void GrabInput(bool enable) = 0;
+    virtual void SetSize(isize32 size) = 0;
+    virtual void SetScreenSize(isize32 size) = 0;
+    virtual void SetPosition(ipos32 pos) = 0;
+    virtual void Minimize() = 0;
+    virtual auto ToggleFullscreen(bool enable) -> bool = 0;
+    virtual void Blink() = 0;
+    virtual void AlwaysOnTop(bool enable) = 0;
+    virtual void Destroy() = 0;
+};
+
 struct HeadlessWindowStub
 {
     isize32 Size {1000, 1000};
@@ -310,27 +394,34 @@ struct HeadlessWindowStub
     bool Minimized {};
 };
 
-class AppWindow final
+class AppWindow final : public IAppWindow
 {
     friend class Application;
     friend class AppInput;
 
 public:
-    [[nodiscard]] auto GetSize() const -> isize32;
-    [[nodiscard]] auto GetScreenSize() const -> isize32;
-    [[nodiscard]] auto GetPosition() const -> ipos32;
-    [[nodiscard]] auto IsFocused() const -> bool;
-    [[nodiscard]] auto IsFullscreen() const -> bool;
+    [[nodiscard]] auto GetSize() const -> isize32 override;
+    [[nodiscard]] auto GetScreenSize() const -> isize32 override;
+    [[nodiscard]] auto GetPosition() const -> ipos32 override;
+    [[nodiscard]] auto IsFocused() const -> bool override;
+    [[nodiscard]] auto IsFullscreen() const -> bool override;
+    [[nodiscard]] auto GetRender() noexcept -> IAppRender& override;
+    [[nodiscard]] auto GetInput() noexcept -> IAppInput& override;
+    [[nodiscard]] auto GetAudio() noexcept -> IAppAudio& override;
+    [[nodiscard]] auto GetOnWindowSizeChanged() noexcept -> EventObserver<>& override { return OnWindowSizeChanged; }
+    [[nodiscard]] auto GetOnScreenSizeChanged() noexcept -> EventObserver<>& override { return OnScreenSizeChanged; }
+    [[nodiscard]] auto GetOnLowMemory() noexcept -> EventObserver<>& override;
+    [[nodiscard]] auto GetWindowHandleForInput() const -> WindowInternalHandle* override;
 
-    void GrabInput(bool enable);
-    void SetSize(isize32 size);
-    void SetScreenSize(isize32 size);
-    void SetPosition(ipos32 pos);
-    void Minimize();
-    auto ToggleFullscreen(bool enable) -> bool;
-    void Blink();
-    void AlwaysOnTop(bool enable);
-    void Destroy();
+    void GrabInput(bool enable) override;
+    void SetSize(isize32 size) override;
+    void SetScreenSize(isize32 size) override;
+    void SetPosition(ipos32 pos) override;
+    void Minimize() override;
+    auto ToggleFullscreen(bool enable) -> bool override;
+    void Blink() override;
+    void AlwaysOnTop(bool enable) override;
+    void Destroy() override;
 
     EventObserver<> OnWindowSizeChanged {};
     EventObserver<> OnScreenSizeChanged {};
@@ -352,7 +443,7 @@ private:
     int32 _nonConstHelper {};
 };
 
-class AppRender final
+class AppRender final : public IAppRender
 {
     friend class Application;
 
@@ -363,17 +454,17 @@ public:
     static const int32& MAX_ATLAS_HEIGHT;
     static const int32& MAX_BONES;
 
-    [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>;
-    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44;
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
+    [[nodiscard]] auto GetRenderTarget() -> RenderTexture* override;
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
+    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
 
-    void SetRenderTarget(RenderTexture* tex);
-    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
-    void EnableScissor(irect32 rect);
-    void DisableScissor();
+    void SetRenderTarget(RenderTexture* tex) override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(irect32 rect) override;
+    void DisableScissor() override;
 
 private:
     explicit AppRender(Application* app) :
@@ -385,26 +476,26 @@ private:
     int32 _nonConstHelper {};
 };
 
-class AppInput final
+class AppInput final : public IAppInput
 {
     friend class Application;
 
 public:
     static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
 
-    [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool;
-    [[nodiscard]] auto GetMousePosition() const -> ipos32;
-    [[nodiscard]] auto GetClipboardText() -> const string&;
-    [[nodiscard]] auto IsShiftDown() const noexcept -> bool { return _shiftDown; }
-    [[nodiscard]] auto IsCtrlDown() const noexcept -> bool { return _ctrlDown; }
-    [[nodiscard]] auto IsAltDown() const noexcept -> bool { return _altDown; }
+    [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
+    [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
+    [[nodiscard]] auto GetClipboardText() -> const string& override;
+    [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
+    [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }
+    [[nodiscard]] auto IsAltDown() const noexcept -> bool override { return _altDown; }
 
-    auto PollEvent(InputEvent& ev) -> bool;
-    void ClearEvents();
-    void SetMousePosition(ipos32 pos, const AppWindow* relative_to = nullptr);
-    void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
-    void SetScreenKeyboardEnabled(bool enabled);
-    void SetClipboardText(string_view text);
+    auto PollEvent(InputEvent& ev) -> bool override;
+    void ClearEvents() override;
+    void SetMousePosition(ipos32 pos, const IAppWindow* relative_to = nullptr) override;
+    void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override;
+    void SetScreenKeyboardEnabled(bool enabled) override;
+    void SetClipboardText(string_view text) override;
 
 private:
     explicit AppInput(Application* app) :
@@ -420,7 +511,7 @@ private:
     bool _altDown {};
 };
 
-class AppAudio final
+class AppAudio final : public IAppAudio
 {
     friend class Application;
 
@@ -428,15 +519,15 @@ public:
     static const int32 AUDIO_FORMAT_U8;
     static const int32 AUDIO_FORMAT_S16;
 
-    using AudioStreamCallback = function<void(uint8, span<uint8>)>;
+    using AudioStreamCallback = IAppAudio::AudioStreamCallback;
 
-    [[nodiscard]] auto IsEnabled() const -> bool;
+    [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool;
-    void SetSource(AudioStreamCallback stream_callback);
-    void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume);
-    void LockDevice();
-    void UnlockDevice();
+    auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool override;
+    void SetSource(AudioStreamCallback stream_callback) override;
+    void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume) override;
+    void LockDevice() override;
+    void UnlockDevice() override;
 
 private:
     explicit AppAudio(Application* app) :
@@ -579,7 +670,33 @@ private:
     int32 _nonConstHelper {};
 };
 
+inline auto AppWindow::GetRender() noexcept -> IAppRender&
+{
+    return _app->Render;
+}
+
+inline auto AppWindow::GetInput() noexcept -> IAppInput&
+{
+    return _app->Input;
+}
+
+inline auto AppWindow::GetAudio() noexcept -> IAppAudio&
+{
+    return _app->Audio;
+}
+
+inline auto AppWindow::GetOnLowMemory() noexcept -> EventObserver<>&
+{
+    return _app->OnLowMemory;
+}
+
+inline auto AppWindow::GetWindowHandleForInput() const -> WindowInternalHandle*
+{
+    return _windowHandle ? _windowHandle.get_no_const() : nullptr;
+}
+
 extern unique_ptr<Application> App;
 extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
+auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 
 FO_END_NAMESPACE

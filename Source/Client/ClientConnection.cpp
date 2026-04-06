@@ -84,7 +84,15 @@ void ClientConnection::Connect()
         // First try interthread communication
         const auto port = numeric_cast<uint16>(_settings->ServerPort);
 
-        if (InterthreadListeners.count(port) != 0) {
+        bool has_interthread_listener = false;
+
+        {
+            std::scoped_lock locker(InterthreadListenersLocker);
+
+            has_interthread_listener = InterthreadListeners.count(port) != 0;
+        }
+
+        if (has_interthread_listener) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
         }
         else {

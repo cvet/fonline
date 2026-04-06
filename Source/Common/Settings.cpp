@@ -415,6 +415,25 @@ void GlobalSettings::ApplyAutoSettings()
     const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
+void GlobalSettings::CopyFrom(const GlobalSettings& other)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _resourcePacks = other._resourcePacks;
+    _subConfigs = other._subConfigs;
+    _appliedConfigs = other._appliedConfigs;
+    _appliedSettings = other._appliedSettings;
+    _bakingMode = other._bakingMode;
+    _customSettings = other._customSettings;
+    _emptySetting = other._emptySetting;
+
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = other.name
+#define VARIABLE_SETTING(type, group, name, ...) name = other.name
+#include "Settings-Include.h"
+}
+
 void GlobalSettings::ApplySubConfigSection(string_view name)
 {
     FO_STACK_TRACE_ENTRY();

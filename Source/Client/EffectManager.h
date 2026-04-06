@@ -91,7 +91,7 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileSystem& resources);
+    EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
@@ -110,6 +110,7 @@ private:
 
     raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
+    raw_ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
 };

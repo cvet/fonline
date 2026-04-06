@@ -66,9 +66,7 @@ FO_SCRIPT_API ipos32 Client_Game_MousePos(ClientEngine* client)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsMouseAvailable(ClientEngine* client)
 {
-    ignore_unused(client);
-
-    return App->Input.IsMouseAvailable();
+    return client->SprMngr.GetInput().IsMouseAvailable();
 }
 
 ///@ ExportMethod
@@ -580,7 +578,7 @@ FO_SCRIPT_API VideoPlayback* Client_Game_CreateVideoPlayback(ClientEngine* clien
     }
 
     auto clip = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    auto tex = App->Render.CreateTexture(clip->GetSize(), true, false);
+    auto tex = client->SprMngr.GetRender().CreateTexture(clip->GetSize(), true, false);
 
     clip->SetLooped(looped);
 
@@ -1593,9 +1591,7 @@ FO_SCRIPT_API string Client_Game_BuiltInCommand(ClientEngine* client, string_vie
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ClientEngine* client, bool enabled)
 {
-    ignore_unused(client);
-
-    App->Input.SetScreenKeyboardEnabled(enabled);
+    client->SprMngr.GetInput().SetScreenKeyboardEnabled(enabled);
 }
 
 FO_END_NAMESPACE

@@ -167,16 +167,17 @@ auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, IAppRender& render, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {&settings},
     _resources {&resources},
     _effectMngr {&effect_mngr},
+    _render {&render},
     _gameTime {&game_time},
     _hashResolver {&hash_resolver},
     _nameResolver {&name_resolver},
     _animNameResolver {&anim_name_resolver},
     _textureLoader {tex_loader},
-    _particleMngr(settings, effect_mngr, resources, game_time, std::move(tex_loader))
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -570,7 +571,7 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     const auto proj_height = numeric_cast<float32>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProj;
 }
 
@@ -1481,7 +1482,7 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32 anim_la
     // Create new combined mesh
     if (_actualCombinedMeshesCount >= _combinedMeshes.size()) {
         auto combined_mesh = SafeAlloc::MakeUnique<CombinedMesh>();
-        combined_mesh->MeshBuf = App->Render.CreateDrawBuffer(true);
+        combined_mesh->MeshBuf = _modelMngr->_render->CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
         _combinedMeshes.emplace_back(std::move(combined_mesh));

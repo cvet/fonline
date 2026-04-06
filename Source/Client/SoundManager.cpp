@@ -61,9 +61,10 @@ static constexpr auto MakeUInt(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources, IAppAudio& audio) :
     _settings {&settings},
-    _resources {&resources}
+    _resources {&resources},
+    _audio {&audio}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,7 +73,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     ignore_unused(OV_CALLBACKS_STREAMONLY);
     ignore_unused(OV_CALLBACKS_STREAMONLY_NOCLOSE);
 
-    if (!App->Audio.IsEnabled()) {
+    if (!_audio->IsEnabled()) {
         return;
     }
     if (_settings->DisableAudio) {
@@ -85,7 +86,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
     _streamingPortion = 0x10000; // 64kb
 #endif
 
-    App->Audio.SetSource([this](uint8 silence, span<uint8> output) FO_DEFERRED { ProcessSounds(silence, output); });
+    _audio->SetSource([this](uint8 silence, span<uint8> output) FO_DEFERRED { ProcessSounds(silence, output); });
     _isActive = true;
 }
 
@@ -94,11 +95,11 @@ SoundManager::~SoundManager()
     FO_STACK_TRACE_ENTRY();
 
     if (_isActive) {
-        App->Audio.SetSource(nullptr);
+        _audio->SetSource(nullptr);
 
-        App->Audio.LockDevice();
+        _audio->LockDevice();
         _playingSounds.clear();
-        App->Audio.UnlockDevice();
+        _audio->UnlockDevice();
     }
 }
 
@@ -115,7 +116,7 @@ void SoundManager::ProcessSounds(uint8 silence, span<uint8> output)
 
         if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
             const auto volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
-            App->Audio.MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32>(volume));
+            _audio->MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32>(volume));
             ++it;
         }
         else {
@@ -228,9 +229,9 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
     sound->IsMusic = is_music;
     sound->RepeatTime = repeat_time;
 
-    App->Audio.LockDevice();
+    _audio->LockDevice();
     _playingSounds.emplace_back(std::move(sound));
-    App->Audio.UnlockDevice();
+    _audio->UnlockDevice();
 
     return true;
 }
@@ -553,7 +554,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
-    if (!App->Audio.ConvertAudio(sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
+    if (!_audio->ConvertAudio(sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
         return false;
     }
 
@@ -616,9 +617,9 @@ void SoundManager::StopSounds()
         return;
     }
 
-    App->Audio.LockDevice();
+    _audio->LockDevice();
     std::erase_if(_playingSounds, [](auto&& s) { return !s->IsMusic; });
-    App->Audio.UnlockDevice();
+    _audio->UnlockDevice();
 }
 
 void SoundManager::StopMusic()
@@ -629,9 +630,9 @@ void SoundManager::StopMusic()
         return;
     }
 
-    App->Audio.LockDevice();
+    _audio->LockDevice();
     std::erase_if(_playingSounds, [](auto&& s) { return s->IsMusic; });
-    App->Audio.UnlockDevice();
+    _audio->UnlockDevice();
 }
 
 FO_END_NAMESPACE

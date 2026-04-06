@@ -120,7 +120,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSett
 {
     FO_STACK_TRACE_ENTRY();
 
-    _particleMngr = SafeAlloc::MakeUnique<ParticleManager>(settings, effect_mngr, spr_mngr.GetResources(), game_time, //
+    _particleMngr = SafeAlloc::MakeUnique<ParticleManager>(settings, effect_mngr, spr_mngr.GetRender(), spr_mngr.GetResources(), game_time, //
         [this, &hash_resolver](string_view path) FO_DEFERRED { return LoadTexture(hash_resolver.ToHashedString(path)); });
 }
 
@@ -138,7 +138,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     const auto frame_ratio = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(draw_size.height);
     const auto proj_height = numeric_cast<float32>(draw_size.height) * (1.0f / _settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
-    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    const mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     const auto world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
 
     particle->Setup(proj, world, {}, {}, {});

@@ -332,7 +332,7 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), &App->MainWindow);
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] {

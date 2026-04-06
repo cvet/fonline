@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Rendering.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -52,7 +53,7 @@ namespace SPK::FO
     class SparkRenderBuffer final : public RenderBuffer
     {
     public:
-        explicit SparkRenderBuffer(size_t vertices);
+        SparkRenderBuffer(size_t vertices, FO_NAMESPACE IAppRender& render);
 
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
@@ -61,6 +62,7 @@ namespace SPK::FO
 
     private:
         mutable unique_ptr<RenderDrawBuffer> _renderBuf {};
+        raw_ptr<FO_NAMESPACE IAppRender> _render {};
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
     };

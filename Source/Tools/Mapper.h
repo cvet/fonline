@@ -175,7 +175,7 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    explicit MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window);
+    explicit MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow& window);
 
     MapperEngine(const MapperEngine&) = delete;
     MapperEngine(MapperEngine&&) noexcept = delete;

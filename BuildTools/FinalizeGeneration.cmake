@@ -1118,6 +1118,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
@@ -1129,6 +1130,7 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"

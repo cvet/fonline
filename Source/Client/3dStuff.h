@@ -183,7 +183,7 @@ public:
     using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, IAppRender& render, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -209,6 +209,7 @@ private:
     raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
     raw_ptr<EffectManager> _effectMngr;
+    raw_ptr<IAppRender> _render;
     raw_ptr<GameTimer> _gameTime;
     mutable raw_ptr<HashResolver> _hashResolver;
     raw_ptr<NameResolver> _nameResolver;
