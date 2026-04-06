@@ -120,7 +120,7 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources);
+    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources, App->Render);
 
     _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor->Settings);
 
