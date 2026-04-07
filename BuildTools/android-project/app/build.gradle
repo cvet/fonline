@@ -2,9 +2,26 @@ plugins {
     id 'com.android.application'
 }
 
+def releaseStoreFile = '$RELEASE_STORE_FILE$'
+def releaseStorePassword = '$RELEASE_STORE_PASSWORD$'
+def releaseKeyAlias = '$RELEASE_KEY_ALIAS$'
+def releaseKeyPassword = '$RELEASE_KEY_PASSWORD$'
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
-    namespace "com.lastfrontier.app"
+    namespace "$PACKAGE$"
     compileSdkVersion $COMPILE_SDK$
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "$PACKAGE$"
@@ -19,6 +36,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

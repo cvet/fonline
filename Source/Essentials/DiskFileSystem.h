@@ -48,6 +48,8 @@ using FsFileVisitor = function<void(string_view, size_t, uint64)>;
 [[nodiscard]] auto fs_resolve_path(string_view path) -> string;
 [[nodiscard]] auto fs_exists(string_view path) noexcept -> bool;
 [[nodiscard]] auto fs_is_dir(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_is_absolute_path(string_view path) noexcept -> bool;
+[[nodiscard]] auto fs_is_relative_path(string_view path) noexcept -> bool;
 [[nodiscard]] auto fs_create_directories(string_view dir) noexcept -> bool;
 [[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64;
 [[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64>;

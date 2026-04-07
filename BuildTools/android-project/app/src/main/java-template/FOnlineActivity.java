@@ -1,4 +1,4 @@
-package com.lastfrontier.app;
+package $PACKAGE$;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 
 import org.libsdl.app.SDLActivity;
 
-public class LFActivity extends SDLActivity {
+public class FOnlineActivity extends SDLActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

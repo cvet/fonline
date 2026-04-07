@@ -74,6 +74,20 @@ auto fs_is_dir(string_view path) noexcept -> bool
     return std::filesystem::is_directory(std::filesystem::path {fs_make_path(path)}, ec) && !ec;
 }
 
+auto fs_is_absolute_path(string_view path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !path.empty() && std::filesystem::path {fs_make_path(path)}.is_absolute();
+}
+
+auto fs_is_relative_path(string_view path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return path.empty() || std::filesystem::path {fs_make_path(path)}.is_relative();
+}
+
 auto fs_create_directories(string_view dir) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();

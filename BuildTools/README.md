@@ -108,24 +108,26 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace connect
 cd Workspace/android-debug/LF-Client-LocalTest-Android
 ./gradlew assembleDebug
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch --activity com.lastfrontier.app/.LFActivity
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch --activity com.example.game/.FOnlineActivity
 
 # Remote scene launch from host to Android device
 python3 Engine/BuildTools/buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch
 cd Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android
 ./gradlew assembleDebug
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-game --activity com.lastfrontier.app/.LFActivity
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-game --activity com.example.game/.FOnlineActivity
 ```
 
 `launch-game` auto-detects the host LAN IP that reaches the selected Wi-Fi Android device and passes it as a runtime `ClientNetwork.ServerHost` override, which makes the packaged `RemoteSceneLaunch` client connect back to the host server without editing baked config files.
 
-At runtime, `LFActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
+At runtime, `FOnlineActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
 
 Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
 
 Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
 
-The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from `LastFrontier.fomain` section `Android.*`, including `Android.Icon` for the launcher icon PNG source.
+The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from the project main config `Android.*` settings, including the launcher icon PNG source and the Android signing settings.
+
+Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. If they are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.

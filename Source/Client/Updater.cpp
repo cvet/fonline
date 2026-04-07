@@ -91,6 +91,7 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
+    _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
     // Connect
@@ -291,6 +292,17 @@ void Updater::Net_OnInitData()
         if (!_filesToUpdate.empty()) {
             GetNextFile();
         }
+    }
+}
+
+void Updater::Net_OnTimeSync()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto time = _conn.InBuf->Read<synctime>();
+
+    if (time > _gameTime.GetSynchronizedTime()) {
+        _gameTime.SetSynchronizedTime(time);
     }
 }
 

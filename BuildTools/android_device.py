@@ -367,11 +367,11 @@ def create_parser() -> argparse.ArgumentParser:
 	install_parser.add_argument('--device', dest='device', help='Device IP[:port]; if omitted, cached endpoint or discovery is used')
 
 	launch_parser = subparsers.add_parser('launch', help='Launch an Android activity on the selected device')
-	launch_parser.add_argument('--activity', required=True, help='Fully qualified activity component, e.g. com.lastfrontier.app/.LFActivity')
+	launch_parser.add_argument('--activity', required=True, help='Fully qualified activity component, e.g. com.example.game/.FOnlineActivity')
 	launch_parser.add_argument('--device', dest='device', help='Device IP[:port]; if omitted, cached endpoint or discovery is used')
 
 	launch_game_parser = subparsers.add_parser('launch-game', help='Launch the Android game activity and pass RemoteSceneLaunch server host override')
-	launch_game_parser.add_argument('--activity', required=True, help='Fully qualified activity component, e.g. com.lastfrontier.app/.LFActivity')
+	launch_game_parser.add_argument('--activity', required=True, help='Fully qualified activity component, e.g. com.example.game/.FOnlineActivity')
 	launch_game_parser.add_argument('--device', dest='device', help='Device IP[:port]; if omitted, cached endpoint or discovery is used')
 	launch_game_parser.add_argument('--server-host', dest='server_host', help='Host IP or name for ClientNetwork.ServerHost; if omitted, auto-detected from the route to the selected device')
 
