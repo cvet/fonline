@@ -188,8 +188,8 @@ private:
 
     raw_ptr<GlobalSettings> _settings {};
     string _clipboardTextStorage {};
-    vector<InputEvent> _eventsQueue {};
-    vector<InputEvent> _nextFrameEventsQueue {};
+    deque<InputEvent> _eventsQueue {};
+    deque<InputEvent> _nextFrameEventsQueue {};
     bool _shiftDown {};
     bool _ctrlDown {};
     bool _altDown {};

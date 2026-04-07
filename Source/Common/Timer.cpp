@@ -52,7 +52,7 @@ void GameTimer::SetSynchronizedTime(synctime time) noexcept
     _syncTimeSet = _frameTime;
 }
 
-void GameTimer::FrameAdvance()
+void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -60,11 +60,11 @@ void GameTimer::FrameAdvance()
     const auto now_time = nanotime::now();
 
     // Skip time spent under debugger
-    if (IsRunInDebugger() && _settings->DebuggingDeltaTimeCap != 0) {
+    if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
         const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32>();
 
-        if (dt > _settings->DebuggingDeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DebuggingDeltaTimeCap);
+        if (dt > _settings->DeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);
         }
 
         _frameTime = now_time - _debuggingOffset;

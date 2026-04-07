@@ -63,7 +63,7 @@ class ParticleManager final
 public:
     using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
 
-    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, IAppRender& render, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
+    explicit ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, IAppRender& render, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;

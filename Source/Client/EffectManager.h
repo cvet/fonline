@@ -91,7 +91,7 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render);
+    explicit EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;

@@ -42,13 +42,13 @@ FO_BEGIN_NAMESPACE
 
 struct WorkThreadData
 {
-    WorkThreadData() { SetThisThreadName("Main"); }
+    WorkThreadData() { set_this_thread_name("Main"); }
 };
 FO_GLOBAL_DATA(WorkThreadData, WorkThread);
 
 static thread_local string ThreadName;
 
-extern void SetThisThreadName(const string& name) noexcept
+extern void set_this_thread_name(const string& name) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -61,7 +61,7 @@ extern void SetThisThreadName(const string& name) noexcept
 #endif
 }
 
-extern auto GetThisThreadName() noexcept -> const string&
+extern auto get_this_thread_name() noexcept -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -78,7 +78,7 @@ WorkThread::WorkThread(string_view name)
     FO_STACK_TRACE_ENTRY();
 
     _name = name;
-    _thread = std::thread(&WorkThread::ThreadEntry, this);
+    _thread = run_thread(name, [this] { ThreadEntry(); });
 }
 
 WorkThread::~WorkThread()
@@ -222,8 +222,6 @@ void WorkThread::ThreadEntry() noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        SetThisThreadName(_name);
-
         while (true) {
             Job job;
 

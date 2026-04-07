@@ -180,7 +180,7 @@ void ParticleEditor::OnDraw()
 
     EditorAssetView::OnDraw();
 
-    _impl->GameTime->FrameAdvance();
+    _impl->GameTime->FrameAdvance(true);
 
     _impl->Changed = false;
 

@@ -39,8 +39,23 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void SetThisThreadName(const string& name) noexcept;
-extern auto GetThisThreadName() noexcept -> const string&;
+extern void set_this_thread_name(const string& name) noexcept;
+extern auto get_this_thread_name() noexcept -> const string&;
+
+template<typename Func, typename... Args>
+[[nodiscard]] inline auto run_thread(string_view name, Func&& func, Args&&... args) -> std::thread
+{
+    const auto& cur_thread_name = get_this_thread_name();
+    const size_t ns_pos = cur_thread_name.rfind("::");
+    string qualifed_name = ns_pos != string::npos ? cur_thread_name.substr(0, ns_pos + 2) + string(name) : string(name);
+
+    return std::thread(
+        [qualifed_name_ = std::move(qualifed_name), func_ = std::decay_t<Func>(std::forward<Func>(func))](auto&&... inner_args) mutable {
+            set_this_thread_name(qualifed_name_);
+            func_(std::forward<decltype(inner_args)>(inner_args)...);
+        },
+        std::forward<Args>(args)...);
+}
 
 class WorkThread
 {

@@ -447,7 +447,7 @@ if(FO_BUILD_BAKER_LIB)
             ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
 
-    AddSubdirectory("${FO_GLSLANG_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_GLSLANG_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_GLSLANG_DIR}/glslang/Public" "${FO_GLSLANG_DIR}/SPIRV")
     AppendList(FO_BAKER_LIBS
         glslang
