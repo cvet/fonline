@@ -491,7 +491,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                         }
                     }
                     else {
-                        const string file_path = strex(config_dir).combine_path(name);
+                        const string file_path = fs_is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
                         if (auto file_content = fs_read_file(file_path)) {
                             *file_content = strvex(*file_content).trim();
 
