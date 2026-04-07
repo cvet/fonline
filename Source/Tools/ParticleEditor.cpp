@@ -32,6 +32,7 @@
 //
 
 #include "ParticleEditor.h"
+#include "Application.h"
 #include "ImGuiStuff.h"
 #include "SparkExtension.h"
 #include "VisualParticles.h"

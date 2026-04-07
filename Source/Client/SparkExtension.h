@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "Application.h"
 #include "Rendering.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -43,6 +42,7 @@ FO_DISABLE_WARNINGS_PUSH()
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
+class IAppRender;
 class ParticleManager;
 FO_END_NAMESPACE
 

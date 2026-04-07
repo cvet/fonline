@@ -38,7 +38,6 @@
 #if FO_ENABLE_3D
 
 #include "3dAnimation.h"
-#include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Geometry.h"
@@ -48,6 +47,8 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr size_t MODEL_LAYERS_COUNT = 30;
+
+class IAppRender;
 
 enum class ModelAnimFlags : uint8
 {

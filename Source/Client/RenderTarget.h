@@ -37,11 +37,12 @@
 
 #include "Common.h"
 
-#include "Application.h"
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
 
+class IAppWindow;
+class IAppRender;
 class RenderTargetManager;
 
 class RenderTarget

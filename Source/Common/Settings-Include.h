@@ -219,7 +219,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual BaseSettings);
-FIXED_SETTING(int32, Timer, DeltaTimeCap, 100); // Debugging delta time cap in milliseconds
+FIXED_SETTING(int32, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseconds
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

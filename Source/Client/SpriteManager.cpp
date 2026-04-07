@@ -32,6 +32,7 @@
 //
 
 #include "SpriteManager.h"
+#include "Application.h"
 #include "DefaultSprites.h"
 
 FO_BEGIN_NAMESPACE

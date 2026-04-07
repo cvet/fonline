@@ -113,7 +113,7 @@ public:
         }
 
         ev = _eventsQueue.front();
-        _eventsQueue.erase(_eventsQueue.begin());
+        _eventsQueue.pop_front();
         return true;
     }
 

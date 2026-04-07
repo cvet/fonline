@@ -38,7 +38,6 @@
 #include "Common.h"
 
 #include "3dStuff.h"
-#include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Geometry.h"
@@ -80,6 +79,9 @@ static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
 static constexpr auto COLOR_TEXT_DWHITE = ucolor {191, 191, 191};
 static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 
+class IAppWindow;
+class IAppRender;
+class IAppInput;
 class SpriteManager;
 class AtlasSprite;
 

@@ -59,7 +59,6 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
     const auto prev_frame_time = _frameTime;
     const auto now_time = nanotime::now();
 
-    // Skip time spent under debugger
     if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
         const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32>();
 

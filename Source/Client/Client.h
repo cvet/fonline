@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "3dStuff.h"
+#include "Application.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "CritterHexView.h"

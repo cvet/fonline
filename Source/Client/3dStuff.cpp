@@ -35,6 +35,7 @@
 
 #if FO_ENABLE_3D
 
+#include "Application.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE

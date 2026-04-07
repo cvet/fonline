@@ -34,6 +34,7 @@
 // Todo: support restoring file downloading from interrupted position
 
 #include "Updater.h"
+#include "Application.h"
 #include "DefaultSprites.h"
 #include "NetCommand.h"
 

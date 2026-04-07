@@ -35,8 +35,8 @@
 
 #include "Common.h"
 
-#include "Application.h"
 #include "FileSystem.h"
+#include "Rendering.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectManagerException);
 
+class IAppRender;
 class ServerEngine;
 
 struct EffectCollection
