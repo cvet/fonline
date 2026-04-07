@@ -54,7 +54,7 @@ TEST_CASE("GameTimer")
         const nanotime initial_time = timer.GetFrameTime();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        timer.FrameAdvance();
+        timer.FrameAdvance(false);
 
         CHECK(timer.GetFrameTime() >= initial_time);
         CHECK(timer.GetFrameDeltaTime() >= timespan {});
@@ -70,7 +70,7 @@ TEST_CASE("GameTimer")
         CHECK(timer.GetSynchronizedTime() == sync_base);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        timer.FrameAdvance();
+        timer.FrameAdvance(false);
 
         CHECK(timer.GetSynchronizedTime() >= sync_base);
     }
@@ -79,11 +79,11 @@ TEST_CASE("GameTimer")
     {
         GameTimer timer {settings};
 
-        timer.FrameAdvance();
+        timer.FrameAdvance(false);
         CHECK(timer.GetFramesPerSecond() == 0);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1100));
-        timer.FrameAdvance();
+        timer.FrameAdvance(false);
 
         CHECK(timer.GetFramesPerSecond() >= 1);
     }
