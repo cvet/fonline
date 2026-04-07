@@ -130,7 +130,7 @@ auto Updater::Process() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _gameTime.FrameAdvance();
+    _gameTime.FrameAdvance(IsRunInDebugger());
 
     InputEvent ev;
     while (_sprMngr.GetInput().PollEvent(ev)) {

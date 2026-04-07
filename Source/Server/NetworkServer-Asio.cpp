@@ -231,7 +231,7 @@ NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConne
     FO_STACK_TRACE_ENTRY();
 
     AcceptNext();
-    _runThread = std::thread(&NetworkServer_Asio::Run, this);
+    _runThread = run_thread("Network-Asio", [this] { Run(); });
 }
 
 void NetworkServer_Asio::Shutdown()

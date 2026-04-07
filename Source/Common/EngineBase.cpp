@@ -1147,7 +1147,7 @@ void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance();
+    GameTime.FrameAdvance(IsRunInDebugger() || Settings.DisableNetworking);
 
     SetFrameTime(GameTime.GetFrameTime());
     SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
