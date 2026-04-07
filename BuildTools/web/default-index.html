@@ -320,6 +320,7 @@
     });
 
     var Module = {
+      websocket: {},
       preRun: [function () {
         if (typeof FS !== 'undefined') {
           FS.chdir('/');
