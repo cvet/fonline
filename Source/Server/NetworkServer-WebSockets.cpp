@@ -99,6 +99,7 @@ public:
 private:
     void Run();
     void OnOpen(const websocketpp::connection_hdl& hdl);
+    void OnFail(const websocketpp::connection_hdl& hdl);
 
     [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
     [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
@@ -179,7 +180,6 @@ void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::conn
 
     ignore_unused(hdl);
 
-    WriteLog("Failed: {}", _connection->get_ec().message());
     Disconnect();
 }
 
@@ -218,6 +218,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
+            WriteLog("WebSocket send failed to {}:{}: {}", _host, _port, error.message());
             Disconnect();
         }
     }
@@ -250,7 +251,10 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
+    _server.clear_access_channels(websocketpp::log::alevel::all);
+    _server.set_access_channels(websocketpp::log::alevel::access_core);
     _server.set_open_handler([this](auto&& hdl) FO_DEFERRED { OnOpen(hdl); });
+    _server.set_fail_handler([this](auto&& hdl) FO_DEFERRED { OnFail(hdl); });
     _server.set_validate_handler([this](auto&& hdl) FO_DEFERRED { return OnValidate(hdl); });
 
     if constexpr (Secured) {
@@ -298,6 +302,19 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
 }
 
 template<bool Secured>
+void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto&& connection = _server.get_con_from_hdl(hdl);
+    const auto& ec = connection->get_ec();
+    const auto remote_endpoint = connection->get_remote_endpoint();
+    const auto error_message = ec.message();
+
+    WriteLog("WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
+}
+
+template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -314,8 +331,9 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
 
     ignore_unused(hdl);
 
-    auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tlsv1));
-    ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
+    auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tls_server));
+    ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
+    SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
     ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
     ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
     return ctx;

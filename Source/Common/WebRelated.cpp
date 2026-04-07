@@ -222,6 +222,10 @@ EM_JS(int, WebIsPersistentDataReadyImpl, (), {
 });
 
 EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
+    if (!Module['websocket']) {
+        Module['websocket'] = {};
+    }
+
     Module['websocket']['url'] = secure != 0 ? 'wss://' : 'ws://';
 });
 
