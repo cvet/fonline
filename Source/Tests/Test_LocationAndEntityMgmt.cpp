@@ -683,20 +683,59 @@ namespace LocEntity
 
     int TestUnloadCritter()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -1;
+
+        array<hstring> mapPids = {"TestMap".hstr()};
+        Location@ loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (loc is null) {
+            Game.DestroyCritter(cr);
+            return -2;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            Game.DestroyLocation(loc);
+            Game.DestroyCritter(cr);
+            return -3;
+        }
+
+        cr.TransferToMap(map, mpos(20, 20), 0);
+        if (cr.MapId.value != map.Id.value) {
+            Game.DestroyLocation(loc);
+            Game.DestroyCritter(cr);
+            return -4;
+        }
+
+        cr.MakePersistent(true);
 
         ident crId = cr.Id;
 
         Game.UnloadCritter(cr);
 
         Critter@ gone = Game.GetCritter(crId);
-        if (gone !is null) return -2;
+        if (gone !is null) {
+            Game.DestroyLocation(loc);
+            return -5;
+        }
 
         Critter@ loaded = Game.LoadCritter(crId, false);
-        if (loaded is null) return -3;
-        if (loaded.Id.value != crId.value) return -4;
+        if (loaded is null) {
+            Game.DestroyLocation(loc);
+            return -6;
+        }
+        if (loaded.Id.value != crId.value) {
+            Game.DestroyLocation(loc);
+            Game.DestroyCritter(loaded);
+            return -7;
+        }
+        if (loaded.MapId.value != 0) {
+            Game.DestroyLocation(loc);
+            Game.DestroyCritter(loaded);
+            return -8;
+        }
 
+        Game.DestroyLocation(loc);
         Game.DestroyCritter(loaded);
         return 0;
     }
@@ -732,6 +771,42 @@ namespace LocEntity
         });
     }
 
+    static auto MakeEmptyMapBlob() -> vector<uint8>
+    {
+        vector<uint8> map_data;
+        auto writer = DataWriter(map_data);
+        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32>(uint32 {0});
+        return map_data;
+    }
+
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8>
+    {
+        vector<uint8> props_data;
+        set<hstring> str_hashes;
+
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        proto.SetSize(map_size);
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+
+        vector<uint8> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32>(uint32 {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
+
+        return protos_data;
+    }
+
     static auto MakeResources() -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -746,10 +821,13 @@ namespace LocEntity
         const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
         const auto item_type = proto_engine.Hashes.ToHashedString("Item");
         const auto location_type = proto_engine.Hashes.ToHashedString("Location");
+        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
 
         const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
+        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
@@ -757,6 +835,8 @@ namespace LocEntity
         runtime_source->AddFile("LocEntityCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("LocEntityItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("LocEntityLocation.fopro-bin-server", location_blob);
+        runtime_source->AddFile("TestMap.fopro-bin-server", map_blob);
+        runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("LocEntity.fos-bin-server", script_blob);
 
         FileSystem resources;
@@ -1022,6 +1102,16 @@ TEST_CASE("CollectionAndStringOps")
 }
 
 // ========== Bulk Move Operations ==========
+
+TEST_CASE("LoadUnloadCritter")
+{
+    MAKE_LEM_SERVER();
+
+    SECTION("UnloadAndLoadClearsMapId")
+    {
+        RUN_LEM_FUNC("TestUnloadCritter");
+    }
+}
 
 TEST_CASE("BulkMoveOperations")
 {

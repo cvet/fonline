@@ -366,6 +366,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
             auto* cr = LoadCritter(cr_id, is_error);
 
             if (cr != nullptr) {
+                cr->SetMapId(map->GetId());
                 FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
                 if (const auto hex = cr->GetHex(); !map->GetSize().is_valid_pos(hex)) {
@@ -452,6 +453,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
     }
 
     try {
+        cr->SetMapId({});
         RegisterCritter(cr.get());
         cr->SetPersistent(true);
     }
