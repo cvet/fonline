@@ -320,9 +320,7 @@ void ClientEngine::MainLoop()
     }
 
     _conn.Process();
-
     ProcessInputEvents();
-
     ProcessScriptEvents();
     TimeEventMngr.ProcessTimeEvents();
     OnLoop.Fire();

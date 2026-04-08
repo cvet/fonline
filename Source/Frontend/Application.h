@@ -697,6 +697,6 @@ inline auto AppWindow::GetWindowHandleForInput() const -> WindowInternalHandle*
 
 extern unique_ptr<Application> App;
 extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
-auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
+extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 
 FO_END_NAMESPACE

@@ -47,12 +47,20 @@ template<typename Func, typename... Args>
 {
     const auto& cur_thread_name = get_this_thread_name();
     const size_t ns_pos = cur_thread_name.rfind("::");
-    string qualifed_name = ns_pos != string::npos ? cur_thread_name.substr(0, ns_pos + 2) + string(name) : string(name);
+    string qualified_name = ns_pos != string::npos ? cur_thread_name.substr(0, ns_pos + 2) + string(name) : string(name);
 
     return std::thread(
-        [qualifed_name_ = std::move(qualifed_name), func_ = std::decay_t<Func>(std::forward<Func>(func))](auto&&... inner_args) mutable {
-            set_this_thread_name(qualifed_name_);
-            func_(std::forward<decltype(inner_args)>(inner_args)...);
+        [qualified_name_ = std::move(qualified_name), func_ = std::decay_t<Func>(std::forward<Func>(func))](auto&&... inner_args) mutable {
+            try {
+                set_this_thread_name(qualified_name_);
+                func_(std::forward<decltype(inner_args)>(inner_args)...);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            catch (...) {
+                FO_UNKNOWN_EXCEPTION();
+            }
         },
         std::forward<Args>(args)...);
 }
