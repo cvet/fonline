@@ -913,6 +913,10 @@ auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    if (from_pos == to_pos) {
+        return {};
+    }
+
     const float32 dx = numeric_cast<float32>(std::abs(to_pos.x - from_pos.x));
     const float32 dy = numeric_cast<float32>(std::abs(to_pos.y - from_pos.y));
 

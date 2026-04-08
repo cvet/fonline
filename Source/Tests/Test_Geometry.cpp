@@ -49,6 +49,11 @@ TEST_CASE("GeometryHelper")
     CHECK(GeometryHelper::GetDistance(mpos {0, 0}, mpos {1, 1}) >= 0);
     CHECK(GeometryHelper::GetDistance(1, 2, 7, 9) == GeometryHelper::GetDistance(7, 9, 1, 2));
 
+    // GetStepsCoords
+    const auto zero_steps = GeometryHelper::GetStepsCoords({}, {});
+    CHECK(is_float_equal(zero_steps.x, 0.0f));
+    CHECK(is_float_equal(zero_steps.y, 0.0f));
+
     // GetDir
     CHECK(GeometryHelper::GetDir(0, 0, 1, 0) <= 7);
     CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}) <= 7);
