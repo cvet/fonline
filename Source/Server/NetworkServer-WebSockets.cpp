@@ -264,7 +264,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
     _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
-    _runThread = std::thread(&NetworkServer_WebSockets::Run, this);
+    _runThread = run_thread("Network-WebSockets", [this] { Run(); });
 }
 
 template<bool Secured>

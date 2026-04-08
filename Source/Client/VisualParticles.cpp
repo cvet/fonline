@@ -49,10 +49,11 @@ struct ParticleSystem::Impl
     SPK::Ref<SPK::System> BaseSystem {};
 };
 
-ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
+ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, IAppRender& render, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
     _impl {SafeAlloc::MakeUnique<Impl>()},
     _settings {&settings},
     _effectMngr {&effect_mngr},
+    _render {&render},
     _resources {&resources},
     _gameTime {&game_time},
     _textureLoader {std::move(tex_loader)}

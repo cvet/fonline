@@ -37,11 +37,12 @@
 
 #include "Common.h"
 
-#include "Application.h"
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
 
+class IAppWindow;
+class IAppRender;
 class RenderTargetManager;
 
 class RenderTarget
@@ -78,7 +79,7 @@ class RenderTargetManager
 public:
     using FlushCallback = function<void()>;
 
-    RenderTargetManager(RenderSettings& settings, AppWindow* window, FlushCallback flush);
+    RenderTargetManager(RenderSettings& settings, IAppWindow& window, FlushCallback flush);
     RenderTargetManager(const RenderTargetManager&) = delete;
     RenderTargetManager(RenderTargetManager&&) noexcept = default;
     auto operator=(const RenderTargetManager&) = delete;
@@ -104,6 +105,8 @@ private:
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
     raw_ptr<RenderSettings> _settings;
+    raw_ptr<IAppWindow> _window;
+    raw_ptr<IAppRender> _render;
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<raw_ptr<RenderTarget>> _rtStack {};

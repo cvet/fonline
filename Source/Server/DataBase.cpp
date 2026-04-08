@@ -593,7 +593,7 @@ void DataBaseImpl::StartCommitThread()
         _commitThreadStopRequested = false;
     }
 
-    _commitThread = std::thread([this] { CommitThreadEntry(); });
+    _commitThread = run_thread("DataBaseCommitter", [this] { CommitThreadEntry(); });
 }
 
 void DataBaseImpl::StopCommitThread() noexcept
@@ -623,8 +623,6 @@ void DataBaseImpl::StopCommitThread() noexcept
 void DataBaseImpl::CommitThreadEntry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
-
-    SetThisThreadName("DataBaseCommitter");
 
     while (true) {
         try {
@@ -840,10 +838,10 @@ void DataBaseImpl::StartPanic(string_view message)
         safe_call([this] { _panicCallback(); });
     }
 
-    std::thread {[timeout = _panicShutdownTimeout.value()]() {
+    run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
         std::this_thread::sleep_for(timeout);
         ExitApp(false);
-    }}.detach();
+    }).detach();
 }
 
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool

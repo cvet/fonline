@@ -509,7 +509,7 @@ static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_
     cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
-MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
+MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window) :
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();

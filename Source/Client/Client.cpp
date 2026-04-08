@@ -52,23 +52,20 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
-    EffectMngr(Settings, Resources),
+    EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Settings, Resources, SprMngr, *this),
-    SndMngr(Settings, Resources),
+    SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Settings.UseDummyEffects) {
-        EffectMngr.LoadMinimalEffects();
-    }
-    else {
-        EffectMngr.LoadDefaultEffects();
-    }
+    // Headless test clients still execute the normal draw pipeline, so dummy mode
+    // must synthesize the full default effect set instead of the updater-only subset.
+    EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
@@ -178,15 +175,15 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
     }
 
-    _eventUnsubscriber += window->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
+    _eventUnsubscriber += window.GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window, const MeatdataRegistrator& mapper_registrator) :
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window, const MeatdataRegistrator& mapper_registrator) :
     BaseEngine(settings, std::move(resources), mapper_registrator),
-    EffectMngr(Settings, Resources),
+    EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
     ResMngr(Settings, Resources, SprMngr, *this),
-    SndMngr(Settings, Resources),
+    SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
@@ -213,7 +210,7 @@ void ClientEngine::Shutdown()
     _conn.SetDisconnectHandler(nullptr);
     _conn.Disconnect();
 
-    App->Render.SetRenderTarget(nullptr);
+    SprMngr.GetRender().SetRenderTarget(nullptr);
 
     _chosen = nullptr;
 
@@ -332,7 +329,7 @@ void ClientEngine::MainLoop()
         _curMap->Process();
     }
 
-    App->MainWindow.GrabInput(_curMap && _curMap->IsManualScrolling());
+    SprMngr.GetWindow().GrabInput(_curMap && _curMap->IsManualScrolling());
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
@@ -470,14 +467,16 @@ void ClientEngine::ProcessInputEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto& input = SprMngr.GetInput();
+
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
-        while (App->Input.PollEvent(ev)) {
+        while (input.PollEvent(ev)) {
             ProcessInputEvent(ev);
         }
     }
     else {
-        Settings.MousePos = App->Input.GetMousePosition();
+        Settings.MousePos = input.GetMousePosition();
 
         OnInputLost.Fire();
     }
@@ -2558,7 +2557,7 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
     }
 
     _video = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    _videoTex = App->Render.CreateTexture(_video->GetSize(), true, false);
+    _videoTex = SprMngr.GetRender().CreateTexture(_video->GetSize(), true, false);
 
     if (names.size() > 1) {
         SndMngr.StopMusic();

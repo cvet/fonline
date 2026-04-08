@@ -66,7 +66,7 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), &App->MainWindow);
+                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

@@ -35,8 +35,8 @@
 
 #include "Common.h"
 
-#include "Application.h"
 #include "FileSystem.h"
+#include "Rendering.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectManagerException);
 
+class IAppRender;
 class ServerEngine;
 
 struct EffectCollection
@@ -91,7 +92,7 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileSystem& resources);
+    explicit EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
@@ -110,6 +111,7 @@ private:
 
     raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
+    raw_ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
 };

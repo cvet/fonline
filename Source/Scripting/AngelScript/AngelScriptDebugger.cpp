@@ -213,8 +213,8 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
         throw std::runtime_error("Can't listen AngelScript debugger tcp endpoint in configured port range");
     }
 
-    _thread = std::thread([this]() { this->Run(); });
-    _discoveryThread = std::thread([this]() { this->RunDiscoveryResponder(); });
+    _thread = run_thread("Debugger", [this]() { this->Run(); });
+    _discoveryThread = run_thread("DebuggerDiscovery", [this]() { this->RunDiscoveryResponder(); });
 }
 
 DebuggerEndpointServer::Impl::~Impl()

@@ -49,7 +49,7 @@ SetValue(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
 SetBoolCacheValues(
     SDL_TEST_LIBRARY OFF
     SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY})
-AddSubdirectory("${FO_SDL_DIR}" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_SDL_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_SDL_DIR}/include")
 AppendList(FO_RENDER_LIBS SDL3-static SDL_uclibc)
 DisableLibWarnings(SDL3-static SDL_uclibc)
@@ -62,7 +62,7 @@ AddCompileDefinitionsList(
     $<${expr_TracyOnDemand}:TRACY_ON_DEMAND>
     FO_TRACY=${expr_TracyEnabled})
 SetBoolCacheValues(TRACY_STATIC ON)
-AddSubdirectory("${FO_TRACY_DIR}" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_TRACY_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_TRACY_DIR}/public")
 AppendList(FO_ESSENTIALS_LIBS TracyClient)
 DisableLibWarnings(TracyClient)
@@ -71,7 +71,7 @@ DisableLibWarnings(TracyClient)
 StatusMessage("+ Zlib")
 SetValue(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
 SetBoolCacheValues(ZLIB_BUILD_EXAMPLES OFF)
-AddSubdirectory("${FO_ZLIB_DIR}" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_ZLIB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
 SetValue(FO_ZLIB_CONTRIB_SOURCE
     "${FO_ZLIB_DIR}/contrib/minizip/unzip.c"
@@ -104,7 +104,8 @@ if(FO_BUILD_BAKER_LIB)
         PNG_BUILD_ZLIB OFF
         ld-version-script OFF)
     SetStringCacheValues(AWK IGNORE)
-    AddSubdirectory("${FO_PNG_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_PNG_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    SetTargetsFolder("ThirdParty/Dummy" png_genfiles)
     AddIncludeDirectories("${FO_PNG_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
     AppendList(FO_BAKER_LIBS png_static)
     AppendList(FO_DUMMY_TARGETS png_genfiles)
@@ -247,7 +248,8 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_ASM ON
         ENABLE_EXTRATESTS OFF
         ENABLE_NC OFF)
-    AddSubdirectory("${FO_LIBRESSL_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_LIBRESSL_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    SetTargetsFolder("ThirdParty/Dummy" compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
     AddIncludeDirectories(
         "${FO_LIBRESSL_DIR}/include"
         "${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto"
@@ -310,7 +312,10 @@ if(FO_BUILD_SERVER_LIB)
         AddCompileDefinitionsList(FO_HAVE_MONGO=0)
     endif()
 
-    AddSubdirectory("${FO_MONGODB_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_MONGODB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    if(TARGET utf8proc_obj)
+        SetTargetsFolder("ThirdParty/Dummy" utf8proc_obj)
+    endif()
 
     AddIncludeDirectories(
         "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson"
@@ -335,7 +340,7 @@ endif()
 if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
     StatusMessage("+ Unqlite")
     SetValue(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
-    AddSubdirectory("${FO_UNQLITE_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_UNQLITE_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_UNQLITE_DIR}")
     AppendList(FO_COMMON_LIBS unqlite)
     DisableLibWarnings(unqlite)
@@ -406,8 +411,8 @@ endif()
 StatusMessage("+ Spark")
 SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
 SetBoolCacheValues(SPARK_STATIC_BUILD ON)
-AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" EXCLUDE_FROM_ALL)
-AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
 AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
 DisableLibWarnings(SPARK_Core PugiXML)
@@ -442,7 +447,7 @@ if(FO_BUILD_BAKER_LIB)
             ENABLE_EMSCRIPTEN_ENVIRONMENT_NODE OFF)
     endif()
 
-    AddSubdirectory("${FO_GLSLANG_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_GLSLANG_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_GLSLANG_DIR}/glslang/Public" "${FO_GLSLANG_DIR}/SPIRV")
     AppendList(FO_BAKER_LIBS
         glslang
@@ -475,7 +480,7 @@ if(FO_BUILD_BAKER_LIB)
         SPIRV_CROSS_ENABLE_C_API OFF
         SPIRV_CROSS_ENABLE_UTIL OFF
         SPIRV_SKIP_TESTS ON)
-    AddSubdirectory("${FO_SPIRV_CROSS_DIR}" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_SPIRV_CROSS_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
@@ -499,7 +504,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     SetValue(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
     SetStringCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
     SetBoolCacheValues(AS_DISABLE_INSTALL ON)
-    AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
     TargetCompileDefinitions(
@@ -1071,6 +1076,8 @@ AddCoreStaticLibrary(EssentialsLib FO_ESSENTIALS_SOURCE
 if(FO_ANGELSCRIPT_SCRIPTING)
     StatusMessage("+ AngelScriptScripting")
     SetValue(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    SetValue(_fo_prev_folder "${CMAKE_FOLDER}")
+    SetValue(CMAKE_FOLDER "CoreLibs")
     AddLibrary(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
@@ -1102,6 +1109,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h")
+    SetValue(CMAKE_FOLDER "${_fo_prev_folder}")
+    SetTargetProperty(AngelScriptScripting FOLDER "CoreLibs")
     AddDependencies(AngelScriptScripting
         ${FO_GEN_DEPENDENCIES})
     TargetIncludeDirectories(AngelScriptScripting PUBLIC
@@ -1118,6 +1127,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
@@ -1129,6 +1139,7 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
@@ -1213,7 +1224,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Server
         TESTING_APP 0
-        LINK_LIBS "AppFrontend" "ServerLib" "ClientLib"
+        LINK_LIBS "ServerLib" "ClientLib" "AppFrontend"
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 
@@ -1224,7 +1235,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
         TESTING_APP 0
-        LINK_LIBS "AppHeadless" "ServerLib" "ClientLib"
+        LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
         WRITE_BUILD_HASH)
 
     if(FO_WINDOWS)
@@ -1235,7 +1246,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerService
             TESTING_APP 0
-            LINK_LIBS "AppHeadless" "ServerLib"
+            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
             WRITE_BUILD_HASH)
     else()
         AddExecutableApplication(
@@ -1245,7 +1256,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerDaemon
             TESTING_APP 0
-            LINK_LIBS "AppHeadless" "ServerLib"
+            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
             WRITE_BUILD_HASH)
     endif()
 endif()
@@ -1545,8 +1556,7 @@ SetTargetsFolder(
     ${FO_SERVER_LIBS}
     ${FO_CLIENT_LIBS}
     ${FO_RENDER_LIBS}
-    ${FO_TESTING_LIBS}
-    ${FO_DUMMY_TARGETS})
+    ${FO_TESTING_LIBS})
 SetTargetsFolder("ThirdParty/Dummy" ${FO_DUMMY_TARGETS})
 
 # Print cached variables

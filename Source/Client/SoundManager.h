@@ -40,11 +40,13 @@
 
 FO_BEGIN_NAMESPACE
 
+class IAppAudio;
+
 class SoundManager final
 {
 public:
     SoundManager() = delete;
-    SoundManager(AudioSettings& settings, FileSystem& resources);
+    SoundManager(AudioSettings& settings, FileSystem& resources, IAppAudio& audio);
     SoundManager(const SoundManager&) = delete;
     SoundManager(SoundManager&&) noexcept = delete;
     auto operator=(const SoundManager&) = delete;
@@ -70,6 +72,7 @@ private:
 
     raw_ptr<AudioSettings> _settings;
     raw_ptr<FileSystem> _resources;
+    raw_ptr<IAppAudio> _audio;
     bool _isActive {};
     int32 _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
