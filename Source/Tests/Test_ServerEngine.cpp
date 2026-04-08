@@ -35,6 +35,7 @@
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
+#include "Movement.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 
@@ -42,6 +43,12 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
+    constexpr msize SERVER_TEST_MAP_SIZE {200, 200};
+    constexpr mpos SERVER_TEST_MOVE_START_HEX {20, 20};
+    constexpr uint16 SERVER_TEST_MOVE_SPEED = 100;
+    const vector<uint8> SERVER_TEST_MOVE_STEPS {0, 0, 1, 1, 2};
+    const vector<uint16> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
+
     static auto MakeServerTestSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -52,6 +59,42 @@ namespace
         BakerTests::ApplySelfContainedServerSettings(settings);
 
         return settings;
+    }
+
+    static auto MakeEmptyMapBlob() -> vector<uint8>
+    {
+        vector<uint8> map_data;
+        auto writer = DataWriter(map_data);
+        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32>(uint32 {0});
+        return map_data;
+    }
+
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8>
+    {
+        vector<uint8> props_data;
+        set<hstring> str_hashes;
+
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        proto.SetSize(map_size);
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+
+        vector<uint8> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32>(uint32 {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint32>(uint32 {1});
+        writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
+
+        return protos_data;
     }
 
     static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
@@ -186,12 +229,20 @@ namespace ServerEngineTest
 
         BakerServerEngine proto_engine {compiler_resources};
         const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        const auto location_type = proto_engine.Hashes.ToHashedString("Location");
+        const auto map_type = proto_engine.Hashes.ToHashedString("Map");
         const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
+        const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
+        const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
+        const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
+        runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
+        runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
+        runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("ServerEngineTest.fos-bin-server", script_blob);
 
         FileSystem resources;
@@ -216,6 +267,49 @@ namespace ServerEngineTest
         }
 
         return "ServerEngine startup timed out";
+    }
+
+    static auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
+    {
+        return SafeAlloc::MakeRefCounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
+    }
+
+    static auto WaitForUnlockedServerCondition(ServerEngine* server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
+    {
+        FO_RUNTIME_ASSERT(server);
+        FO_RUNTIME_ASSERT(locked);
+
+        server->Unlock();
+        locked = false;
+
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+
+        while (std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {5});
+
+            if (!server->Lock(timespan {std::chrono::seconds {10}})) {
+                continue;
+            }
+
+            locked = true;
+
+            if (condition()) {
+                return true;
+            }
+
+            server->Unlock();
+            locked = false;
+        }
+
+        if (!locked) {
+            if (!server->Lock(timespan {std::chrono::seconds {10}})) {
+                return false;
+            }
+
+            locked = true;
+        }
+
+        return condition();
     }
 }
 
@@ -416,6 +510,139 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     CHECK(matches_hash_func.GetResult());
 
     server->CrMngr.DestroyCritter(cr);
+}
+
+TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    SECTION("CompletesWholeRoute")
+    {
+        vector<hstring> map_pids {map_pid};
+        auto* loc = server->MapMngr.CreateLocation(location_pid, map_pids);
+        REQUIRE(loc != nullptr);
+
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (loc != nullptr && !loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto* map = loc->GetMapByIndex(0);
+        REQUIRE(map != nullptr);
+
+        auto* cr = server->CreateCritter(critter_pid, false);
+        REQUIRE(cr != nullptr);
+
+        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, 0, std::nullopt);
+
+        const auto template_moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime());
+        const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
+        REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
+
+        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32>(template_moving->GetWholeTime()) + 100}};
+        auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
+
+        server->StartCritterMoving(cr, moving, nullptr);
+        REQUIRE(cr->IsMoving());
+
+        REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
+
+        CHECK_FALSE(cr->IsMoving());
+        CHECK(cr->GetMovingState() == MovingState::Success);
+        CHECK(cr->GetHex() == path_hexes.back());
+
+        const auto* finished_moving = cr->GetMovingContext();
+        REQUIRE(finished_moving != nullptr);
+        CHECK(finished_moving->GetCompleteReason() == MovingState::Success);
+    }
+
+    SECTION("StopsAtFirstBlockedHexWithoutTeleport")
+    {
+        vector<hstring> map_pids {map_pid};
+        auto* loc = server->MapMngr.CreateLocation(location_pid, map_pids);
+        REQUIRE(loc != nullptr);
+
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (loc != nullptr && !loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto* map = loc->GetMapByIndex(0);
+        REQUIRE(map != nullptr);
+
+        auto* cr = server->CreateCritter(critter_pid, false);
+        REQUIRE(cr != nullptr);
+
+        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, 0, std::nullopt);
+
+        const auto template_moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime());
+        const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
+        REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
+
+        const auto expected_stop_hex = path_hexes[1];
+        const auto blocked_hex = path_hexes[2];
+
+        map->SetHexManualBlock(blocked_hex, true, true);
+        auto unblock_hex = scope_exit([map, blocked_hex]() noexcept {
+            safe_call([map, blocked_hex] {
+                if (!map->IsDestroyed()) {
+                    map->SetHexManualBlock(blocked_hex, false, false);
+                }
+            });
+        });
+
+        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32>(template_moving->GetWholeTime()) + 100}};
+        auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
+
+        server->StartCritterMoving(cr, moving, nullptr);
+        REQUIRE(cr->IsMoving());
+
+        REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
+
+        CHECK_FALSE(cr->IsMoving());
+        CHECK(cr->GetMovingState() == MovingState::HexBusy);
+        CHECK(cr->GetHex() == expected_stop_hex);
+
+        const auto* finished_moving = cr->GetMovingContext();
+        REQUIRE(finished_moving != nullptr);
+        CHECK(finished_moving->GetCompleteReason() == MovingState::HexBusy);
+        CHECK(finished_moving->GetPreBlockHex() == expected_stop_hex);
+        CHECK(finished_moving->GetBlockHex() == blocked_hex);
+    }
 }
 
 FO_END_NAMESPACE

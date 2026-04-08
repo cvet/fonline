@@ -128,6 +128,7 @@ public:
 
 private:
     auto EvaluateRawProgress(float32 elapsed_time_ms) const -> MovingRawProgress;
+    auto BuildProgress(const MovingRawProgress& raw_progress, mpos current_hex) const -> MovingProgress;
     void EvaluateSegment(uint16 control_step_begin, uint16 control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32& dist) const;
     void RecalculateMetrics();
 

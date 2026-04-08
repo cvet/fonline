@@ -960,6 +960,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetworkClient.cpp"
