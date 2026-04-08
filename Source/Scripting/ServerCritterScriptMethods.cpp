@@ -76,6 +76,12 @@ FO_SCRIPT_API MovingContext* Server_Critter_GetMovingContext(Critter* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API uint32 Server_Critter_GetMovingUid(Critter* self)
+{
+    return self->GetMovingUid();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Critter_GetPlayer(Critter* self)
 {
     return self->GetPlayer();

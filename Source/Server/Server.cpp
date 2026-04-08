@@ -2653,76 +2653,89 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    moving->UpdateCurrentTime(GameTime.GetFrameTime());
-    auto progress = moving->EvaluateProgress();
-    const auto old_hex = cr->GetHex();
-    const auto target_hex = progress.Hex;
+    const auto current_time = GameTime.GetFrameTime();
+    const auto max_hex_updates = moving->GetSteps().size() + 1;
 
-    if (old_hex != target_hex) {
-        const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
-        const auto multihex = cr->GetMultihex();
+    for (size_t i = 0; i < max_hex_updates; i++) {
+        const auto old_hex = cr->GetHex();
 
-        if (map->IsHexesMovable(target_hex, multihex)) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(target_hex);
-            map->AddCritterToField(cr);
+        moving->UpdateCurrentTimeToNextHex(current_time, old_hex);
 
-            FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+        auto progress = moving->EvaluateProgress();
+        const auto target_hex = progress.Hex;
 
-            map->VerifyTrigger(cr, old_hex, target_hex, dir);
+        if (old_hex != target_hex) {
+            const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
+            const auto multihex = cr->GetMultihex();
 
-            if (!validate_moving(target_hex)) {
-                return;
+            if (map->IsHexesMovable(target_hex, multihex)) {
+                map->RemoveCritterFromField(cr);
+                cr->SetHex(target_hex);
+                map->AddCritterToField(cr);
+
+                FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+
+                map->VerifyTrigger(cr, old_hex, target_hex, dir);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
+
+                MapMngr.ProcessVisibleCritters(cr);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
+
+                MapMngr.ProcessVisibleItems(cr);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
             }
-
-            MapMngr.ProcessVisibleCritters(cr);
-
-            if (!validate_moving(target_hex)) {
-                return;
-            }
-
-            MapMngr.ProcessVisibleItems(cr);
-
-            if (!validate_moving(target_hex)) {
+            else {
+                moving->SetBlockHexes(old_hex, target_hex);
+                cr->StopMoving(MovingState::HexBusy);
+                cr->SendAndBroadcast_Moving();
                 return;
             }
         }
-        else {
-            moving->SetBlockHexes(old_hex, target_hex);
-            cr->StopMoving(MovingState::HexBusy);
-            cr->SendAndBroadcast_Moving();
+
+        const auto cr_hex = cr->GetHex();
+        const auto moved = cr_hex != old_hex;
+
+        if (cr_hex != progress.Hex) {
+            progress = moving->EvaluateProgress(cr_hex);
+        }
+
+        if (moved || cr->GetHexOffset() != progress.HexOffset) {
+            cr->SetHexOffset(progress.HexOffset);
+        }
+
+        cr->SetDirAngle(progress.DirAngle);
+
+        if (!cr->AttachedCritters.empty()) {
+            cr->MoveAttachedCritters();
+
+            if (!validate_moving(cr_hex)) {
+                return;
+            }
+        }
+
+        if (progress.Completed) {
+            const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
+
+            cr->StopMoving(MovingState::Success);
+
+            if (incorrect_final_position) {
+                cr->SendAndBroadcast_Moving();
+            }
+
             return;
         }
-    }
 
-    const auto cr_hex = cr->GetHex();
-    const auto moved = cr_hex != old_hex;
-
-    if (cr_hex != progress.Hex) {
-        progress = moving->EvaluateProgress(cr_hex);
-    }
-
-    if (moved || cr->GetHexOffset() != progress.HexOffset) {
-        cr->SetHexOffset(progress.HexOffset);
-    }
-
-    cr->SetDirAngle(progress.DirAngle);
-
-    if (!cr->AttachedCritters.empty()) {
-        cr->MoveAttachedCritters();
-
-        if (!validate_moving(cr_hex)) {
-            return;
-        }
-    }
-
-    if (progress.Completed) {
-        const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
-
-        cr->StopMoving(MovingState::Success);
-
-        if (incorrect_final_position) {
-            cr->SendAndBroadcast_Moving();
+        if (!moved || moving->GetElapsedTime() >= moving->GetRuntimeElapsedTime(current_time)) {
+            break;
         }
     }
 }

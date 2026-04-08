@@ -83,7 +83,7 @@ struct MovingRawProgress
     bool Found {};
 };
 
-///@ ExportRefType Common RefCounted Export = GetUid, GetSpeed, GetStartHex, GetEndHex, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
+///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
 class MovingContext final : public RefCounted<MovingContext>
 {
 public:
@@ -95,7 +95,6 @@ public:
     auto operator=(MovingContext&&) noexcept -> MovingContext& = delete;
     ~MovingContext() = default;
 
-    [[nodiscard]] auto GetUid() const noexcept -> uint32 { return _uid; }
     [[nodiscard]] auto GetMapSize() const noexcept -> msize { return _mapSize; }
     [[nodiscard]] auto GetSpeed() const noexcept -> uint16 { return _speed; }
     [[nodiscard]] auto GetSteps() const noexcept -> const vector<uint8>& { return _steps; }
@@ -109,6 +108,7 @@ public:
     [[nodiscard]] auto GetStartHexOffset() const noexcept -> ipos16 { return _startHexOffset; }
     [[nodiscard]] auto GetEndHexOffset() const noexcept -> ipos16 { return _endHexOffset; }
     [[nodiscard]] auto GetElapsedTime() const noexcept -> float32 { return _elapsedTime; }
+    [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32;
     [[nodiscard]] auto IsCompleted() const noexcept -> bool { return _completed; }
     [[nodiscard]] auto GetCompleteReason() const noexcept -> MovingState { return _completeReason; }
 
@@ -120,6 +120,7 @@ public:
     [[nodiscard]] auto EvaluateProgress(mpos current_hex) const -> MovingProgress;
 
     void UpdateCurrentTime(nanotime current_time);
+    void UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex);
     void ChangeSpeed(uint16 speed, nanotime current_time);
     void Complete(MovingState reason) noexcept;
     void SetBlockHexes(mpos pre_block_hex, mpos block_hex) noexcept;
@@ -127,11 +128,9 @@ public:
 
 private:
     auto EvaluateRawProgress(float32 elapsed_time_ms) const -> MovingRawProgress;
-    auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32;
     void EvaluateSegment(uint16 control_step_begin, uint16 control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32& dist) const;
     void RecalculateMetrics();
 
-    uint32 _uid {};
     msize _mapSize {};
     uint16 _speed {};
     vector<uint8> _steps {};
