@@ -136,7 +136,6 @@ private:
     void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
-    auto GetEntityHolder(ServerEntity* entity) -> ServerEntity*;
 
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept;

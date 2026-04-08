@@ -43,6 +43,8 @@ static void InitProtoTestMetadata(EngineMetadata& meta)
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEntityType("Item", true, false, true, true, true);
     meta.RegisterEntityType("Critter", true, false, true, true, true);
+    meta.RegisterEntityType("Map", true, false, true, true, true);
+    meta.RegisterEntityType("Location", true, false, true, true, true);
 }
 
 TEST_CASE("ProtoManager")
@@ -92,14 +94,30 @@ TEST_CASE("ProtoManager")
         const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
         const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         const hstring legacy_pid = meta.Hashes.ToHashedString("LegacyKnife");
+        const hstring map_type = meta.Hashes.ToHashedString("Map");
+        const hstring proto_map_type = meta.Hashes.ToHashedString("ProtoMap");
+        const hstring location_type = meta.Hashes.ToHashedString("Location");
+        const hstring proto_location_type = meta.Hashes.ToHashedString("ProtoLocation");
+        const hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
+        const hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
 
         auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, meta.GetPropertyRegistrator(item_type));
+        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, meta.GetPropertyRegistrator(map_type));
+        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, meta.GetPropertyRegistrator(location_type));
         meta.RegisterProto(item_type, item_proto);
+        meta.RegisterProto(map_type, map_proto);
+        meta.RegisterProto(location_type, location_proto);
         meta.RegisterMigrationRule("Proto", "Item", "LegacyKnife", "Knife");
+        meta.RegisterMigrationRule("Proto", "Map", "RestStop_Day", "RestStop_DayTime");
+        meta.RegisterMigrationRule("Proto", "Location", "RestStop_Day", "RestStop_DayTime");
 
         CHECK(meta.GetProtoItem(legacy_pid) == item_proto.get());
         CHECK(meta.GetProtoEntity(item_type, legacy_pid) == item_proto.get());
         CHECK(meta.GetProtoEntity(proto_item_type, legacy_pid) == item_proto.get());
+        CHECK(meta.GetProtoEntity(map_type, rest_stop_day_pid) == map_proto.get());
+        CHECK(meta.GetProtoEntity(proto_map_type, rest_stop_day_pid) == map_proto.get());
+        CHECK(meta.GetProtoEntity(location_type, rest_stop_day_pid) == location_proto.get());
+        CHECK(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid) == location_proto.get());
     }
 
     SECTION("UnknownTypeCollectionReturnsEmptyReference")

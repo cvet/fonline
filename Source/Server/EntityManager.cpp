@@ -998,10 +998,6 @@ void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<
 
     processed.emplace(entity);
 
-    if (auto* holder = GetEntityHolder(entity); holder != nullptr) {
-        MakePersistentRecursive(holder, processed);
-    }
-
     if (!entity->IsPersistent()) {
         WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
@@ -1080,70 +1076,6 @@ void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const fun
             }
         }
     }
-}
-
-auto EntityManager::GetEntityHolder(ServerEntity* entity) -> ServerEntity*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(entity);
-
-    if (dynamic_cast<const Player*>(entity) != nullptr) {
-        return nullptr;
-    }
-
-    if (dynamic_cast<const Location*>(entity) != nullptr) {
-        return nullptr;
-    }
-
-    if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-        return map->GetLocation();
-    }
-
-    if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
-        if (!cr->GetMapId()) {
-            return nullptr;
-        }
-
-        auto* map = GetMap(cr->GetMapId());
-        FO_RUNTIME_ASSERT(map);
-        return map;
-    }
-
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-        switch (item->GetOwnership()) {
-        case ItemOwnership::CritterInventory: {
-            auto* cr = GetCritter(item->GetCritterId());
-            FO_RUNTIME_ASSERT(cr);
-            return cr;
-        }
-        case ItemOwnership::MapHex: {
-            auto* map = GetMap(item->GetMapId());
-            FO_RUNTIME_ASSERT(map);
-            return map;
-        }
-        case ItemOwnership::ItemContainer: {
-            auto* cont = GetItem(item->GetContainerId());
-            FO_RUNTIME_ASSERT(cont);
-            return cont;
-        }
-        case ItemOwnership::Nowhere:
-            return nullptr;
-        }
-    }
-
-    if (auto* custom_entity = dynamic_cast<CustomEntity*>(entity); custom_entity != nullptr) {
-        if (!custom_entity->GetCustomHolderId()) {
-            return nullptr;
-        }
-
-        auto* holder = GetEntity(custom_entity->GetCustomHolderId());
-        FO_RUNTIME_ASSERT(holder);
-        return holder;
-    }
-
-    FO_RUNTIME_ASSERT(false);
-    return nullptr;
 }
 
 auto EntityManager::StoreEntityDoc(ServerEntity* entity) -> AnyData::Document
