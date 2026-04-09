@@ -73,7 +73,21 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
 
     const auto port = numeric_cast<uint16>(_settings->ServerPort);
 
-    _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) FO_DEFERRED {
+    function<InterthreadDataCallback(InterthreadDataCallback)> listener;
+
+    {
+        std::scoped_lock locker(InterthreadListenersLocker);
+
+        const auto it = InterthreadListeners.find(port);
+
+        if (it == InterthreadListeners.end()) {
+            throw NetworkClientException("Interthread listener is not available", port);
+        }
+
+        listener = it->second;
+    }
+
+    _interthreadSend = listener([this](const_span<uint8> buf) FO_DEFERRED {
         if (!buf.empty()) {
             auto locker = std::unique_lock {_interthreadReceivedLocker};
 

@@ -89,7 +89,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         const auto start_client = [&] {
             try {
-                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
+                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
                 clients.emplace_back(std::move(client));
                 hide_controls = true;
             }

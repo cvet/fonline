@@ -222,7 +222,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
         SetFOServiceStatus(SERVICE_START_PENDING);
 
-        Data->ServerThread = std::thread(ServerEntry);
+        Data->ServerThread = run_thread("ServerService", ServerEntry);
 
         while (!Data->Server || (!Data->Server->IsStarted() && !Data->Server->IsStartingError())) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));

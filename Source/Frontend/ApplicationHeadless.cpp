@@ -567,7 +567,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     return {0, 0};
 }
 
-void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -34,6 +34,7 @@
 // Todo: support restoring file downloading from interrupted position
 
 #include "Updater.h"
+#include "Application.h"
 #include "DefaultSprites.h"
 #include "NetCommand.h"
 
@@ -47,11 +48,11 @@ static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
 static auto* StrClientOutdated = "Client outdated, please update it";
 
-Updater::Updater(GlobalSettings& settings, AppWindow* window) :
+Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _settings {&settings},
     _conn(*_settings),
     _gameTime(*_settings),
-    _effectMngr(*_settings, _resources),
+    _effectMngr(*_settings, _resources, window.GetRender()),
     _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
 {
     FO_STACK_TRACE_ENTRY();
@@ -131,10 +132,10 @@ auto Updater::Process() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _gameTime.FrameAdvance();
+    _gameTime.FrameAdvance(IsRunInDebugger());
 
     InputEvent ev;
-    while (App->Input.PollEvent(ev)) {
+    while (_sprMngr.GetInput().PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
                 App->RequestQuit();

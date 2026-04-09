@@ -806,6 +806,7 @@ extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8>)>;
+extern std::mutex InterthreadListenersLocker;
 extern map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum

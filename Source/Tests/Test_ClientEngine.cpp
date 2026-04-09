@@ -148,7 +148,7 @@ namespace ClientEngineTest
 TEST_CASE("ClientEngineStartsAndRegistersEntities")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), &App->MainWindow);
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -180,7 +180,7 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
 TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), &App->MainWindow);
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 

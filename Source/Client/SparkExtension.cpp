@@ -32,18 +32,20 @@
 //
 
 #include "SparkExtension.h"
+#include "Application.h"
 #include "VisualParticles.h"
 
 namespace SPK::FO
 {
-    SparkRenderBuffer::SparkRenderBuffer(size_t vertices)
+    SparkRenderBuffer::SparkRenderBuffer(size_t vertices, FO_NAMESPACE IAppRender& render) :
+        _render {&render}
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(vertices > 0);
         FO_RUNTIME_ASSERT(vertices % 4 == 0);
 
-        _renderBuf = App->Render.CreateDrawBuffer(false);
+        _renderBuf = _render->CreateDrawBuffer(false);
 
         auto& vbuf = _renderBuf->Vertices;
         auto& vpos = _renderBuf->VertCount;
@@ -182,7 +184,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, *_particleMngr->_render.get_no_const());
     }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const

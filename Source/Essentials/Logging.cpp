@@ -105,7 +105,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
             if (const auto thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
-                result += strex("[{}] ", GetThisThreadName());
+                result += strex("[{}] ", get_this_thread_name());
             }
         }
 

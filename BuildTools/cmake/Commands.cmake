@@ -136,10 +136,6 @@ macro(ParseArguments prefix options oneValueArgs multiValueArgs)
 	cmake_parse_arguments(${prefix} "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 endmacro()
 
-macro(AddSubdirectory)
-	add_subdirectory(${ARGV})
-endmacro()
-
 macro(TargetCompileDefinitions)
 	target_compile_definitions(${ARGV})
 endmacro()

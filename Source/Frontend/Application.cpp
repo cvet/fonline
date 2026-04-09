@@ -1828,7 +1828,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     return WindowPosToScreenPos(const_cast<Renderer*>(_app->_ctx->ActiveRenderer.get()), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, {iround<int32>(x), iround<int32>(y)});
 }
 
-void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
+void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1846,7 +1846,9 @@ void AppInput::SetMousePosition(ipos32 pos, const AppWindow* relative_to)
         if (relative_to != nullptr) {
             pos = ScreenPosToWindowPos(_app->_ctx->ActiveRenderer.get(), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, pos);
 
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle.get_no_const()), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
+            if (auto* handle = relative_to->GetWindowHandleForInput(); handle != nullptr) {
+                SDL_WarpMouseInWindow(static_cast<SDL_Window*>(handle), numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));
+            }
         }
         else {
             SDL_WarpMouseGlobal(numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y));

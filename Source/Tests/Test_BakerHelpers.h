@@ -59,7 +59,6 @@ namespace BakerTests
         settings.ScreenHeight = 200;
         settings.DisableAudio = true;
         OverrideSetting(settings.NullRenderer, true);
-        OverrideSetting(settings.UseDummyEffects, true);
         OverrideSetting(settings.CritterStubSpriteName, string {});
         OverrideSetting(settings.ItemStubSpriteName, string {});
     }

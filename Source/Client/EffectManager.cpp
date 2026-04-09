@@ -32,12 +32,14 @@
 //
 
 #include "EffectManager.h"
+#include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render) :
     _settings {&settings},
-    _resources {&resources}
+    _resources {&resources},
+    _render {&render}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -51,18 +53,9 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
     }
 
     // Load new
-    auto effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
+    auto effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
         if (const auto file = _resources->ReadFile(path2)) {
             return file.GetStr();
-        }
-
-        if (_settings->UseDummyEffects) {
-            if (strex(path2).ends_with(".fofx")) {
-                return "[Effect]\nPasses = 1\n";
-            }
-            if (path2.find(".fofx-") != string::npos && strex(path2).ends_with("-info")) {
-                return "[EffectInfo]\nMainTex = 0\nEggTex = 1\nProjBuf = 2\nMainTexBuf = 3\n";
-            }
         }
 
         BreakIntoDebugger();

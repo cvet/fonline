@@ -97,7 +97,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     InitView();
     RecacheScrollBlocks();
 
-    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
+    _eventUnsubscriber += _engine->SprMngr.GetWindow().GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 MapView::~MapView()

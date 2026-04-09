@@ -209,11 +209,28 @@ private:
     size_t _lastUploadedIndices {};
 };
 
+static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto fofx_content = loader(name);
+
+    if (!fofx_content.empty()) {
+        return fofx_content;
+    }
+
+    if (name.ends_with("-info")) {
+        return "[EffectInfo]\n";
+    }
+
+    return "[Effect]\nPasses = 1\n";
+}
+
 class Null_Effect final : public RenderEffect
 {
 public:
     Null_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
-        RenderEffect(usage, name, loader)
+        RenderEffect(usage, name, [&loader](string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
     {
         FO_STACK_TRACE_ENTRY();
     }

@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "3dStuff.h"
+#include "Application.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "CritterHexView.h"
@@ -106,8 +107,8 @@ class ClientEngine : public BaseEngine, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window); // For client
-    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window, const MeatdataRegistrator& mapper_registrator); // For mapper
+    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window); // For client
+    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window, const MeatdataRegistrator& mapper_registrator); // For mapper
     ClientEngine(const ClientEngine&) = delete;
     ClientEngine(ClientEngine&&) noexcept = delete;
     auto operator=(const ClientEngine&) = delete;

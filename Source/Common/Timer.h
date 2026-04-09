@@ -58,7 +58,7 @@ public:
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32 { return _fps; }
 
     void SetSynchronizedTime(synctime time) noexcept;
-    void FrameAdvance();
+    void FrameAdvance(bool clamp_to_cap);
 
 private:
     raw_ptr<TimerSettings> _settings;

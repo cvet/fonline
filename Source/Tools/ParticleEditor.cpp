@@ -32,6 +32,7 @@
 //
 
 #include "ParticleEditor.h"
+#include "Application.h"
 #include "ImGuiStuff.h"
 #include "SparkExtension.h"
 #include "VisualParticles.h"
@@ -120,11 +121,11 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources);
+    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources, App->Render);
 
     _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor->Settings);
 
-    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor->Settings, *_impl->EffectMngr, _editor->BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
+    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor->Settings, *_impl->EffectMngr, App->Render, _editor->BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
         const auto file = editor.BakedResources.ReadFile(path);
         FO_RUNTIME_ASSERT(file);
         auto reader = file.GetReader();
@@ -180,7 +181,7 @@ void ParticleEditor::OnDraw()
 
     EditorAssetView::OnDraw();
 
-    _impl->GameTime->FrameAdvance();
+    _impl->GameTime->FrameAdvance(true);
 
     _impl->Changed = false;
 

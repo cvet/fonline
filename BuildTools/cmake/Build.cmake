@@ -65,6 +65,54 @@ macro(SetTargetsFolder folder)
 	endif()
 endmacro()
 
+macro(AddSubdirectory sourceDir)
+	set(_fo_add_subdirectory_binary_dir "")
+	set(_fo_add_subdirectory_folder "")
+	set(_fo_add_subdirectory_extra_args "")
+	set(_fo_add_subdirectory_args ${ARGN})
+
+	if(_fo_add_subdirectory_args)
+		ListGet(_fo_add_subdirectory_args 0 _fo_add_subdirectory_first_arg)
+
+		if(NOT _fo_add_subdirectory_first_arg STREQUAL "EXCLUDE_FROM_ALL" AND
+			NOT _fo_add_subdirectory_first_arg STREQUAL "SYSTEM" AND
+			NOT _fo_add_subdirectory_first_arg STREQUAL "FOLDER")
+			ListPopFront(_fo_add_subdirectory_args _fo_add_subdirectory_binary_dir)
+		endif()
+	endif()
+
+	while(_fo_add_subdirectory_args)
+		ListPopFront(_fo_add_subdirectory_args _fo_add_subdirectory_arg)
+
+		if(_fo_add_subdirectory_arg STREQUAL "FOLDER")
+			if(NOT _fo_add_subdirectory_args)
+				AbortMessage("AddSubdirectory expects folder name after FOLDER")
+			endif()
+
+			ListPopFront(_fo_add_subdirectory_args _fo_add_subdirectory_folder)
+		elseif(_fo_add_subdirectory_arg STREQUAL "EXCLUDE_FROM_ALL" OR _fo_add_subdirectory_arg STREQUAL "SYSTEM")
+			AppendList(_fo_add_subdirectory_extra_args ${_fo_add_subdirectory_arg})
+		else()
+			AbortMessage("AddSubdirectory got unexpected argument ${_fo_add_subdirectory_arg}")
+		endif()
+	endwhile()
+
+	if(NOT _fo_add_subdirectory_folder STREQUAL "")
+		set(_fo_prev_folder "${CMAKE_FOLDER}")
+		set(CMAKE_FOLDER "${_fo_add_subdirectory_folder}")
+	endif()
+
+	if(NOT _fo_add_subdirectory_binary_dir STREQUAL "")
+		add_subdirectory("${sourceDir}" "${_fo_add_subdirectory_binary_dir}" ${_fo_add_subdirectory_extra_args})
+	else()
+		add_subdirectory("${sourceDir}" ${_fo_add_subdirectory_extra_args})
+	endif()
+
+	if(NOT _fo_add_subdirectory_folder STREQUAL "")
+		set(CMAKE_FOLDER "${_fo_prev_folder}")
+	endif()
+endmacro()
+
 macro(AddIncludeDirectories)
 	foreach(dir ${ARGN})
 		include_directories("${dir}")
@@ -324,7 +372,11 @@ macro(AddStaticThirdPartyLibrary target)
 		AddIncludeDirectories(${STATIC_LIB_INCLUDE_DIRS})
 	endif()
 
+	set(_fo_prev_folder "${CMAKE_FOLDER}")
+	set(CMAKE_FOLDER "ThirdParty")
 	AddLibrary(${target} STATIC EXCLUDE_FROM_ALL ${${STATIC_LIB_SOURCE_LIST}})
+	set(CMAKE_FOLDER "${_fo_prev_folder}")
+	SetTargetProperty(${target} FOLDER "ThirdParty")
 
 	if(STATIC_LIB_LINK_LIBS)
 		TargetLinkLibraries(${target} ${STATIC_LIB_LINK_LIBS})
@@ -365,7 +417,11 @@ macro(AddCommandTarget target)
 		AppendList(commandTargetArgs COMMENT "${CMD_TARGET_COMMENT}")
 	endif()
 
+	set(_fo_prev_folder "${CMAKE_FOLDER}")
+	set(CMAKE_FOLDER "Commands")
 	AddCustomTarget(${target} ${commandTargetArgs})
+	set(CMAKE_FOLDER "${_fo_prev_folder}")
+	SetTargetProperty(${target} FOLDER "Commands")
 	AppendList(FO_COMMANDS_GROUP ${target})
 endmacro()
 
@@ -376,7 +432,15 @@ macro(AddCoreStaticLibrary target sourceList)
 	ParseArguments(CORE_LIB "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	StatusMessage("+ ${target}")
+	if(CORE_LIB_APPEND_TO_GROUP STREQUAL "FO_CORE_LIBS_GROUP")
+		set(_fo_prev_folder "${CMAKE_FOLDER}")
+		set(CMAKE_FOLDER "CoreLibs")
+	endif()
 	AddLibrary(${target} STATIC EXCLUDE_FROM_ALL ${${sourceList}})
+	if(CORE_LIB_APPEND_TO_GROUP STREQUAL "FO_CORE_LIBS_GROUP")
+		set(CMAKE_FOLDER "${_fo_prev_folder}")
+		SetTargetProperty(${target} FOLDER "CoreLibs")
+	endif()
 	AddDependencies(${target} ${FO_GEN_DEPENDENCIES})
 
 	if(CORE_LIB_LINK_LIBS)
@@ -396,6 +460,7 @@ macro(SetupApplicationTarget target)
 
 	StatusMessage("+ ${target}")
 	AppendList(FO_APPLICATIONS_GROUP "${target}")
+	SetTargetProperty(${target} FOLDER "Applications")
 
 	if(APP_TARGET_DEPENDS)
 		AddDependencies(${target} ${APP_TARGET_DEPENDS})
@@ -429,10 +494,15 @@ macro(AddExecutableApplication target sourceFile)
 	ParseArguments(APP_EXEC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	if(APP_EXEC_WIN32)
+		set(_fo_prev_folder "${CMAKE_FOLDER}")
+		set(CMAKE_FOLDER "Applications")
 		AddExecutable(${target} WIN32 "${sourceFile}" ${APP_EXEC_EXTRA_SOURCES})
 	else()
+		set(_fo_prev_folder "${CMAKE_FOLDER}")
+		set(CMAKE_FOLDER "Applications")
 		AddExecutable(${target} "${sourceFile}" ${APP_EXEC_EXTRA_SOURCES})
 	endif()
+	set(CMAKE_FOLDER "${_fo_prev_folder}")
 
 	set(appExecArgs
 		PROPERTIES
@@ -456,7 +526,10 @@ macro(AddSharedApplication target sourceFile)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_PROPERTIES)
 	ParseArguments(APP_SHARED "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+	set(_fo_prev_folder "${CMAKE_FOLDER}")
+	set(CMAKE_FOLDER "Applications")
 	AddLibrary(${target} SHARED "${sourceFile}")
+	set(CMAKE_FOLDER "${_fo_prev_folder}")
 
 	set(appSharedProperties
 		LIBRARY_OUTPUT_DIRECTORY ${APP_SHARED_OUTPUT_DIR})
