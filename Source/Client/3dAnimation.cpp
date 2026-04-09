@@ -318,6 +318,16 @@ void ModelAnimationController::SetTrackPosition(int32 track, float32 position)
     _tracks[track].Position = position;
 }
 
+void ModelAnimationController::SetTrackSpeed(int32 track, float32 speed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(track >= 0);
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+
+    _tracks[track].Speed = speed;
+}
+
 void ModelAnimationController::SetInterpolation(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();

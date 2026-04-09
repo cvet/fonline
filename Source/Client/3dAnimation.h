@@ -104,6 +104,7 @@ public:
     void AddEventWeight(int32 track, float32 weight, float32 start_time, float32 smooth_time);
     void SetTrackEnable(int32 track, bool enable);
     void SetTrackPosition(int32 track, float32 position);
+    void SetTrackSpeed(int32 track, float32 speed);
     void SetInterpolation(bool enabled);
     void AdvanceTime(float32 time);
 

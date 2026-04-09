@@ -382,7 +382,7 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
         current_oy -= _startHexOffset.y;
     }
 
-    const float32 lerp = [](int32 a, int32 b, float32 t) -> float32 { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
+    const auto lerp = [](int32 a, int32 b, float32 t) -> float32 { return numeric_cast<float32>(a) * (1.0f - t) + numeric_cast<float32>(b) * t; };
     const float32 offset_x = lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32>(current_ox);
     const float32 offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32>(current_oy);
 

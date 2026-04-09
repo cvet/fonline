@@ -1054,15 +1054,20 @@ void ModelInstance::RefreshMoveAnimation()
     float32 speed = 1.0f;
     const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
+    if (_isMoving) {
+        speed *= _movingSpeedFactor;
+    }
+
     if (anim_index == _curMovingAnimIndex) {
+        if (_isMoving && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+            _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
+            _forceDraw = true;
+        }
+
         return;
     }
 
     _curMovingAnimIndex = anim_index;
-
-    if (_isMoving) {
-        speed *= _movingSpeedFactor;
-    }
 
     constexpr float32 smooth_time = 0.001f;
 
