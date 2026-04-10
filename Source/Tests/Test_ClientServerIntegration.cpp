@@ -97,7 +97,8 @@ namespace ClientServerIntegrationClient
     int LoginSuccessCalls = 0;
     int DisconnectedCalls = 0;
 
-    void ModuleInit()
+    [[ModuleInit]]
+    void InitClientServerIntegrationClient()
     {
         Game.OnConnecting.Subscribe(OnConnecting);
         Game.OnConnected.Subscribe(OnConnected);
@@ -105,21 +106,25 @@ namespace ClientServerIntegrationClient
         Game.OnDisconnected.Subscribe(OnDisconnected);
     }
 
+    [[Event]]
     void OnConnecting()
     {
         ConnectingCalls++;
     }
 
+    [[Event]]
     void OnConnected()
     {
         ConnectedCalls++;
     }
 
+    [[Event]]
     void OnLoginSuccess()
     {
         LoginSuccessCalls++;
     }
 
+    [[Event]]
     void OnDisconnected()
     {
         DisconnectedCalls++;

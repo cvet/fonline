@@ -37,7 +37,16 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+    class asIScriptModule;
+}
+
+namespace Preprocessor
+{
+    class LineNumberTranslator;
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -45,6 +54,7 @@ class EngineMetadata;
 
 void RegisterAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
 void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine);
+auto ValidateAngelScriptRemoteCallAttributes(AngelScript::asIScriptModule* mod, const EngineMetadata& meta, const Preprocessor::LineNumberTranslator* lnt = nullptr) -> string;
 
 FO_END_NAMESPACE
 

@@ -66,17 +66,20 @@ namespace ServerItemsTest
     int ItemInitCalls = 0;
     int64 LastItemId = 0;
 
-    void ModuleInit()
+    [[ModuleInit]]
+    void InitServerItemsTest()
     {
         Game.OnInit.Subscribe(OnInit);
         Game.OnItemInit.Subscribe(OnItemInit);
     }
 
+    [[Event]]
     bool OnInit()
     {
         return true;
     }
 
+    [[Event]]
     void OnItemInit(Item item, bool firstTime)
     {
         ItemInitCalls++;

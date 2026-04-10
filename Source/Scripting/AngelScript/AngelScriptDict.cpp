@@ -93,6 +93,13 @@ auto ScriptDict::Create(AngelScript::asITypeInfo* ti, void* init_list) -> Script
     return SafeAlloc::MakeRefCounted<ScriptDict>(ti, init_list).release_ownership();
 }
 
+auto ScriptDict::GetDictTypeId() const -> int32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _typeInfo->GetTypeId();
+}
+
 static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32 sub_type_index, bool& dont_garbage_collect) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();

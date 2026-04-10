@@ -40,8 +40,6 @@
 #include "AngelScriptContext.h"
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
-
 class ScriptArray;
 
 FO_BEGIN_NAMESPACE
@@ -80,6 +78,8 @@ public:
     void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
 
 private:
+    static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32& priority) noexcept -> bool;
+
     raw_ptr<EngineMetadata> _meta {};
     raw_ptr<ScriptSystem> _scriptSys {}; // Maybe null
     raw_ptr<BaseEngine> _engine {}; // Maybe null

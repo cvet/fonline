@@ -181,6 +181,9 @@ void MapManager::LoadFromResources()
                             if (!item->StaticScriptFunc) {
                                 throw MapManagerException("Can't bind static item function", map_proto->GetName(), static_script);
                             }
+                            if (!item->StaticScriptFunc.HasAttribute("ItemStatic")) {
+                                throw MapManagerException("Static item function missing [[ItemStatic]] attribute", map_proto->GetName(), static_script);
+                            }
                         }
 
                         if (const auto trigger_script = item->GetTriggerScript()) {
@@ -188,6 +191,9 @@ void MapManager::LoadFromResources()
 
                             if (!item->TriggerScriptFunc) {
                                 throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), trigger_script);
+                            }
+                            if (!item->TriggerScriptFunc.HasAttribute("ItemTrigger")) {
+                                throw MapManagerException("Static item trigger function missing [[ItemTrigger]] attribute", map_proto->GetName(), trigger_script);
                             }
                         }
 

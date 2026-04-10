@@ -400,13 +400,42 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 {
     FO_STACK_TRACE_ENTRY();
 
-    static unordered_map<string, function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
-        {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); }},
-        {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); }},
-        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); }},
-        {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); }},
-        {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); }},
-        {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); }},
+    struct ScriptFuncValidationRule
+    {
+        function<bool(hstring, const ScriptSystem*)> VerifySignature {};
+        function<bool(hstring, const ScriptSystem*)> VerifyAttribute {};
+        string_view RequiredAttribute {};
+    };
+
+    static const unordered_map<string, ScriptFuncValidationRule> script_func_verify = {
+        {"ItemInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); },
+            }},
+        {"ItemStatic",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); },
+                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name, "ItemStatic"); },
+                .RequiredAttribute = "ItemStatic",
+            }},
+        {"ItemTrigger",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); },
+                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name, "ItemTrigger"); },
+                .RequiredAttribute = "ItemTrigger",
+            }},
+        {"CritterInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); },
+            }},
+        {"MapInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); },
+            }},
+        {"LocationInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); },
+            }},
     };
 
     FO_RUNTIME_ASSERT(_context->BakedFiles);
@@ -451,12 +480,18 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
 
-                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0) {
+                const auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
+
+                if (rule_it == script_func_verify.end()) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
-                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
+                else if (func_name && !rule_it->second.VerifySignature(func_name, script_sys)) {
                     WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    errors++;
+                }
+                else if (func_name && !rule_it->second.RequiredAttribute.empty() && !rule_it->second.VerifyAttribute(func_name, script_sys)) {
+                    WriteLog("Function {} assigned to property {} in {} must be marked [[{}]]", func_name, prop->GetName(), context_str, rule_it->second.RequiredAttribute);
                     errors++;
                 }
             }

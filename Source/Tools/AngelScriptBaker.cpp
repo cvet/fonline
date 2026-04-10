@@ -106,7 +106,6 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerServerEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, filtered_files, message_callback);
-            engine.ValidateModules();
             _context->WriteData(_context->PackName + ".fos-bin-server", data);
         }));
     }

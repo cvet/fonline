@@ -922,6 +922,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 AppendList(FO_TESTS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
@@ -940,6 +941,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataBase.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSource.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_DialogBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DiskFileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityProtos.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EffectBaker.cpp"
@@ -1081,6 +1083,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     AddLibrary(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptAttributes.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptAttributes.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptBackend.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptCall.cpp"

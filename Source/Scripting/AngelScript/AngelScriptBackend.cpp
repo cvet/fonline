@@ -36,6 +36,7 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptArray.h"
+#include "AngelScriptAttributes.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
 #include "AngelScriptDebugger.h"
@@ -57,6 +58,7 @@ FO_BEGIN_NAMESPACE
 static constexpr uint32 AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
 static constexpr uint8 AS_BYTECODE_POINTER_SIZE = sizeof(void*);
 static constexpr uint8 AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
+static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
 
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
 {
@@ -65,7 +67,7 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     const char* type = msg->type == AngelScript::asMSGTYPE_WARNING ? "warning" : (msg->type == AngelScript::asMSGTYPE_INFORMATION ? "info" : "error");
     auto* as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
     const auto* backend = GetScriptBackend(as_engine);
-    const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
+    const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     const auto& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
     const auto orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
     const auto formatted_message = strex("{}({},{}): {} : {}", orig_file, orig_line, msg->col, type, msg->message).str();
@@ -176,6 +178,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
+    as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
 
     RegisterAngelScriptArray(as_engine);
     RegisterAngelScriptString(as_engine);
@@ -320,8 +323,6 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     std::vector<uint8> lnt_data(reader.Read<uint32>());
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
-
-    reader.VerifyEnd();
     FO_RUNTIME_ASSERT(!buf.empty());
     FO_RUNTIME_ASSERT(!lnt_data.empty());
 
@@ -332,7 +333,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }
 
     auto* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
-    _asEngine->SetUserData(cast_to_void(lnt), 5);
+    _asEngine->SetUserData(cast_to_void(lnt), AS_PREPROCESSOR_LNT_USER_DATA);
 
     BinaryStream binary {buf};
     int32 as_result = mod->LoadByteCode(&binary);
@@ -373,6 +374,26 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         if (pos != bc_length) {
             throw ScriptException("Bytecode validation failed - instruction boundary mismatch", func->GetName(), pos, bc_length);
         }
+    }
+
+    FO_RUNTIME_ASSERT(script_bin.size() >= sizeof(uint32) + sizeof(uint8) + sizeof(uint8) + sizeof(uint32) + buf.size() + sizeof(uint32) + lnt_data.size());
+    const auto records = DeserializeFunctionAttributeRecords(reader);
+    reader.VerifyEnd();
+
+    if (const auto bind_error = BindFunctionAttributeRecords(mod, records); !bind_error.empty()) {
+        throw ScriptException(bind_error);
+    }
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt); !usage_error.empty()) {
+        throw ScriptException(usage_error);
+    }
+    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
+        throw ScriptException(admin_remote_call_error);
+    }
+    if (const auto event_error = ValidateEventSubscriptions(mod, lnt); !event_error.empty()) {
+        throw ScriptException(event_error);
+    }
+    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, lnt); !remote_call_error.empty()) {
+        throw ScriptException(remote_call_error);
     }
 }
 
@@ -514,9 +535,9 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     }
 
     auto loader = ScriptLoader(&root_script, &final_script_files);
-    Preprocessor::StringOutStream result;
     Preprocessor::StringOutStream errors;
-    const auto errors_count = Preprocessor::Preprocess(preprocessor_context, "", result, &errors, &loader);
+    Preprocessor::LexemList lexems;
+    const auto errors_count = Preprocessor::PreprocessToLexems(preprocessor_context, "", lexems, &errors, &loader);
 
     while (!errors.String.empty() && errors.String.back() == '\n') {
         errors.String.pop_back();
@@ -529,8 +550,17 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         WriteLog("Preprocessor message: {}", errors.String);
     }
 
+    string attribute_errors;
+    const auto parsed_attributes = ParseFunctionAttributeRecords(preprocessor_context, lexems, attribute_errors);
+    if (!attribute_errors.empty()) {
+        throw ScriptCompilerException("Function attribute parsing failed", attribute_errors);
+    }
+
+    Preprocessor::StringOutStream result;
+    Preprocessor::PrintLexemList(preprocessor_context, lexems, result);
+
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context);
-    _asEngine->SetUserData(cast_to_void(lnt), 5);
+    _asEngine->SetUserData(cast_to_void(lnt), AS_PREPROCESSOR_LNT_USER_DATA);
 
     auto* mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
@@ -548,6 +578,25 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to build module", as_result);
+    }
+
+    if (const auto bind_error = BindFunctionAttributeRecords(mod, parsed_attributes); !bind_error.empty()) {
+        throw ScriptCompilerException("Unable to bind function attributes", bind_error);
+    }
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt); !usage_error.empty()) {
+        throw ScriptCompilerException("Attributed function usage validation failed", usage_error);
+    }
+    if (const auto special_attr_error = ValidateSpecialFunctionAttributes(mod, lnt); !special_attr_error.empty()) {
+        throw ScriptCompilerException("Special function attribute validation failed", special_attr_error);
+    }
+    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
+        throw ScriptCompilerException("Admin remote call attribute validation failed", admin_remote_call_error);
+    }
+    if (const auto event_error = ValidateEventSubscriptions(mod, lnt); !event_error.empty()) {
+        throw ScriptCompilerException("Callback attribute validation failed", event_error);
+    }
+    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, lnt); !remote_call_error.empty()) {
+        throw ScriptCompilerException("Remote call attribute validation failed", remote_call_error);
     }
 
     vector<AngelScript::asBYTE> buf;
@@ -570,6 +619,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.WritePtr(buf.data(), buf.size());
     writer.Write<uint32>(numeric_cast<uint32>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
+    SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;
 }
 
@@ -590,19 +640,15 @@ void AngelScriptBackend::BindRequiredStuff()
 
             _scriptSys->AddGlobalScriptFunc(func_desc);
 
-            // Check for special module init and validation functions
+            // Check for special module init functions
             if (func_desc->Call && func_desc->Args.empty() && func_desc->Ret.Kind == ComplexTypeKind::None) {
-                auto func_name = strvex(func->GetName());
+                auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
 
-                if (func_name.starts_with("ModuleInit") || func_name.starts_with("module_init")) {
-                    const auto priority = func_name.substring_after('_').to_int32();
-                    auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
+                if (const auto raw_init_attr = FindFunctionAttribute(func, "ModuleInit"); !raw_init_attr.empty()) {
+                    auto priority = int32 {};
+                    const auto parsed = TryParseModuleFuncPriority(raw_init_attr, "ModuleInit", priority);
+                    FO_RUNTIME_ASSERT(parsed);
                     _scriptSys->AddInitFunc(std::move(func_wrapper), priority);
-                }
-                else if (func_name.starts_with("ModuleValidate") || func_name.starts_with("module_validate")) {
-                    const auto priority = func_name.substring_after('_').to_int32();
-                    auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
-                    _scriptSys->AddValidateFunc(std::move(func_wrapper), priority);
                 }
             }
         }
@@ -647,6 +693,35 @@ void AngelScriptBackend::BindRequiredStuff()
             }
         });
     }
+}
+
+auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32& priority) noexcept -> bool
+{
+    priority = 0;
+
+    if (raw_attribute.empty()) {
+        return false;
+    }
+
+    if (raw_attribute == attribute_name) {
+        return true;
+    }
+
+    if (!raw_attribute.starts_with(attribute_name) || raw_attribute.length() <= attribute_name.length() + 2 || raw_attribute[attribute_name.length()] != '(' || raw_attribute.back() != ')') {
+        return false;
+    }
+
+    const auto args = raw_attribute.substr(attribute_name.length() + 1, raw_attribute.length() - attribute_name.length() - 2);
+    auto parsed_priority = int32 {};
+    const auto* begin = args.data();
+    const auto* end = begin + args.length();
+    const auto [ptr, ec] = std::from_chars(begin, end, parsed_priority);
+    if (ec != std::errc {} || ptr != end) {
+        return false;
+    }
+
+    priority = parsed_priority;
+    return true;
 }
 
 void AngelScriptBackend::AddCleanupCallback(function<void()> callback)

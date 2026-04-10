@@ -1280,32 +1280,34 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
+        const auto func_name_ = Hashes.ToHashedString(func_name);
+
         bool failed = false;
         const auto param0 = ResolveGenericValue(param0_str, &failed);
         const auto param1 = ResolveGenericValue(param1_str, &failed);
         const auto param2 = ResolveGenericValue(param2_str, &failed);
 
-        if (CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
-            CallFunc<void, Player*, int32>(Hashes.ToHashedString(func_name), player, param0) || //
-            CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
-            CallFunc<void, Player*, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1) || //
-            CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
-            CallFunc<void, Player*, int32, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
-            CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
-            CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
-            CallFunc<void, Critter*, int32>(Hashes.ToHashedString(func_name), player_cr, param0) || //
-            CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
-            CallFunc<void, Critter*, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
-            CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
-            CallFunc<void, Critter*, int32, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
-            CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
-            CallFunc<void>(Hashes.ToHashedString(func_name)) || //
-            CallFunc<void, int32>(Hashes.ToHashedString(func_name), param0) || //
-            CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
-            CallFunc<void, int32, int32>(Hashes.ToHashedString(func_name), param0, param1) || //
-            CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
-            CallFunc<void, int32, int32, int32>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
-            CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
+        if (CallAdminFunc<void, Player*>(func_name_, player) || //
+            CallAdminFunc<void, Player*, int32>(func_name_, player, param0) || //
+            CallAdminFunc<void, Player*, any_t>(func_name_, player, param0_str) || //
+            CallAdminFunc<void, Player*, int32, int32>(func_name_, player, param0, param1) || //
+            CallAdminFunc<void, Player*, any_t, any_t>(func_name_, player, param0_str, param1_str) || //
+            CallAdminFunc<void, Player*, int32, int32, int32>(func_name_, player, param0, param1, param2) || //
+            CallAdminFunc<void, Player*, any_t, any_t, any_t>(func_name_ipt_func_name, player, param0_str, param1_str, param2_str) || //
+            CallAdminFunc<void, Critter*>(func_name_, player_cr) || //
+            CallAdminFunc<void, Critter*, int32>(func_name_, player_cr, param0) || //
+            CallAdminFunc<void, Critter*, any_t>(func_name_, player_cr, param0_str) || //
+            CallAdminFunc<void, Critter*, int32, int32>(func_name_, player_cr, param0, param1) || //
+            CallAdminFunc<void, Critter*, any_t, any_t>(func_name_ipt_func_name, player_cr, param0_str, param1_str) || //
+            CallAdminFunc<void, Critter*, int32, int32, int32>(func_name_, player_cr, param0, param1, param2) || //
+            CallAdminFunc<void, Critter*, any_t, any_t, any_t>(func_name_, player_cr, param0_str, param1_str, param2_str) || //
+            CallAdminFunc<void>(func_name_unc_name) || //
+            CallAdminFunc<void, int32>(func_name_, param0) || //
+            CallAdminFunc<void, any_t>(func_name_, param0_str) || //
+            CallAdminFunc<void, int32, int32>(func_name_, param0, param1) || //
+            CallAdminFunc<void, any_t, any_t>(func_name_, param0_str, param1_str) || //
+            CallAdminFunc<void, int32, int32, int32>(func_name_, param0, param1, param2) || //
+            CallAdminFunc<void, any_t, any_t, any_t>(func_name_, param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
         else {

@@ -218,11 +218,13 @@ namespace NativeDataProvider
 struct ScriptFuncDesc
 {
     using CallType = function<void(FuncCallData&)>;
+    using AttributeCheckerType = function<bool(string_view)>;
 
     hstring Name {};
     vector<ArgDesc> Args {};
     ComplexTypeDesc Ret {};
     CallType Call {};
+    AttributeCheckerType AttributeChecker {};
     uintptr_t DelegateObj {};
 };
 
@@ -252,6 +254,7 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
     [[nodiscard]] auto IsDelegate() const noexcept -> bool { return _func && _func->DelegateObj != 0; }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName { return _func ? ScriptFuncName(_func->Name, _func->DelegateObj) : ScriptFuncName(); }
+    [[nodiscard]] auto HasAttribute(string_view attribute) const noexcept -> bool { return _func && _func->AttributeChecker(attribute); }
 
     [[nodiscard]] auto GetResult() noexcept -> TRet
     {
@@ -450,7 +453,6 @@ public:
     void InitSubsystems(BaseEngine* engine);
     void InitSubsystems(EngineMetadata* meta, const FileSystem& resources);
     void InitModules();
-    void ValidateModules();
     void ProcessScriptEvents();
 
     void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
@@ -499,13 +501,13 @@ public:
     }
 
     template<typename TRet, typename... Args>
-    [[nodiscard]] auto CheckFunc(hstring func_name) const noexcept -> bool
+    [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
     {
         const auto range = _globalFuncMap.equal_range(func_name);
         const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>())) {
+            if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>()) && (attribute.empty() || it->second->AttributeChecker(attribute))) {
                 return true;
             }
         }
@@ -535,12 +537,30 @@ public:
         return func && func.Call(args...);
     }
 
+    template<typename TRet = void, typename... Args>
+        requires(std::is_void_v<TRet>)
+    [[nodiscard]] auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
+    {
+        const auto range = _globalFuncMap.equal_range(func_name);
+        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+
+        for (auto it = range.first; it != range.second; ++it) {
+            if (!it->second->AttributeChecker("AdminRemoteCall") || !ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<void>())) {
+                continue;
+            }
+
+            auto func = ScriptFunc<void, Args...>(it->second.get());
+            return func && func.Call(args...);
+        }
+
+        return false;
+    }
+
     [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
     void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
     void AddInitFunc(ScriptFunc<void> func, int32 priority);
-    void AddValidateFunc(ScriptFunc<void> func, int32 priority);
 
     template<typename T>
         requires(!std::is_pointer_v<T>)
@@ -588,7 +608,6 @@ private:
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
     vector<pair<ScriptFunc<void>, int32>> _initFunc {};
-    vector<pair<ScriptFunc<void>, int32>> _validateFunc {};
 };
 
 class ScriptHelpers final

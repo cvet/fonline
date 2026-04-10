@@ -80,6 +80,20 @@ static void CleanupScriptContext(AngelScript::asIScriptContext* ctx)
     delete ctx_ext;
 }
 
+auto AngelScriptContextExtendedData::Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+}
+
+auto AngelScriptContextExtendedData::Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData());
+}
+
 AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32>, string_view)> debugger_stop_callback) :
     _asEngine {as_engine},
     _overrunTimeout {overrun_timeout},
