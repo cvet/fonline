@@ -38,6 +38,7 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
 #include <as_context.h>
 #include <preprocessor.h>
 // ReSharper disable CppRedundantQualifier

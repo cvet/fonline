@@ -1293,15 +1293,15 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
             CallAdminFunc<void, Player*, int32, int32>(func_name_, player, param0, param1) || //
             CallAdminFunc<void, Player*, any_t, any_t>(func_name_, player, param0_str, param1_str) || //
             CallAdminFunc<void, Player*, int32, int32, int32>(func_name_, player, param0, param1, param2) || //
-            CallAdminFunc<void, Player*, any_t, any_t, any_t>(func_name_ipt_func_name, player, param0_str, param1_str, param2_str) || //
+            CallAdminFunc<void, Player*, any_t, any_t, any_t>(func_name_, player, param0_str, param1_str, param2_str) || //
             CallAdminFunc<void, Critter*>(func_name_, player_cr) || //
             CallAdminFunc<void, Critter*, int32>(func_name_, player_cr, param0) || //
             CallAdminFunc<void, Critter*, any_t>(func_name_, player_cr, param0_str) || //
             CallAdminFunc<void, Critter*, int32, int32>(func_name_, player_cr, param0, param1) || //
-            CallAdminFunc<void, Critter*, any_t, any_t>(func_name_ipt_func_name, player_cr, param0_str, param1_str) || //
+            CallAdminFunc<void, Critter*, any_t, any_t>(func_name_, player_cr, param0_str, param1_str) || //
             CallAdminFunc<void, Critter*, int32, int32, int32>(func_name_, player_cr, param0, param1, param2) || //
             CallAdminFunc<void, Critter*, any_t, any_t, any_t>(func_name_, player_cr, param0_str, param1_str, param2_str) || //
-            CallAdminFunc<void>(func_name_unc_name) || //
+            CallAdminFunc<void>(func_name_) || //
             CallAdminFunc<void, int32>(func_name_, param0) || //
             CallAdminFunc<void, any_t>(func_name_, param0_str) || //
             CallAdminFunc<void, int32, int32>(func_name_, param0, param1) || //

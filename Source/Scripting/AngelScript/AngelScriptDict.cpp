@@ -38,6 +38,8 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 static constexpr AngelScript::asPWORD AS_TYPE_DICT_CACHE = 1010;

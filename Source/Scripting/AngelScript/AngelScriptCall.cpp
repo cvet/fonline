@@ -42,6 +42,8 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 auto ScriptDataAccessor::GetArraySize(void* data) const -> size_t

@@ -38,6 +38,7 @@
 #include "AngelScriptArray.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
 #include <as_datatype.h>
 #include <as_scriptengine.h>
 // ReSharper disable CppRedundantQualifier

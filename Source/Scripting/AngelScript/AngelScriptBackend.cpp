@@ -50,6 +50,7 @@
 #include "AngelScriptString.h"
 #include "AngelScriptTypes.h"
 
+#include <angelscript.h>
 #include <json.hpp>
 #include <preprocessor.h>
 

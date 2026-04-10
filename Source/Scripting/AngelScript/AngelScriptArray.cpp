@@ -37,6 +37,8 @@
 
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 constexpr AngelScript::asPWORD AS_TYPE_ARRAY_CACHE = 1000;

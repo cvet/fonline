@@ -42,6 +42,7 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
 #include <preprocessor.h>
 
 FO_BEGIN_NAMESPACE

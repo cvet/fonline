@@ -44,6 +44,8 @@
 #include "EngineBase.h"
 #include "Entity.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 static void Entity_AddRef(const Entity* self)
