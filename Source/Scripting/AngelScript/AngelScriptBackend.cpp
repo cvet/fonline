@@ -646,7 +646,7 @@ void AngelScriptBackend::BindRequiredStuff()
                 auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
 
                 if (const auto raw_init_attr = FindFunctionAttribute(func, "ModuleInit"); !raw_init_attr.empty()) {
-                    auto priority = int32 {};
+                    int32 priority = 0;
                     const auto parsed = TryParseModuleFuncPriority(raw_init_attr, "ModuleInit", priority);
                     FO_RUNTIME_ASSERT(parsed);
                     _scriptSys->AddInitFunc(std::move(func_wrapper), priority);
@@ -703,11 +703,9 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
     if (raw_attribute.empty()) {
         return false;
     }
-
     if (raw_attribute == attribute_name) {
         return true;
     }
-
     if (!raw_attribute.starts_with(attribute_name) || raw_attribute.length() <= attribute_name.length() + 2 || raw_attribute[attribute_name.length()] != '(' || raw_attribute.back() != ')') {
         return false;
     }
@@ -717,6 +715,7 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
     const auto* begin = args.data();
     const auto* end = begin + args.length();
     const auto [ptr, ec] = std::from_chars(begin, end, parsed_priority);
+
     if (ec != std::errc {} || ptr != end) {
         return false;
     }

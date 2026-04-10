@@ -109,6 +109,10 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
 
 #ifdef AS_MAX_PORTABILITY
 
+FO_END_NAMESPACE
+#include <angelscript.h>
+FO_BEGIN_NAMESPACE
+
 #define FO_AS_WRAP_FN(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<name>::f))
 #define FO_AS_WRAP_MFN(ClassType, name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<&ClassType::name>::f))
 #define FO_AS_WRAP_OBJ_FIRST(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::ObjFirstWrapper<name>::f))
