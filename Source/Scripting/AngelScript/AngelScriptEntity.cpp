@@ -879,7 +879,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
 static void ValidateCallbackFunc(AngelScript::asIScriptFunction* func)
 {
     FO_NO_STACK_TRACE_ENTRY();
-    
+
     const auto resolve_callback_func = [](AngelScript::asIScriptFunction* callback) noexcept -> AngelScript::asIScriptFunction* {
         if (callback != nullptr && callback->GetFuncType() == AngelScript::asFUNC_DELEGATE) {
             if (auto* delegate_func = callback->GetDelegateFunction(); delegate_func != nullptr) {
@@ -889,9 +889,9 @@ static void ValidateCallbackFunc(AngelScript::asIScriptFunction* func)
 
         return callback;
     };
-    
+
     auto* callback_func = resolve_callback_func(func);
-    
+
     if (callback_func == nullptr) {
         throw ScriptException("Null callback passed to event");
     }
