@@ -130,7 +130,8 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         try {
             file_baking.get();
         }
-        catch (const ScriptCompilerException&) {
+        catch (const ScriptCompilerException& ex) {
+            WriteLog("AngelScript compile error: {}", ex.what());
             errors++;
         }
         catch (const std::exception& ex) {

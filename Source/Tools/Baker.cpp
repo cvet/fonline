@@ -172,6 +172,7 @@ void MasterBaker::BakeAllInternal()
     const auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
 
     const auto build_hash_path = make_output_path("Resources.build-hash");
+    const auto prev_build_hash = fs_read_file(build_hash_path);
     const auto build_hash_deleted = fs_remove_file(build_hash_path);
     FO_RUNTIME_ASSERT(build_hash_deleted);
 
@@ -179,8 +180,19 @@ void MasterBaker::BakeAllInternal()
 
     if (_settings->ForceBaking) {
         WriteLog("Force rebuild all resources");
+        force_baking = true;
+    }
+    else if (prev_build_hash.has_value() && prev_build_hash.value() != FO_BUILD_HASH) {
+        WriteLog("Force rebuild all resources due to build hash changed");
+        force_baking = true;
+    }
+
+    if (force_baking) {
         const auto delete_output_ok = fs_remove_dir_tree(_settings->BakeOutput);
         FO_RUNTIME_ASSERT_STR(delete_output_ok, "Unable to delete baking output dir");
+    }
+
+    if (!prev_build_hash.has_value()) {
         force_baking = true;
     }
 
