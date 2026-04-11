@@ -2489,7 +2489,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
             if (quad_dir != -1) {
                 hex = cr->GetHex();
 
-                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
+                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir, cr->GetMultihex())) {
                     control_steps.push_back(numeric_cast<uint16>(steps.size()));
                     try_move = true;
                 }

@@ -35,10 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// Check a single hex or multihex perimeter in a given BFS direction
-// For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
-// Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
-static auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
+auto PathFinding::CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -111,10 +108,10 @@ static auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_
         uint8 ccw_dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            ccw_dir = (dir + 4) % 6;
+            ccw_dir = (dir + 2) % 6;
         }
         else {
-            ccw_dir = (dir + 6) % 8;
+            ccw_dir = (dir + 2) % 8;
         }
 
         if (is_square_corner) {

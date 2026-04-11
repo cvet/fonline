@@ -164,7 +164,7 @@ public:
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> bool;
-    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir) const -> bool;
+    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir, int32 multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();

@@ -238,7 +238,7 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
     }
 
     metrics.WholeDist = std::max(metrics.WholeDist, 0.0001f);
-    
+
     if (_speed != 0) {
         metrics.WholeTime = std::max(metrics.WholeTime, 0.0001f);
     }

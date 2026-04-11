@@ -1736,7 +1736,13 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint32>();
-    FO_RUNTIME_ASSERT(in_encrypt_key != 0);
+
+    if (in_encrypt_key == 0) {
+        WriteLog("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
+        connection->HardDisconnect();
+        return;
+    }
+
     in_buf->SetEncryptKey(in_encrypt_key);
 
     in_buf.Unlock();
@@ -1949,57 +1955,34 @@ void ServerEngine::Process_Move(Player* player)
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (speed == 0) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
     }
 
-    // Validate path
-    // Todo: validate player moving path
-    /*auto next_start_hx = start_hx;
-    auto next_start_hy = start_hy;
-    uint16 control_step_begin = 0;
-
-    for (size_t i = 0; i < control_steps.size(); i++) {
-        auto hx = next_start_hx;
-        auto hy = next_start_hy;
-
-        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
-            if (!move_ok || !map->IsHexMovable(hx, hy)) {
-            }
-        }
-
-        control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hx = hx;
-        next_start_hy = hy;
-    }*/
-
     int32 corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
         player->Send_Moving(cr);
         return;
     }
@@ -2011,7 +1994,7 @@ void ServerEngine::Process_Move(Player* player)
         const auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
-            BreakIntoDebugger();
+            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
             player->Send_Moving(cr);
             return;
         }
@@ -2025,11 +2008,60 @@ void ServerEngine::Process_Move(Player* player)
         steps.insert(steps.begin(), find_result.Steps.begin(), find_result.Steps.end());
     }
 
+    // Validate path: walk each step and check hex movability
+    bool path_truncated = false;
+
+    {
+        const auto multihex = cr->GetMultihex();
+        auto validate_hex = cr_hex;
+        size_t valid_step_count = 0;
+
+        const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+
+        for (size_t i = 0; i < steps.size(); i++) {
+            auto next_hex = validate_hex;
+
+            if (!GeometryHelper::MoveHexByDir(next_hex, steps[i], map->GetSize())) {
+                break;
+            }
+
+            const auto block = PathFinding::CheckHexWithMultihex(next_hex, steps[i], multihex, map->GetSize(), check_hex);
+
+            if (block == HexBlockResult::Blocked) {
+                break;
+            }
+
+            validate_hex = next_hex;
+            valid_step_count++;
+        }
+
+        if (valid_step_count == 0) {
+            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
+            player->Send_Moving(cr);
+            return;
+        }
+
+        if (valid_step_count < steps.size()) {
+            steps.resize(valid_step_count);
+
+            // Truncate control_steps to match shortened path
+            while (!control_steps.empty() && control_steps.back() > valid_step_count) {
+                control_steps.pop_back();
+            }
+
+            if (control_steps.empty() || control_steps.back() != numeric_cast<uint16>(valid_step_count)) {
+                control_steps.push_back(numeric_cast<uint16>(valid_step_count));
+            }
+
+            path_truncated = true;
+        }
+    }
+
     if (end_hex_offset.x < -GameSettings::MAP_HEX_WIDTH / 2 || end_hex_offset.x > GameSettings::MAP_HEX_WIDTH / 2) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
     if (end_hex_offset.y < -GameSettings::MAP_HEX_HEIGHT / 2 || end_hex_offset.y > GameSettings::MAP_HEX_HEIGHT / 2) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
 
     const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16>(GameSettings::MAP_HEX_WIDTH / 2));
@@ -2037,6 +2069,9 @@ void ServerEngine::Process_Move(Player* player)
 
     StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
+    if (path_truncated) {
+        player->Send_Moving(cr);
+    }
     if (corrected_speed != numeric_cast<int32>(speed)) {
         player->Send_MovingSpeed(cr);
     }
@@ -2062,19 +2097,19 @@ void ServerEngine::Process_StopMove(Player* player)
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
@@ -2083,7 +2118,7 @@ void ServerEngine::Process_StopMove(Player* player)
     int32 zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
     }
@@ -2108,19 +2143,21 @@ void ServerEngine::Process_Dir(Player* player)
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
+        WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     auto* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     int16 checked_dir_angle = dir_angle;
 
     if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
-        BreakIntoDebugger();
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir_angle);
         player->Send_Dir(cr);
         return;
     }
@@ -2254,42 +2291,47 @@ void ServerEngine::Process_Property(Player* player)
         break;
     }
 
-    if (prop == nullptr || entity == nullptr) {
+    if (prop == nullptr) {
+        WriteLog("Process_Property: unknown property index {}, player '{}', type {}", property_index, player->GetName(), type);
+        return;
+    }
+    if (entity == nullptr) {
+        WriteLog("Process_Property: entity not found for property '{}', player '{}', type {}, cr_id {}, item_id {}", prop->GetName(), player->GetName(), type, cr_id, item_id);
         return;
     }
 
     if (prop->IsDisabled()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is disabled, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (prop->IsVirtual()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is virtual, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not public sync, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!is_public && !prop->IsSynced()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not synced, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not modifiable by client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is public but not modifiable by any client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
 
     if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' data size mismatch (got {}, expected {}), player '{}', type {}, entity '{}'", prop->GetName(), data_size, prop->GetBaseSize(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!prop->IsPlainData() && data_size != 0) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is complex but got non-zero data_size {}, player '{}', type {}, entity '{}'", prop->GetName(), data_size, player->GetName(), type, entity->GetName());
         return;
     }
 
@@ -2668,7 +2710,9 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
             const auto multihex = cr->GetMultihex();
 
-            if (map->IsHexesMovable(target_hex, multihex)) {
+            const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+
+            if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
                 map->RemoveCritterFromField(cr);
                 cr->SetHex(target_hex);
                 map->AddCritterToField(cr);

@@ -3469,23 +3469,30 @@ bool MapView::CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int3
     return !!FindPath(cr, start_hex, target_hex, cut);
 }
 
-bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir) const
+bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir, int32 multihex) const
 {
     FO_STACK_TRACE_ENTRY();
 
     hex_offset = {};
 
-    const auto try_move = [this, &start_hex, &dir_steps](uint8 dir) {
+    const auto try_move = [this, &start_hex, &dir_steps, multihex](uint8 dir) {
         auto check_hex = start_hex;
 
         if (!GeometryHelper::MoveHexByDir(check_hex, dir, _mapSize)) {
             return false;
         }
 
-        const auto& field = _hexField->GetCellForReading(check_hex);
+        if (multihex > 0) {
+            const auto result = PathFinding::CheckHexWithMultihex(check_hex, dir, multihex, _mapSize, [this](mpos h) { return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable; });
 
-        if (field.MoveBlocked) {
-            return false;
+            if (result == HexBlockResult::Blocked) {
+                return false;
+            }
+        }
+        else {
+            if (_hexField->GetCellForReading(check_hex).MoveBlocked) {
+                return false;
+            }
         }
 
         start_hex = check_hex;

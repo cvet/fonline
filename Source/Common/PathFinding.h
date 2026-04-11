@@ -104,6 +104,11 @@ struct TraceLineOutput
 
 namespace PathFinding
 {
+    // Check a single hex or multihex perimeter in a given BFS direction
+    // For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
+    // Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
+    [[nodiscard]] auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
+
     // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
 
