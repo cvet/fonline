@@ -39,6 +39,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <list>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -58,11 +59,78 @@ namespace Preprocessor
     class LineNumberTranslator;
     class PragmaInstance;
 
+#ifdef IDENTIFIER
+#undef IDENTIFIER
+#endif
+#ifdef COMMA
+#undef COMMA
+#endif
+#ifdef SEMICOLON
+#undef SEMICOLON
+#endif
+#ifdef OPEN
+#undef OPEN
+#endif
+#ifdef CLOSE
+#undef CLOSE
+#endif
+#ifdef PREPROCESSOR
+#undef PREPROCESSOR
+#endif
+#ifdef NEWLINE
+#undef NEWLINE
+#endif
+#ifdef WHITESPACE
+#undef WHITESPACE
+#endif
+#ifdef IGNORE
+#undef IGNORE
+#endif
+#ifdef COMMENT
+#undef COMMENT
+#endif
+#ifdef STRING
+#undef STRING
+#endif
+#ifdef NUMBER
+#undef NUMBER
+#endif
+#ifdef BACKSLASH
+#undef BACKSLASH
+#endif
+
+    enum LexemType
+    {
+        IDENTIFIER,
+        COMMA,
+        SEMICOLON,
+        OPEN,
+        CLOSE,
+        PREPROCESSOR,
+        NEWLINE,
+        WHITESPACE,
+        IGNORE,
+        COMMENT,
+        STRING,
+        NUMBER,
+        BACKSLASH
+    };
+
+    class Lexem
+    {
+public:
+        std::string Value;
+        LexemType   Type;
+    };
+
+    typedef std::list< Lexem > LexemList;
+
     Context* CreateContext();
     void     DeleteContext( Context* ctx ) noexcept;
 
     // Preprocess
     int Preprocess( Context* ctx, std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL );
+    int PreprocessToLexems( Context* ctx, std::string file_path, LexemList& result, OutStream* errors = NULL, FileLoader* loader = NULL );
 
     // Pre preprocess settings
     void Define( Context* ctx, const std::string& str );
@@ -81,6 +149,7 @@ namespace Preprocessor
     unsigned int          ResolveOriginalLine( Context* ctx, unsigned int line_number );
     const std::string&    ResolveOriginalFile( unsigned int line_number, const LineNumberTranslator* lnt );
     unsigned int          ResolveOriginalLine( unsigned int line_number, const LineNumberTranslator* lnt );
+    void                  PrintLexemList( Context* ctx, LexemList& out, OutStream& destination );
 
     /************************************************************************/
     /* Streams                                                              */

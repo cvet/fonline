@@ -39,7 +39,11 @@
 
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+    class asITypeInfo;
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -72,7 +76,7 @@ public:
 
     auto GetDictObjectType() -> AngelScript::asITypeInfo* { return _typeInfo.get(); }
     auto GetDictObjectType() const -> const AngelScript::asITypeInfo* { return _typeInfo.get(); }
-    auto GetDictTypeId() const -> int32 { return _typeInfo->GetTypeId(); }
+    auto GetDictTypeId() const -> int32;
     auto GetMap() const -> const map<void*, void*, ScriptDictComparator>& { return _data; }
     auto IsEmpty() const -> bool;
     auto GetSize() const -> int32;

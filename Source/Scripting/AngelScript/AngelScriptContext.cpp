@@ -38,6 +38,7 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
 #include <as_context.h>
 #include <preprocessor.h>
 // ReSharper disable CppRedundantQualifier
@@ -78,6 +79,20 @@ static void CleanupScriptContext(AngelScript::asIScriptContext* ctx)
 
     const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     delete ctx_ext;
+}
+
+auto AngelScriptContextExtendedData::Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+}
+
+auto AngelScriptContextExtendedData::Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData());
 }
 
 AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32>, string_view)> debugger_stop_callback) :

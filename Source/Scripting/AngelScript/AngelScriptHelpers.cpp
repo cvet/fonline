@@ -42,6 +42,8 @@
 #include "EngineBase.h"
 #include "EntityProtos.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32 line, int32 result)

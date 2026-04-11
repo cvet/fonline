@@ -42,6 +42,8 @@
 #include "EngineBase.h"
 #include "Geometry.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 template<typename T>

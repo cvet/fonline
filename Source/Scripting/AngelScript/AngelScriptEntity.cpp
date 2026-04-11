@@ -36,12 +36,15 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptArray.h"
+#include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
 #include "AngelScriptHelpers.h"
 #include "EngineBase.h"
 #include "Entity.h"
+
+#include <angelscript.h>
 
 FO_BEGIN_NAMESPACE
 
@@ -875,6 +878,30 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     });
 }
 
+static void ValidateCallbackFunc(AngelScript::asIScriptFunction* func)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto resolve_callback_func = [](AngelScript::asIScriptFunction* callback) noexcept -> AngelScript::asIScriptFunction* {
+        if (callback != nullptr && callback->GetFuncType() == AngelScript::asFUNC_DELEGATE) {
+            if (auto* delegate_func = callback->GetDelegateFunction(); delegate_func != nullptr) {
+                return delegate_func;
+            }
+        }
+
+        return callback;
+    };
+
+    auto* callback_func = resolve_callback_func(func);
+
+    if (callback_func == nullptr) {
+        throw ScriptException("Null callback passed to event");
+    }
+    if (!HasFunctionAttribute(callback_func, "Event")) {
+        throw ScriptException(strex("Only functions marked [[Event]] can be passed to events, got '{}'", callback_func->GetDeclaration(true, true, false)).str());
+    }
+}
+
 static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -883,6 +910,8 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityNonDestroyed(entity);
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
+    ValidateCallbackFunc(func);
+
     FO_RUNTIME_ASSERT(func->GetReturnTypeId() == AngelScript::asTYPEID_VOID || func->GetReturnTypeId() == AngelScript::asTYPEID_BOOL);
     const auto& priority = *cast_from_void<Entity::EventPriority*>(gen->GetAddressOfArg(1));
 
@@ -915,7 +944,8 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
 
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
-    const auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
+    auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
+    ValidateCallbackFunc(func);
 
     // May call on destroyed entity
     if (entity->IsDestroyed()) {

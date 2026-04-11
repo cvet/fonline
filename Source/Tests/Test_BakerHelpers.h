@@ -260,6 +260,8 @@ namespace BakerTests
 
         void AddBakedFile(string_view path, string_view content, uint64 write_time = 1) { _bakedData->AddFile(path, content, write_time); }
 
+        void AddBakedFile(string_view path, vector<uint8> content, uint64 write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }
+
         [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
 
         [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }

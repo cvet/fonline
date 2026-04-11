@@ -172,6 +172,7 @@ void MasterBaker::BakeAllInternal()
     const auto make_output_path = [this](string_view path) -> string { return strex(_settings->BakeOutput).combine_path(path); };
 
     const auto build_hash_path = make_output_path("Resources.build-hash");
+    const auto prev_build_hash = fs_read_file(build_hash_path);
     const auto build_hash_deleted = fs_remove_file(build_hash_path);
     FO_RUNTIME_ASSERT(build_hash_deleted);
 
@@ -179,8 +180,19 @@ void MasterBaker::BakeAllInternal()
 
     if (_settings->ForceBaking) {
         WriteLog("Force rebuild all resources");
+        force_baking = true;
+    }
+    else if (prev_build_hash.has_value() && prev_build_hash.value() != FO_BUILD_HASH) {
+        WriteLog("Force rebuild all resources due to build hash changed");
+        force_baking = true;
+    }
+
+    if (force_baking) {
         const auto delete_output_ok = fs_remove_dir_tree(_settings->BakeOutput);
         FO_RUNTIME_ASSERT_STR(delete_output_ok, "Unable to delete baking output dir");
+    }
+
+    if (!prev_build_hash.has_value()) {
         force_baking = true;
     }
 
@@ -400,13 +412,42 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 {
     FO_STACK_TRACE_ENTRY();
 
-    static unordered_map<string, function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
-        {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); }},
-        {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); }},
-        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); }},
-        {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); }},
-        {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); }},
-        {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); }},
+    struct ScriptFuncValidationRule
+    {
+        function<bool(hstring, const ScriptSystem*)> VerifySignature {};
+        function<bool(hstring, const ScriptSystem*)> VerifyAttribute {};
+        string_view RequiredAttribute {};
+    };
+
+    static const unordered_map<string, ScriptFuncValidationRule> script_func_verify = {
+        {"ItemInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); },
+            }},
+        {"ItemStatic",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); },
+                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name, "ItemStatic"); },
+                .RequiredAttribute = "ItemStatic",
+            }},
+        {"ItemTrigger",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); },
+                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name, "ItemTrigger"); },
+                .RequiredAttribute = "ItemTrigger",
+            }},
+        {"CritterInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); },
+            }},
+        {"MapInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); },
+            }},
+        {"LocationInit",
+            ScriptFuncValidationRule {
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); },
+            }},
     };
 
     FO_RUNTIME_ASSERT(_context->BakedFiles);
@@ -451,12 +492,18 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
 
-                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0) {
+                const auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
+
+                if (rule_it == script_func_verify.end()) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
-                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
+                else if (func_name && !rule_it->second.VerifySignature(func_name, script_sys)) {
                     WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    errors++;
+                }
+                else if (func_name && !rule_it->second.RequiredAttribute.empty() && !rule_it->second.VerifyAttribute(func_name, script_sys)) {
+                    WriteLog("Function {} assigned to property {} in {} must be marked [[{}]]", func_name, prop->GetName(), context_str, rule_it->second.RequiredAttribute);
                     errors++;
                 }
             }

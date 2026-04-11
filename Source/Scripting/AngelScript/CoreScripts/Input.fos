@@ -51,7 +51,8 @@ bool[] GetMousePressed()
     return MousePressed;
 }
 
-void ModuleInit()
+[[ModuleInit]]
+void InitInput()
 {
     Game.OnMouseDown.Subscribe(OnMouseDown);
     Game.OnMouseUp.Subscribe(OnMouseUp);
@@ -68,7 +69,7 @@ void ReleaseKeys()
 {
     for (int i = 0; i < KeyPressed.length(); i++) {
         if (KeyPressed[i]) {
-            OnKeyUp(KeyCode(i));
+            KeyUp(KeyCode(i));
         }
     }
 }
@@ -77,14 +78,50 @@ void ReleaseMouse()
 {
     for (int i = 0; i < MousePressed.length(); i++) {
         if (MousePressed[i]) {
-            OnMouseUp(MouseButton(i));
+            MouseUp(MouseButton(i));
         }
     }
 }
 
+[[Event]]
+void OnMouseDown(MouseButton button)
+{
+    MouseDown(button);
+}
+
+[[Event]]
+void OnMouseUp(MouseButton button)
+{
+    MouseUp(button);
+}
+
+[[Event]]
+void OnMouseMove(ipos offset)
+{
+    MouseMove(offset);
+}
+
+[[Event]]
+void OnKeyDown(KeyCode key, string text)
+{
+    KeyDown(key, text);
+}
+
+[[Event]]
+void OnKeyUp(KeyCode key)
+{
+    KeyUp(key);
+}
+
+[[Event]]
+void OnInputLost()
+{
+    InputLost();
+}
+
 // Mouse behaviours. Button states look in ClientCore.fos, Mouse buttons.
 // Return true to disable engine events.
-void OnMouseDown(MouseButton button) // Engine callback
+void MouseDown(MouseButton button) // Engine callback
 {
     if (Game.IsConnecting()) {
         return;
@@ -95,7 +132,7 @@ void OnMouseDown(MouseButton button) // Engine callback
     Gui::EngineCallback_MouseDown(button);
 }
 
-void OnMouseUp(MouseButton button) // Engine callback
+void MouseUp(MouseButton button) // Engine callback
 {
     if (MousePressed[button]) {
         Gui::EngineCallback_MouseUp(button);
@@ -104,14 +141,14 @@ void OnMouseUp(MouseButton button) // Engine callback
     MousePressed[button] = false;
 }
 
-void OnMouseMove(ipos offset) // Engine callback
+void MouseMove(ipos offset) // Engine callback
 {
     Gui::EngineCallback_MouseMove(offset);
 }
 
 // Keyboard behaviours. Key codes look in ClientCore.fos, DirectInput keyboard scan codes.
 // Return true to disable engine events.
-void OnKeyDown(KeyCode key, string text) // Engine callback
+void KeyDown(KeyCode key, string text) // Engine callback
 {
     // Avoid repeating
     if (KeyPressed[key]) {
@@ -131,7 +168,7 @@ void OnKeyDown(KeyCode key, string text) // Engine callback
     }
 }
 
-void OnKeyUp(KeyCode key) // Engine callback
+void KeyUp(KeyCode key) // Engine callback
 {
     // Avoid repeating
     if (!KeyPressed[key]) {
@@ -147,7 +184,7 @@ void OnKeyUp(KeyCode key) // Engine callback
 }
 
 // Called on mouse/keyboard input lost (alt-tab, minimize, lost focus).
-void OnInputLost() // Engine callback
+void InputLost() // Engine callback
 {
     // Reset states
     ReleaseKeys();

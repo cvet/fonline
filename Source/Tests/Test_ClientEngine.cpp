@@ -70,17 +70,20 @@ namespace ClientEngineTest
     int LoopCalls = 0;
     int ManualCalls = 0;
 
-    void ModuleInit()
+    [[ModuleInit]]
+    void InitClientEngineTest()
     {
         Game.OnStart.Subscribe(OnStart);
         Game.OnLoop.Subscribe(OnLoop);
     }
 
+    [[Event]]
     void OnStart()
     {
         StartCalls++;
     }
 
+    [[Event]]
     void OnLoop()
     {
         LoopCalls++;

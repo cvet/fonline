@@ -4357,6 +4357,7 @@ void Highlight(GuiScreen screenNum, string objName, timespan duration = Time::Se
     }
 }
 
+[[TimeEvent]]
 void HighlightProcess(any[] data)
 {
     GuiScreen screenNum = GuiScreen(int(data[0]));
