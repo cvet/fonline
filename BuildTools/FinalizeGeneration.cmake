@@ -941,7 +941,6 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataBase.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSource.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_DialogBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DiskFileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityProtos.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EffectBaker.cpp"
