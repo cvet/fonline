@@ -56,6 +56,22 @@ FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
+{
+    if (name.empty()) {
+        throw ScriptException("Player name arg is empty");
+    }
+    if (strvex(name).trim() != name) {
+        throw ScriptException("Wrong player name (trimmed space)");
+    }
+    if (!strvex(name).is_valid_utf8()) {
+        throw ScriptException("Wrong player name encoding");
+    }
+
+    self->SetName(name);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);

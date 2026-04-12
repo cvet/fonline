@@ -46,15 +46,46 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataBaseException);
 
+enum class DataBaseKeyType
+{
+    IntId,
+    String,
+};
+
+enum class DataBaseStringKeyEscaping
+{
+    Raw,
+    File,
+    Hex,
+};
+
 using DataBasePanicCallback = function<void()>;
-using DataBaseCollection = unordered_map<ident_t, AnyData::Document>;
+using DataBaseKey = variant<ident_t, string>;
+using DataBaseCollection = unordered_map<DataBaseKey, AnyData::Document>;
 using DataBaseCollections = unordered_map<hstring, DataBaseCollection>;
+using DataBaseCollectionSchema = pair<hstring, DataBaseKeyType>;
+using DataBaseCollectionSchemas = vector<DataBaseCollectionSchema>;
+
+FO_DECLARE_TYPE_FORMATTER_EXT(FO_NAMESPACE DataBaseKey,
+    std::visit(
+        [](const auto& raw_value) -> FO_NAMESPACE string {
+            using T = std::decay_t<decltype(raw_value)>;
+            if constexpr (std::is_same_v<T, FO_NAMESPACE ident_t>) {
+                return FO_NAMESPACE strex("{}", raw_value).str();
+            }
+            else {
+                return raw_value;
+            }
+        },
+        value));
+
+FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE DataBaseKey, std::visit([](const auto& value) -> uint64_t { return FO_HASH_NAMESPACE hash<std::decay_t<decltype(value)>> {}(value); }, v));
 
 class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, DataBasePanicCallback panic_callback) -> DataBase;
+    friend auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 public:
     using Collection = DataBaseCollection;
@@ -69,13 +100,15 @@ public:
 
     [[nodiscard]] auto InValidState() const noexcept -> bool;
     [[nodiscard]] auto GetDbRequestsPerMinute() const -> size_t;
-    [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<ident_t>;
-    [[nodiscard]] auto Get(hstring collection_name, ident_t id) const -> AnyData::Document;
-    [[nodiscard]] auto Valid(hstring collection_name, ident_t id) const -> bool;
+    [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<DataBaseKey>;
+    [[nodiscard]] auto GetAllIntIds(hstring collection_name) const -> vector<ident_t>;
+    [[nodiscard]] auto GetAllStringIds(hstring collection_name) const -> vector<string>;
+    [[nodiscard]] auto Get(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
+    [[nodiscard]] auto Valid(hstring collection_name, const DataBaseKey& id) const -> bool;
 
-    void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
-    void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
-    void Delete(hstring collection_name, ident_t id);
+    void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
+    void Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value);
+    void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
     void ClearChanges() noexcept;
@@ -87,7 +120,7 @@ private:
     unique_ptr<DataBaseImpl> _impl;
 };
 
-extern auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, DataBasePanicCallback panic_callback) -> DataBase;
+extern auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 class DataBaseImpl
 {
@@ -130,14 +163,17 @@ public:
 
     [[nodiscard]] auto InValidState() const noexcept -> bool;
     [[nodiscard]] auto GetDbRequestsPerMinute() const -> size_t;
-    [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> = 0;
-    [[nodiscard]] auto GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document;
+    [[nodiscard]] auto GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType;
+    [[nodiscard]] virtual auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping = 0;
+    [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> = 0;
+    [[nodiscard]] auto GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
 
+    void InitializeCollections(const DataBaseCollectionSchemas& collection_schemas);
     void InitializeOpLogs();
     void RestorePendingChanges();
-    void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
-    void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
-    void Delete(hstring collection_name, ident_t id);
+    void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
+    void Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value);
+    void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
     void ClearChanges() noexcept;
@@ -147,10 +183,11 @@ protected:
     void StartCommitThread();
     void StopCommitThread() noexcept;
 
-    virtual auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document = 0;
-    virtual void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
-    virtual void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
-    virtual void DeleteRecord(hstring collection_name, ident_t id) = 0;
+    virtual void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) = 0;
+    virtual auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document = 0;
+    virtual void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
+    virtual void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
+    virtual void DeleteRecord(hstring collection_name, const DataBaseKey& id) = 0;
     virtual auto TryReconnect() -> bool { return true; }
 
     virtual void OnCommitOperationWrittenToOpLog() { } // Testing override point for a failed commit operation being durably written to oplog
@@ -174,7 +211,7 @@ private:
     {
         CommitOperationType Type {};
         hstring CollectionName {};
-        ident_t RecordId {};
+        DataBaseKey RecordId {};
         AnyData::Document Doc {};
     };
 
@@ -182,6 +219,8 @@ private:
     void CommitNextChange() noexcept;
     void CommitThreadEntry() noexcept;
     void RegisterDbRequests(size_t request_count) const;
+    auto ResolveCollectionName(string_view collection_name) const -> hstring;
+    void ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const;
     void StartPanic(string_view message);
 
     raw_ptr<DataBaseSettings> _settings;
@@ -192,7 +231,7 @@ private:
     bool _commitThreadStopRequested {};
     bool _commitThreadActive {};
     deque<shared_ptr<CommitOperationData>> _pendingCommitOperations {};
-    mutable unordered_set<pair<hstring, ident_t>> _docReadRetryMarkers {};
+    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers {};
     mutable std::atomic_bool _backendFailed {};
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};
@@ -207,7 +246,8 @@ private:
     mutable std::mutex _dbRequestsMetricLocker {};
     mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets {vector<DbRequestsPerMinuteBucket>(60)};
     mutable std::atomic_size_t _dbRequestsPerMinute {};
-    HashStorage _pendingChangesHashes {};
+    unordered_map<string, hstring> _collectionNames {};
+    unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };
 
 auto CreateJsonDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*;
@@ -221,5 +261,6 @@ auto CreateMemoryDataBase(DataBaseSettings& db_settings, DataBasePanicCallback p
 
 void DocumentToBson(const AnyData::Document& doc, bson_t* bson, char escape_dot = 0);
 void BsonToDocument(const bson_t* bson, AnyData::Document& doc, char escape_dot = 0);
+auto GetDbKeyType(const DataBaseKey& key) noexcept -> DataBaseKeyType;
 
 FO_END_NAMESPACE

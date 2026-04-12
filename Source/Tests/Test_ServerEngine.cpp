@@ -267,6 +267,21 @@ namespace ServerEngineTest
 
         return "ServerEngine startup timed out";
     }
+
+    static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
+    {
+        FO_RUNTIME_ASSERT(server);
+
+        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+
+        if (unlogined_player == nullptr) {
+            return nullptr;
+        }
+
+        unlogined_player->SetName(name);
+        unlogined_player->SetLastControlledCritterId(ident_t {1});
+        return server->LoginPlayerToNewRecord(unlogined_player);
+    }
 }
 
 TEST_CASE("ServerEngineStartsAndCreatesCritter")
@@ -305,9 +320,12 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > entity_count);
 
-    const auto player_id = server->MakePlayerId("UnitTestPlayer");
+    auto* player = CreateLoggedPlayer(server.get(), "UnitTestPlayer");
+    REQUIRE(player != nullptr);
+
+    const auto player_id = player->GetId();
     CHECK(player_id != ident_t {});
-    CHECK(player_id == server->MakePlayerId("UnitTestPlayer"));
+    CHECK(server->EntityMngr.GetPlayer(player_id) == player);
 
     server->CrMngr.DestroyCritter(cr);
 

@@ -46,7 +46,6 @@ static constexpr CmdDef CMD_LIST[] = {
     {"exit", CMD_EXIT},
     {"myinfo", CMD_MYINFO},
     {"gameinfo", CMD_GAMEINFO},
-    {"id", CMD_CRITID},
     {"move", CMD_MOVECRIT},
     {"disconnect", CMD_DISCONCRIT},
     {"toglobal", CMD_TOGLOBAL},
@@ -107,18 +106,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_GAMEINFO: {
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.EndMsg();
-    } break;
-    case CMD_CRITID: {
-        string cr_name;
-        if (!(args_str >> cr_name)) {
-            logcb("Invalid arguments. Example: id name");
-            break;
-        }
-
-        buf.StartMsg(msg);
-        buf.Write(cmd);
-        buf.Write(cr_name);
         buf.EndMsg();
     } break;
     case CMD_MOVECRIT: {

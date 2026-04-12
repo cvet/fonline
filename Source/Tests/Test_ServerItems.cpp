@@ -174,6 +174,21 @@ namespace ServerItemsTest
 
         return "ServerEngine startup timed out";
     }
+
+    static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
+    {
+        FO_RUNTIME_ASSERT(server);
+
+        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+
+        if (unlogined_player == nullptr) {
+            return nullptr;
+        }
+
+        unlogined_player->SetName(name);
+        unlogined_player->SetLastControlledCritterId(ident_t {1});
+        return server->LoginPlayerToNewRecord(unlogined_player);
+    }
 }
 
 TEST_CASE("ServerItemCreationAndDestruction")
@@ -370,12 +385,14 @@ TEST_CASE("ServerCritterLifecycleOperations")
     REQUIRE(is_alive_func.Call(cr1));
     CHECK(is_alive_func.GetResult() == true);
 
-    // MakePlayerId idempotent
-    const auto pid1 = server->MakePlayerId("TestPlayer1");
-    const auto pid2 = server->MakePlayerId("TestPlayer1");
-    const auto pid3 = server->MakePlayerId("TestPlayer2");
-    CHECK(pid1 == pid2);
-    CHECK(pid1 != pid3);
+    // Player login allocates persistent ids through the entity manager
+    auto* player1 = CreateLoggedPlayer(server.get(), "TestPlayer1");
+    auto* player2 = CreateLoggedPlayer(server.get(), "TestPlayer2");
+    REQUIRE(player1 != nullptr);
+    REQUIRE(player2 != nullptr);
+    CHECK(player1->GetId() != ident_t {});
+    CHECK(player2->GetId() != ident_t {});
+    CHECK(player1->GetId() != player2->GetId());
 
     // Unload player critter
     const auto cr3_id = cr3->GetId();

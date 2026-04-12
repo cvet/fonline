@@ -29,13 +29,30 @@ public:
 
     ~DbJson() override { StopCommitThread(); }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+protected:
+    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::File; }
+
+    void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
+    {
+        ignore_unused(key_type);
+
+        std::scoped_lock locker {_storageLocker};
+
+        const auto dir = strex("{}/{}", _storageDir, collection_name).str();
+
+        if (!fs_create_directories(dir)) {
+            throw DataBaseException("DbJson Can't ensure collection directory", dir);
+        }
+    }
+
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_STACK_TRACE_ENTRY();
 
         std::scoped_lock locker {_storageLocker};
 
-        vector<ident_t> ids;
+        const auto key_type = GetCollectionKeyType(collection_name);
+        vector<DataBaseKey> ids;
 
         std::error_code ec;
         const auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
@@ -54,15 +71,24 @@ public:
                     continue;
                 }
 
-                static_assert(sizeof(ident_t) == sizeof(int64));
+                const auto key_str = strvex(path).extract_file_name().erase_file_extension().str();
 
-                const auto id = strvex(path).extract_file_name().erase_file_extension().to_int64();
+                if (key_type == DataBaseKeyType::IntId) {
+                    if (!strvex(key_str).is_number()) {
+                        throw DataBaseException("DbJson invalid numeric key format", key_str);
+                    }
 
-                if (id == 0) {
-                    throw DataBaseException("DbJson Id is zero", path);
+                    const auto id_value = strvex(key_str).to_int64();
+
+                    if (id_value <= 0) {
+                        throw DataBaseException("DbJson invalid numeric key value", key_str);
+                    }
+
+                    ids.emplace_back(ident_t {id_value});
                 }
-
-                ids.emplace_back(id);
+                else {
+                    ids.emplace_back(key_str);
+                }
             }
         }
 
@@ -70,13 +96,13 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_STACK_TRACE_ENTRY();
 
         std::scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         const auto json = fs_read_file(path);
 
@@ -98,7 +124,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -106,7 +132,7 @@ protected:
 
         std::scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         if (fs_exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
@@ -140,7 +166,7 @@ protected:
         }
     }
 
-    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -148,7 +174,7 @@ protected:
 
         std::scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         const auto json = fs_read_file(path);
 
@@ -189,13 +215,13 @@ protected:
         }
     }
 
-    void DeleteRecord(hstring collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
         FO_STACK_TRACE_ENTRY();
 
         std::scoped_lock locker {_storageLocker};
 
-        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, id);
+        const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
         if (!fs_remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
@@ -203,6 +229,30 @@ protected:
     }
 
 private:
+    static auto FormatJsonStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type) -> string
+    {
+        if (GetDbKeyType(key) != key_type) {
+            throw DataBaseException("DbJson invalid key type", key_type == DataBaseKeyType::IntId ? "Id" : "String");
+        }
+
+        return std::visit(
+            [key_type](const auto& value) -> string {
+                using T = std::decay_t<decltype(value)>;
+
+                if constexpr (std::is_same_v<T, ident_t>) {
+                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::IntId);
+                    FO_RUNTIME_ASSERT(value != ident_t {});
+                    return strex("{}", value).str();
+                }
+                else {
+                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::String);
+                    FO_RUNTIME_ASSERT(!value.empty());
+                    return value;
+                }
+            },
+            key);
+    }
+
     mutable std::mutex _storageLocker {};
     string _storageDir {};
     int32 _jsonIndent {};

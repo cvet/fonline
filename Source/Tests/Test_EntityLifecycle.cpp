@@ -171,6 +171,21 @@ namespace EntityLifecycle
 
         return "ServerEngine startup timed out";
     }
+
+    static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
+    {
+        FO_RUNTIME_ASSERT(server);
+
+        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+
+        if (unlogined_player == nullptr) {
+            return nullptr;
+        }
+
+        unlogined_player->SetName(name);
+        unlogined_player->SetLastControlledCritterId(ident_t {1});
+        return server->LoginPlayerToNewRecord(unlogined_player);
+    }
 }
 
 // ========== Entity Init Event Tests ==========
@@ -688,9 +703,9 @@ TEST_CASE("ServerHealthInfo")
     }
 }
 
-// ========== Player ID C++ API Tests ==========
+// ========== Player Registration C++ API Tests ==========
 
-TEST_CASE("PlayerIdCppApi")
+TEST_CASE("PlayerRegistrationCppApi")
 {
     auto settings = MakeSettings();
     auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
@@ -708,24 +723,27 @@ TEST_CASE("PlayerIdCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    SECTION("MakePlayerIdDeterministic")
+    SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
-        const auto id1 = server->MakePlayerId("TestPlayer1");
-        const auto id2 = server->MakePlayerId("TestPlayer1");
-        CHECK(id1 == id2);
+        auto* player = CreateLoggedPlayer(server.get(), "TestPlayer1");
+        REQUIRE(player != nullptr);
+        CHECK(player->GetId() != ident_t {});
     }
 
-    SECTION("MakePlayerIdDifferentForDifferentNames")
+    SECTION("LoginPlayerToNewRecordRegistersPlayer")
     {
-        const auto id1 = server->MakePlayerId("Player1");
-        const auto id2 = server->MakePlayerId("Player2");
-        CHECK(id1 != id2);
+        auto* player = CreateLoggedPlayer(server.get(), "Player1");
+        REQUIRE(player != nullptr);
+        CHECK(server->EntityMngr.GetPlayer(player->GetId()) == player);
     }
 
-    SECTION("MakePlayerIdNonZero")
+    SECTION("LoginPlayerToNewRecordProducesUniqueIds")
     {
-        const auto id = server->MakePlayerId("SomePlayer");
-        CHECK(id != ident_t {});
+        auto* player1 = CreateLoggedPlayer(server.get(), "Player1");
+        auto* player2 = CreateLoggedPlayer(server.get(), "Player2");
+        REQUIRE(player1 != nullptr);
+        REQUIRE(player2 != nullptr);
+        CHECK(player1->GetId() != player2->GetId());
     }
 }
 

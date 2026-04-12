@@ -58,6 +58,16 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
 static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
 static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::Document& patch) -> bool;
+static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool;
+static auto DbKeyTypeName(DataBaseKeyType key_type) noexcept -> string_view;
+static auto EncodeStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> string;
+static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey;
+static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey;
+static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey;
+static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
+static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
+static auto ShouldEscapeDbStringByte(uint8 byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
+static auto DecodeHexDigit(char ch) -> uint8;
 
 DataBase::DataBase() = default;
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -84,42 +94,91 @@ auto DataBase::GetDbRequestsPerMinute() const -> size_t
     return _impl->GetDbRequestsPerMinute();
 }
 
-auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
+auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->GetAllRecordIds(collection_name);
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto ids = _impl->GetAllRecordIds(collection_name);
+
+    for (auto& id : ids) {
+        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
+
+        if (GetDbKeyType(id) != key_type) {
+            throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
+        }
+    }
+
+    return ids;
 }
 
-auto DataBase::Get(hstring collection_name, ident_t id) const -> AnyData::Document
+auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+
+    if (key_type != DataBaseKeyType::IntId) {
+        throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
+    }
+
+    vector<ident_t> typed_ids;
+
+    for (const auto& id : GetAllIds(collection_name)) {
+        typed_ids.emplace_back(std::get<ident_t>(id));
+    }
+
+    return typed_ids;
+}
+
+auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+
+    if (key_type != DataBaseKeyType::String) {
+        throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
+    }
+
+    vector<string> typed_ids;
+
+    for (const auto& id : GetAllIds(collection_name)) {
+        typed_ids.emplace_back(std::get<string>(id));
+    }
+
+    return typed_ids;
+}
+
+auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
 {
     FO_STACK_TRACE_ENTRY();
 
     return _impl->GetDocument(collection_name, id);
 }
 
-auto DataBase::Valid(hstring collection_name, ident_t id) const -> bool
+auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     return !_impl->GetDocument(collection_name, id).Empty();
 }
 
-void DataBase::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
+void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->Insert(collection_name, id, doc);
 }
 
-void DataBase::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
+void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl->Update(collection_name, id, key, value);
 }
 
-void DataBase::Delete(hstring collection_name, ident_t id)
+void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -168,6 +227,44 @@ DataBaseImpl::DataBaseImpl(DataBaseSettings& db_settings, DataBasePanicCallback 
     _panicCallback {std::move(panic_callback)}
 {
     FO_STACK_TRACE_ENTRY();
+}
+
+auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto it = _collectionKeyTypes.find(collection_name);
+
+    if (it == _collectionKeyTypes.end()) {
+        throw DataBaseException("Unknown database collection", collection_name);
+    }
+
+    return it->second;
+}
+
+auto DataBaseImpl::ResolveCollectionName(string_view collection_name) const -> hstring
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto it = _collectionNames.find(collection_name);
+
+    if (it == _collectionNames.end()) {
+        throw DataBaseException("Unknown database collection name", collection_name);
+    }
+
+    return it->second;
+}
+
+void DataBaseImpl::InitializeCollections(const DataBaseCollectionSchemas& collection_schemas)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& [collection_name, key_type] : collection_schemas) {
+        FO_RUNTIME_ASSERT(!_collectionNames.contains(collection_name.as_str()));
+        _collectionNames.emplace(collection_name.as_str(), collection_name);
+        _collectionKeyTypes.emplace(collection_name, key_type);
+        EnsureCollection(collection_name, key_type);
+    }
 }
 
 void DataBaseImpl::InitializeOpLogs()
@@ -240,7 +337,15 @@ void DataBaseImpl::InitializeOpLogs()
             if (command == "delete" && has_other) {
                 throw DataBaseException("Oplog file has invalid delete command format", i + 1, file_path);
             }
-            if (!strvex(record_id_str).is_number() || strvex(record_id_str).to_int64() <= 0) {
+            try {
+                const auto collection_name = ResolveCollectionName(collection);
+                const auto record_id = DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+
+                if (!IsDbKeyValueValid(record_id)) {
+                    throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
+                }
+            }
+            catch (const std::exception&) {
                 throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
             }
             if (has_other && (other.find('\n') != string_view::npos || other.find('\r') != string_view::npos)) {
@@ -315,14 +420,15 @@ void DataBaseImpl::RestorePendingChanges()
                 other = line_view.substr(third_space + 1);
             }
 
-            const auto collection_name = _pendingChangesHashes.ToHashedString(collection);
-            const auto id_value = strvex(record_id_str).to_int64();
-            const auto record_id = ident_t {id_value};
-            const auto current_doc = GetRecord(collection_name, record_id);
+            const auto collection_name = ResolveCollectionName(collection);
+            const auto key_type = GetCollectionKeyType(collection_name);
+            const auto record_id = DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping());
+            const auto storage_record_id = EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping());
+            const auto current_doc = GetRecord(collection_name, storage_record_id);
 
             if (command == "delete") {
                 if (!current_doc.Empty()) {
-                    DeleteRecord(collection_name, record_id);
+                    DeleteRecord(collection_name, storage_record_id);
                 }
             }
             else {
@@ -330,14 +436,14 @@ void DataBaseImpl::RestorePendingChanges()
 
                 if (command == "insert") {
                     if (current_doc.Empty()) {
-                        InsertRecord(collection_name, record_id, doc);
+                        InsertRecord(collection_name, storage_record_id, doc);
                     }
                     else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", id_value, _settings->OpLogPath);
+                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->OpLogPath);
                     }
                 }
                 else if (!DoesDocumentContain(current_doc, doc)) {
-                    UpdateRecord(collection_name, record_id, doc);
+                    UpdateRecord(collection_name, storage_record_id, doc);
                 }
             }
 
@@ -385,13 +491,16 @@ auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
 }
 
-auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> AnyData::Document
+auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!InValidState()) {
         throw DataBaseException("Database backend is in failed state");
     }
+
+    ValidateCollectionKey(collection_name, id);
+    const auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
 
     {
         std::scoped_lock locker {_stateLocker};
@@ -411,7 +520,7 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
         AnyData::Document doc;
 
         try {
-            doc = GetRecord(collection_name, id);
+            doc = GetRecord(collection_name, storage_id);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -456,13 +565,15 @@ auto DataBaseImpl::GetDocument(hstring collection_name, ident_t id) const -> Any
     }
 }
 
-void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
+void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (doc.Empty()) {
         throw DataBaseException("Cannot insert empty document");
     }
+
+    ValidateCollectionKey(collection_name, id);
 
     {
         std::scoped_lock locker {_stateLocker};
@@ -478,9 +589,11 @@ void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Do
     _commitThreadSignal.notify_one();
 }
 
-void DataBaseImpl::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
+void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateCollectionKey(collection_name, id);
 
     {
         std::scoped_lock locker {_stateLocker};
@@ -496,9 +609,11 @@ void DataBaseImpl::Update(hstring collection_name, ident_t id, string_view key, 
     _commitThreadSignal.notify_one();
 }
 
-void DataBaseImpl::Delete(hstring collection_name, ident_t id)
+void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateCollectionKey(collection_name, id);
 
     {
         std::scoped_lock locker {_stateLocker};
@@ -712,15 +827,17 @@ void DataBaseImpl::CommitNextChange() noexcept
 
     if (!_backendFailed) {
         try {
+            const auto storage_record_id = EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+
             switch (op->Type) {
             case CommitOperationType::Insert:
-                InsertRecord(op->CollectionName, op->RecordId, op->Doc);
+                InsertRecord(op->CollectionName, storage_record_id, op->Doc);
                 break;
             case CommitOperationType::Update:
-                UpdateRecord(op->CollectionName, op->RecordId, op->Doc);
+                UpdateRecord(op->CollectionName, storage_record_id, op->Doc);
                 break;
             case CommitOperationType::Delete:
-                DeleteRecord(op->CollectionName, op->RecordId);
+                DeleteRecord(op->CollectionName, storage_record_id);
                 break;
             }
         }
@@ -744,15 +861,18 @@ void DataBaseImpl::CommitNextChange() noexcept
             case CommitOperationType::Insert: {
                 const auto doc_json = AnyDocumentToJson(op->Doc).dump();
                 FO_RUNTIME_ASSERT(doc_json.find_first_of("\r\n") == string::npos);
-                log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), op->RecordId, doc_json).str();
+                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Update: {
                 const auto doc_json = AnyDocumentToJson(op->Doc).dump();
                 FO_RUNTIME_ASSERT(doc_json.find_first_of("\r\n") == string::npos);
-                log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), op->RecordId, doc_json).str();
+                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Delete: {
-                log_data += strex("delete {} {}\n", op->CollectionName.as_str(), op->RecordId).str();
+                const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                log_data += strex("delete {} {}\n", op->CollectionName.as_str(), key).str();
             } break;
             }
 
@@ -823,6 +943,21 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
     _dbRequestsPerMinute.store(requests_per_minute, std::memory_order_relaxed);
 }
 
+void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!IsDbKeyValueValid(id)) {
+        throw DataBaseException("Invalid database key value", collection_name, id);
+    }
+
+    const auto expected_type = GetCollectionKeyType(collection_name);
+
+    if (GetDbKeyType(id) != expected_type) {
+        throw DataBaseException("Invalid database key type for collection", collection_name, DbKeyTypeName(expected_type), id);
+    }
+}
+
 void DataBaseImpl::StartPanic(string_view message)
 {
     FO_STACK_TRACE_ENTRY();
@@ -842,30 +977,6 @@ void DataBaseImpl::StartPanic(string_view message)
         std::this_thread::sleep_for(timeout);
         ExitApp(false);
     }).detach();
-}
-
-static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return left == right;
-}
-
-static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::Document& patch) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto&& [patch_key, patch_value] : patch) {
-        if (!target.Contains(patch_key)) {
-            return false;
-        }
-
-        if (!(target[patch_key] == patch_value)) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
@@ -1083,9 +1194,6 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         if (command == "delete" && has_other) {
             return false;
         }
-        if (!strvex(record_id).is_number() || strvex(record_id).to_int64() <= 0) {
-            return false;
-        }
         if (has_other && (other.find('\n') != string_view::npos || other.find('\r') != string_view::npos)) {
             return false;
         }
@@ -1142,12 +1250,13 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     return true;
 }
 
-auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, DataBasePanicCallback panic_callback) -> DataBase
+auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto finish_connect = [&](auto* raw_impl) -> DataBase {
-        unique_ptr<DataBaseImpl> impl {raw_impl};
+        auto impl = unique_ptr<DataBaseImpl> {raw_impl};
+        impl->InitializeCollections(collection_schemas);
         impl->InitializeOpLogs();
         impl->RestorePendingChanges();
         return DataBase(impl.release());
@@ -1441,6 +1550,311 @@ static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Docume
     }
 
     return doc;
+}
+
+static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return left == right;
+}
+
+static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::Document& patch) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (auto&& [patch_key, patch_value] : patch) {
+        if (!target.Contains(patch_key)) {
+            return false;
+        }
+        if (!(target[patch_key] == patch_value)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::visit(
+        [](const auto& value) noexcept -> bool {
+            using T = std::decay_t<decltype(value)>;
+
+            if constexpr (std::is_same_v<T, ident_t>) {
+                return value != ident_t {};
+            }
+            else {
+                return !value.empty() && strvex(value).is_valid_utf8();
+            }
+        },
+        key);
+}
+
+auto GetDbKeyType(const DataBaseKey& key) noexcept -> DataBaseKeyType
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::holds_alternative<ident_t>(key) ? DataBaseKeyType::IntId : DataBaseKeyType::String;
+}
+
+static auto DbKeyTypeName(DataBaseKeyType key_type) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (key_type) {
+    case DataBaseKeyType::IntId:
+        return "Id";
+    case DataBaseKeyType::String:
+        return "String";
+    }
+
+    return "Unknown";
+}
+
+static auto EncodeStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (GetDbKeyType(key) != key_type) {
+        throw DataBaseException("Database key type mismatch", DbKeyTypeName(key_type), key);
+    }
+
+    return std::visit(
+        [key_type, escaping](const auto& value) -> string {
+            using T = std::decay_t<decltype(value)>;
+
+            if constexpr (std::is_same_v<T, ident_t>) {
+                FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::IntId);
+                FO_RUNTIME_ASSERT(value != ident_t {});
+                return strex("{}", value).str();
+            }
+            else {
+                FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::String);
+                FO_RUNTIME_ASSERT(!value.empty());
+                return EncodeDbStringKey(value, escaping);
+            }
+        },
+        key);
+}
+
+static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (key_str.empty()) {
+        throw DataBaseException("Invalid database key value", key_str);
+    }
+
+    if (key_type == DataBaseKeyType::IntId) {
+        if (!strvex(key_str).is_number()) {
+            throw DataBaseException("Invalid database numeric key format", key_str);
+        }
+
+        const auto id_value = strvex(key_str).to_int64();
+
+        if (id_value <= 0) {
+            throw DataBaseException("Invalid database numeric key value", key_str);
+        }
+
+        return ident_t {id_value};
+    }
+
+    const auto decoded_value = DecodeDbStringKey(key_str, escaping);
+
+    if (decoded_value.empty()) {
+        throw DataBaseException("Invalid database string key value", key_str);
+    }
+    if (!strvex(decoded_value).is_valid_utf8()) {
+        throw DataBaseException("Invalid database string key utf8", key_str);
+    }
+
+    return decoded_value;
+}
+
+static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (key_type == DataBaseKeyType::IntId) {
+        return key;
+    }
+
+    if (GetDbKeyType(key) != key_type) {
+        throw DataBaseException("Database key type mismatch", DbKeyTypeName(key_type), key);
+    }
+
+    const auto& value = std::get<string>(key);
+    FO_RUNTIME_ASSERT(!value.empty());
+
+    if (!strvex(value).is_valid_utf8()) {
+        throw DataBaseException("Invalid database string key utf8", value);
+    }
+
+    if (escaping == DataBaseStringKeyEscaping::Raw) {
+        return string(value);
+    }
+
+    return EncodeDbStringKey(value, escaping);
+}
+
+static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (key_type == DataBaseKeyType::IntId) {
+        return key;
+    }
+
+    if (GetDbKeyType(key) != key_type) {
+        throw DataBaseException("Database collection returned invalid key type", DbKeyTypeName(key_type), key);
+    }
+
+    const auto& value = std::get<string>(key);
+    FO_RUNTIME_ASSERT(!value.empty());
+
+    if (escaping == DataBaseStringKeyEscaping::Raw) {
+        if (!strvex(value).is_valid_utf8()) {
+            throw DataBaseException("Invalid database string key utf8", value);
+        }
+
+        return string(value);
+    }
+
+    const auto decoded_value = DecodeDbStringKey(value, escaping);
+
+    if (!strvex(decoded_value).is_valid_utf8()) {
+        throw DataBaseException("Invalid database string key utf8", value);
+    }
+
+    return decoded_value;
+}
+
+static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static constexpr char hex_digits[] = "0123456789abcdef";
+
+    if (escaping == DataBaseStringKeyEscaping::Hex) {
+        string result;
+        result.reserve(2 + value.size() * 2);
+        result += "s_";
+
+        for (const auto ch : value) {
+            const auto byte = static_cast<uint8>(ch);
+            result.push_back(hex_digits[byte >> 4]);
+            result.push_back(hex_digits[byte & 0x0F]);
+        }
+
+        return result;
+    }
+
+    string result;
+    result.reserve(value.size());
+
+    for (const auto ch : value) {
+        const auto byte = static_cast<uint8>(ch);
+
+        if (!ShouldEscapeDbStringByte(byte, escaping)) {
+            result.push_back(ch);
+            continue;
+        }
+
+        result.push_back('%');
+        result.push_back(hex_digits[byte >> 4]);
+        result.push_back(hex_digits[byte & 0x0F]);
+    }
+
+    return result;
+}
+
+static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (escaping == DataBaseStringKeyEscaping::Hex) {
+        if (!value.starts_with("s_")) {
+            throw DataBaseException("Invalid database string key format", value);
+        }
+
+        const auto encoded_value = value.substr(2);
+
+        if (encoded_value.empty() || encoded_value.size() % 2 != 0) {
+            throw DataBaseException("Invalid database string key value", value);
+        }
+
+        string decoded_value;
+        decoded_value.reserve(encoded_value.size() / 2);
+
+        for (size_t i = 0; i < encoded_value.size(); i += 2) {
+            const auto high = DecodeHexDigit(encoded_value[i]);
+            const auto low = DecodeHexDigit(encoded_value[i + 1]);
+            decoded_value.push_back(static_cast<char>((high << 4) | low));
+        }
+
+        return decoded_value;
+    }
+
+    string decoded_value;
+    decoded_value.reserve(value.size());
+
+    for (size_t i = 0; i < value.size(); i++) {
+        if (value[i] != '%') {
+            decoded_value.push_back(value[i]);
+            continue;
+        }
+
+        if (i + 2 >= value.size()) {
+            throw DataBaseException("Invalid database string key value", value);
+        }
+
+        const auto high = DecodeHexDigit(value[i + 1]);
+        const auto low = DecodeHexDigit(value[i + 2]);
+        decoded_value.push_back(static_cast<char>((high << 4) | low));
+        i += 2;
+    }
+
+    return decoded_value;
+}
+
+static auto ShouldEscapeDbStringByte(uint8 byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (byte == '%') {
+        return true;
+    }
+
+    switch (escaping) {
+    case DataBaseStringKeyEscaping::Raw:
+        return byte == ' ' || byte == '\t' || byte == '\r' || byte == '\n';
+    case DataBaseStringKeyEscaping::File:
+        return byte < 32 || byte == ' ' || byte == '\\' || byte == '/' || byte == ':' || byte == '*' || byte == '?' || byte == '"' || byte == '<' || byte == '>' || byte == '|';
+    case DataBaseStringKeyEscaping::Hex:
+        return true;
+    }
+
+    return true;
+}
+
+static auto DecodeHexDigit(char ch) -> uint8
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (ch >= '0' && ch <= '9') {
+        return static_cast<uint8>(ch - '0');
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return static_cast<uint8>(10 + ch - 'a');
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return static_cast<uint8>(10 + ch - 'A');
+    }
+
+    throw DataBaseException("Invalid database key hex digit", string_view {&ch, 1});
 }
 
 FO_END_NAMESPACE

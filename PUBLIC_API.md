@@ -107,7 +107,6 @@ CMake contributions included to main CMakeLists.txt scope.
 * AddContent dir(s)
 * AddResources packName dir(s)
 * AddRawResources dir(s)
-* AddNativeIncludeDir dir(s)
 * AddNativeSource pathPattern(s)
 * AddMonoAssembly assembly
 * AddMonoReference assembly target ref(s)

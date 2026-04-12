@@ -306,6 +306,7 @@ FIXED_SETTING(int32, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdown
 FIXED_SETTING(bool, DataBase, UnQLiteOmitJournaling, true); // If true, UnQLite opens collections without journaling
 FIXED_SETTING(int32, DataBase, JsonIndent, 4); // JSON backend indentation, 0 for compact output
 FIXED_SETTING(string, DataBase, MongoEscapeChar, ":"); // Single character used to replace dots in Mongo document keys
+FIXED_SETTING(vector<string>, DataBase, CustomCollections); // Space-separated user-defined database collections in format CollectionName:Int or CollectionName:Str
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

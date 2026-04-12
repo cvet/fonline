@@ -578,6 +578,19 @@ FO_BEGIN_NAMESPACE
     }; \
     FO_BEGIN_NAMESPACE
 
+#define FO_DECLARE_TYPE_FORMATTER_EXT(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            return formatter<FO_NAMESPACE string_view>::format(__VA_ARGS__, ctx); \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
     FO_END_NAMESPACE \
     inline auto operator>>(std::istream& istr, type& value)->std::istream& \
@@ -586,6 +599,14 @@ FO_BEGIN_NAMESPACE
             value = {}; \
         } \
         return istr; \
+    } \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_PARSER_EXT(type, ...) \
+    FO_END_NAMESPACE \
+    inline auto operator>>(std::istream& istr, type& value)->std::istream& \
+    { \
+        return __VA_ARGS__; \
     } \
     FO_BEGIN_NAMESPACE
 

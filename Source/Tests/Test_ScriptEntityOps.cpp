@@ -50,6 +50,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"test_collection:Int"});
 
         return settings;
     }
@@ -229,7 +230,7 @@ namespace EntityOps
     int TestDatabaseGetAllRecordIds()
     {
         // Get all record ids from a collection (may be empty)
-        array<ident> ids = Game.DbGetAllRecordIds("test_records".hstr());
+        array<ident> ids = Game.DbGetAllRecordIds("test_collection".hstr());
         // Just verify no crash, collection likely empty
 
         return 0;

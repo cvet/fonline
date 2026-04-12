@@ -177,7 +177,60 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     _starter.AddJob([this]() FO_DEFERRED {
         FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
-        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, [] {
+        DataBaseCollectionSchemas collection_schemas;
+        collection_schemas.reserve(3 + GetEntityTypes().size() + Settings.CustomCollections.size());
+
+        unordered_map<hstring, DataBaseKeyType> registered_collection_types {};
+        registered_collection_types.reserve(2 + GetEntityTypes().size() + Settings.CustomCollections.size());
+
+        const auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
+            FO_RUNTIME_ASSERT(!collection_name.as_str().empty());
+            FO_RUNTIME_ASSERT(!registered_collection_types.contains(collection_name));
+            registered_collection_types.emplace(collection_name, key_type);
+            collection_schemas.emplace_back(collection_name, key_type);
+            return true;
+        };
+
+        const auto register_custom_collection = [&](string_view entry) {
+            const auto separator = entry.find(':');
+
+            if (separator == string_view::npos || separator == 0 || separator + 1 >= entry.size() || entry.find(':', separator + 1) != string_view::npos) {
+                throw DataBaseException("Invalid database collection setting", entry);
+            }
+
+            const auto collection_name = strex(entry.substr(0, separator)).trim().str();
+            const auto key_type_name = strex(entry.substr(separator + 1)).trim().str();
+
+            if (collection_name.empty() || key_type_name.empty()) {
+                throw DataBaseException("Invalid database collection setting", entry);
+            }
+
+            DataBaseKeyType key_type;
+
+            if (strex(key_type_name).lower().trim().str() == "int") {
+                key_type = DataBaseKeyType::IntId;
+            }
+            else if (strex(key_type_name).lower().trim().str() == "str") {
+                key_type = DataBaseKeyType::String;
+            }
+            else {
+                throw DataBaseException("Unknown database key type", key_type_name);
+            }
+
+            register_collection(Hashes.ToHashedString(collection_name), key_type);
+        };
+
+        register_collection(GameCollectionName, DataBaseKeyType::IntId);
+        register_collection(HistoryCollectionName, DataBaseKeyType::IntId);
+
+        for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+            register_collection(type_desc.PropRegistrator->GetTypeNamePlural(), DataBaseKeyType::IntId);
+        }
+        for (const auto& entry : Settings.CustomCollections) {
+            register_custom_collection(entry);
+        }
+
+        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, collection_schemas, [] {
             FO_RUNTIME_ASSERT(App);
             App->RequestQuit(false);
         });
@@ -1119,17 +1172,6 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
             _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.GetFrameTime(), GameTime.GetFrameTime() - _stats.ServerStartTime);
         logcb(str);
     } break;
-    case CMD_CRITID: {
-        const auto name = buf.Read<string>();
-        const auto player_id = MakePlayerId(name);
-
-        if (DbStorage.Valid(PlayersCollectionName, player_id)) {
-            logcb(strex("Player id is {}", player_id));
-        }
-        else {
-            logcb("Client not found");
-        }
-    } break;
     case CMD_MOVECRIT: {
         const auto cr_id = buf.Read<ident_t>();
         const auto cr_hex = buf.Read<mpos>();
@@ -1860,12 +1902,13 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     out_buf->Push(&update_file_data[offset], update_portion);
 }
 
-auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Player*
+auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Switch from unlogined to logined
     FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+
+    auto player_holder = refcount_ptr<Player> {unlogined_player};
 
     {
         std::scoped_lock locker {_unloginedPlayersLocker};
@@ -1873,9 +1916,72 @@ auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Pl
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
 
-    scope_exit disconnect_on_error {[&]() noexcept { safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); }); }};
+    auto* player = unlogined_player;
+    bool registered_player = false;
+    bool inserted_player_record = false;
 
-    const auto player_id = MakePlayerId(name);
+    scope_fail disconnect_on_error {[&]() noexcept {
+        if (inserted_player_record) {
+            safe_call([&] { DbStorage.Delete(PlayersCollectionName, player->GetId()); });
+        }
+        if (registered_player) {
+            safe_call([&] { player->MarkAsDestroyed(); });
+            safe_call([&] { EntityMngr.UnregisterPlayer(player); });
+        }
+        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+    }};
+
+    EntityMngr.RegisterPlayer(player, ident_t {});
+    registered_player = true;
+
+    auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
+    DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
+    inserted_player_record = true;
+
+    player->SetLogined(true);
+    player->Send_LoginSuccess();
+
+    if (!OnPlayerLogin.Fire(player, nullptr)) {
+        DbStorage.Delete(PlayersCollectionName, player->GetId());
+        inserted_player_record = false;
+        player->MarkAsDestroyed();
+        EntityMngr.UnregisterPlayer(player);
+        registered_player = false;
+        player->SetLogined(false);
+        player->GetConnection()->GracefulDisconnect();
+        return nullptr;
+    }
+
+    return player;
+}
+
+auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+    FO_RUNTIME_ASSERT(player_id);
+
+    auto player_holder = refcount_ptr<Player> {unlogined_player};
+
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
+
+        vec_remove_unique_value(_unloginedPlayers, unlogined_player);
+    }
+
+    bool registered_player = false;
+
+    scope_fail disconnect_on_error {[&]() noexcept {
+        if (registered_player) {
+            safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+            safe_call([&] { EntityMngr.UnregisterPlayer(unlogined_player); });
+        }
+        safe_call([&] { unlogined_player->SetLogined(false); });
+        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
+    }};
+
     Player* player = EntityMngr.GetPlayer(player_id);
 
     if (player == nullptr) {
@@ -1883,26 +1989,43 @@ auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Pl
         auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
         if (player_doc.Empty()) {
-            player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
-            player_doc.Emplace("_Name", string(name));
-            DbStorage.Insert(PlayersCollectionName, player_id, player_doc);
+            throw GenericException("Player data not found");
         }
-        else if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             throw GenericException("Invalid player data");
         }
 
         EntityMngr.RegisterPlayer(player, player_id);
-        player->SetName(name);
+        registered_player = true;
+
+        if (player_doc.Contains("_Name")) {
+            player->SetName(AnyData::ValueToString(player_doc["_Name"]));
+        }
+
         player->SetLogined(true);
         player->Send_LoginSuccess();
-        OnPlayerLogin.Fire(player, nullptr);
+
+        if (!OnPlayerLogin.Fire(player, nullptr)) {
+            player->MarkAsDestroyed();
+            EntityMngr.UnregisterPlayer(player);
+            registered_player = false;
+            player->SetLogined(false);
+            player->GetConnection()->GracefulDisconnect();
+            return nullptr;
+        }
     }
     else {
         // Kick previous
         player->SwapConnection(unlogined_player);
         unlogined_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
-        OnPlayerLogin.Fire(player, unlogined_player);
+
+        if (!OnPlayerLogin.Fire(player, unlogined_player)) {
+            player->SetLogined(false);
+            player->GetConnection()->GracefulDisconnect();
+            return nullptr;
+        }
+
         unlogined_player->MarkAsDestroyed();
 
         auto* cr = player->GetControlledCritter();
@@ -1912,7 +2035,6 @@ auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Pl
         }
     }
 
-    disconnect_on_error.release();
     return player;
 }
 
@@ -2851,16 +2973,6 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
     }
 
     return item;
-}
-
-auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), numeric_cast<uint32>(player_name.length()));
-    FO_RUNTIME_ASSERT(hash_value);
-    return ident_t {(1u << 31u) | hash_value};
 }
 
 FO_END_NAMESPACE

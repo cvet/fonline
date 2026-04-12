@@ -19,19 +19,27 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override { StopCommitThread(); }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+protected:
+    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
+
+    void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
+    {
+        ignore_unused(key_type);
+
+        std::scoped_lock locker {_storageLocker};
+
+        _collections.try_emplace(collection_name);
+    }
+
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
-
-        if (_collections.count(collection_name) == 0) {
-            return {};
-        }
+        std::scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
-        vector<ident_t> ids;
+        vector<DataBaseKey> ids;
         ids.reserve(collection.size());
 
         for (const auto key : collection | std::views::keys) {
@@ -42,15 +50,11 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
-
-        if (_collections.count(collection_name) == 0) {
-            return {};
-        }
+        std::scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
@@ -58,29 +62,29 @@ protected:
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
-    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections[collection_name];
+        auto& collection = _collections.at(collection_name);
         FO_RUNTIME_ASSERT(!collection.count(id));
 
         collection.emplace(id, doc.Copy());
     }
 
-    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections[collection_name];
+        auto& collection = _collections.at(collection_name);
 
         const auto it_collection = collection.find(id);
         FO_RUNTIME_ASSERT(it_collection != collection.end());
@@ -90,13 +94,13 @@ protected:
         }
     }
 
-    void DeleteRecord(hstring collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections[collection_name];
+        auto& collection = _collections.at(collection_name);
 
         const auto it = collection.find(id);
         FO_RUNTIME_ASSERT(it != collection.end());
@@ -108,7 +112,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
         if (_collections.empty()) {
             ImGui::TextUnformatted("No memory collections");
@@ -134,7 +138,7 @@ protected:
     }
 
 private:
-    mutable std::mutex _collectionsLocker {};
+    mutable std::mutex _storageLocker {};
     DataBase::Collections _collections {};
 };
 

@@ -78,7 +78,6 @@ public:
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
-    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
 
     void Shutdown() override;
@@ -93,7 +92,8 @@ public:
     void DrawGui(string_view server_name);
 
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
-    auto LoginPlayer(Player* unlogined_player, string_view name) -> Player*;
+    auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
+    auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
 
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
 

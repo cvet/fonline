@@ -44,15 +44,45 @@ namespace
     class TestDataBase final : public DataBaseImpl
     {
     public:
-        explicit TestDataBase(DataBaseSettings& db_settings) :
-            DataBaseImpl(db_settings, nullptr)
+        explicit TestDataBase(DataBaseSettings& db_settings, DataBaseStringKeyEscaping string_key_escaping = DataBaseStringKeyEscaping::Raw) :
+            DataBaseImpl(db_settings, nullptr),
+            _stringKeyEscaping {string_key_escaping}
         {
+            HashStorage hashes;
+            InitializeCollections({
+                {hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
+                {hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
+            });
             StartCommitThread();
         }
 
         ~TestDataBase() override { StopCommitThread(); }
 
-        auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+        [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return _stringKeyEscaping; }
+
+        auto GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
+        {
+            const auto key_type = GetCollectionKeyType(collection_name);
+            auto ids = GetAllRecordIds(collection_name);
+
+            for (auto& id : ids) {
+                if (GetDbKeyType(id) != key_type) {
+                    throw DataBaseException("Database collection returned invalid key type", collection_name, id);
+                }
+
+                if (key_type == DataBaseKeyType::String) {
+                    const auto& value = std::get<string>(id);
+
+                    if (!strvex(value).is_valid_utf8()) {
+                        throw DataBaseException("Invalid database string key utf8", value);
+                    }
+                }
+            }
+
+            return ids;
+        }
+
+        auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
         {
             std::scoped_lock locker {_collectionsLocker};
 
@@ -60,7 +90,7 @@ namespace
                 return {};
             }
 
-            vector<ident_t> ids;
+            vector<DataBaseKey> ids;
 
             for (const auto id : _collections.at(collection_name) | std::views::keys) {
                 ids.emplace_back(id);
@@ -69,13 +99,17 @@ namespace
             return ids;
         }
 
-        void PrimeRecord(hstring collection_name, ident_t id, const AnyData::Document& doc)
+        void PrimeRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) { PrimeRecord(collection_name, DataBaseKey {id}, doc); }
+
+        void PrimeRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
         {
             std::scoped_lock locker {_collectionsLocker};
             _collections[collection_name][id] = doc.Copy();
         }
 
-        auto SnapshotRecord(hstring collection_name, ident_t id) const -> AnyData::Document
+        auto SnapshotRecord(hstring collection_name, ident_t id) const -> AnyData::Document { return SnapshotRecord(collection_name, DataBaseKey {id}); }
+
+        auto SnapshotRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
         {
             std::scoped_lock locker {_collectionsLocker};
 
@@ -149,6 +183,14 @@ namespace
         }
 
     protected:
+        void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
+        {
+            ignore_unused(key_type);
+
+            std::scoped_lock locker {_collectionsLocker};
+            _collections.try_emplace(collection_name);
+        }
+
         auto TryReconnect() -> bool override
         {
             std::scoped_lock locker {_collectionsLocker};
@@ -175,7 +217,7 @@ namespace
             _restoreCv.notify_all();
         }
 
-        auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
+        auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
         {
             {
                 std::scoped_lock locker {_readStatsLocker};
@@ -216,7 +258,7 @@ namespace
             return it != collection.end() ? it->second.Copy() : AnyData::Document {};
         }
 
-        void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+        void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
         {
             std::scoped_lock locker {_collectionsLocker};
 
@@ -233,7 +275,7 @@ namespace
             collection.emplace(id, doc.Copy());
         }
 
-        void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+        void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
         {
             std::scoped_lock locker {_collectionsLocker};
 
@@ -254,7 +296,7 @@ namespace
             }
         }
 
-        void DeleteRecord(hstring collection_name, ident_t id) override
+        void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
         {
             std::scoped_lock locker {_collectionsLocker};
 
@@ -274,6 +316,7 @@ namespace
         }
 
     private:
+        DataBaseStringKeyEscaping _stringKeyEscaping {};
         mutable std::mutex _collectionsLocker {};
         mutable std::mutex _callbackLocker {};
         mutable std::mutex _blockedReadLocker {};
@@ -284,11 +327,11 @@ namespace
         mutable std::condition_variable _mirrorCv {};
         mutable std::condition_variable _restoreCv {};
         mutable DataBase::Collections _collections {};
-        mutable unordered_map<ident_t, size_t> _recordReadCount {};
+        mutable unordered_map<DataBaseKey, size_t> _recordReadCount {};
         mutable function<void()> _onGetRecord {};
         mutable bool _blockedReadEnabled {};
         mutable bool _blockedReadEntered {};
-        mutable ident_t _blockedReadId {};
+        mutable DataBaseKey _blockedReadId {ident_t {}};
         bool _pendingChangesMirrored {};
         bool _pendingChangesRestored {};
         bool _strictRecordSemantics {};
@@ -828,6 +871,80 @@ TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
     CheckRecoveryLogsCleared(recovery_logs);
 }
 
+TEST_CASE("DataBaseRestorePendingRejectsInvalidUtf8StringKey")
+{
+    GlobalSettings settings {false};
+    ScopedRecoveryLogs recovery_logs {"restore-invalid-utf8-string-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+
+    string pending_content = "insert test_string_collection ";
+    pending_content.push_back(static_cast<char>(0xC3));
+    pending_content += " {\"value\":1}\n";
+    WriteRecoveryLogs(recovery_logs, pending_content);
+
+    {
+        TestDataBase db {settings};
+        REQUIRE_THROWS_AS(db.InitializeOpLogs(), DataBaseException);
+    }
+}
+
+TEST_CASE("DataBaseInitializeOpLogsRejectsUnknownCommand")
+{
+    GlobalSettings settings {false};
+    ScopedRecoveryLogs recovery_logs {"oplog-unknown-command"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "upsert test_collection 1001 {\"value\":1}\n");
+
+    {
+        TestDataBase db {settings};
+        REQUIRE_THROWS_AS(db.InitializeOpLogs(), DataBaseException);
+    }
+}
+
+TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidNumericKey")
+{
+    GlobalSettings settings {false};
+    ScopedRecoveryLogs recovery_logs {"oplog-invalid-numeric-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "insert test_collection invalid-id {\"value\":1}\n");
+
+    {
+        TestDataBase db {settings};
+        REQUIRE_THROWS_AS(db.InitializeOpLogs(), DataBaseException);
+    }
+}
+
+TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidEscapedFileStringKey")
+{
+    GlobalSettings settings {false};
+    ScopedRecoveryLogs recovery_logs {"oplog-invalid-file-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "insert test_string_collection bad%zz {\"value\":1}\n");
+
+    {
+        TestDataBase db {settings, DataBaseStringKeyEscaping::File};
+        REQUIRE_THROWS_AS(db.InitializeOpLogs(), DataBaseException);
+    }
+}
+
+TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidHexStringKey")
+{
+    GlobalSettings settings {false};
+    ScopedRecoveryLogs recovery_logs {"oplog-invalid-hex-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "insert test_string_collection s_1 {\"value\":1}\n");
+
+    {
+        TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
+        REQUIRE_THROWS_AS(db.InitializeOpLogs(), DataBaseException);
+    }
+}
+
 TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
 {
     GlobalSettings settings {false};
@@ -876,6 +993,198 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
     CHECK(!pending_content->empty());
 }
 
+TEST_CASE("DataBaseSupportsStringKeys")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam:user-123")};
+
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.WaitCommitChanges();
+
+    auto doc = db.SnapshotRecord(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+
+    db.Update(collection, record_id, "other", numeric_cast<int64>(7));
+    db.WaitCommitChanges();
+
+    doc = db.SnapshotRecord(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["other"].AsInt64() == 7);
+
+    db.Delete(collection, record_id);
+    db.WaitCommitChanges();
+
+    CHECK(db.SnapshotRecord(collection, record_id).Empty());
+}
+
+TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"json-string-ids"};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
+    const auto connection_info = strex("JSON {}", fs_path_to_string(recovery_logs.Dir())).str();
+    const DataBaseKey record_id {string("steam% user/Привет")};
+
+    auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    const auto all_ids = db.GetAllStringIds(collection);
+    REQUIRE(all_ids.size() == 1);
+    CHECK(all_ids.front() == std::get<string>(record_id));
+    CHECK(db.Valid(collection, record_id));
+}
+
+TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    const auto int_collection = hashes.ToHashedString("test_collection");
+    const auto string_collection = hashes.ToHashedString("test_string_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {
+        {int_collection, DataBaseKeyType::IntId},
+        {string_collection, DataBaseKeyType::String},
+    };
+
+    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
+
+    REQUIRE_THROWS_AS(db.GetAllIntIds(string_collection), DataBaseException);
+    REQUIRE_THROWS_AS(db.GetAllStringIds(int_collection), DataBaseException);
+}
+
+TEST_CASE("DataBaseGetAllIdsRejectsBackendKeyTypeMismatch")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    const auto int_collection = hashes.ToHashedString("test_collection");
+    const auto string_collection = hashes.ToHashedString("test_string_collection");
+
+    db.PrimeRecord(int_collection, DataBaseKey {string("wrong-type")}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(string_collection, DataBaseKey {ident_t {1001}}, MakeDoc({{"value", 1}}));
+
+    REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
+    REQUIRE_THROWS_AS(db.GetAllIds(string_collection), DataBaseException);
+}
+
+TEST_CASE("DataBaseGetAllIdsRejectsInvalidUtf8BackendStringKey")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
+    const auto string_collection = hashes.ToHashedString("test_string_collection");
+    const auto invalid_key = string(1, static_cast<char>(0xC3));
+
+    db.PrimeRecord(string_collection, DataBaseKey {invalid_key}, MakeDoc({{"value", 1}}));
+
+    REQUIRE_THROWS_AS(db.GetAllIds(string_collection), DataBaseException);
+}
+
+TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"json-invalid-escaped-string-id"};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
+    const auto storage_root = fs_path_to_string(recovery_logs.Dir());
+    const auto collection_dir = strex("{}/{}", storage_root, collection).str();
+    const auto bad_doc_path = strex("{}/bad%zz.json", collection_dir).str();
+    const auto connection_info = strex("JSON {}", storage_root).str();
+
+    REQUIRE(fs_create_directories(collection_dir));
+    REQUIRE(fs_write_file(bad_doc_path, "{\"value\":1}"));
+
+    auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+
+    REQUIRE_THROWS_AS(db.GetAllStringIds(collection), DataBaseException);
+}
+
+TEST_CASE("DataBaseRejectsInvalidUtf8StringKeys")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey invalid_record_id {string(1, static_cast<char>(0xC3))};
+
+    REQUIRE_THROWS_AS(db.Insert(collection, invalid_record_id, MakeDoc({{"value", 1}})), DataBaseException);
+}
+
+TEST_CASE("DataBaseRelaxedStringKeysKeepRawBackendIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam% user\n123")};
+
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.WaitCommitChanges();
+
+    const auto stored_ids = db.GetAllRecordIds(collection);
+    REQUIRE(stored_ids.size() == 1);
+    CHECK(stored_ids.front() == record_id);
+
+    const auto doc = db.GetDocument(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+}
+
+TEST_CASE("DataBaseFileStringKeysEncodeBackendIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings, DataBaseStringKeyEscaping::File};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam user/123")};
+
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.WaitCommitChanges();
+
+    const auto stored_ids = db.GetAllRecordIds(collection);
+    REQUIRE(stored_ids.size() == 1);
+    REQUIRE(std::holds_alternative<string>(stored_ids.front()));
+    CHECK(std::get<string>(stored_ids.front()) == "steam%20user%2f123");
+
+    const auto doc = db.GetDocument(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+}
+
+TEST_CASE("DataBaseHexStringKeysEncodeBackendIds")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam:user-123")};
+
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.WaitCommitChanges();
+
+    const auto stored_ids = db.GetAllRecordIds(collection);
+    REQUIRE(stored_ids.size() == 1);
+    REQUIRE(std::holds_alternative<string>(stored_ids.front()));
+    CHECK(std::get<string>(stored_ids.front()) == "s_737465616d3a757365722d313233");
+
+    const auto doc = db.GetDocument(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+}
+
 TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
 {
     GlobalSettings settings {false};
@@ -898,8 +1207,151 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
 
         db.SetBackendWriteFailure(false);
         db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
 
-        const auto doc = db.SnapshotRecord(collection, record_id);
+        const auto doc = db.GetDocument(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
+TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"reconnect-restore-string-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam:user-123")};
+
+    {
+        TestDataBase db {settings};
+        db.InitializeOpLogs();
+        db.SetBackendWriteFailure();
+        db.StartCommitChanges();
+        db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+        db.WaitUntilCommitOperationWrittenToOpLog();
+
+        CHECK(db.SnapshotRecord(collection, record_id).Empty());
+
+        db.SetBackendWriteFailure(false);
+        db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
+
+        const auto doc = db.GetDocument(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
+TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"reconnect-restore-relaxed-string-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam% user\n123")};
+
+    {
+        TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
+        db.InitializeOpLogs();
+        db.SetBackendWriteFailure();
+        db.StartCommitChanges();
+        db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+        db.WaitUntilCommitOperationWrittenToOpLog();
+
+        CHECK(db.SnapshotRecord(collection, record_id).Empty());
+
+        db.SetBackendWriteFailure(false);
+        db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
+
+        const auto stored_ids = db.GetAllRecordIds(collection);
+        REQUIRE(stored_ids.size() == 1);
+        CHECK(stored_ids.front() == record_id);
+
+        const auto doc = db.GetDocument(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
+TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"reconnect-restore-file-string-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam% user/123")};
+
+    {
+        TestDataBase db {settings, DataBaseStringKeyEscaping::File};
+        db.InitializeOpLogs();
+        db.SetBackendWriteFailure();
+        db.StartCommitChanges();
+        db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+        db.WaitUntilCommitOperationWrittenToOpLog();
+
+        CHECK(db.SnapshotRecord(collection, record_id).Empty());
+
+        db.SetBackendWriteFailure(false);
+        db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
+
+        const auto stored_ids = db.GetAllRecordIds(collection);
+        REQUIRE(stored_ids.size() == 1);
+        REQUIRE(std::holds_alternative<string>(stored_ids.front()));
+        CHECK(std::get<string>(stored_ids.front()) == "steam%25%20user%2f123");
+
+        const auto doc = db.GetDocument(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
+TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"reconnect-restore-hex-string-key"};
+    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    const auto collection = hashes.ToHashedString("test_string_collection");
+    const DataBaseKey record_id {string("steam%:user-123")};
+
+    {
+        TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
+        db.InitializeOpLogs();
+        db.SetBackendWriteFailure();
+        db.StartCommitChanges();
+        db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+        db.WaitUntilCommitOperationWrittenToOpLog();
+
+        CHECK(db.SnapshotRecord(collection, record_id).Empty());
+
+        db.SetBackendWriteFailure(false);
+        db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
+
+        const auto stored_ids = db.GetAllRecordIds(collection);
+        REQUIRE(stored_ids.size() == 1);
+        REQUIRE(std::holds_alternative<string>(stored_ids.front()));
+        CHECK(std::get<string>(stored_ids.front()) == "s_737465616d253a757365722d313233");
+
+        const auto doc = db.GetDocument(collection, record_id);
         REQUIRE(!doc.Empty());
         CHECK(doc["value"].AsInt64() == 1);
     }
@@ -914,17 +1366,18 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     ScopedRecoveryLogs storage_dir_scope {"json-roundtrip"};
     const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
     const auto collection = hashes.ToHashedString("test_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
     const_cast<int32&>(settings.JsonIndent) = 2;
-    auto db = ConnectToDataBase(settings, strex("JSON {}", storage_dir).str(), nullptr);
+    auto db = ConnectToDataBase(settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
     db.StartCommitChanges();
     db.WaitCommitChanges();
 
-    auto ids = db.GetAllIds(collection);
+    auto ids = db.GetAllIntIds(collection);
     std::sort(ids.begin(), ids.end());
 
     REQUIRE(ids.size() == 2);
@@ -950,7 +1403,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(updated_doc["other"].AsInt64() == 7);
     CHECK_FALSE(db.Valid(collection, second_id));
 
-    ids = db.GetAllIds(collection);
+    ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
     CHECK_FALSE(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
@@ -964,9 +1417,10 @@ TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
     const auto storage_dir = storage_dir_scope.Dir() / "storage";
     const auto collection_dir = storage_dir / "test_collection";
     const auto collection = hashes.ToHashedString("test_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     std::filesystem::create_directories(collection_dir);
 
-    auto db = ConnectToDataBase(settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), nullptr);
+    auto db = ConnectToDataBase(settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), collection_schemas, {});
 
     REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "0.json"), "{}"));
     REQUIRE_THROWS_AS(db.GetAllIds(collection), DataBaseException);
@@ -981,12 +1435,13 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     const auto collection = hashes.ToHashedString("test_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(settings, "Memory", nullptr);
+    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
 
     CHECK(db.InValidState());
-    CHECK(db.GetAllIds(collection).empty());
+    CHECK(db.GetAllIntIds(collection).empty());
     CHECK_FALSE(db.Valid(collection, first_id));
     CHECK(db.Get(collection, first_id).Empty());
 
@@ -995,7 +1450,7 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
     db.WaitCommitChanges();
 
-    auto ids = db.GetAllIds(collection);
+    auto ids = db.GetAllIntIds(collection);
     std::sort(ids.begin(), ids.end());
 
     REQUIRE(ids.size() == 2);
@@ -1018,7 +1473,7 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     CHECK_FALSE(db.Valid(collection, second_id));
     CHECK(db.Get(collection, second_id).Empty());
 
-    ids = db.GetAllIds(collection);
+    ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
 }
@@ -1028,13 +1483,14 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     GlobalSettings settings {false};
     HashStorage hashes;
     const auto collection = hashes.ToHashedString("test_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto record_id = ident_t {1001};
 
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Unknown", nullptr), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "JSON", nullptr), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Memory extra", nullptr), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Unknown", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "JSON", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Memory extra", collection_schemas, {}), DataBaseException);
 
-    auto db = ConnectToDataBase(settings, "Memory", nullptr);
+    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
@@ -1053,12 +1509,13 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
     const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
     const auto collection = hashes.ToHashedString("test_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), nullptr);
+    auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
 
     CHECK(db.InValidState());
-    CHECK(db.GetAllIds(collection).empty());
+    CHECK(db.GetAllIntIds(collection).empty());
     CHECK_FALSE(db.Valid(collection, first_id));
     CHECK(db.Get(collection, first_id).Empty());
 
@@ -1067,7 +1524,7 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
     db.WaitCommitChanges();
 
-    auto ids = db.GetAllIds(collection);
+    auto ids = db.GetAllIntIds(collection);
     std::sort(ids.begin(), ids.end());
 
     REQUIRE(ids.size() == 2);
@@ -1090,7 +1547,7 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     CHECK_FALSE(db.Valid(collection, second_id));
     CHECK(db.Get(collection, second_id).Empty());
 
-    ids = db.GetAllIds(collection);
+    ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
     CHECK(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));

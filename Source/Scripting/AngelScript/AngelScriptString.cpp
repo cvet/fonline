@@ -596,12 +596,40 @@ static auto ScriptString_ToInt(const string& str, int32 def_val) -> int32
     return result;
 }
 
+static auto ScriptString_ToInt64(const string& str, int64 def_val) -> int64
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char* end_str = nullptr;
+    const auto result = std::strtoll(str.c_str(), &end_str, 0);
+
+    if (end_str == nullptr || end_str == str.c_str()) {
+        return def_val;
+    }
+
+    return result;
+}
+
 static auto ScriptString_ToFloat(const string& str, float32 def_val) -> float32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     char* end_str = nullptr;
     const auto result = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
+
+    if (end_str == nullptr || end_str == str.c_str()) {
+        return def_val;
+    }
+
+    return result;
+}
+
+static auto ScriptString_ToDouble(const string& str, float64 def_val) -> float64
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char* end_str = nullptr;
+    const auto result = std::strtod(str.c_str(), &end_str);
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return def_val;
@@ -625,12 +653,42 @@ static auto ScriptString_TryToInt(const string& str, int32& result) -> bool
     return true;
 }
 
+static auto ScriptString_TryToInt64(const string& str, int64& result) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char* end_str = nullptr;
+    const auto value = std::strtoll(str.c_str(), &end_str, 0);
+
+    if (end_str == nullptr || end_str == str.c_str()) {
+        return false;
+    }
+
+    result = value;
+    return true;
+}
+
 static auto ScriptString_TryToFloat(const string& str, float32& result) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     char* end_str = nullptr;
     const auto value = numeric_cast<float32>(std::strtod(str.c_str(), &end_str));
+
+    if (end_str == nullptr || end_str == str.c_str()) {
+        return false;
+    }
+
+    result = value;
+    return true;
+}
+
+static auto ScriptString_TryToDouble(const string& str, float64& result) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char* end_str = nullptr;
+    const auto value = std::strtod(str.c_str(), &end_str);
 
     if (end_str == nullptr || end_str == str.c_str()) {
         return false;
@@ -888,9 +946,13 @@ void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "void set_opIndex(int, const string &in)", FO_SCRIPT_FUNC_THIS(ScriptString_SetAt), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int toInt(int defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToInt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int64 toInt64(int64 defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToInt64), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "float toFloat(float defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToFloat), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "double toDouble(double defaultValue = 0) const", FO_SCRIPT_FUNC_THIS(ScriptString_ToDouble), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToInt(int& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToInt), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToInt64(int64& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToInt64), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToFloat(float& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToFloat), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool tryToDouble(double& result) const", FO_SCRIPT_FUNC_THIS(ScriptString_TryToDouble), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool startsWith(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_StartsWith), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool endsWith(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_EndsWith), FO_SCRIPT_FUNC_THIS_CONV));

@@ -107,11 +107,40 @@ public:
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<ident_t> override
+protected:
+    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
+
+    void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
+    {
+        ignore_unused(key_type);
+
+        std::scoped_lock locker {_storageLocker};
+
+        const auto it = _collections.find(collection_name.as_str());
+
+        if (it == _collections.end()) {
+            bson_error_t error;
+            auto* collection = mongoc_database_create_collection(_database.get(), collection_name.as_str().c_str(), nullptr, &error);
+
+            if (collection == nullptr) {
+                collection = mongoc_database_get_collection(_database.get(), collection_name.as_str().c_str());
+            }
+
+            if (collection == nullptr) {
+                throw DataBaseException("DbMongo Can't create collection", collection_name, error.message);
+            }
+
+            _collections.emplace(collection_name.as_str(), collection);
+        }
+    }
+
+    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
+
+        const auto key_type = GetCollectionKeyType(collection_name);
 
         auto* collection = GetCollection(collection_name);
 
@@ -129,13 +158,11 @@ public:
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
 
-        vector<ident_t> ids;
+        vector<DataBaseKey> ids;
         const bson_t* document = nullptr;
 
         while (mongoc_cursor_next(cursor, &document)) {
             bson_iter_t iter;
-
-            static_assert(sizeof(ident_t) == sizeof(int64));
 
             if (!bson_iter_init(&iter, document)) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
@@ -143,12 +170,30 @@ public:
             if (!bson_iter_next(&iter)) {
                 throw DataBaseException("DbMongo bson_iter_next", collection_name);
             }
-            if (bson_iter_type(&iter) != BSON_TYPE_INT64) {
+            if (bson_iter_type(&iter) == BSON_TYPE_INT64) {
+                if (key_type != DataBaseKeyType::IntId) {
+                    throw DataBaseException("DbMongo invalid key type in collection", collection_name, MongoDbKeyTypeName(key_type));
+                }
+
+                ids.emplace_back(ident_t {bson_iter_int64(&iter)});
+            }
+            else if (bson_iter_type(&iter) == BSON_TYPE_UTF8) {
+                if (key_type != DataBaseKeyType::String) {
+                    throw DataBaseException("DbMongo invalid key type in collection", collection_name, MongoDbKeyTypeName(key_type));
+                }
+
+                uint32 len = 0;
+                const auto* value = bson_iter_utf8(&iter, &len);
+
+                if (value == nullptr || len == 0) {
+                    throw DataBaseException("DbMongo invalid string key", collection_name);
+                }
+
+                ids.emplace_back(string(value, value + len));
+            }
+            else {
                 throw DataBaseException("DbMongo bson_iter_type", collection_name, bson_iter_type(&iter));
             }
-
-            const auto id = bson_iter_int64(&iter);
-            ids.emplace_back(id);
         }
 
         bson_error_t error;
@@ -165,11 +210,11 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -180,23 +225,19 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        static_assert(sizeof(ident_t) == sizeof(int64));
-
-        if (!bson_append_int64(&filter, "_id", 3, id.underlying_value())) {
-            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
-        }
+        AppendMongoDbKey(&filter, id, collection_name);
 
         bson_t opts;
         bson_init(&opts);
 
         if (!bson_append_int32(&opts, "limit", 5, 1)) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+            throw DataBaseException("DbMongo bson_append_int32", collection_name, FormatMongoDbKey(id));
         }
 
         auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
 
         if (cursor == nullptr) {
-            throw DataBaseException("DbMongo mongoc_collection_find", collection_name, id);
+            throw DataBaseException("DbMongo mongoc_collection_find", collection_name, FormatMongoDbKey(id));
         }
 
         const bson_t* bson = nullptr;
@@ -217,24 +258,20 @@ protected:
         return doc;
     }
 
-    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
-        auto* collection = GetOrCreateCollection(collection_name);
+        auto* collection = GetCollection(collection_name);
 
         bson_t insert;
         bson_init(&insert);
 
-        static_assert(sizeof(ident_t) == sizeof(int64));
-
-        if (!bson_append_int64(&insert, "_id", 3, id.underlying_value())) {
-            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
-        }
+        AppendMongoDbKey(&insert, id, collection_name);
 
         DocumentToBson(doc, &insert, _escapeDot);
 
@@ -247,28 +284,24 @@ protected:
         bson_destroy(&insert);
     }
 
-    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
         if (collection == nullptr) {
-            throw DataBaseException("DbMongo Collection not found on update", collection_name, id);
+            throw DataBaseException("DbMongo Collection not found on update", collection_name, FormatMongoDbKey(id));
         }
 
         bson_t selector;
         bson_init(&selector);
 
-        static_assert(sizeof(ident_t) == sizeof(int64));
-
-        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
-            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
-        }
+        AppendMongoDbKey(&selector, id, collection_name);
 
         bson_t update;
         bson_init(&update);
@@ -276,13 +309,13 @@ protected:
         bson_t update_set;
 
         if (!bson_append_document_begin(&update, "$set", 4, &update_set)) {
-            throw DataBaseException("DbMongo bson_append_document_begin", collection_name, id);
+            throw DataBaseException("DbMongo bson_append_document_begin", collection_name, FormatMongoDbKey(id));
         }
 
         DocumentToBson(doc, &update_set, _escapeDot);
 
         if (!bson_append_document_end(&update, &update_set)) {
-            throw DataBaseException("DbMongo bson_append_document_end", collection_name, id);
+            throw DataBaseException("DbMongo bson_append_document_end", collection_name, FormatMongoDbKey(id));
         }
 
         bson_error_t error;
@@ -295,26 +328,22 @@ protected:
         bson_destroy(&update);
     }
 
-    void DeleteRecord(hstring collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
         if (collection == nullptr) {
-            throw DataBaseException("DbMongo Collection not found on delete", collection_name, id);
+            throw DataBaseException("DbMongo Collection not found on delete", collection_name, FormatMongoDbKey(id));
         }
 
         bson_t selector;
         bson_init(&selector);
 
-        static_assert(sizeof(ident_t) == sizeof(int64));
-
-        if (!bson_append_int64(&selector, "_id", 3, id.underlying_value())) {
-            throw DataBaseException("DbMongo bson_append_int64", collection_name, id);
-        }
+        AppendMongoDbKey(&selector, id, collection_name);
 
         bson_error_t error;
 
@@ -329,7 +358,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_collectionsLocker};
+        std::scoped_lock locker {_storageLocker};
 
         const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
@@ -355,40 +384,64 @@ private:
         const auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
-            return nullptr;
+            throw DataBaseException("DbMongo Collection not found", collection_name);
         }
 
         return it->second.get_no_const();
     }
 
-    auto GetOrCreateCollection(hstring collection_name) -> mongoc_collection_t*
+    static auto FormatMongoDbKey(const DataBaseKey& key) -> string
     {
-        FO_STACK_TRACE_ENTRY();
+        return std::visit(
+            [](const auto& value) -> string {
+                using T = std::decay_t<decltype(value)>;
 
-        mongoc_collection_t* collection;
+                if constexpr (std::is_same_v<T, ident_t>) {
+                    return strex("{}", value).str();
+                }
+                else {
+                    return value;
+                }
+            },
+            key);
+    }
 
-        const auto it = _collections.find(collection_name.as_str());
-
-        if (it == _collections.end()) {
-            collection = mongoc_database_get_collection(_database.get(), collection_name.as_str().c_str());
-
-            if (collection == nullptr) {
-                throw DataBaseException("DbMongo Can't create collection", collection_name);
-            }
-
-            _collections.emplace(collection_name.as_str(), collection);
+    static auto MongoDbKeyTypeName(DataBaseKeyType key_type) noexcept -> string_view
+    {
+        switch (key_type) {
+        case DataBaseKeyType::IntId:
+            return "Id";
+        case DataBaseKeyType::String:
+            return "String";
         }
-        else {
-            collection = it->second.get();
-        }
 
-        return collection;
+        return "Unknown";
+    }
+
+    static void AppendMongoDbKey(bson_t* bson, const DataBaseKey& key, hstring collection_name)
+    {
+        std::visit(
+            [&](const auto& value) {
+                using T = std::decay_t<decltype(value)>;
+
+                if constexpr (std::is_same_v<T, ident_t>) {
+                    if (!bson_append_int64(bson, "_id", 3, value.underlying_value())) {
+                        throw DataBaseException("DbMongo bson_append_int64", collection_name, value);
+                    }
+                }
+                else {
+                    if (!bson_append_utf8(bson, "_id", 3, value.c_str(), numeric_cast<int>(value.length()))) {
+                        throw DataBaseException("DbMongo bson_append_utf8", collection_name, value);
+                    }
+                }
+            },
+            key);
     }
 
     raw_ptr<mongoc_client_t> _client {};
     raw_ptr<mongoc_database_t> _database {};
     char _escapeDot {};
-    mutable std::mutex _collectionsLocker {};
+    mutable std::mutex _storageLocker {};
     unordered_map<string, raw_ptr<mongoc_collection_t>> _collections {};
 };
 

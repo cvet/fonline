@@ -785,34 +785,36 @@ FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
+FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, Player* unloginedPlayer)
 {
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
-    }
-    if (strvex(name).trim() != name) {
-        throw ScriptException("Wrong player name (trimmed space)");
-    }
-    if (!strvex(name).is_valid_utf8()) {
-        throw ScriptException("Wrong player name encoding");
-    }
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    return server->LoginPlayer(unloginedPlayer, name);
+    return server->LoginPlayerToNewRecord(unloginedPlayer);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, string_view name)
+FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
 {
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
+    if (unloginedPlayer->GetLogined()) {
+        throw ScriptException("Player is already logined");
+    }
+    if (!playerId) {
+        throw ScriptException("Player id arg is zero");
     }
 
-    const auto id = server->MakePlayerId(name);
-    auto* player = server->EntityMngr.GetPlayer(id);
-    return player;
+    return server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
+{
+    if (!playerId) {
+        return nullptr;
+    }
+
+    return server->EntityMngr.GetPlayer(playerId);
 }
 
 ///@ ExportMethod
@@ -1087,7 +1089,54 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(ServerEngine* server)
 {
-    return server->DbStorage.GetAllIds(server->PlayersCollectionName);
+    return server->DbStorage.GetAllIntIds(server->PlayersCollectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server, hstring collectionName)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+
+    return server->DbStorage.GetAllIntIds(collectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server, hstring collectionName)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+
+    return server->DbStorage.GetAllStringIds(collectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
+{
+    if (entity == nullptr) {
+        throw ScriptException("Entity arg is null");
+    }
+
+    return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* server, ident_t playerId)
+{
+    if (!playerId) {
+        throw ScriptException("Player id arg is zero");
+    }
+
+    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
@@ -1104,34 +1153,29 @@ FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collect
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server, hstring collectionName)
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, string_view id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
     }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
 
-    return server->DbStorage.GetAllIds(collectionName);
+    return server->DbStorage.Valid(collectionName, string(id));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, ident_t id)
 {
-    if (entity == nullptr) {
-        throw ScriptException("Entity arg is null");
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
     }
 
-    return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
-}
-
-///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* server, string_view playerName)
-{
-    if (playerName.empty()) {
-        throw ScriptException("Player name arg is empty");
-    }
-
-    const auto id = server->MakePlayerId(playerName);
-    auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
+    const auto doc = server->DbStorage.Get(collectionName, id);
     map<string, string> result;
 
     for (const auto& [key, value] : doc) {
@@ -1139,6 +1183,126 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* serv
     }
 
     return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, string_view id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    const auto doc = server->DbStorage.Get(collectionName, string(id));
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    if (server->DbStorage.Valid(collectionName, id)) {
+        server->DbStorage.Delete(collectionName, id);
+    }
+
+    if (!keyValues.empty()) {
+        server->DbStorage.Insert(collectionName, id, doc);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    if (server->DbStorage.Valid(collectionName, string(id))) {
+        server->DbStorage.Delete(collectionName, string(id));
+    }
+
+    if (!keyValues.empty()) {
+        server->DbStorage.Insert(collectionName, string(id), doc);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, ident_t id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    if (server->DbStorage.Valid(collectionName, id)) {
+        server->DbStorage.Delete(collectionName, id);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, string_view id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, string(id))) {
+        server->DbStorage.Delete(collectionName, string(id));
+    }
 }
 
 ///@ ExportMethod
