@@ -9,7 +9,7 @@ TEST_CASE("NetCommand")
 {
     SECTION("UnknownCommandReturnsFalse")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         const auto result = PackNetCommand("unknown 1 2 3", &out_buf, [](string_view) { }, hashes);
@@ -20,7 +20,7 @@ TEST_CASE("NetCommand")
 
     SECTION("ExitCommandSerializesWithoutArguments")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("exit", &out_buf, [](string_view) { }, hashes));
@@ -35,7 +35,7 @@ TEST_CASE("NetCommand")
 
     SECTION("MoveCommandSerializesCritterAndHex")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("move 42 17 23", &out_buf, [](string_view) { }, hashes));
@@ -53,7 +53,7 @@ TEST_CASE("NetCommand")
 
     SECTION("AliasesAndHashedPayloadAreSerialized")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("ais ammo_10mm 5", &out_buf, [](string_view) { }, hashes));
@@ -70,7 +70,7 @@ TEST_CASE("NetCommand")
 
     SECTION("AddNpcAndAddLocSerializeHashedProtos")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer npc_buf {8, true};
         NetOutBuffer loc_buf {8, true};
 
@@ -96,7 +96,7 @@ TEST_CASE("NetCommand")
 
     SECTION("PropertyCommandMarksSetValueAndTrimsWhitespace")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("prop 77 Health   150   ", &out_buf, [](string_view) { }, hashes));
@@ -115,7 +115,7 @@ TEST_CASE("NetCommand")
 
     SECTION("PropertyCommandWithoutValueMarksQuery")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("prop 88 Stamina", &out_buf, [](string_view) { }, hashes));
@@ -134,7 +134,7 @@ TEST_CASE("NetCommand")
 
     SECTION("RunAliasSerializesFunctionAndOptionalParameters")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("run module::Func alpha beta gamma", &out_buf, [](string_view) { }, hashes));
@@ -153,7 +153,7 @@ TEST_CASE("NetCommand")
 
     SECTION("LogCommandSerializesFlags")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
 
         REQUIRE(PackNetCommand("log --", &out_buf, [](string_view) { }, hashes));
@@ -169,7 +169,7 @@ TEST_CASE("NetCommand")
 
     SECTION("InvalidArgumentsLogAndDoNotWriteMessage")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         NetOutBuffer out_buf {8, true};
         string log_message;
 
@@ -181,7 +181,7 @@ TEST_CASE("NetCommand")
 
     SECTION("InvalidRunscriptAndLogArgumentsDoNotWriteMessage")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         string log_message;
 
         {

@@ -143,7 +143,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     // Parse texts
     vector<pair<string, map<string, TextPack>>> lang_packs;
-    HashStorage hashes;
+    HashStorage hashes {};
 
     for (const auto& target_lang : languages) {
         map<string, TextPack> lang_pack;
@@ -155,10 +155,10 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
             const auto& lang_name = name_pair[1];
 
             if (lang_name == target_lang) {
-                TextPack text_pack;
+                TextPack text_pack {hashes};
 
-                if (!text_pack.LoadFromString(file.GetStr(), hashes)) {
-                    throw LanguagePackException("Invalid text file", file.GetPath());
+                if (!text_pack.LoadFromString(file.GetStr(), text_pack_name)) {
+                    throw TextPackException("Invalid text file", file.GetPath());
                 }
 
                 lang_pack.emplace(text_pack_name, std::move(text_pack));

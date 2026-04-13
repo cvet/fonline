@@ -167,6 +167,47 @@ namespace ScriptBuiltins
         return s.trim();
     }
 
+    string EnumToAnyString()
+    {
+        any value = GenderType::Male;
+        string stored = value;
+        return stored;
+    }
+
+    string EnumAssignToAnyString()
+    {
+        any value;
+        value = GenderType::Female;
+        string stored = value;
+        return stored;
+    }
+
+    bool EnumRoundtripFromAny()
+    {
+        any value = GenderType::Male;
+        GenderType parsed = value;
+        return parsed == GenderType::Male;
+    }
+
+    bool EnumParseFullNameFromAny()
+    {
+        any value = "GenderType::Female";
+        GenderType parsed = value;
+        return parsed == GenderType::Female;
+    }
+
+    void InvalidIntConversionFromAny()
+    {
+        any value = "DefinitelyNotANumber";
+        int parsed = value;
+    }
+
+    int EmptyAnyToInt()
+    {
+        any value;
+        return int(value);
+    }
+
     // === Array operations ===
 
     int ArrayLength(int[] arr)
@@ -529,9 +570,39 @@ namespace ScriptBuiltins
             });
     }
 
+    static auto MakeMetadataWithGenderEnum() -> vector<uint8>
+    {
+        vector<uint8> metadata;
+        auto writer = DataWriter(metadata);
+
+        writer.Write<uint16>(uint16 {1}); // 1 section
+
+        const string_view section_name = "Enum";
+        writer.Write<uint16>(numeric_cast<uint16>(section_name.size()));
+        writer.WritePtr(section_name.data(), section_name.size());
+        writer.Write<uint32>(uint32 {1}); // 1 entry
+
+        // GenderType int Male 0 Female 1
+        writer.Write<uint32>(uint32 {6}); // 6 tokens
+
+        auto write_token = [&](string_view token) {
+            writer.Write<uint16>(numeric_cast<uint16>(token.size()));
+            writer.WritePtr(token.data(), token.size());
+        };
+
+        write_token("GenderType");
+        write_token("uint8");
+        write_token("Male");
+        write_token("0");
+        write_token("Female");
+        write_token("1");
+
+        return metadata;
+    }
+
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        const auto metadata_blob = MakeMetadataWithGenderEnum();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -708,6 +779,65 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
+    }
+
+    // Enum <-> any conversions store full enum names
+    {
+        auto func = server->FindFunc<string>(fn("ScriptBuiltins::EnumToAnyString"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == "GenderType::Male");
+    }
+
+    {
+        auto func = server->FindFunc<string>(fn("ScriptBuiltins::EnumAssignToAnyString"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == "GenderType::Female");
+    }
+
+    {
+        auto func = server->FindFunc<bool>(fn("ScriptBuiltins::EnumRoundtripFromAny"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == true);
+    }
+
+    {
+        auto func = server->FindFunc<bool>(fn("ScriptBuiltins::EnumParseFullNameFromAny"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == true);
+    }
+
+    {
+        auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
+        REQUIRE(func);
+
+        const auto prev_callback = GetExceptionCallback();
+        string message;
+        string traceback;
+        bool fatal = true;
+        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+            message = string(msg);
+            traceback = string(trace);
+            fatal = is_fatal;
+        });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        CHECK_FALSE(func.Call());
+        CHECK(message.find("Invalid int value for any conversion") != string::npos);
+        CHECK(message.find("DefinitelyNotANumber") != string::npos);
+        CHECK_FALSE(traceback.empty());
+        CHECK_FALSE(fatal);
+    }
+
+    // Empty any → int must return 0
+    {
+        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::EmptyAnyToInt"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
     }
 }
 

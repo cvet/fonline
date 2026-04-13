@@ -272,8 +272,8 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         WriteLog("Load language data");
 
-        _defaultLang = LanguagePack {Settings.Language, *this};
-        _defaultLang.LoadFromResources(Resources);
+        _defaultLang = TextPack {Hashes};
+        _defaultLang.LoadFromResources(Resources, Settings.Language);
 
         return std::nullopt;
     });
@@ -314,7 +314,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
                 writer.WritePtr(file.GetPath().data(), file.GetPath().length());
                 writer.Write<uint32>(numeric_cast<uint32>(data.size()));
-                writer.Write<uint32>(Hashing::MurmurHash2(data.data(), data.size()));
+                writer.Write<uint32>(numeric_cast<uint32>(hashing_ex::hash(data.data(), data.size())));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -1280,31 +1280,17 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        bool failed = false;
-        const auto param0 = ResolveGenericValue(param0_str, &failed);
-        const auto param1 = ResolveGenericValue(param1_str, &failed);
-        const auto param2 = ResolveGenericValue(param2_str, &failed);
-
         if (CallFunc<void, Player*>(Hashes.ToHashedString(func_name), player) || //
-            CallFunc<void, Player*, int32>(Hashes.ToHashedString(func_name), player, param0) || //
             CallFunc<void, Player*, any_t>(Hashes.ToHashedString(func_name), player, param0_str) || //
-            CallFunc<void, Player*, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1) || //
             CallFunc<void, Player*, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str) || //
-            CallFunc<void, Player*, int32, int32, int32>(Hashes.ToHashedString(func_name), player, param0, param1, param2) || //
             CallFunc<void, Player*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
             CallFunc<void, Critter*>(Hashes.ToHashedString(func_name), player_cr) || //
-            CallFunc<void, Critter*, int32>(Hashes.ToHashedString(func_name), player_cr, param0) || //
             CallFunc<void, Critter*, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str) || //
-            CallFunc<void, Critter*, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1) || //
             CallFunc<void, Critter*, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str) || //
-            CallFunc<void, Critter*, int32, int32, int32>(Hashes.ToHashedString(func_name), player_cr, param0, param1, param2) || //
             CallFunc<void, Critter*, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
             CallFunc<void>(Hashes.ToHashedString(func_name)) || //
-            CallFunc<void, int32>(Hashes.ToHashedString(func_name), param0) || //
             CallFunc<void, any_t>(Hashes.ToHashedString(func_name), param0_str) || //
-            CallFunc<void, int32, int32>(Hashes.ToHashedString(func_name), param0, param1) || //
             CallFunc<void, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str) || //
-            CallFunc<void, int32, int32, int32>(Hashes.ToHashedString(func_name), param0, param1, param2) || //
             CallFunc<void, any_t, any_t, any_t>(Hashes.ToHashedString(func_name), param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
@@ -2856,7 +2842,7 @@ auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), numeric_cast<uint32>(player_name.length()));
+    const auto hash_value = static_cast<uint32>(hashing_ex::hash(reinterpret_cast<const uint8*>(player_name.data()), player_name.length()));
     FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }

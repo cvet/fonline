@@ -587,9 +587,7 @@ namespace ScriptMethodsTest
     int TestTextPresent()
     {
         // Just calling the method exercises the code path
-        // TextPackName might not be available, but the call itself is the coverage goal
-        // Using known-invalid values still exercises error handling
-        bool present = Game.IsTextPresent(TextPackName::None, 0);
+        bool present = Game.IsTextPresent(TextPackKey());
         return 0;
     }
 

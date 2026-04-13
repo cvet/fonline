@@ -405,20 +405,6 @@ namespace CommonMethods
         return 0;
     }
 
-    // ========== ResolveGenericValue ==========
-
-    int TestResolveGenericValue()
-    {
-        // Resolve a numeric string
-        int val = Game.ResolveGenericValue("123");
-        if (val != 123) return -1;
-
-        int val2 = Game.ResolveGenericValue("0");
-        if (val2 != 0) return -2;
-
-        return 0;
-    }
-
  )" + R"(
     // ========== Entity Time Events (Critter) ==========
 
@@ -1088,18 +1074,6 @@ TEST_CASE("GameInvokeOperations")
     SECTION("ByNameWithData")
     {
         RUN_CM_FUNC("TestInvokeByNameWithData");
-    }
-}
-
-// ========== ResolveGenericValue ==========
-
-TEST_CASE("ResolveGenericValueOps")
-{
-    MAKE_CM_SERVER();
-
-    SECTION("ResolveGenericValue")
-    {
-        RUN_CM_FUNC("TestResolveGenericValue");
     }
 }
 

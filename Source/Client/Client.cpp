@@ -86,8 +86,8 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     InitSubsystems(this);
 
-    _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadFromResources(Resources);
+    _curLang = TextPack {Hashes};
+    _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Modules initialization
     InitClientEngine(this);
@@ -2276,8 +2276,8 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto lang_pack = LanguagePack {lang_name, *this};
-    lang_pack.LoadFromResources(Resources);
+    auto lang_pack = TextPack {Hashes};
+    lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
     Settings.Language = lang_name;

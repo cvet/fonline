@@ -133,20 +133,20 @@ void ResourceManager::CleanupCritterFrames()
     _critterFrames.clear();
 }
 
-static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint32
+static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> hstring::hash_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint32(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
-    return Hashing::MurmurHash2(dw, sizeof(dw));
+    const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
+    return hashing_ex::hash(parts, sizeof(parts));
 }
 
-static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 action_anim) -> uint32
+static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 action_anim) -> hstring::hash_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint32(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
-    return Hashing::MurmurHash2(dw, sizeof(dw));
+    const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
+    return hashing_ex::hash(parts, sizeof(parts));
 }
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*

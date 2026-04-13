@@ -36,6 +36,7 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
+#include "EngineBase.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -2235,6 +2236,21 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) :
     _viewSize.height = _modelMngr->_settings->DefaultModelViewHeight != 0 ? _modelMngr->_settings->DefaultModelViewHeight : _viewSize.height / 2;
 }
 
+auto ModelInformation::ParseInt32Value(string_view value, bool* failed) const -> int32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strvex(value).is_explicit_bool()) {
+        return strvex(value).to_bool() ? 1 : 0;
+    }
+    if (strvex(value).is_number()) {
+        return numeric_cast<int32>(strvex(value).to_int64());
+    }
+
+    const auto enum_value = _modelMngr->_nameResolver->ResolveEnumValue(value, failed);
+    return enum_value;
+}
+
 auto ModelInformation::Load(string_view name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -2366,10 +2382,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
 
                 if (token == "Layer") {
-                    layer = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                    layer = ParseInt32Value(buf, &convert_value_fail);
                 }
                 else {
-                    layer_val = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                    layer_val = ParseInt32Value(buf, &convert_value_fail);
                 }
 
                 link = &dummy_link;
@@ -2446,7 +2462,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
-                            const auto cut_layer = _modelMngr->_nameResolver->ResolveGenericValue(cut_layer_name, &convert_value_fail);
+                            const auto cut_layer = ParseInt32Value(cut_layer_name, &convert_value_fail);
                             cut->Layers.emplace_back(cut_layer);
                         }
                         else {
@@ -2663,7 +2679,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_layers = strex(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = _modelMngr->_nameResolver->ResolveGenericValue(disabled_layer_name, &convert_value_fail);
+                    const auto disabled_layer = ParseInt32Value(disabled_layer_name, &convert_value_fail);
 
                     if (disabled_layer >= 0 && disabled_layer < const_numeric_cast<int32>(MODEL_LAYERS_COUNT)) {
                         link->DisabledLayer.emplace_back(disabled_layer);
@@ -2686,7 +2702,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Texture") {
                 *istr >> buf;
-                auto index = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                auto index = ParseInt32Value(buf, &convert_value_fail);
 
                 *istr >> buf;
 
@@ -2701,9 +2717,9 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Anim") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 string a1;
                 string a2;
@@ -2712,9 +2728,9 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AnimSpeed") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 float32 valuef = 0.0f;
                 *istr >> valuef;
@@ -2722,14 +2738,14 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AnimLayerValue") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 *istr >> buf;
-                const auto anim_layer = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto anim_layer = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto anim_layer_value = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto anim_layer_value = ParseInt32Value(buf, &convert_value_fail);
 
                 const auto index = std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2));
 
@@ -2747,9 +2763,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 *istr >> buf;
-                ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
             }
@@ -2757,9 +2773,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 *istr >> buf;
-                ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
             }
@@ -2768,15 +2784,15 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DrawSize") {
                 *istr >> buf;
-                _drawSize.width = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _drawSize.width = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                _drawSize.height = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _drawSize.height = ParseInt32Value(buf, &convert_value_fail);
             }
             else if (token == "ViewSize") {
                 *istr >> buf;
-                _viewSize.width = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _viewSize.width = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                _viewSize.height = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _viewSize.height = ParseInt32Value(buf, &convert_value_fail);
             }
             else if (token == "DisableAnimationInterpolation") {
                 disable_animation_interpolation = true;

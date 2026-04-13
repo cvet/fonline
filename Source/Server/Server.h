@@ -79,7 +79,7 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
-    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
+    [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
 
     void Shutdown() override;
 
@@ -267,7 +267,7 @@ private:
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
-    LanguagePack _defaultLang {};
+    TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};

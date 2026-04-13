@@ -58,17 +58,17 @@ template<typename K, typename Cmp = std::less<>>
 using set = std::set<K, Cmp, SafeAllocator<K>>;
 
 #if FO_DEBUG
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
+template<typename K, typename V, typename H = hashing::hash<K>>
 using unordered_map = std::unordered_map<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
-template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
+template<typename K, typename H = hashing::hash<K>>
 using unordered_set = std::unordered_set<K, H, std::equal_to<>, SafeAllocator<K>>;
 #else
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
+template<typename K, typename V, typename H = hashing::hash<K>>
 using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
-template<typename K, typename H = FO_HASH_NAMESPACE hash<K>>
+template<typename K, typename H = hashing::hash<K>>
 using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, SafeAllocator<K>>;
 #endif
-template<typename K, typename V, typename H = FO_HASH_NAMESPACE hash<K>>
+template<typename K, typename V, typename H = hashing::hash<K>>
 using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
 
 template<typename T, unsigned InlineCapacity>
@@ -90,11 +90,11 @@ concept map_collection = specialization_of<T, std::map> || specialization_of<T, 
 // String formatter
 FO_END_NAMESPACE
 template<>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE string>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE string>
 {
     using is_transparent = void;
     using is_avalanching = void;
-    auto operator()(FO_NAMESPACE string_view str) const noexcept -> uint64_t { return hash<FO_NAMESPACE string_view> {}(str); }
+    auto operator()(FO_NAMESPACE string_view str) const noexcept -> uint64_t { return FO_NAMESPACE hashing::hash<FO_NAMESPACE string_view> {}(str); }
 };
 FO_BEGIN_NAMESPACE
 

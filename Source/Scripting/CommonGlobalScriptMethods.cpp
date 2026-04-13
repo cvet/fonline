@@ -37,6 +37,7 @@
 #include "EngineBase.h"
 #include "Geometry.h"
 #include "ScriptSystem.h"
+#include "TextPack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -568,6 +569,12 @@ FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan del
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API LanguageName Common_Game_GetLanguage(BaseEngine* engine)
+{
+    return LanguageName {engine->Hashes.ToHashedString(engine->Settings.Language)};
+}
+
+///@ ExportMethod
 FO_SCRIPT_API uint32 Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
@@ -711,12 +718,6 @@ FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, reado
     if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
         engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, to_vector(data));
     }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32 Common_Game_ResolveGenericValue(BaseEngine* engine, string_view str)
-{
-    return engine->ResolveGenericValue(str);
 }
 
 FO_END_NAMESPACE

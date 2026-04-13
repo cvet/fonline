@@ -49,7 +49,7 @@ TEST_CASE("Containers")
 
     SECTION("StringHash")
     {
-        FO_HASH_NAMESPACE hash<string> hasher;
+        hashing::hash<string> hasher;
         CHECK(hasher(string {"hash-me"}) == hasher(string_view {"hash-me"}));
     }
 

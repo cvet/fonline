@@ -76,7 +76,7 @@ private:
     raw_ptr<FileSystem> _resources;
     raw_ptr<SpriteManager> _sprMngr;
     raw_ptr<AnimationResolver> _animNameResolver;
-    unordered_map<uint32, shared_ptr<SpriteSheet>> _critterFrames {};
+    unordered_map<hstring::hash_t, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
     map<string, string> _soundNames {};
