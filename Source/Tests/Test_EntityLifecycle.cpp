@@ -77,9 +77,8 @@ namespace EntityLifecycle
     }
 
     [[Event]]
-    bool OnInit()
+    void OnInit()
     {
-        return true;
     }
 
     [[Event]]

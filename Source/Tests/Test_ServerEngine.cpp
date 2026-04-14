@@ -88,10 +88,9 @@ namespace ServerEngineTest
     }
 
     [[Event]]
-    bool OnInit()
+    void OnInit()
     {
         InitCalls++;
-        return true;
     }
 
     [[Event]]
