@@ -88,8 +88,8 @@ public:
     [[nodiscard]] auto GetCurSpr() -> Sprite*;
     [[nodiscard]] auto GetSpr(int32 num_frm) const -> const Sprite*;
     [[nodiscard]] auto GetSpr(int32 num_frm) -> Sprite*;
-    [[nodiscard]] auto GetDir(int32 dir) const -> const SpriteSheet*;
-    [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
+    [[nodiscard]] auto GetDir(mdir dir) const -> const SpriteSheet*;
+    [[nodiscard]] auto GetDir(mdir dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32 override;
     [[nodiscard]] auto GetWholeTicks() const noexcept -> int32 { return _wholeTicks; }

@@ -272,12 +272,6 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
         return;
     }
 
-    auto dir_ = dir;
-
-    if (static_cast<uint8>(dir_.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        dir_ = self->GetDir();
-    }
-
     auto look_ = look;
 
     if (look_ == 0) {
@@ -288,7 +282,7 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
     self->ViewMapPid = map->GetProtoId();
     self->ViewMapLook = numeric_cast<uint16>(look_);
     self->ViewMapHex = hex;
-    self->ViewMapDir = dir_;
+    self->ViewMapDir = dir;
     self->ViewMapLocId = ident_t {};
     self->ViewMapLocEnt = 0;
     self->Send_LoadMap(map);
@@ -297,29 +291,11 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 {
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid direction arg");
-    }
-
-    if (self->GetDir() == dir) {
+    if (dir == self->GetDir()) {
         return;
     }
 
     self->ChangeDir(dir);
-    self->Send_Dir(self);
-    self->Broadcast_Dir();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetDirAngle(Critter* self, mdir dir)
-{
-    const auto new_dir = GeometryHelper::NormalizeMDir(dir.angle);
-
-    if (self->GetDir() == new_dir) {
-        return;
-    }
-
-    self->ChangeDir(new_dir);
     self->Send_Dir(self);
     self->Broadcast_Dir();
 }

@@ -69,13 +69,13 @@ namespace CommonMethods
     {
         mpos from(10, 10);
         mpos to(15, 10);
-        mdir angle = Game.GetDirAngle(from, to);
+        mdir angle = Game.GetDirection(from, to);
         // Angle should be some valid direction value
         // Just verify it doesn't crash and returns a value
         if (angle.angle < -360 || angle.angle > 360) return -1;
 
         // Same position should give 0 or defined result
-        mdir sameAngle = Game.GetDirAngle(from, from);
+        mdir sameAngle = Game.GetDirection(from, from);
         // Just verify no crash
         return 0;
     }
@@ -101,7 +101,7 @@ namespace CommonMethods
             int16 angle = mdir(hdir(dir)).angle;
             if (angle < -360 || angle > 360) return -1;
 
-            mdir backDir = Game.AngleToDir(angle);
+            mdir backDir = mdir(angle);
             if (backDir.hex != hdir(dir)) return -2;
         }
         return 0;

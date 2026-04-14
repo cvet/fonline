@@ -498,7 +498,7 @@ namespace ScriptMethodsTest
         cr.SetDir(HDIR_SouthWest);
 
         // Set dir angle
-        cr.SetDirAngle(mdir(180));
+        cr.SetDir(mdir(180));
 
         Game.DestroyCritter(cr);
         return 0;

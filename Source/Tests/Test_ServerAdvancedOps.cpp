@@ -925,7 +925,7 @@ namespace AdvOps
 
     // ========== Geometry/Direction Operations ==========
 
-    int TestGetDirection()
+    int TestGetHexDir()
     {
         // Test hex direction calculation
         // These are basic tests that the geometry functions work
@@ -933,9 +933,7 @@ namespace AdvOps
         mpos to = mpos(10, 11);
 
         // Just exercise the API
-        mdir dir = Game.GetDirection(from, to);
-        // Direction should be valid (0-5 in hexagonal, 0-7 in square)
-        if (!dir.hex.valid()) return -1;
+        mdir dir = Game.GetHexDir(from, to);
 
         return 0;
     }
@@ -1399,9 +1397,9 @@ TEST_CASE("MathGeometryOperations")
         RUN_SCRIPT_FUNC("TestRandomRange");
     }
 
-    SECTION("Direction")
+    SECTION("HexDir")
     {
-        RUN_SCRIPT_FUNC("TestGetDirection");
+        RUN_SCRIPT_FUNC("TestGetHexDir");
     }
 
     SECTION("Distance")

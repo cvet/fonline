@@ -1248,8 +1248,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ClientEngine* client, uint32 instan
 
     auto* model = model_spr->GetModel();
 
-    model->SetLookDirAngle(mdir(0));
-    model->SetMoveDirAngle(mdir(0), false);
+    model->SetLookDir(mdir());
+    model->SetMoveDir(mdir(), false);
     model->SetRotation(rx * DEG_TO_RAD_FLOAT, ry * DEG_TO_RAD_FLOAT, rz * DEG_TO_RAD_FLOAT);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);

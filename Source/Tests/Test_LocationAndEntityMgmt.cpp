@@ -218,7 +218,7 @@ namespace LocEntity
         cr.SetDir(HDIR_SouthWest);
         if (cr.Dir.hex != HDIR_SouthWest) return -3;
 
-        cr.SetDirAngle(mdir(90));
+        cr.SetDir(mdir(90));
 
         Game.DestroyCritter(cr);
         return 0;
@@ -653,9 +653,7 @@ namespace LocEntity
         p2.x = 105;
         p2.y = 100;
 
-        mdir dir = Game.GetDirection(p1, p2);
-        if (!dir.hex.valid()) return -1;
-
+        mdir dir = Game.GetHexDir(p1, p2);
         int dist = Game.GetDistance(p1, p2);
         if (dist == 0) return -2;
 

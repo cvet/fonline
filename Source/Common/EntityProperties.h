@@ -243,7 +243,6 @@ public:
     FO_ENTITY_PROPERTY(mpos, Hex);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ipos16, HexOffset);
-    ///@ MigrationRule Property Critter DirAngle Dir
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(mdir, Dir);
     ///@ ExportProperty Server Persistent

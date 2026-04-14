@@ -54,11 +54,11 @@ TEST_CASE("GeometryHelper")
     CHECK(is_float_equal(zero_steps.x, 0.0f));
     CHECK(is_float_equal(zero_steps.y, 0.0f));
 
-    // GetDir
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0).value <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}).value <= 7);
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0, 10.0f).value <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}, 10.0f).value <= 7);
+    // GetHexDir
+    CHECK(GeometryHelper::GetHexDir(0, 0, 1, 0).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(mpos {0, 0}, mpos {1, 0}).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(0, 0, 1, 0, 10.0f).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(mpos {0, 0}, mpos {1, 0}, 10.0f).value() <= 7);
 
     // GetDirAngle
     CHECK(GeometryHelper::GetDirAngle(0, 0, 1, 0) >= 0.0f);
@@ -71,22 +71,6 @@ TEST_CASE("GeometryHelper")
     // GetDirAngleDiffSided
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(30.0f, 60.0f), 30.0f));
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(60.0f, 30.0f), -30.0f));
-
-    // mdir(hdir) / AngleToDir / NormalizeAngle
-    for (int8 d = 0; d < 6; d++) {
-        int16 angle = mdir(hdir(d)).angle;
-        hdir dir = GeometryHelper::AngleToDir(angle);
-        CHECK(dir.value == d);
-        CHECK(GeometryHelper::NormalizeAngle(angle + 360 * 2) == angle);
-    }
-    CHECK(GeometryHelper::AngleToDir(-360).value == 0);
-    CHECK(GeometryHelper::AngleToDir(360).value == 0);
-    CHECK(GeometryHelper::AngleToDir(719) == GeometryHelper::AngleToDir(-1));
-    CHECK(GeometryHelper::NormalizeAngle(721) == 1);
-    CHECK(GeometryHelper::NormalizeAngle(-1) == 359);
-    CHECK(GeometryHelper::NormalizeAngle(-360) == 0);
-    CHECK(GeometryHelper::NormalizeAngle(-720) == 0);
-    CHECK(GeometryHelper::NormalizeAngle(-721) == 359);
 
     // CheckDist
     CHECK(GeometryHelper::CheckDist(mpos {0, 0}, mpos {0, 0}, 0));

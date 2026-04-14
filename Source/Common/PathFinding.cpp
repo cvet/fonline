@@ -73,7 +73,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
     }
 
     // CW/CCW perimeter from extended hex
-    const bool is_square_corner = (dir.hex().value % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
+    const bool is_square_corner = (dir.hex().value() % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
     const int32 steps_count = is_square_corner ? multihex * 2 : multihex;
 
     // Clockwise
@@ -84,11 +84,11 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
             cw_dir = dir.rotateHex(4);
         }
         else {
-            cw_dir = hdir((dir.hex().value + 6) % 8);
+            cw_dir = dir.rotateHex(6);
         }
 
         if (is_square_corner) {
-            cw_dir = hdir((cw_dir.hex().value + 1) % 8);
+            cw_dir = cw_dir.rotateHex(1);
         }
 
         auto raw_hex = raw_extended;
@@ -111,11 +111,11 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
             ccw_dir = dir.rotateHex(2);
         }
         else {
-            ccw_dir = hdir((dir.hex().value + 2) % 8);
+            ccw_dir = dir.rotateHex(2);
         }
 
         if (is_square_corner) {
-            ccw_dir = hdir((ccw_dir.hex().value + 7) % 8);
+            ccw_dir = ccw_dir.rotateHex(7);
         }
 
         auto raw_hex = raw_extended;

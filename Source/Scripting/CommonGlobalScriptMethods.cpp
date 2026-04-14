@@ -238,7 +238,7 @@ FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mp
 {
     ignore_unused(engine);
 
-    return GeometryHelper::GetDir(fromHex, toHex);
+    return mdir(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex)));
 }
 
 ///@ ExportMethod
@@ -246,15 +246,7 @@ FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mp
 {
     ignore_unused(engine);
 
-    return GeometryHelper::GetDir(fromHex, toHex, offset);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mpos toHex)
-{
-    ignore_unused(engine);
-
-    return mdir(numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex))));
+    return mdir(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex) + offset));
 }
 
 ///@ ExportMethod
@@ -262,15 +254,7 @@ FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPo
 {
     ignore_unused(engine);
 
-    return mdir(numeric_cast<int16>(iround<int32>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y))));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_AngleToDir(BaseEngine* engine, int16 dirAngle)
-{
-    ignore_unused(engine);
-
-    return mdir(GeometryHelper::AngleToDir(dirAngle));
+    return mdir(iround<int32>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
 
 ///@ ExportMethod
@@ -278,7 +262,7 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(BaseEngine* engine, mdir dir, bool
 {
     ignore_unused(engine);
 
-    auto rotated = numeric_cast<int32>(dir.angle);
+    auto rotated = dir.angle();
 
     if (clockwise) {
         rotated += step;
@@ -294,7 +278,7 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(BaseEngine* engine, mdir dir, bool
         rotated -= 360;
     }
 
-    return mdir(numeric_cast<int16>(rotated));
+    return mdir(rotated);
 }
 
 ///@ ExportMethod
@@ -302,7 +286,7 @@ FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, mdir dir1, m
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngleDiff(dir1.angle, dir2.angle)));
+    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngleDiff(dir1.angle(), dir2.angle())));
 }
 
 ///@ ExportMethod

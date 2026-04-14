@@ -658,14 +658,21 @@ static void Hdir_ConstructValue(hdir* self, int32 value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) hdir(numeric_cast<int8>(value));
+    new (self) hdir(value);
 }
 
-static auto Hdir_Valid(const hdir& self) -> bool
+static auto Hdir_GetValue(const hdir& self) -> int8
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return self.valid();
+    return self.value();
+}
+
+static void Hdir_SetValue(hdir& self, int8 value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    self = hdir(value);
 }
 
 static auto Hdir_ToMdir(const hdir& self) -> mdir
@@ -682,6 +689,20 @@ static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
     static thread_local std::mt19937 rng {std::random_device {}()};
     const auto dir = hdir(static_cast<int8>(rng() % GameSettings::MAP_DIR_COUNT));
     new (gen->GetAddressOfReturnLocation()) hdir(dir);
+}
+
+static auto Mdir_GetAngle(const mdir& self) -> int16
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.angle();
+}
+
+static void Mdir_SetAngle(mdir& self, int16 angle)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    self = mdir(angle);
 }
 
 static void Mdir_ConstructAngle(mdir* self, int32 angle)
@@ -956,9 +977,9 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Type_Construct<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(const hdir&in other)", FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(int value)", FO_SCRIPT_FUNC_THIS(Hdir_ConstructValue), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("hdir", "int8 value", offsetof(hdir, value)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "int8 get_value() const", FO_SCRIPT_FUNC_THIS(Hdir_GetValue), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "void set_value(int8 value)", FO_SCRIPT_FUNC_THIS(Hdir_SetValue), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "bool opEquals(const hdir&in other) const", FO_SCRIPT_FUNC_THIS(Type_Equals<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "bool valid() const", FO_SCRIPT_FUNC_THIS(Hdir_Valid), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "hdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
@@ -990,7 +1011,8 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(const mdir&in other)", FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(int angle)", FO_SCRIPT_FUNC_THIS(Mdir_ConstructAngle), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(hdir dir)", FO_SCRIPT_FUNC_THIS(Mdir_ConstructHdir), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("mdir", "int16 angle", offsetof(mdir, angle)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "int16 get_angle() const", FO_SCRIPT_FUNC_THIS(Mdir_GetAngle), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "void set_angle(int16 angle)", FO_SCRIPT_FUNC_THIS(Mdir_SetAngle), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "bool opEquals(const mdir&in other) const", FO_SCRIPT_FUNC_THIS(Type_Equals<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<mdir>), FO_SCRIPT_FUNC_THIS_CONV));

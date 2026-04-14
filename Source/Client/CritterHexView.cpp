@@ -415,8 +415,8 @@ void CritterHexView::RefreshModel()
                 _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
             });
 
-            _model->SetLookDirAngle(GetDir());
-            _model->SetMoveDirAngle(GetDir(), false);
+            _model->SetLookDir(GetDir());
+            _model->SetMoveDir(GetDir(), false);
 
             if (_map->IsMapperMode()) {
                 _model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
@@ -445,21 +445,19 @@ void CritterHexView::ChangeLookDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_dir = GeometryHelper::NormalizeMDir(dir.angle);
-
-    if (new_dir == GetDir()) {
+    if (dir == GetDir()) {
         return;
     }
 
-    SetDir(new_dir);
+    SetDir(dir);
 
 #if FO_ENABLE_3D
     if (_model) {
         if (!_model->HasBodyRotation()) {
-            _model->SetMoveDirAngle(new_dir, true);
+            _model->SetMoveDir(dir, true);
         }
 
-        _model->SetLookDirAngle(new_dir);
+        _model->SetLookDir(dir);
     }
 #endif
 
@@ -474,7 +472,7 @@ void CritterHexView::ChangeMoveDir(mdir dir)
 
 #if FO_ENABLE_3D
     if (_model) {
-        _model->SetMoveDirAngle(dir, true);
+        _model->SetMoveDir(dir, true);
     }
     else
 #endif
@@ -619,7 +617,7 @@ void CritterHexView::ProcessMoving()
     else
 #endif
     {
-        ChangeDir(GeometryHelper::AngleToDir(progress.Dir.angle));
+        ChangeDir(progress.Dir);
     }
 
     if (progress.Completed && GetHex() == moving->GetEndHex()) {

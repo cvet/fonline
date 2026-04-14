@@ -1084,10 +1084,6 @@ FO_SCRIPT_API void Server_Map_Regenerate(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir)
 {
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
         return true;
     }
@@ -1099,10 +1095,6 @@ FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir, int32 steps)
 {
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     int32 result = 0;
 
     for (int32 i = 0; i < steps; i++) {
@@ -1122,9 +1114,6 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, md
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
-    }
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
     }
 
     auto from_hex = hex;

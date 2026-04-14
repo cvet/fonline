@@ -85,8 +85,8 @@ void ModelSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _model->SetLookDirAngle(dir);
-    _model->SetMoveDirAngle(dir, true);
+    _model->SetLookDir(dir);
+    _model->SetMoveDir(dir, true);
 }
 
 void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)

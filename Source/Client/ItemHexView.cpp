@@ -149,7 +149,7 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
 
     _moveStartOffset = fpos32(_sprOffset);
     _moveCurOffset = _moveStartOffset;
-    _moveDir = GeometryHelper::GetDir(cur_hex, hex);
+    _moveDir = mdir(iround<int32>(GeometryHelper::GetDirAngle(cur_hex, hex)));
     _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 

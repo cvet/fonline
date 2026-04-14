@@ -393,7 +393,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, mpos fromHex, mpos 
 
     if (GeometryHelper::GetDistance(fromHex, toHex) <= 1) {
         if (GeometryHelper::GetDistance(fromHex, toHex) > 0 && cut == 0) {
-            return {GeometryHelper::GetDir(fromHex, toHex)};
+            return {GeometryHelper::GetHexDir(fromHex, toHex)};
         }
         return {};
     }
@@ -431,7 +431,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, CritterView* cr, mp
 
     if (GeometryHelper::GetDistance(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
         if (GeometryHelper::GetDistance(cr->GetHex(), toHex) > cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetDir(cr->GetHex(), toHex)};
+            return {GeometryHelper::GetHexDir(cr->GetHex(), toHex)};
         }
         return {};
     }
@@ -559,10 +559,6 @@ FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, i
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir)
 {
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
         return true;
     }
@@ -574,10 +570,6 @@ FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir, int32 steps)
 {
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     int32 result = 0;
 
     for (int32 i = 0; i < steps; i++) {

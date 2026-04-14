@@ -1766,7 +1766,7 @@ void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32 i
 
     if (field.HasTransparentWall) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
-        const auto dir = GeometryHelper::GetDir(from_hex, to_hex);
+        const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
         if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
             MarkLight(ls, to_hex, intensity);
@@ -1793,7 +1793,7 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
         }
     }
 
-    const auto dir = GeometryHelper::GetDir(from_hex, to_hex);
+    const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
     if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
         MarkLight(ls, to_hex, intensity);

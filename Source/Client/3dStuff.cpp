@@ -1345,15 +1345,15 @@ void ModelInstance::SetDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetMoveDirAngle(dir, smooth_rotation);
-    SetLookDirAngle(dir);
+    SetMoveDir(dir, smooth_rotation);
+    SetLookDir(dir);
 }
 
-void ModelInstance::SetLookDirAngle(mdir dir)
+void ModelInstance::SetLookDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32>(180 - dir.angle);
+    const auto new_angle = numeric_cast<float32>(180 - dir.angle());
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
@@ -1366,11 +1366,11 @@ void ModelInstance::SetLookDirAngle(mdir dir)
     }
 }
 
-void ModelInstance::SetMoveDirAngle(mdir dir, bool smooth_rotation)
+void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32>(180 - dir.angle);
+    const auto new_angle = numeric_cast<float32>(180 - dir.angle());
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
@@ -1384,7 +1384,7 @@ void ModelInstance::SetMoveDirAngle(mdir dir, bool smooth_rotation)
     }
 
     if (!_modelInfo->_rotationBone) {
-        SetLookDirAngle(dir);
+        SetLookDir(dir);
     }
 }
 

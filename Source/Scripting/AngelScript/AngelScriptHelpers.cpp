@@ -553,11 +553,8 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     MemCopy(arr->At(0), data, data_size);
                 }
                 else {
-                    auto* dest = cast_from_void<int32*>(arr->At(0));
-
                     for (uint32 i = 0; i < arr_size; i++) {
-                        *(dest + i) = 0;
-                        MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
+                        MemCopy(arr->At(numeric_cast<int32>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
                 }
             }
@@ -647,13 +644,12 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         else if (prop->IsBaseTypeEnum()) {
                             arr->Resize(numeric_cast<int32>(arr_size));
 
-                            if (prop->GetBaseSize() == 4) {
+                            if (prop->GetBaseSize() == sizeof(int32)) {
                                 MemCopy(arr->At(0), data, arr_size * prop->GetBaseSize());
                             }
                             else {
-                                auto* dest = cast_from_void<int32*>(arr->At(0));
                                 for (uint32 i = 0; i < arr_size; i++) {
-                                    MemCopy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
+                                    MemCopy(arr->At(numeric_cast<int32>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
 
@@ -928,8 +924,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         auto* buf = prop_data.Alloc(data_size);
 
                         for (uint32 i = 0; i < arr_size; i++) {
-                            const auto e = *cast_from_void<const int32*>(arr->At(numeric_cast<int32>(i)));
-                            MemCopy(buf, &e, prop->GetBaseSize());
+                            MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
                     }
@@ -1054,8 +1049,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                             }
                             else {
                                 for (uint32 i = 0; i < arr_size; i++) {
-                                    const auto e = *cast_from_void<const int32*>(arr->At(numeric_cast<int32>(i)));
-                                    MemCopy(buf, &e, prop->GetBaseSize());
+                                    MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
                                     buf += prop->GetBaseSize();
                                 }
                             }

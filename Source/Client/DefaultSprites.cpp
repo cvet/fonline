@@ -200,7 +200,7 @@ auto SpriteSheet::GetCurSpr() -> Sprite*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value - 1] ? this : _dirs[_curDir.value - 1].get();
+    auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value() - 1] ? this : _dirs[_curDir.value() - 1].get();
 
     return dir_sheet->_spr[_curIndex].get();
 }
@@ -231,7 +231,7 @@ auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value - 1] ? this : _dirs[_curDir.value - 1].get();
+    const auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value() - 1] ? this : _dirs[_curDir.value() - 1].get();
     const auto* spr = dir_sheet->_spr[_curIndex].get();
 
     return spr->FillData(dbuf, pos, colors);
@@ -365,18 +365,20 @@ auto SpriteSheet::GetSpr(int32 num_frm) -> Sprite*
     return _spr[num_frm % _framesCount].get();
 }
 
-auto SpriteSheet::GetDir(int32 dir) const -> const SpriteSheet*
+auto SpriteSheet::GetDir(mdir dir) const -> const SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return dir == 0 || _dirCount == 1 ? this : _dirs[dir - 1].get();
+    const auto dir_value = dir.hex().value();
+    return dir_value == 0 || _dirCount == 1 ? this : _dirs[dir_value - 1].get();
 }
 
-auto SpriteSheet::GetDir(int32 dir) -> SpriteSheet*
+auto SpriteSheet::GetDir(mdir dir) -> SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return dir == 0 || _dirCount == 1 ? this : _dirs[dir - 1].get();
+    const auto dir_value = dir.hex().value();
+    return dir_value == 0 || _dirCount == 1 ? this : _dirs[dir_value - 1].get();
 }
 
 DefaultSpriteFactory::DefaultSpriteFactory(SpriteManager& spr_mngr) :
@@ -410,7 +412,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, ticks, dirs);
 
-        for (uint8 dir = 0; dir < dirs; dir++) {
+        for (uint8 i = 0; i < dirs; i++) {
+            const mdir dir = hdir(i);
             auto* dir_anim = anim->GetDir(dir);
             const auto ox = reader.GetLEInt16();
             const auto oy = reader.GetLEInt16();

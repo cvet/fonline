@@ -2157,12 +2157,12 @@ void ServerEngine::Process_Dir(Player* player)
     mdir checked_dir = dir;
 
     if (!OnPlayerDirCritter.Fire(player, cr, checked_dir)) {
-        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle);
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
         player->Send_Dir(cr);
         return;
     }
 
-    cr->ChangeDir(GeometryHelper::NormalizeMDir(checked_dir.angle));
+    cr->ChangeDir(checked_dir);
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
@@ -2707,7 +2707,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         const auto target_hex = progress.Hex;
 
         if (old_hex != target_hex) {
-            const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
+            const auto dir = mdir(iround<int32>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
             const auto multihex = cr->GetMultihex();
 
             const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
@@ -2756,7 +2756,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             cr->SetHexOffset(progress.HexOffset);
         }
 
-        cr->SetDir(GeometryHelper::NormalizeMDir(progress.Dir.angle));
+        cr->SetDir(progress.Dir);
 
         if (!cr->AttachedCritters.empty()) {
             cr->MoveAttachedCritters();

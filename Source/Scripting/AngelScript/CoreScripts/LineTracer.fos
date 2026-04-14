@@ -174,7 +174,7 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
     }
     else {
         dirLeft = HDIR_NorthWest;
-        dirRight = HDIR_East;
+        dirRight = HDIR_NorthEast;
     }
 
     mpos curHex = fromHex;

@@ -160,8 +160,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         auto* anim_ = it->second.get();
 
         if (anim_ != nullptr) {
-            if (anim_->GetDir(static_cast<int32>(dir.hex().value)) != nullptr) {
-                return anim_->GetDir(static_cast<int32>(dir.hex().value));
+            if (anim_->GetDir(dir) != nullptr) {
+                return anim_->GetDir(dir);
             }
 
             return anim_;
@@ -198,7 +198,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                         // Fix by dirs
                         for (int32 d = 0; anim && d < anim->_dirCount; d++) {
-                            auto* dir_anim = anim->GetDir(d);
+                            auto* dir_anim = anim->GetDir(hdir(d));
 
                             // Process flags
                             if (flags != 0) {
@@ -275,8 +275,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     // Store resulted animation indices
     if (anim != nullptr) {
         for (int32 d = 0; d < anim->_dirCount; d++) {
-            anim->GetDir(d)->_stateAnim = state_anim;
-            anim->GetDir(d)->_actionAnim = action_anim;
+            anim->GetDir(hdir(d))->_stateAnim = state_anim;
+            anim->GetDir(hdir(d))->_actionAnim = action_anim;
         }
     }
 
@@ -285,8 +285,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     _critterFrames.emplace(id, std::move(anim));
 
     if (anim_ != nullptr) {
-        if (anim_->GetDir(static_cast<int32>(dir.hex().value)) != nullptr) {
-            return anim_->GetDir(static_cast<int32>(dir.hex().value));
+        if (anim_->GetDir(dir) != nullptr) {
+            return anim_->GetDir(dir);
         }
 
         return anim_;
@@ -326,9 +326,9 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
 
             for (int32 d = 0; d < anim->_dirCount; d++) {
-                auto* anim_merge = anim_merge_base->GetDir(d);
-                const auto* anim_ = anim->GetDir(d);
-                const auto* animex_ = animex->GetDir(d);
+                auto* anim_merge = anim_merge_base->GetDir(hdir(d));
+                const auto* anim_ = anim->GetDir(hdir(d));
+                const auto* animex_ = animex->GetDir(hdir(d));
 
                 for (int32 i = 0; i < anim_->GetFramesCount(); i++) {
                     anim_merge->_spr[i] = anim_->GetSpr(i)->MakeCopy();
@@ -359,8 +359,8 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32 d = 0; d < anim->_dirCount; d++) {
-            auto* anim_clone = anim_clone_base->GetDir(d);
-            const auto* anim_ = anim->GetDir(d);
+            auto* anim_clone = anim_clone_base->GetDir(hdir(d));
+            const auto* anim_ = anim->GetDir(hdir(d));
 
             if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
                 for (int32 i = 0; i < anim_->GetFramesCount(); i++) {
@@ -399,8 +399,8 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
     }
 
     for (int32 d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        const auto* stay_frm = stay_frm_base->GetDir(d);
+        auto* frames = frames_base->GetDir(hdir(d));
+        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
         const auto* stay_spr = stay_frm->GetSpr(0);
 
         for (int32 i = 0; i < frames->GetFramesCount(); i++) {
@@ -421,8 +421,8 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
     }
 
     for (int32 d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        const auto* stay_frm = stay_frm_base->GetDir(d);
+        auto* frames = frames_base->GetDir(hdir(d));
+        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
         ipos32 next_offset;
 
         for (int32 i = 0; i < stay_frm->GetFramesCount(); i++) {

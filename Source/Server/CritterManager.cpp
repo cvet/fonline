@@ -175,13 +175,6 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         }
     }
 
-    // Resolve direction
-    auto final_dir = dir;
-
-    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = hdir(_engine->Random(0, numeric_cast<int32>(GameSettings::MAP_DIR_COUNT - 1u)));
-    }
-
     // Create critter
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, proto, props);
 
@@ -190,7 +183,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* loc = map->GetLocation();
     FO_RUNTIME_ASSERT(loc);
 
-    _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, final_dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, dir, ident_t {});
 
     if (!cr->IsDestroyed()) {
         if (map != nullptr) {
