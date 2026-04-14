@@ -94,7 +94,7 @@ FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -107,27 +107,41 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, uint8 d
         throw ScriptException("Invalid hexes args");
     }
 
-    auto corrected_dir = dir;
-    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
-        corrected_dir = self->GetDir();
+    if (hex != self->GetHex()) {
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir dir)
+{
+    if (self->LockMapTransfers != 0) {
+        throw ScriptException("Transfers locked");
+    }
+
+    auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+    FO_RUNTIME_ASSERT(map);
+
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hexes args");
     }
 
     if (hex != self->GetHex()) {
-        if (self->GetDir() != corrected_dir) {
-            self->ChangeDir(corrected_dir);
+        if (self->GetDir() != dir) {
+            self->ChangeDir(dir);
         }
 
         self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
     }
-    else if (self->GetDir() != corrected_dir) {
-        self->ChangeDir(corrected_dir);
+    else if (self->GetDir() != dir) {
+        self->ChangeDir(dir);
         self->Send_Dir(self);
         self->Broadcast_Dir();
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -136,17 +150,11 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
         throw ScriptException("Map arg is null");
     }
 
-    auto corrected_dir = dir;
-
-    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
-        corrected_dir = self->GetDir();
-    }
-
-    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, 2);
+    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, uint8 dir, bool force_hex)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir)
 {
     if (self->LockMapTransfers != 0) {
         throw ScriptException("Transfers locked");
@@ -155,17 +163,24 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
         throw ScriptException("Map arg is null");
     }
 
-    auto corrected_dir = dir;
+    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, 2);
+}
 
-    if (corrected_dir >= GameSettings::MAP_DIR_COUNT) {
-        corrected_dir = self->GetDir();
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex)
+{
+    if (self->LockMapTransfers != 0) {
+        throw ScriptException("Transfers locked");
+    }
+    if (map == nullptr) {
+        throw ScriptException("Map arg is null");
     }
 
-    if (force_hex) {
-        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, std::nullopt);
+    if (preciseHex) {
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, std::nullopt);
     }
     else {
-        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, corrected_dir, 2);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, 2);
     }
 }
 
@@ -244,7 +259,7 @@ FO_SCRIPT_API void Server_Critter_RefreshView(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, mpos hex, mdir dir)
 {
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
@@ -259,7 +274,7 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
 
     auto dir_ = dir;
 
-    if (dir_ >= GameSettings::MAP_DIR_COUNT) {
+    if (static_cast<uint8>(dir_.hex().value) >= GameSettings::MAP_DIR_COUNT) {
         dir_ = self->GetDir();
     }
 
@@ -280,9 +295,9 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32 look, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, uint8 dir)
+FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
+    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid direction arg");
     }
 
@@ -296,15 +311,15 @@ FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, uint8 dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetDirAngle(Critter* self, int16 dir_angle)
+FO_SCRIPT_API void Server_Critter_SetDirAngle(Critter* self, mdir dir)
 {
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(dir_angle);
+    const auto new_dir = GeometryHelper::NormalizeMDir(dir.angle);
 
-    if (self->GetDirAngle() == normalized_dir_angle) {
+    if (self->GetDir() == new_dir) {
         return;
     }
 
-    self->ChangeDirAngle(normalized_dir_angle);
+    self->ChangeDir(new_dir);
     self->Send_Dir(self);
     self->Broadcast_Dir();
 }
@@ -724,7 +739,7 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
     self->StopMoving();
 
     if (speed == 0) {
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<uint8> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<mdir> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
         return failed_moving.release_ownership();
     }
@@ -764,7 +779,7 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
             break;
         }
 
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<uint8> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16>(speed), vector<mdir> {}, vector<uint16> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
         }

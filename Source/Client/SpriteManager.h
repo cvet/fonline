@@ -119,8 +119,7 @@ public:
     virtual auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
-    virtual void SetDir(uint8 dir) { ignore_unused(dir); }
-    virtual void SetDirAngle(int16 dir_angle) { ignore_unused(dir_angle); }
+    virtual void SetDir(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }

@@ -103,11 +103,11 @@ static auto GetTileLayerFromKey(KeyCode key) -> optional<int32>
     }
 }
 
-static auto GetNextCritterDir(uint8 dir) -> uint8
+static auto GetNextCritterDir(mdir dir) -> mdir
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint8>((dir + 1) % GameSettings::MAP_DIR_COUNT);
+    return dir.incHex();
 }
 
 template<size_t Size>
@@ -676,7 +676,7 @@ void MapperEngine::InitIface()
     ProtoWidth = 50;
     ProtosOnScreen = MainPanelContentRect.width / ProtoWidth;
     MemFill(TabIndex, 0, sizeof(TabIndex));
-    CritterDir = 3;
+    CritterDir = hdir::SouthWest;
     CurMode = CUR_MODE_DEFAULT;
     SelectItemsEnabled = true;
     SelectSceneryEnabled = true;
@@ -1294,7 +1294,7 @@ auto MapperEngine::IsImGuiTextInputActive() const -> bool
 MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
     Id(other.Id),
     Hex(other.Hex),
-    DirAngle(other.DirAngle),
+    Dir(other.Dir),
     IsCritter(other.IsCritter),
     IsItem(other.IsItem),
     Slot(other.Slot),
@@ -1322,7 +1322,7 @@ auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
     if (this != &other) {
         Id = other.Id;
         Hex = other.Hex;
-        DirAngle = other.DirAngle;
+        Dir = other.Dir;
         IsCritter = other.IsCritter;
         IsItem = other.IsItem;
         Slot = other.Slot;
@@ -1572,7 +1572,7 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity)
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         entity_buf.Hex = cr->GetHex();
-        entity_buf.DirAngle = numeric_cast<int16>(cr->GetDirAngle());
+        entity_buf.Dir = cr->GetDir();
     }
     else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         entity_buf.Hex = item->GetHex();
@@ -1609,7 +1609,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner) 
 
     if (owner == nullptr) {
         if (entity_buf.IsCritter) {
-            auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.DirAngle, entity_buf.Props.get(), entity_buf.Id);
+            auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.Dir, entity_buf.Props.get(), entity_buf.Id);
 
             for (const auto& child_buf : entity_buf.Children) {
                 auto* inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>().get(), child_buf->Slot, child_buf->Props.get());
@@ -1723,7 +1723,7 @@ auto MapperEngine::ApplyEntityPropertyText(Entity* entity, const Property* prop,
         if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
             if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
                 for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-                    if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, numeric_cast<uint8>(i), _curMap->GetSize())) {
+                    if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, hdir(i), _curMap->GetSize())) {
                         auto main_mesh_items = vec_filter(_curMap->GetItemsOnHex(hex), [&](auto&& item2) -> bool {
                             if (SelectedEntitiesSet.contains(item2.get())) {
                                 return false;
@@ -4205,10 +4205,10 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             int32 sw = switcher;
 
             for (int32 k = 0; k < std::abs(offs_hx); k++, sw++) {
-                GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hx > 0 ? ((sw % 2) != 0 ? 4 : 3) : ((sw % 2) != 0 ? 0 : 1));
+                GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hx > 0 ? ((sw % 2) != 0 ? hdir::West : hdir::SouthWest) : ((sw % 2) != 0 ? hdir::NorthEast : hdir::East));
             }
             for (int32 k = 0; k < std::abs(offs_hy); k++) {
-                GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hy > 0 ? 2 : 5);
+                GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hy > 0 ? hdir::SouthEast : hdir::NorthWest);
             }
         }
         else {
@@ -4491,7 +4491,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
 
     SelectClear();
 
-    CritterHexView* cr = _curMap->AddMapperCritter(pid, hex, GeometryHelper::DirToAngle(CritterDir), nullptr);
+    CritterHexView* cr = _curMap->AddMapperCritter(pid, hex, CritterDir, nullptr);
 
     SelectAdd(cr, hex);
 
@@ -4617,7 +4617,7 @@ auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
     FO_RUNTIME_ASSERT(_curMap);
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDirAngle(), &cr->GetProperties());
+        auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDir(), &cr->GetProperties());
 
         for (const auto& inv_item : cr->GetInvItems()) {
             auto* inv_item_clone = cr_clone->AddMapperInvItem(_curMap->GenTempEntityId(), dynamic_cast<const ProtoItem*>(inv_item->GetProto()), inv_item->GetCritterSlot(), {});
@@ -4892,7 +4892,7 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* i
 
     // Neighbor hexes
     for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-        if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, numeric_cast<uint8>(i), map->GetSize())) {
+        if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, hdir(i), map->GetSize())) {
             if (auto* mergable_item = find_mergable_item_on_hex(hex2); mergable_item != nullptr) {
                 result.emplace(mergable_item);
             }
@@ -5103,7 +5103,7 @@ void MapperEngine::BufferPaste()
         };
 
         if (entity_buf.IsCritter) {
-            auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, 0, entity_buf.Props.get());
+            auto* cr = _curMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, mdir(), entity_buf.Props.get());
 
             for (const auto& child_buf : entity_buf.Children) {
                 auto* inv_item = cr->AddMapperInvItem(_curMap->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>().get(), CritterItemSlot::Inventory, child_buf->Props.get());

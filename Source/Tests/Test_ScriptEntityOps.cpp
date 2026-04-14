@@ -611,7 +611,7 @@ namespace EntityOps
         if (!cr.IsAlive()) return -3;
 
         // Check direction
-        uint8 dir = cr.Dir;
+        hdir dir = cr.Dir.hex;
         // Default direction should be valid (0-5 for hex)
 
         Game.DestroyCritter(cr);

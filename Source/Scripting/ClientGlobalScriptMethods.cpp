@@ -1173,7 +1173,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(ClientEngine* client, RenderPrimiti
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int32 l, int32 t, int32 r, int32 b, bool scratch, bool center, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, mdir dir, int32 l, int32 t, int32 r, int32 b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
@@ -1248,8 +1248,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ClientEngine* client, uint32 instan
 
     auto* model = model_spr->GetModel();
 
-    model->SetLookDirAngle(0);
-    model->SetMoveDirAngle(0, false);
+    model->SetLookDirAngle(mdir(0));
+    model->SetMoveDirAngle(mdir(0), false);
     model->SetRotation(rx * DEG_TO_RAD_FLOAT, ry * DEG_TO_RAD_FLOAT, rz * DEG_TO_RAD_FLOAT);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);

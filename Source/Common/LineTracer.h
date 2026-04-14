@@ -50,7 +50,7 @@ public:
     auto operator=(LineTracer&&) noexcept -> LineTracer& = delete;
     ~LineTracer() = default;
 
-    auto GetNextHex(mpos& hex) const -> uint8;
+    auto GetNextHex(mpos& hex) const -> mdir;
     void GetNextSquare(mpos& pos);
 
 private:
@@ -58,8 +58,8 @@ private:
 
     msize _mapSize {};
     float32 _dirAngle {};
-    uint8 _dirLeft {};
-    uint8 _dirRight {};
+    hdir _dirLeft {};
+    hdir _dirRight {};
     float32 _xStart {};
     float32 _yStart {};
     float32 _x {};

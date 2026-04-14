@@ -104,28 +104,32 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     bool seek_start = true;
 
     for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
-        uint8 dir;
+        mdir dir;
         int32 iterations;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = numeric_cast<uint8>((i + 2) % 6);
+            dir = hdir((i + 2) % 6);
             iterations = dist;
         }
         else {
-            dir = numeric_cast<uint8>(((i + 1) * 2) % 8);
+            dir = hdir(((i + 1) * 2) % 8);
             iterations = dist * 2;
         }
 
         for (int32 j = 0; j < iterations; j++) {
             if (seek_start) {
                 for (int32 l = 0; l < dist; l++) {
-                    GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+#if FO_GEOMETRY == 1
+                    GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::NorthEast);
+#elif FO_GEOMETRY == 2
+                    GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::North);
+#endif
                 }
                 seek_start = false;
                 j = -1;
             }
             else {
-                GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, numeric_cast<uint8>(dir));
+                GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, dir);
             }
 
             const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);

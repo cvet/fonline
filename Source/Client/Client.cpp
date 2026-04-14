@@ -598,7 +598,7 @@ void ClientEngine::Net_SendDir(CritterHexView* cr)
     _conn.OutBuf->StartMsg(NetMessage::SendCritterDir);
     _conn.OutBuf->Write(_curMap->GetId());
     _conn.OutBuf->Write(cr->GetId());
-    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
 }
 
@@ -624,7 +624,7 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
     _conn.OutBuf->Write(moving->GetStartHex());
     _conn.OutBuf->Write(numeric_cast<uint16>(moving->GetSteps().size()));
     for (const auto step : moving->GetSteps()) {
-        _conn.OutBuf->Write(step);
+        _conn.OutBuf->Write(step.hex());
     }
     _conn.OutBuf->Write(numeric_cast<uint16>(moving->GetControlSteps().size()));
     for (const auto control_step : moving->GetControlSteps()) {
@@ -643,7 +643,7 @@ void ClientEngine::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf->Write(cr->GetId());
     _conn.OutBuf->Write(cr->GetHex());
     _conn.OutBuf->Write(cr->GetHexOffset());
-    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
 }
 
@@ -778,7 +778,7 @@ void ClientEngine::Net_OnAddCritter()
     const auto pid = _conn.InBuf->Read<hstring>(Hashes);
     const auto hex = _conn.InBuf->Read<mpos>();
     const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
     const auto cond = _conn.InBuf->Read<CritterCondition>();
     const auto is_controlled_by_player = _conn.InBuf->Read<bool>();
     const auto is_player_offline = _conn.InBuf->Read<bool>();
@@ -789,7 +789,7 @@ void ClientEngine::Net_OnAddCritter()
     CritterHexView* hex_cr;
 
     if (_curMap) {
-        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
+        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData);
         FO_RUNTIME_ASSERT(hex_cr);
 
         if (_mapLoaded) {
@@ -967,7 +967,7 @@ void ClientEngine::Net_OnCritterDir()
     FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -978,10 +978,10 @@ void ClientEngine::Net_OnCritterDir()
 
     if (cr != nullptr) {
         if (cr->GetControlledByPlayer()) {
-            cr->ChangeLookDirAngle(dir_angle);
+            cr->ChangeLookDir(dir);
         }
         else {
-            cr->ChangeDirAngle(dir_angle);
+            cr->ChangeDir(dir);
         }
     }
 }
@@ -1201,7 +1201,7 @@ void ClientEngine::Net_OnCritterPos()
     const auto cr_id = _conn.InBuf->Read<ident_t>();
     const auto hex = _conn.InBuf->Read<mpos>();
     const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1218,8 +1218,8 @@ void ClientEngine::Net_OnCritterPos()
 
     cr->StopMoving();
 
-    cr->ChangeLookDirAngle(dir_angle);
-    cr->ChangeMoveDirAngle(dir_angle);
+    cr->ChangeLookDir(dir);
+    cr->ChangeMoveDir(dir);
 
     if (cr->GetHex() != hex) {
         _curMap->MoveCritter(cr, hex, true);
@@ -1850,11 +1850,11 @@ void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
     const auto start_hex = _conn.InBuf->Read<mpos>();
 
     const auto steps_count = _conn.InBuf->Read<uint16>();
-    vector<uint8> steps;
+    vector<mdir> steps;
     steps.resize(steps_count);
 
     for (uint16 i = 0; i < steps_count; i++) {
-        steps[i] = _conn.InBuf->Read<uint8>();
+        steps[i] = mdir(_conn.InBuf->Read<hdir>());
     }
 
     const auto control_steps_count = _conn.InBuf->Read<uint16>();
@@ -2467,7 +2467,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     bool try_move = false;
     mpos hex;
     ipos16 hex_offset;
-    vector<uint8> steps;
+    vector<mdir> steps;
     vector<uint16> control_steps;
 
     if (speed != 0 && cr->IsAlive()) {
@@ -2488,8 +2488,10 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
 
             if (quad_dir != -1) {
                 hex = cr->GetHex();
+                vector<mdir> raw_steps;
 
-                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir, cr->GetMultihex())) {
+                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, quad_dir, cr->GetMultihex())) {
+                    steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
                     control_steps.push_back(numeric_cast<uint16>(steps.size()));
                     try_move = true;
                 }
@@ -2512,20 +2514,15 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     }
 }
 
-void ClientEngine::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
+void ClientEngine::CritterLookTo(CritterHexView* cr, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prev_dir_angle = cr->GetDirAngle();
+    const auto prev_dir = cr->GetDir();
 
-    if (dir_or_angle.index() == 0) {
-        cr->ChangeDir(std::get<0>(dir_or_angle));
-    }
-    else if (dir_or_angle.index() == 1) {
-        cr->ChangeLookDirAngle(std::get<1>(dir_or_angle));
-    }
+    cr->ChangeLookDir(dir);
 
-    if (cr->GetDirAngle() != prev_dir_angle) {
+    if (cr->GetDir() != prev_dir) {
         Net_SendDir(cr);
     }
 }

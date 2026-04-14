@@ -69,7 +69,7 @@ struct MovingProgress
 {
     mpos Hex {};
     ipos16 HexOffset {};
-    int16 DirAngle {};
+    mdir Dir {};
     bool Completed {};
 };
 
@@ -87,8 +87,8 @@ struct MovingRawProgress
 class MovingContext final : public RefCounted<MovingContext>
 {
 public:
-    explicit MovingContext(msize map_size, uint16 speed, vector<uint8> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset);
-    explicit MovingContext(msize map_size, uint16 speed, vector<uint8> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32 whole_time);
+    explicit MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset);
+    explicit MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32 whole_time);
     MovingContext(const MovingContext&) = delete;
     MovingContext(MovingContext&&) noexcept = delete;
     auto operator=(const MovingContext&) -> MovingContext& = delete;
@@ -97,7 +97,7 @@ public:
 
     [[nodiscard]] auto GetMapSize() const noexcept -> msize { return _mapSize; }
     [[nodiscard]] auto GetSpeed() const noexcept -> uint16 { return _speed; }
-    [[nodiscard]] auto GetSteps() const noexcept -> const vector<uint8>& { return _steps; }
+    [[nodiscard]] auto GetSteps() const noexcept -> const vector<mdir>& { return _steps; }
     [[nodiscard]] auto GetControlSteps() const noexcept -> const vector<uint16>& { return _controlSteps; }
     [[nodiscard]] auto GetStartHex() const noexcept -> mpos { return _startHex; }
     [[nodiscard]] auto GetEndHex() const noexcept -> mpos { return _endHex; }
@@ -134,7 +134,7 @@ private:
 
     msize _mapSize {};
     uint16 _speed {};
-    vector<uint8> _steps {};
+    vector<mdir> _steps {};
     vector<uint16> _controlSteps {};
     nanotime _startTime {};
     timespan _offsetTime {};

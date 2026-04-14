@@ -270,9 +270,9 @@ public:
     void StartMeshGeneration();
     void PrewarmParticles();
     auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, float32 ntime, ModelAnimFlags flags) -> bool;
-    void SetDir(uint8 dir, bool smooth_rotation);
-    void SetLookDirAngle(int32 dir_angle);
-    void SetMoveDirAngle(int32 dir_angle, bool smooth_rotation);
+    void SetDir(mdir dir, bool smooth_rotation);
+    void SetLookDirAngle(mdir dir);
+    void SetMoveDirAngle(mdir dir, bool smooth_rotation);
     void SetRotation(float32 rx, float32 ry, float32 rz);
     void SetScale(float32 sx, float32 sy, float32 sz);
     void SetSpeed(float32 speed);

@@ -234,7 +234,7 @@ FO_SCRIPT_API int32 Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpos 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
+FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
 {
     ignore_unused(engine);
 
@@ -242,7 +242,7 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32 offset)
+FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32 offset)
 {
     ignore_unused(engine);
 
@@ -250,43 +250,35 @@ FO_SCRIPT_API uint8 Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mpos toHex)
+FO_SCRIPT_API mdir Common_Game_GetDirAngle(BaseEngine* engine, mpos fromHex, mpos toHex)
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex)));
+    return mdir(numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngle(fromHex, toHex))));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPos, ipos32 toPos)
+FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(BaseEngine* engine, ipos32 fromPos, ipos32 toPos)
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
+    return mdir(numeric_cast<int16>(iround<int32>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y))));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Common_Game_AngleToDir(BaseEngine* engine, int16 dirAngle)
+FO_SCRIPT_API mdir Common_Game_AngleToDir(BaseEngine* engine, int16 dirAngle)
 {
     ignore_unused(engine);
 
-    return GeometryHelper::AngleToDir(dirAngle);
+    return mdir(GeometryHelper::AngleToDir(dirAngle));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_DirToAngle(BaseEngine* engine, uint8 dir)
+FO_SCRIPT_API mdir Common_Game_RotateDirAngle(BaseEngine* engine, mdir dir, bool clockwise, int16 step)
 {
     ignore_unused(engine);
 
-    return GeometryHelper::DirToAngle(dir);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_RotateDirAngle(BaseEngine* engine, int16 dirAngle, bool clockwise, int16 step)
-{
-    ignore_unused(engine);
-
-    auto rotated = numeric_cast<int32>(dirAngle);
+    auto rotated = numeric_cast<int32>(dir.angle);
 
     if (clockwise) {
         rotated += step;
@@ -302,15 +294,15 @@ FO_SCRIPT_API int16 Common_Game_RotateDirAngle(BaseEngine* engine, int16 dirAngl
         rotated -= 360;
     }
 
-    return numeric_cast<int16>(rotated);
+    return mdir(numeric_cast<int16>(rotated));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, int16 dirAngle1, int16 dirAngle2)
+FO_SCRIPT_API int16 Common_Game_GetDirAngleDiff(BaseEngine* engine, mdir dir1, mdir dir2)
 {
     ignore_unused(engine);
 
-    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngleDiff(dirAngle1, dirAngle2)));
+    return numeric_cast<int16>(iround<int32>(GeometryHelper::GetDirAngleDiff(dir1.angle, dir2.angle)));
 }
 
 ///@ ExportMethod

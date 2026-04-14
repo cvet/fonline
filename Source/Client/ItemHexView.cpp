@@ -197,7 +197,7 @@ void ItemHexView::SetAnimTime(float32 normalized_time)
     }
 }
 
-void ItemHexView::SetAnimDir(uint8 dir)
+void ItemHexView::SetAnimDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

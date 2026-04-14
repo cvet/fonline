@@ -1250,7 +1250,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDNPC: {
         const auto hex = buf.Read<mpos>();
-        const auto dir = buf.Read<uint8>();
+        const auto dir = mdir(buf.Read<hdir>());
         const auto pid = buf.Read<hstring>(Hashes);
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
@@ -1426,7 +1426,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr.get(), nullptr, {}, 0, {});
+    MapMngr.AddCritterToMap(cr.get(), nullptr, {}, hdir {}, {});
 
     if (!cr->IsDestroyed()) {
         OnGlobalMapCritterIn.Fire(cr.get());
@@ -1478,7 +1478,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     }
 
     EntityMngr.MakePersistent(cr, true, true);
-    MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
     if (!cr->IsDestroyed()) {
         OnGlobalMapCritterIn.Fire(cr);
@@ -1933,11 +1933,11 @@ void ServerEngine::Process_Move(Player* player)
     const auto start_hex = in_buf->Read<mpos>();
 
     const auto steps_count = in_buf->Read<uint16>();
-    vector<uint8> steps;
+    vector<mdir> steps;
     steps.resize(steps_count);
 
     for (uint16 i = 0; i < steps_count; i++) {
-        steps[i] = in_buf->Read<uint8>();
+        steps[i] = mdir(in_buf->Read<hdir>());
     }
 
     const auto control_steps_count = in_buf->Read<uint16>();
@@ -2090,7 +2090,7 @@ void ServerEngine::Process_StopMove(Player* player)
     // Todo: validate stop position and place critter in it
     [[maybe_unused]] const auto start_hex = in_buf->Read<mpos>();
     [[maybe_unused]] const auto hex_offset = in_buf->Read<ipos16>();
-    [[maybe_unused]] const auto dir_angle = in_buf->Read<int16>();
+    [[maybe_unused]] const auto dir_angle = in_buf->Read<mdir>();
 
     in_buf.Unlock();
 
@@ -2136,7 +2136,7 @@ void ServerEngine::Process_Dir(Player* player)
 
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
-    const auto dir_angle = in_buf->Read<int16>();
+    const auto dir = in_buf->Read<mdir>();
 
     in_buf.Unlock();
 
@@ -2154,15 +2154,15 @@ void ServerEngine::Process_Dir(Player* player)
         return;
     }
 
-    int16 checked_dir_angle = dir_angle;
+    mdir checked_dir = dir;
 
-    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
-        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir_angle);
+    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir)) {
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle);
         player->Send_Dir(cr);
         return;
     }
 
-    cr->ChangeDirAngle(checked_dir_angle);
+    cr->ChangeDir(GeometryHelper::NormalizeMDir(checked_dir.angle));
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
@@ -2756,7 +2756,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             cr->SetHexOffset(progress.HexOffset);
         }
 
-        cr->SetDirAngle(progress.DirAngle);
+        cr->SetDir(GeometryHelper::NormalizeMDir(progress.Dir.angle));
 
         if (!cr->AttachedCritters.empty()) {
             cr->MoveAttachedCritters();
@@ -2802,7 +2802,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
-void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
+void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<mdir>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
     FO_STACK_TRACE_ENTRY();
 

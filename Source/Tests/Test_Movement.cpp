@@ -8,7 +8,7 @@ namespace
 {
     constexpr msize TEST_MAP_SIZE {40, 40};
     constexpr uint16 TEST_SPEED = 100;
-    const vector<uint8> TEST_STEPS {0, 0, 1, 1, 2};
+    const vector<mdir> TEST_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16> TEST_CONTROL_STEPS {2, 4, 5};
     constexpr mpos TEST_START_HEX {20, 20};
     constexpr mpos TEST_UNKNOWN_HEX {0, 0};
@@ -100,7 +100,7 @@ TEST_CASE("MovingContext")
 
         CHECK(same_hex_progress.Hex == progress.Hex);
         CHECK(same_hex_progress.HexOffset == progress.HexOffset);
-        CHECK(same_hex_progress.DirAngle == progress.DirAngle);
+        CHECK(same_hex_progress.Dir == progress.Dir);
         CHECK(same_hex_progress.Completed == progress.Completed);
     }
 
@@ -157,7 +157,7 @@ TEST_CASE("MovingContext")
         CHECK(moving->GetWholeTime() < before_whole_time);
         CHECK(after_progress.Hex == before_progress.Hex);
         CHECK(after_progress.HexOffset == before_progress.HexOffset);
-        CHECK(after_progress.DirAngle == before_progress.DirAngle);
+        CHECK(after_progress.Dir == before_progress.Dir);
     }
 
     SECTION("SetBlockHexesStoresProvidedHexes")

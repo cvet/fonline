@@ -69,13 +69,13 @@ namespace CommonMethods
     {
         mpos from(10, 10);
         mpos to(15, 10);
-        int16 angle = Game.GetDirAngle(from, to);
+        mdir angle = Game.GetDirAngle(from, to);
         // Angle should be some valid direction value
         // Just verify it doesn't crash and returns a value
-        if (angle < -360 || angle > 360) return -1;
+        if (angle.angle < -360 || angle.angle > 360) return -1;
 
         // Same position should give 0 or defined result
-        int16 sameAngle = Game.GetDirAngle(from, from);
+        mdir sameAngle = Game.GetDirAngle(from, from);
         // Just verify no crash
         return 0;
     }
@@ -84,12 +84,12 @@ namespace CommonMethods
     {
         ipos fromPos(0, 0);
         ipos toPos(100, 0);
-        int16 angle = Game.GetLineDirAngle(fromPos, toPos);
-        if (angle < -360 || angle > 360) return -1;
+        mdir angle = Game.GetLineDirAngle(fromPos, toPos);
+        if (angle.angle < -360 || angle.angle > 360) return -1;
 
         ipos toPos2(0, 100);
-        int16 angle2 = Game.GetLineDirAngle(fromPos, toPos2);
-        if (angle2 < -360 || angle2 > 360) return -2;
+        mdir angle2 = Game.GetLineDirAngle(fromPos, toPos2);
+        if (angle2.angle < -360 || angle2.angle > 360) return -2;
 
         return 0;
     }
@@ -97,38 +97,38 @@ namespace CommonMethods
     int TestAngleToDirAndBack()
     {
         // Test all 6 directions (hex)
-        for (uint8 dir = 0; dir < 6; dir++) {
-            int16 angle = Game.DirToAngle(dir);
+        for (int8 dir = 0; dir < 6; dir++) {
+            int16 angle = mdir(hdir(dir)).angle;
             if (angle < -360 || angle > 360) return -1;
 
-            uint8 backDir = Game.AngleToDir(angle);
-            if (backDir != dir) return -2;
+            mdir backDir = Game.AngleToDir(angle);
+            if (backDir.hex != hdir(dir)) return -2;
         }
         return 0;
     }
 
     int TestRotateDirAngle()
     {
-        int16 angle = 0;
+        mdir angle = mdir(0);
 
         // Rotate clockwise by 60 degrees
-        int16 rotated = Game.RotateDirAngle(angle, true, 60);
-        if (rotated < -360 || rotated > 360) return -1;
+        mdir rotated = Game.RotateDirAngle(angle, true, 60);
+        if (rotated.angle < -360 || rotated.angle > 360) return -1;
 
         // Rotate counter-clockwise
-        int16 rotatedCCW = Game.RotateDirAngle(angle, false, 60);
-        if (rotatedCCW < -360 || rotatedCCW > 360) return -2;
+        mdir rotatedCCW = Game.RotateDirAngle(angle, false, 60);
+        if (rotatedCCW.angle < -360 || rotatedCCW.angle > 360) return -2;
 
         // Full rotation
-        int16 full = Game.RotateDirAngle(angle, true, 360);
+        mdir full = Game.RotateDirAngle(angle, true, 360);
         // Should be close to original
         return 0;
     }
 
     int TestGetDirAngleDiff()
     {
-        int16 a1 = 0;
-        int16 a2 = 90;
+        mdir a1 = mdir(0);
+        mdir a2 = mdir(90);
         int16 diff = Game.GetDirAngleDiff(a1, a2);
         if (diff < 0) diff = -diff;
         if (diff > 180) return -1;

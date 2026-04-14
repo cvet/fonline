@@ -234,18 +234,18 @@ namespace AdvOps
         Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        // Get initial direction
-        uint8 dir = cr.Dir;
+        // Get initial direction angle
+        int16 dirAngle = cr.Dir.angle;
 
         // Set direction via script
-        cr.SetDir(1);
-        if (cr.Dir != 1) return -2;
+        cr.SetDir(HDIR_East);
+        if (cr.Dir.hex != HDIR_East) return -2;
 
-        cr.SetDir(3);
-        if (cr.Dir != 3) return -3;
+        cr.SetDir(HDIR_SouthWest);
+        if (cr.Dir.hex != HDIR_SouthWest) return -3;
 
-        cr.SetDir(0);
-        if (cr.Dir != 0) return -4;
+        cr.SetDir(HDIR_NorthEast);
+        if (cr.Dir.hex != HDIR_NorthEast) return -4;
 
         Game.DestroyCritter(cr);
         return 0;
@@ -933,9 +933,9 @@ namespace AdvOps
         mpos to = mpos(10, 11);
 
         // Just exercise the API
-        uint8 dir = Game.GetDirection(from, to);
+        mdir dir = Game.GetDirection(from, to);
         // Direction should be valid (0-5 in hexagonal, 0-7 in square)
-        if (dir > 7) return -1;
+        if (!dir.hex.valid()) return -1;
 
         return 0;
     }

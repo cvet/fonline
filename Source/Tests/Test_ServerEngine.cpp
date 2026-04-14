@@ -46,7 +46,7 @@ namespace
     constexpr msize SERVER_TEST_MAP_SIZE {200, 200};
     constexpr mpos SERVER_TEST_MOVE_START_HEX {20, 20};
     constexpr uint16 SERVER_TEST_MOVE_SPEED = 100;
-    const vector<uint8> SERVER_TEST_MOVE_STEPS {0, 0, 1, 1, 2};
+    const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
     static auto MakeServerTestSettings() -> GlobalSettings
@@ -564,7 +564,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto* cr = server->CreateCritter(critter_pid, false);
         REQUIRE(cr != nullptr);
 
-        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, 0, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, mdir {}, std::nullopt);
 
         const auto template_moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime());
         const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
@@ -607,7 +607,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto* cr = server->CreateCritter(critter_pid, false);
         REQUIRE(cr != nullptr);
 
-        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, 0, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, mdir {}, std::nullopt);
 
         const auto template_moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime());
         const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());

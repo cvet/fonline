@@ -382,7 +382,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, int32 cut)
+FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, int32 cut)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -418,7 +418,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, int32 cut)
+FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, int32 cut)
 {
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid toHex arg");
@@ -557,9 +557,9 @@ FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir)
+FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
+    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
 
@@ -572,9 +572,9 @@ FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, int32 steps)
+FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir, int32 steps)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
+    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
 

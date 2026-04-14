@@ -149,7 +149,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 actio
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
-auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*
+auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> const SpriteSheet*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -160,8 +160,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         auto* anim_ = it->second.get();
 
         if (anim_ != nullptr) {
-            if (anim_->GetDir(dir) != nullptr) {
-                return anim_->GetDir(dir);
+            if (anim_->GetDir(static_cast<int32>(dir.hex().value)) != nullptr) {
+                return anim_->GetDir(static_cast<int32>(dir.hex().value));
             }
 
             return anim_;
@@ -285,8 +285,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     _critterFrames.emplace(id, std::move(anim));
 
     if (anim_ != nullptr) {
-        if (anim_->GetDir(dir) != nullptr) {
-            return anim_->GetDir(dir);
+        if (anim_->GetDir(static_cast<int32>(dir.hex().value)) != nullptr) {
+            return anim_->GetDir(static_cast<int32>(dir.hex().value));
         }
 
         return anim_;
@@ -576,7 +576,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32* layers3d) -> const Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -598,7 +598,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32* layers3d) -> const ModelSprite*
 {
     FO_STACK_TRACE_ENTRY();
 

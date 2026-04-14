@@ -200,7 +200,7 @@ auto SpriteSheet::GetCurSpr() -> Sprite*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* dir_sheet = _curDir == 0 || !_dirs[_curDir - 1] ? this : _dirs[_curDir - 1].get();
+    auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value - 1] ? this : _dirs[_curDir.value - 1].get();
 
     return dir_sheet->_spr[_curIndex].get();
 }
@@ -231,7 +231,7 @@ auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* dir_sheet = _curDir == 0 || !_dirs[_curDir - 1] ? this : _dirs[_curDir - 1].get();
+    const auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value - 1] ? this : _dirs[_curDir.value - 1].get();
     const auto* spr = dir_sheet->_spr[_curIndex].get();
 
     return spr->FillData(dbuf, pos, colors);
@@ -265,18 +265,11 @@ void SpriteSheet::SetTime(float32 normalized_time)
     RefreshParams();
 }
 
-void SpriteSheet::SetDir(uint8 dir)
+void SpriteSheet::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curDir = dir;
-}
-
-void SpriteSheet::SetDirAngle(int16 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _curDir = GeometryHelper::AngleToDir(dir_angle);
+    _curDir = dir.hex();
 }
 
 void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)

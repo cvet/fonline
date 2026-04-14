@@ -877,7 +877,7 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     return false;
 }
 
-void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
+void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

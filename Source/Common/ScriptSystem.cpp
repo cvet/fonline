@@ -96,6 +96,8 @@ void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resour
     MapEngineType<frect32>(meta->GetBaseType("frect"));
     MapEngineType<mpos>(meta->GetBaseType("mpos"));
     MapEngineType<msize>(meta->GetBaseType("msize"));
+    MapEngineType<mdir>(meta->GetBaseType("mdir"));
+    MapEngineType<hdir>(meta->GetBaseType("hdir"));
     MapEngineType<string>(meta->GetBaseType("string"));
     MapEngineType<hstring>(meta->GetBaseType("hstring"));
     MapEngineType<any_t>(meta->GetBaseType("any"));

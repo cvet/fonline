@@ -181,7 +181,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(30, 30);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Critter should be on the map
@@ -201,7 +201,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(40, 40);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
@@ -231,8 +231,8 @@ namespace MapOpsTest
 
         mpos hex1(30, 30);
         mpos hex2(31, 30);
-        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, 0);
-        Critter@ cr2 = map.AddCritter("TestCritter".hstr(), hex2, 0);
+        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0));
+        Critter@ cr2 = map.AddCritter("TestCritter".hstr(), hex2, mdir(0));
         if (cr1 is null || cr2 is null) return -3;
 
         // Get all critters
@@ -271,7 +271,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(35, 35);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
@@ -305,7 +305,7 @@ namespace MapOpsTest
 
         mpos critterHex(50, 50);
         mpos targetHex(52, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
         if (cr is null) return -3;
 
         // Get critters who can see target hex
@@ -329,7 +329,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos critterHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
         if (cr is null) return -3;
 
         mpos from(48, 50);
@@ -450,7 +450,7 @@ namespace MapOpsTest
 
         // Path with critter
         mpos crHex(20, 20);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -4;
 
         mpos dest(25, 25);
@@ -490,7 +490,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos crHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -3;
 
         mpos from(48, 50);
@@ -594,7 +594,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos crHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -3;
 
         mpos triggerHex(51, 50);
@@ -718,7 +718,7 @@ namespace MapOpsTest
         if (proto is null) return -3;
 
         mpos hex(33, 33);
-        Critter@ cr = map.AddCritter(proto, hex, 0);
+        Critter@ cr = map.AddCritter(proto, hex, mdir(0));
         if (cr is null) return -4;
 
         Critter@ found = map.GetCritter(cr.Id);
@@ -774,14 +774,14 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(36, 36);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, 0);
+        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Get critter by property
-        Critter@ byProp = map.GetCritter(CritterProperty::Dir, cr.Dir, CritterFindType::Any);
+        Critter@ byProp = map.GetCritter(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
 
         // Get critters list by property
-        array<Critter@> listByProp = map.GetCritters(CritterProperty::Dir, cr.Dir, CritterFindType::Any);
+        array<Critter@> listByProp = map.GetCritters(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -907,23 +907,23 @@ namespace MapOpsTest
         // AddCritter with hstring + int properties
         dict<CritterProperty, int> intProps = {};
         mpos hex1(38, 38);
-        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, 0, intProps);
+        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0), intProps);
         if (cr1 is null) return -4;
 
         // AddCritter with proto + int properties
         mpos hex2(39, 39);
-        Critter@ cr2 = map.AddCritter(proto, hex2, 0, intProps);
+        Critter@ cr2 = map.AddCritter(proto, hex2, mdir(0), intProps);
         if (cr2 is null) return -5;
 
         // AddCritter with hstring + any properties
         dict<CritterProperty, any> anyProps = {};
         mpos hex3(40, 40);
-        Critter@ cr3 = map.AddCritter("TestCritter".hstr(), hex3, 0, anyProps);
+        Critter@ cr3 = map.AddCritter("TestCritter".hstr(), hex3, mdir(0), anyProps);
         if (cr3 is null) return -6;
 
         // AddCritter with proto + any properties
         mpos hex4(41, 41);
-        Critter@ cr4 = map.AddCritter(proto, hex4, 0, anyProps);
+        Critter@ cr4 = map.AddCritter(proto, hex4, mdir(0), anyProps);
         if (cr4 is null) return -7;
 
         Game.DestroyLocation(loc);

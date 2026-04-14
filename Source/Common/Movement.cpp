@@ -37,7 +37,7 @@ FO_BEGIN_NAMESPACE
 
 static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS = 20;
 
-MovingContext::MovingContext(msize map_size, uint16 speed, vector<uint8> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset) :
+MovingContext::MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset) :
     _mapSize {map_size},
     _speed {speed},
     _steps {std::move(steps)},
@@ -54,7 +54,7 @@ MovingContext::MovingContext(msize map_size, uint16 speed, vector<uint8> steps, 
     RecalculateMetrics();
 }
 
-MovingContext::MovingContext(msize map_size, uint16 speed, vector<uint8> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32 whole_time) :
+MovingContext::MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32 whole_time) :
     MovingContext(map_size, speed, std::move(steps), std::move(control_steps), start_time, offset_time, start_hex, start_hex_offset, end_hex_offset)
 {
     FO_STACK_TRACE_ENTRY();
@@ -331,7 +331,7 @@ auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
         path_hexes.emplace_back(hex);
     }
 
-    for (const uint8 step : _steps) {
+    for (const auto step : _steps) {
         if (!GeometryHelper::MoveHexByDir(hex, step, _mapSize)) {
             break;
         }
@@ -387,7 +387,7 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
     const float32 offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32>(current_oy);
 
     progress.HexOffset = ipos16 {numeric_cast<int16>(iround<int32>(offset_x)), numeric_cast<int16>(iround<int32>(offset_y))};
-    progress.DirAngle = iround<int16>(GeometryHelper::GetLineDirAngle(0, 0, raw_progress.SegmentOffset.x, raw_progress.SegmentOffset.y));
+    progress.Dir = mdir(iround<int16>(GeometryHelper::GetLineDirAngle(0, 0, raw_progress.SegmentOffset.x, raw_progress.SegmentOffset.y)));
     return progress;
 }
 

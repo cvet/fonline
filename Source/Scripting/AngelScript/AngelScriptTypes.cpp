@@ -654,6 +654,85 @@ static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
     return size.is_valid_pos(self);
 }
 
+static void Hdir_ConstructValue(hdir* self, int32 value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (self) hdir(numeric_cast<int8>(value));
+}
+
+static auto Hdir_Valid(const hdir& self) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.valid();
+}
+
+static auto Hdir_ToMdir(const hdir& self) -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return mdir(self);
+}
+
+static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static thread_local std::mt19937 rng {std::random_device {}()};
+    const auto dir = hdir(static_cast<int8>(rng() % GameSettings::MAP_DIR_COUNT));
+    new (gen->GetAddressOfReturnLocation()) hdir(dir);
+}
+
+static void Mdir_ConstructAngle(mdir* self, int32 angle)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (self) mdir(numeric_cast<int16>(angle));
+}
+
+static void Mdir_ConstructHdir(mdir* self, hdir dir)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (self) mdir(dir);
+}
+
+static auto Mdir_GetHex(const mdir& self) -> hdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.hex();
+}
+
+static auto Mdir_IncHex(const mdir& self) -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.incHex();
+}
+
+static auto Mdir_DecHex(const mdir& self) -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.decHex();
+}
+
+static auto Mdir_RotateHex(const mdir& self, int32 steps) -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.rotateHex(steps);
+}
+
+static auto Mdir_Reverse(const mdir& self) -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return self.reverse();
+}
+
 static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -685,7 +764,7 @@ static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
 }
 
 template<typename T>
-static void Global_GetZero(AngelScript::asIScriptGeneric* gen)
+static void Global_GetConstant(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -717,7 +796,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int get_hash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetHash), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "uint get_uhash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetUHash), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr hstring empty_hstring;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetZero<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetConstant<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "hstring hstr() const", FO_SCRIPT_GENERIC(String_ToHashedString), FO_SCRIPT_GENERIC_CONV));
 
     // Register any
@@ -769,7 +848,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", name).c_str(), FO_SCRIPT_FUNC_THIS(Any_Conv<T>), FO_SCRIPT_FUNC_THIS_CONV));
         static constexpr T ZERO_VALUE;
-        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(Global_GetZero<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ZERO_VALUE)));
+        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(Global_GetConstant<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ZERO_VALUE)));
     };
 
     register_engine_type.operator()<ident_t>("ident");
@@ -871,6 +950,59 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 width", offsetof(msize, width)));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 height", offsetof(msize, height)));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", FO_SCRIPT_FUNC_THIS(Mpos_FitToSize), FO_SCRIPT_FUNC_THIS_CONV));
+
+    registered_types.emplace("hdir");
+    FO_AS_VERIFY(as_engine->RegisterObjectType("hdir", sizeof(hdir), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<hdir>()));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Type_Construct<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(const hdir&in other)", FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("hdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(int value)", FO_SCRIPT_FUNC_THIS(Hdir_ConstructValue), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectProperty("hdir", "int8 value", offsetof(hdir, value)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "bool opEquals(const hdir&in other) const", FO_SCRIPT_FUNC_THIS(Type_Equals<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "bool valid() const", FO_SCRIPT_FUNC_THIS(Hdir_Valid), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "hdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    static constexpr hdir HDIR_ZERO_VALUE;
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_ZERO_HDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_ZERO_VALUE)));
+    static constexpr auto HDIR_NE = hdir::NorthEast;
+    static constexpr auto HDIR_E = hdir::East;
+    static constexpr auto HDIR_SE = hdir::SouthEast;
+    static constexpr auto HDIR_SW = hdir::SouthWest;
+    static constexpr auto HDIR_W = hdir::West;
+    static constexpr auto HDIR_NW = hdir::NorthWest;
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_NE)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_East()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_E)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_SE)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_SW)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_West()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_W)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_NW)));
+#if FO_GEOMETRY == 2
+    static constexpr auto HDIR_S = hdir::South;
+    static constexpr auto HDIR_N = hdir::North;
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_South()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_S)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_North()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_N)));
+#endif
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_Random()", FO_SCRIPT_GENERIC(Global_GetRandomHdir), FO_SCRIPT_GENERIC_CONV));
+
+    registered_types.emplace("mdir");
+    FO_AS_VERIFY(as_engine->RegisterObjectType("mdir", sizeof(mdir), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<mdir>()));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Type_Construct<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(const mdir&in other)", FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(int angle)", FO_SCRIPT_FUNC_THIS(Mdir_ConstructAngle), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mdir", AngelScript::asBEHAVE_CONSTRUCT, "void f(hdir dir)", FO_SCRIPT_FUNC_THIS(Mdir_ConstructHdir), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectProperty("mdir", "int16 angle", offsetof(mdir, angle)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "bool opEquals(const mdir&in other) const", FO_SCRIPT_FUNC_THIS(Type_Equals<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "mdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "mdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Hdir_ToMdir), FO_SCRIPT_FUNC_THIS_CONV));
+    static constexpr mdir MDIR_ZERO_VALUE;
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("mdir get_ZERO_MDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<mdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&MDIR_ZERO_VALUE)));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "hdir get_hex() const", FO_SCRIPT_FUNC_THIS(Mdir_GetHex), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir incHex() const", FO_SCRIPT_FUNC_THIS(Mdir_IncHex), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir decHex() const", FO_SCRIPT_FUNC_THIS(Mdir_DecHex), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir rotateHex(int steps) const", FO_SCRIPT_FUNC_THIS(Mdir_RotateHex), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir reverse() const", FO_SCRIPT_FUNC_THIS(Mdir_Reverse), FO_SCRIPT_FUNC_THIS_CONV));
 
     // Value types
     const auto register_generic_type = [&](const BaseTypeDesc& type) {

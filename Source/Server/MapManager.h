@@ -86,19 +86,22 @@ public:
     auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
     void DestroyMap(Map* map);
     void RegenerateMap(Map* map);
-    void AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id);
+    void AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, ident_t global_cr_id);
+    void AddCritterToMap(Critter* cr, Map* map, mpos hex, hdir dir, ident_t global_cr_id) { AddCritterToMap(cr, map, hex, mdir(dir), global_cr_id); }
     void RemoveCritterFromMap(Critter* cr, Map* map);
-    void TransferToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius);
+    void TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius);
+    void TransferToMap(Critter* cr, Map* map, mpos hex, hdir dir, optional<int32> safe_radius) { TransferToMap(cr, map, hex, mdir(dir), safe_radius); }
     void TransferToGlobal(Critter* cr, ident_t global_cr_id);
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
-    void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir);
+    void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, mdir dir);
+    void ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, hdir dir) { ViewMap(view_cr, map, look, hex, mdir(dir)); }
 
 private:
     auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> bool;
 
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target);
-    void Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id);
+    void Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(Map* map);
     void DestroyMapContent(Map* map);
     void DestroyMapInternal(Map* map);

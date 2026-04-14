@@ -129,7 +129,7 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
 }
 
-auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> Critter*
+auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> Critter*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -178,8 +178,8 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     // Resolve direction
     auto final_dir = dir;
 
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        final_dir = numeric_cast<uint8>(_engine->Random(0, numeric_cast<int32>(GameSettings::MAP_DIR_COUNT - 1u)));
+    if (static_cast<uint8>(dir.hex().value) >= GameSettings::MAP_DIR_COUNT) {
+        final_dir = hdir(_engine->Random(0, numeric_cast<int32>(GameSettings::MAP_DIR_COUNT - 1u)));
     }
 
     // Create critter

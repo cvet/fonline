@@ -67,18 +67,11 @@ void ParticleSprite::SetTime(float32 normalized_time)
     ignore_unused(normalized_time);
 }
 
-void ParticleSprite::SetDir(uint8 dir)
+void ParticleSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(dir);
-}
-
-void ParticleSprite::SetDirAngle(int16 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(dir_angle);
 }
 
 void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)

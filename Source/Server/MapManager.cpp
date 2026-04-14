@@ -184,7 +184,7 @@ void MapManager::LoadFromResources()
                         }
 
                         if (const auto trigger_script = item->GetTriggerScript()) {
-                            item->TriggerScriptFunc = _engine->FindFunc<void, Critter*, StaticItem*, bool, uint8>(trigger_script);
+                            item->TriggerScriptFunc = _engine->FindFunc<void, Critter*, StaticItem*, bool, mdir>(trigger_script);
 
                             if (!item->TriggerScriptFunc) {
                                 throw MapManagerException("Can't bind static item trigger function", map_proto->GetName(), trigger_script);
@@ -736,7 +736,7 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
     return PathFinding::FindPath(settings);
 }
 
-void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius)
+void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -750,10 +750,10 @@ void MapManager::TransferToGlobal(Critter* cr, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Transfer(cr, nullptr, {}, 0, std::nullopt, global_cr_id);
+    Transfer(cr, nullptr, {}, mdir {}, std::nullopt, global_cr_id);
 }
 
-void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<int32> safe_radius, ident_t global_cr_id)
+void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -912,7 +912,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, uint8 dir, optional<i
     _engine->OnCritterTransfer.Fire(cr, prev_map);
 }
 
-void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, uint8 dir, ident_t global_cr_id)
+void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1181,7 +1181,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, uint8 dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

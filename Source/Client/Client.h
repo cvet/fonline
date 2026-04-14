@@ -151,7 +151,7 @@ public:
     void Disconnect();
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed);
-    void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
+    void CritterLookTo(CritterHexView* cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
     auto GetEntity(ident_t id) -> ClientEntity*;

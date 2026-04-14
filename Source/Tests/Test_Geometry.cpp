@@ -55,10 +55,10 @@ TEST_CASE("GeometryHelper")
     CHECK(is_float_equal(zero_steps.y, 0.0f));
 
     // GetDir
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0) <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}) <= 7);
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0, 10.0f) <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}, 10.0f) <= 7);
+    CHECK(GeometryHelper::GetDir(0, 0, 1, 0).value <= 7);
+    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}).value <= 7);
+    CHECK(GeometryHelper::GetDir(0, 0, 1, 0, 10.0f).value <= 7);
+    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}, 10.0f).value <= 7);
 
     // GetDirAngle
     CHECK(GeometryHelper::GetDirAngle(0, 0, 1, 0) >= 0.0f);
@@ -72,15 +72,15 @@ TEST_CASE("GeometryHelper")
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(30.0f, 60.0f), 30.0f));
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(60.0f, 30.0f), -30.0f));
 
-    // DirToAngle / AngleToDir / NormalizeAngle
-    for (uint8 d = 0; d < 6; d++) {
-        int16 angle = GeometryHelper::DirToAngle(d);
-        uint8 dir = GeometryHelper::AngleToDir(angle);
-        CHECK(dir == d);
+    // mdir(hdir) / AngleToDir / NormalizeAngle
+    for (int8 d = 0; d < 6; d++) {
+        int16 angle = mdir(hdir(d)).angle;
+        hdir dir = GeometryHelper::AngleToDir(angle);
+        CHECK(dir.value == d);
         CHECK(GeometryHelper::NormalizeAngle(angle + 360 * 2) == angle);
     }
-    CHECK(GeometryHelper::AngleToDir(-360) == 0);
-    CHECK(GeometryHelper::AngleToDir(360) == 0);
+    CHECK(GeometryHelper::AngleToDir(-360).value == 0);
+    CHECK(GeometryHelper::AngleToDir(360).value == 0);
     CHECK(GeometryHelper::AngleToDir(719) == GeometryHelper::AngleToDir(-1));
     CHECK(GeometryHelper::NormalizeAngle(721) == 1);
     CHECK(GeometryHelper::NormalizeAngle(-1) == 359);
@@ -92,22 +92,16 @@ TEST_CASE("GeometryHelper")
     CHECK(GeometryHelper::CheckDist(mpos {0, 0}, mpos {0, 0}, 0));
     CHECK_FALSE(GeometryHelper::CheckDist(mpos {0, 0}, mpos {10, 10}, 5));
 
-    // ReverseDir
-    for (uint8 d = 0; d < GameSettings::MAP_DIR_COUNT; d++) {
-        uint8 rev = GeometryHelper::ReverseDir(d);
-        CHECK(GeometryHelper::ReverseDir(rev) == d);
-    }
-
     // MoveHexByDir
     mpos hex {5, 5};
     msize map_size {10, 10};
-    bool moved = GeometryHelper::MoveHexByDir(hex, 2, map_size);
+    bool moved = GeometryHelper::MoveHexByDir(hex, hdir::SouthEast, map_size);
     CHECK(moved);
     CHECK(map_size.is_valid_pos(hex));
 
     // MoveHexByDirUnsafe
     ipos32 ihex {5, 5};
-    GeometryHelper::MoveHexByDirUnsafe(ihex, 2);
+    GeometryHelper::MoveHexByDirUnsafe(ihex, hdir::SouthEast);
     CHECK(map_size.is_valid_pos(ihex));
 
     // MoveHexAroundAway

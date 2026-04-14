@@ -495,10 +495,10 @@ namespace ScriptMethodsTest
         if (cr is null) return -1;
 
         // Set direction
-        cr.SetDir(3);
+        cr.SetDir(HDIR_SouthWest);
 
         // Set dir angle
-        cr.SetDirAngle(180);
+        cr.SetDirAngle(mdir(180));
 
         Game.DestroyCritter(cr);
         return 0;

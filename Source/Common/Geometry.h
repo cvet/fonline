@@ -103,6 +103,86 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 
+///@ ExportValueType hdir hdir Layout = int8-value
+struct hdir
+{
+    constexpr hdir() noexcept = default;
+    constexpr explicit hdir(int8 value_) noexcept :
+        value(value_)
+    {
+    }
+    constexpr explicit hdir(int32 value_) :
+        value(numeric_cast<int8>(value_))
+    {
+    }
+
+    [[nodiscard]] constexpr auto operator==(const hdir& other) const noexcept -> bool { return value == other.value; }
+    [[nodiscard]] constexpr auto operator!=(const hdir& other) const noexcept -> bool { return value != other.value; }
+    [[nodiscard]] constexpr auto valid() const noexcept -> bool { return value >= 0 && value < GameSettings::MAP_DIR_COUNT; }
+
+    static const hdir NorthEast;
+    static const hdir East;
+    static const hdir SouthEast;
+    static const hdir SouthWest;
+    static const hdir West;
+    static const hdir NorthWest;
+#if FO_GEOMETRY == 2
+    static const hdir South;
+    static const hdir North;
+#endif
+
+    int8 value {};
+};
+static_assert(sizeof(hdir) == 1 && std::is_standard_layout_v<hdir>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE hdir, "{}", value.value);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE hdir, value.value);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE hdir);
+
+#if FO_GEOMETRY == 1
+inline constexpr hdir hdir::NorthEast {int8 {0}};
+inline constexpr hdir hdir::East {int8 {1}};
+inline constexpr hdir hdir::SouthEast {int8 {2}};
+inline constexpr hdir hdir::SouthWest {int8 {3}};
+inline constexpr hdir hdir::West {int8 {4}};
+inline constexpr hdir hdir::NorthWest {int8 {5}};
+#elif FO_GEOMETRY == 2
+inline constexpr hdir hdir::NorthEast {int8 {0}};
+inline constexpr hdir hdir::East {int8 {1}};
+inline constexpr hdir hdir::SouthEast {int8 {2}};
+inline constexpr hdir hdir::South {int8 {3}};
+inline constexpr hdir hdir::SouthWest {int8 {4}};
+inline constexpr hdir hdir::West {int8 {5}};
+inline constexpr hdir hdir::NorthWest {int8 {6}};
+inline constexpr hdir hdir::North {int8 {7}};
+#endif
+
+///@ ExportValueType mdir mdir Layout = int16-angle
+struct mdir
+{
+    constexpr mdir() noexcept = default;
+    constexpr explicit mdir(int16 angle_) noexcept :
+        angle(angle_)
+    {
+    }
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    mdir(hdir dir) noexcept;
+
+    [[nodiscard]] constexpr auto operator==(const mdir& other) const noexcept -> bool { return angle == other.angle; }
+    [[nodiscard]] constexpr auto operator!=(const mdir& other) const noexcept -> bool { return angle != other.angle; }
+
+    [[nodiscard]] auto hex() const noexcept -> hdir;
+    [[nodiscard]] auto incHex() const noexcept -> mdir;
+    [[nodiscard]] auto decHex() const noexcept -> mdir;
+    [[nodiscard]] auto rotateHex(int32 steps) const noexcept -> mdir;
+    [[nodiscard]] auto reverse() const noexcept -> mdir;
+
+    int16 angle {};
+};
+static_assert(sizeof(mdir) == 2 && std::is_standard_layout_v<mdir>);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mdir, "{}", value.angle);
+FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mdir, value.angle);
+FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mdir);
+
 class GeometryHelper final
 {
 public:
@@ -126,26 +206,25 @@ public:
     [[nodiscard]] static auto GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32;
     [[nodiscard]] static auto GetDistance(mpos hex1, mpos hex2) -> int32;
     [[nodiscard]] static auto GetDistance(ipos32 hex1, ipos32 hex2) -> int32;
-    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8;
-    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8;
-    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex) -> uint8;
-    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8;
+    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> hdir;
+    [[nodiscard]] static auto GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> hdir;
+    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex) -> hdir;
+    [[nodiscard]] static auto GetDir(mpos from_hex, mpos to_hex, float32 offset) -> hdir;
     [[nodiscard]] static auto GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32;
     [[nodiscard]] static auto GetDirAngle(mpos from_hex, mpos to_hex) -> float32;
     [[nodiscard]] static auto GetDirAngleDiff(float32 a1, float32 a2) -> float32;
     [[nodiscard]] static auto GetDirAngleDiffSided(float32 a1, float32 a2) -> float32;
-    [[nodiscard]] static auto DirToAngle(uint8 dir) -> int16;
-    [[nodiscard]] static auto AngleToDir(int16 dir_angle) -> uint8;
+    [[nodiscard]] static auto AngleToDir(int16 dir_angle) -> hdir;
     [[nodiscard]] static auto NormalizeAngle(int16 dir_angle) -> int16;
+    [[nodiscard]] static auto NormalizeMDir(int16 dir_angle) -> mdir;
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool;
-    [[nodiscard]] static auto ReverseDir(uint8 dir) -> uint8;
     [[nodiscard]] static auto HexesInRadius(int32 radius) -> int32;
     [[nodiscard]] static auto IntersectCircleLine(int32 cx, int32 cy, int32 radius, int32 x1, int32 y1, int32 x2, int32 y2) noexcept -> bool;
     [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
     [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32 deq) noexcept -> fpos32;
 
-    static auto MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool;
-    static void MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept;
+    static auto MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool;
+    static void MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept;
     static auto MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool;
     static void MoveHexAroundAwayUnsafe(ipos32& hex, int32 index);
     static void ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);

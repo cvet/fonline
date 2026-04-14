@@ -120,28 +120,28 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_of
         _dirAngle = 360.0f - _dirAngle;
 
         if (_dirAngle >= 30.0f && _dirAngle < 90.0f) {
-            _dirLeft = 0;
-            _dirRight = 1;
+            _dirLeft = hdir::NorthEast;
+            _dirRight = hdir::East;
         }
         else if (_dirAngle >= 90.0f && _dirAngle < 150.0f) {
-            _dirLeft = 1;
-            _dirRight = 2;
+            _dirLeft = hdir::East;
+            _dirRight = hdir::SouthEast;
         }
         else if (_dirAngle >= 150.0f && _dirAngle < 210.0f) {
-            _dirLeft = 2;
-            _dirRight = 3;
+            _dirLeft = hdir::SouthEast;
+            _dirRight = hdir::SouthWest;
         }
         else if (_dirAngle >= 210.0f && _dirAngle < 270.0f) {
-            _dirLeft = 3;
-            _dirRight = 4;
+            _dirLeft = hdir::SouthWest;
+            _dirRight = hdir::West;
         }
         else if (_dirAngle >= 270.0f && _dirAngle < 330.0f) {
-            _dirLeft = 4;
-            _dirRight = 5;
+            _dirLeft = hdir::West;
+            _dirRight = hdir::NorthWest;
         }
         else {
-            _dirLeft = 5;
-            _dirRight = 0;
+            _dirLeft = hdir::NorthWest;
+            _dirRight = hdir::NorthEast;
         }
     }
     else {
@@ -174,14 +174,14 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_of
     _y = _yStart;
 }
 
-auto LineTracer::GetNextHex(mpos& hex) const -> uint8
+auto LineTracer::GetNextHex(mpos& hex) const -> mdir
 {
     FO_STACK_TRACE_ENTRY();
 
     auto left_hex = hex;
     auto right_hex = hex;
-    GeometryHelper::MoveHexByDir(left_hex, _dirLeft, _mapSize);
-    GeometryHelper::MoveHexByDir(right_hex, _dirRight, _mapSize);
+    GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
+    GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
 
     const auto left_hex_f = fpos32(left_hex);
     const auto right_hex_f = fpos32(right_hex);
@@ -191,11 +191,11 @@ auto LineTracer::GetNextHex(mpos& hex) const -> uint8
     // Left hand biased
     if (dist_left <= dist_right) {
         hex = left_hex;
-        return _dirLeft;
+        return mdir(_dirLeft);
     }
     else {
         hex = right_hex;
-        return _dirRight;
+        return mdir(_dirRight);
     }
 }
 

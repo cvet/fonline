@@ -403,7 +403,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
     static unordered_map<string, function<bool(hstring, const ScriptSystem*)>> script_func_verify = {
         {"ItemInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); }},
         {"ItemStatic", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); }},
-        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); }},
+        {"ItemTrigger", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, mdir>(func_name); }},
         {"CritterInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); }},
         {"MapInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); }},
         {"LocationInit", [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); }},
