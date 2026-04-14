@@ -912,7 +912,9 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
-    FO_RUNTIME_ASSERT(func->GetReturnTypeId() == AngelScript::asTYPEID_VOID || func->GetReturnTypeId() == AngelScript::asTYPEID_BOOL);
+    const auto return_type_id = func->GetReturnTypeId();
+    const auto* return_type = return_type_id != AngelScript::asTYPEID_VOID ? func->GetEngine()->GetTypeInfoById(return_type_id) : nullptr;
+    FO_RUNTIME_ASSERT(return_type_id == AngelScript::asTYPEID_VOID || (return_type != nullptr && return_type->GetName() == string_view("EventResult")));
     const auto& priority = *cast_from_void<Entity::EventPriority*>(gen->GetAddressOfArg(1));
 
     const auto* func_desc = IndexScriptFunc(func);
@@ -920,17 +922,15 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     Entity::EventCallbackData event_data;
 
-    event_data.Callback = [func_ = refcount_ptr(func)](FuncCallData& call) mutable -> bool FO_DEFERRED {
-        const bool event_has_result = func_->GetReturnTypeId() == AngelScript::asTYPEID_BOOL;
-        bool event_result = true;
+    event_data.Callback = [func_ = refcount_ptr(func)](FuncCallData& call) mutable -> Entity::EventResult FO_DEFERRED {
+        const bool event_has_result = func_->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
+        Entity::EventResult event_result = Entity::EventResult::ContinueChain;
         call.RetData = event_has_result ? cast_to_void(&event_result) : nullptr;
         ScriptFuncCall(func_.get(), call);
-        const bool result = !event_has_result || event_result;
-        return result;
+        return event_has_result ? event_result : Entity::EventResult::ContinueChain;
     };
 
     event_data.SubscriptionPtr = std::bit_cast<uintptr_t>(func);
-    event_data.ExPolicy = Entity::EventExceptionPolicy::IgnoreAndContinueChain;
     event_data.Priority = priority;
     event_data.OneShot = false;
     event_data.Deferred = false;
@@ -1286,18 +1286,18 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             const string event_args_decl = MakeScriptArgsName(event.Args);
             const string event_obj_args_decl = strex("{}{}{}", first_arg, !first_arg.empty() && !event_args_decl.empty() ? ", " : "", event_args_decl);
             const string event_funcdef_void = strex("{}{}EventFunc", type_name, event.Name);
-            const string event_funcdef_bool = strex("{}{}EventFuncBool", type_name, event.Name);
+            const string event_funcdef_result = strex("{}{}EventFuncResult", type_name, event.Name);
             const string event_funcdef_void_decl = strex("void {}({})", event_funcdef_void, event_obj_args_decl);
-            const string event_funcdef_bool_decl = strex("bool {}({})", event_funcdef_bool, event_obj_args_decl);
+            const string event_funcdef_result_decl = strex("EventResult {}({})", event_funcdef_result, event_obj_args_decl);
             const string event_type_name = strex("{}{}Event", type_name, event.Name);
 
             FO_AS_VERIFY(as_engine->RegisterFuncdef(event_funcdef_void_decl.c_str()));
-            FO_AS_VERIFY(as_engine->RegisterFuncdef(event_funcdef_bool_decl.c_str()));
+            FO_AS_VERIFY(as_engine->RegisterFuncdef(event_funcdef_result_decl.c_str()));
             FO_AS_VERIFY(as_engine->RegisterObjectType(event_type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Subscribe({}@+ func, EventPriority priority = EventPriority::Normal)", event_funcdef_void).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Subscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Subscribe({}@+ func, EventPriority priority = EventPriority::Normal)", event_funcdef_bool).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Subscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Subscribe({}@+ func, EventPriority priority = EventPriority::Normal)", event_funcdef_result).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Subscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Unsubscribe({}@+ func)", event_funcdef_void).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Unsubscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Unsubscribe({}@+ func)", event_funcdef_bool).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Unsubscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("void Unsubscribe({}@+ func)", event_funcdef_result).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Unsubscribe), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), "void UnsubscribeAll()", FO_SCRIPT_GENERIC(EntityEvent_UnsubscribeAll), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}()", event_type_name, event.Name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_GetSelfForEvent), FO_SCRIPT_FUNC_THIS_CONV));
 

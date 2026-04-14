@@ -157,11 +157,11 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContour(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemContour(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
@@ -1159,8 +1159,6 @@ void ClientEngine::Net_OnCritterMoveItem()
         if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             moved_item->SetCritterSlot(prev_slot);
-
-            OnItemInvChanged.Fire(item, moved_item.get());
         }
     }
 
@@ -1559,18 +1557,6 @@ void ClientEngine::Net_OnProperty()
         });
 
         entity->SetValueFromData(prop, prop_data);
-    }
-
-    if (type == NetProperty::MapItem) {
-        auto* item = dynamic_cast<ItemView*>(entity);
-
-        OnItemMapChanged.Fire(item, item);
-    }
-
-    if (type == NetProperty::ChosenItem) {
-        auto* item = dynamic_cast<ItemView*>(entity);
-
-        OnItemInvChanged.Fire(item, item);
     }
 }
 
@@ -2145,7 +2131,7 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSetCritterContourColor(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterContour(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2154,7 +2140,20 @@ void ClientEngine::OnSetCritterContourColor(Entity* entity, const Property* prop
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsMapSpriteValid()) {
-        cr->GetMapSprite()->SetContour(cr->GetMapSprite()->GetContour(), cr->GetContourColor());
+        cr->GetMapSprite()->SetContour(cr->GetContour());
+    }
+}
+
+void ClientEngine::OnSetItemContour(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->IsMapSpriteValid()) {
+        item->GetMapSprite()->SetContour(item->GetContour());
     }
 }
 
@@ -2177,16 +2176,13 @@ void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    // Colorize, ColorizeColor, BadItem, ShootThru, LightThru, NoBlock
+    // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
 
         if (prop == item->GetPropertyColorize() || prop == item->GetPropertyColorizeColor()) {
             item->RefreshAlpha();
-            item->RefreshSprite();
-        }
-        else if (prop == item->GetPropertyBadItem()) {
             item->RefreshSprite();
         }
         else if (prop == item->GetPropertyShootThru()) {

@@ -204,9 +204,6 @@ public:
     FO_ENTITY_PROPERTY(bool, DrawFlatten);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(int8, DrawOrderOffsetHexY);
-    ///@ MigrationRule Property Item IsBadItem BadItem
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(bool, BadItem);
     ///@ MigrationRule Property Item IsNoHighlight NoHighlight
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoHighlight);
@@ -220,6 +217,8 @@ public:
     FO_ENTITY_PROPERTY(bool, Colorize);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(string, Lexems);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ucolor, Contour);
 };
 
 class CritterProperties : public EntityProperties
@@ -293,7 +292,7 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(ucolor, ContourColor);
+    FO_ENTITY_PROPERTY(ucolor, Contour);
 };
 
 class MapProperties : public EntityProperties

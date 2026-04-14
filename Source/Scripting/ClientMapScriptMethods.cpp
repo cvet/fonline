@@ -88,7 +88,6 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
         draw_order_hy_offset = numeric_cast<int32>(proto->GetDrawOrderOffsetHexY());
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
-        contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     auto* mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
@@ -129,7 +128,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     }
 
     if (contour_color != ucolor::clear) {
-        mspr->SetContour(ContourType::Custom, contour_color);
+        mspr->SetContour(contour_color);
     }
 }
 
@@ -752,18 +751,6 @@ FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_v
     }
 
     return self->RunSpritePattern(spriteName, spriteCount);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetCrittersContour(MapView* self, ContourType contour)
-{
-    self->SetCrittersContour(contour);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ResetCritterContour(MapView* self)
-{
-    self->SetCritterContour(ident_t {}, ContourType::None);
 }
 
 ///@ ExportMethod

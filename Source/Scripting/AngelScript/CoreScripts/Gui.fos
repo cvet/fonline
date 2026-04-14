@@ -3276,6 +3276,37 @@ class ItemView : Grid
         return _Items[cellIndex];
     }
 
+    bool HasItemId(ident itemId)
+    {
+        for (int i = 0; i < _Items.length(); i++) {
+            Item item = _Items[i];
+
+            if (item != null && item.Id == itemId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool HasSourceItemId(ident itemId)
+    {
+        Item[] items = OnGetItems();
+        if (items == null) {
+            return false;
+        }
+
+        for (int i = 0; i < items.length(); i++) {
+            Item item = items[i];
+
+            if (item != null && item.Id == itemId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void Resort()
     {
         if (Active) {
@@ -4146,12 +4177,40 @@ void EngineCallback_Loop()
     }
 }
 
-void EngineCallback_ItemChanged(bool onMap)
+void RefreshItemViewsByItemId(ident itemId, bool includeSourceViews = true)
 {
-    if (!onMap) {
-        ItemView[] itemViews = {};
-        CollectItemView(itemViews);
-        for (int i = 0; i < itemViews.length(); i++) {
+    if (itemId == ZERO_IDENT) {
+        return;
+    }
+
+    ItemView[] itemViews = {};
+    CollectItemView(itemViews);
+
+    for (int i = 0; i < itemViews.length(); i++) {
+        ItemView itemView = itemViews[i];
+
+        if (itemView.HasItemId(itemId) || (includeSourceViews && itemView.HasSourceItemId(itemId))) {
+            itemView.Resort();
+        }
+    }
+}
+
+void RefreshItemViewsByUserDataExt(int userDataExt)
+{
+    RefreshItemViewsByUserDataExts({userDataExt});
+}
+
+void RefreshItemViewsByUserDataExts(int[] userDataExts)
+{
+    if (userDataExts == null || userDataExts.isEmpty()) {
+        return;
+    }
+
+    ItemView[] itemViews = {};
+    CollectItemView(itemViews);
+
+    for (int i = 0; i < itemViews.length(); i++) {
+        if (userDataExts.find(itemViews[i].UserDataExt) != -1) {
             itemViews[i].Resort();
         }
     }

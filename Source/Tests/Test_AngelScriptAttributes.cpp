@@ -323,10 +323,18 @@ namespace
     static void RegisterDummyEventApi(asIScriptEngine* engine)
     {
         REQUIRE(engine->RegisterFuncdef("void DummyEventFunc()") >= 0);
+        REQUIRE(engine->RegisterEnum("EventResult") >= 0);
+        REQUIRE(engine->RegisterEnumValue("EventResult", "ContinueChain", 0) >= 0);
+        REQUIRE(engine->RegisterEnumValue("EventResult", "ContinueChainButReturnFalse", 1) >= 0);
+        REQUIRE(engine->RegisterEnumValue("EventResult", "StopChainAndReturnFalse", 2) >= 0);
+        REQUIRE(engine->RegisterEnumValue("EventResult", "StopChainAndReturnTrue", 3) >= 0);
+        REQUIRE(engine->RegisterFuncdef("EventResult DummyEventFuncResult()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyEvent", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
         REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", asFUNCTION(GetDummyEvent), asCALL_CDECL) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFunc@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFuncResult@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFunc@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
+        REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFuncResult@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
     }
 
     static void RegisterDummySchedulerApi(asIScriptEngine* engine)
@@ -655,6 +663,29 @@ void RegisterWithPriority()
 void RegisterWithPriorityFactory()
 {
     GetDummyEvent().Subscribe(OnEvent, GetPriority());
+}
+
+void Unregister()
+{
+    GetDummyEvent().Unsubscribe(OnEvent);
+}
+)";
+
+    static constexpr string_view EventResultPositiveScript = R"(
+[[Event]]
+EventResult OnEvent()
+{
+    return EventResult::ContinueChain;
+}
+
+void RegisterDirect()
+{
+    GetDummyEvent().Subscribe(OnEvent);
+}
+
+void RegisterWithPriority()
+{
+    GetDummyEvent().Subscribe(OnEvent, 1);
 }
 
 void Unregister()
@@ -1360,6 +1391,25 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         RegisterDummyEventApi(engine);
 
         auto* mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto event_error = ValidateEventSubscriptions(mod);
+        CHECK(event_error.empty());
+    }
+
+    SECTION("AllowsSubscribeForEventResultAttributedFunctions")
+    {
+        auto parsed = ParseScript("AttributesEventResultPositive.fos", EventResultPositiveScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyEventApi(engine);
+
+        auto* mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());

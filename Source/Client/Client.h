@@ -211,13 +211,9 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
@@ -346,8 +342,9 @@ protected:
 
     void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop);
+    void OnSetCritterContour(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
+    void OnSetItemContour(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);

@@ -70,10 +70,6 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
-    if (GetBadItem()) {
-        mspr->SetContour(ContourType::Red);
-    }
-
     if (!GetNoLightInfluence()) {
         mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
     }

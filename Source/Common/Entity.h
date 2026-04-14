@@ -129,15 +129,16 @@ class Entity
     friend class EntityEvent;
 
 public:
-    using EventCallback = function<bool(FuncCallData&)>;
-
     ///@ ExportEnum
-    enum class EventExceptionPolicy : uint8
+    enum class EventResult : int32
     {
-        IgnoreAndContinueChain,
-        StopChainAndReturnTrue,
+        ContinueChain,
         StopChainAndReturnFalse,
+        StopChainAndReturnTrue,
+        ContinueChainButReturnFalse, // Used in exceptions when chain should be continued but result is false
     };
+
+    using EventCallback = function<EventResult(FuncCallData&)>;
 
     ///@ ExportEnum
     enum class EventPriority : int32
@@ -153,7 +154,6 @@ public:
     {
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
-        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal};
         bool OneShot {}; // Todo: improve entity event OneShot
         bool Deferred {}; // Todo: improve entity event Deferred

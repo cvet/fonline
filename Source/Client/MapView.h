@@ -209,9 +209,6 @@ public:
     void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);
 
-    void SetCritterContour(ident_t cr_id, ContourType contour);
-    void SetCrittersContour(ContourType contour);
-
     // Items
     auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8>>& data) -> ItemHexView*;
     auto AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id = {}) -> ItemHexView*;
@@ -386,10 +383,6 @@ private:
     FogOfWar _fogShoot {FogOfWar::Kind::Shoot};
     bool _shootBordersEnabled {};
     int32 _shootBordersDist {};
-
-    ident_t _critterContourCrId {};
-    ContourType _critterContour {};
-    ContourType _crittersContour {};
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
