@@ -37,6 +37,8 @@
 
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32 v) -> float32

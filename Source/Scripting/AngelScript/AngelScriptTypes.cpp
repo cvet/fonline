@@ -43,6 +43,8 @@
 #include "Geometry.h"
 #include "TextPack.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 template<typename T>

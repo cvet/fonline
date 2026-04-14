@@ -67,7 +67,8 @@ namespace EntityLifecycle
     int CritterInitCalls = 0;
     int LocationInitCalls = 0;
 
-    void ModuleInit()
+    [[ModuleInit]]
+    void InitEntityLifecycle()
     {
         Game.OnInit.Subscribe(OnInit);
         Game.OnItemInit.Subscribe(OnItemInit);
@@ -75,21 +76,25 @@ namespace EntityLifecycle
         Game.OnLocationInit.Subscribe(OnLocationInit);
     }
 
+    [[Event]]
     bool OnInit()
     {
         return true;
     }
 
+    [[Event]]
     void OnItemInit(Item item, bool firstTime)
     {
         ItemInitCalls++;
     }
 
+    [[Event]]
     void OnCritterInit(Critter cr, bool firstTime)
     {
         CritterInitCalls++;
     }
 
+    [[Event]]
     void OnLocationInit(Location loc, bool firstTime)
     {
         LocationInitCalls++;

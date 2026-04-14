@@ -68,19 +68,33 @@ namespace ServerEngineTest
     int64 LastCritterId = 0;
     bool LastCritterFirstTime = false;
     int ManualCalls = 0;
+    int AdminCallCounter = 0;
+    int ModuleInitOrder = 0;
+    int ImmediateInitOrder = 0;
+    int DeferredInitOrder = 0;
 
-    void ModuleInit()
+    [[ModuleInit]]
+    void RegisterHooks()
     {
+        ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
     }
 
+    [[ModuleInit(2)]]
+    void RunDeferredInit()
+    {
+        DeferredInitOrder = ++ModuleInitOrder;
+    }
+
+    [[Event]]
     bool OnInit()
     {
         InitCalls++;
         return true;
     }
 
+    [[Event]]
     void OnCritterInit(Critter cr, bool firstTime)
     {
         CritterInitCalls++;
@@ -93,6 +107,27 @@ namespace ServerEngineTest
     void UnitTestMarkManualCall()
     {
         ManualCalls++;
+    }
+
+    void UnitTestResetAdminCallCounter()
+    {
+        AdminCallCounter = 0;
+    }
+
+    [[AdminRemoteCall]]
+    void UnitTestAdminEntry()
+    {
+        AdminCallCounter++;
+    }
+
+    void UnitTestRegularEntry()
+    {
+        AdminCallCounter += 100;
+    }
+
+    void UnitTestInvokeAdminEntry()
+    {
+        UnitTestAdminEntry();
     }
 
     int UnitTestGetInitCalls()
@@ -118,6 +153,21 @@ namespace ServerEngineTest
     int UnitTestGetManualCalls()
     {
         return ManualCalls;
+    }
+
+    int UnitTestGetAdminCallCounter()
+    {
+        return AdminCallCounter;
+    }
+
+    int UnitTestGetImmediateInitOrder()
+    {
+        return ImmediateInitOrder;
+    }
+
+    int UnitTestGetDeferredInitOrder()
+    {
+        return DeferredInitOrder;
     }
 
     int UnitTestSumArray(int[] values)
@@ -365,6 +415,78 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
     CHECK(last_first_time);
 
     server->CrMngr.DestroyCritter(cr);
+}
+
+TEST_CASE("ServerEngineModuleInitAttributePriorityIsRespected")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    const auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+
+    int immediate_init_order = 0;
+    int deferred_init_order = 0;
+
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetImmediateInitOrder"), immediate_init_order));
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetDeferredInitOrder"), deferred_init_order));
+
+    CHECK(immediate_init_order == 1);
+    CHECK(deferred_init_order == 2);
+}
+
+TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    const auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestResetAdminCallCounter")));
+    REQUIRE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestAdminEntry")));
+
+    int admin_call_counter = 0;
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
+    CHECK(admin_call_counter == 1);
+
+    CHECK_FALSE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestRegularEntry")));
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
+    CHECK(admin_call_counter == 1);
+
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestInvokeAdminEntry")));
+    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
+    CHECK(admin_call_counter == 2);
 }
 
 TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")

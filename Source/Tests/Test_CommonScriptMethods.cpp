@@ -255,6 +255,7 @@ namespace CommonMethods
 
     bool globalTimerFired = false;
 
+    [[TimeEvent]]
     void OnGlobalTimer()
     {
         globalTimerFired = true;
@@ -314,6 +315,7 @@ namespace CommonMethods
 
     bool globalTimerWithDataFired = false;
 
+    [[TimeEvent]]
     void OnGlobalTimerWithData(any data)
     {
         globalTimerWithDataFired = true;
@@ -408,11 +410,13 @@ namespace CommonMethods
  )" + R"(
     // ========== Entity Time Events (Critter) ==========
 
+    [[TimeEvent]]
     void OnCritterTimeEvent(Critter cr)
     {
         // No-op
     }
 
+    [[TimeEvent]]
     void OnCritterTimeEventWithData(Critter cr, any data)
     {
         // No-op
@@ -692,6 +696,7 @@ namespace CommonMethods
 
     // ========== Location Time Events ==========
 
+    [[TimeEvent]]
     void OnLocationTimeEvent(Location loc)
     {
         // No-op
@@ -721,11 +726,13 @@ namespace CommonMethods
 
     // ========== Item Time Events ==========
 
+    [[TimeEvent]]
     void OnItemTimeEvent(Item item)
     {
         // No-op
     }
 
+    [[TimeEvent]]
     void OnItemTimeEventData(Item item, any data)
     {
         // No-op
@@ -784,6 +791,7 @@ namespace CommonMethods
  )" + R"(
     // ========== Array Time Events with Data ==========
 
+    [[TimeEvent]]
     void OnGlobalTimerWithArrayData(array<any> data)
     {
         // No-op
@@ -802,6 +810,7 @@ namespace CommonMethods
         return 0;
     }
 
+    [[TimeEvent]]
     void OnCritterTimerWithArrayData(Critter cr, array<any> data)
     {
         // No-op

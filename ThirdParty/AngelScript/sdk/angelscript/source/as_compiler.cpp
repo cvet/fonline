@@ -3042,7 +3042,7 @@ asUINT asCCompiler::MatchFunctions(asCArray<int> &funcs, asCArray<asCExprContext
 			str.Format(TXT_NO_MATCHING_SIGNATURES_TO_s, str.AddressOf());
 			Error(str, node);
 
-			if( attemptsPassingClassMethod )
+			if( attemptsPassingClassMethod && false ) // (FOnline Patch)
 			{
 				// Class methods must use delegate objects
 				Error(TXT_CANNOT_PASS_CLASS_METHOD_AS_ARG, node);
@@ -3062,7 +3062,7 @@ asUINT asCCompiler::MatchFunctions(asCArray<int> &funcs, asCArray<asCExprContext
 		}
 		else
 		{
-			asASSERT( attemptsPassingClassMethod == false );
+			// asASSERT( attemptsPassingClassMethod == false ); // (FOnline Patch)
 
 			str.Format(TXT_MULTIPLE_MATCHING_SIGNATURES_TO_s, str.AddressOf());
 			Error(str, node);
@@ -7925,8 +7925,8 @@ asUINT asCCompiler::ImplicitConversion(asCExprContext *ctx, const asCDataType &t
 	if( ctx->type.dataType.GetTokenType() == ttVoid )
 		return asCC_NO_CONV;
 
-	// No conversion from class method to any type (it requires delegate)
-	if( ctx->IsClassMethod() )
+	// (FOnline Patch) class methods may be implicitly converted to funcdefs by creating delegates
+	if( ctx->IsClassMethod() && !to.IsFuncdef() ) // (FOnline Patch) if( ctx->IsClassMethod() )
 		return asCC_NO_CONV;
 
 	// Do we want a var type?
@@ -8240,6 +8240,69 @@ asUINT asCCompiler::ImplicitConvObjectRef(asCExprContext *ctx, const asCDataType
 				ctx->type.dataType.SetTypeInfo(to.GetTypeInfo());
 				return asCC_REF_CONV;
 			}
+		}
+
+		// (FOnline Patch) allow implicit delegate construction from class methods.
+		if( ctx->IsClassMethod() )
+		{
+			asCScriptFunction *toFunc = CastToFuncdefType(to.GetTypeInfo())->funcdef;
+			asCObjectType *type = CastToObjectType(ctx->type.dataType.GetTypeInfo());
+			asCScriptFunction *bestMethod = 0;
+			bool nonConstMethodHidden = false;
+
+			for( asUINT n = 0; n < type->methods.GetLength(); n++ )
+			{
+				asCScriptFunction *func = engine->scriptFunctions[type->methods[n]];
+
+				if( func->name != ctx->methodName )
+					continue;
+
+				if( ctx->type.dataType.IsReadOnly() && !func->IsReadOnly() )
+				{
+					nonConstMethodHidden = true;
+					continue;
+				}
+
+				if( toFunc->IsSignatureExceptNameAndObjectTypeEqual(func) )
+				{
+					bestMethod = func;
+
+					if( ctx->type.dataType.IsReadOnly() == func->IsReadOnly() )
+						break;
+				}
+			}
+
+			if( bestMethod )
+			{
+				if( generateCode )
+				{
+					ctx->bc.InstrPTR(asBC_FuncPtr, bestMethod);
+
+					asCArray<int> delegateFuncs;
+					builder->GetFunctionDescriptions(DELEGATE_FACTORY, delegateFuncs, engine->nameSpaces[0]);
+					asASSERT(delegateFuncs.GetLength() == 1 );
+					ctx->bc.Call(asBC_CALLSYS, delegateFuncs[0], 2*AS_PTR_SIZE, 0);
+
+					asCDataType dt = to;
+					if( !dt.IsObjectHandle() )
+						dt.MakeHandle(true);
+
+					int returnOffset = AllocateVariable(dt, true, false);
+					dt.MakeReference(true);
+					ctx->type.SetVariable(dt, returnOffset, true);
+					ctx->bc.InstrSHORT(asBC_STOREOBJ, (short)returnOffset);
+					ctx->bc.InstrSHORT(asBC_PSF, (short)returnOffset);
+				}
+				else
+				{
+					ctx->type.dataType = to;
+				}
+
+				return asCC_REF_CONV;
+			}
+
+			if( nonConstMethodHidden )
+				return asCC_NO_CONV;
 		}
 
 		// If the input expression is a deferred function ref, check if there is a matching func

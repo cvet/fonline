@@ -77,15 +77,6 @@ enum class DrawOrderType : uint8
 };
 
 ///@ ExportEnum
-enum class ContourType : uint8
-{
-    None,
-    Red,
-    Yellow,
-    Custom,
-};
-
-///@ ExportEnum
 enum class EggAppearenceType : uint8
 {
     None,
@@ -124,15 +115,13 @@ public:
     [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
     [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
-    [[nodiscard]] auto GetContour() const noexcept -> ContourType { return _contour; }
     [[nodiscard]] auto GetContourColor() const noexcept -> ucolor { return _contourColor; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
-    void SetContour(ContourType contour) noexcept;
-    void SetContour(ContourType contour, ucolor color) noexcept;
+    void SetContour(ucolor color) noexcept;
     void SetColor(ucolor color) noexcept;
     void SetAlpha(const uint8* alpha) noexcept;
     void SetFixedAlpha(uint8 alpha) noexcept;
@@ -162,7 +151,6 @@ private:
     raw_ptr<const ucolor> _lightRight {};
     raw_ptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
-    ContourType _contour {};
     ucolor _contourColor {};
     ucolor _color {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};

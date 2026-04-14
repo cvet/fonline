@@ -43,7 +43,11 @@
 #include "Properties.h"
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+    class asIScriptFunction;
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -104,6 +108,10 @@ auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string;
 auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
 
 #ifdef AS_MAX_PORTABILITY
+
+FO_END_NAMESPACE
+#include <angelscript.h>
+FO_BEGIN_NAMESPACE
 
 #define FO_AS_WRAP_FN(name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::FunctionWrapper<name>::f))
 #define FO_AS_WRAP_MFN(ClassType, name) AngelScript::asFUNCTION((FO_NAMESPACE aswrap::MethodWrapper<&ClassType::name>::f))

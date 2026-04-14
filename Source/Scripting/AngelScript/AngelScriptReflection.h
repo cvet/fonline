@@ -39,7 +39,11 @@
 
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+    class asITypeInfo;
+}
 
 FO_BEGIN_NAMESPACE
 

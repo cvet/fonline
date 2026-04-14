@@ -40,7 +40,12 @@
 #include "EngineBase.h"
 #include "Entity.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptContext;
+    class asIScriptEngine;
+    class asIScriptFunction;
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -72,8 +77,8 @@ struct AngelScriptContextExtendedData
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
 
-    static auto Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData* { return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData()); }
-    static auto Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData* { return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData()); }
+    static auto Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData*;
+    static auto Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData*;
 };
 
 class AngelScriptContextManager final

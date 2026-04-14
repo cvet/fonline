@@ -622,6 +622,8 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
         mspr = item->AddExtraSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
     }
 
+    mspr->SetContour(item->GetContour());
+
     AddSpriteToChain(field, mspr);
 
     if (is_roof) {
@@ -3091,54 +3093,6 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vec
     return critters;
 }
 
-void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_critterContourCrId == cr_id && _critterContour == contour) {
-        return;
-    }
-
-    if (cr_id != _critterContourCrId) {
-        auto* cr = GetCritter(_critterContourCrId);
-        if (cr != nullptr && cr->IsMapSpriteValid()) {
-            if (!cr->IsDead() && !cr->GetIsChosen()) {
-                cr->GetMapSprite()->SetContour(_crittersContour);
-            }
-            else {
-                cr->GetMapSprite()->SetContour(ContourType::None);
-            }
-        }
-    }
-
-    _critterContourCrId = cr_id;
-    _critterContour = contour;
-
-    if (cr_id) {
-        auto* cr = GetCritter(cr_id);
-        if (cr != nullptr && cr->IsMapSpriteValid()) {
-            cr->GetMapSprite()->SetContour(contour);
-        }
-    }
-}
-
-void MapView::SetCrittersContour(ContourType contour)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_crittersContour == contour) {
-        return;
-    }
-
-    _crittersContour = contour;
-
-    for (auto& cr : _critters) {
-        if (!cr->GetIsChosen() && cr->IsMapSpriteValid() && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
-            cr->GetMapSprite()->SetContour(contour);
-        }
-    }
-}
-
 void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3208,18 +3162,9 @@ void MapView::DrawHexCritter(CritterHexView* cr, Field& field, mpos hex)
         return;
     }
 
-    ContourType contour = ContourType::None;
-
-    if (cr->GetId() == _critterContourCrId) {
-        contour = _critterContour;
-    }
-    else if (!cr->IsDead() && !cr->GetIsChosen()) {
-        contour = _crittersContour;
-    }
-
     const auto draw_order = cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
     auto* mspr = cr->AddSprite(_mapSprites, draw_order, hex, &field.Offset);
-    mspr->SetContour(contour, cr->GetContourColor());
+    mspr->SetContour(cr->GetContour());
     AddSpriteToChain(field, mspr);
 }
 

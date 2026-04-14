@@ -35,9 +35,12 @@
 
 #include "Common.h"
 
-#include <angelscript.h>
-
 #if FO_ANGELSCRIPT_SCRIPTING
+
+namespace AngelScript
+{
+    class asIScriptContext;
+}
 
 FO_BEGIN_NAMESPACE
 

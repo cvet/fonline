@@ -558,18 +558,6 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(CritterView* self, uint8 alpha)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_SetContour(CritterView* self, ContourType contour)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    hex_cr->GetMap()->SetCritterContour(self->GetId(), contour);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32 itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto* item = self->GetInvItem(itemId);
@@ -620,9 +608,6 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         map_cr->GetMap()->RebuildFog();
         map_cr->GetMap()->UpdateCritterLightSource(map_cr);
     }
-
-    // Notify scripts about item changing
-    self->GetEngine()->OnItemInvChanged.Fire(item, old_item.get());
 
     old_item->MarkAsDestroyed();
 }

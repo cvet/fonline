@@ -40,6 +40,8 @@
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 template<size_t... I>
