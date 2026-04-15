@@ -64,7 +64,7 @@ bool OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
 }
 
 [[ItemTrigger]]
-void OnTrigger(Critter cr, StaticItem trigger, bool entered, uint8 dir)
+void OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
 }
 })";
@@ -78,7 +78,7 @@ bool OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
 }
 
 [[Trigger]]
-void OnTrigger(Critter cr, StaticItem trigger, bool entered, uint8 dir)
+void OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
 }
 })";
@@ -91,7 +91,7 @@ void OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
 }
 
 [[ItemTrigger]]
-bool OnTrigger(Critter cr, StaticItem trigger, bool entered, uint8 dir)
+bool OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
     return true;
 }

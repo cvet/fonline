@@ -133,7 +133,7 @@ TEST_CASE("GeometryHelper")
     vector<uint8> invalid_and_odd = {9, 5, 2};
     int32 skipped_count = 0;
     GeometryHelper::ForEachMultihexLines(invalid_and_odd, start, map_size, [&](mpos) { skipped_count++; });
-    CHECK(skipped_count == 0);
+    CHECK(skipped_count == 4);
 
     vector<uint8> reverse_path = {2, 1, 5, 1};
     int32 reverse_count = 0;

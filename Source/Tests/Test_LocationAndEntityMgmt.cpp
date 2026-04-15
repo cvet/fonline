@@ -653,7 +653,7 @@ namespace LocEntity
         p2.x = 105;
         p2.y = 100;
 
-        mdir dir = Game.GetHexDir(p1, p2);
+        mdir dir = Game.GetDirection(p1, p2);
         int dist = Game.GetDistance(p1, p2);
         if (dist == 0) return -2;
 

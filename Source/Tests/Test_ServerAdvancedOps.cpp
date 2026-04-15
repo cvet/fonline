@@ -933,7 +933,7 @@ namespace AdvOps
         mpos to = mpos(10, 11);
 
         // Just exercise the API
-        mdir dir = Game.GetHexDir(from, to);
+        mdir dir = Game.GetDirection(from, to);
 
         return 0;
     }

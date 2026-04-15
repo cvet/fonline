@@ -421,7 +421,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             dir_anim->_offset.x = ox;
             dir_anim->_offset.y = oy;
 
-            for (uint16 i = 0; i < frames_count; i++) {
+            for (uint16 j = 0; j < frames_count; j++) {
                 const auto is_spr_ref = reader.GetUInt8();
 
                 if (is_spr_ref == 0) {
@@ -431,25 +431,25 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto ny = reader.GetLEInt16();
                     const auto* data = reader.GetCurBuf();
 
-                    dir_anim->_sprOffset[i].x = nx;
-                    dir_anim->_sprOffset[i].y = ny;
+                    dir_anim->_sprOffset[j].x = nx;
+                    dir_anim->_sprOffset[j].y = ny;
 
                     auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
 
-                    if (i == 0) {
+                    if (j == 0) {
                         dir_anim->_size.width = width;
                         dir_anim->_size.height = height;
                     }
 
-                    dir_anim->_spr[i] = std::move(spr);
+                    dir_anim->_spr[j] = std::move(spr);
 
                     reader.GoForward(numeric_cast<size_t>(width) * height * 4);
                 }
                 else {
                     const auto index = reader.GetLEUInt16();
 
-                    dir_anim->_spr[i] = dir_anim->GetSpr(index)->MakeCopy();
-                    dir_anim->_sprOffset[i] = dir_anim->_sprOffset[index];
+                    dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
+                    dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
                 }
             }
         }
