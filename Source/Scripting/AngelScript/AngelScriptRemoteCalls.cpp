@@ -36,12 +36,92 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptArray.h"
+#include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+#include <preprocessor.h>
+
 FO_BEGIN_NAMESPACE
+
+static auto CollectModuleScriptFunctions(AngelScript::asIScriptModule* mod) -> vector<AngelScript::asIScriptFunction*>
+{
+    vector<AngelScript::asIScriptFunction*> funcs;
+
+    for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
+        auto* func = mod->GetFunctionByIndex(i);
+
+        if (func != nullptr && (func->GetFuncType() == AngelScript::asFUNC_SCRIPT || func->GetFuncType() == AngelScript::asFUNC_VIRTUAL)) {
+            funcs.emplace_back(func);
+        }
+    }
+
+    for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
+        const auto* object_type = mod->GetObjectTypeByIndex(i);
+
+        if (object_type == nullptr) {
+            continue;
+        }
+
+        for (AngelScript::asUINT j = 0; j < object_type->GetMethodCount(); j++) {
+            auto* func = object_type->GetMethodByIndex(j, false);
+
+            if (func != nullptr && (func->GetFuncType() == AngelScript::asFUNC_SCRIPT || func->GetFuncType() == AngelScript::asFUNC_VIRTUAL)) {
+                funcs.emplace_back(func);
+            }
+        }
+    }
+
+    return funcs;
+}
+
+static auto GetFunctionDeclarationString(const AngelScript::asIScriptFunction* func) -> string
+{
+    return func != nullptr && func->GetDeclaration(true, true, false) != nullptr ? func->GetDeclaration(true, true, false) : "<unknown>";
+}
+
+static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFunction* func, const Preprocessor::LineNumberTranslator* lnt) -> optional<pair<string, uint32>>
+{
+    if (func == nullptr) {
+        return std::nullopt;
+    }
+
+    int row = 0;
+    int column = 1;
+    const char* section = nullptr;
+
+    if (func->GetDeclaredAt(&section, &row, &column) < 0 || row <= 0) {
+        return std::nullopt;
+    }
+
+    if (lnt != nullptr) {
+        const auto line = numeric_cast<uint32>(row);
+        return pair {string {Preprocessor::ResolveOriginalFile(line, lnt)}, Preprocessor::ResolveOriginalLine(line, lnt)};
+    }
+
+    return pair {section != nullptr ? string {section} : string {}, numeric_cast<uint32>(row)};
+}
+
+static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> string
+{
+    const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
+
+    if (meta.GetSide() == EngineSideKind::ServerSide) {
+        const auto args = MakeScriptArgsName(inbound_call.Args);
+        return strex("void {}::{}(Player@+ player{}{})", ns, inbound_call.Name, !args.empty() ? ", " : "", args);
+    }
+
+    return strex("void {}::{}({})", ns, inbound_call.Name, MakeScriptArgsName(inbound_call.Args));
+}
+
+static auto ResolveInboundRemoteCallImplementation(const AngelScript::asIScriptModule* mod, const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> AngelScript::asIScriptFunction*
+{
+    const auto func_decl = MakeRemoteCallImplementationDecl(meta, inbound_call);
+    return mod->GetFunctionByDecl(func_decl.c_str());
+}
 
 static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
 {
@@ -54,7 +134,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     vector<uint8> data;
     DataWriter writer(data);
 
-    const auto write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
+    const function<void(const void*, const BaseTypeDesc&)> write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
         if (type.IsPrimitive) {
             VisitBaseTypePrimitive(ptr, type, [&](auto&& v) {
                 using t = std::decay_t<decltype(v)>;
@@ -75,7 +155,9 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             writer.Write<hstring::hash_t>(hstr.as_hash());
         }
         else if (type.IsStruct) {
-            writer.WritePtr(ptr, type.Size);
+            for (const auto& field : type.StructLayout->Fields) {
+                write_simple(static_cast<const uint8*>(ptr) + field.Offset, field.Type);
+            }
         }
         else {
             throw NotSupportedException(FO_LINE_STR);
@@ -150,10 +232,10 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32, string, hstring, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<int32, string, hstring, vector<uint8>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
-    const auto read_simple = [&](const BaseTypeDesc& type) -> void* {
+    const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
         if (type.IsPrimitive) {
             return reader.ReadPtr<void>(type.Size);
         }
@@ -172,7 +254,12 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return cast_to_void(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
         }
         else if (type.IsStruct) {
-            return reader.ReadPtr<void>(type.Size);
+            auto& buf = std::get<vector<uint8>>(temp_data.emplace_back(vector<uint8>(type.Size, 0)));
+            for (const auto& field : type.StructLayout->Fields) {
+                void* field_data = read_simple(field.Type);
+                MemCopy(buf.data() + field.Offset, field_data, field.Type.Size);
+            }
+            return cast_to_void(buf.data());
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -306,18 +393,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             continue;
         }
 
-        const string_view ns = strvex(inbound_call.SubsystemHint).erase_file_extension();
-        string func_decl;
-
-        if (meta->GetSide() == EngineSideKind::ServerSide) {
-            const auto args = MakeScriptArgsName(inbound_call.Args);
-            func_decl = strex("void {}::{}(Player@+ player{}{})", ns, inbound_call.Name, !args.empty() ? ", " : "", args);
-        }
-        else {
-            func_decl = strex("void {}::{}({})", ns, inbound_call.Name, MakeScriptArgsName(inbound_call.Args));
-        }
-
-        if (auto* func = as_module->GetFunctionByDecl(func_decl.c_str()); func != nullptr) {
+        if (auto* func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call); func != nullptr) {
             if (backend->HasGameEngine()) {
                 auto* engine = backend->GetGameEngine();
                 engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8> data) FO_DEFERRED {
@@ -327,9 +403,85 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             }
         }
         else {
-            throw ScriptCallException("Remote call function not found", func_decl);
+            throw ScriptCallException("Remote call function not found", MakeRemoteCallImplementationDecl(*meta, inbound_call));
         }
     }
+}
+
+auto ValidateAngelScriptRemoteCallAttributes(AngelScript::asIScriptModule* mod, const EngineMetadata& meta, const Preprocessor::LineNumberTranslator* lnt) -> string
+{
+    string errors;
+    string_view expected_attr {};
+    string_view opposite_attr {};
+
+    switch (meta.GetSide()) {
+    case EngineSideKind::ServerSide:
+        expected_attr = "ServerRemoteCall";
+        opposite_attr = "ClientRemoteCall";
+        break;
+    case EngineSideKind::ClientSide:
+        expected_attr = "ClientRemoteCall";
+        opposite_attr = "ServerRemoteCall";
+        break;
+    case EngineSideKind::MapperSide:
+        break;
+    default:
+        FO_UNREACHABLE_PLACE();
+    }
+
+    if (expected_attr.empty()) {
+        return errors;
+    }
+
+    vector<const AngelScript::asIScriptFunction*> matched_funcs;
+
+    for (const auto& inbound_call : meta.GetInboundRemoteCalls() | std::views::values) {
+        if (!strvex(inbound_call.SubsystemHint).ends_with("fos")) {
+            continue;
+        }
+
+        if (const auto* func = ResolveInboundRemoteCallImplementation(mod, meta, inbound_call); func != nullptr) {
+            if (std::ranges::find(matched_funcs, func) == matched_funcs.end()) {
+                matched_funcs.emplace_back(func);
+            }
+        }
+    }
+
+    const auto append_error = [&errors](optional<pair<string, uint32>> location, const string& error) {
+        if (!errors.empty()) {
+            errors.append("\n");
+        }
+
+        if (location.has_value()) {
+            errors.append(strex("{}({},1): error : {}", location->first, location->second, error).str());
+        }
+        else {
+            errors.append(error);
+        }
+    };
+
+    for (const auto* func : matched_funcs) {
+        if (!HasFunctionAttribute(func, expected_attr)) {
+            const auto func_decl = GetFunctionDeclarationString(func);
+            const auto message = strex("Inbound ///@ RemoteCall implementation '{}' must be marked [[{}]]", func_decl, expected_attr).str();
+            append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
+        }
+    }
+
+    for (const auto* func : CollectModuleScriptFunctions(mod)) {
+        if (HasFunctionAttribute(func, opposite_attr)) {
+            const auto func_decl = GetFunctionDeclarationString(func);
+            const auto message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' uses the wrong remote-call attribute for this engine side", opposite_attr, func_decl).str();
+            append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
+        }
+        else if (HasFunctionAttribute(func, expected_attr) && std::ranges::find(matched_funcs, func) == matched_funcs.end()) {
+            const auto func_decl = GetFunctionDeclarationString(func);
+            const auto message = strex("Functions marked [[{}]] must correspond to inbound ///@ RemoteCall declarations, '{}' has no matching ///@ RemoteCall declaration", expected_attr, func_decl).str();
+            append_error(ResolveDeclaredFunctionSourceLocation(func, lnt), message);
+        }
+    }
+
+    return errors;
 }
 
 FO_END_NAMESPACE

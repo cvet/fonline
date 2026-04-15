@@ -1166,22 +1166,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Process contour effect
-        if (collect_contours && mspr->GetContour() != ContourType::None) {
-            auto contour_color = ucolor {0, 0, 255};
-
-            switch (mspr->GetContour()) {
-            case ContourType::Red:
-                contour_color = ucolor {175, 0, 0};
-                break;
-            case ContourType::Yellow:
-                contour_color = ucolor {175, 175, 0};
-                break;
-            case ContourType::Custom:
-                contour_color = mspr->GetContourColor();
-                break;
-            default:
-                break;
-            }
+        if (collect_contours) {
+            const auto contour_color = mspr->GetContourColor();
 
             if (contour_color != ucolor::clear) {
                 CollectContour(mspr_rect.pos(), spr, contour_color);

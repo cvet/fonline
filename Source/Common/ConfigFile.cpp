@@ -48,9 +48,8 @@ ConfigFile::~ConfigFile() = default;
 ConfigFile::ConfigFile(ConfigFile&&) noexcept = default;
 auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
 
-ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_resolver, ConfigFileOption options) :
+ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption options) :
     _fileNameHint {name_hint},
-    _hashResolver {hash_resolver},
     _options {options},
     _data {unique_ptr<Data> {SafeAlloc::MakeRaw<Data>()}}
 {
@@ -166,76 +165,47 @@ ConfigFile::ConfigFile(string_view name_hint, string str, HashResolver* hash_res
                 section_content.append(line.data(), line.size()).append("\n");
             }
 
-            // Text format {}{}{}
-            if (line.front() == '{') {
-                uint32 num = 0;
-                size_t offset = 0;
+            string_view raw_key;
+            string_view raw_value;
+            bool append_value = false;
 
-                for (int32 i = 0; i < 3; i++) {
-                    const size_t first = line.find('{', offset);
-                    const size_t last = line.find('}', first);
-
-                    if (first == string_view::npos || last == string_view::npos) {
-                        break;
-                    }
-
-                    const string_view str2 = line.substr(first + 1, last - first - 1);
-                    offset = last + 1;
-
-                    if (i == 0 && num == 0) {
-                        num = strvex(str2).is_number() ? numeric_cast<uint32>(strvex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32();
-                    }
-                    else if (i == 1 && num != 0) {
-                        num += !str2.empty() ? (strvex(str2).is_number() ? numeric_cast<uint32>(strvex(str2).to_int64()) : _hashResolver->ToHashedString(str2).as_int32()) : 0;
-                    }
-                    else if (i == 2 && num != 0) {
-                        (*cur_section)[StoreOwnedString(strex("{}", num).str())] = line_stable ? str2 : StoreOwnedString(str2);
-                    }
-                }
+            if (!ParseConfigKeyValueLine(line, raw_key, raw_value, append_value)) {
+                continue;
             }
-            else {
-                string_view raw_key;
-                string_view raw_value;
-                bool append_value = false;
 
-                if (!ParseConfigKeyValueLine(line, raw_key, raw_value, append_value)) {
-                    continue;
-                }
+            key.clear();
+            value.clear();
+            const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
 
-                key.clear();
-                value.clear();
-                const bool entry_changed = ConfigEntryParseHook(_fileNameHint, section_name_for_hook, raw_key, raw_value, key, value);
+            const string_view entry_key = entry_changed ? string_view {key} : raw_key;
+            const string_view entry_value = entry_changed ? string_view {value} : raw_value;
 
-                const string_view entry_key = entry_changed ? string_view {key} : raw_key;
-                const string_view entry_value = entry_changed ? string_view {value} : raw_value;
+            if (entry_key.empty()) {
+                continue;
+            }
 
-                if (entry_key.empty()) {
-                    continue;
-                }
+            const string_view stored_key = line_stable && !entry_changed ? raw_key : StoreOwnedString(entry_key);
+            const string_view stored_value = line_stable && !entry_changed ? raw_value : StoreOwnedString(entry_value);
 
-                const string_view stored_key = line_stable && !entry_changed ? raw_key : StoreOwnedString(entry_key);
-                const string_view stored_value = line_stable && !entry_changed ? raw_value : StoreOwnedString(entry_value);
+            if (append_value) {
+                const auto existing_it = cur_section->find(stored_key);
 
-                if (append_value) {
-                    const auto existing_it = cur_section->find(stored_key);
-
-                    if (existing_it != cur_section->end()) {
-                        if (!stored_value.empty()) {
-                            string merged_value;
-                            merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
-                            merged_value.append(existing_it->second);
-                            merged_value.push_back(' ');
-                            merged_value.append(stored_value);
-                            existing_it->second = StoreOwnedString(std::move(merged_value));
-                        }
-                    }
-                    else {
-                        (*cur_section)[stored_key] = stored_value;
+                if (existing_it != cur_section->end()) {
+                    if (!stored_value.empty()) {
+                        string merged_value;
+                        merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
+                        merged_value.append(existing_it->second);
+                        merged_value.push_back(' ');
+                        merged_value.append(stored_value);
+                        existing_it->second = StoreOwnedString(std::move(merged_value));
                     }
                 }
                 else {
                     (*cur_section)[stored_key] = stored_value;
                 }
+            }
+            else {
+                (*cur_section)[stored_key] = stored_value;
             }
         }
     }

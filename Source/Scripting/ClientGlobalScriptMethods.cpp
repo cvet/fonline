@@ -617,27 +617,27 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ClientEngine* client, VideoPlay
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
+    return client->GetCurLang().GetText(textKey);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackName textPack, uint32 strNum, int32 skipCount)
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32 skipCount)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
+    return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetTextCount(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API uint32 Client_Game_GetTextCount(ClientEngine* client, TextPackKey textKey)
 {
-    return numeric_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
+    return numeric_cast<uint32>(client->GetCurLang().GetTextCount(textKey));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsTextPresent(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API bool Client_Game_IsTextPresent(ClientEngine* client, TextPackKey textKey)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
+    return client->GetCurLang().IsTextPresent(textKey);
 }
 
 ///@ ExportMethod

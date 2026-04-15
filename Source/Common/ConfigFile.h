@@ -47,7 +47,7 @@ enum class ConfigFileOption : uint8
 class ConfigFile final
 {
 public:
-    explicit ConfigFile(string_view name_hint, string str, HashResolver* hash_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
+    explicit ConfigFile(string_view name_hint, string str, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept;
     auto operator=(const ConfigFile&) = delete;
@@ -78,7 +78,6 @@ private:
     auto StoreOwnedString(string&& value) -> string_view;
 
     string _fileNameHint;
-    raw_ptr<HashResolver> _hashResolver;
     ConfigFileOption _options;
     unique_ptr<Data> _data;
     multimap<string_view, map<string_view, string_view>> _sectionKeyValues {};

@@ -193,31 +193,30 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
         return true;
     }
 
+    bool all_return_true = true;
+
     // Callbacks vector may be changed/invalidated during cycle work
     for (const auto& cb : copy(callbacks)) {
-        const auto ex_policy = cb.ExPolicy;
+        EventResult result = EventResult::ContinueChain;
 
         try {
-            if (!cb.Callback(call)) {
-                return false;
-            }
+            result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
+            result = EventResult::ContinueChainButReturnFalse;
+        }
 
-            if (ex_policy == EventExceptionPolicy::IgnoreAndContinueChain) {
-                continue;
-            }
-            if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
-                return true;
-            }
-            if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
-                return false;
-            }
+        if (result != EventResult::ContinueChain && result != EventResult::ContinueChainButReturnFalse) {
+            all_return_true = false;
+        }
+
+        if (result == EventResult::StopChainAndReturnFalse || result == EventResult::StopChainAndReturnTrue) {
+            return all_return_true;
         }
     }
 
-    return true;
+    return all_return_true;
 }
 
 void Entity::MarkAsDestroying() noexcept

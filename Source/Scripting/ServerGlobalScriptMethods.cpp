@@ -1202,9 +1202,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEn
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey textKey)
 {
-    return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
+    return server->GetLangPack().IsTextPresent(textKey);
 }
 
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32

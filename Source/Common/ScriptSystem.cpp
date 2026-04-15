@@ -140,7 +140,6 @@ void ScriptSystem::ShutdownBackends()
     _engineTypes.clear();
     _globalFuncMap.clear();
     _initFunc.clear();
-    _validateFunc.clear();
     _backends.clear();
 }
 
@@ -149,13 +148,6 @@ void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
     FO_STACK_TRACE_ENTRY();
 
     AddModuleFunc(_initFunc, std::move(func), priority);
-}
-
-void ScriptSystem::AddValidateFunc(ScriptFunc<void> func, int32 priority)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    AddModuleFunc(_validateFunc, std::move(func), priority);
 }
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
@@ -216,13 +208,6 @@ void ScriptSystem::InitModules()
     FO_STACK_TRACE_ENTRY();
 
     RunModuleFuncs(_initFunc, "Module initialization failed");
-}
-
-void ScriptSystem::ValidateModules()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    RunModuleFuncs(_validateFunc, "Module validation failed");
 }
 
 void ScriptSystem::ProcessScriptEvents()

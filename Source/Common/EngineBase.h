@@ -72,7 +72,6 @@ public:
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& override;
-    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto IsValidEntityType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityType(hstring type_name) const -> const EntityTypeDesc&;
@@ -124,7 +123,7 @@ public:
     void RegisterProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes;
+    mutable HashStorage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> BaseTypeDesc&;

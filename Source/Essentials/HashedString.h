@@ -39,10 +39,9 @@
 
 FO_BEGIN_NAMESPACE
 
-// Hashing
 struct hstring
 {
-    using hash_t = uint32;
+    using hash_t = uint64;
 
     struct entry
     {
@@ -67,8 +66,8 @@ struct hstring
     [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->Hash == other._entry->Hash; }
     [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->Hash < other._entry->Hash; }
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto as_int32() const noexcept -> int32 { return std::bit_cast<int32>(_entry->Hash); }
-    [[nodiscard]] constexpr auto as_uint32() const noexcept -> uint32 { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64 { return std::bit_cast<int64>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64 { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
 
@@ -77,7 +76,7 @@ private:
 
     const entry* _entry {&_zeroEntry};
 };
-static_assert(sizeof(hstring::hash_t) == 4);
+static_assert(sizeof(hstring::hash_t) == 8);
 static_assert(std::is_standard_layout_v<hstring>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
@@ -93,7 +92,6 @@ struct std::formatter<FO_NAMESPACE hstring> : formatter<FO_NAMESPACE string_view
 };
 FO_BEGIN_NAMESPACE
 
-// Hashing
 FO_DECLARE_EXCEPTION(HashResolveException);
 FO_DECLARE_EXCEPTION(HashCollisionException);
 
@@ -109,22 +107,17 @@ public:
 class HashStorage : public HashResolver
 {
 public:
+    using HashFunc = uint64 (*)(const void* data, size_t len);
+
+    explicit HashStorage(HashFunc hash_func = hashing_ex::hash);
     auto ToHashedString(string_view s) -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
 
 private:
+    HashFunc _hashFunc;
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
     mutable std::shared_mutex _hashStorageLocker {};
-};
-
-class Hashing final
-{
-public:
-    Hashing() = delete;
-
-    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) noexcept -> uint32;
-    [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) noexcept -> uint64;
 };
 
 FO_END_NAMESPACE

@@ -544,8 +544,8 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     InitSubsystems(this);
 
-    _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadFromResources(Resources);
+    _curLang = TextPack {Hashes};
+    _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Fonts
     auto load_fonts_ok = true;
@@ -4783,7 +4783,7 @@ auto MapperEngine::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, b
         }
 
         auto sorted_target_items = vec_sorted(target_items, [](auto&& i1, auto&& i2) { return i1->GetId() < i2->GetId(); });
-        auto sorted_source_items = vec_sorted(source_items, [](auto&& i1, auto&& i2) { return i1->GetId() > i2->GetId(); });
+        auto sorted_source_items = vec_sorted(source_items, [](auto&& i1, auto&& i2) { return i2->GetId() < i1->GetId(); });
 
         if (skip_selected) {
             sorted_target_items = vec_filter(sorted_target_items, [&](auto&& i) { return !SelectedEntitiesSet.contains(i); });
@@ -4812,8 +4812,8 @@ auto MapperEngine::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, b
             }
 
             if (CompareMultihexItemForMerge(check_item.get(), item, false)) {
-                source_item = check_item->GetId() > item->GetId() ? check_item.get() : item;
-                target_item = check_item->GetId() > item->GetId() ? item : check_item.get();
+                source_item = item->GetId() < check_item->GetId() ? check_item.get() : item;
+                target_item = item->GetId() < check_item->GetId() ? item : check_item.get();
                 break;
             }
         }
@@ -5893,7 +5893,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_text, &Hashes, ConfigFileOption::ReadFirstSection);
+    const auto map_data = ConfigFile(strex("{}.fomap", map_name), map_text, ConfigFileOption::ReadFirstSection);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", map_name);

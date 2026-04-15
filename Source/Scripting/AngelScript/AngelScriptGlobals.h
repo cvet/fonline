@@ -37,7 +37,10 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+}
 
 FO_BEGIN_NAMESPACE
 

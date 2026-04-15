@@ -53,7 +53,6 @@ public:
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
-    [[nodiscard]] auto IsDrawContour() const noexcept -> bool { return !GetIsWall() && !GetIsScenery() && !GetNoHighlight() && !GetBadItem(); }
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
     [[nodiscard]] auto GetAnim() const -> const Sprite* { return _anim.get(); }

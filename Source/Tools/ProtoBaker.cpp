@@ -134,7 +134,7 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
     for (const auto& file : files) {
         const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &meta->Hashes, fopro_options);
+        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
 
         for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
             // Skip default section

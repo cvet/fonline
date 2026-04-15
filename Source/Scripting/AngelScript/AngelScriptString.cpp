@@ -39,6 +39,8 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 class ScriptStringFactory final : public AngelScript::asIStringFactory

@@ -130,7 +130,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         const string& file_content = file.GetStr();
 
         string map_name = [&]() -> string {
-            const auto fomap = ConfigFile(file.GetPath(), file_content, nullptr, ConfigFileOption::ReadFirstSection);
+            const auto fomap = ConfigFile(file.GetPath(), file_content, ConfigFileOption::ReadFirstSection);
             return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
         }();
 

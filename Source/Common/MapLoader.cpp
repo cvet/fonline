@@ -51,7 +51,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     }
 
     // Header
-    ConfigFile map_data(strex("{}.fomap", name), buf, &hash_resolver);
+    ConfigFile map_data(strex("{}.fomap", name), buf);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);

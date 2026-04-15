@@ -75,7 +75,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     FO_STACK_TRACE_ENTRY();
 
     const auto fofx_content = loader(name);
-    const auto fofx = ConfigFile(name, fofx_content, nullptr, ConfigFileOption::CollectContent);
+    const auto fofx = ConfigFile(name, fofx_content, ConfigFileOption::CollectContent);
     FO_RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);

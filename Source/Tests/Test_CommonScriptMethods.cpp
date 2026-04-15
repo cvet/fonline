@@ -255,6 +255,7 @@ namespace CommonMethods
 
     bool globalTimerFired = false;
 
+    [[TimeEvent]]
     void OnGlobalTimer()
     {
         globalTimerFired = true;
@@ -314,6 +315,7 @@ namespace CommonMethods
 
     bool globalTimerWithDataFired = false;
 
+    [[TimeEvent]]
     void OnGlobalTimerWithData(any data)
     {
         globalTimerWithDataFired = true;
@@ -405,28 +407,16 @@ namespace CommonMethods
         return 0;
     }
 
-    // ========== ResolveGenericValue ==========
-
-    int TestResolveGenericValue()
-    {
-        // Resolve a numeric string
-        int val = Game.ResolveGenericValue("123");
-        if (val != 123) return -1;
-
-        int val2 = Game.ResolveGenericValue("0");
-        if (val2 != 0) return -2;
-
-        return 0;
-    }
-
  )" + R"(
     // ========== Entity Time Events (Critter) ==========
 
+    [[TimeEvent]]
     void OnCritterTimeEvent(Critter cr)
     {
         // No-op
     }
 
+    [[TimeEvent]]
     void OnCritterTimeEventWithData(Critter cr, any data)
     {
         // No-op
@@ -706,6 +696,7 @@ namespace CommonMethods
 
     // ========== Location Time Events ==========
 
+    [[TimeEvent]]
     void OnLocationTimeEvent(Location loc)
     {
         // No-op
@@ -735,11 +726,13 @@ namespace CommonMethods
 
     // ========== Item Time Events ==========
 
+    [[TimeEvent]]
     void OnItemTimeEvent(Item item)
     {
         // No-op
     }
 
+    [[TimeEvent]]
     void OnItemTimeEventData(Item item, any data)
     {
         // No-op
@@ -798,6 +791,7 @@ namespace CommonMethods
  )" + R"(
     // ========== Array Time Events with Data ==========
 
+    [[TimeEvent]]
     void OnGlobalTimerWithArrayData(array<any> data)
     {
         // No-op
@@ -816,6 +810,7 @@ namespace CommonMethods
         return 0;
     }
 
+    [[TimeEvent]]
     void OnCritterTimerWithArrayData(Critter cr, array<any> data)
     {
         // No-op
@@ -1088,18 +1083,6 @@ TEST_CASE("GameInvokeOperations")
     SECTION("ByNameWithData")
     {
         RUN_CM_FUNC("TestInvokeByNameWithData");
-    }
-}
-
-// ========== ResolveGenericValue ==========
-
-TEST_CASE("ResolveGenericValueOps")
-{
-    MAKE_CM_SERVER();
-
-    SECTION("ResolveGenericValue")
-    {
-        RUN_CM_FUNC("TestResolveGenericValue");
     }
 }
 

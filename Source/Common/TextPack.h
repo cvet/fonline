@@ -35,84 +35,121 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(LanguagePackException);
+FO_DECLARE_EXCEPTION(TextPackException);
 
-///@ ExportEnum
-enum class TextPackName : uint8
+class FileSystem;
+
+///@ ExportValueType TextPackName TextPackName Layout = hstring-value
+using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
+
+///@ ExportValueType LanguageName LanguageName Layout = hstring-value
+using LanguageName = strong_type<hstring, struct LanguageName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
+
+///@ ExportValueType TextPackKey TextPackKey Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
+struct TextPackKey
 {
-    None = 0,
-    Items = 2,
-    Critters = 3,
-    Maps = 4,
-    Locations = 5,
-    Protos = 6,
-};
+    constexpr TextPackKey() noexcept = default;
+    constexpr explicit TextPackKey(hstring key1, hstring key2 = {}, hstring key3 = {}) noexcept :
+        Key1 {key1},
+        Key2 {key2},
+        Key3 {key3}
+    {
+    }
+    constexpr explicit TextPackKey(TextPackName collection, hstring key1, hstring key2 = {}, hstring key3 = {}) noexcept :
+        Collection {collection},
+        Key1 {key1},
+        Key2 {key2},
+        Key3 {key3}
+    {
+    }
 
-using TextPackKey = uint32;
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return Collection && (Key1 || Key2 || Key3); }
+    [[nodiscard]] constexpr auto operator==(const TextPackKey& other) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator<(const TextPackKey& other) const noexcept -> bool { return std::tie(Collection, Key1, Key2, Key3) < std::tie(other.Collection, other.Key1, other.Key2, other.Key3); }
+
+    [[nodiscard]] static auto FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    [[nodiscard]] static auto FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    [[nodiscard]] static auto Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool;
+
+    TextPackName Collection {};
+    hstring Key1 {};
+    hstring Key2 {};
+    hstring Key3 {};
+};
+static_assert(std::is_standard_layout_v<TextPackKey>);
+
+FO_END_NAMESPACE
+template<>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
+{
+    using is_avalanching = void;
+
+    auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
+    {
+        const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
+        return FO_NAMESPACE hashing_ex::hash(hashes, sizeof(hashes));
+    }
+};
+template<>
+struct std::formatter<FO_NAMESPACE TextPackKey> : formatter<FO_NAMESPACE string_view>
+{
+    template<typename FormatContext>
+    auto format(const FO_NAMESPACE TextPackKey& value, FormatContext& ctx) const
+    {
+        string result;
+        std::format_to(std::back_inserter(result), "{{{}}}{{{}}}{{{}}}{{{}}}", value.Collection, value.Key1, value.Key2, value.Key3);
+        return formatter<FO_NAMESPACE string_view>::format(result, ctx);
+    }
+};
+FO_BEGIN_NAMESPACE
 
 class TextPack final
 {
 public:
-    TextPack() = default;
+    explicit TextPack(HashResolver& hash_resolver);
     TextPack(const TextPack&) = default;
     TextPack(TextPack&&) noexcept = default;
     auto operator=(const TextPack&) -> TextPack& = default;
     auto operator=(TextPack&&) noexcept -> TextPack& = default;
     ~TextPack() = default;
 
-    [[nodiscard]] auto GetStr(TextPackKey num) const -> const string&;
-    [[nodiscard]] auto GetStr(TextPackKey num, size_t skip) const -> const string&;
-    [[nodiscard]] auto GetStrCount(TextPackKey num) const -> size_t;
+    [[nodiscard]] auto GetText(TextPackKey key) const -> const string&;
+    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> const string&;
+    [[nodiscard]] auto GetTextCount(TextPackKey key) const -> size_t;
+    [[nodiscard]] auto IsTextPresent(TextPackKey key) const -> bool;
+    [[nodiscard]] auto GetStr(TextPackKey key) const -> const string&;
+    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> const string&;
+    [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
-    auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
-    auto LoadFromString(const string& str, HashResolver& hash_resolver) -> bool;
-    void LoadFromMap(const map<string, string>& kv);
-    void AddStr(TextPackKey num, string_view str);
-    void AddStr(TextPackKey num, string&& str);
-    void EraseStr(TextPackKey num);
+    auto LoadFromBinaryData(const vector<uint8>& data, string_view collection = {}) -> bool;
+    auto LoadFromString(const string& str, string_view collection = {}) -> bool;
+    void LoadFromMap(const map<string, string>& kv, string_view collection = {});
+    void LoadFromResources(FileSystem& resources, string_view language = {});
+    void AddStr(TextPackKey key, string_view str);
+    void AddStr(TextPackKey key, string&& str);
+    void EraseStr(TextPackKey key);
     void Merge(const TextPack& other);
     void FixStr(const TextPack& base_pack);
     void Clear();
 
     static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 
+    friend struct TextPackKey;
+
 private:
+    auto MakeKeyPart(string_view value) -> hstring;
+    void WriteKeyPart(DataWriter& writer, hstring part) const;
+    auto ReadKeyPart(DataReader& reader) -> hstring;
+
+    raw_ptr<HashResolver> _hashResolver;
     multimap<TextPackKey, string> _strData {};
     string _emptyStr {};
     mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-};
-
-class LanguagePack final
-{
-public:
-    LanguagePack() = default;
-    LanguagePack(string_view lang_name, const NameResolver& name_resolver);
-    LanguagePack(const LanguagePack&) = delete;
-    LanguagePack(LanguagePack&&) noexcept = default;
-    auto operator=(const LanguagePack&) -> LanguagePack& = delete;
-    auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
-    auto operator==(string_view lang_name) const -> bool { return lang_name == _langName; }
-    ~LanguagePack() = default;
-
-    [[nodiscard]] auto GetName() const noexcept -> const string&;
-    [[nodiscard]] auto GetTextPack(TextPackName pack_name) const -> const TextPack&;
-    [[nodiscard]] auto GetTextPackForEdit(TextPackName pack_name) -> TextPack&;
-    [[nodiscard]] auto ResolveTextPackName(string_view pack_name_str, bool* failed = nullptr) const -> TextPackName;
-
-    void LoadFromResources(FileSystem& resources);
-
-private:
-    string _langName {};
-    raw_ptr<const NameResolver> _nameResolver {};
-    vector<unique_ptr<TextPack>> _textPacks {};
-    TextPack _emptyPack {};
 };
 
 FO_END_NAMESPACE

@@ -129,7 +129,7 @@ public:
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
     [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
-    [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
+    [[nodiscard]] auto GetCurLang() const noexcept -> const TextPack& { return _curLang; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
     [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
     [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
@@ -211,13 +211,9 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
@@ -346,8 +342,9 @@ protected:
 
     void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop);
+    void OnSetCritterContour(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
+    void OnSetItemContour(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);
@@ -357,7 +354,7 @@ protected:
     ClientConnection _conn;
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
-    LanguagePack _curLang {};
+    TextPack _curLang {Hashes};
 
     unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};

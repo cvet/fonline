@@ -38,6 +38,7 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
+#include <angelscript.h>
 #include <json.hpp>
 #include <preprocessor.h>
 

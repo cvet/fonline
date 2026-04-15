@@ -154,7 +154,7 @@ TEST_CASE("RemoteCallValidation")
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(hstring_type)});
         vector<uint8> data;
         DataWriter writer(data);
-        const hstring::hash_t unknown_hash = Hashing::MurmurHash2("MissingHash", 11);
+        const hstring::hash_t unknown_hash = hashing_ex::hash("MissingHash", 11);
 
         writer.Write<hstring::hash_t>(unknown_hash);
 

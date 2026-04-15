@@ -239,6 +239,7 @@ namespace EntityOps
 
     bool timeEventFired = false;
 
+    [[TimeEvent]]
     void OnTimeEvent(Critter cr)
     {
         timeEventFired = true;

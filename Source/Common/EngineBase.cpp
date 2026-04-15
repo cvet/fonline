@@ -348,7 +348,7 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
         auto& field = layout_desc.Fields.emplace_back();
         field.Name = field_name;
         field.Type = GetBaseType(field_type);
-        FO_RUNTIME_ASSERT(field.Type.IsPrimitive || field.Type.IsEnum || field.Type.IsSimpleStruct);
+        FO_RUNTIME_ASSERT(field.Type.IsPrimitive || field.Type.IsEnum || field.Type.IsSimpleStruct || field.Type.IsHashedString);
         FO_RUNTIME_ASSERT(field.Type.Size != 0);
         FO_RUNTIME_ASSERT_STR(offset % field.Type.Size == 0, strex("{}::{} layout data is not aligned", name, field.Name));
         field.Offset = offset;
@@ -960,48 +960,6 @@ auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32 value, bo
     }
 
     return value_it->second;
-}
-
-auto EngineMetadata::ResolveGenericValue(string_view str, bool* failed) const -> int32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (str.empty()) {
-        return 0;
-    }
-    if (str[0] == '"') {
-        return 0;
-    }
-
-    if (str[0] == '@') {
-        return Hashes.ToHashedString(str.substr(1)).as_int32();
-    }
-    else if (str.starts_with("Content::")) {
-        return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).as_int32();
-    }
-    else if (strex(str).is_number()) {
-        return strex(str).to_int32();
-    }
-    else if (strex(str).compare_ignore_case("true")) {
-        return 1;
-    }
-    else if (strex(str).compare_ignore_case("false")) {
-        return 0;
-    }
-
-    bool enum_failed = false;
-    const auto enum_value = ResolveEnumValue(str, &enum_failed);
-
-    if (enum_failed) {
-        WriteLog("Failed to resolve generic value: '{}'", str);
-
-        if (failed != nullptr) {
-            *failed = true;
-            return 0;
-        }
-    }
-
-    return enum_value;
 }
 
 auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDesc&

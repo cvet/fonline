@@ -36,10 +36,13 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptArray.h"
+#include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
+
+#include <angelscript.h>
 
 FO_BEGIN_NAMESPACE
 
@@ -248,6 +251,7 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
     auto func_desc = SafeAlloc::MakeUnique<ScriptFuncDesc>();
 
     func_desc->Name = func_name;
+    func_desc->AttributeChecker = [func](string_view attribute) -> bool { return HasFunctionAttribute(func, attribute); };
     func_desc->DelegateObj = std::bit_cast<uintptr_t>(func->GetDelegateObject());
 
     for (AngelScript::asUINT p = 0; p < func->GetParamCount(); p++) {

@@ -174,7 +174,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
+    auto fofx = ConfigFile(fname, string(content), ConfigFileOption::CollectContent);
 
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
