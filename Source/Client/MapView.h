@@ -133,7 +133,7 @@ public:
 
     struct FindPathResult
     {
-        vector<uint8> DirSteps {};
+        vector<mdir> DirSteps {};
         vector<uint16> ControlSteps {};
     };
 
@@ -164,7 +164,7 @@ public:
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32 cut) -> bool;
-    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir) const -> bool;
+    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, int32 quad_dir, int32 multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32 dist, float32 angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();
@@ -197,8 +197,8 @@ public:
     void InstantScrollTo(mpos center_hex);
 
     // Critters
-    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
-    auto AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props, ident_t id = {}) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8>>& data) -> CritterHexView*;
+    auto AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id = {}) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
     auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }

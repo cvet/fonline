@@ -200,7 +200,7 @@ auto SpriteSheet::GetCurSpr() -> Sprite*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* dir_sheet = _curDir == 0 || !_dirs[_curDir - 1] ? this : _dirs[_curDir - 1].get();
+    auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value() - 1] ? this : _dirs[_curDir.value() - 1].get();
 
     return dir_sheet->_spr[_curIndex].get();
 }
@@ -231,7 +231,7 @@ auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* dir_sheet = _curDir == 0 || !_dirs[_curDir - 1] ? this : _dirs[_curDir - 1].get();
+    const auto* dir_sheet = _curDir == hdir::NorthEast || !_dirs[_curDir.value() - 1] ? this : _dirs[_curDir.value() - 1].get();
     const auto* spr = dir_sheet->_spr[_curIndex].get();
 
     return spr->FillData(dbuf, pos, colors);
@@ -265,18 +265,11 @@ void SpriteSheet::SetTime(float32 normalized_time)
     RefreshParams();
 }
 
-void SpriteSheet::SetDir(uint8 dir)
+void SpriteSheet::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _curDir = dir;
-}
-
-void SpriteSheet::SetDirAngle(int16 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _curDir = GeometryHelper::AngleToDir(dir_angle);
+    _curDir = dir.hex();
 }
 
 void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
@@ -372,18 +365,20 @@ auto SpriteSheet::GetSpr(int32 num_frm) -> Sprite*
     return _spr[num_frm % _framesCount].get();
 }
 
-auto SpriteSheet::GetDir(int32 dir) const -> const SpriteSheet*
+auto SpriteSheet::GetDir(mdir dir) const -> const SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return dir == 0 || _dirCount == 1 ? this : _dirs[dir - 1].get();
+    const auto dir_value = dir.hex().value();
+    return dir_value == 0 || _dirCount == 1 ? this : _dirs[dir_value - 1].get();
 }
 
-auto SpriteSheet::GetDir(int32 dir) -> SpriteSheet*
+auto SpriteSheet::GetDir(mdir dir) -> SpriteSheet*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return dir == 0 || _dirCount == 1 ? this : _dirs[dir - 1].get();
+    const auto dir_value = dir.hex().value();
+    return dir_value == 0 || _dirCount == 1 ? this : _dirs[dir_value - 1].get();
 }
 
 DefaultSpriteFactory::DefaultSpriteFactory(SpriteManager& spr_mngr) :
@@ -417,7 +412,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, ticks, dirs);
 
-        for (uint8 dir = 0; dir < dirs; dir++) {
+        for (uint8 i = 0; i < dirs; i++) {
+            const mdir dir = hdir(i);
             auto* dir_anim = anim->GetDir(dir);
             const auto ox = reader.GetLEInt16();
             const auto oy = reader.GetLEInt16();
@@ -425,7 +421,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             dir_anim->_offset.x = ox;
             dir_anim->_offset.y = oy;
 
-            for (uint16 i = 0; i < frames_count; i++) {
+            for (uint16 j = 0; j < frames_count; j++) {
                 const auto is_spr_ref = reader.GetUInt8();
 
                 if (is_spr_ref == 0) {
@@ -435,25 +431,25 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto ny = reader.GetLEInt16();
                     const auto* data = reader.GetCurBuf();
 
-                    dir_anim->_sprOffset[i].x = nx;
-                    dir_anim->_sprOffset[i].y = ny;
+                    dir_anim->_sprOffset[j].x = nx;
+                    dir_anim->_sprOffset[j].y = ny;
 
                     auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
 
-                    if (i == 0) {
+                    if (j == 0) {
                         dir_anim->_size.width = width;
                         dir_anim->_size.height = height;
                     }
 
-                    dir_anim->_spr[i] = std::move(spr);
+                    dir_anim->_spr[j] = std::move(spr);
 
                     reader.GoForward(numeric_cast<size_t>(width) * height * 4);
                 }
                 else {
                     const auto index = reader.GetLEUInt16();
 
-                    dir_anim->_spr[i] = dir_anim->GetSpr(index)->MakeCopy();
-                    dir_anim->_sprOffset[i] = dir_anim->_sprOffset[index];
+                    dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
+                    dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
                 }
             }
         }

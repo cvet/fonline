@@ -45,13 +45,17 @@ struct strong_type_arithmetics_tag
 {
 };
 
+struct strong_type_sortings_tag
+{
+};
+
 template<typename T, typename Tag, class... Opts>
-    requires(std::is_arithmetic_v<T>)
 struct strong_type
 {
     using underlying_type = T;
     static constexpr bool has_bool_test = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_bool_test_tag> || ...);
     static constexpr bool has_arithmetics = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_arithmetics_tag> || ...);
+    static constexpr bool has_sorting = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_sortings_tag> || ...);
 
     constexpr strong_type() noexcept = default;
     constexpr explicit strong_type(underlying_type v) noexcept :
@@ -71,10 +75,26 @@ struct strong_type
     }
 
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
-    [[nodiscard]] constexpr auto operator<(const strong_type& other) const noexcept -> bool { return _value < other._value; }
-    [[nodiscard]] constexpr auto operator<=(const strong_type& other) const noexcept -> bool { return _value <= other._value; }
-    [[nodiscard]] constexpr auto operator>(const strong_type& other) const noexcept -> bool { return _value > other._value; }
-    [[nodiscard]] constexpr auto operator>=(const strong_type& other) const noexcept -> bool { return _value >= other._value; }
+    [[nodiscard]] constexpr auto operator<(const strong_type& other) const noexcept -> bool
+        requires(has_arithmetics || has_sorting)
+    {
+        return _value < other._value;
+    }
+    [[nodiscard]] constexpr auto operator<=(const strong_type& other) const noexcept -> bool
+        requires(has_arithmetics)
+    {
+        return _value <= other._value;
+    }
+    [[nodiscard]] constexpr auto operator>(const strong_type& other) const noexcept -> bool
+        requires(has_arithmetics)
+    {
+        return _value > other._value;
+    }
+    [[nodiscard]] constexpr auto operator>=(const strong_type& other) const noexcept -> bool
+        requires(has_arithmetics)
+    {
+        return _value >= other._value;
+    }
 
     [[nodiscard]] constexpr auto operator+(const strong_type& other) const noexcept -> strong_type
         requires(has_arithmetics)
@@ -151,17 +171,17 @@ FO_BEGIN_NAMESPACE
 FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_strong_type<T>)
-struct FO_HASH_NAMESPACE hash<T>
+struct FO_NAMESPACE hashing::hash<T>
 {
     using is_avalanching = void;
     auto operator()(const T& v) const noexcept -> size_t
     {
         static_assert(std::has_unique_object_representations_v<T>);
         if constexpr (sizeof(v) <= sizeof(uint64_t)) {
-            return static_cast<size_t>(detail::wyhash::hash(v.underlying_value()));
+            return static_cast<size_t>(FO_NAMESPACE hashing_ex::hash(v.underlying_value()));
         }
         else {
-            return static_cast<size_t>(detail::wyhash::hash(&v, sizeof(v)));
+            return static_cast<size_t>(FO_NAMESPACE hashing_ex::hash(&v, sizeof(v)));
         }
     }
 };

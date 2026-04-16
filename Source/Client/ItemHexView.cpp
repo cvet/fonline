@@ -145,7 +145,7 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
 
     _moveStartOffset = fpos32(_sprOffset);
     _moveCurOffset = _moveStartOffset;
-    _moveDir = GeometryHelper::GetDir(cur_hex, hex);
+    _moveDir = mdir(iround<int32>(GeometryHelper::GetDirAngle(cur_hex, hex)));
     _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
@@ -193,7 +193,7 @@ void ItemHexView::SetAnimTime(float32 normalized_time)
     }
 }
 
-void ItemHexView::SetAnimDir(uint8 dir)
+void ItemHexView::SetAnimDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

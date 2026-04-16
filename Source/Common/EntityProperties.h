@@ -243,9 +243,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ipos16, HexOffset);
     ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(uint8, Dir);
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(int16, DirAngle);
+    FO_ENTITY_PROPERTY(mdir, Dir);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource

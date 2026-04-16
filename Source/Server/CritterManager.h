@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
 
-    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, uint8 dir) -> FO_NON_NULL Critter*;
+    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> FO_NON_NULL Critter*;
     void DestroyCritter(Critter* cr);
     void DestroyInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;

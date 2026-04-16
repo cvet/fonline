@@ -128,7 +128,7 @@ TEST_CASE("NetBuffer")
 
     SECTION("HashedStringRoundtripSupportsDebugMode")
     {
-        HashStorage hashes;
+        HashStorage hashes {};
         const auto value = hashes.ToHashedString("net_hash_value");
 
         NetOutBuffer out_buf {8, true};

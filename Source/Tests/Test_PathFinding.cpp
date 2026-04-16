@@ -165,7 +165,6 @@ TEST_CASE("PathFinding::FindPath")
         // Walk the path and verify each step moves to a valid adjacent hex
         auto cur = from;
         for (const auto& step : output.Steps) {
-            CHECK(step < GameSettings::MAP_DIR_COUNT);
             auto raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
             CHECK(TEST_MAP_SIZE.is_valid_pos(raw));
@@ -431,7 +430,6 @@ TEST_CASE("PathFinding::FindPath")
         // Walk path and verify end point
         auto cur = from;
         for (const auto& step : output.Steps) {
-            CHECK(step < GameSettings::MAP_DIR_COUNT);
             auto raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
             REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw));

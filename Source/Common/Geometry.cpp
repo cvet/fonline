@@ -35,6 +35,72 @@
 
 FO_BEGIN_NAMESPACE
 
+mdir::mdir(int32 angle) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32 mod = angle % 360;
+    _value = static_cast<int16>(mod < 0 ? mod + 360 : mod);
+}
+
+mdir::mdir(hdir dir) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        _value = static_cast<int16>(dir.value() * 60 + 30);
+    }
+    else {
+        _value = static_cast<int16>(dir.value() * 45 + 45);
+    }
+
+    const int32 mod = _value % 360;
+    _value = static_cast<int16>(mod < 0 ? mod + 360 : mod);
+}
+
+auto mdir::hex() const noexcept -> hdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        return hdir(_value / 60);
+    }
+    else {
+        return hdir((_value - 45 / 2) / 45);
+    }
+}
+
+auto mdir::incHex() const noexcept -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr int32 step = 360 / GameSettings::MAP_DIR_COUNT;
+    return mdir(static_cast<int16>(_value + step));
+}
+
+auto mdir::decHex() const noexcept -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr int32 step = 360 / GameSettings::MAP_DIR_COUNT;
+    return mdir(static_cast<int16>(_value - step));
+}
+
+auto mdir::rotateHex(int32 steps) const noexcept -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr int32 step = 360 / GameSettings::MAP_DIR_COUNT;
+    return mdir(static_cast<int16>(_value + steps * step));
+}
+
+auto mdir::reverse() const noexcept -> mdir
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return mdir(static_cast<int16>(_value + 180));
+}
+
 auto GeometryHelper::GetDistance(int32 x1, int32 y1, int32 x2, int32 y2) -> int32
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -86,7 +152,7 @@ auto GeometryHelper::GetDistance(ipos32 hex1, ipos32 hex2) -> int32
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
-auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
+auto GeometryHelper::GetHexDir(int32 x1, int32 y1, int32 x2, int32 y2) -> hdir
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -100,53 +166,55 @@ auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2) -> uint8
         const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
         if (dir >= 60.0f && dir < 120.0f) {
-            return 5;
+            return hdir::NorthWest;
         }
         if (dir >= 120.0f && dir < 180.0f) {
-            return 4;
+            return hdir::West;
         }
         if (dir >= 180.0f && dir < 240.0f) {
-            return 3;
+            return hdir::SouthWest;
         }
         if (dir >= 240.0f && dir < 300.0f) {
-            return 2;
+            return hdir::SouthEast;
         }
         if (dir >= 300.0f) {
-            return 1;
+            return hdir::East;
         }
 
-        return 0;
+        return hdir::NorthEast;
     }
+#if FO_GEOMETRY == 2
     else {
         const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32>(x2 - x1), numeric_cast<float32>(y2 - y1));
 
         if (dir >= 22.5f && dir < 67.5f) {
-            return 7;
+            return hdir::North;
         }
         if (dir >= 67.5f && dir < 112.5f) {
-            return 0;
+            return hdir::NorthEast;
         }
         if (dir >= 112.5f && dir < 157.5f) {
-            return 1;
+            return hdir::East;
         }
         if (dir >= 157.5f && dir < 202.5f) {
-            return 2;
+            return hdir::SouthEast;
         }
         if (dir >= 202.5f && dir < 247.5f) {
-            return 3;
+            return hdir::South;
         }
         if (dir >= 247.5f && dir < 292.5f) {
-            return 4;
+            return hdir::SouthWest;
         }
         if (dir >= 292.5f && dir < 337.5f) {
-            return 5;
+            return hdir::West;
         }
 
-        return 6;
+        return hdir::NorthWest;
     }
+#endif
 }
 
-auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> uint8
+auto GeometryHelper::GetHexDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offset) -> hdir
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -167,23 +235,24 @@ auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offs
         }
 
         if (dir >= 60.0f && dir < 120.0f) {
-            return 5;
+            return hdir::NorthWest;
         }
         if (dir >= 120.0f && dir < 180.0f) {
-            return 4;
+            return hdir::West;
         }
         if (dir >= 180.0f && dir < 240.0f) {
-            return 3;
+            return hdir::SouthWest;
         }
         if (dir >= 240.0f && dir < 300.0f) {
-            return 2;
+            return hdir::SouthEast;
         }
         if (dir >= 300.0f) {
-            return 1;
+            return hdir::East;
         }
 
-        return 0;
+        return hdir::NorthEast;
     }
+#if FO_GEOMETRY == 2
     else {
         auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32>(x2 - x1), numeric_cast<float32>(y2 - y1)) + offset;
 
@@ -195,43 +264,44 @@ auto GeometryHelper::GetDir(int32 x1, int32 y1, int32 x2, int32 y2, float32 offs
         }
 
         if (dir >= 22.5f && dir < 67.5f) {
-            return 7;
+            return hdir::North;
         }
         if (dir >= 67.5f && dir < 112.5f) {
-            return 0;
+            return hdir::NorthEast;
         }
         if (dir >= 112.5f && dir < 157.5f) {
-            return 1;
+            return hdir::East;
         }
         if (dir >= 157.5f && dir < 202.5f) {
-            return 2;
+            return hdir::SouthEast;
         }
         if (dir >= 202.5f && dir < 247.5f) {
-            return 3;
+            return hdir::South;
         }
         if (dir >= 247.5f && dir < 292.5f) {
-            return 4;
+            return hdir::SouthWest;
         }
         if (dir >= 292.5f && dir < 337.5f) {
-            return 5;
+            return hdir::West;
         }
 
-        return 6;
+        return hdir::NorthWest;
     }
+#endif
 }
 
-auto GeometryHelper::GetDir(mpos from_hex, mpos to_hex) -> uint8
+auto GeometryHelper::GetHexDir(mpos from_hex, mpos to_hex) -> hdir
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
+    return GetHexDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
-auto GeometryHelper::GetDir(mpos from_hex, mpos to_hex, float32 offset) -> uint8
+auto GeometryHelper::GetHexDir(mpos from_hex, mpos to_hex, float32 offset) -> hdir
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
+    return GetHexDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
 }
 
 auto GeometryHelper::GetDirAngle(int32 x1, int32 y1, int32 x2, int32 y2) -> float32
@@ -295,50 +365,11 @@ auto GeometryHelper::GetDirAngleDiffSided(float32 a1, float32 a2) -> float32
     return r;
 }
 
-auto GeometryHelper::DirToAngle(uint8 dir) -> int16
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return numeric_cast<int16>(dir * 60 + 30);
-    }
-    else {
-        return numeric_cast<int16>(dir * 45 + 45);
-    }
-}
-
-auto GeometryHelper::AngleToDir(int16 dir_angle) -> uint8
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return numeric_cast<uint8>(NormalizeAngle(dir_angle) / 60);
-    }
-    else {
-        return numeric_cast<uint8>(NormalizeAngle(numeric_cast<int16>(dir_angle - 45 / 2)) / 45);
-    }
-}
-
-auto GeometryHelper::NormalizeAngle(int16 dir_angle) -> int16
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const int32 mod = dir_angle % 360;
-    return numeric_cast<int16>(mod < 0 ? mod + 360 : mod);
-}
-
 auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32 dist) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
-}
-
-auto GeometryHelper::ReverseDir(uint8 dir) -> uint8
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return numeric_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
 auto GeometryHelper::HexesInRadius(int32 radius) -> int32
@@ -349,7 +380,7 @@ auto GeometryHelper::HexesInRadius(int32 radius) -> int32
     return 1 + GameSettings::MAP_DIR_COUNT * count;
 }
 
-auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
+auto GeometryHelper::MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -364,80 +395,76 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, uint8 dir, msize map_size) -> bool
     return false;
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, uint8 dir) noexcept
+void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    const auto hex_dir = dir.hex();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        switch (dir) {
-        case 0:
+        if (hex_dir == hdir::NorthEast) {
             hex.x--;
             if ((hex.x % 2) == 0) {
                 hex.y--;
             }
-            break;
-        case 1:
+        }
+        else if (hex_dir == hdir::East) {
             hex.x--;
             if ((hex.x % 2) != 0) {
                 hex.y++;
             }
-            break;
-        case 2:
+        }
+        else if (hex_dir == hdir::SouthEast) {
             hex.y++;
-            break;
-        case 3:
+        }
+        else if (hex_dir == hdir::SouthWest) {
             hex.x++;
             if ((hex.x % 2) != 0) {
                 hex.y++;
             }
-            break;
-        case 4:
+        }
+        else if (hex_dir == hdir::West) {
             hex.x++;
             if ((hex.x % 2) == 0) {
                 hex.y--;
             }
-            break;
-        case 5:
+        }
+        else if (hex_dir == hdir::NorthWest) {
             hex.y--;
-            break;
-        default:
-            break;
         }
     }
+#if FO_GEOMETRY == 2
     else {
-        switch (dir) {
-        case 0:
+        if (hex_dir == hdir::NorthEast) {
             hex.x--;
-            break;
-        case 1:
+        }
+        else if (hex_dir == hdir::East) {
             hex.x--;
             hex.y++;
-            break;
-        case 2:
+        }
+        else if (hex_dir == hdir::SouthEast) {
             hex.y++;
-            break;
-        case 3:
+        }
+        else if (hex_dir == hdir::South) {
             hex.x++;
             hex.y++;
-            break;
-        case 4:
+        }
+        else if (hex_dir == hdir::SouthWest) {
             hex.x++;
-            break;
-        case 5:
+        }
+        else if (hex_dir == hdir::West) {
             hex.x++;
             hex.y--;
-            break;
-        case 6:
+        }
+        else if (hex_dir == hdir::NorthWest) {
             hex.y--;
-            break;
-        case 7:
+        }
+        else if (hex_dir == hdir::North) {
             hex.x--;
             hex.y--;
-            break;
-        default:
-            break;
         }
     }
+#endif
 }
 
 auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32 index, msize map_size) -> bool
@@ -465,10 +492,14 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32 index)
     }
 
     // Move to first hex around
-    constexpr uint8 init_dir = GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7;
-    MoveHexByDirUnsafe(hex, init_dir);
+#if FO_GEOMETRY == 1
+    constexpr hdir init_dir = hdir::NorthEast;
+#elif FO_GEOMETRY == 2
+    constexpr hdir init_dir = hdir::North;
+#endif
+    MoveHexByDirUnsafe(hex, mdir(init_dir));
 
-    uint8 dir = 2;
+    auto dir = hdir::SouthEast;
     int32 round = 1;
     int32 round_count = HexesInRadius(1) - 1;
 
@@ -479,18 +510,18 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32 index)
         if (i >= round_count) {
             round++;
             round_count = HexesInRadius(round) - 1;
-            MoveHexByDirUnsafe(hex, init_dir);
-            FO_RUNTIME_ASSERT(dir == 1);
+            MoveHexByDirUnsafe(hex, mdir(init_dir));
+            FO_RUNTIME_ASSERT(dir == hdir::East);
         }
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             if (i % round == 0) {
-                dir = numeric_cast<uint8>((dir + 1) % GameSettings::MAP_DIR_COUNT);
+                dir = hdir(dir.value() + 1);
             }
         }
         else {
             if (i % (round * 2) == 0) {
-                dir = numeric_cast<uint8>((dir + 2) % GameSettings::MAP_DIR_COUNT);
+                dir = hdir(dir.value() + 2);
             }
         }
     }
@@ -864,12 +895,8 @@ void GeometryHelper::ForEachMultihexLines(const_span<uint8> dir_line, mpos hex, 
     auto step_raw_hex = ipos32 {hex.x, hex.y};
 
     for (size_t i = 0; i < dir_line.size() / 2; i++) {
-        const auto dir = dir_line[i * 2];
+        const auto dir = hdir(dir_line[i * 2]);
         const auto steps = dir_line[i * 2 + 1];
-
-        if (dir >= GameSettings::MAP_DIR_COUNT) {
-            continue;
-        }
 
         for (uint8 j = 0; j < steps; j++) {
             MoveHexByDirUnsafe(step_raw_hex, dir);

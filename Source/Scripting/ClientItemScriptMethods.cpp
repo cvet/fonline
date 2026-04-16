@@ -148,7 +148,7 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32 normalizedTim
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimDir(ItemView* self, uint8 dir)
+FO_SCRIPT_API void Client_Item_SetAnimDir(ItemView* self, mdir dir)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetAnimDir(dir);

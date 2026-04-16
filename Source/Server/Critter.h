@@ -115,8 +115,7 @@ public:
     void ClearVisibleEnitites();
     void SetItem(Item* item);
     void RemoveItem(Item* item);
-    void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int32 dir_angle);
+    void ChangeDir(mdir dir);
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Broadcast_Action(CritterAction action, int32 action_data, const Item* item);
@@ -186,7 +185,7 @@ public:
     hstring ViewMapPid {};
     uint16 ViewMapLook {};
     mpos ViewMapHex {};
-    uint8 ViewMapDir {};
+    mdir ViewMapDir {};
     ident_t ViewMapLocId {};
     int32 ViewMapLocEnt {};
 

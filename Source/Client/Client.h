@@ -129,7 +129,7 @@ public:
     [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
     [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
-    [[nodiscard]] auto GetCurLang() const noexcept -> const LanguagePack& { return _curLang; }
+    [[nodiscard]] auto GetCurLang() const noexcept -> const TextPack& { return _curLang; }
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
     [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
     [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
@@ -151,7 +151,7 @@ public:
     void Disconnect();
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed);
-    void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
+    void CritterLookTo(CritterHexView* cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
     auto GetEntity(ident_t id) -> ClientEntity*;
@@ -354,7 +354,7 @@ protected:
     ClientConnection _conn;
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
-    LanguagePack _curLang {};
+    TextPack _curLang {Hashes};
 
     unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};

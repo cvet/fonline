@@ -516,7 +516,7 @@ FO_SCRIPT_API void Client_Critter_StopMove(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, uint8 dir)
+FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, mdir dir)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -525,18 +525,6 @@ FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, uint8 dir)
     }
 
     self->GetEngine()->CritterLookTo(hex_cr, dir);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_ChangeDirAngle(CritterView* self, int16 dirAngle)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
 }
 
 ///@ ExportMethod

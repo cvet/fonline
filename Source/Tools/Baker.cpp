@@ -432,8 +432,8 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             }},
         {"ItemTrigger",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name); },
-                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, uint8>(func_name, "ItemTrigger"); },
+                .VerifySignature = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, mdir>(func_name); },
+                .VerifyAttribute = [](hstring func_name, const ScriptSystem* script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, mdir>(func_name, "ItemTrigger"); },
                 .RequiredAttribute = "ItemTrigger",
             }},
         {"CritterInit",

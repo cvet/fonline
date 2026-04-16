@@ -72,10 +72,9 @@ public:
 #endif
 
     void Init();
-    void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int32 dir_angle);
-    void ChangeLookDirAngle(int32 dir_angle);
-    void ChangeMoveDirAngle(int32 dir_angle);
+    void ChangeDir(mdir dir);
+    void ChangeLookDir(mdir dir);
+    void ChangeMoveDir(mdir dir);
     void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
     void StopAnim();
     void RefreshView(bool no_smooth = false);

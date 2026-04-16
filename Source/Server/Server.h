@@ -78,7 +78,8 @@ public:
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
-    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
+    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
+    [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
 
     void Shutdown() override;
 
@@ -105,7 +106,7 @@ public:
     void DestroyUnloadedCritter(ident_t cr_id);
 
     void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void StartCritterMoving(Critter* cr, uint16 speed, const vector<mdir>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
     void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
 
     ///@ ExportEvent
@@ -127,7 +128,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32& /*speed*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
@@ -163,7 +164,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
+    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, mdir /*dir*/);
 
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -267,7 +268,7 @@ private:
     vector<uint8> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
-    LanguagePack _defaultLang {};
+    TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};

@@ -134,7 +134,7 @@ void Player::Send_AddCritter(const Critter* cr)
     out_buf->Write(cr->GetProtoId());
     out_buf->Write(cr->GetHex());
     out_buf->Write(cr->GetHexOffset());
-    out_buf->Write(cr->GetDirAngle());
+    out_buf->Write(cr->GetDir());
     out_buf->Write(cr->GetCondition());
     out_buf->Write(cr->GetControlledByPlayer());
     out_buf->Write(cr->GetControlledByPlayer() && cr->GetPlayer() == nullptr);
@@ -291,7 +291,7 @@ void Player::Send_Moving(const Critter* from_cr)
         out_buf->Write(from_cr->GetId());
         out_buf->Write(from_cr->GetHex());
         out_buf->Write(from_cr->GetHexOffset());
-        out_buf->Write(from_cr->GetDirAngle());
+        out_buf->Write(from_cr->GetDir());
     }
 }
 
@@ -312,7 +312,7 @@ void Player::Send_Dir(const Critter* from_cr)
     auto out_buf = _connection->WriteMsg(NetMessage::CritterDir);
 
     out_buf->Write(from_cr->GetId());
-    out_buf->Write(from_cr->GetDirAngle());
+    out_buf->Write(from_cr->GetDir());
 }
 
 void Player::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
@@ -620,14 +620,13 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
     FO_RUNTIME_ASSERT(moving);
 
     out_buf.Write(iround<int32>(std::ceil(moving->GetWholeTime())));
-    moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
-    out_buf.Write(iround<int32>(moving->GetElapsedTime()));
+    out_buf.Write(iround<int32>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime())));
     out_buf.Write(moving->GetSpeed());
     out_buf.Write(moving->GetStartHex());
     out_buf.Write(numeric_cast<uint16>(moving->GetSteps().size()));
 
     for (const auto step : moving->GetSteps()) {
-        out_buf.Write(step);
+        out_buf.Write(step.hex());
     }
 
     out_buf.Write(numeric_cast<uint16>(moving->GetControlSteps().size()));

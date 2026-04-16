@@ -617,27 +617,27 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ClientEngine* client, VideoPlay
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum);
+    return client->GetCurLang().GetText(textKey);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackName textPack, uint32 strNum, int32 skipCount)
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32 skipCount)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStr(strNum, skipCount);
+    return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32 Client_Game_GetTextCount(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API uint32 Client_Game_GetTextCount(ClientEngine* client, TextPackKey textKey)
 {
-    return numeric_cast<uint32>(client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum));
+    return numeric_cast<uint32>(client->GetCurLang().GetTextCount(textKey));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsTextPresent(ClientEngine* client, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API bool Client_Game_IsTextPresent(ClientEngine* client, TextPackKey textKey)
 {
-    return client->GetCurLang().GetTextPack(textPack).GetStrCount(strNum) != 0;
+    return client->GetCurLang().IsTextPresent(textKey);
 }
 
 ///@ ExportMethod
@@ -1173,7 +1173,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(ClientEngine* client, RenderPrimiti
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int32 l, int32 t, int32 r, int32 b, bool scratch, bool center, ucolor color)
+FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, mdir dir, int32 l, int32 t, int32 r, int32 b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
@@ -1248,8 +1248,8 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ClientEngine* client, uint32 instan
 
     auto* model = model_spr->GetModel();
 
-    model->SetLookDirAngle(0);
-    model->SetMoveDirAngle(0, false);
+    model->SetLookDir(mdir());
+    model->SetMoveDir(mdir(), false);
     model->SetRotation(rx * DEG_TO_RAD_FLOAT, ry * DEG_TO_RAD_FLOAT, rz * DEG_TO_RAD_FLOAT);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);

@@ -331,11 +331,14 @@ void ScriptArray::SetValue(int32 index, void* value)
     else if (_subTypeId == AngelScript::asTYPEID_INT16 || _subTypeId == AngelScript::asTYPEID_UINT16) {
         *cast_from_void<short*>(ptr) = *cast_from_void<const short*>(value);
     }
-    else if (_subTypeId == AngelScript::asTYPEID_INT32 || _subTypeId == AngelScript::asTYPEID_UINT32 || _subTypeId == AngelScript::asTYPEID_FLOAT || _subTypeId > AngelScript::asTYPEID_DOUBLE) { // enums have a type id larger than doubles
+    else if (_subTypeId == AngelScript::asTYPEID_INT32 || _subTypeId == AngelScript::asTYPEID_UINT32 || _subTypeId == AngelScript::asTYPEID_FLOAT) {
         *cast_from_void<int32*>(ptr) = *cast_from_void<const int32*>(value);
     }
     else if (_subTypeId == AngelScript::asTYPEID_INT64 || _subTypeId == AngelScript::asTYPEID_UINT64 || _subTypeId == AngelScript::asTYPEID_DOUBLE) {
         *cast_from_void<double*>(ptr) = *cast_from_void<const double*>(value);
+    }
+    else if (_subTypeId > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
+        MemCopy(ptr, value, _elementSize);
     }
 }
 
@@ -627,8 +630,15 @@ auto ScriptArray::Equals(void* a, void* b, AngelScript::asIScriptContext* ctx) c
             return COMPARE(float32);
         case AngelScript::asTYPEID_DOUBLE:
             return COMPARE(float64);
-        default:
-            return COMPARE(int32); // All enums fall here
+        default: // Enum types
+            switch (_elementSize) {
+            case 1:
+                return COMPARE(uint8);
+            case 2:
+                return COMPARE(uint16);
+            default:
+                return COMPARE(int32);
+            }
 #undef COMPARE
         }
     }
@@ -718,8 +728,15 @@ auto ScriptArray::Less(void* a, void* b, bool asc, AngelScript::asIScriptContext
             return COMPARE(float32);
         case AngelScript::asTYPEID_DOUBLE:
             return COMPARE(float64);
-        default:
-            return COMPARE(int32); // All enums fall in this case
+        default: // Enum types
+            switch (_elementSize) {
+            case 1:
+                return COMPARE(uint8);
+            case 2:
+                return COMPARE(uint16);
+            default:
+                return COMPARE(int32);
+            }
 #undef COMPARE
         }
     }

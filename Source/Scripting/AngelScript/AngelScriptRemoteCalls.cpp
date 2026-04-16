@@ -134,7 +134,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     vector<uint8> data;
     DataWriter writer(data);
 
-    const auto write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
+    const function<void(const void*, const BaseTypeDesc&)> write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
         if (type.IsPrimitive) {
             VisitBaseTypePrimitive(ptr, type, [&](auto&& v) {
                 using t = std::decay_t<decltype(v)>;
@@ -155,7 +155,9 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             writer.Write<hstring::hash_t>(hstr.as_hash());
         }
         else if (type.IsStruct) {
-            writer.WritePtr(ptr, type.Size);
+            for (const auto& field : type.StructLayout->Fields) {
+                write_simple(static_cast<const uint8*>(ptr) + field.Offset, field.Type);
+            }
         }
         else {
             throw NotSupportedException(FO_LINE_STR);
@@ -230,10 +232,10 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32, string, hstring, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<int32, string, hstring, vector<uint8>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
-    const auto read_simple = [&](const BaseTypeDesc& type) -> void* {
+    const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
         if (type.IsPrimitive) {
             return reader.ReadPtr<void>(type.Size);
         }
@@ -252,7 +254,12 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return cast_to_void(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
         }
         else if (type.IsStruct) {
-            return reader.ReadPtr<void>(type.Size);
+            auto& buf = std::get<vector<uint8>>(temp_data.emplace_back(vector<uint8>(type.Size, 0)));
+            for (const auto& field : type.StructLayout->Fields) {
+                void* field_data = read_simple(field.Type);
+                MemCopy(buf.data() + field.Offset, field_data, field.Type.Size);
+            }
+            return cast_to_void(buf.data());
         }
         else {
             FO_UNREACHABLE_PLACE();

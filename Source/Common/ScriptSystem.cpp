@@ -32,7 +32,6 @@
 //
 
 #include "ScriptSystem.h"
-#include "AngelScriptScripting.h"
 #include "Application.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
@@ -59,14 +58,7 @@ static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32>>& funcs, string_
     }
 }
 
-void ScriptSystem::InitSubsystems(BaseEngine* engine)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    InitSubsystems(engine, engine->Resources);
-}
-
-void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resources)
+void ScriptSystem::MapScriptTypes(EngineMetadata* meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -96,6 +88,8 @@ void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resour
     MapEngineType<frect32>(meta->GetBaseType("frect"));
     MapEngineType<mpos>(meta->GetBaseType("mpos"));
     MapEngineType<msize>(meta->GetBaseType("msize"));
+    MapEngineType<mdir>(meta->GetBaseType("mdir"));
+    MapEngineType<hdir>(meta->GetBaseType("hdir"));
     MapEngineType<string>(meta->GetBaseType("string"));
     MapEngineType<hstring>(meta->GetBaseType("hstring"));
     MapEngineType<any_t>(meta->GetBaseType("any"));
@@ -113,12 +107,6 @@ void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resour
     MapEngineDictType<CritterProperty, int32>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("int32"));
     MapEngineDictType<CritterProperty, any_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("any"));
     MapEngineDictType<LocationProperty, any_t>(meta->GetBaseType("LocationProperty"), meta->GetBaseType("any"));
-
-#if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(meta, resources);
-#endif
-
-    ignore_unused(resources);
 }
 
 void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend)

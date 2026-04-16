@@ -265,7 +265,7 @@ void Critter::MoveAttachedCritters()
     // Callbacks time
     refcount_ptr this_ref_holder = this;
     refcount_ptr map_ref_holder = map;
-    const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
+    const auto dir = GetDir();
 
     for (const auto& moved_critter : moved_critters) {
         Critter* cr = std::get<0>(moved_critter);
@@ -588,25 +588,10 @@ auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
     return CheckItemVisibilityHook(_engine.get(), map, this, item);
 }
 
-void Critter::ChangeDir(uint8 dir)
+void Critter::ChangeDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir = numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
-    const auto dir_angle = GeometryHelper::DirToAngle(normalized_dir);
-
-    SetDirAngle(dir_angle);
-    SetDir(normalized_dir);
-}
-
-void Critter::ChangeDirAngle(int32 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(numeric_cast<int16>(dir_angle));
-    const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
-
-    SetDirAngle(normalized_dir_angle);
     SetDir(dir);
 }
 

@@ -57,7 +57,7 @@ extern bool IsTestingInProgress;
 #define FO_DEFERRED // Lambda annotation
 
 ///@ ExportValueType ident ident_t Layout = int64-value
-using ident_t = strong_type<int64, struct ident_t_, strong_type_bool_test_tag>;
+using ident_t = strong_type<int64, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
 // Custom any as string
@@ -581,6 +581,10 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
             return;
         }
     }
+    else if (type.IsHashedString) {
+        fn(*cast_from_void<hstring*>(p));
+        return;
+    }
     else if (type.IsEnum) {
         VisitBaseTypePrimitive(p, *type.EnumUnderlyingType, fn);
         return;
@@ -659,6 +663,10 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
             return;
         }
     }
+    else if (type.IsHashedString) {
+        fn(*cast_from_void<const hstring*>(p));
+        return;
+    }
     else if (type.IsEnum) {
         VisitBaseTypePrimitive(p, *type.EnumUnderlyingType, fn);
         return;
@@ -727,6 +735,9 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
             return fn(*cast_from_void<const float64*>(a), *cast_from_void<const float64*>(b));
         }
     }
+    else if (type.IsHashedString) {
+        return fn(*cast_from_void<const hstring*>(a), *cast_from_void<const hstring*>(b));
+    }
     else if (type.IsEnum) {
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
     }
@@ -751,7 +762,6 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) const -> int32 = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* = 0;
     virtual ~NameResolver() = default;

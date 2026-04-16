@@ -208,11 +208,28 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
     buffer += sizeof(AngelScript::asUINT);
 
     while (length-- != 0) {
-        if ((reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3) != 0) {
-            buffer += 4 - (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3);
+        // Align to 4-byte boundary before key if key size >= 4 (matching compiler layout)
+        {
+            int32 key_size;
+
+            if ((_keyTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
+                const auto* ot2 = engine->GetTypeInfoById(_keyTypeId);
+                key_size = ((ot2->GetFlags() & AngelScript::asOBJ_VALUE) != 0) ? ot2->GetSize() : static_cast<int32>(sizeof(void*));
+            }
+            else if (_keyTypeId == AngelScript::asTYPEID_VOID) {
+                key_size = static_cast<int32>(sizeof(void*));
+            }
+            else {
+                key_size = engine->GetSizeOfPrimitiveType(_keyTypeId);
+            }
+
+            if (key_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3) != 0) {
+                buffer += 4 - (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3);
+            }
         }
 
         void* key = buffer;
+
         if ((_keyTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
             const auto* ot2 = engine->GetTypeInfoById(_keyTypeId);
 
@@ -232,6 +249,26 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
         }
         else {
             buffer += engine->GetSizeOfPrimitiveType(_keyTypeId);
+        }
+
+        // Align to 4-byte boundary before value if value size >= 4 (matching compiler layout)
+        {
+            int32 value_size;
+
+            if ((_valueTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
+                const auto* ot2 = engine->GetTypeInfoById(_valueTypeId);
+                value_size = ((ot2->GetFlags() & AngelScript::asOBJ_VALUE) != 0) ? ot2->GetSize() : static_cast<int32>(sizeof(void*));
+            }
+            else if (_valueTypeId == AngelScript::asTYPEID_VOID) {
+                value_size = static_cast<int32>(sizeof(void*));
+            }
+            else {
+                value_size = engine->GetSizeOfPrimitiveType(_valueTypeId);
+            }
+
+            if (value_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3) != 0) {
+                buffer += 4 - (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3);
+            }
         }
 
         void* value = buffer;
@@ -790,11 +827,14 @@ static auto CopyObject(AngelScript::asITypeInfo* obj_type, int32 sub_type_index,
     else if (sub_type_id == AngelScript::asTYPEID_INT16 || sub_type_id == AngelScript::asTYPEID_UINT16) {
         *cast_from_void<int16*>(ptr) = *cast_from_void<const int16*>(value);
     }
-    else if (sub_type_id == AngelScript::asTYPEID_INT32 || sub_type_id == AngelScript::asTYPEID_UINT32 || sub_type_id == AngelScript::asTYPEID_FLOAT || sub_type_id > AngelScript::asTYPEID_DOUBLE) { // enums have a type id larger than doubles
+    else if (sub_type_id == AngelScript::asTYPEID_INT32 || sub_type_id == AngelScript::asTYPEID_UINT32 || sub_type_id == AngelScript::asTYPEID_FLOAT) {
         *cast_from_void<int32*>(ptr) = *cast_from_void<const int32*>(value);
     }
     else if (sub_type_id == AngelScript::asTYPEID_INT64 || sub_type_id == AngelScript::asTYPEID_UINT64 || sub_type_id == AngelScript::asTYPEID_DOUBLE) {
         *cast_from_void<int64*>(ptr) = *cast_from_void<const int64*>(value);
+    }
+    else if (sub_type_id > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
+        MemCopy(ptr, value, element_size);
     }
 
     return ptr;
@@ -887,8 +927,15 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
                 return COMPARE(float32);
             case AngelScript::asTYPEID_DOUBLE:
                 return COMPARE(float64);
-            default:
-                return COMPARE(int32); // Enums
+            default: // Enum types
+                switch (engine->GetSizeOfPrimitiveType(type_id)) {
+                case 1:
+                    return COMPARE(uint8);
+                case 2:
+                    return COMPARE(uint16);
+                default:
+                    return COMPARE(int32);
+                }
 #undef COMPARE
             }
         }
@@ -913,8 +960,15 @@ static auto Compare(bool check_less, int32 type_id, const ScriptDictTypeData* ty
                 return COMPARE(float32);
             case AngelScript::asTYPEID_DOUBLE:
                 return COMPARE(float64);
-            default:
-                return COMPARE(int32); // Enums
+            default: // Enum types
+                switch (engine->GetSizeOfPrimitiveType(type_id)) {
+                case 1:
+                    return COMPARE(uint8);
+                case 2:
+                    return COMPARE(uint16);
+                default:
+                    return COMPARE(int32);
+                }
 #undef COMPARE
             }
         }

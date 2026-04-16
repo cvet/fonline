@@ -484,9 +484,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                     FO_AS_VERIFY(ctx->SetArgObject(i, static_cast<void*>(arg_data)));
                 }
                 else if (base_type.IsEnum) {
-                    int32 enum_value = 0;
-                    MemCopy(&enum_value, arg_data, base_type.Size);
-                    FO_AS_VERIFY(ctx->SetArgDWord(i, enum_value));
+                    MemCopy(ctx->GetAddressOfArg(i), arg_data, base_type.Size);
                 }
                 else if (base_type.IsPrimitive) {
                     MemCopy(ctx->GetAddressOfArg(i), arg_data, base_type.Size);

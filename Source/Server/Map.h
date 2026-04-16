@@ -134,7 +134,7 @@ public:
     void AddCritterToField(Critter* cr);
     void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(mpos hex);
-    void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir);
+    void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir);
     auto CheckGagItems(mpos hex, int32 radius, const function<bool(const Item*)>& gag_callback) const -> bool;
     auto CheckGagItem(mpos hex, const function<bool(const Item*)>& gag_callback) const -> bool;
 

@@ -81,19 +81,12 @@ void ModelSprite::Prewarm()
     _model->PrewarmParticles();
 }
 
-void ModelSprite::SetDir(uint8 dir)
+void ModelSprite::SetDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetDirAngle(GeometryHelper::DirToAngle(dir));
-}
-
-void ModelSprite::SetDirAngle(int16 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _model->SetLookDirAngle(dir_angle);
-    _model->SetMoveDirAngle(dir_angle, true);
+    _model->SetLookDir(dir);
+    _model->SetMoveDir(dir, true);
 }
 
 void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)

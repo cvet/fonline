@@ -149,32 +149,32 @@ int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOff
     dirAngle = dirAngle < 0.0 ? 360.0 - (-dirAngle % 360.0) : dirAngle % 360.0;
     dirAngle = 360.0 - dirAngle;
 
-    uint8 dirLeft;
-    uint8 dirRight;
+    hdir dirLeft;
+    hdir dirRight;
 
     if (dirAngle >= 30.0 && dirAngle < 90.0) {
-        dirLeft = 0;
-        dirRight = 1;
+        dirLeft = HDIR_NorthEast;
+        dirRight = HDIR_East;
     }
     else if (dirAngle >= 90.0 && dirAngle < 150.0) {
-        dirLeft = 1;
-        dirRight = 2;
+        dirLeft = HDIR_East;
+        dirRight = HDIR_SouthEast;
     }
     else if (dirAngle >= 150.0 && dirAngle < 210.0) {
-        dirLeft = 2;
-        dirRight = 3;
+        dirLeft = HDIR_SouthEast;
+        dirRight = HDIR_SouthWest;
     }
     else if (dirAngle >= 210.0 && dirAngle < 270.0) {
-        dirLeft = 3;
-        dirRight = 4;
+        dirLeft = HDIR_SouthWest;
+        dirRight = HDIR_West;
     }
     else if (dirAngle >= 270.0 && dirAngle < 330.0) {
-        dirLeft = 4;
-        dirRight = 5;
+        dirLeft = HDIR_West;
+        dirRight = HDIR_NorthWest;
     }
     else {
-        dirLeft = 5;
-        dirRight = 1;
+        dirLeft = HDIR_NorthWest;
+        dirRight = HDIR_NorthEast;
     }
 
     mpos curHex = fromHex;

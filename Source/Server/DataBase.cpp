@@ -222,8 +222,8 @@ DataBaseImpl::DataBaseImpl(DataBaseSettings& db_settings, DataBasePanicCallback 
     _settings {&db_settings},
     _opLogEnabled {_settings->OpLogEnabled},
     _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->PanicOpLogSizeThreshold)},
-    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->ReconnectRetryPeriod, 1)}},
     _panicShutdownTimeout {std::chrono::milliseconds {_settings->PanicShutdownTimeout}},
+    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->ReconnectRetryPeriod, 1)}},
     _panicCallback {std::move(panic_callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -306,7 +306,6 @@ void DataBaseImpl::InitializeOpLogs()
             }
 
             const auto command = line.substr(0, first_space);
-            const auto collection = line.substr(first_space + 1, second_space - first_space - 1);
             string_view record_id_str {};
             string_view other {};
             bool has_other = false;
@@ -1163,7 +1162,6 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         }
 
         const auto command = line.substr(0, first_space);
-        const auto collection = line.substr(first_space + 1, second_space - first_space - 1);
         string_view record_id {};
         string_view other {};
         bool has_other = false;

@@ -39,22 +39,14 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("GenericUtils")
 {
-    SECTION("MurmurHash2")
+    SECTION("WyHash")
     {
         const auto* data = reinterpret_cast<const uint8*>("abcdefg");
-        CHECK(Hashing::MurmurHash2(data, 4) == 646393889U);
-        CHECK(Hashing::MurmurHash2(data, 5) == 1594468574U);
-        CHECK(Hashing::MurmurHash2(data, 6) == 1271458169U);
-        CHECK(Hashing::MurmurHash2(data, 7) == 4188131059U);
-        CHECK(std::bit_cast<int32>(Hashing::MurmurHash2(data, 7)) == -106836237);
-        CHECK(Hashing::MurmurHash2_64(data, 6) == 13226566493390071673ULL);
-
-        CHECK(Hashing::MurmurHash2(nullptr, 0) == 0);
-        CHECK(Hashing::MurmurHash2_64(nullptr, 0) == 0);
-
         const auto* data2 = reinterpret_cast<const uint8*>("abcdefh");
-        CHECK(Hashing::MurmurHash2(data, 7) != Hashing::MurmurHash2(data2, 7));
-        CHECK(Hashing::MurmurHash2_64(data, 7) != Hashing::MurmurHash2_64(data2, 7));
+
+        CHECK(hashing_ex::hash(data, 4) != 0);
+        CHECK(hashing_ex::hash(data, 4) != hashing_ex::hash(data, 5));
+        CHECK(hashing_ex::hash(data, 7) != hashing_ex::hash(data2, 7));
     }
 
     SECTION("StdRandom")

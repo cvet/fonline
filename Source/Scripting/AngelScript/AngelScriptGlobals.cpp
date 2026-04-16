@@ -174,7 +174,9 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     const int32 enum_value = meta->ResolveEnumValue(enum_name, enum_value_name, &failed);
 
     if (!failed) {
-        *cast_from_void<int32*>(gen->GetArgAddress(1)) = enum_value;
+        const auto& enum_type = meta->GetBaseType(enum_name);
+        MemFill(gen->GetArgAddress(1), 0, enum_type.Size);
+        MemCopy(gen->GetArgAddress(1), &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -186,7 +188,8 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 
     const auto* meta = GetEngineMetadata(gen->GetEngine());
     const auto& enum_name = *cast_from_void<const string*>(gen->GetAuxiliary());
-    const auto enum_index = *cast_from_void<int32*>(gen->GetAddressOfArg(0));
+    int32 enum_index = 0;
+    MemCopy(&enum_index, gen->GetAddressOfArg(0), meta->GetBaseType(enum_name).Size);
     const bool full_spec = *cast_from_void<bool*>(gen->GetAddressOfArg(1));
 
     bool failed = false;
@@ -412,7 +415,9 @@ void RegisterAngelScriptEnums(AngelScript::asIScriptEngine* as_engine)
     const auto* meta = GetEngineMetadata(as_engine);
 
     for (auto&& [enum_name, enum_pairs] : meta->GetAllEnums()) {
-        FO_AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str()));
+        const auto& enum_type = meta->GetBaseType(enum_name);
+        const auto* underlying_type_name = enum_type.EnumUnderlyingType ? enum_type.EnumUnderlyingType->Name.c_str() : "int32";
+        FO_AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str(), underlying_type_name));
 
         for (auto&& [key, value] : enum_pairs) {
             FO_AS_VERIFY(as_engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));

@@ -35,10 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// Check a single hex or multihex perimeter in a given BFS direction
-// For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
-// Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
-static auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
+auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -76,22 +73,22 @@ static auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_
     }
 
     // CW/CCW perimeter from extended hex
-    const bool is_square_corner = (dir % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
+    const bool is_square_corner = (dir.hex().value() % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
     const int32 steps_count = is_square_corner ? multihex * 2 : multihex;
 
     // Clockwise
     {
-        uint8 cw_dir;
+        mdir cw_dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            cw_dir = (dir + 4) % 6;
+            cw_dir = dir.rotateHex(4);
         }
         else {
-            cw_dir = (dir + 6) % 8;
+            cw_dir = dir.rotateHex(6);
         }
 
         if (is_square_corner) {
-            cw_dir = (cw_dir + 1) % 8;
+            cw_dir = cw_dir.rotateHex(1);
         }
 
         auto raw_hex = raw_extended;
@@ -108,17 +105,17 @@ static auto CheckHexWithMultihex(mpos hex, uint8 dir, int32 multihex, msize map_
 
     // Counter-clockwise
     {
-        uint8 ccw_dir;
+        mdir ccw_dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            ccw_dir = (dir + 4) % 6;
+            ccw_dir = dir.rotateHex(2);
         }
         else {
-            ccw_dir = (dir + 6) % 8;
+            ccw_dir = dir.rotateHex(2);
         }
 
         if (is_square_corner) {
-            ccw_dir = (ccw_dir + 7) % 8;
+            ccw_dir = ccw_dir.rotateHex(7);
         }
 
         auto raw_hex = raw_extended;
@@ -198,7 +195,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
             for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
-                GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, static_cast<uint8>(j));
+                GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, hdir(j));
 
                 if (!map_size.is_valid_pos(raw_next_hex)) {
                     continue;
@@ -211,7 +208,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                     continue;
                 }
 
-                const auto block = CheckHexWithMultihex(next_hex, static_cast<uint8>(j), input.Multihex, map_size, input.CheckHex);
+                const auto block = CheckHexWithMultihex(next_hex, hdir(j), input.Multihex, map_size, input.CheckHex);
 
                 if (block == HexBlockResult::Passable) {
                     next_hexes.emplace_back(next_hex);
@@ -273,7 +270,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     }
 
     // Reconstruct path (backtrack from target to source using angle-based direction selection)
-    vector<uint8> raw_steps;
+    vector<mdir> raw_steps;
     auto hex_index = grid_at(to_hex);
     auto cur_hex = to_hex;
     raw_steps.resize(hex_index - 1);
@@ -320,33 +317,33 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             check_hex(1, ipos32 {cur_hex.x + 1, cur_hex.y - 1});
 
             if (best_step_dir == 3) {
-                raw_steps[hex_index - 1] = 3;
+                raw_steps[hex_index - 1] = hdir::SouthWest;
                 cur_hex.x--;
                 cur_hex.y--;
                 step_ok = true;
             }
             else if (best_step_dir == 2) {
-                raw_steps[hex_index - 1] = 2;
+                raw_steps[hex_index - 1] = hdir::SouthEast;
                 cur_hex.y--;
                 step_ok = true;
             }
             else if (best_step_dir == 5) {
-                raw_steps[hex_index - 1] = 5;
+                raw_steps[hex_index - 1] = hdir::NorthWest;
                 cur_hex.y++;
                 step_ok = true;
             }
             else if (best_step_dir == 0) {
-                raw_steps[hex_index - 1] = 0;
+                raw_steps[hex_index - 1] = hdir::NorthEast;
                 cur_hex.x++;
                 step_ok = true;
             }
             else if (best_step_dir == 4) {
-                raw_steps[hex_index - 1] = 4;
+                raw_steps[hex_index - 1] = hdir::West;
                 cur_hex.x--;
                 step_ok = true;
             }
             else if (best_step_dir == 1) {
-                raw_steps[hex_index - 1] = 1;
+                raw_steps[hex_index - 1] = hdir::East;
                 cur_hex.x++;
                 cur_hex.y--;
                 step_ok = true;
@@ -361,34 +358,34 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             check_hex(1, ipos32 {cur_hex.x + 1, cur_hex.y});
 
             if (best_step_dir == 3) {
-                raw_steps[hex_index - 1] = 3;
+                raw_steps[hex_index - 1] = hdir::SouthWest;
                 cur_hex.x--;
                 step_ok = true;
             }
             else if (best_step_dir == 2) {
-                raw_steps[hex_index - 1] = 2;
+                raw_steps[hex_index - 1] = hdir::SouthEast;
                 cur_hex.y--;
                 step_ok = true;
             }
             else if (best_step_dir == 5) {
-                raw_steps[hex_index - 1] = 5;
+                raw_steps[hex_index - 1] = hdir::NorthWest;
                 cur_hex.y++;
                 step_ok = true;
             }
             else if (best_step_dir == 0) {
-                raw_steps[hex_index - 1] = 0;
+                raw_steps[hex_index - 1] = hdir::NorthEast;
                 cur_hex.x++;
                 cur_hex.y++;
                 step_ok = true;
             }
             else if (best_step_dir == 4) {
-                raw_steps[hex_index - 1] = 4;
+                raw_steps[hex_index - 1] = hdir::West;
                 cur_hex.x--;
                 cur_hex.y++;
                 step_ok = true;
             }
             else if (best_step_dir == 1) {
-                raw_steps[hex_index - 1] = 1;
+                raw_steps[hex_index - 1] = hdir::East;
                 cur_hex.x++;
                 step_ok = true;
             }
@@ -415,11 +412,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
                 mpos next_hex = trace_hex;
-                vector<uint8> direct_steps;
+                vector<mdir> direct_steps;
                 bool failed = false;
 
                 while (true) {
-                    uint8 dir = tracer.GetNextHex(next_hex);
+                    mdir dir = tracer.GetNextHex(next_hex);
                     direct_steps.emplace_back(dir);
 
                     if (next_hex == trace_hex2) {
@@ -434,7 +431,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
                 if (failed) {
                     FO_RUNTIME_ASSERT(i > 0);
-                    GeometryHelper::MoveHexByDir(trace_hex2, GeometryHelper::ReverseDir(raw_steps[i]), map_size);
+                    GeometryHelper::MoveHexByDir(trace_hex2, raw_steps[i].reverse(), map_size);
                     continue;
                 }
 

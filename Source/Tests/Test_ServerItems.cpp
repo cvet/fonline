@@ -74,9 +74,8 @@ namespace ServerItemsTest
     }
 
     [[Event]]
-    bool OnInit()
+    void OnInit()
     {
-        return true;
     }
 
     [[Event]]

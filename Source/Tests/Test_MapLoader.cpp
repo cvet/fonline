@@ -18,7 +18,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsOldMapFormat")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes;
+        HashStorage hashes {};
 
         CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { }, [](ident_t, const ProtoItem*, const map<string_view, string_view>&) { }), MapLoaderException);
     }
@@ -26,7 +26,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsMapsWithoutProtoMapSection")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes;
+        HashStorage hashes {};
 
         CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "[Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { }, [](ident_t, const ProtoItem*, const map<string_view, string_view>&) { }), MapLoaderException);
     }
@@ -34,7 +34,7 @@ TEST_CASE("MapLoader")
     SECTION("MissingProtosAccumulateErrorsAndSkipCallbacks")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes;
+        HashStorage hashes {};
         size_t critter_calls = 0;
         size_t item_calls = 0;
 
@@ -56,7 +56,7 @@ TEST_CASE("MapLoader")
     SECTION("MissingProtoFieldAlsoFailsLoad")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes;
+        HashStorage hashes {};
 
         const string map_buf = "[ProtoMap]\n"
                                "$Name = TestMap\n"
@@ -77,7 +77,7 @@ TEST_CASE("MapLoader")
         meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
-        HashStorage hashes;
+        HashStorage hashes {};
         vector<ident_t> critter_ids;
         vector<ident_t> item_ids;
         vector<string> critter_proto_names;

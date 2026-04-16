@@ -426,7 +426,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto entity_type = engine->Hashes.ToHashedString(entity_name);
-    const auto prop_enum = static_cast<int32>(gen->GetArgDWord(0));
+    const auto prop_enum = static_cast<int32>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
     const auto& prop_value = *cast_from_void<const any_t*>(gen->GetAddressOfArg(1));
     const auto* registrator = engine->GetPropertyRegistrator(entity_name);
     FO_RUNTIME_ASSERT(registrator);
@@ -654,7 +654,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         ctx->SetArgObject(0, entity); // May be null for protos
 
         if (func->GetParamCount() == 2) {
-            ctx->SetArgDWord(1, prop->GetRegIndex());
+            ctx->SetArgWord(1, prop->GetRegIndex());
         }
 
         const auto run_ok = context_mngr->RunContext(ctx, false);
@@ -755,7 +755,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
         if (has_proto_enum) {
-            FO_AS_VERIFY(ctx->SetArgDWord(1, prop->GetRegIndex()));
+            FO_AS_VERIFY(ctx->SetArgWord(1, prop->GetRegIndex()));
         }
 
         if (!deferred) {
@@ -805,7 +805,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     const auto* engine = GetGameEngine(gen->GetEngine());
-    const auto prop_enum = static_cast<int32>(gen->GetArgDWord(0));
+    const auto prop_enum = static_cast<int32>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
     bool& is_disabled = *cast_from_void<bool*>(gen->GetArgAddress(1));
     bool& is_virtual = *cast_from_void<bool*>(gen->GetArgAddress(2));
     bool& is_dict = *cast_from_void<bool*>(gen->GetArgAddress(3));

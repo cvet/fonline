@@ -966,6 +966,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetworkClient.cpp"
@@ -1074,12 +1075,43 @@ AddCoreStaticLibrary(EssentialsLib FO_ESSENTIALS_SOURCE
     APPEND_TO_GROUP FO_CORE_LIBS_GROUP
     LINK_LIBS ${FO_ESSENTIALS_SYSTEM_LIBS} ${FO_ESSENTIALS_LIBS})
 
+if(FO_BUILD_COMMON_LIB)
+    SetValue(FO_APP_HEADLESS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
+        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
+    AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
+
+    if(NOT FO_HEADLESS_ONLY)
+        SetValue(FO_APP_FRONTEND_SOURCE
+            "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
+            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
+        AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
+            APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+            LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
+    endif()
+
+    AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE
+        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+        LINK_LIBS EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
+endif()
+
 if(FO_ANGELSCRIPT_SCRIPTING)
-    StatusMessage("+ AngelScriptScripting")
-    SetValue(FO_ANGELSCRIPT_SCRIPTING_DIR "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
-    SetValue(_fo_prev_folder "${CMAKE_FOLDER}")
-    SetValue(CMAKE_FOLDER "CoreLibs")
-    AddLibrary(AngelScriptScripting STATIC EXCLUDE_FROM_ALL
+    SetValue(FO_ANGELSCRIPT_SCRIPTING_DIR
+        "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    SetValue(FO_ANGELSCRIPT_SCRIPTING_SOURCE
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptArray.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptAttributes.cpp"
@@ -1112,78 +1144,35 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptString.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptTypes.h")
-    SetValue(CMAKE_FOLDER "${_fo_prev_folder}")
-    SetTargetProperty(AngelScriptScripting FOLDER "CoreLibs")
-    AddDependencies(AngelScriptScripting
-        ${FO_GEN_DEPENDENCIES})
+    AddCoreStaticLibrary(AngelScriptScripting FO_ANGELSCRIPT_SCRIPTING_SOURCE
+         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
+         LINK_LIBS CommonLib AngelScriptCore AngelScriptPreprocessor)
     TargetIncludeDirectories(AngelScriptScripting PUBLIC
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}")
-    TargetLinkLibraries(AngelScriptScripting
-        EssentialsLib
-        AngelScriptCore
-        AngelScriptPreprocessor)
-    AppendList(FO_CORE_LIBS_GROUP AngelScriptScripting)
-endif()
-
-if(FO_BUILD_COMMON_LIB)
-    SetValue(FO_APP_HEADLESS_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
-        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
-    AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
-        APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
-
-    if(NOT FO_HEADLESS_ONLY)
-        SetValue(FO_APP_FRONTEND_SOURCE
-            "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
-            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationInit.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Application.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
-        AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
-            APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-            LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
-    endif()
-
-    AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE
-        APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
-
-    if(FO_ANGELSCRIPT_SCRIPTING)
-        TargetLinkLibraries(CommonLib AngelScriptScripting)
-    endif()
 endif()
 
 if(FO_BUILD_CLIENT_LIB)
     AddCoreStaticLibrary(ClientLib FO_CLIENT_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS})
+        LINK_LIBS CommonLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_SERVER_LIB)
     AddCoreStaticLibrary(ServerLib FO_SERVER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS})
+        LINK_LIBS CommonLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_MAPPER_LIB)
     AddCoreStaticLibrary(MapperLib FO_MAPPER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS ClientLib CommonLib)
+        LINK_LIBS ClientLib CommonLib $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_BAKER_LIB)
     AddCoreStaticLibrary(BakerLib FO_BAKER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS})
+        LINK_LIBS CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_EDITOR_LIB)
@@ -1205,7 +1194,7 @@ if(FO_BUILD_CLIENT)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_Client
             TESTING_APP 0
-            LINK_LIBS "AppFrontend" "ClientLib"
+            LINK_LIBS AppFrontend ClientLib
             EXTRA_SOURCES ${FO_RC_FILE}
             WRITE_BUILD_HASH)
     else()
@@ -1213,7 +1202,7 @@ if(FO_BUILD_CLIENT)
             OUTPUT_DIR ${FO_CLIENT_OUTPUT}
             OUTPUT_NAME ${FO_DEV_NAME}_Client
             TESTING_APP 0
-            LINK_LIBS "AppFrontend" "ClientLib"
+            LINK_LIBS AppFrontend ClientLib
             WRITE_BUILD_HASH)
     endif()
 endif()
@@ -1227,7 +1216,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Server
         TESTING_APP 0
-        LINK_LIBS "ServerLib" "ClientLib" "AppFrontend"
+        LINK_LIBS ServerLib ClientLib AppFrontend
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 
@@ -1238,7 +1227,7 @@ if(FO_BUILD_SERVER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
         TESTING_APP 0
-        LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
+        LINK_LIBS ServerLib ClientLib AppHeadless
         WRITE_BUILD_HASH)
 
     if(FO_WINDOWS)
@@ -1249,7 +1238,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerService
             TESTING_APP 0
-            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
+            LINK_LIBS ServerLib ClientLib AppHeadless
             WRITE_BUILD_HASH)
     else()
         AddExecutableApplication(
@@ -1259,7 +1248,7 @@ if(FO_BUILD_SERVER)
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             OUTPUT_NAME ${FO_DEV_NAME}_ServerDaemon
             TESTING_APP 0
-            LINK_LIBS "ServerLib" "ClientLib" "AppHeadless"
+            LINK_LIBS ServerLib ClientLib AppHeadless
             WRITE_BUILD_HASH)
     endif()
 endif()
@@ -1271,7 +1260,7 @@ if(FO_BUILD_EDITOR)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Editor
         TESTING_APP 0
-        LINK_LIBS "AppFrontend" "EditorLib" "MapperLib" "BakerLib" "ClientLib" "ServerLib"
+        LINK_LIBS AppFrontend EditorLib MapperLib BakerLib ClientLib ServerLib
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 endif()
@@ -1283,7 +1272,7 @@ if(FO_BUILD_MAPPER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Mapper
         TESTING_APP 0
-        LINK_LIBS "AppFrontend" "MapperLib" "ClientLib" "BakerLib"
+        LINK_LIBS AppFrontend MapperLib ClientLib BakerLib
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 endif()
@@ -1296,7 +1285,7 @@ if(FO_BUILD_ASCOMPILER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_ASCompiler
         TESTING_APP 0
-        LINK_LIBS "AppHeadless" "BakerLib"
+        LINK_LIBS AppHeadless BakerLib
         DEPENDS ${FO_GEN_DEPENDENCIES}
         WRITE_BUILD_HASH)
 endif()
@@ -1307,7 +1296,7 @@ if(FO_BUILD_BAKER)
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         OUTPUT_NAME ${FO_DEV_NAME}_Baker
         TESTING_APP 0
-        LINK_LIBS "AppHeadless" "BakerLib"
+        LINK_LIBS AppHeadless BakerLib
         WRITE_BUILD_HASH)
 
     if(NOT FO_WEB)
@@ -1315,7 +1304,7 @@ if(FO_BUILD_BAKER)
             OUTPUT_DIR ${FO_BAKER_OUTPUT}
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
             TESTING_APP 0
-            LINK_LIBS PRIVATE "BakerLib"
+            LINK_LIBS PRIVATE BakerLib
             EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
             NO_PREFIX
             WRITE_BUILD_HASH)
@@ -1357,14 +1346,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
             OUTPUT_NAME ${target}
             TESTING_APP 1
-            LINK_LIBS
-                "BakerLib"
-                "EditorLib"
-                "MapperLib"
-                ${FO_TESTING_LIBS}
-                "ClientLib"
-                "ServerLib"
-                "AppHeadless"
+            LINK_LIBS BakerLib EditorLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 

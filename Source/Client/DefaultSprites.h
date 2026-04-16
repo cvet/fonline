@@ -88,8 +88,8 @@ public:
     [[nodiscard]] auto GetCurSpr() -> Sprite*;
     [[nodiscard]] auto GetSpr(int32 num_frm) const -> const Sprite*;
     [[nodiscard]] auto GetSpr(int32 num_frm) -> Sprite*;
-    [[nodiscard]] auto GetDir(int32 dir) const -> const SpriteSheet*;
-    [[nodiscard]] auto GetDir(int32 dir) -> SpriteSheet*;
+    [[nodiscard]] auto GetDir(mdir dir) const -> const SpriteSheet*;
+    [[nodiscard]] auto GetDir(mdir dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32 override;
     [[nodiscard]] auto GetWholeTicks() const noexcept -> int32 { return _wholeTicks; }
@@ -102,8 +102,7 @@ public:
     auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float32 normalized_time) override;
-    void SetDir(uint8 dir) override;
-    void SetDirAngle(int16 dir_angle) override;
+    void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
@@ -120,7 +119,7 @@ private:
     int32 _dirCount {};
     shared_ptr<SpriteSheet> _dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 
-    uint8 _curDir {};
+    hdir _curDir {};
     int32 _curIndex {};
     bool _playing {};
     bool _looped {};

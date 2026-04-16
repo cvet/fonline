@@ -36,26 +36,112 @@
 
 FO_BEGIN_NAMESPACE
 
-void TextPack::AddStr(TextPackKey num, string_view str)
+static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, istringstream* sstr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(num, string(str));
+    const auto first = line.find('{', offset);
+
+    if (first == string::npos) {
+        return false;
+    }
+
+    auto last = line.find('}', first);
+
+    if (last == string::npos && allow_multiline && sstr != nullptr) {
+        string additional_line;
+
+        while (last == string::npos && std::getline(*sstr, additional_line, '\n')) {
+            line += "\n" + additional_line;
+            last = line.find('}', first);
+        }
+    }
+
+    if (last == string::npos) {
+        return false;
+    }
+
+    token = line.substr(first + 1, last - first - 1);
+    offset = last + 1;
+    return true;
 }
 
-void TextPack::AddStr(TextPackKey num, string&& str)
+auto TextPackKey::FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
     FO_STACK_TRACE_ENTRY();
 
-    _strData.emplace(num, std::move(str));
+    const auto hcollection = hash_resolver.ToHashedString(collection);
+    const auto hkey1 = hash_resolver.ToHashedString(key1);
+    const auto hkey2 = hash_resolver.ToHashedString(key2);
+    const auto hkey3 = hash_resolver.ToHashedString(key3);
+    return TextPackKey {TextPackName {hcollection}, hkey1, hkey2, hkey3};
 }
 
-auto TextPack::GetStr(TextPackKey num) const -> const string&
+auto TextPackKey::FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t str_count = _strData.count(num);
-    auto it = _strData.find(num);
+    return FromParts(hash_resolver, collection, key1, key2, key3);
+}
+
+auto TextPackKey::Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string source {str};
+    size_t offset = 0;
+    string tokens[4];
+
+    for (auto& token : tokens) {
+        if (!ExtractBraceToken(source, offset, token, false, nullptr)) {
+            return false;
+        }
+    }
+
+    result = FromParts(hash_resolver, tokens[0], tokens[1], tokens[2], tokens[3]);
+    return true;
+}
+
+TextPack::TextPack(HashResolver& hash_resolver) :
+    _hashResolver {&hash_resolver}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto TextPack::GetText(TextPackKey key) const -> const string&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return GetText(key, 0);
+}
+
+auto TextPack::GetText(TextPackKey key, size_t skip) const -> const string&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return GetStr(key, skip);
+}
+
+auto TextPack::GetTextCount(TextPackKey key) const -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return GetStrCount(key);
+}
+
+auto TextPack::IsTextPresent(TextPackKey key) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return GetTextCount(key) != 0;
+}
+
+auto TextPack::GetStr(TextPackKey key) const -> const string&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const size_t str_count = _strData.count(key);
+    auto it = _strData.find(key);
 
     switch (str_count) {
     case 0:
@@ -77,12 +163,12 @@ auto TextPack::GetStr(TextPackKey num) const -> const string&
     return it->second;
 }
 
-auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
+auto TextPack::GetStr(TextPackKey key, size_t skip) const -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    const size_t str_count = _strData.count(num);
-    auto it = _strData.find(num);
+    const size_t str_count = _strData.count(key);
+    auto it = _strData.find(key);
 
     if (skip >= str_count) {
         return _emptyStr;
@@ -95,49 +181,11 @@ auto TextPack::GetStr(TextPackKey num, size_t skip) const -> const string&
     return it->second;
 }
 
-auto TextPack::GetStrCount(TextPackKey num) const -> size_t
+auto TextPack::GetStrCount(TextPackKey key) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _strData.count(num);
-}
-
-void TextPack::EraseStr(TextPackKey num)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _strData.erase(num);
-}
-
-void TextPack::Merge(const TextPack& other)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto&& [key, value] : other._strData) {
-        AddStr(key, value);
-    }
-}
-
-void TextPack::FixStr(const TextPack& base_pack)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Add keys that are in the base pack but not in this pack
-    for (auto&& [key, value] : base_pack._strData) {
-        if (_strData.count(key) == 0) {
-            AddStr(key, value);
-        }
-    }
-
-    // Remove keys that are not in the base pack
-    for (auto it = _strData.begin(); it != _strData.end();) {
-        if (base_pack._strData.count(it->first) == 0) {
-            it = _strData.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
+    return _strData.count(key);
 }
 
 auto TextPack::GetSize() const noexcept -> size_t
@@ -172,8 +220,11 @@ auto TextPack::GetBinaryData() const -> vector<uint8>
 
     writer.Write<uint32>(numeric_cast<uint32>(_strData.size()));
 
-    for (auto&& [num, str] : _strData) {
-        writer.Write<TextPackKey>(num);
+    for (auto&& [key, str] : _strData) {
+        WriteKeyPart(writer, key.Collection.underlying_value());
+        WriteKeyPart(writer, key.Key1);
+        WriteKeyPart(writer, key.Key2);
+        WriteKeyPart(writer, key.Key3);
         writer.Write<uint32>(numeric_cast<uint32>(str.length()));
         writer.WritePtr(str.data(), str.length());
     }
@@ -181,16 +232,27 @@ auto TextPack::GetBinaryData() const -> vector<uint8>
     return data;
 }
 
-auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
+auto TextPack::LoadFromBinaryData(const vector<uint8>& data, string_view collection) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
+    const auto collection_key = TextPackName {MakeKeyPart(collection)};
 
     const auto count = reader.Read<uint32>();
 
     for (uint32 i = 0; i < count; i++) {
-        const auto num = reader.Read<TextPackKey>();
+        TextPackKey key;
+
+        key.Collection = TextPackName {ReadKeyPart(reader)};
+        key.Key1 = ReadKeyPart(reader);
+        key.Key2 = ReadKeyPart(reader);
+        key.Key3 = ReadKeyPart(reader);
+
+        if (!key.Collection && collection_key) {
+            key.Collection = collection_key;
+        }
+
         const auto str_len = reader.Read<uint32>();
 
         string str;
@@ -203,13 +265,13 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data) -> bool
             str.resize(0);
         }
 
-        AddStr(num, std::move(str));
+        AddStr(key, std::move(str));
     }
 
     return true;
 }
 
-auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) -> bool
+auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -219,61 +281,132 @@ auto TextPack::LoadFromString(const string& str, HashResolver& hash_resolver) ->
     string line;
 
     while (std::getline(sstr, line, '\n')) {
-        TextPackKey num = 0;
         size_t offset = 0;
 
-        for (auto i = 0; i < 3; i++) {
-            const auto first = line.find('{', offset);
-            auto last = line.find('}', first);
+        string token1;
+        string token2;
+        string token3;
 
-            if (first == string::npos || last == string::npos) {
-                if (i == 2 && first != string::npos) {
-                    string additional_line;
-                    while (last == string::npos && std::getline(sstr, additional_line, '\n')) {
-                        line += "\n" + additional_line;
-                        last = line.find('}', first);
-                    }
-                }
-
-                if (first == string::npos || last == string::npos) {
-                    if (i > 0 || first != string::npos) {
-                        failed = true;
-                    }
-
-                    break;
-                }
-            }
-
-            auto substr = line.substr(first + 1, last - first - 1);
-            offset = last + 1;
-
-            if (i == 0 && num == 0) {
-                num = strvex(substr).is_number() ? strvex(substr).to_int32() : hash_resolver.ToHashedString(substr).as_int32();
-            }
-            else if (i == 1 && num != 0) {
-                num += !substr.empty() ? (strvex(substr).is_number() ? strvex(substr).to_int32() : hash_resolver.ToHashedString(substr).as_int32()) : 0;
-            }
-            else if (i == 2 && num != 0) {
-                AddStr(num, std::move(substr));
-            }
-            else {
-                failed = true;
-            }
+        if (!ExtractBraceToken(line, offset, token1, false, nullptr)) {
+            continue;
         }
+        if (!ExtractBraceToken(line, offset, token2, false, nullptr)) {
+            failed = true;
+            continue;
+        }
+        if (!ExtractBraceToken(line, offset, token3, true, &sstr)) {
+            failed = true;
+            continue;
+        }
+
+        if (collection.empty() || token1.empty()) {
+            failed = true;
+            continue;
+        }
+
+        AddStr(TextPackKey::FromParts(*_hashResolver, collection, token1, token2), std::move(token3));
     }
 
     return !failed;
 }
 
-void TextPack::LoadFromMap(const map<string, string>& kv)
+void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : kv) {
-        const TextPackKey num = strvex(key).to_uint32();
+        TextPackKey text_key;
 
-        if (num != 0) {
-            AddStr(num, value);
+        if (strvex(key).starts_with('{')) {
+            if (TextPackKey::Parse(*_hashResolver, key, text_key)) {
+                AddStr(text_key, value);
+            }
+        }
+        else {
+            if (!collection.empty() && !key.empty()) {
+                AddStr(TextPackKey::FromParts(*_hashResolver, collection, key), value);
+            }
+        }
+    }
+}
+
+void TextPack::LoadFromResources(FileSystem& resources, string_view language)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto text_files = resources.FilterFiles("fotxt-bin");
+
+    for (const auto& text_file_header : text_files) {
+        const auto text_file = File::Load(text_file_header);
+        const auto file_name = text_file.GetNameNoExt();
+
+        const auto name_triplet = strvex(file_name).split('.');
+        FO_RUNTIME_ASSERT(name_triplet.size() == 3);
+        const auto& pack_name_str = name_triplet[1];
+        const auto& lang_name = name_triplet[2];
+        FO_RUNTIME_ASSERT(!pack_name_str.empty());
+        FO_RUNTIME_ASSERT(!lang_name.empty());
+
+        if (!language.empty() && lang_name != language) {
+            continue;
+        }
+
+        if (!LoadFromBinaryData(text_file.GetData(), pack_name_str)) {
+            throw TextPackException("Invalid binary text file", text_file.GetPath());
+        }
+    }
+}
+
+void TextPack::AddStr(TextPackKey key, string_view str)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _strData.emplace(key, string(str));
+}
+
+void TextPack::AddStr(TextPackKey key, string&& str)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _strData.emplace(key, std::move(str));
+}
+
+void TextPack::EraseStr(TextPackKey key)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _strData.erase(key);
+}
+
+void TextPack::Merge(const TextPack& other)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto&& [key, value] : other._strData) {
+        AddStr(key, value);
+    }
+}
+
+void TextPack::FixStr(const TextPack& base_pack)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Add keys that are in the base pack but not in this pack
+    for (auto&& [key, value] : base_pack._strData) {
+        const auto has_same_entry = _strData.count(key) != 0;
+
+        if (!has_same_entry) {
+            AddStr(key, value);
+        }
+    }
+
+    // Remove keys that are not in the base pack
+    for (auto it = _strData.begin(); it != _strData.end();) {
+        if (base_pack._strData.count(it->first) == 0) {
+            it = _strData.erase(it);
+        }
+        else {
+            ++it;
         }
     }
 }
@@ -347,93 +480,39 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
     }
 }
 
-LanguagePack::LanguagePack(string_view lang_name, const NameResolver& name_resolver) :
-    _langName {lang_name},
-    _nameResolver {&name_resolver}
+auto TextPack::MakeKeyPart(string_view value) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    _textPacks.resize(std::numeric_limits<std::underlying_type_t<TextPackName>>::max() + 1);
-    _textPacks[static_cast<size_t>(TextPackName::Items)] = SafeAlloc::MakeUnique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Critters)] = SafeAlloc::MakeUnique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Maps)] = SafeAlloc::MakeUnique<TextPack>();
-    _textPacks[static_cast<size_t>(TextPackName::Locations)] = SafeAlloc::MakeUnique<TextPack>();
+    return !value.empty() ? _hashResolver->ToHashedString(value) : hstring {};
 }
 
-auto LanguagePack::GetName() const noexcept -> const string&
+void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _langName;
-}
+    const auto& str = part.as_str();
+    writer.Write<uint32>(numeric_cast<uint32>(str.length()));
 
-auto LanguagePack::GetTextPack(TextPackName pack_name) const -> const TextPack&
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto pack_index = static_cast<size_t>(pack_name);
-    FO_RUNTIME_ASSERT(pack_index < _textPacks.size());
-
-    return _textPacks[pack_index] ? *_textPacks[pack_index] : _emptyPack;
-}
-
-auto LanguagePack::GetTextPackForEdit(TextPackName pack_name) -> TextPack&
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto pack_index = static_cast<size_t>(pack_name);
-    FO_RUNTIME_ASSERT(pack_index < _textPacks.size());
-
-    if (!_textPacks[pack_index]) {
-        _textPacks[pack_index] = SafeAlloc::MakeUnique<TextPack>();
-    }
-
-    return *_textPacks[pack_index];
-}
-
-auto LanguagePack::ResolveTextPackName(string_view pack_name_str, bool* failed) const -> TextPackName
-{
-    FO_STACK_TRACE_ENTRY();
-
-    try {
-        return static_cast<TextPackName>(_nameResolver->ResolveEnumValue(string("TextPackName"), string(pack_name_str)));
-    }
-    catch (const EnumResolveException&) {
-        if (failed != nullptr) {
-            *failed = true;
-            return {};
-        }
-
-        throw LanguagePackException("Invalid text pack name", pack_name_str);
+    if (!str.empty()) {
+        writer.WritePtr(str.data(), str.length());
     }
 }
 
-void LanguagePack::LoadFromResources(FileSystem& resources)
+auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto text_files = resources.FilterFiles("fotxt-bin");
+    const auto str_len = reader.Read<uint32>();
 
-    for (const auto& text_file_header : text_files) {
-        const auto text_file = File::Load(text_file_header);
-        const auto file_name = text_file.GetNameNoExt();
-
-        const auto name_triplet = strvex(file_name).split('.');
-        FO_RUNTIME_ASSERT(name_triplet.size() == 3);
-        const auto& pack_name_str = name_triplet[1];
-        const auto& lang_name = name_triplet[2];
-        FO_RUNTIME_ASSERT(!pack_name_str.empty());
-        FO_RUNTIME_ASSERT(!lang_name.empty());
-
-        if (lang_name == _langName) {
-            const auto pack_name = ResolveTextPackName(pack_name_str);
-            auto& text_pack = GetTextPackForEdit(pack_name);
-
-            if (!text_pack.LoadFromBinaryData(text_file.GetData())) {
-                throw LanguagePackException("Invalid binary text file", text_file.GetPath());
-            }
-        }
+    if (str_len == 0) {
+        return {};
     }
+
+    string str;
+    str.resize(str_len);
+    reader.ReadPtr(str.data(), str_len);
+    return MakeKeyPart(str);
 }
 
 FO_END_NAMESPACE

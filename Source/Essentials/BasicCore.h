@@ -107,7 +107,6 @@
 
 // Custom hashmaps
 #include "ankerl/unordered_dense.h"
-#define FO_HASH_NAMESPACE ankerl::unordered_dense::
 
 // OS specific API
 #if FO_MAC || FO_IOS
@@ -217,6 +216,9 @@ using std::variant;
 
 template<typename T>
 using const_span = span<const T>;
+
+namespace hashing = ankerl::unordered_dense;
+namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 
 // String view for null terminated string
 class string_view_nt : public string_view
@@ -602,24 +604,26 @@ FO_BEGIN_NAMESPACE
     } \
     FO_BEGIN_NAMESPACE
 
-#define FO_DECLARE_TYPE_PARSER_EXT(type, ...) \
+#define FO_DECLARE_TYPE_PARSER_EXT(type, op1, op2, op3) \
     FO_END_NAMESPACE \
     inline auto operator>>(std::istream& istr, type& value)->std::istream& \
     { \
-        return __VA_ARGS__; \
+        op1; \
+        value = !!(istr >> op2) ? op3 : type {}; \
+        return istr; \
     } \
     FO_BEGIN_NAMESPACE
 
 #define FO_DECLARE_TYPE_HASHER(type) \
     FO_END_NAMESPACE \
     template<> \
-    struct FO_HASH_NAMESPACE hash<type> \
+    struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
         auto operator()(const type& v) const noexcept \
         { \
             static_assert(std::has_unique_object_representations_v<type>); \
-            return detail::wyhash::hash(&v, sizeof(v)); \
+            return FO_NAMESPACE hashing_ex::hash(&v, sizeof(v)); \
         } \
     }; \
     FO_BEGIN_NAMESPACE
@@ -627,12 +631,12 @@ FO_BEGIN_NAMESPACE
 #define FO_DECLARE_TYPE_HASHER_EXT(type, ...) \
     FO_END_NAMESPACE \
     template<> \
-    struct FO_HASH_NAMESPACE hash<type> \
+    struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
         auto operator()(const type& v) const noexcept \
         { \
-            return detail::wyhash::hash(__VA_ARGS__); \
+            return FO_NAMESPACE hashing_ex::hash(__VA_ARGS__); \
         } \
     }; \
     FO_BEGIN_NAMESPACE

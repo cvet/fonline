@@ -32,6 +32,7 @@
 //
 
 #include "MapBaker.h"
+#include "AngelScriptScripting.h"
 #include "ConfigFile.h"
 #include "MapLoader.h"
 #include "ProtoManager.h"
@@ -123,14 +124,17 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     server_engine.FinalizeRegistration();
     client_engine.FinalizeRegistration();
 
-    server_engine.InitSubsystems(&server_engine, *_context->BakedFiles);
+    server_engine.MapScriptTypes(&server_engine);
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(&server_engine, *_context->BakedFiles);
+#endif
 
     // Bake maps
     const auto bake_map = [&](const File& file) {
         const string& file_content = file.GetStr();
 
         string map_name = [&]() -> string {
-            const auto fomap = ConfigFile(file.GetPath(), file_content, nullptr, ConfigFileOption::ReadFirstSection);
+            const auto fomap = ConfigFile(file.GetPath(), file_content, ConfigFileOption::ReadFirstSection);
             return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
         }();
 

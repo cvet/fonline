@@ -32,6 +32,7 @@
 //
 
 #include "Server.h"
+#include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
 #include "MetadataRegistration.h"
@@ -132,6 +133,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         WriteLog("Initialize script system");
 
+        MapScriptTypes(this);
         MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
         MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
         MapEngineType<StaticItem>(GetBaseType("StaticItem"));
@@ -139,7 +141,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         MapEngineType<Map>(GetBaseType(Map::ENTITY_TYPE_NAME));
         MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
 
-        InitSubsystems(this);
+#if FO_ANGELSCRIPT_SCRIPTING
+        InitAngelScriptScripting(this, Resources);
+#endif
 
         return std::nullopt;
     });
@@ -325,8 +329,8 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         WriteLog("Load language data");
 
-        _defaultLang = LanguagePack {Settings.Language, *this};
-        _defaultLang.LoadFromResources(Resources);
+        _defaultLang = TextPack {Hashes};
+        _defaultLang.LoadFromResources(Resources, Settings.Language);
 
         return std::nullopt;
     });
@@ -367,7 +371,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
                 writer.WritePtr(file.GetPath().data(), file.GetPath().length());
                 writer.Write<uint32>(numeric_cast<uint32>(data.size()));
-                writer.Write<uint32>(Hashing::MurmurHash2(data.data(), data.size()));
+                writer.Write<uint32>(numeric_cast<uint32>(hashing_ex::hash(data.data(), data.size())));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -1292,7 +1296,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDNPC: {
         const auto hex = buf.Read<mpos>();
-        const auto dir = buf.Read<uint8>();
+        const auto dir = mdir(buf.Read<hdir>());
         const auto pid = buf.Read<hstring>(Hashes);
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
@@ -1312,44 +1316,28 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_RUNSCRIPT: {
-        const auto func_name = any_t {buf.Read<string>()};
+        const auto func_name = Hashes.ToHashedString(buf.Read<string>());
         const auto param0_str = any_t {buf.Read<string>()};
         const auto param1_str = any_t {buf.Read<string>()};
         const auto param2_str = any_t {buf.Read<string>()};
 
-        if (func_name.empty()) {
+        if (!func_name) {
             logcb("Fail, length is zero");
             break;
         }
 
-        const auto func_name_ = Hashes.ToHashedString(func_name);
-
-        bool failed = false;
-        const auto param0 = ResolveGenericValue(param0_str, &failed);
-        const auto param1 = ResolveGenericValue(param1_str, &failed);
-        const auto param2 = ResolveGenericValue(param2_str, &failed);
-
-        if (CallAdminFunc<void, Player*>(func_name_, player) || //
-            CallAdminFunc<void, Player*, int32>(func_name_, player, param0) || //
-            CallAdminFunc<void, Player*, any_t>(func_name_, player, param0_str) || //
-            CallAdminFunc<void, Player*, int32, int32>(func_name_, player, param0, param1) || //
-            CallAdminFunc<void, Player*, any_t, any_t>(func_name_, player, param0_str, param1_str) || //
-            CallAdminFunc<void, Player*, int32, int32, int32>(func_name_, player, param0, param1, param2) || //
-            CallAdminFunc<void, Player*, any_t, any_t, any_t>(func_name_, player, param0_str, param1_str, param2_str) || //
-            CallAdminFunc<void, Critter*>(func_name_, player_cr) || //
-            CallAdminFunc<void, Critter*, int32>(func_name_, player_cr, param0) || //
-            CallAdminFunc<void, Critter*, any_t>(func_name_, player_cr, param0_str) || //
-            CallAdminFunc<void, Critter*, int32, int32>(func_name_, player_cr, param0, param1) || //
-            CallAdminFunc<void, Critter*, any_t, any_t>(func_name_, player_cr, param0_str, param1_str) || //
-            CallAdminFunc<void, Critter*, int32, int32, int32>(func_name_, player_cr, param0, param1, param2) || //
-            CallAdminFunc<void, Critter*, any_t, any_t, any_t>(func_name_, player_cr, param0_str, param1_str, param2_str) || //
-            CallAdminFunc<void>(func_name_) || //
-            CallAdminFunc<void, int32>(func_name_, param0) || //
-            CallAdminFunc<void, any_t>(func_name_, param0_str) || //
-            CallAdminFunc<void, int32, int32>(func_name_, param0, param1) || //
-            CallAdminFunc<void, any_t, any_t>(func_name_, param0_str, param1_str) || //
-            CallAdminFunc<void, int32, int32, int32>(func_name_, param0, param1, param2) || //
-            CallAdminFunc<void, any_t, any_t, any_t>(func_name_, param0_str, param1_str, param2_str)) {
+        if (CallAdminFunc<void, Player*>(func_name, player) || //
+            CallAdminFunc<void, Player*, any_t>(func_name, player, param0_str) || //
+            CallAdminFunc<void, Player*, any_t, any_t>(func_name, player, param0_str, param1_str) || //
+            CallAdminFunc<void, Player*, any_t, any_t, any_t>(func_name, player, param0_str, param1_str, param2_str) || //
+            CallAdminFunc<void, Critter*>(func_name, player_cr) || //
+            CallAdminFunc<void, Critter*, any_t>(func_name, player_cr, param0_str) || //
+            CallAdminFunc<void, Critter*, any_t, any_t>(func_name, player_cr, param0_str, param1_str) || //
+            CallAdminFunc<void, Critter*, any_t, any_t, any_t>(func_name, player_cr, param0_str, param1_str, param2_str) || //
+            CallAdminFunc<void>(func_name) || //
+            CallAdminFunc<void, any_t>(func_name, param0_str) || //
+            CallAdminFunc<void, any_t, any_t>(func_name, param0_str, param1_str) || //
+            CallAdminFunc<void, any_t, any_t, any_t>(func_name, param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
         else {
@@ -1470,7 +1458,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
         cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr.get(), nullptr, {}, 0, {});
+    MapMngr.AddCritterToMap(cr.get(), nullptr, {}, hdir {}, {});
 
     if (!cr->IsDestroyed()) {
         OnGlobalMapCritterIn.Fire(cr.get());
@@ -1522,7 +1510,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     }
 
     EntityMngr.MakePersistent(cr, true, true);
-    MapMngr.AddCritterToMap(cr, nullptr, {}, 0, {});
+    MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
     if (!cr->IsDestroyed()) {
         OnGlobalMapCritterIn.Fire(cr);
@@ -1780,7 +1768,13 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint32>();
-    FO_RUNTIME_ASSERT(in_encrypt_key != 0);
+
+    if (in_encrypt_key == 0) {
+        WriteLog("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
+        connection->HardDisconnect();
+        return;
+    }
+
     in_buf->SetEncryptKey(in_encrypt_key);
 
     in_buf.Unlock();
@@ -2051,11 +2045,11 @@ void ServerEngine::Process_Move(Player* player)
     const auto start_hex = in_buf->Read<mpos>();
 
     const auto steps_count = in_buf->Read<uint16>();
-    vector<uint8> steps;
+    vector<mdir> steps;
     steps.resize(steps_count);
 
     for (uint16 i = 0; i < steps_count; i++) {
-        steps[i] = in_buf->Read<uint8>();
+        steps[i] = mdir(in_buf->Read<hdir>());
     }
 
     const auto control_steps_count = in_buf->Read<uint16>();
@@ -2073,57 +2067,34 @@ void ServerEngine::Process_Move(Player* player)
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (speed == 0) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
     }
 
-    // Validate path
-    // Todo: validate player moving path
-    /*auto next_start_hx = start_hx;
-    auto next_start_hy = start_hy;
-    uint16 control_step_begin = 0;
-
-    for (size_t i = 0; i < control_steps.size(); i++) {
-        auto hx = next_start_hx;
-        auto hy = next_start_hy;
-
-        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
-            if (!move_ok || !map->IsHexMovable(hx, hy)) {
-            }
-        }
-
-        control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hx = hx;
-        next_start_hy = hy;
-    }*/
-
     int32 corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
         player->Send_Moving(cr);
         return;
     }
@@ -2135,7 +2106,7 @@ void ServerEngine::Process_Move(Player* player)
         const auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
-            BreakIntoDebugger();
+            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
             player->Send_Moving(cr);
             return;
         }
@@ -2149,11 +2120,60 @@ void ServerEngine::Process_Move(Player* player)
         steps.insert(steps.begin(), find_result.Steps.begin(), find_result.Steps.end());
     }
 
+    // Validate path: walk each step and check hex movability
+    bool path_truncated = false;
+
+    {
+        const auto multihex = cr->GetMultihex();
+        auto validate_hex = cr_hex;
+        size_t valid_step_count = 0;
+
+        const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+
+        for (size_t i = 0; i < steps.size(); i++) {
+            auto next_hex = validate_hex;
+
+            if (!GeometryHelper::MoveHexByDir(next_hex, steps[i], map->GetSize())) {
+                break;
+            }
+
+            const auto block = PathFinding::CheckHexWithMultihex(next_hex, steps[i], multihex, map->GetSize(), check_hex);
+
+            if (block == HexBlockResult::Blocked) {
+                break;
+            }
+
+            validate_hex = next_hex;
+            valid_step_count++;
+        }
+
+        if (valid_step_count == 0) {
+            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
+            player->Send_Moving(cr);
+            return;
+        }
+
+        if (valid_step_count < steps.size()) {
+            steps.resize(valid_step_count);
+
+            // Truncate control_steps to match shortened path
+            while (!control_steps.empty() && control_steps.back() > valid_step_count) {
+                control_steps.pop_back();
+            }
+
+            if (control_steps.empty() || control_steps.back() != numeric_cast<uint16>(valid_step_count)) {
+                control_steps.push_back(numeric_cast<uint16>(valid_step_count));
+            }
+
+            path_truncated = true;
+        }
+    }
+
     if (end_hex_offset.x < -GameSettings::MAP_HEX_WIDTH / 2 || end_hex_offset.x > GameSettings::MAP_HEX_WIDTH / 2) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
     if (end_hex_offset.y < -GameSettings::MAP_HEX_HEIGHT / 2 || end_hex_offset.y > GameSettings::MAP_HEX_HEIGHT / 2) {
-        BreakIntoDebugger();
+        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
 
     const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16>(GameSettings::MAP_HEX_WIDTH / 2));
@@ -2161,6 +2181,9 @@ void ServerEngine::Process_Move(Player* player)
 
     StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
+    if (path_truncated) {
+        player->Send_Moving(cr);
+    }
     if (corrected_speed != numeric_cast<int32>(speed)) {
         player->Send_MovingSpeed(cr);
     }
@@ -2179,26 +2202,26 @@ void ServerEngine::Process_StopMove(Player* player)
     // Todo: validate stop position and place critter in it
     [[maybe_unused]] const auto start_hex = in_buf->Read<mpos>();
     [[maybe_unused]] const auto hex_offset = in_buf->Read<ipos16>();
-    [[maybe_unused]] const auto dir_angle = in_buf->Read<int16>();
+    [[maybe_unused]] const auto dir_angle = in_buf->Read<mdir>();
 
     in_buf.Unlock();
 
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     Critter* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Attachments(cr);
         player->Send_Moving(cr);
         return;
@@ -2207,7 +2230,7 @@ void ServerEngine::Process_StopMove(Player* player)
     int32 zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
-        BreakIntoDebugger();
+        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
     }
@@ -2225,31 +2248,33 @@ void ServerEngine::Process_Dir(Player* player)
 
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
-    const auto dir_angle = in_buf->Read<int16>();
+    const auto dir = in_buf->Read<mdir>();
 
     in_buf.Unlock();
 
     auto* map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
+        WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
     auto* cr = map->GetCritter(cr_id);
 
     if (cr == nullptr) {
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
-    int16 checked_dir_angle = dir_angle;
+    mdir checked_dir = dir;
 
-    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir_angle)) {
-        BreakIntoDebugger();
+    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir)) {
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
         player->Send_Dir(cr);
         return;
     }
 
-    cr->ChangeDirAngle(checked_dir_angle);
+    cr->ChangeDir(checked_dir);
     cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
 }
 
@@ -2378,42 +2403,47 @@ void ServerEngine::Process_Property(Player* player)
         break;
     }
 
-    if (prop == nullptr || entity == nullptr) {
+    if (prop == nullptr) {
+        WriteLog("Process_Property: unknown property index {}, player '{}', type {}", property_index, player->GetName(), type);
+        return;
+    }
+    if (entity == nullptr) {
+        WriteLog("Process_Property: entity not found for property '{}', player '{}', type {}, cr_id {}, item_id {}", prop->GetName(), player->GetName(), type, cr_id, item_id);
         return;
     }
 
     if (prop->IsDisabled()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is disabled, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (prop->IsVirtual()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is virtual, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not public sync, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!is_public && !prop->IsSynced()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not synced, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is not modifiable by client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is public but not modifiable by any client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
         return;
     }
 
     if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' data size mismatch (got {}, expected {}), player '{}', type {}, entity '{}'", prop->GetName(), data_size, prop->GetBaseSize(), player->GetName(), type, entity->GetName());
         return;
     }
     if (!prop->IsPlainData() && data_size != 0) {
-        BreakIntoDebugger();
+        WriteLog("Process_Property: property '{}' is complex but got non-zero data_size {}, player '{}', type {}, entity '{}'", prop->GetName(), data_size, player->GetName(), type, entity->GetName());
         return;
     }
 
@@ -2777,76 +2807,91 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    moving->UpdateCurrentTime(GameTime.GetFrameTime());
-    auto progress = moving->EvaluateProgress();
-    const auto old_hex = cr->GetHex();
-    const auto target_hex = progress.Hex;
+    const auto current_time = GameTime.GetFrameTime();
+    const auto max_hex_updates = moving->GetSteps().size() + 1;
 
-    if (old_hex != target_hex) {
-        const auto dir = GeometryHelper::GetDir(old_hex, target_hex);
-        const auto multihex = cr->GetMultihex();
+    for (size_t i = 0; i < max_hex_updates; i++) {
+        const auto old_hex = cr->GetHex();
 
-        if (map->IsHexesMovable(target_hex, multihex)) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(target_hex);
-            map->AddCritterToField(cr);
+        moving->UpdateCurrentTimeToNextHex(current_time, old_hex);
 
-            FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+        auto progress = moving->EvaluateProgress();
+        const auto target_hex = progress.Hex;
 
-            map->VerifyTrigger(cr, old_hex, target_hex, dir);
+        if (old_hex != target_hex) {
+            const auto dir = mdir(iround<int32>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
+            const auto multihex = cr->GetMultihex();
 
-            if (!validate_moving(target_hex)) {
-                return;
+            const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+
+            if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
+                map->RemoveCritterFromField(cr);
+                cr->SetHex(target_hex);
+                map->AddCritterToField(cr);
+
+                FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+
+                map->VerifyTrigger(cr, old_hex, target_hex, dir);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
+
+                MapMngr.ProcessVisibleCritters(cr);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
+
+                MapMngr.ProcessVisibleItems(cr);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
             }
-
-            MapMngr.ProcessVisibleCritters(cr);
-
-            if (!validate_moving(target_hex)) {
-                return;
-            }
-
-            MapMngr.ProcessVisibleItems(cr);
-
-            if (!validate_moving(target_hex)) {
+            else {
+                moving->SetBlockHexes(old_hex, target_hex);
+                cr->StopMoving(MovingState::HexBusy);
+                cr->SendAndBroadcast_Moving();
                 return;
             }
         }
-        else {
-            moving->SetBlockHexes(old_hex, target_hex);
-            cr->StopMoving(MovingState::HexBusy);
-            cr->SendAndBroadcast_Moving();
+
+        const auto cr_hex = cr->GetHex();
+        const auto moved = cr_hex != old_hex;
+
+        if (cr_hex != progress.Hex) {
+            progress = moving->EvaluateProgress(cr_hex);
+        }
+
+        if (moved || cr->GetHexOffset() != progress.HexOffset) {
+            cr->SetHexOffset(progress.HexOffset);
+        }
+
+        cr->SetDir(progress.Dir);
+
+        if (!cr->AttachedCritters.empty()) {
+            cr->MoveAttachedCritters();
+
+            if (!validate_moving(cr_hex)) {
+                return;
+            }
+        }
+
+        if (progress.Completed) {
+            const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
+
+            cr->StopMoving(MovingState::Success);
+
+            if (incorrect_final_position) {
+                cr->SendAndBroadcast_Moving();
+            }
+
             return;
         }
-    }
 
-    const auto cr_hex = cr->GetHex();
-    const auto moved = cr_hex != old_hex;
-
-    if (cr_hex != progress.Hex) {
-        progress = moving->EvaluateProgress(cr_hex);
-    }
-
-    if (moved || cr->GetHexOffset() != progress.HexOffset) {
-        cr->SetHexOffset(progress.HexOffset);
-    }
-
-    cr->SetDirAngle(progress.DirAngle);
-
-    if (!cr->AttachedCritters.empty()) {
-        cr->MoveAttachedCritters();
-
-        if (!validate_moving(cr_hex)) {
-            return;
-        }
-    }
-
-    if (progress.Completed) {
-        const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
-
-        cr->StopMoving(MovingState::Success);
-
-        if (incorrect_final_position) {
-            cr->SendAndBroadcast_Moving();
+        if (!moved || moving->GetElapsedTime() >= moving->GetRuntimeElapsedTime(current_time)) {
+            break;
         }
     }
 }
@@ -2869,7 +2914,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
-void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
+void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<mdir>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2975,4 +3020,13 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
     return item;
 }
 
+auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!player_name.empty());
+    const auto hash_value = static_cast<uint32>(hashing_ex::hash(reinterpret_cast<const uint8*>(player_name.data()), player_name.length()));
+    FO_RUNTIME_ASSERT(hash_value);
+    return ident_t {(1u << 31u) | hash_value};
+}
 FO_END_NAMESPACE

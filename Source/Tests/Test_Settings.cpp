@@ -44,8 +44,7 @@ TEST_CASE("Settings")
             "[ResourcePack]\n"
             "Name = ServerPack\n"
             "InputDirs = server_dir\n"
-            "ServerOnly = true\n",
-            nullptr};
+            "ServerOnly = true\n"};
 
         settings.ApplyConfigFile(config, "cfg");
 
@@ -120,7 +119,7 @@ TEST_CASE("Settings")
     SECTION("BakingModeSaveReturnsAppliedSettings")
     {
         GlobalSettings settings {true};
-        ConfigFile config {"Bake.fomain", "CustomSaved = value\n", nullptr};
+        ConfigFile config {"Bake.fomain", "CustomSaved = value\n"};
 
         settings.ApplyConfigFile(config, "");
 

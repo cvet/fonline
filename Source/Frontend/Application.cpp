@@ -382,9 +382,6 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_IOS || FO_ANDROID
     _isTablet = true;
 #endif
-#if FO_WINDOWS
-    _isTablet = ::GetSystemMetrics(SM_TABLETPC) != 0;
-#endif
 
     // Initialize video system
     if (SDL_WasInit(SDL_INIT_VIDEO) == 0 && !SDL_InitSubSystem(SDL_INIT_VIDEO)) {
@@ -1807,7 +1804,7 @@ auto AppInput::IsMouseAvailable() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->ActiveRendererType != RenderType::Null && !_app->_isTablet;
+    return _app->_ctx->ActiveRendererType != RenderType::Null && SDL_HasMouse();
 }
 
 auto AppInput::GetMousePosition() const -> ipos32

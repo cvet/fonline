@@ -496,10 +496,10 @@ namespace ScriptMethodsTest
         if (cr is null) return -1;
 
         // Set direction
-        cr.SetDir(3);
+        cr.SetDir(HDIR_SouthWest);
 
         // Set dir angle
-        cr.SetDirAngle(180);
+        cr.SetDir(mdir(180));
 
         Game.DestroyCritter(cr);
         return 0;
@@ -588,9 +588,7 @@ namespace ScriptMethodsTest
     int TestTextPresent()
     {
         // Just calling the method exercises the code path
-        // TextPackName might not be available, but the call itself is the coverage goal
-        // Using known-invalid values still exercises error handling
-        bool present = Game.IsTextPresent(TextPackName::None, 0);
+        bool present = Game.IsTextPresent(TextPackKey());
         return 0;
     }
 

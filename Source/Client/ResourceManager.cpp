@@ -133,23 +133,23 @@ void ResourceManager::CleanupCritterFrames()
     _critterFrames.clear();
 }
 
-static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> uint32
+static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> hstring::hash_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint32(), static_cast<uint32>(state_anim), static_cast<uint32>(action_anim), 1};
-    return Hashing::MurmurHash2(dw, sizeof(dw));
+    const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
+    return hashing_ex::hash(parts, sizeof(parts));
 }
 
-static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 action_anim) -> uint32
+static auto FalloutAnimMapId(hstring model_name, uint32 state_anim, uint32 action_anim) -> hstring::hash_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint32 dw[4] = {model_name.as_uint32(), numeric_cast<uint32>(state_anim), numeric_cast<uint32>(action_anim), numeric_cast<uint32>(0xFFFFFFFF)};
-    return Hashing::MurmurHash2(dw, sizeof(dw));
+    const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
+    return hashing_ex::hash(parts, sizeof(parts));
 }
 
-auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*
+auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> const SpriteSheet*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -198,7 +198,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                         // Fix by dirs
                         for (int32 d = 0; anim && d < anim->_dirCount; d++) {
-                            auto* dir_anim = anim->GetDir(d);
+                            auto* dir_anim = anim->GetDir(hdir(d));
 
                             // Process flags
                             if (flags != 0) {
@@ -275,8 +275,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     // Store resulted animation indices
     if (anim != nullptr) {
         for (int32 d = 0; d < anim->_dirCount; d++) {
-            anim->GetDir(d)->_stateAnim = state_anim;
-            anim->GetDir(d)->_actionAnim = action_anim;
+            anim->GetDir(hdir(d))->_stateAnim = state_anim;
+            anim->GetDir(hdir(d))->_actionAnim = action_anim;
         }
     }
 
@@ -326,9 +326,9 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
 
             for (int32 d = 0; d < anim->_dirCount; d++) {
-                auto* anim_merge = anim_merge_base->GetDir(d);
-                const auto* anim_ = anim->GetDir(d);
-                const auto* animex_ = animex->GetDir(d);
+                auto* anim_merge = anim_merge_base->GetDir(hdir(d));
+                const auto* anim_ = anim->GetDir(hdir(d));
+                const auto* animex_ = animex->GetDir(hdir(d));
 
                 for (int32 i = 0; i < anim_->GetFramesCount(); i++) {
                     anim_merge->_spr[i] = anim_->GetSpr(i)->MakeCopy();
@@ -359,8 +359,8 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32 d = 0; d < anim->_dirCount; d++) {
-            auto* anim_clone = anim_clone_base->GetDir(d);
-            const auto* anim_ = anim->GetDir(d);
+            auto* anim_clone = anim_clone_base->GetDir(hdir(d));
+            const auto* anim_ = anim->GetDir(hdir(d));
 
             if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
                 for (int32 i = 0; i < anim_->GetFramesCount(); i++) {
@@ -399,8 +399,8 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
     }
 
     for (int32 d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        const auto* stay_frm = stay_frm_base->GetDir(d);
+        auto* frames = frames_base->GetDir(hdir(d));
+        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
         const auto* stay_spr = stay_frm->GetSpr(0);
 
         for (int32 i = 0; i < frames->GetFramesCount(); i++) {
@@ -421,8 +421,8 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
     }
 
     for (int32 d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        const auto* stay_frm = stay_frm_base->GetDir(d);
+        auto* frames = frames_base->GetDir(hdir(d));
+        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
         ipos32 next_offset;
 
         for (int32 i = 0; i < stay_frm->GetFramesCount(); i++) {
@@ -576,7 +576,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32 state_
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32* layers3d) -> const Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -598,7 +598,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int32* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32* layers3d) -> const ModelSprite*
 {
     FO_STACK_TRACE_ENTRY();
 

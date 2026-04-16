@@ -415,8 +415,8 @@ void CritterHexView::RefreshModel()
                 _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
             });
 
-            _model->SetLookDirAngle(GetDirAngle());
-            _model->SetMoveDirAngle(GetDirAngle(), false);
+            _model->SetLookDir(GetDir());
+            _model->SetMoveDir(GetDir(), false);
 
             if (_map->IsMapperMode()) {
                 _model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
@@ -433,49 +433,38 @@ void CritterHexView::RefreshModel()
 }
 #endif
 
-void CritterHexView::ChangeDir(uint8 dir)
+void CritterHexView::ChangeDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ChangeDirAngle(GeometryHelper::DirToAngle(dir));
+    ChangeLookDir(dir);
+    ChangeMoveDir(dir);
 }
 
-void CritterHexView::ChangeDirAngle(int32 dir_angle)
+void CritterHexView::ChangeLookDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ChangeLookDirAngle(dir_angle);
-    ChangeMoveDirAngle(dir_angle);
-}
-
-void CritterHexView::ChangeLookDirAngle(int32 dir_angle)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(numeric_cast<int16>(dir_angle));
-    const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
-
-    if (normalized_dir_angle == GetDirAngle() && dir == GetDir()) {
+    if (dir == GetDir()) {
         return;
     }
 
-    SetDirAngle(normalized_dir_angle);
     SetDir(dir);
 
 #if FO_ENABLE_3D
     if (_model) {
         if (!_model->HasBodyRotation()) {
-            _model->SetMoveDirAngle(normalized_dir_angle, true);
+            _model->SetMoveDir(dir, true);
         }
 
-        _model->SetLookDirAngle(normalized_dir_angle);
+        _model->SetLookDir(dir);
     }
 #endif
 
     RefreshView();
 }
 
-void CritterHexView::ChangeMoveDirAngle(int32 dir_angle)
+void CritterHexView::ChangeMoveDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -483,12 +472,12 @@ void CritterHexView::ChangeMoveDirAngle(int32 dir_angle)
 
 #if FO_ENABLE_3D
     if (_model) {
-        _model->SetMoveDirAngle(dir_angle, true);
+        _model->SetMoveDir(dir, true);
     }
     else
 #endif
     {
-        ignore_unused(dir_angle);
+        ignore_unused(dir);
     }
 }
 
@@ -619,16 +608,16 @@ void CritterHexView::ProcessMoving()
 #if FO_ENABLE_3D
     if (_model) {
         if (GetControlledByPlayer()) {
-            ChangeMoveDirAngle(progress.DirAngle);
+            ChangeMoveDir(progress.Dir);
         }
         else {
-            ChangeDirAngle(progress.DirAngle);
+            ChangeDir(progress.Dir);
         }
     }
     else
 #endif
     {
-        ChangeDir(GeometryHelper::AngleToDir(progress.DirAngle));
+        ChangeDir(progress.Dir);
     }
 
     if (progress.Completed && GetHex() == moving->GetEndHex()) {

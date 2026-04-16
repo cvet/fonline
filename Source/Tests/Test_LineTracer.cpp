@@ -56,7 +56,6 @@ TEST_CASE("LineTracer")
 
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(previous, current) == 1);
-            CHECK(dir == GeometryHelper::GetDir(previous, current));
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
         }
 

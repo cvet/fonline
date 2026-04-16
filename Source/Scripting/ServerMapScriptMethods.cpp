@@ -889,7 +889,7 @@ FO_SCRIPT_API int32 Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHex,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -899,7 +899,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -912,7 +912,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, readonly_map<CritterProperty, int32> props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, int32> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -933,7 +933,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir, readonly_map<CritterProperty, int32> props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir, readonly_map<CritterProperty, int32> props)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -952,7 +952,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, uint8 dir, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -974,7 +974,7 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, uint8 dir, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -1082,12 +1082,8 @@ FO_SCRIPT_API void Server_Map_Regenerate(Map* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir)
+FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
         return true;
     }
@@ -1097,12 +1093,8 @@ FO_SCRIPT_API bool Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir, int32 steps)
+FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir, int32 steps)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     int32 result = 0;
 
     for (int32 i = 0; i < steps; i++) {
@@ -1118,18 +1110,15 @@ FO_SCRIPT_API int32 Server_Map_MoveHexByDir(Map* self, mpos& hex, uint8 dir, int
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, uint8 dir)
+FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, mdir dir)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
 
     auto from_hex = hex;
 
-    if (GeometryHelper::MoveHexByDir(from_hex, GeometryHelper::ReverseDir(dir), self->GetSize())) {
+    if (GeometryHelper::MoveHexByDir(from_hex, dir.reverse(), self->GetSize())) {
         self->VerifyTrigger(cr, from_hex, hex, dir);
     }
 }

@@ -270,9 +270,9 @@ public:
     void StartMeshGeneration();
     void PrewarmParticles();
     auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, float32 ntime, ModelAnimFlags flags) -> bool;
-    void SetDir(uint8 dir, bool smooth_rotation);
-    void SetLookDirAngle(int32 dir_angle);
-    void SetMoveDirAngle(int32 dir_angle, bool smooth_rotation);
+    void SetDir(mdir dir, bool smooth_rotation);
+    void SetLookDir(mdir dir);
+    void SetMoveDir(mdir dir, bool smooth_rotation);
     void SetRotation(float32 rx, float32 ry, float32 rz);
     void SetScale(float32 sx, float32 sy, float32 sz);
     void SetSpeed(float32 speed);
@@ -400,6 +400,7 @@ public:
 private:
     [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed) -> int32;
     [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32;
+    [[nodiscard]] auto ParseInt32Value(string_view value, bool* failed) const -> int32;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;

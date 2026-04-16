@@ -339,16 +339,6 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
-        [[nodiscard]] auto ResolveGenericValue(string_view, bool* failed = nullptr) const -> int32 override
-        {
-            if (failed != nullptr) {
-                *failed = true;
-                return 0;
-            }
-
-            throw TypeResolveException("Generic values are not supported in test resolver");
-        }
-
         [[nodiscard]] auto CheckMigrationRule(hstring, hstring, hstring) const noexcept -> optional<hstring> override { return std::nullopt; }
         [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override
         {
@@ -911,7 +901,7 @@ namespace
 
 TEST_CASE("PropertiesOverlay")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("TestEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1093,7 +1083,7 @@ TEST_CASE("PropertiesOverlay")
 
 TEST_CASE("PropertiesOverlayFiltersAndCopies")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("SyncEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1466,7 +1456,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
 TEST_CASE("PropertiesFullStorageRoundTrip")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("FullEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1520,7 +1510,7 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
 
 TEST_CASE("PropertiesFullStorageCopyFrom")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("FullCopyEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1550,7 +1540,7 @@ TEST_CASE("PropertiesFullStorageCopyFrom")
 
 TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("ClientLocalEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1642,7 +1632,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
 
 TEST_CASE("PropertiesCompareData")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("CompareEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1744,7 +1734,7 @@ TEST_CASE("PropertiesCompareData")
 
 TEST_CASE("PropertiesCustomAccessors")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("AccessorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1851,7 +1841,7 @@ TEST_CASE("PropertyRawDataStorageModes")
 
 TEST_CASE("PropertiesTextRoundTrip")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("TextEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1875,7 +1865,7 @@ TEST_CASE("PropertiesTextRoundTrip")
 
 TEST_CASE("PropertiesHashAndEnumConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("TypedEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1909,7 +1899,7 @@ TEST_CASE("PropertiesHashAndEnumConversions")
 
 TEST_CASE("PropertiesNumericWidthConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("NumericWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -1958,7 +1948,7 @@ TEST_CASE("PropertiesNumericWidthConversions")
 
 TEST_CASE("PropertiesTextScalarWidthConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("NumericTextWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2021,7 +2011,7 @@ TEST_CASE("PropertiesTextScalarWidthConversions")
 
 TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("PrimitiveDictKeyEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2090,7 +2080,7 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 
 TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2155,7 +2145,7 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 
 TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("InvalidTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2215,7 +2205,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
 
 TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("AccumulatedHashesEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2241,7 +2231,7 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
 
 TEST_CASE("PropertiesDictConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DictEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2308,7 +2298,7 @@ TEST_CASE("PropertiesDictConversions")
 
 TEST_CASE("PropertiesNumericDictConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("NumericDictEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2364,7 +2354,7 @@ TEST_CASE("PropertiesNumericDictConversions")
 
 TEST_CASE("PropertiesSpecialValueDictArrays")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("SpecialDictEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2426,7 +2416,7 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
 
 TEST_CASE("PropertiesFloatDictConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("FloatDictEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2481,7 +2471,7 @@ TEST_CASE("PropertiesFloatDictConversions")
 
 TEST_CASE("PropertiesStructDictConversions")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("StructDictEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2563,7 +2553,7 @@ TEST_CASE("PropertiesStructDictConversions")
 
 TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("InvalidStructEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2596,7 +2586,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
 
 TEST_CASE("PropertiesSerializatorRejectsInvalidTextStructShapes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("InvalidTextStructEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2613,7 +2603,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTextStructShapes")
 
 TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2644,7 +2634,7 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 
 TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentLoadEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2666,7 +2656,7 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 
 TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2685,7 +2675,7 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2707,7 +2697,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2729,7 +2719,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentCollectionTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2751,7 +2741,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentDictArrayTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2773,7 +2763,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentStringCollectionInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
@@ -2801,7 +2791,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerDictArrayStringValues")
 {
-    HashStorage hashes;
+    HashStorage hashes {};
     TestNameResolver resolver;
     PropertyRegistrator registrator("DocumentDictArrayStringInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 

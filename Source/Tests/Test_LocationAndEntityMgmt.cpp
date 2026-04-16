@@ -213,13 +213,13 @@ namespace LocEntity
         Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        cr.SetDir(0);
-        if (cr.Dir != 0) return -2;
+        cr.SetDir(HDIR_NorthEast);
+        if (cr.Dir.hex != HDIR_NorthEast) return -2;
 
-        cr.SetDir(3);
-        if (cr.Dir != 3) return -3;
+        cr.SetDir(HDIR_SouthWest);
+        if (cr.Dir.hex != HDIR_SouthWest) return -3;
 
-        cr.SetDirAngle(90);
+        cr.SetDir(mdir(90));
 
         Game.DestroyCritter(cr);
         return 0;
@@ -654,9 +654,7 @@ namespace LocEntity
         p2.x = 105;
         p2.y = 100;
 
-        uint8 dir = Game.GetDirection(p1, p2);
-        if (dir > 5) return -1;
-
+        mdir dir = Game.GetDirection(p1, p2);
         int dist = Game.GetDistance(p1, p2);
         if (dist == 0) return -2;
 
@@ -701,7 +699,7 @@ namespace LocEntity
             return -3;
         }
 
-        cr.TransferToMap(map, mpos(20, 20), 0);
+        cr.TransferToMap(map, mpos(20, 20), mdir(0));
         if (cr.MapId.value != map.Id.value) {
             Game.DestroyLocation(loc);
             Game.DestroyCritter(cr);

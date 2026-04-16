@@ -79,7 +79,7 @@ public:
     {
         ident_t Id {};
         mpos Hex {};
-        int16 DirAngle {};
+        mdir Dir {};
         bool IsCritter {};
         bool IsItem {};
         CritterItemSlot Slot {CritterItemSlot::Inventory};
@@ -358,7 +358,7 @@ public:
     string PanelModeNames[INT_MODE_COUNT] {};
     raw_ptr<vector<raw_ptr<const ProtoItem>>> ActiveItemProtos {};
     raw_ptr<vector<raw_ptr<const ProtoCritter>>> ActiveCritterProtos {};
-    uint8 CritterDir {};
+    mdir CritterDir {};
     raw_ptr<int32> ActiveProtoScroll {};
     int32 ProtoWidth {};
     int32 ProtosOnScreen {};

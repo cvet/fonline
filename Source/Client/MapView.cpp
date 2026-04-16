@@ -985,25 +985,25 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     HideHexLines(-ox, -oy);
 
     // Shift view position
-    uint8 shift_ox_dir;
+    mdir shift_ox_dir;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_ox_dir = ox > 0 ? 1 : 4;
+        shift_ox_dir = ox > 0 ? hdir::East : hdir::West;
     }
     else {
-        shift_ox_dir = ox > 0 ? 1 : 5;
+        shift_ox_dir = ox > 0 ? hdir::East : hdir::NorthWest;
     }
 
-    uint8 shift_oy_dir1;
-    uint8 shift_oy_dir2;
+    mdir shift_oy_dir1;
+    mdir shift_oy_dir2;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_oy_dir1 = oy > 0 ? 2 : 0;
-        shift_oy_dir2 = oy > 0 ? 3 : 5;
+        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
+        shift_oy_dir2 = oy > 0 ? hdir::SouthWest : hdir::NorthWest;
     }
     else {
-        shift_oy_dir1 = oy > 0 ? 2 : 0;
-        shift_oy_dir2 = oy > 0 ? 4 : 6;
+        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
+        shift_oy_dir2 = oy > 0 ? hdir::West : hdir::NorthWest;
     }
 
     if (ox != 0) {
@@ -1549,22 +1549,26 @@ void MapView::ApplyLightFan(LightSource* ls)
     optional<mpos> last_traced_hex;
 
     for (int32 i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
-        uint8 dir;
+        mdir dir;
         int32 iterations;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = numeric_cast<uint8>((i + 2) % 6);
+            dir = hdir((i + 2) % 6);
             iterations = distance;
         }
         else {
-            dir = numeric_cast<uint8>(((i + 1) * 2) % 8);
+            dir = hdir(((i + 1) * 2) % 8);
             iterations = distance * 2;
         }
 
         for (int32 j = 0; j < iterations; j++) {
             if (seek_start) {
                 for (int32 l = 0; l < distance; l++) {
-                    GeometryHelper::MoveHexByDirUnsafe(raw_traced_hex, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+#if FO_GEOMETRY == 1
+                    GeometryHelper::MoveHexByDirUnsafe(raw_traced_hex, hdir::NorthEast);
+#elif FO_GEOMETRY == 2
+                    GeometryHelper::MoveHexByDirUnsafe(raw_traced_hex, hdir::North);
+#endif
                 }
 
                 seek_start = false;
@@ -1764,9 +1768,9 @@ void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32 i
 
     if (field.HasTransparentWall) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
-        const auto dir = GeometryHelper::GetDir(from_hex, to_hex);
+        const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
-        if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
+        if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
             MarkLight(ls, to_hex, intensity);
         }
     }
@@ -1791,9 +1795,9 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32 in
         }
     }
 
-    const int32 dir = GeometryHelper::GetDir(from_hex, to_hex);
+    const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
-    if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
+    if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
         MarkLight(ls, to_hex, intensity);
 
         if (is_wall) {
@@ -2235,12 +2239,12 @@ void MapView::InitView()
     auto row_hex = _screenRawHex;
 
     for (int32 i = 0; i < _wLeft; i++) {
-        constexpr auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? 4 : 5);
+        const auto dir = hdir::West;
         GeometryHelper::MoveHexByDirUnsafe(row_hex, dir);
     }
     for (int32 i = 0; i < _hTop / 2; i++) {
-        constexpr auto dir1 = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6);
-        constexpr auto dir2 = static_cast<uint8>(0);
+        const auto dir1 = hdir::NorthWest;
+        const auto dir2 = hdir::NorthEast;
         GeometryHelper::MoveHexByDirUnsafe(row_hex, dir1);
         GeometryHelper::MoveHexByDirUnsafe(row_hex, dir2);
     }
@@ -2261,11 +2265,11 @@ void MapView::InitView()
             vf.RawHex = cur_hex;
 
             ox += GameSettings::MAP_HEX_WIDTH;
-            GeometryHelper::MoveHexByDirUnsafe(cur_hex, 1);
+            GeometryHelper::MoveHexByDirUnsafe(cur_hex, hdir::East);
         }
 
         oy += GameSettings::MAP_HEX_LINE_HEIGHT;
-        GeometryHelper::MoveHexByDirUnsafe(row_hex, yv % 2 == 0 ? 2 : 3);
+        GeometryHelper::MoveHexByDirUnsafe(row_hex, yv % 2 == 0 ? hdir::SouthEast : hdir::SouthWest);
     }
 }
 
@@ -2972,7 +2976,7 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
     return nullptr;
 }
 
-auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*
+auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8>>& data) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2984,12 +2988,12 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, int16 dir_an
 
     cr->RestoreData(data);
     cr->SetHex(hex);
-    cr->ChangeDirAngle(dir_angle);
+    cr->ChangeDir(dir);
 
     return AddCritterInternal(cr.get());
 }
 
-auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Properties* props, ident_t id) -> CritterHexView*
+auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3002,7 +3006,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, int16 dir_angle, const Pro
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
-    cr->ChangeDirAngle(dir_angle);
+    cr->ChangeDir(dir);
 
     return AddCritterInternal(cr.get());
 }
@@ -3414,23 +3418,30 @@ bool MapView::CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int3
     return !!FindPath(cr, start_hex, target_hex, cut);
 }
 
-bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& dir_steps, int32 quad_dir) const
+bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, int32 quad_dir, int32 multihex) const
 {
     FO_STACK_TRACE_ENTRY();
 
     hex_offset = {};
 
-    const auto try_move = [this, &start_hex, &dir_steps](uint8 dir) {
+    const auto try_move = [this, &start_hex, &dir_steps, multihex](mdir dir) {
         auto check_hex = start_hex;
 
         if (!GeometryHelper::MoveHexByDir(check_hex, dir, _mapSize)) {
             return false;
         }
 
-        const auto& field = _hexField->GetCellForReading(check_hex);
+        if (multihex > 0) {
+            const auto result = PathFinding::CheckHexWithMultihex(check_hex, dir, multihex, _mapSize, [this](mpos h) { return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable; });
 
-        if (field.MoveBlocked) {
-            return false;
+            if (result == HexBlockResult::Blocked) {
+                return false;
+            }
+        }
+        else {
+            if (_hexField->GetCellForReading(check_hex).MoveBlocked) {
+                return false;
+            }
         }
 
         start_hex = check_hex;
@@ -3438,10 +3449,10 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& d
         return true;
     };
 
-    const auto try_move2 = [&try_move, &hex_offset](uint8 dir1, uint8 dir2) {
+    const auto try_move2 = [&try_move, &hex_offset](mdir dir1, mdir dir2) {
         if (try_move(dir1)) {
             if (!try_move(dir2)) {
-                hex_offset.x = dir1 == 0 ? -16 : 16;
+                hex_offset.x = dir1.hex() == hdir::NorthEast ? -16 : 16;
                 return false;
             }
             return true;
@@ -3449,7 +3460,7 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& d
 
         if (try_move(dir2)) {
             if (!try_move(dir1)) {
-                hex_offset.x = dir2 == 5 ? 16 : -16;
+                hex_offset.x = dir2.hex() == hdir::NorthWest ? 16 : -16;
                 return false;
             }
             return true;
@@ -3461,14 +3472,14 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<uint8>& d
     constexpr auto some_big_path_len = 200;
 
     for (auto i = 0, j = (quad_dir == 3 || quad_dir == 7 ? some_big_path_len / 2 : some_big_path_len); i < j; i++) {
-        if ((quad_dir == 0 && !try_move(start_hex.x % 2 == 0 ? 0 : 1)) || //
-            (quad_dir == 1 && !try_move(1)) || //
-            (quad_dir == 2 && !try_move(2)) || //
-            (quad_dir == 3 && !try_move2(3, 2)) || //
-            (quad_dir == 4 && !try_move(start_hex.x % 2 == 0 ? 4 : 3)) || //
-            (quad_dir == 5 && !try_move(4)) || //
-            (quad_dir == 6 && !try_move(5)) || //
-            (quad_dir == 7 && !try_move2(0, 5))) {
+        if ((quad_dir == 0 && !try_move(start_hex.x % 2 == 0 ? hdir::NorthEast : hdir::East)) || //
+            (quad_dir == 1 && !try_move(hdir::East)) || //
+            (quad_dir == 2 && !try_move(hdir::SouthEast)) || //
+            (quad_dir == 3 && !try_move2(hdir::SouthWest, hdir::SouthEast)) || //
+            (quad_dir == 4 && !try_move(start_hex.x % 2 == 0 ? hdir::West : hdir::SouthWest)) || //
+            (quad_dir == 5 && !try_move(hdir::West)) || //
+            (quad_dir == 6 && !try_move(hdir::NorthWest)) || //
+            (quad_dir == 7 && !try_move2(hdir::NorthEast, hdir::NorthWest))) {
             return i > 0;
         }
     }
