@@ -1807,7 +1807,7 @@ auto AppInput::IsMouseAvailable() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->ActiveRendererType != RenderType::Null && !_app->_isTablet;
+    return _app->_ctx->ActiveRendererType != RenderType::Null && SDL_HasMouse();
 }
 
 auto AppInput::GetMousePosition() const -> ipos32
