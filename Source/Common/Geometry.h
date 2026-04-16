@@ -129,7 +129,7 @@ public:
 #endif
 
 private:
-    int8 _value {NorthEast._value};
+    int8 _value {};
 };
 static_assert(sizeof(hdir) == 1 && std::is_standard_layout_v<hdir>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE hdir, "{}", value.value());
