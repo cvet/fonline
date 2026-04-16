@@ -450,8 +450,7 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    void InitSubsystems(BaseEngine* engine);
-    void InitSubsystems(EngineMetadata* meta, const FileSystem& resources);
+    void MapScriptTypes(EngineMetadata* meta);
     void InitModules();
     void ProcessScriptEvents();
 

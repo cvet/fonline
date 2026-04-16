@@ -32,6 +32,7 @@
 //
 
 #include "Client.h"
+#include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
@@ -84,7 +85,10 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-    InitSubsystems(this);
+    MapScriptTypes(this);
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(this, Resources);
+#endif
 
     _curLang = TextPack {Hashes};
     _curLang.LoadFromResources(Resources, Settings.Language);

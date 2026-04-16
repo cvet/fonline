@@ -32,6 +32,7 @@
 //
 
 #include "Server.h"
+#include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
 #include "MetadataRegistration.h"
@@ -132,6 +133,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         WriteLog("Initialize script system");
 
+        MapScriptTypes(this);
         MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
         MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
         MapEngineType<StaticItem>(GetBaseType("StaticItem"));
@@ -139,7 +141,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         MapEngineType<Map>(GetBaseType(Map::ENTITY_TYPE_NAME));
         MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
 
-        InitSubsystems(this);
+#if FO_ANGELSCRIPT_SCRIPTING
+        InitAngelScriptScripting(this, Resources);
+#endif
 
         return std::nullopt;
     });

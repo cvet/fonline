@@ -33,6 +33,7 @@
 
 #include "Mapper.h"
 #include "3dStuff.h"
+#include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
@@ -534,6 +535,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     ResMngr.IndexFiles();
 
+    MapScriptTypes(this);
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
     MapEngineType<ItemView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
     MapEngineType<ItemHexView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
@@ -542,7 +544,9 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-    InitSubsystems(this);
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(this, Resources);
+#endif
 
     _curLang = TextPack {Hashes};
     _curLang.LoadFromResources(Resources, Settings.Language);

@@ -32,6 +32,7 @@
 //
 
 #include "ProtoBaker.h"
+#include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"
@@ -83,7 +84,10 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time)) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
             auto engine = BakerServerEngine(*_context->BakedFiles);
-            engine.InitSubsystems(&engine, *_context->BakedFiles);
+            engine.MapScriptTypes(&engine);
+#if FO_ANGELSCRIPT_SCRIPTING
+            InitAngelScriptScripting(&engine, *_context->BakedFiles);
+#endif
             auto data = BakeProtoFiles(&engine, &engine, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-server", data);
         }));
