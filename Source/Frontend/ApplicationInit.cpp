@@ -290,7 +290,7 @@ static void PrebakeResources(BakingSettings& settings)
 }
 
 #if FO_LINUX || FO_MAC
-static void SignalHandler(int32 sig)
+static void SignalHandler(int sig)
 {
     std::signal(sig, SignalHandler);
     App->RequestQuit();

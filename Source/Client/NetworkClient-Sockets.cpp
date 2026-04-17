@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define SOCKET int32
+#define SOCKET int
 #define INVALID_SOCKET (-1)
 #define SOCKET_ERROR (-1)
 #define closesocket close
