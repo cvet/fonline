@@ -376,7 +376,7 @@ FO_BEGIN_NAMESPACE
 namespace WebRelated
 {
 #if FO_WEB
-    static auto CalcAdaptiveScreenSize(int32 page_width, int32 page_height, bool fullscreen, WebSettings& settings) noexcept -> isize32
+    static auto CalcAdaptiveScreenSize(int32_t page_width, int32_t page_height, bool fullscreen, WebSettings& settings) noexcept -> isize32
     {
         const auto safe_page_width = std::max(page_width, 1);
         const auto safe_page_height = std::max(page_height, 1);
@@ -387,11 +387,11 @@ namespace WebRelated
         const auto max_height = std::max(settings.MaxHeight, min_height);
 
         const auto height_percent = fullscreen ? 100 : std::clamp(settings.ScreenHeightPercent, 1, 100);
-        auto screen_height = numeric_cast<int32>(std::clamp((numeric_cast<int64>(safe_page_height) * height_percent + 50) / 100, numeric_cast<int64>(min_height), numeric_cast<int64>(max_height)));
+        auto screen_height = numeric_cast<int32_t>(std::clamp((numeric_cast<int64_t>(safe_page_height) * height_percent + 50) / 100, numeric_cast<int64_t>(min_height), numeric_cast<int64_t>(max_height)));
         screen_height = std::min(screen_height, safe_page_height);
 
         const auto aspect_factor = std::max(settings.AspectFactor, 0.001f);
-        auto screen_width = iround<int32>(std::clamp(numeric_cast<float32>(screen_height) / aspect_factor, numeric_cast<float32>(min_width), numeric_cast<float32>(max_width)));
+        auto screen_width = iround<int32_t>(std::clamp(numeric_cast<float32_t>(screen_height) / aspect_factor, numeric_cast<float32_t>(min_width), numeric_cast<float32_t>(max_width)));
 
         if (screen_width > safe_page_width) {
             screen_width = safe_page_width;

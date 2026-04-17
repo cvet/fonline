@@ -170,13 +170,13 @@ namespace aswrap
     static void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
     {
         if constexpr (std::is_lvalue_reference_v<T>) {
-            int32 as_result = gen->SetReturnAddress(const_cast<void*>(static_cast<const void*>(std::addressof(value))));
+            const auto as_result = gen->SetReturnAddress(const_cast<void*>(static_cast<const void*>(std::addressof(value))));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
         }
         else if constexpr (std::is_pointer_v<T>) {
-            int32 as_result = gen->SetReturnAddress(const_cast<void*>(reinterpret_cast<const void*>(value)));
+            const auto as_result = gen->SetReturnAddress(const_cast<void*>(reinterpret_cast<const void*>(value)));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
