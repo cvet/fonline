@@ -806,32 +806,22 @@ FO_SCRIPT_API void Client_Game_SetEffect(ClientEngine* client, EffectType effect
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ClientEngine* client, ipos32 pos, MouseButton button)
 {
-    ignore_unused(client);
-    ignore_unused(pos);
-    ignore_unused(button);
+    const auto prev_pos = client->Settings.MousePos;
 
-    throw NotImplementedException(FO_LINE_STR);
+    if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});
+    }
 
-    /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
-
-    IntVec prev_events = client->Settings.MainWindowMouseEvents;
-    client->Settings.MainWindowMouseEvents.clear();
-    int32 prev_x = client->Settings.MouseX;
-    int32 prev_y = client->Settings.MouseY;
-    int32 last_prev_x = client->Settings.LastMouseX;
-    int32 last_prev_y = client->Settings.LastMouseY;
-    client->Settings.MouseX = client->Settings.LastMouseX = x;
-    client->Settings.MouseY = client->Settings.LastMouseY = y;
-    client->Settings.MainWindowMouseEvents.emplace_back(SDL_MOUSEBUTTONDOWN);
-    client->Settings.MainWindowMouseEvents.emplace_back(button);
-    client->Settings.MainWindowMouseEvents.emplace_back(SDL_MOUSEBUTTONUP);
-    client->Settings.MainWindowMouseEvents.emplace_back(button);
-    client->ParseMouse();
-    client->Settings.MainWindowMouseEvents = prev_events;
-    client->Settings.MouseX = prev_x;
-    client->Settings.MouseY = prev_y;
-    client->Settings.LastMouseX = last_prev_x;
-    client->Settings.LastMouseY = last_prev_y;*/
+    if (button == MouseButton::WheelUp) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseWheelEvent {1}});
+    }
+    else if (button == MouseButton::WheelDown) {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseWheelEvent {-1}});
+    }
+    else {
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
+    }
 }
 
 ///@ ExportMethod
