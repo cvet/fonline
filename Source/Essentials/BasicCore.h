@@ -593,6 +593,19 @@ FO_BEGIN_NAMESPACE
     }; \
     FO_BEGIN_NAMESPACE
 
+#define FO_DECLARE_TYPE_FORMATTER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            __VA_ARGS__; \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
     FO_END_NAMESPACE \
     inline auto operator>>(std::istream& istr, type& value)->std::istream& \
@@ -611,6 +624,14 @@ FO_BEGIN_NAMESPACE
         op1; \
         value = !!(istr >> op2) ? op3 : type {}; \
         return istr; \
+    } \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_PARSER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    inline auto operator>>(std::istream& istr, type& value)->std::istream& \
+    { \
+        __VA_ARGS__; \
     } \
     FO_BEGIN_NAMESPACE
 
@@ -637,6 +658,19 @@ FO_BEGIN_NAMESPACE
         auto operator()(const type& v) const noexcept \
         { \
             return FO_NAMESPACE hashing_ex::hash(__VA_ARGS__); \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_HASHER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct FO_NAMESPACE hashing::hash<type> \
+    { \
+        using is_avalanching = void; \
+        auto operator()(const type& v) const noexcept \
+        { \
+            return __VA_ARGS__; \
         } \
     }; \
     FO_BEGIN_NAMESPACE

@@ -306,6 +306,7 @@ void DataBaseImpl::InitializeOpLogs()
             }
 
             const auto command = line.substr(0, first_space);
+            const auto collection = line.substr(first_space + 1, second_space - first_space - 1);
             string_view record_id_str {};
             string_view other {};
             bool has_other = false;
