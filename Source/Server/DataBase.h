@@ -79,7 +79,7 @@ FO_DECLARE_TYPE_FORMATTER_EXT(FO_NAMESPACE DataBaseKey,
         },
         value));
 
-FO_DECLARE_TYPE_HASHER_EXT2(FO_NAMESPACE DataBaseKey, std::visit([](const auto& value) -> uint64_t { return FO_HASH_NAMESPACE hashing::hash<std::decay_t<decltype(value)>> {}(value); }, v));
+FO_DECLARE_TYPE_HASHER_EXT2(FO_NAMESPACE DataBaseKey, std::visit([](const auto& value) -> uint64_t { return FO_NAMESPACE hashing::hash<std::decay_t<decltype(value)>> {}(value); }, v));
 
 class DataBaseImpl;
 
