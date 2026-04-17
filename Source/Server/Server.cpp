@@ -189,7 +189,11 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         const auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
             FO_RUNTIME_ASSERT(!collection_name.as_str().empty());
-            FO_RUNTIME_ASSERT(!registered_collection_types.contains(collection_name));
+
+            if (registered_collection_types.contains(collection_name)) {
+                throw DataBaseException("Duplicate database collection name", collection_name.as_str());
+            }
+
             registered_collection_types.emplace(collection_name, key_type);
             collection_schemas.emplace_back(collection_name, key_type);
             return true;
