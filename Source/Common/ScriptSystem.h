@@ -436,7 +436,7 @@ class ScriptSystemBackend
 {
 public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32 MONO_BACKEND_INDEX = 1;
+    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
 

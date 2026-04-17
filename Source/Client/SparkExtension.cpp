@@ -311,21 +311,21 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetDrawWidth() const -> int32
+    auto SparkQuadRenderer::GetDrawWidth() const -> int32_t
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawWidth;
     }
 
-    auto SparkQuadRenderer::GetDrawHeight() const -> int32
+    auto SparkQuadRenderer::GetDrawHeight() const -> int32_t
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawHeight;
     }
 
-    void SparkQuadRenderer::SetDrawSize(int32 width, int32 height)
+    void SparkQuadRenderer::SetDrawSize(int32_t width, int32_t height)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -404,7 +404,7 @@ namespace SPK::FO
         upVector.set(0.0f, 1.0f, 0.0f);
 
         if (const auto* attrib = descriptor.getAttributeWithValue("draw size"); attrib != nullptr) {
-            const auto tmpSize = attrib->getValues<int32>();
+            const auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
             case 1:
