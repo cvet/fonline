@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 std::mutex InterthreadListenersLocker;
-map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 alignas(uint32_t) static volatile constexpr char PACKAGED_MARK[] = "###NOT_PACKAGED###";
 static bool HasNotPackagedMark = strex().assignVolatile(PACKAGED_MARK, sizeof(PACKAGED_MARK)).str().find("NOT_PACKAGED") != string::npos;
@@ -55,7 +55,7 @@ void ForcePackaged()
     HasNotPackagedMark = false;
 }
 
-FrameBalancer::FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps) :
+FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
     _sleep {sleep},
     _fixedFps {fixed_fps}
@@ -93,7 +93,7 @@ void FrameBalancer::EndLoop()
         }
     }
     else if (_fixedFps > 0) {
-        const timespan target_time = std::chrono::nanoseconds(iround<uint64>(1000.0 / numeric_cast<float64>(_fixedFps) * 1000000.0));
+        const timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
         const auto idle_time = target_time - _loopDuration + _idleTimeBalance;
 
         if (idle_time > timespan::zero) {
@@ -137,11 +137,11 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
     std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
     FO_RUNTIME_ASSERT(file);
 
-    const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        numeric_cast<uint8>(size.width % 256), numeric_cast<uint8>(size.width / 256), //
-        numeric_cast<uint8>(size.height % 256), numeric_cast<uint8>(size.height / 256), 4 * 8, 0x20};
+    const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+        numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
+        numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
     file.write(reinterpret_cast<const char*>(header), static_cast<std::streamsize>(sizeof(header)));
-    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size() * sizeof(uint32)));
+    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
     FO_RUNTIME_ASSERT(file);
 }
 

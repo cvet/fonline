@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
 
         {
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));

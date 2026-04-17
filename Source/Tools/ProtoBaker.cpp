@@ -61,7 +61,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 
     vector<File> filtered_files;
-    uint64 max_write_time = 0;
+    uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
@@ -126,7 +126,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8>
+auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script_sys, const vector<File>& files) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -289,44 +289,44 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
     }
 
     // Binary representation
-    vector<uint8> protos_data;
+    vector<uint8_t> protos_data;
     set<hstring> str_hashes;
 
     {
         auto writer = DataWriter(protos_data);
 
-        vector<uint8> props_data;
+        vector<uint8_t> props_data;
 
-        writer.Write<uint32>(numeric_cast<uint32>(all_protos.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(all_protos.size()));
 
         for (auto&& [type_name, protos] : all_protos) {
-            writer.Write<uint32>(numeric_cast<uint32>(protos.size()));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
 
-            writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
             writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
 
             for (auto& proto : protos | std::views::values) {
                 const auto proto_name = proto->GetName();
-                writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+                writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
                 writer.WritePtr(proto_name.data(), proto_name.length());
 
                 proto->GetProperties().StoreAllData(props_data, str_hashes);
-                writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+                writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                 writer.WritePtr(props_data.data(), props_data.size());
             }
         }
     }
 
-    vector<uint8> final_data;
+    vector<uint8_t> final_data;
 
     {
         auto final_writer = DataWriter(final_data);
 
-        final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
+        final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
 
         for (const auto& hstr : str_hashes) {
             const auto& str = hstr.as_str();
-            final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
+            final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
             final_writer.WritePtr(str.c_str(), str.length());
         }
 

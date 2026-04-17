@@ -59,11 +59,11 @@ public:
 private:
     struct UpdateFile
     {
-        int32 Index {};
+        int32_t Index {};
         string Name;
         size_t Size {};
         size_t RemaningSize {};
-        uint32 Hash {};
+        uint32_t Hash {};
     };
 
     void AddText(string_view text);
@@ -90,9 +90,9 @@ private:
     vector<UpdateFile> _filesToUpdate {};
     size_t _filesWholeSize {};
     std::ofstream _tempFile {};
-    vector<uint8> _updateFileBuf {};
+    vector<uint8_t> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};
-    vector<vector<uint8>> _globalsPropertiesData {};
+    vector<vector<uint8_t>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
 

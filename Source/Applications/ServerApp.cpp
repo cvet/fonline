@@ -54,7 +54,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
 
         refcount_ptr<ServerEngine> server;
         vector<refcount_ptr<ClientEngine>> clients;
@@ -64,7 +64,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         list<pair<vector<string>, StackTraceData>> log_buffer;
         std::mutex log_buffer_locker;
-        int32 exception_count = 0;
+        int32_t exception_count = 0;
 
         SetLogCallback("ServerApp", [&](string_view str) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};

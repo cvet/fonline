@@ -176,31 +176,15 @@
 FO_BEGIN_NAMESPACE
 
 // Base types
-using int8 = std::int8_t;
-using uint8 = std::uint8_t;
-using int16 = std::int16_t;
-using int32 = std::int32_t;
-using uint16 = std::uint16_t;
-using uint32 = std::uint32_t;
-using int64 = std::int64_t;
-using uint64 = std::uint64_t;
-using float32 = float;
-using float64 = double;
+using float32_t = float;
+using float64_t = double;
 
 // Check the sizes of base types
-static_assert(sizeof(int8) == 1);
-static_assert(sizeof(uint8) == 1);
-static_assert(sizeof(int16) == 2);
-static_assert(sizeof(uint16) == 2);
-static_assert(sizeof(int32) == 4);
-static_assert(sizeof(uint32) == 4);
-static_assert(sizeof(int64) == 8);
-static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(size_t) >= 4);
 static_assert(sizeof(int) >= 4);
-static_assert(sizeof(float32) == 4);
-static_assert(sizeof(float64) == 8);
+static_assert(sizeof(float32_t) == 4);
+static_assert(sizeof(float64_t) == 8);
 static_assert(CHAR_BIT == 8); // NOLINT(misc-redundant-expression)
 
 // Bind to global scope frequently used types
@@ -264,7 +248,7 @@ struct fixed_string
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 
-extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*;
+extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
@@ -286,12 +270,12 @@ constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std
 }
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) noexcept -> uint32
+constexpr auto const_hash(const char* input) noexcept -> uint32_t
 {
-    return *input != 0 ? static_cast<uint32>(*input) + 33 * const_hash(input + 1) : 5381;
+    return *input != 0 ? static_cast<uint32_t>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
-auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint32
+auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint32_t
 {
     (void)size;
     return const_hash(str);
@@ -374,7 +358,7 @@ template<typename T, std::integral U>
     requires(std::is_pointer_v<T> && std::is_void_v<remove_all_pointers_t<T>>)
 inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
 {
-    return cast_to_void(cast_from_void<uint8*>(ptr) + offset);
+    return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
 }
 
 // Stack unwind detector
@@ -676,9 +660,9 @@ FO_BEGIN_NAMESPACE
     FO_BEGIN_NAMESPACE
 
 // Math constants
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32> / 180.0f;
+constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32_t>;
+constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32_t> * 2.0f;
+constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32_t>;
+constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32_t> / 180.0f;
 
 FO_END_NAMESPACE

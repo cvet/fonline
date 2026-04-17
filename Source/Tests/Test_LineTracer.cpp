@@ -49,7 +49,7 @@ TEST_CASE("LineTracer")
         const auto initial_distance = GeometryHelper::GetDistance(start, target);
         REQUIRE(initial_distance > 0);
 
-        for (int32 step = 0; step < initial_distance; step++) {
+        for (int32_t step = 0; step < initial_distance; step++) {
             const auto previous = current;
             const auto previous_distance = GeometryHelper::GetDistance(previous, target);
             const auto dir = tracer.GetNextHex(current);
@@ -73,7 +73,7 @@ TEST_CASE("LineTracer")
         const auto distance = GeometryHelper::GetDistance(start, target);
         REQUIRE(distance > 0);
 
-        for (int32 step = 0; step < distance; step++) {
+        for (int32_t step = 0; step < distance; step++) {
             const auto previous_distance = GeometryHelper::GetDistance(current, target);
             tracer.GetNextHex(current);
             CHECK(map_size.is_valid_pos(current));

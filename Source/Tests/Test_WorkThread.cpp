@@ -84,7 +84,7 @@ TEST_CASE("WorkThread")
         std::atomic_int32_t runs = 0;
 
         worker.AddJob([&]() -> optional<timespan> {
-            const int32 next_run = ++runs;
+            const int32_t next_run = ++runs;
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 

@@ -44,9 +44,9 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint16 ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT = 43000;
-static constexpr uint16 ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN = 2000;
-static constexpr uint16 ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT = 43001;
+static constexpr uint16_t ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT = 43000;
+static constexpr uint16_t ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN = 2000;
+static constexpr uint16_t ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT = 43001;
 static constexpr string_view ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE = "fos-debug-discover-v1";
 static constexpr timespan ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT = std::chrono::milliseconds(10);
 static constexpr timespan ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP = std::chrono::milliseconds(10);
@@ -54,13 +54,13 @@ static constexpr timespan ANGELSCRIPT_DEBUGGER_PAUSE_POLL_SLEEP = std::chrono::m
 struct DebuggerStepState
 {
     DebuggerStepMode Mode {};
-    uint32 BaseDepth {};
-    uint32 LastStoppedDepth {};
+    uint32_t BaseDepth {};
+    uint32_t LastStoppedDepth {};
     bool HasLastStoppedDepth {};
     optional<string> BreakpointSourcePath {};
-    uint32 BreakpointSourceLine {};
+    uint32_t BreakpointSourceLine {};
     optional<string> BaseSourcePath {};
-    uint32 BaseSourceLine {};
+    uint32_t BaseSourceLine {};
 };
 
 class DebuggerEndpointServer::Impl
@@ -91,10 +91,10 @@ public:
     auto ConsumePauseStart() -> bool;
     void RequestSingleStep(DebuggerStepMode mode);
     auto ConsumeSingleStepRequest() -> DebuggerStepMode;
-    void SetBreakpoints(string_view source_path, const vector<uint32>& lines);
+    void SetBreakpoints(string_view source_path, const vector<uint32_t>& lines);
     void SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason);
     void ProcessLine(AngelScript::asIScriptContext* ctx);
-    auto HasBreakpoint(string_view source_path, uint32 line) const -> bool;
+    auto HasBreakpoint(string_view source_path, uint32_t line) const -> bool;
     void EmitEvent(string_view event_name, string_view body_json = "{}");
     void Stop() noexcept;
 
@@ -107,9 +107,9 @@ private:
     };
 
     auto MakeAttachHandshakeMessage() const -> string;
-    auto ExtractRequestId(string_view message) const -> optional<int32>;
+    auto ExtractRequestId(string_view message) const -> optional<int32_t>;
     auto ExtractRequestCommand(string_view message) const -> string;
-    auto MakeDebuggerResponse(int32 request_id, string_view command, bool success, string_view body_json = "{}") const -> string;
+    auto MakeDebuggerResponse(int32_t request_id, string_view command, bool success, string_view body_json = "{}") const -> string;
     auto MakeDebuggerEventMessage(string_view event_name, string_view body_json = "{}") const -> string;
     auto SendToActiveClient(string_view message) -> bool;
     auto HandleRequestLine(string_view line) -> RequestResult;
@@ -124,8 +124,8 @@ private:
     string _host {};
     string _bindHost {};
     string _targetName {};
-    uint16 _port {};
-    uint16 _discoveryPort {ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT};
+    uint16_t _port {};
+    uint16_t _discoveryPort {ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT};
     std::atomic_bool _paused {false};
     std::atomic_bool _pauseStartPending {false};
     std::atomic_bool _singleStepRequested {false};
@@ -142,11 +142,11 @@ private:
     StackTraceData _lastStackTrace {};
     vector<vector<LocalVariableInfo>> _lastLocalsByFrame {};
     string _lastStoppedSourcePath {};
-    uint32 _lastStoppedSourceLine {};
+    uint32_t _lastStoppedSourceLine {};
     string _lastStoppedFunction {};
     bool _hasLastStoppedLocation {};
     mutable std::mutex _breakpointsLocker {};
-    unordered_map<string, unordered_set<uint32>> _lineBreakpoints {};
+    unordered_map<string, unordered_set<uint32_t>> _lineBreakpoints {};
     tcp_server _tcpServer {};
     tcp_socket _activeClientSock {};
     udp_socket _discoverySocket {};
@@ -190,16 +190,16 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
     const bool sockets_startup = net_sockets::startup();
     FO_RUNTIME_ASSERT(sockets_startup);
 
-    constexpr uint16 base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
-    constexpr uint16 span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
-    const int32 pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
-    const uint16 start_offset = pid_num > 0 ? numeric_cast<uint16>(pid_num % span) : uint16 {0};
+    constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
+    constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
+    const int32_t pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
+    const uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % span) : uint16_t {0};
 
     bool listen_ok = false;
 
-    for (uint16 i = 0; i < span; i++) {
-        const uint16 candidate_offset = numeric_cast<uint16>((start_offset + i) % span);
-        const uint16 candidate_port = numeric_cast<uint16>(base_port + candidate_offset);
+    for (uint16_t i = 0; i < span; i++) {
+        const uint16_t candidate_offset = numeric_cast<uint16_t>((start_offset + i) % span);
+        const uint16_t candidate_port = numeric_cast<uint16_t>(base_port + candidate_offset);
 
         if (_tcpServer.listen(_bindHost, candidate_port, 1)) {
             _port = candidate_port;
@@ -264,7 +264,7 @@ auto DebuggerEndpointServer::Impl::ConsumeSingleStepRequest() -> DebuggerStepMod
     return DebuggerStepMode::None;
 }
 
-void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const vector<uint32>& lines)
+void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const vector<uint32_t>& lines)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -279,7 +279,7 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
         auto& source_breakpoints = _lineBreakpoints[key];
         source_breakpoints.clear();
 
-        for (const uint32 line : lines) {
+        for (const uint32_t line : lines) {
             source_breakpoints.emplace(line);
         }
     }
@@ -295,7 +295,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     FO_RUNTIME_ASSERT(ctx_ext);
 
     if (reason == AngelScriptContextSetupReason::Create) {
-        int32 as_result = 0;
+        int32_t as_result = 0;
         FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), cast_to_void(_owner.get()), AngelScript::asCALL_CDECL));
         ctx_ext->StepState = SafeAlloc::MakeShared<DebuggerStepState>();
     }
@@ -340,11 +340,11 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     }
 
     const auto resolve_debug_location = [&]() {
-        const uint32 ctx_line = numeric_cast<uint32>(ctx->GetLineNumber());
+        const uint32_t ctx_line = numeric_cast<uint32_t>(ctx->GetLineNumber());
         const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
         const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
-        const uint32 orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
-        const uint32 debugger_line = orig_line > 0 ? numeric_cast<uint32>(orig_line - 1) : 0u;
+        const uint32_t orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
+        const uint32_t debugger_line = orig_line > 0 ? numeric_cast<uint32_t>(orig_line - 1) : 0u;
         return std::make_pair(string {orig_file}, debugger_line);
     };
 
@@ -353,7 +353,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
         return current_func != nullptr ? string_view {current_func->GetName()} : string_view {};
     };
 
-    const auto emit_stopped = [&](string_view reason, string_view text, string_view source_path, uint32 source_line, string_view function_name) {
+    const auto emit_stopped = [&](string_view reason, string_view text, string_view source_path, uint32_t source_line, string_view function_name) {
         nlohmann::json body;
         body["reason"] = reason;
 
@@ -374,7 +374,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
         EmitEvent("stopped", body.dump());
     };
 
-    const auto capture_stack_trace = [&](string_view source_path, uint32 source_line, string_view function_name) {
+    const auto capture_stack_trace = [&](string_view source_path, uint32_t source_line, string_view function_name) {
         std::scoped_lock locker {_stackTraceLocker};
 
         _lastStackTrace = GetStackTrace();
@@ -384,16 +384,16 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
         _hasLastStoppedLocation = !_lastStoppedSourcePath.empty() || !_lastStoppedFunction.empty();
 
         _lastLocalsByFrame.clear();
-        const uint32 callstack_size = ctx->GetCallstackSize();
+        const uint32_t callstack_size = ctx->GetCallstackSize();
         _lastLocalsByFrame.resize(callstack_size > 0 ? numeric_cast<size_t>(callstack_size) : 0);
 
-        for (uint32 stack_level = 0; stack_level < callstack_size; stack_level++) {
+        for (uint32_t stack_level = 0; stack_level < callstack_size; stack_level++) {
             const AngelScript::asUINT as_stack_level = numeric_cast<AngelScript::asUINT>(stack_level);
-            const int32 vars_count = ctx->GetVarCount(as_stack_level);
+            const int32_t vars_count = ctx->GetVarCount(as_stack_level);
             auto& frame_vars = _lastLocalsByFrame[numeric_cast<size_t>(stack_level)];
             frame_vars.reserve(vars_count > 0 ? numeric_cast<size_t>(vars_count) : 0);
 
-            for (int32 var_index = 0; var_index < vars_count; var_index++) {
+            for (int32_t var_index = 0; var_index < vars_count; var_index++) {
                 const AngelScript::asUINT as_var_index = numeric_cast<AngelScript::asUINT>(var_index);
                 const char* var_name = nullptr;
                 int var_type_id = 0;
@@ -413,7 +413,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
 
                 if (var_addr != nullptr) {
                     const bool is_handle = (var_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
-                    const int32 base_type_id = var_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
+                    const int32_t base_type_id = var_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
 
                     if (is_handle) {
                         const auto* obj = *static_cast<void**>(var_addr);
@@ -513,7 +513,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     }
 
     if (step_state->Mode != DebuggerStepMode::None) {
-        const uint32 depth = ctx->GetCallstackSize();
+        const uint32_t depth = ctx->GetCallstackSize();
         const auto& [source_path, source_line] = resolve_debug_location();
         const bool has_moved_from_base_location = !step_state->BaseSourcePath.has_value() || step_state->BaseSourceLine != source_line || step_state->BaseSourcePath != source_path;
 
@@ -554,7 +554,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     }
 }
 
-auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32 line) const -> bool
+auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32_t line) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -614,7 +614,7 @@ auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
     return strex("{{\"type\":\"attachAccepted\",\"protocolVersion\":1,\"enginePid\":{}}}\n", Platform::GetCurrentProcessIdStr()).str();
 }
 
-auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -> optional<int32>
+auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -> optional<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -622,7 +622,7 @@ auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -
         const auto msg_json = nlohmann::json::parse(string {message});
 
         if (msg_json.contains("id") && msg_json["id"].is_number_integer()) {
-            return msg_json["id"].get<int32>();
+            return msg_json["id"].get<int32_t>();
         }
     }
     catch (const std::exception& ex) {
@@ -650,7 +650,7 @@ auto DebuggerEndpointServer::Impl::ExtractRequestCommand(string_view message) co
     return {};
 }
 
-auto DebuggerEndpointServer::Impl::MakeDebuggerResponse(int32 request_id, string_view command, bool success, string_view body_json) const -> string
+auto DebuggerEndpointServer::Impl::MakeDebuggerResponse(int32_t request_id, string_view command, bool success, string_view body_json) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -674,7 +674,7 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
         return false;
     }
 
-    const auto bytes = span<const uint8>(reinterpret_cast<const uint8*>(message.data()), message.size());
+    const auto bytes = span<const uint8_t>(reinterpret_cast<const uint8_t*>(message.data()), message.size());
     return _activeClientSock.send(bytes) > 0;
 }
 
@@ -682,7 +682,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32 request_id = ExtractRequestId(line).value_or(0);
+    const int32_t request_id = ExtractRequestId(line).value_or(0);
     const string command = ExtractRequestCommand(line);
 
     if (command == "capabilities") {
@@ -739,18 +739,18 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             const auto payload = msg_json.contains("payload") ? msg_json["payload"] : nlohmann::json::object();
             const string source_path = payload.contains("source") && payload["source"].is_string() ? payload["source"].get<string>() : string {};
 
-            vector<uint32> lines;
+            vector<uint32_t> lines;
 
             if (payload.contains("lines") && payload["lines"].is_array()) {
                 for (const auto& value : payload["lines"]) {
                     if (value.is_number_unsigned()) {
-                        lines.emplace_back(value.get<uint32>());
+                        lines.emplace_back(value.get<uint32_t>());
                     }
                     else if (value.is_number_integer()) {
-                        const int32 line_num = value.get<int32>();
+                        const int32_t line_num = value.get<int32_t>();
 
                         if (line_num >= 0) {
-                            lines.emplace_back(numeric_cast<uint32>(line_num));
+                            lines.emplace_back(numeric_cast<uint32_t>(line_num));
                         }
                     }
                 }
@@ -761,7 +761,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             nlohmann::json body;
             body["breakpoints"] = nlohmann::json::array();
 
-            for (const uint32 line_num : lines) {
+            for (const uint32_t line_num : lines) {
                 body["breakpoints"].push_back({{"verified", true}, {"line", line_num}});
             }
 
@@ -783,22 +783,22 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             const auto msg_json = nlohmann::json::parse(string {line});
             const auto payload = msg_json.contains("payload") ? msg_json["payload"] : nlohmann::json::object();
 
-            int32 start_frame = 0;
-            int32 levels = numeric_cast<int32>(STACK_TRACE_MAX_SIZE);
+            int32_t start_frame = 0;
+            int32_t levels = numeric_cast<int32_t>(STACK_TRACE_MAX_SIZE);
 
             if (payload.contains("startFrame") && payload["startFrame"].is_number_integer()) {
-                start_frame = std::max(0, payload["startFrame"].get<int32>());
+                start_frame = std::max(0, payload["startFrame"].get<int32_t>());
             }
 
             if (payload.contains("levels") && payload["levels"].is_number_integer()) {
-                levels = std::max(0, payload["levels"].get<int32>());
+                levels = std::max(0, payload["levels"].get<int32_t>());
             }
 
             StackTraceData frames;
             bool has_stopped_location = false;
             string stopped_source;
             string stopped_function;
-            uint32 stopped_line {};
+            uint32_t stopped_line {};
 
             {
                 std::scoped_lock locker {_stackTraceLocker};
@@ -810,16 +810,16 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 stopped_function = _lastStoppedFunction;
             }
 
-            const int32 raw_frames = numeric_cast<int32>(std::min(frames.CallsCount, STACK_TRACE_MAX_SIZE + 1));
-            const int32 total_frames = raw_frames + (has_stopped_location ? 1 : 0);
-            const int32 from = std::min(start_frame, total_frames);
-            const int32 to = std::min(total_frames, from + levels);
+            const int32_t raw_frames = numeric_cast<int32_t>(std::min(frames.CallsCount, STACK_TRACE_MAX_SIZE + 1));
+            const int32_t total_frames = raw_frames + (has_stopped_location ? 1 : 0);
+            const int32_t from = std::min(start_frame, total_frames);
+            const int32_t to = std::min(total_frames, from + levels);
 
             nlohmann::json body;
             body["stackFrames"] = nlohmann::json::array();
             body["totalFrames"] = total_frames;
 
-            for (int32 i = from; i < to; i++) {
+            for (int32_t i = from; i < to; i++) {
                 if (has_stopped_location && i == 0) {
                     nlohmann::json frame;
                     frame["id"] = i + 1;
@@ -830,8 +830,8 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                     continue;
                 }
 
-                const int32 logical_raw_index = has_stopped_location ? (i - 1) : i;
-                const int32 entry_index = raw_frames - 1 - logical_raw_index;
+                const int32_t logical_raw_index = has_stopped_location ? (i - 1) : i;
+                const int32_t entry_index = raw_frames - 1 - logical_raw_index;
                 const auto* entry = entry_index >= 0 ? frames.CallTree[numeric_cast<size_t>(entry_index)] : nullptr;
 
                 if (entry == nullptr) {
@@ -842,7 +842,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 frame["id"] = i + 1;
                 frame["name"] = entry->function != nullptr ? string {entry->function} : string {"frame"};
                 frame["source"] = entry->file != nullptr ? string {entry->file} : string {};
-                frame["line"] = entry->line > 0 ? numeric_cast<uint32>(entry->line - 1) : 0u;
+                frame["line"] = entry->line > 0 ? numeric_cast<uint32_t>(entry->line - 1) : 0u;
                 body["stackFrames"].push_back(std::move(frame));
             }
 
@@ -864,19 +864,19 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             const auto msg_json = nlohmann::json::parse(string {line});
             const auto payload = msg_json.contains("payload") ? msg_json["payload"] : nlohmann::json::object();
 
-            int32 frame_id = 1;
+            int32_t frame_id = 1;
 
             if (payload.contains("frameId") && payload["frameId"].is_number_integer()) {
-                frame_id = std::max(1, payload["frameId"].get<int32>());
+                frame_id = std::max(1, payload["frameId"].get<int32_t>());
             }
 
-            int32 stack_level = frame_id - 1;
+            int32_t stack_level = frame_id - 1;
             vector<LocalVariableInfo> frame_vars;
 
             {
                 std::scoped_lock locker {_stackTraceLocker};
 
-                const int32 frames_count = numeric_cast<int32>(_lastLocalsByFrame.size());
+                const int32_t frames_count = numeric_cast<int32_t>(_lastLocalsByFrame.size());
 
                 if (frames_count <= 0) {
                     return {
@@ -961,7 +961,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
     FO_STACK_TRACE_ENTRY();
 
     constexpr size_t buffer_size = 2048;
-    array<uint8, buffer_size> read_buf {};
+    array<uint8_t, buffer_size> read_buf {};
     string pending;
     bool handshake_sent = false;
 
@@ -984,7 +984,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
     });
 
     while (!_stopped) {
-        int32 read_size {};
+        int32_t read_size {};
 
         {
             std::shared_lock locker {_clientIoLocker};
@@ -997,7 +997,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
                 continue;
             }
 
-            read_size = _activeClientSock.receive(span<uint8>(read_buf.data(), buffer_size - 1));
+            read_size = _activeClientSock.receive(span<uint8_t>(read_buf.data(), buffer_size - 1));
         }
 
         if (read_size <= 0) {
@@ -1062,7 +1062,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
     FO_STACK_TRACE_ENTRY();
 
     constexpr size_t buffer_size = 1024;
-    array<uint8, buffer_size> read_buf {};
+    array<uint8_t, buffer_size> read_buf {};
 
     WriteLog("AngelScript debugger UDP discovery port: {}", _discoveryPort);
 
@@ -1077,8 +1077,8 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
         }
 
         string remote_host;
-        uint16 remote_port = 0;
-        const int32 read_size = _discoverySocket.receive_from(span<uint8>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
+        uint16_t remote_port = 0;
+        const int32_t read_size = _discoverySocket.receive_from(span<uint8_t>(read_buf.data(), buffer_size - 1), remote_host, remote_port);
 
         if (read_size <= 0) {
             continue;
@@ -1091,7 +1091,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
         }
 
         const string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
-        const auto bytes = span<const uint8>(reinterpret_cast<const uint8*>(response.data()), response.size());
+        const auto bytes = span<const uint8_t>(reinterpret_cast<const uint8_t*>(response.data()), response.size());
         _discoverySocket.send_to(remote_host, remote_port, bytes);
     }
 }

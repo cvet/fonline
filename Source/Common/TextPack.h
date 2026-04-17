@@ -124,9 +124,9 @@ public:
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
-    [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
+    [[nodiscard]] auto GetBinaryData() const -> vector<uint8_t>;
 
-    auto LoadFromBinaryData(const vector<uint8>& data, string_view collection = {}) -> bool;
+    auto LoadFromBinaryData(const vector<uint8_t>& data, string_view collection = {}) -> bool;
     auto LoadFromString(const string& str, string_view collection = {}) -> bool;
     void LoadFromMap(const map<string, string>& kv, string_view collection = {});
     void LoadFromResources(FileSystem& resources, string_view language = {});

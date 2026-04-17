@@ -235,7 +235,7 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
     return ExceptionHandling->Callback;
 }
 
-extern void ReportStrongAssertAndExit(string_view message, const char* file, int32 line) noexcept
+extern void ReportStrongAssertAndExit(string_view message, const char* file, int32_t line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -247,7 +247,7 @@ extern void ReportStrongAssertAndExit(string_view message, const char* file, int
     }
 }
 
-extern void ReportVerifyFailed(string_view message, const char* file, int32 line) noexcept
+extern void ReportVerifyFailed(string_view message, const char* file, int32_t line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

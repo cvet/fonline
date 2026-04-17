@@ -50,7 +50,7 @@ TEST_CASE("BasicCore")
 
     SECTION("ItoaDecimalMinInt64")
     {
-        CHECK(string(ItoA(std::numeric_limits<int64>::min(), buf, 10)) == "-9223372036854775808");
+        CHECK(string(ItoA(std::numeric_limits<int64_t>::min(), buf, 10)) == "-9223372036854775808");
     }
 
     SECTION("ItoaHex")

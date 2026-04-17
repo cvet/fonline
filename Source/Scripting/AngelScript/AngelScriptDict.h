@@ -76,15 +76,15 @@ public:
 
     auto GetDictObjectType() -> AngelScript::asITypeInfo* { return _typeInfo.get(); }
     auto GetDictObjectType() const -> const AngelScript::asITypeInfo* { return _typeInfo.get(); }
-    auto GetDictTypeId() const -> int32;
+    auto GetDictTypeId() const -> int32_t;
     auto GetMap() const -> const map<void*, void*, ScriptDictComparator>& { return _data; }
     auto IsEmpty() const -> bool;
-    auto GetSize() const -> int32;
+    auto GetSize() const -> int32_t;
     auto Get(void* key) -> void*;
     auto GetOrCreate(void* key) -> void*;
     auto GetDefault(void* key, void* def_val) -> void*;
-    auto GetKey(int32 index) -> void*;
-    auto GetValue(int32 index) -> void*;
+    auto GetKey(int32_t index) -> void*;
+    auto GetValue(int32_t index) -> void*;
     auto GetKeys() const -> ScriptArray*;
     auto GetValues() const -> ScriptArray*;
     auto Exists(void* key) const -> bool;
@@ -92,10 +92,10 @@ public:
     void Set(void* key, void* value);
     void SetIfNotExist(void* key, void* value);
     auto Remove(void* key) -> bool;
-    auto RemoveValues(void* value) -> int32;
+    auto RemoveValues(void* value) -> int32_t;
     void Clear();
 
-    auto GetRefCount() const -> int32;
+    auto GetRefCount() const -> int32_t;
     void SetFlag() const;
     auto GetFlag() const -> bool;
     void EnumReferences(AngelScript::asIScriptEngine* engine) const;
@@ -107,15 +107,15 @@ private:
     explicit ScriptDict(const ScriptDict& other);
     ~ScriptDict();
 
-    auto PrecacheSubTypeData(int32 type_id, AngelScript::asITypeInfo* ti) const -> ScriptDictTypeData*;
+    auto PrecacheSubTypeData(int32_t type_id, AngelScript::asITypeInfo* ti) const -> ScriptDictTypeData*;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
-    int32 _keyTypeId;
-    int32 _valueTypeId;
+    int32_t _keyTypeId;
+    int32_t _valueTypeId;
     raw_ptr<ScriptDictTypeData> _keyTypeData;
     raw_ptr<ScriptDictTypeData> _valueTypeData;
     map<void*, void*, ScriptDictComparator> _data;
-    mutable int32 _refCount {1};
+    mutable int32_t _refCount {1};
     mutable bool _gcFlag {};
 };
 

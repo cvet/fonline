@@ -167,7 +167,7 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
 
     _moving = std::move(moving);
     _movingUid++;
-    SetMovingSpeed(numeric_cast<int32>(_moving->GetSpeed()));
+    SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
 void Critter::StopMoving(MovingState reason)
@@ -658,11 +658,11 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
     return it->get();
 }
 
-auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32
+auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 count = 0;
+    int32_t count = 0;
 
     for (const auto& item : _invItems) {
         if (item->GetProtoId() == pid) {
@@ -684,7 +684,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Action(CritterAction action, int32 action_data, const Item* item)
+void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -743,7 +743,7 @@ void Critter::SendAndBroadcast_Moving()
     }
 }
 
-void Critter::SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item)
+void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -902,7 +902,7 @@ void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
+void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 

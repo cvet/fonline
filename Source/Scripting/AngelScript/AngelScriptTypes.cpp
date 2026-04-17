@@ -80,7 +80,7 @@ static auto Type_AnyConv(const T& self) -> any_t
 }
 
 template<typename T>
-static auto Type_Cmp(const T& self, const T& other) -> int32
+static auto Type_Cmp(const T& self, const T& other) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -109,10 +109,10 @@ static void DefaultInitStructFields(void* obj, const BaseTypeDesc& type)
     if (type.StructLayout != nullptr) {
         for (const auto& field : type.StructLayout->Fields) {
             if (field.Type.IsHashedString) {
-                new (static_cast<uint8*>(obj) + field.Offset) hstring();
+                new (static_cast<uint8_t*>(obj) + field.Offset) hstring();
             }
             else if (field.Type.IsStruct) {
-                DefaultInitStructFields(static_cast<uint8*>(obj) + field.Offset, field.Type);
+                DefaultInitStructFields(static_cast<uint8_t*>(obj) + field.Offset, field.Type);
             }
         }
     }
@@ -239,7 +239,7 @@ static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
     const auto* obj = gen->GetObject();
     const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
 
-    int32 cmp = 0;
+    int32_t cmp = 0;
 
     if (VisitBaseTypePrimitive(obj, other, type, [](auto&& x, auto&& y) -> bool { return x < y; })) {
         cmp = -1;
@@ -248,7 +248,7 @@ static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
         cmp = 1;
     }
 
-    new (gen->GetAddressOfReturnLocation()) int32(cmp);
+    new (gen->GetAddressOfReturnLocation()) int32_t(cmp);
 }
 
 static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
@@ -434,7 +434,7 @@ static auto HashedString_GetString(const hstring& self) -> string
     return string(self.as_str());
 }
 
-static auto HashedString_GetHash(const hstring& self) -> int64
+static auto HashedString_GetHash(const hstring& self) -> int64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -451,7 +451,7 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 }
 
-static auto HashedString_GetUHash(const hstring& self) -> uint64
+static auto HashedString_GetUHash(const hstring& self) -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -495,7 +495,7 @@ static auto Any_Assign(any_t& self, const any_t& other) -> any_t&
     return self;
 }
 
-static auto Any_MakeEnumValue(const EngineMetadata* meta, string_view enum_name, int32 enum_value) -> any_t
+static auto Any_MakeEnumValue(const EngineMetadata* meta, string_view enum_name, int32_t enum_value) -> any_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -515,19 +515,19 @@ static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
 
     const auto* meta = GetEngineMetadata(gen->GetEngine());
     const auto& enum_name = *cast_from_void<const string*>(gen->GetAuxiliary());
-    const auto enum_value = *cast_from_void<const int32*>(gen->GetAddressOfArg(0));
+    const auto enum_value = *cast_from_void<const int32_t*>(gen->GetAddressOfArg(0));
     auto* self = cast_from_void<any_t*>(gen->GetObject());
 
     new (self) any_t(Any_MakeEnumValue(meta, enum_name, enum_value));
 }
 
-static auto Any_ResolveEnumValue(const any_t& self, const EngineMetadata* meta, string_view enum_name) -> int32
+static auto Any_ResolveEnumValue(const any_t& self, const EngineMetadata* meta, string_view enum_name) -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto self_view = string_view {self};
     bool failed = false;
-    int32 enum_value = 0;
+    int32_t enum_value = 0;
 
     if (const auto sep_pos = self_view.find("::"); sep_pos != string_view::npos) {
         const auto parsed_enum_name = self_view.substr(0, sep_pos);
@@ -559,7 +559,7 @@ static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
     const auto* self = cast_from_void<any_t*>(gen->GetObject());
     const auto enum_value = Any_ResolveEnumValue(*self, meta, enum_name);
 
-    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
+    new (gen->GetAddressOfReturnLocation()) int32_t(enum_value);
 }
 
 template<typename T>
@@ -644,27 +644,27 @@ static auto Any_ConvFrom(const T& self) -> any_t
     return any_t(strex("{}", self).str());
 }
 
-static void Ucolor_ConstructRawRgba(ucolor* self, uint32 rgba)
+static void Ucolor_ConstructRawRgba(ucolor* self, uint32_t rgba)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) ucolor {rgba};
 }
 
-static void Ucolor_ConstructRgba(ucolor* self, int32 r, int32 g, int32 b, int32 a)
+static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, int32_t a)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto clamped_r = numeric_cast<uint8>(std::clamp(r, 0, 255));
-    const auto clamped_g = numeric_cast<uint8>(std::clamp(g, 0, 255));
-    const auto clamped_b = numeric_cast<uint8>(std::clamp(b, 0, 255));
-    const auto clamped_a = numeric_cast<uint8>(std::clamp(a, 0, 255));
+    const auto clamped_r = numeric_cast<uint8_t>(std::clamp(r, 0, 255));
+    const auto clamped_g = numeric_cast<uint8_t>(std::clamp(g, 0, 255));
+    const auto clamped_b = numeric_cast<uint8_t>(std::clamp(b, 0, 255));
+    const auto clamped_a = numeric_cast<uint8_t>(std::clamp(a, 0, 255));
 
     new (self) ucolor {clamped_r, clamped_g, clamped_b, clamped_a};
 }
 
 template<typename T>
-static void Time_ConstructWithPlace(T* self, int64 value, int32 place)
+static void Time_ConstructWithPlace(T* self, int64_t value, int32_t place)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -685,7 +685,7 @@ static void Time_ConstructWithPlace(T* self, int64 value, int32 place)
     }
 }
 
-static void Ipos_ConstructXandY(ipos32* self, int32 x, int32 y)
+static void Ipos_ConstructXandY(ipos32* self, int32_t x, int32_t y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -777,21 +777,21 @@ static auto Ipos_FitToRect(const ipos32& self, irect32 rect) -> bool
     return self.x >= rect.x && self.y >= rect.y && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
-static void Isize_ConstructWandH(isize32* self, int32 width, int32 height)
+static void Isize_ConstructWandH(isize32* self, int32_t width, int32_t height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) isize32 {width, height};
 }
 
-static void Irect_ConstructXandYandWandH(irect32* self, int32 x, int32 y, int32 width, int32 height)
+static void Irect_ConstructXandYandWandH(irect32* self, int32_t x, int32_t y, int32_t width, int32_t height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) irect32 {x, y, width, height};
 }
 
-static void Fpos_ConstructXandY(fpos32* self, float32 x, float32 y)
+static void Fpos_ConstructXandY(fpos32* self, float32_t x, float32_t y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -837,18 +837,18 @@ static auto Fpos_NegFpos(const fpos32& self) -> fpos32
     return fpos32 {-self.x, -self.y};
 }
 
-static void Fsize_ConstructWandH(fsize32* self, float32 width, float32 height)
+static void Fsize_ConstructWandH(fsize32* self, float32_t width, float32_t height)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) fsize32 {width, height};
 }
 
-static void Mpos_ConstructXandY(mpos* self, int32 x, int32 y)
+static void Mpos_ConstructXandY(mpos* self, int32_t x, int32_t y)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) mpos {numeric_cast<int16>(x), numeric_cast<int16>(y)};
+    new (self) mpos {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
 }
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
@@ -858,21 +858,21 @@ static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
     return size.is_valid_pos(self);
 }
 
-static void Hdir_ConstructValue(hdir* self, int32 value)
+static void Hdir_ConstructValue(hdir* self, int32_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     new (self) hdir(value);
 }
 
-static auto Hdir_GetValue(const hdir& self) -> int8
+static auto Hdir_GetValue(const hdir& self) -> int8_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return self.value();
 }
 
-static void Hdir_SetValue(hdir& self, int8 value)
+static void Hdir_SetValue(hdir& self, int8_t value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -891,29 +891,29 @@ static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     static thread_local std::mt19937 rng {std::random_device {}()};
-    const auto dir = hdir(static_cast<int8>(rng() % GameSettings::MAP_DIR_COUNT));
+    const auto dir = hdir(static_cast<int8_t>(rng() % GameSettings::MAP_DIR_COUNT));
     new (gen->GetAddressOfReturnLocation()) hdir(dir);
 }
 
-static auto Mdir_GetAngle(const mdir& self) -> int16
+static auto Mdir_GetAngle(const mdir& self) -> int16_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return self.angle();
 }
 
-static void Mdir_SetAngle(mdir& self, int16 angle)
+static void Mdir_SetAngle(mdir& self, int16_t angle)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     self = mdir(angle);
 }
 
-static void Mdir_ConstructAngle(mdir* self, int32 angle)
+static void Mdir_ConstructAngle(mdir* self, int32_t angle)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (self) mdir(numeric_cast<int16>(angle));
+    new (self) mdir(numeric_cast<int16_t>(angle));
 }
 
 static void Mdir_ConstructHdir(mdir* self, hdir dir)
@@ -944,7 +944,7 @@ static auto Mdir_DecHex(const mdir& self) -> mdir
     return self.decHex();
 }
 
-static auto Mdir_RotateHex(const mdir& self, int32 steps) -> mdir
+static auto Mdir_RotateHex(const mdir& self, int32_t steps) -> mdir
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1000,7 +1000,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     auto* backend = GetScriptBackend(as_engine);
     const auto* meta = backend->GetMetadata();
 
@@ -1027,30 +1027,30 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Any_Construct), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const any &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructCopy), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const bool &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int8 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int8>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int16 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int32>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int64 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const float &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float32>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const double &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float64>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int8 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int8_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int16 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int16_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int32_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint32_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const int64 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<int64_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const float &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float32_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, "void f(const double &in)", FO_SCRIPT_FUNC_THIS(Any_ConstructFrom<float64_t>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_DESTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Any_Destruct), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "any& opAssign(const any &in)", FO_SCRIPT_FUNC_THIS(Any_Assign), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", FO_SCRIPT_FUNC_THIS(Type_Equals<any_t>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "bool opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<bool>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int8>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint8>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int16>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint16>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int32>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint32>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int64>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint64>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<float32>), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<float64>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int8 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int8_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint8 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint8_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int16 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int16_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint16 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint16_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int32_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint32_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "int64 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<int64_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "uint64 opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<uint64_t>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "float opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<float32_t>), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "double opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<float64_t>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "string opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<string>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "hstring opImplConv() const", FO_SCRIPT_GENERIC(Any_ConvGen<hstring>), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_ConvFrom<string>), FO_SCRIPT_FUNC_THIS_CONV));
@@ -1098,10 +1098,10 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan& opSubAssign(const timespan &in)", FO_SCRIPT_METHOD_EXT(timespan, operator-=, (const timespan&), timespan&), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opAdd(const timespan &in) const", FO_SCRIPT_METHOD_EXT(timespan, operator+, (const timespan&) const, timespan), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "timespan opSub(const timespan &in) const", FO_SCRIPT_METHOD_EXT(timespan, operator-, (const timespan&) const, timespan), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", FO_SCRIPT_METHOD_EXT(timespan, nanoseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", FO_SCRIPT_METHOD_EXT(timespan, microseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(timespan, milliseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(timespan, seconds, () const, int64), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_nanoseconds() const", FO_SCRIPT_METHOD_EXT(timespan, nanoseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_microseconds() const", FO_SCRIPT_METHOD_EXT(timespan, microseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(timespan, milliseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("timespan", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(timespan, seconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
 
     register_engine_type.operator()<nanotime>("nanotime");
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("nanotime", AngelScript::asBEHAVE_CONSTRUCT, "void f(int64 value, int place)", FO_SCRIPT_FUNC_THIS((Time_ConstructWithPlace<nanotime>)), FO_SCRIPT_FUNC_THIS_CONV));
@@ -1110,10 +1110,10 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opAdd(const timespan &in) const", FO_SCRIPT_METHOD_EXT(nanotime, operator+, (const timespan&) const, nanotime), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "nanotime opSub(const timespan &in) const", FO_SCRIPT_METHOD_EXT(nanotime, operator-, (const timespan&) const, nanotime), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan opSub(const nanotime &in) const", FO_SCRIPT_METHOD_EXT(nanotime, operator-, (const nanotime&) const, timespan), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, nanoseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, microseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, milliseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(nanotime, seconds, () const, int64), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_nanoseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, nanoseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_microseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, microseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(nanotime, milliseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(nanotime, seconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("nanotime", "timespan get_timeSinceEpoch() const", FO_SCRIPT_METHOD_EXT(nanotime, duration_value, () const, timespan), FO_SCRIPT_METHOD_CONV));
 
     register_engine_type.operator()<synctime>("synctime");
@@ -1123,8 +1123,8 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opAdd(const timespan &in) const", FO_SCRIPT_METHOD_EXT(synctime, operator+, (const timespan&) const, synctime), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "synctime opSub(const timespan &in) const", FO_SCRIPT_METHOD_EXT(synctime, operator-, (const timespan&) const, synctime), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan opSub(const synctime &in) const", FO_SCRIPT_METHOD_EXT(synctime, operator-, (const synctime&) const, timespan), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(synctime, milliseconds, () const, int64), FO_SCRIPT_METHOD_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(synctime, seconds, () const, int64), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_milliseconds() const", FO_SCRIPT_METHOD_EXT(synctime, milliseconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "int64 get_seconds() const", FO_SCRIPT_METHOD_EXT(synctime, seconds, () const, int64_t), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("synctime", "timespan get_timeSinceEpoch() const", FO_SCRIPT_METHOD_EXT(synctime, duration_value, () const, timespan), FO_SCRIPT_METHOD_CONV));
 
     register_engine_type.operator()<ipos32>("ipos");
@@ -1238,11 +1238,11 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     const auto register_generic_type = [&](const BaseTypeDesc& type) {
         struct SimpleClass
         {
-            int32 a {};
+            int32_t a {};
         };
 
         const char* name = type.Name.c_str();
-        FO_AS_VERIFY(as_engine->RegisterObjectType(name, numeric_cast<int32>(type.Size), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<SimpleClass>()));
+        FO_AS_VERIFY(as_engine->RegisterObjectType(name, numeric_cast<int32_t>(type.Size), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<SimpleClass>()));
     };
 
     const auto register_metadata_type_common = [&](const BaseTypeDesc& type) {
@@ -1257,7 +1257,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
         for (size_t i = 0; i < layout.Fields.size(); i++) {
             const auto& field = layout.Fields[i];
             ctor_decl += strex("{}{} {}", i > 0 ? ", " : "", MakeScriptTypeName(field.Type), field.Name);
-            FO_AS_VERIFY(as_engine->RegisterObjectProperty(name, strex("{} {}", MakeScriptTypeName(field.Type), field.Name).c_str(), numeric_cast<int32>(field.Offset)));
+            FO_AS_VERIFY(as_engine->RegisterObjectProperty(name, strex("{} {}", MakeScriptTypeName(field.Type), field.Name).c_str(), numeric_cast<int32_t>(field.Offset)));
         }
 
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_CONSTRUCT, strex("void f({})", ctor_decl).c_str(), FO_SCRIPT_GENERIC(GenericType_ConstructArgs), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));

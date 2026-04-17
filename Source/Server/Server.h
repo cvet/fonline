@@ -96,7 +96,7 @@ public:
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
     auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
 
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> FO_NON_NULL Item*;
 
     auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
@@ -106,8 +106,8 @@ public:
     void DestroyUnloadedCritter(ident_t cr_id);
 
     void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<mdir>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
-    void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
+    void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -118,7 +118,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8 /*command*/);
+    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, Player* /*unloginedPlayer*/);
     ///@ ExportEvent
@@ -126,7 +126,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32& /*speed*/);
+    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32_t& /*speed*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
     ///@ ExportEvent
@@ -185,11 +185,11 @@ private:
         nanotime ServerStartTime {};
         timespan Uptime {};
 
-        int64 BytesSend {};
-        int64 BytesRecv {};
-        int64 DataReal {1};
-        int64 DataCompressed {1};
-        float32 CompressRatio {};
+        int64_t BytesSend {};
+        int64_t BytesRecv {};
+        int64_t DataReal {1};
+        int64_t DataCompressed {1};
+        float32_t CompressRatio {};
 
         size_t MaxOnline {};
         size_t CurOnline {};
@@ -214,7 +214,7 @@ private:
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ServerConnection* connection);
-    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
+    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
@@ -257,15 +257,15 @@ private:
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};
     std::condition_variable _syncRunSignal {};
-    int32 _syncRequest {};
+    int32_t _syncRequest {};
     bool _syncPointReady {};
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    vector<vector<uint8>> _updateFilesData {};
-    vector<uint8> _updateFilesDesc {};
+    vector<vector<uint8_t>> _updateFilesData {};
+    vector<uint8_t> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     TextPack _defaultLang {Hashes};

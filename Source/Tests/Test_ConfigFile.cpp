@@ -37,14 +37,14 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto BuildConfigBenchmarkInput(int32 section_count, int32 keys_per_section) -> string
+static auto BuildConfigBenchmarkInput(int32_t section_count, int32_t keys_per_section) -> string
 {
     string input;
 
-    for (int32 section_index = 0; section_index < section_count; section_index++) {
+    for (int32_t section_index = 0; section_index < section_count; section_index++) {
         input += strex("[ProtoItem]\n$Name = BenchItem_{}\n", section_index);
 
-        for (int32 key_index = 0; key_index < keys_per_section; key_index++) {
+        for (int32_t key_index = 0; key_index < keys_per_section; key_index++) {
             input += strex("Key{} = Value{}_{}\n", key_index, section_index, key_index);
         }
 
@@ -258,7 +258,7 @@ TEST_CASE("ConfigFile")
 
     SECTION("CollectsContentWhenStoppingAfterFirstSection")
     {
-        const auto options = static_cast<ConfigFileOption>(static_cast<uint8>(ConfigFileOption::CollectContent) | static_cast<uint8>(ConfigFileOption::ReadFirstSection));
+        const auto options = static_cast<ConfigFileOption>(static_cast<uint8_t>(ConfigFileOption::CollectContent) | static_cast<uint8_t>(ConfigFileOption::ReadFirstSection));
 
         ConfigFile config {"Effect.fofx", "[ShaderCommon]\nline_1 \\\nline_2\n[VertexShader]\nvoid main() {}\n", options};
 
@@ -336,7 +336,7 @@ TEST_CASE("ConfigFile")
     BENCHMARK("ParseLargeConfig")
     {
         ConfigFile config {"Bench.fopro", benchmark_input};
-        return numeric_cast<int32>(config.GetSections().size());
+        return numeric_cast<int32_t>(config.GetSections().size());
     };
 }
 

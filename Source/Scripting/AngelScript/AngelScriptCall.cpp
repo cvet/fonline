@@ -60,7 +60,7 @@ auto ScriptDataAccessor::GetArrayElement(void* data, size_t index) const -> void
 
     const auto* arr = *cast_from_void<ScriptArray**>(data);
     FO_RUNTIME_ASSERT(arr);
-    return arr->At(numeric_cast<int32>(index));
+    return arr->At(numeric_cast<int32_t>(index));
 }
 
 auto ScriptDataAccessor::GetDictSize(void* data) const -> size_t
@@ -143,10 +143,10 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
     auto* as_engine = func->GetEngine();
     const auto* meta = GetEngineMetadata(as_engine);
 
-    const auto resolve_type = [&](int32 type_id, AngelScript::asDWORD flags, bool is_ret) -> ComplexTypeDesc {
+    const auto resolve_type = [&](int32_t type_id, AngelScript::asDWORD flags, bool is_ret) -> ComplexTypeDesc {
         FO_RUNTIME_ASSERT(type_id != AngelScript::asTYPEID_VOID);
 
-        const auto get_type_name = [&](int32 tid) -> string_view {
+        const auto get_type_name = [&](int32_t tid) -> string_view {
             switch (tid) {
             case AngelScript::asTYPEID_VOID:
                 return "void";
@@ -255,8 +255,8 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
     func_desc->DelegateObj = std::bit_cast<uintptr_t>(func->GetDelegateObject());
 
     for (AngelScript::asUINT p = 0; p < func->GetParamCount(); p++) {
-        int32 as_result = 0;
-        int32 param_type_id;
+        int32_t as_result = 0;
+        int32_t param_type_id;
         AngelScript::asDWORD param_flags;
         const char* param_name;
         FO_AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags, &param_name));
@@ -266,7 +266,7 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
     }
 
     AngelScript::asDWORD ret_flags = 0;
-    const int32 ret_type_id = func->GetReturnTypeId(&ret_flags);
+    const int32_t ret_type_id = func->GetReturnTypeId(&ret_flags);
     const bool is_void_ret = ret_type_id == AngelScript::asTYPEID_VOID;
 
     if (!is_void_ret) {
@@ -287,7 +287,7 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     FuncCallData call {.Accessor = &SCRIPT_DATA_ACCESSOR};
     const size_t args_count = gen->GetArgCount() + (add_obj ? 1 : 0);
     array<void*, MAX_CALL_ARGS> args_data;
@@ -373,7 +373,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     FO_RUNTIME_ASSERT(call.ArgsData.size() == func->GetParamCount());
     FO_RUNTIME_ASSERT((call.RetData != nullptr) == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID));
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     auto* as_engine = func->GetEngine();
     auto* backend = GetScriptBackend(as_engine);
     auto* context_mngr = backend->GetContextMngr();
@@ -459,7 +459,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     }
     else {
         array<void*, MAX_CALL_ARGS> mutable_data = {};
-        array<int32, MAX_CALL_ARGS> enum_mutable_data = {};
+        array<int32_t, MAX_CALL_ARGS> enum_mutable_data = {};
 
         for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {
             const auto& arg_type = func_desc->Args[i].Type;
@@ -468,7 +468,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
 
             if (arg_type.Kind == ComplexTypeKind::Simple) {
                 if (arg_type.IsMutable) {
-                    if (base_type.IsEnum && base_type.EnumUnderlyingType->Size != sizeof(int32)) {
+                    if (base_type.IsEnum && base_type.EnumUnderlyingType->Size != sizeof(int32_t)) {
                         mutable_data[i] = cast_to_void(&enum_mutable_data[i]);
                         MemCopy(mutable_data[i], arg_data, base_type.Size);
                         FO_AS_VERIFY(ctx->SetArgAddress(i, mutable_data[i]));
@@ -496,7 +496,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
             else if (arg_type.Kind == ComplexTypeKind::Array) {
                 const size_t arr_size = call.Accessor->GetArraySize(arg_data);
                 auto* arr = CreateScriptArray(as_engine, MakeScriptTypeName(arg_type).c_str());
-                arr->Reserve(numeric_cast<int32>(arr_size));
+                arr->Reserve(numeric_cast<int32_t>(arr_size));
 
                 for (size_t j = 0; j < arr_size; j++) {
                     void* elem = call.Accessor->GetArrayElement(arg_data, j);
@@ -562,7 +562,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                     }
                 }
                 else {
-                    FO_RUNTIME_ASSERT(as_engine->GetSizeOfPrimitiveType(ret_type_id) == numeric_cast<int32>(func_desc->Ret.BaseType.Size));
+                    FO_RUNTIME_ASSERT(as_engine->GetSizeOfPrimitiveType(ret_type_id) == numeric_cast<int32_t>(func_desc->Ret.BaseType.Size));
                     MemCopy(call.RetData, ctx->GetAddressOfReturnValue(), func_desc->Ret.BaseType.Size);
                 }
             }
@@ -582,7 +582,7 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
                         const auto arr_size = arr->GetSize();
                         call.Accessor->ClearArray(arg_data);
 
-                        for (int32 j = 0; j < arr_size; j++) {
+                        for (int32_t j = 0; j < arr_size; j++) {
                             call.Accessor->AddArrayElement(arg_data, arr->At(j));
                         }
 

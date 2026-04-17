@@ -41,11 +41,11 @@
 
 FO_BEGIN_NAMESPACE
 
-[[nodiscard]] static auto PngLoad(const uint8* data, int32& result_width, int32& result_height) -> vector<uint8>;
-[[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, int32& result_height) -> vector<uint8>;
+[[nodiscard]] static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+[[nodiscard]] static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
 
 // clang-format off
-alignas(ucolor) static uint8 FoPalette[] = {
+alignas(ucolor) static uint8_t FoPalette[] = {
     // Transparent color
     0x00, 0x00, 0x00, 0x00,
     // Default colors
@@ -202,41 +202,41 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    constexpr auto check_number = numeric_cast<uint8>(42);
-    const auto dirs = numeric_cast<uint8>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
+    constexpr auto check_number = numeric_cast<uint8_t>(42);
+    const auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
 
-    writer.Write<uint8>(check_number);
-    writer.Write<uint16>(collection.SequenceSize);
-    writer.Write<uint16>(collection.AnimTicks);
-    writer.Write<uint8>(dirs);
+    writer.Write<uint8_t>(check_number);
+    writer.Write<uint16_t>(collection.SequenceSize);
+    writer.Write<uint16_t>(collection.AnimTicks);
+    writer.Write<uint8_t>(dirs);
 
     for (const auto dir : iterate_range(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        writer.Write<int16>(sequence.OffsX);
-        writer.Write<int16>(sequence.OffsY);
+        writer.Write<int16_t>(sequence.OffsX);
+        writer.Write<int16_t>(sequence.OffsY);
 
-        for (int32 i = 0; i < collection.SequenceSize; i++) {
+        for (int32_t i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
             writer.Write<bool>(shot.Shared);
 
             if (!shot.Shared) {
-                writer.Write<uint16>(shot.Width);
-                writer.Write<uint16>(shot.Height);
-                writer.Write<int16>(shot.NextX);
-                writer.Write<int16>(shot.NextY);
+                writer.Write<uint16_t>(shot.Width);
+                writer.Write<uint16_t>(shot.Height);
+                writer.Write<int16_t>(shot.NextX);
+                writer.Write<int16_t>(shot.NextY);
                 writer.WritePtr(shot.Data.data(), shot.Data.size());
                 FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4);
             }
             else {
-                writer.Write<uint16>(shot.SharedIndex);
+                writer.Write<uint16_t>(shot.SharedIndex);
             }
         }
     }
 
-    writer.Write<uint8>(check_number);
+    writer.Write<uint8_t>(check_number);
 
     if (!collection.NewName.empty()) {
         _context->WriteData(collection.NewName, data);
@@ -280,22 +280,22 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
     ConfigFile fofrm("Image.fofrm", reader.GetStr());
 
-    int32 frm_fps = fofrm.GetAsInt("", "fps", 10);
+    int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
     frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
-    int32 frm_count = fofrm.GetAsInt("", "count", 1);
+    int32_t frm_count = fofrm.GetAsInt("", "count", 1);
     frm_count = fofrm.GetAsInt("", "Count", frm_count);
     FO_RUNTIME_ASSERT(frm_count > 0);
 
-    int32 ox = fofrm.GetAsInt("", "offs_x", 0);
+    int32_t ox = fofrm.GetAsInt("", "offs_x", 0);
     ox = fofrm.GetAsInt("", "OffsetX", ox);
-    int32 oy = fofrm.GetAsInt("", "offs_y", 0);
+    int32_t oy = fofrm.GetAsInt("", "offs_y", 0);
     oy = fofrm.GetAsInt("", "OffsetY", oy);
 
     collection.EffectName = fofrm.GetAsStr("", "effect");
     collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
 
     for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
-        vector<tuple<FrameCollection, int32, int32>> sub_collections;
+        vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections;
         sub_collections.reserve(10);
 
         string dir_str = strex("dir_{}", dir);
@@ -326,11 +326,11 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
         string frm_dir = strex(fname).extract_dir();
 
-        int32 frames = 0;
+        int32_t frames = 0;
         bool no_info = false;
         bool load_fail = false;
 
-        for (int32 frm = 0; frm < frm_count; frm++) {
+        for (int32_t frm = 0; frm < frm_count; frm++) {
             auto frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
 
             if (frm_name.empty()) {
@@ -353,9 +353,9 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
             auto sub_collection = LoadAny(strex("{}/{}", frm_dir, frm_name), files);
             frames += sub_collection.SequenceSize;
 
-            int32 next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
+            int32_t next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
             next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
-            int32 next_y = fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0);
+            int32_t next_y = fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0);
             next_y = fofrm.GetAsInt(dir_str, strex("NextY_{}", frm), next_y);
 
             sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
@@ -372,23 +372,23 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
         // Allocate animation storage
         if (dir == 0) {
-            collection.SequenceSize = numeric_cast<uint16>(frames);
-            collection.AnimTicks = numeric_cast<uint16>(frm_fps != 0 ? 1000 * frm_count / frm_fps : 0);
+            collection.SequenceSize = numeric_cast<uint16_t>(frames);
+            collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 * frm_count / frm_fps : 0);
         }
         else {
             collection.HaveDirs = true;
         }
 
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        sequence.OffsX = numeric_cast<int16>(ox);
-        sequence.OffsY = numeric_cast<int16>(oy);
+        sequence.OffsX = numeric_cast<int16_t>(ox);
+        sequence.OffsY = numeric_cast<int16_t>(oy);
         sequence.Frames.resize(collection.SequenceSize);
 
         // Merge many animations in one
-        int32 frm = 0;
+        int32_t frm = 0;
 
         for (auto&& [sub_collection, next_x, next_y] : sub_collections) {
-            for (int32 i = 0; i < sub_collection.SequenceSize; i++, frm++) {
+            for (int32_t i = 0; i < sub_collection.SequenceSize; i++, frm++) {
                 auto& shot = sequence.Frames[frm];
 
                 if (sub_collection.Main.Frames[i].Shared) {
@@ -398,8 +398,8 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
                 shot.Width = sub_collection.Main.Frames[i].Width;
                 shot.Height = sub_collection.Main.Frames[i].Height;
                 shot.Data = sub_collection.Main.Frames[i].Data;
-                shot.NextX = numeric_cast<int16>(sub_collection.Main.Frames[i].NextX + next_x);
-                shot.NextY = numeric_cast<int16>(sub_collection.Main.Frames[i].NextY + next_y);
+                shot.NextX = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextX + next_x);
+                shot.NextY = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextY + next_y);
             }
         }
     }
@@ -436,8 +436,8 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     // 0x08 - FireFast, 243 - 247, 5 frames
     // 0x10 - Shoreline, 248 - 253, 6 frames
     // 0x20 - BlinkingRed, 254, 15 frames
-    uint32 anim_pix_type = 0;
-    const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
+    uint32_t anim_pix_type = 0;
+    const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
     for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -483,9 +483,9 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             auto palette_reader = palette_file.GetReader();
 
             for (auto& color : custom_palette) {
-                uint8 r = palette_reader.GetUInt8() * 4;
-                uint8 g = palette_reader.GetUInt8() * 4;
-                uint8 b = palette_reader.GetUInt8() * 4;
+                uint8_t r = palette_reader.GetUInt8() * 4;
+                uint8_t g = palette_reader.GetUInt8() * 4;
+                uint8_t b = palette_reader.GetUInt8() * 4;
                 color = ucolor {r, g, b, 0xFF};
             }
 
@@ -493,7 +493,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             palette = custom_palette;
         }
 
-        for (uint16 frm = 0; frm < frm_count; frm++) {
+        for (uint16_t frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
 
             reader.SetCurPos(offset);
@@ -616,7 +616,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
                 }
 
                 if (anim_pix_type != 0) {
-                    int32 divs[4] {1, 1, 1, 1};
+                    int32_t divs[4] {1, 1, 1, 1};
 
                     if ((anim_pix_type & 0x01) != 0) {
                         divs[0] = 4;
@@ -698,8 +698,8 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     // 0x08 - FireFast, 243 - 247, 5 frames
     // 0x10 - Shoreline, 248 - 253, 6 frames
     // 0x20 - BlinkingRed, 254, 15 frames
-    uint32 anim_pix_type = 0;
-    const uint8 blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
+    uint32_t anim_pix_type = 0;
+    const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
     for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -754,9 +754,9 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             auto palette_reader = palette_file.GetReader();
 
             for (auto& color : custom_palette) {
-                uint8 r = palette_reader.GetUInt8() * 4;
-                uint8 g = palette_reader.GetUInt8() * 4;
-                uint8 b = palette_reader.GetUInt8() * 4;
+                uint8_t r = palette_reader.GetUInt8() * 4;
+                uint8_t g = palette_reader.GetUInt8() * 4;
+                uint8_t b = palette_reader.GetUInt8() * 4;
                 color = ucolor {r, g, b};
             }
 
@@ -764,7 +764,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             palette = custom_palette;
         }
 
-        for (uint16 frm = 0; frm < frm_count; frm++) {
+        for (uint16_t frm = 0; frm < frm_count; frm++) {
             auto& shot = sequence.Frames[frm];
 
             reader.SetCurPos(offset);
@@ -889,7 +889,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
                 }
 
                 if (anim_pix_type != 0) {
-                    int32 divs[4];
+                    int32_t divs[4];
                     divs[0] = 1;
                     divs[1] = 1;
                     divs[2] = 1;
@@ -949,23 +949,23 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, 
     ignore_unused(files);
 
     reader.SetCurPos(0x4);
-    uint16 w = 0;
+    uint16_t w = 0;
     reader.CopyData(&w, 2);
-    uint16 h = 0;
+    uint16_t h = 0;
     reader.CopyData(&h, 2);
 
     reader.SetCurPos(0xA);
     const auto* palette = reader.GetCurBuf();
 
-    vector<uint8> data(numeric_cast<size_t>(w) * h * 4);
+    vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
     auto* ptr = reinterpret_cast<ucolor*>(data.data());
     reader.SetCurPos(0xA + 256 * 3);
 
     for (auto i = 0, j = w * h; i < j; i++) {
-        const auto index = numeric_cast<int32>(reader.GetUInt8()) * 3;
-        const auto r = numeric_cast<uint8>(*(palette + index + 2) * 4);
-        const auto g = numeric_cast<uint8>(*(palette + index + 1) * 4);
-        const auto b = numeric_cast<uint8>(*(palette + index + 0) * 4);
+        const auto index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
+        const auto r = numeric_cast<uint8_t>(*(palette + index + 2) * 4);
+        const auto g = numeric_cast<uint8_t>(*(palette + index + 1) * 4);
+        const auto b = numeric_cast<uint8_t>(*(palette + index + 0) * 4);
         *(ptr + i) = ucolor {r, g, b};
     }
 
@@ -989,8 +989,8 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     auto transparent = false;
     auto mirror_hor = false;
     auto mirror_ver = false;
-    int32 frm_from = 0;
-    int32 frm_to = 100000;
+    int32_t frm_from = 0;
+    int32_t frm_to = 100000;
 
     for (size_t i = 0; i < opt.length(); i++) {
         switch (opt[i]) {
@@ -1042,34 +1042,34 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
     struct ArtHeader
     {
-        int32 Flags {};
+        int32_t Flags {};
         // 0x00000001 = Static - no rotation, contains frames only for south direction.
         // 0x00000002 = Critter - uses delta attribute, while playing walking animation.
         // 0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next
         // character. 0x00000008 = Facade - requires fackwalk file. 0x00000010 = Unknown - used in eye candy,
         // for example, DIVINATION.art.
-        int32 FrameRate {};
-        int32 RotationCount {};
-        uint32 PaletteList[4] {};
-        int32 ActionFrame {};
-        int32 FrameCount {};
-        int32 InfoList[8] {};
-        int32 SizeList[8] {};
-        int32 DataList[8] {};
+        int32_t FrameRate {};
+        int32_t RotationCount {};
+        uint32_t PaletteList[4] {};
+        int32_t ActionFrame {};
+        int32_t FrameCount {};
+        int32_t InfoList[8] {};
+        int32_t SizeList[8] {};
+        int32_t DataList[8] {};
     } header;
 
     struct ArtFrameInfo
     {
-        int32 FrameWidth {};
-        int32 FrameHeight {};
-        int32 FrameSize {};
-        int32 OffsetX {};
-        int32 OffsetY {};
-        int32 DeltaX {};
-        int32 DeltaY {};
+        int32_t FrameWidth {};
+        int32_t FrameHeight {};
+        int32_t FrameSize {};
+        int32_t OffsetX {};
+        int32_t OffsetY {};
+        int32_t DeltaX {};
+        int32_t DeltaY {};
     } frame_info;
 
-    using ArtPalette = uint32[256];
+    using ArtPalette = uint32_t[256];
     ArtPalette palette[4];
 
     reader.CopyData(&header, sizeof(header));
@@ -1106,8 +1106,8 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
     // Create animation
     FrameCollection collection;
-    collection.SequenceSize = numeric_cast<uint16>(frm_count_target);
-    collection.AnimTicks = numeric_cast<uint16>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
+    collection.SequenceSize = numeric_cast<uint16_t>(frm_count_target);
+    collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
     collection.HaveDirs = header.RotationCount == 8;
 
     for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
@@ -1146,7 +1146,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
         // Read data
         auto frm_read = frm_from;
-        int32 frm_write = 0;
+        int32_t frm_write = 0;
 
         while (true) {
             reader.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
@@ -1155,21 +1155,21 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
             auto w = frame_info.FrameWidth;
             auto h = frame_info.FrameHeight;
-            vector<uint8> data(numeric_cast<size_t>(w) * h * 4);
-            auto* ptr = reinterpret_cast<uint32*>(data.data());
+            vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
+            auto* ptr = reinterpret_cast<uint32_t*>(data.data());
 
             auto& shot = sequence.Frames[frm_write];
-            shot.Width = numeric_cast<uint16>(w);
-            shot.Height = numeric_cast<uint16>(h);
-            shot.NextX = numeric_cast<int16>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
-            shot.NextY = numeric_cast<int16>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
+            shot.Width = numeric_cast<uint16_t>(w);
+            shot.Height = numeric_cast<uint16_t>(h);
+            shot.NextX = numeric_cast<int16_t>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
+            shot.NextY = numeric_cast<int16_t>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
 
-            uint32 color = 0;
+            uint32_t color = 0;
 
             auto art_get_color = [&color, &reader, &palette, &palette_index, &transparent]() {
                 const auto index = reader.GetUInt8();
                 color = palette[palette_index][index];
-                std::swap(reinterpret_cast<uint8*>(&color)[0], reinterpret_cast<uint8*>(&color)[2]);
+                std::swap(reinterpret_cast<uint8_t*>(&color)[0], reinterpret_cast<uint8_t*>(&color)[2]);
 
                 if (index == 0) {
                     color = 0;
@@ -1182,9 +1182,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
                 }
             };
 
-            int32 pos = 0;
-            int32 x = 0;
-            int32 y = 0;
+            int32_t pos = 0;
+            int32_t x = 0;
+            int32_t y = 0;
             bool mirror = mirror_hor || mirror_ver;
 
             auto art_write_color = [&color, &pos, &x, &y, &w, &h, ptr, &mirror, &mirror_hor, &mirror_ver]() {
@@ -1203,13 +1203,13 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             };
 
             if (w * h == frame_info.FrameSize) {
-                for (int32 i = 0; i < frame_info.FrameSize; i++) {
+                for (int32_t i = 0; i < frame_info.FrameSize; i++) {
                     art_get_color();
                     art_write_color();
                 }
             }
             else {
-                for (int32 i = 0; i < frame_info.FrameSize; i++) {
+                for (int32_t i = 0; i < frame_info.FrameSize; i++) {
                     auto cmd = reader.GetUInt8();
 
                     if (cmd > 128) {
@@ -1299,7 +1299,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         // 1 - skin
         // 2 - hair
         // 3 - armor
-        int32 rgb_offs[4][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        int32_t rgb_offs[4][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
         auto first = opt.find_first_of('[');
@@ -1312,7 +1312,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             istringstream ientry(entry);
 
             // Parse numbers
-            int32 rgb[4];
+            int32_t rgb[4];
 
             if (ientry >> rgb[0] >> rgb[1] >> rgb[2] >> rgb[3]) {
                 // To one part
@@ -1342,32 +1342,32 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             throw ImageBakerException("Invalid SPR header", fname);
         }
 
-        const auto dimension_left = numeric_cast<float32>(reader.GetUInt8()) * 6.7f;
-        const auto dimension_up = numeric_cast<float32>(reader.GetUInt8()) * 7.6f;
+        const auto dimension_left = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
+        const auto dimension_up = numeric_cast<float32_t>(reader.GetUInt8()) * 7.6f;
         ignore_unused(dimension_up);
-        const auto dimension_right = numeric_cast<float32>(reader.GetUInt8()) * 6.7f;
+        const auto dimension_right = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
         const auto center_x = reader.GetLEInt32();
         const auto center_y = reader.GetLEInt32();
         reader.GoForward(2); // uint16 unknown1  sometimes it is 0, and sometimes it is 3
         reader.GoForward(1); // CHAR unknown2  0x64, other values were not observed
 
         auto ta = (127.0f / 2.0f) * DEG_TO_RAD_FLOAT; // Tactics grid angle
-        auto center_x_ex = iround<int32>((dimension_left * sinf(ta) + dimension_right * sinf(ta)) / 2.0f - dimension_left * sinf(ta));
-        auto center_y_ex = iround<int32>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
+        auto center_x_ex = iround<int32_t>((dimension_left * sinf(ta) + dimension_right * sinf(ta)) / 2.0f - dimension_left * sinf(ta));
+        auto center_y_ex = iround<int32_t>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
 
-        int32 anim_index = 0;
-        vector<int32> anim_frames;
+        int32_t anim_index = 0;
+        vector<int32_t> anim_frames;
         anim_frames.reserve(1000);
 
         // Find sequence
         auto seq_founded = false;
         auto seq_cnt = reader.GetLEInt32();
 
-        for (int32 seq = 0; seq < seq_cnt; seq++) {
+        for (int32_t seq = 0; seq < seq_cnt; seq++) {
             // Find by name
             auto item_cnt = reader.GetLEInt32();
-            reader.GoForward(sizeof(int16) * item_cnt);
-            reader.GoForward(sizeof(int32) * item_cnt);
+            reader.GoForward(sizeof(int16_t) * item_cnt);
+            reader.GoForward(sizeof(int32_t) * item_cnt);
 
             auto name_len = reader.GetLEInt32();
             auto name = string(reinterpret_cast<const char*>(reader.GetCurBuf()), name_len);
@@ -1378,16 +1378,16 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 anim_index = index;
 
                 // Read frame numbers
-                reader.GoBack(sizeof(uint16) + name_len + sizeof(int32) + sizeof(int32) * item_cnt + sizeof(int16) * item_cnt);
+                reader.GoBack(sizeof(uint16_t) + name_len + sizeof(int32_t) + sizeof(int32_t) * item_cnt + sizeof(int16_t) * item_cnt);
 
-                for (int32 i = 0; i < item_cnt; i++) {
-                    int16 val = reader.GetLEInt16();
+                for (int32_t i = 0; i < item_cnt; i++) {
+                    int16_t val = reader.GetLEInt16();
 
                     if (val >= 0) {
                         anim_frames.push_back(val);
                     }
                     else if (val == -43) {
-                        reader.GoForward(sizeof(int16) * 3);
+                        reader.GoForward(sizeof(int16_t) * 3);
                         i += 3;
                     }
                 }
@@ -1405,7 +1405,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         // Find animation
         reader.SetCurPos(0);
 
-        for (int32 i = 0; i <= anim_index; i++) {
+        for (int32_t i = 0; i <= anim_index; i++) {
             if (!reader.SeekFragment("<spranim>")) {
                 throw ImageBakerException("Spranim for SPR not found", fname);
             }
@@ -1417,15 +1417,15 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         reader.GoForward(reader.GetLEInt32()); // Collection name
         auto frame_cnt = reader.GetLEInt32();
         auto dir_cnt = reader.GetLEInt32();
-        vector<int32> bboxes;
+        vector<int32_t> bboxes;
         bboxes.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
-        reader.CopyData(bboxes.data(), sizeof(int32) * frame_cnt * dir_cnt * 4);
+        reader.CopyData(bboxes.data(), sizeof(int32_t) * frame_cnt * dir_cnt * 4);
 
         // Fix dir
         if (dir_cnt != 8) {
             dir_spr = dir_spr * (dir_cnt * 100 / 8) / 100;
         }
-        if (numeric_cast<int32>(dir_spr) >= dir_cnt) {
+        if (numeric_cast<int32_t>(dir_spr) >= dir_cnt) {
             dir_spr = 0;
         }
 
@@ -1458,7 +1458,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         reader.SetCurPos(cur_pos);
 
         auto packed = type == 0x32;
-        vector<uint8> data;
+        vector<uint8_t> data;
 
         if (packed) {
             // Unpack with zlib
@@ -1519,8 +1519,8 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         }
 
         if (dir == 0) {
-            collection.SequenceSize = numeric_cast<uint16>(anim_frames.size());
-            collection.AnimTicks = numeric_cast<uint16>(1000 / 10 * anim_frames.size());
+            collection.SequenceSize = numeric_cast<uint16_t>(anim_frames.size());
+            collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size());
         }
 
         if (dir == 1) {
@@ -1540,7 +1540,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             for (size_t i = 0, j = anim_frame; i < j; i++) {
                 if (anim_frames[i] == frm) {
                     shot.Shared = true;
-                    shot.SharedIndex = numeric_cast<uint16>(i);
+                    shot.SharedIndex = numeric_cast<uint16_t>(i);
                     founded = true;
                     break;
                 }
@@ -1551,11 +1551,11 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             }
 
             // Compute whole image size
-            int32 whole_width = 0;
-            int32 whole_height = 0;
+            int32_t whole_width = 0;
+            int32_t whole_height = 0;
 
-            for (int32 part = 0; part < 4; part++) {
-                const int32 frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
+            for (int32_t part = 0; part < 4; part++) {
+                const int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
 
                 if (image_indices[frm_index] == 0) {
                     continue;
@@ -1580,10 +1580,10 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             }
 
             // Allocate data
-            vector<uint8> whole_data(numeric_cast<size_t>(whole_width) * whole_height * 4);
+            vector<uint8_t> whole_data(numeric_cast<size_t>(whole_width) * whole_height * 4);
 
-            for (int32 part = 0; part < 4; part++) {
-                const int32 frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
+            for (int32_t part = 0; part < 4; part++) {
+                const int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
 
                 if (image_indices[frm_index] == 0) {
                     continue;
@@ -1596,7 +1596,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
                 char zar[8] = {0};
                 fm_images.CopyData(zar, 8);
-                uint8 subtype = zar[6];
+                uint8_t subtype = zar[6];
 
                 auto width = fm_images.GetLEInt32();
                 auto height = fm_images.GetLEInt32();
@@ -1605,7 +1605,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 auto rle_size = fm_images.GetLEUInt32();
                 const auto* rle_buf = fm_images.GetCurBuf();
                 fm_images.GoForward(rle_size);
-                uint8 def_color = 0;
+                uint8_t def_color = 0;
 
                 if (zar[5] != 0 || strcmp(zar, "<zar>") != 0 || (subtype != 0x34 && subtype != 0x35) || palette_present == 1) {
                     throw ImageBakerException("Invalid SPR file innded ZAR header", fname);
@@ -1616,41 +1616,41 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 auto y = posy;
 
                 while (rle_size != 0) {
-                    int32 control = *rle_buf;
+                    int32_t control = *rle_buf;
                     rle_buf++;
                     rle_size--;
 
                     auto control_mode = control & 3;
                     auto control_count = control >> 2;
 
-                    for (int32 i = 0; i < control_count; i++) {
+                    for (int32_t i = 0; i < control_count; i++) {
                         ucolor col;
 
                         switch (control_mode) {
                         case 1:
                             col = palette[part][rle_buf[i]];
-                            reinterpret_cast<uint8*>(&col)[3] = 0xFF;
+                            reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
                             break;
                         case 2:
                             col = palette[part][rle_buf[numeric_cast<size_t>(2) * i]];
-                            reinterpret_cast<uint8*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                            reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
                             break;
                         case 3:
                             col = palette[part][def_color];
-                            reinterpret_cast<uint8*>(&col)[3] = rle_buf[i];
+                            reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
                             break;
                         default:
                             break;
                         }
 
-                        for (int32 j = 0; j < 3; j++) {
+                        for (int32_t j = 0; j < 3; j++) {
                             if (rgb_offs[part][j] != 0) {
-                                auto val = numeric_cast<int32>(reinterpret_cast<uint8*>(&col)[2 - j]) + rgb_offs[part][j];
-                                reinterpret_cast<uint8*>(&col)[2 - j] = numeric_cast<uint8>(std::clamp(val, 0, 255));
+                                auto val = numeric_cast<int32_t>(reinterpret_cast<uint8_t*>(&col)[2 - j]) + rgb_offs[part][j];
+                                reinterpret_cast<uint8_t*>(&col)[2 - j] = numeric_cast<uint8_t>(std::clamp(val, 0, 255));
                             }
                         }
 
-                        std::swap(reinterpret_cast<uint8*>(&col)[0], reinterpret_cast<uint8*>(&col)[2]);
+                        std::swap(reinterpret_cast<uint8_t*>(&col)[0], reinterpret_cast<uint8_t*>(&col)[2]);
 
                         if (part == 0) {
                             *ptr = col;
@@ -1680,10 +1680,10 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 }
             }
 
-            shot.Width = numeric_cast<uint16>(whole_width);
-            shot.Height = numeric_cast<uint16>(whole_height);
-            shot.NextX = numeric_cast<int16>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_width / 2);
-            shot.NextY = numeric_cast<int16>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_height);
+            shot.Width = numeric_cast<uint16_t>(whole_width);
+            shot.Height = numeric_cast<uint16_t>(whole_height);
+            shot.NextX = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_width / 2);
+            shot.NextY = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_height);
             shot.Data = std::move(whole_data);
         }
 
@@ -1717,8 +1717,8 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
     const auto palette_present = reader.GetUInt8();
 
     // Read palette
-    uint32 palette[256] = {};
-    uint8 def_color = 0;
+    uint32_t palette[256] = {};
+    uint8_t def_color = 0;
 
     if (palette_present != 0) {
         const auto palette_count = reader.GetLEInt32();
@@ -1727,7 +1727,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
             throw ImageBakerException("Invalid ZAR palette count", fname);
         }
 
-        reader.CopyData(palette, sizeof(uint32) * palette_count);
+        reader.CopyData(palette, sizeof(uint32_t) * palette_count);
 
         if (type == 0x34) {
             def_color = reader.GetUInt8();
@@ -1740,8 +1740,8 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
     reader.GoForward(rle_size);
 
     // Allocate data
-    vector<uint8> data(numeric_cast<size_t>(width) * height * 4);
-    auto* ptr = reinterpret_cast<uint32*>(data.data());
+    vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
+    auto* ptr = reinterpret_cast<uint32_t*>(data.data());
 
     // Decode
     while (rle_size != 0) {
@@ -1753,20 +1753,20 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
         const auto control_count = control >> 2;
 
         for (auto i = 0; i < control_count; i++) {
-            uint32 col = 0;
+            uint32_t col = 0;
 
             switch (control_mode) {
             case 1:
                 col = palette[rle_buf[i]];
-                reinterpret_cast<uint8*>(&col)[3] = 0xFF;
+                reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
                 break;
             case 2:
                 col = palette[rle_buf[numeric_cast<size_t>(2) * i]];
-                reinterpret_cast<uint8*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
                 break;
             case 3:
                 col = palette[def_color];
-                reinterpret_cast<uint8*>(&col)[3] = rle_buf[i];
+                reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
                 break;
             default:
                 break;
@@ -1790,8 +1790,8 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
     collection.Main.Frames.resize(collection.SequenceSize);
-    collection.Main.Frames[0].Width = numeric_cast<uint16>(width);
-    collection.Main.Frames[0].Height = numeric_cast<uint16>(height);
+    collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
+    collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
@@ -1829,11 +1829,11 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
     const auto frames_count = reader.GetLEInt32();
 
     FrameCollection collection;
-    collection.SequenceSize = numeric_cast<uint16>(frames_count);
-    collection.AnimTicks = numeric_cast<uint16>(1000 / 10 * frames_count);
+    collection.SequenceSize = numeric_cast<uint16_t>(frames_count);
+    collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count);
     collection.Main.Frames.resize(collection.SequenceSize);
 
-    for (int32 frm = 0; frm < frames_count; frm++) {
+    for (int32_t frm = 0; frm < frames_count; frm++) {
         // Read header
         char zar_head[6];
         reader.CopyData(zar_head, 6);
@@ -1850,7 +1850,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
         // Read palette
         ucolor palette[256] = {};
-        uint8 def_color = 0;
+        uint8_t def_color = 0;
 
         if (palette_present != 0) {
             const auto palette_count = reader.GetLEUInt32();
@@ -1859,7 +1859,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
                 throw ImageBakerException("TIL file invalid palettes", fname);
             }
 
-            reader.CopyData(palette, sizeof(uint32) * palette_count);
+            reader.CopyData(palette, sizeof(uint32_t) * palette_count);
 
             if (type == 0x34) {
                 def_color = reader.GetUInt8();
@@ -1872,12 +1872,12 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
         reader.GoForward(rle_size);
 
         // Allocate data
-        vector<uint8> data(numeric_cast<size_t>(zar_width) * zar_height * 4);
+        vector<uint8_t> data(numeric_cast<size_t>(zar_width) * zar_height * 4);
         auto* ptr = reinterpret_cast<ucolor*>(data.data());
 
         // Decode
         while (rle_size != 0) {
-            const int32 control = *rle_buf;
+            const int32_t control = *rle_buf;
             rle_buf++;
             rle_size--;
 
@@ -1890,15 +1890,15 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
                 switch (control_mode) {
                 case 1:
                     col = palette[rle_buf[i]];
-                    reinterpret_cast<uint8*>(&col)[3] = 0xFF;
+                    reinterpret_cast<uint8_t*>(&col)[3] = 0xFF;
                     break;
                 case 2:
                     col = palette[rle_buf[numeric_cast<size_t>(2) * i]];
-                    reinterpret_cast<uint8*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
+                    reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[numeric_cast<size_t>(2) * i + 1];
                     break;
                 case 3:
                     col = palette[def_color];
-                    reinterpret_cast<uint8*>(&col)[3] = rle_buf[i];
+                    reinterpret_cast<uint8_t*>(&col)[3] = rle_buf[i];
                     break;
                 default:
                     break;
@@ -1920,8 +1920,8 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
         }
 
         auto& shot = collection.Main.Frames[frm];
-        shot.Width = numeric_cast<uint16>(zar_width);
-        shot.Height = numeric_cast<uint16>(zar_height);
+        shot.Width = numeric_cast<uint16_t>(zar_width);
+        shot.Height = numeric_cast<uint16_t>(zar_height);
         shot.Data = std::move(data);
     }
 
@@ -1944,14 +1944,14 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Packed
-    vector<uint8> unpacked_data;
+    vector<uint8_t> unpacked_data;
 
     if (head[3] == 'C') {
         const auto unpacked_len = reader.GetLEUInt32();
         auto data_len = reader.GetSize() - 12;
 
-        auto* buf = const_cast<uint8*>(reader.GetBuf());
-        *reinterpret_cast<uint16*>(buf) = 0x9C78;
+        auto* buf = const_cast<uint8_t*>(reader.GetBuf());
+        *reinterpret_cast<uint16_t*>(buf) = 0x9C78;
 
         unpacked_data = Compressor::Decompress({buf, data_len}, unpacked_len / reader.GetSize() + 1);
 
@@ -1968,10 +1968,10 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Read header
-    const int32 width = reader.GetLEUInt16(); // Width (pixels)
-    const int32 height = reader.GetLEUInt16(); // Height (pixels)
-    const int32 col = reader.GetLEUInt16(); // Columns (blocks)
-    const int32 row = reader.GetLEUInt16(); // Rows (blocks)
+    const int32_t width = reader.GetLEUInt16(); // Width (pixels)
+    const int32_t height = reader.GetLEUInt16(); // Height (pixels)
+    const int32_t col = reader.GetLEUInt16(); // Columns (blocks)
+    const int32_t row = reader.GetLEUInt16(); // Rows (blocks)
     const auto block_size = reader.GetLEUInt32(); // Block size (pixels)
     ignore_unused(block_size);
     const auto palette_offset = reader.GetLEUInt32(); // Offset (from start of file) to palettes
@@ -1979,15 +1979,15 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     const auto data_offset = tiles_offset + col * row * 4;
 
     // Allocate data
-    vector<uint8> data(numeric_cast<size_t>(width) * height * 4);
-    auto* ptr = reinterpret_cast<uint32*>(data.data());
+    vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
+    auto* ptr = reinterpret_cast<uint32_t*>(data.data());
 
     // Read image data
-    uint32 palette[256] = {0};
-    int32 block = 0;
+    uint32_t palette[256] = {0};
+    int32_t block = 0;
 
-    for (int32 y = 0; y < row; y++) {
-        for (int32 x = 0; x < col; x++) {
+    for (int32_t y = 0; y < row; y++) {
+        for (int32_t x = 0; x < col; x++) {
             // Get palette for current block
             reader.SetCurPos(palette_offset + block * 256 * 4);
             reader.CopyData(palette, numeric_cast<size_t>(256) * 4);
@@ -2009,8 +2009,8 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
 
             // Read data
             auto pos = y * 64 * width + x * 64;
-            for (int32 yy = 0; yy < block_h; yy++) {
-                for (int32 xx = 0; xx < block_w; xx++) {
+            for (int32_t yy = 0; yy < block_h; yy++) {
+                for (int32_t xx = 0; xx < block_w; xx++) {
                     auto color = palette[reader.GetUInt8()];
 
                     if (color == 0xFF00) {
@@ -2036,8 +2036,8 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
     collection.Main.Frames.resize(collection.SequenceSize);
-    collection.Main.Frames[0].Width = numeric_cast<uint16>(width);
-    collection.Main.Frames[0].Height = numeric_cast<uint16>(height);
+    collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
+    collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
@@ -2051,8 +2051,8 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     // Format: fileName$5-6.spr
     auto opt_str = string(opt);
     istringstream idelim(opt_str);
-    int32 need_cycle = 0;
-    int32 specific_frame = -1;
+    int32_t need_cycle = 0;
+    int32_t specific_frame = -1;
     idelim >> need_cycle;
 
     if (opt.find('-') != string::npos) {
@@ -2073,14 +2073,14 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Packed
-    vector<uint8> unpacked_data;
+    vector<uint8_t> unpacked_data;
 
     if (head[3] == 'C') {
         auto unpacked_len = reader.GetLEUInt32();
         auto data_len = reader.GetSize() - 12;
 
-        auto* buf = const_cast<uint8*>(reader.GetBuf());
-        *reinterpret_cast<uint16*>(buf) = 0x9C78;
+        auto* buf = const_cast<uint8_t*>(reader.GetBuf());
+        *reinterpret_cast<uint16_t*>(buf) = 0x9C78;
 
         unpacked_data = Compressor::Decompress({buf, data_len}, unpacked_len / reader.GetSize() + 1);
 
@@ -2097,8 +2097,8 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     }
 
     // Read header
-    int32 frames_count = reader.GetLEUInt16();
-    int32 cycles_count = reader.GetUInt8();
+    int32_t frames_count = reader.GetLEUInt16();
+    int32_t cycles_count = reader.GetUInt8();
     auto compr_color = reader.GetUInt8();
     auto frames_offset = reader.GetLEUInt32();
     auto palette_offset = reader.GetLEUInt32();
@@ -2110,16 +2110,16 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     }
 
     reader.SetCurPos(frames_offset + frames_count * 12 + need_cycle * 4);
-    int32 cycle_frames = reader.GetLEUInt16();
-    int32 table_index = reader.GetLEUInt16();
+    int32_t cycle_frames = reader.GetLEUInt16();
+    int32_t table_index = reader.GetLEUInt16();
 
-    if (specific_frame != -1 && specific_frame >= numeric_cast<int32>(cycle_frames)) {
+    if (specific_frame != -1 && specific_frame >= numeric_cast<int32_t>(cycle_frames)) {
         specific_frame = 0;
     }
 
     // Create animation
     FrameCollection collection;
-    collection.SequenceSize = numeric_cast<uint16>(specific_frame == -1 ? cycle_frames : 1);
+    collection.SequenceSize = numeric_cast<uint16_t>(specific_frame == -1 ? cycle_frames : 1);
     collection.AnimTicks = 100;
     collection.Main.Frames.resize(collection.SequenceSize);
 
@@ -2129,34 +2129,34 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
     reader.CopyData(palette, numeric_cast<size_t>(256) * 4);
 
     // Find in lookup table
-    for (int32 i = 0; i < cycle_frames; i++) {
-        if (specific_frame != -1 && specific_frame != numeric_cast<int32>(i)) {
+    for (int32_t i = 0; i < cycle_frames; i++) {
+        if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
             continue;
         }
 
         // Get need index
         reader.SetCurPos(lookup_table_offset + table_index * 2);
         table_index++;
-        int32 frame_index = reader.GetLEUInt16();
+        int32_t frame_index = reader.GetLEUInt16();
 
         // Get frame data
         reader.SetCurPos(frames_offset + frame_index * 12);
-        int32 width = reader.GetLEUInt16();
-        int32 height = reader.GetLEUInt16();
-        int32 ox = reader.GetLEUInt16();
-        int32 oy = reader.GetLEUInt16();
+        int32_t width = reader.GetLEUInt16();
+        int32_t height = reader.GetLEUInt16();
+        int32_t ox = reader.GetLEUInt16();
+        int32_t oy = reader.GetLEUInt16();
         auto data_offset = reader.GetLEUInt32();
         auto rle = (data_offset & 0x80000000) == 0;
         data_offset &= 0x7FFFFFFF;
 
         // Allocate data
-        vector<uint8> data(numeric_cast<size_t>(width) * height * 4);
+        vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
         auto* ptr = reinterpret_cast<ucolor*>(data.data());
 
         // Fill it
         reader.SetCurPos(data_offset);
 
-        for (int32 k = 0, l = width * height; k < l;) {
+        for (int32_t k = 0, l = width * height; k < l;) {
             auto index = reader.GetUInt8();
             auto color = palette[index];
 
@@ -2170,9 +2170,9 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
             std::swap(color.comp.r, color.comp.b);
 
             if (rle && index == compr_color) {
-                int32 copies = reader.GetUInt8();
+                int32_t copies = reader.GetUInt8();
 
-                for (int32 m = 0; m <= copies; m++, k++) {
+                for (int32_t m = 0; m <= copies; m++, k++) {
                     *ptr++ = color;
                 }
             }
@@ -2184,10 +2184,10 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
         // Set in animation sequence
         auto& shot = collection.Main.Frames[specific_frame != -1 ? 0 : i];
-        shot.Width = numeric_cast<uint16>(width);
-        shot.Height = numeric_cast<uint16>(height);
-        shot.NextX = numeric_cast<int16>(-ox + width / 2);
-        shot.NextY = numeric_cast<int16>(-oy + height);
+        shot.Width = numeric_cast<uint16_t>(width);
+        shot.Height = numeric_cast<uint16_t>(height);
+        shot.NextX = numeric_cast<int16_t>(-ox + width / 2);
+        shot.NextY = numeric_cast<int16_t>(-oy + height);
         shot.Data = std::move(data);
 
         if (specific_frame != -1) {
@@ -2206,16 +2206,16 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
     ignore_unused(opt);
     ignore_unused(files);
 
-    int32 width = 0;
-    int32 height = 0;
+    int32_t width = 0;
+    int32_t height = 0;
     auto data = PngLoad(reader.GetBuf(), width, height);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
     collection.Main.Frames.resize(collection.SequenceSize);
-    collection.Main.Frames[0].Width = numeric_cast<uint16>(width);
-    collection.Main.Frames[0].Height = numeric_cast<uint16>(height);
+    collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
+    collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
     collection.Main.Frames[0].Data = std::move(data);
 
     return collection;
@@ -2229,22 +2229,22 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
     ignore_unused(opt);
     ignore_unused(files);
 
-    int32 width = 0;
-    int32 height = 0;
+    int32_t width = 0;
+    int32_t height = 0;
     auto data = TgaLoad(reader.GetBuf(), reader.GetSize(), width, height);
 
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
     collection.Main.Frames.resize(collection.SequenceSize);
-    collection.Main.Frames[0].Width = numeric_cast<uint16>(width);
-    collection.Main.Frames[0].Height = numeric_cast<uint16>(height);
+    collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
+    collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
     collection.Main.Frames[0].Data = std::move(data);
 
     return collection;
 }
 
-static auto PngLoad(const uint8* data, int32& result_width, int32& result_height) -> vector<uint8>
+static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2277,7 +2277,7 @@ static auto PngLoad(const uint8* data, int32& result_width, int32& result_height
         {
             static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
             {
-                auto** io_ptr = cast_from_void<uint8**>(png_get_io_ptr(png_ptr));
+                auto** io_ptr = cast_from_void<uint8_t**>(png_get_io_ptr(png_ptr));
                 MemCopy(png_data, *io_ptr, length);
                 *io_ptr += length;
             }
@@ -2314,7 +2314,7 @@ static auto PngLoad(const uint8* data, int32& result_width, int32& result_height
         vector<png_bytep> row_pointers;
         row_pointers.resize(height);
 
-        vector<uint8> result;
+        vector<uint8_t> result;
         result.resize(numeric_cast<size_t>(width) * height * 4);
 
         for (png_uint_32 i = 0; i < height; i++) {
@@ -2325,8 +2325,8 @@ static auto PngLoad(const uint8* data, int32& result_width, int32& result_height
         png_read_end(png_ptr, info_ptr);
         png_destroy_read_struct(&png_ptr, &info_ptr, static_cast<png_infopp>(nullptr));
 
-        result_width = numeric_cast<int32>(width);
-        result_height = numeric_cast<int32>(height);
+        result_width = numeric_cast<int32_t>(width);
+        result_height = numeric_cast<int32_t>(height);
 
         return result;
     }
@@ -2337,7 +2337,7 @@ static auto PngLoad(const uint8* data, int32& result_width, int32& result_height
     }
 }
 
-static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, int32& result_height) -> vector<uint8>
+static auto TgaLoad(const uint8_t* data, size_t data_size, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2354,12 +2354,12 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
     };
 
     // Load header
-    uint8 type = 0;
-    uint8 pixel_depth = 0;
-    int16 width = 0;
-    int16 height = 0;
-    uint8 unused_char = 0;
-    int16 unused_short = 0;
+    uint8_t type = 0;
+    uint8_t pixel_depth = 0;
+    int16_t width = 0;
+    int16_t height = 0;
+    uint8_t unused_char = 0;
+    int16_t unused_short = 0;
     read_tga(&unused_char, 1);
     read_tga(&unused_char, 1);
     read_tga(&type, 1);
@@ -2390,17 +2390,17 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
 
     // Read
     const auto bpp = pixel_depth / 8;
-    const int32 read_size = height * width * bpp;
-    vector<uint8> read_data;
+    const int32_t read_size = height * width * bpp;
+    vector<uint8_t> read_data;
     read_data.resize(read_size);
 
     if (type == 2) {
         read_tga(read_data.data(), read_size);
     }
     else {
-        int32 bytes_read = 0;
-        uint8 header = 0;
-        uint8 color[4];
+        int32_t bytes_read = 0;
+        uint8_t header = 0;
+        uint8_t color[4];
 
         while (bytes_read < read_size) {
             read_tga(&header, 1);
@@ -2408,9 +2408,9 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
             if ((header & 0x00000080) != 0) {
                 header &= ~0x00000080;
                 read_tga(color, bpp);
-                const int32 run_len = (header + 1) * bpp;
+                const int32_t run_len = (header + 1) * bpp;
 
-                for (int32 i = 0; i < run_len; i += bpp) {
+                for (int32_t i = 0; i < run_len; i += bpp) {
                     for (auto c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
                         read_data[bytes_read + i + c] = color[c];
                     }
@@ -2419,8 +2419,8 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
                 bytes_read += run_len;
             }
             else {
-                const int32 run_len = (header + 1) * bpp;
-                int32 to_read;
+                const int32_t run_len = (header + 1) * bpp;
+                int32_t to_read;
 
                 if (bytes_read + run_len > read_size) {
                     to_read = read_size - bytes_read;
@@ -2440,11 +2440,11 @@ static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, in
     }
 
     // Copy data
-    vector<uint8> result;
+    vector<uint8_t> result;
     result.resize(numeric_cast<size_t>(width) * height * 4);
 
-    for (int16 y = 0; y < height; y++) {
-        for (int16 x = 0; x < width; x++) {
+    for (int16_t y = 0; y < height; y++) {
+        for (int16_t x = 0; x < width; x++) {
             const auto i = (height - y - 1) * width + x;
             const auto j = y * width + x;
             result[i * 4 + 0] = read_data[j * bpp + 2];

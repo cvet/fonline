@@ -74,7 +74,7 @@ public:
     [[nodiscard]] auto GetInvItems() const noexcept -> span<const raw_ptr<Item>> { return _invItems; }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*;
-    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32;
+    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>& { return _visibleItems; }
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool { return _visibleItems.contains(item_id); }
@@ -84,7 +84,7 @@ public:
     [[nodiscard]] auto GetGlobalMapGroup() -> span<raw_ptr<Critter>>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> auto& { return _globalMapGroup; }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return _moving != nullptr; }
-    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32 { return _movingUid; }
+    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t { return _movingUid; }
     [[nodiscard]] auto GetMoving() const noexcept -> MovingContext* { return const_cast<MovingContext*>(_moving.get()); }
     [[nodiscard]] auto GetMoving() noexcept -> MovingContext* { return _moving.get(); }
     [[nodiscard]] auto GetMovingContext() const noexcept -> const MovingContext* { return _moving ? _moving.get() : _lastMoving.get(); }
@@ -118,13 +118,13 @@ public:
     void ChangeDir(mdir dir);
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
-    void Broadcast_Action(CritterAction action, int32 action_data, const Item* item);
+    void Broadcast_Action(CritterAction action, int32_t action_data, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
     void SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& callback);
     void SendAndBroadcast_Moving();
-    void SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item);
+    void SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void SendAndBroadcast_Attachments();
 
@@ -142,7 +142,7 @@ public:
     void Send_Teleport(const Critter* cr, mpos to_hex);
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
-    void Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item);
+    void Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
@@ -174,25 +174,25 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, int32 /*talkers*/);
+    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32 /*barterCount*/);
+    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
     // Todo: incapsulate Critter data
-    int32 LockMapTransfers {};
+    int32_t LockMapTransfers {};
 
     ident_t ViewMapId {};
     hstring ViewMapPid {};
-    uint16 ViewMapLook {};
+    uint16_t ViewMapLook {};
     mpos ViewMapHex {};
     mdir ViewMapDir {};
     ident_t ViewMapLocId {};
-    int32 ViewMapLocEnt {};
+    int32_t ViewMapLocEnt {};
 
     vector<raw_ptr<Critter>> AttachedCritters {};
 
 private:
-    uint32 _movingUid {};
+    uint32_t _movingUid {};
     refcount_ptr<MovingContext> _moving {};
     refcount_ptr<MovingContext> _lastMoving {};
     refcount_ptr<Player> _player {};

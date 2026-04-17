@@ -7,9 +7,9 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     constexpr msize TEST_MAP_SIZE {40, 40};
-    constexpr uint16 TEST_SPEED = 100;
+    constexpr uint16_t TEST_SPEED = 100;
     const vector<mdir> TEST_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
-    const vector<uint16> TEST_CONTROL_STEPS {2, 4, 5};
+    const vector<uint16_t> TEST_CONTROL_STEPS {2, 4, 5};
     constexpr mpos TEST_START_HEX {20, 20};
     constexpr mpos TEST_UNKNOWN_HEX {0, 0};
     constexpr mpos TEST_FALLBACK_HEX {1, 1};
@@ -19,7 +19,7 @@ namespace
         return std::make_unique<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
     }
 
-    static auto MakeTimePoint(int32 milliseconds) -> nanotime
+    static auto MakeTimePoint(int32_t milliseconds) -> nanotime
     {
         return nanotime {timespan {std::chrono::milliseconds {milliseconds}}};
     }
@@ -67,7 +67,7 @@ TEST_CASE("MovingContext")
     SECTION("EvaluateProjectedHexMatchesCurrentProgressForZeroLookAhead")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.75f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.75f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
@@ -78,9 +78,9 @@ TEST_CASE("MovingContext")
     {
         auto moving = MakeMovingContext();
         auto future_moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.2f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.2f);
         const auto look_ahead_ms = moving->GetWholeTime() * 0.65f;
-        const auto future_time_ms = current_time_ms + iround<int32>(look_ahead_ms);
+        const auto future_time_ms = current_time_ms + iround<int32_t>(look_ahead_ms);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
         future_moving->UpdateCurrentTime(MakeTimePoint(future_time_ms));
@@ -91,7 +91,7 @@ TEST_CASE("MovingContext")
     SECTION("EvaluateProgressOverloadsStayConsistentForCurrentHex")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.45f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
@@ -107,7 +107,7 @@ TEST_CASE("MovingContext")
     SECTION("EvaluatePathHexesReturnsTailFromCurrentHex")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.45f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
@@ -122,7 +122,7 @@ TEST_CASE("MovingContext")
     SECTION("EvaluateNearestPathHexMatchesPathTailSearch")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.45f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
@@ -144,7 +144,7 @@ TEST_CASE("MovingContext")
     SECTION("ChangeSpeedPreservesCurrentProgress")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.45f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
         const auto before_whole_time = moving->GetWholeTime();
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
@@ -175,7 +175,7 @@ TEST_CASE("MovingContext")
     SECTION("CompleteSuccessMarksCompletedAndClampsElapsedTime")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.3f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.3f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
         moving->Complete(MovingState::Success);
@@ -188,7 +188,7 @@ TEST_CASE("MovingContext")
     SECTION("CompleteStoppedMarksCompletedWithoutReachingEnd")
     {
         auto moving = MakeMovingContext();
-        const auto current_time_ms = iround<int32>(moving->GetWholeTime() * 0.3f);
+        const auto current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.3f);
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
         const auto elapsed_before_complete = moving->GetElapsedTime();
@@ -205,7 +205,7 @@ TEST_CASE("MovingContext")
         auto expected_next_hex = moving->GetStartHex();
         REQUIRE(GeometryHelper::MoveHexByDir(expected_next_hex, moving->GetSteps().front(), moving->GetMapSize()));
 
-        moving->UpdateCurrentTimeToNextHex(MakeTimePoint(iround<int32>(moving->GetWholeTime())), moving->GetStartHex());
+        moving->UpdateCurrentTimeToNextHex(MakeTimePoint(iround<int32_t>(moving->GetWholeTime())), moving->GetStartHex());
 
         CHECK(moving->EvaluateProgress().Hex == expected_next_hex);
         CHECK(moving->EvaluateProgress().Hex != moving->GetEndHex());

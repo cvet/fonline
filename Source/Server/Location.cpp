@@ -46,13 +46,13 @@ Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto,
     FO_STACK_TRACE_ENTRY();
 }
 
-auto Location::GetMapByIndex(int32 index) noexcept -> Map*
+auto Location::GetMapByIndex(int32_t index) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (index < 0 || index >= numeric_cast<int32>(_locMaps.size())) {
+    if (index < 0 || index >= numeric_cast<int32_t>(_locMaps.size())) {
         return nullptr;
     }
 
@@ -104,7 +104,7 @@ void Location::AddMap(Map* map)
     SetMapIds(map_ids);
 
     map->SetLocId(GetId());
-    map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()) - 1);
+    map->SetLocMapIndex(numeric_cast<int32_t>(_locMaps.size()) - 1);
     map->SetLocation(this);
 
     if (IsPersistent()) {

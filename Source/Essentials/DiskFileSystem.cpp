@@ -102,7 +102,7 @@ auto fs_create_directories(string_view dir) noexcept -> bool
     return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
 
-auto fs_last_write_time(string_view path) noexcept -> uint64
+auto fs_last_write_time(string_view path) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -111,13 +111,13 @@ auto fs_last_write_time(string_view path) noexcept -> uint64
     return !ec ? wt.time_since_epoch().count() : 0;
 }
 
-auto fs_file_size(string_view path) noexcept -> optional<uint64>
+auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
     const auto size = std::filesystem::file_size(std::filesystem::path {fs_make_path(path)}, ec);
-    return !ec ? optional<uint64> {size} : std::nullopt;
+    return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
 auto fs_read_file(string_view path) -> optional<string>
@@ -154,7 +154,7 @@ auto fs_read_file(string_view path) -> optional<string>
     return content;
 }
 
-auto fs_compare_file_content(string_view path, const_span<uint8> content) -> bool
+auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -191,7 +191,7 @@ auto fs_write_file(string_view path, string_view content) -> bool
     return !!file;
 }
 
-auto fs_write_file(string_view path, const_span<uint8> content) -> bool
+auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -358,7 +358,7 @@ auto stream_get_read_pos(std::istream& stream) -> size_t
     return pos >= 0 ? static_cast<size_t>(pos) : 0;
 }
 
-auto stream_set_read_pos(std::istream& stream, int32 offset, std::ios_base::seekdir origin) -> bool
+auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

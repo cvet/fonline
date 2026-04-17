@@ -73,12 +73,12 @@ public:
 
 protected:
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8> buf) -> size_t override;
-    auto ReceiveDataImpl(vector<uint8>& buf) -> size_t override;
+    auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
+    auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
 private:
-    void FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) const;
+    void FillSockAddr(sockaddr_in& saddr, string_view host, uint16_t port) const;
     auto GetLastSocketError() const -> string;
 
     sockaddr_in _sockAddr {};
@@ -100,7 +100,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     FO_STACK_TRACE_ENTRY();
 
     string_view host = _settings->ServerHost;
-    auto port = numeric_cast<uint16>(_settings->ServerPort);
+    auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
 #if FO_WEB
     port++;
@@ -129,7 +129,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     FillSockAddr(_sockAddr, host, port);
 
     if (_settings->ProxyType != 0) {
-        FillSockAddr(_proxyAddr, _settings->ProxyHost, numeric_cast<uint16>(_settings->ProxyPort));
+        FillSockAddr(_proxyAddr, _settings->ProxyHost, numeric_cast<uint16_t>(_settings->ProxyPort));
     }
 
 #if FO_LINUX
@@ -163,7 +163,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         }
 
 #else
-        int32 flags = ::fcntl(_netSock, F_GETFL, 0);
+        int32_t flags = ::fcntl(_netSock, F_GETFL, 0);
         FO_RUNTIME_ASSERT(flags >= 0);
 
         if (::fcntl(_netSock, F_SETFL, flags | O_NONBLOCK)) {
@@ -189,7 +189,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             throw NetworkClientException("Can't connect to proxy server", GetLastSocketError());
         }
 
-        auto send_recv = [this](const_span<uint8> buf) -> vector<uint8> FO_DEFERRED {
+        auto send_recv = [this](const_span<uint8_t> buf) -> vector<uint8_t> FO_DEFERRED {
             if (!SendData(buf)) {
                 throw NetworkClientException("Net output error");
             }
@@ -199,7 +199,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             while (true) {
                 if (CheckStatus(false)) {
                     const auto result_buf = ReceiveData();
-                    return vector<uint8>(result_buf.begin(), result_buf.end());
+                    return vector<uint8_t>(result_buf.begin(), result_buf.end());
                 }
 
                 if (nanotime::now() - time >= std::chrono::milliseconds {10000}) {
@@ -210,27 +210,27 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             }
         };
 
-        vector<uint8> send_buf;
-        vector<uint8> recv_buf;
-        uint8 b1 = 0;
-        uint8 b2 = 0;
+        vector<uint8_t> send_buf;
+        vector<uint8_t> recv_buf;
+        uint8_t b1 = 0;
+        uint8_t b2 = 0;
         ignore_unused(b1);
 
         // Authentication
         if (_settings->ProxyType == PROXY_SOCKS4) {
             // Connect
             auto writer = DataWriter(send_buf);
-            writer.Write<uint8>(numeric_cast<uint8>(4)); // Socks version
-            writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
-            writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
-            writer.Write<uint32>(numeric_cast<uint32>(_sockAddr.sin_addr.s_addr));
-            writer.Write<uint8>(numeric_cast<uint8>(0));
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(4)); // Socks version
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(_sockAddr.sin_port));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(0));
 
             recv_buf = send_recv(send_buf);
 
             auto reader = DataReader(recv_buf);
-            b1 = reader.Read<uint8>(); // Null byte
-            b2 = reader.Read<uint8>(); // Answer code
+            b1 = reader.Read<uint8_t>(); // Null byte
+            b2 = reader.Read<uint8_t>(); // Answer code
 
             if (b2 != 0x5A) {
                 switch (b2) {
@@ -247,30 +247,30 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         }
         else if (_settings->ProxyType == PROXY_SOCKS5) {
             auto writer = DataWriter(send_buf);
-            writer.Write<uint8>(numeric_cast<uint8>(5)); // Socks version
-            writer.Write<uint8>(numeric_cast<uint8>(1)); // Count methods
-            writer.Write<uint8>(numeric_cast<uint8>(2)); // Method
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Count methods
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(2)); // Method
 
             recv_buf = send_recv(send_buf);
 
             auto reader = DataReader(recv_buf);
-            b1 = reader.Read<uint8>(); // Socks version
-            b2 = reader.Read<uint8>(); // Method
+            b1 = reader.Read<uint8_t>(); // Socks version
+            b2 = reader.Read<uint8_t>(); // Method
 
             if (b2 == 2) { // User/Password
                 send_buf.clear();
                 writer = DataWriter(send_buf);
-                writer.Write<uint8>(numeric_cast<uint8>(1)); // Subnegotiation version
-                writer.Write<uint8>(numeric_cast<uint8>(_settings->ProxyUser.length())); // Name length
+                writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
+                writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
                 writer.WritePtr(_settings->ProxyUser.c_str(), _settings->ProxyUser.length()); // Name
-                writer.Write<uint8>(numeric_cast<uint8>(_settings->ProxyPass.length())); // Pass length
+                writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
                 writer.WritePtr(_settings->ProxyPass.c_str(), _settings->ProxyPass.length()); // Pass
 
                 recv_buf = send_recv(send_buf);
 
                 reader = DataReader(recv_buf);
-                b1 = reader.Read<uint8>(); // Subnegotiation version
-                b2 = reader.Read<uint8>(); // Status
+                b1 = reader.Read<uint8_t>(); // Subnegotiation version
+                b2 = reader.Read<uint8_t>(); // Status
 
                 if (b2 != 0) {
                     throw NetworkClientException("Invalid proxy user or password");
@@ -283,18 +283,18 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
             // Connect
             send_buf.clear();
             writer = DataWriter(send_buf);
-            writer.Write<uint8>(numeric_cast<uint8>(5)); // Socks version
-            writer.Write<uint8>(numeric_cast<uint8>(1)); // Connect command
-            writer.Write<uint8>(numeric_cast<uint8>(0)); // Reserved
-            writer.Write<uint8>(numeric_cast<uint8>(1)); // IP v4 address
-            writer.Write<uint32>(numeric_cast<uint32>(_sockAddr.sin_addr.s_addr));
-            writer.Write<uint16>(numeric_cast<uint16>(_sockAddr.sin_port));
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved
+            writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // IP v4 address
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(_sockAddr.sin_addr.s_addr));
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(_sockAddr.sin_port));
 
             recv_buf = send_recv(send_buf);
 
             reader = DataReader(recv_buf);
-            b1 = reader.Read<uint8>(); // Socks version
-            b2 = reader.Read<uint8>(); // Answer code
+            b1 = reader.Read<uint8_t>(); // Socks version
+            b2 = reader.Read<uint8_t>(); // Answer code
 
             if (b2 != 0) {
                 switch (b2) {
@@ -321,7 +321,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         }
         else if (_settings->ProxyType == PROXY_HTTP) {
             const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_sockAddr.sin_addr), port); // NOLINT(concurrency-mt-unsafe)
-            const auto result = send_recv({reinterpret_cast<const uint8*>(request.data()), request.length()});
+            const auto result = send_recv({reinterpret_cast<const uint8_t*>(request.data()), request.length()});
             const auto result_str = string(reinterpret_cast<const char*>(result.data()), result.size());
 
             if (result_str.find(" 200 ") == string::npos) {
@@ -358,7 +358,7 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     FD_ZERO(&_netSockSet);
     FD_SET(_netSock, &_netSockSet);
 
-    const auto r = ::select(numeric_cast<int32>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
+    const auto r = ::select(numeric_cast<int32_t>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
 
     if (r == 1) {
         if (_isConnecting) {
@@ -372,9 +372,9 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (r == 0) {
-        int32 error = 0;
+        int32_t error = 0;
 #if FO_WINDOWS
-        int32 len = sizeof(error);
+        int32_t len = sizeof(error);
 #else
         socklen_t len = sizeof(error);
 #endif
@@ -390,13 +390,13 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 }
 
-auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> size_t
+auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     WSABUF sock_buf;
-    sock_buf.buf = reinterpret_cast<CHAR*>(const_cast<uint8*>(buf.data()));
+    sock_buf.buf = reinterpret_cast<CHAR*>(const_cast<uint8_t*>(buf.data()));
     sock_buf.len = numeric_cast<ULONG>(buf.size());
     DWORD len;
 
@@ -415,7 +415,7 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8> buf) -> siz
     return numeric_cast<size_t>(len);
 }
 
-auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> size_t
+auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -463,7 +463,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8>& buf) -> siz
         }
 
 #else
-        len = numeric_cast<int32>(::recv(_netSock, buf.data() + whole_len, buf.size() - whole_len, 0));
+        len = numeric_cast<int32_t>(::recv(_netSock, buf.data() + whole_len, buf.size() - whole_len, 0));
 
         if (len == SOCKET_ERROR) {
             if (errno == EINPROGRESS) {
@@ -494,7 +494,7 @@ void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
     }
 }
 
-void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) const
+void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_view host, uint16_t port) const
 {
     FO_STACK_TRACE_ENTRY();
 

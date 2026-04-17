@@ -92,8 +92,8 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
 
     const ipos32 spr_offset = spr->GetOffset();
     const isize32 spr_size = spr->GetSize();
-    int32 x = _hexOffset.x + _pHexOffset->x - spr_size.width / 2 + spr_offset.x;
-    int32 y = _hexOffset.y + _pHexOffset->y - spr_size.height + spr_offset.y;
+    int32_t x = _hexOffset.x + _pHexOffset->x - spr_size.width / 2 + spr_offset.x;
+    int32_t y = _hexOffset.y + _pHexOffset->y - spr_size.height + spr_offset.y;
 
     if (_pSprOffset) {
         x += _pSprOffset->x;
@@ -148,18 +148,18 @@ void MapSprite::SetColor(ucolor color) noexcept
     _color = color;
 }
 
-void MapSprite::SetAlpha(const uint8* alpha) noexcept
+void MapSprite::SetAlpha(const uint8_t* alpha) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     _alpha = alpha;
 }
 
-void MapSprite::SetFixedAlpha(uint8 alpha) noexcept
+void MapSprite::SetFixedAlpha(uint8_t alpha) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* color_alpha = reinterpret_cast<uint8*>(&_color) + 3;
+    auto* color_alpha = reinterpret_cast<uint8_t*>(&_color) + 3;
     *color_alpha = alpha;
     _alpha = color_alpha;
 }
@@ -235,12 +235,12 @@ void MapSpriteList::GrowPool() noexcept
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
-    for (int32 i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
+    for (int32_t i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
         _spritesPool.emplace_back(SafeAlloc::MakeUnique<MapSprite>());
     }
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8_t* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -252,20 +252,20 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     _spritesPool.pop_back();
 
     mspr->_owner = this;
-    mspr->_index = static_cast<uint32>(_activeSprites.size());
+    mspr->_index = static_cast<uint32_t>(_activeSprites.size());
     mspr->_globalPos = ++_globalCounter;
 
     mspr->_drawOrder = draw_order;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32>(draw_order) + //
+        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32_t>(draw_order) + //
             hex.y * GameSettings::MAX_MAP_SIZE + hex.x;
     }
     else {
-        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32>(DrawOrderType::NormalBegin) + //
-            hex.y * static_cast<int32>(DrawOrderType::NormalBegin) * GameSettings::MAX_MAP_SIZE + //
-            hex.x * static_cast<int32>(DrawOrderType::NormalBegin) + //
-            (static_cast<int32>(draw_order) - static_cast<int32>(DrawOrderType::NormalBegin));
+        mspr->_drawOrderPos = GameSettings::MAX_MAP_SIZE * GameSettings::MAX_MAP_SIZE * static_cast<int32_t>(DrawOrderType::NormalBegin) + //
+            hex.y * static_cast<int32_t>(DrawOrderType::NormalBegin) * GameSettings::MAX_MAP_SIZE + //
+            hex.x * static_cast<int32_t>(DrawOrderType::NormalBegin) + //
+            (static_cast<int32_t>(draw_order) - static_cast<int32_t>(DrawOrderType::NormalBegin));
     }
 
     mspr->_hex = hex;
@@ -314,7 +314,7 @@ void MapSpriteList::Invalidate(MapSprite* mspr) noexcept
     const auto index = mspr->_index;
     _spritesPool.emplace_back(std::move(_activeSprites[index]));
 
-    if (index < static_cast<uint32>(_activeSprites.size() - 1)) [[likely]] {
+    if (index < static_cast<uint32_t>(_activeSprites.size() - 1)) [[likely]] {
         _activeSprites[index] = std::move(_activeSprites.back());
         _activeSprites[index]->_index = index;
         _needSort = true;
@@ -338,7 +338,7 @@ void MapSpriteList::SortIfNeeded() noexcept
         return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
     });
 
-    uint32 index = 0;
+    uint32_t index = 0;
 
     for (auto& mspr : _activeSprites) {
         mspr->_index = index++;

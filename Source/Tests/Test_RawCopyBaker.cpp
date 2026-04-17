@@ -59,7 +59,7 @@ TEST_CASE("RawCopyBaker")
         TestRig rig;
         rig.AddSourceFile("Data/config.json", "{\"enabled\":true}\n", 10);
 
-        RawCopyBaker baker(rig.MakeContext("TestPack", [](string_view, uint64) { return false; }));
+        RawCopyBaker baker(rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; }));
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());

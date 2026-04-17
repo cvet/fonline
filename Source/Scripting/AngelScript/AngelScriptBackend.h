@@ -65,20 +65,20 @@ public:
     [[nodiscard]] auto GetEntityMngr() -> EntityManagerApi*; // Assert if not specified
     [[nodiscard]] auto GetContextMngr() noexcept -> AngelScriptContextManager* { return _contextMngr.get(); }
     [[nodiscard]] auto GetContextMngr() const noexcept -> const AngelScriptContextManager* { return _contextMngr.get(); }
-    [[nodiscard]] auto GetExceptionCounter() const noexcept -> int32 { return _exceptionCounter.load(); }
+    [[nodiscard]] auto GetExceptionCounter() const noexcept -> int32_t { return _exceptionCounter.load(); }
 
     void RegisterMetadata(EngineMetadata* meta);
     void SetMessageCallback(function<void(string_view)> message_callback);
     void SendMessage(string_view message) const;
     void LoadBinaryScripts(const FileSystem& resources);
-    auto CompileTextScripts(const vector<File>& files) -> vector<uint8>;
+    auto CompileTextScripts(const vector<File>& files) -> vector<uint8_t>;
     void BindRequiredStuff();
     void AddCleanupCallback(function<void()> callback);
     void AddPostCleanupCallback(function<void()> callback);
     void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
 
 private:
-    static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32& priority) noexcept -> bool;
+    static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
     raw_ptr<EngineMetadata> _meta {};
     raw_ptr<ScriptSystem> _scriptSys {}; // Maybe null

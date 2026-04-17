@@ -343,21 +343,21 @@ template<typename T, typename U>
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
     requires(std::floating_point<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::signed_integral<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + iround<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::unsigned_integral<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : iround<U>(v1 * (1 - t) + v2 * t));
 }

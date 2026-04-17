@@ -416,8 +416,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     }
 
     // Calculate atlas size
-    int32 atlas_w;
-    int32 atlas_h;
+    int32_t atlas_w;
+    int32_t atlas_h;
 
     if (_ctx->FeatureLevel >= D3D_FEATURE_LEVEL_11_0) {
         atlas_w = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
@@ -442,8 +442,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
 
-    const_cast<int32&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int32&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int32_t&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int32_t&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Back buffer view
     ID3D11Texture2D* back_buf = nullptr;
@@ -819,7 +819,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     return std::move(d3d_effect);
 }
 
-auto Direct3D_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
+auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -866,12 +866,12 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 vp_ox;
-    int32 vp_oy;
-    int32 vp_width;
-    int32 vp_height;
-    int32 screen_width;
-    int32 screen_height;
+    int32_t vp_ox;
+    int32_t vp_oy;
+    int32_t vp_width;
+    int32_t vp_height;
+    int32_t screen_width;
+    int32_t screen_height;
 
     if (tex != nullptr) {
         const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
@@ -889,10 +889,10 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
         _ctx->CurRenderTarget = _ctx->MainRenderTarget;
         _ctx->CurDepthStencil = nullptr;
 
-        const auto back_buf_aspect = checked_div<float32>(numeric_cast<float32>(_ctx->BackBufSize.width), numeric_cast<float32>(_ctx->BackBufSize.height));
-        const auto screen_aspect = checked_div<float32>(numeric_cast<float32>(_ctx->Settings->ScreenWidth), numeric_cast<float32>(_ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32>(_ctx->BackBufSize.height) * back_buf_aspect);
-        const auto fit_height = iround<int32>(screen_aspect <= back_buf_aspect ? numeric_cast<float32>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32>(_ctx->BackBufSize.width) / screen_aspect);
+        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
+        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
+        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
         vp_ox = (_ctx->BackBufSize.width - fit_width) / 2;
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
@@ -915,7 +915,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
     _ctx->D3DDeviceContext->RSSetViewports(1, &_ctx->ViewPort);
 
-    _ctx->ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32>(screen_width), numeric_cast<float32>(screen_height), 0.0f, -10.0f, 10.0f);
+    _ctx->ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, -10.0f, 10.0f);
 
     _ctx->DisabledScissorRect.left = vp_ox;
     _ctx->DisabledScissorRect.top = vp_oy;
@@ -930,11 +930,11 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
     FO_STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
-        const auto r = numeric_cast<float32>(color.value().comp.r) / 255.0f;
-        const auto g = numeric_cast<float32>(color.value().comp.g) / 255.0f;
-        const auto b = numeric_cast<float32>(color.value().comp.b) / 255.0f;
-        const auto a = numeric_cast<float32>(color.value().comp.a) / 255.0f;
-        const float32 color_rgba[] {r, g, b, a};
+        const auto r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
+        const auto g = numeric_cast<float32_t>(color.value().comp.g) / 255.0f;
+        const auto b = numeric_cast<float32_t>(color.value().comp.b) / 255.0f;
+        const auto a = numeric_cast<float32_t>(color.value().comp.a) / 255.0f;
+        const float32_t color_rgba[] {r, g, b, a};
 
         _ctx->D3DDeviceContext->ClearRenderTargetView(_ctx->CurRenderTarget.get(), color_rgba);
     }
@@ -958,13 +958,13 @@ void Direct3D_Renderer::EnableScissor(irect32 rect)
     FO_STACK_TRACE_ENTRY();
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
-        const float32 x_ratio = numeric_cast<float32>(_ctx->ViewPortRect.width) / numeric_cast<float32>(_ctx->TargetSize.width);
-        const float32 y_ratio = numeric_cast<float32>(_ctx->ViewPortRect.height) / numeric_cast<float32>(_ctx->TargetSize.height);
+        const float32_t x_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.width) / numeric_cast<float32_t>(_ctx->TargetSize.width);
+        const float32_t y_ratio = numeric_cast<float32_t>(_ctx->ViewPortRect.height) / numeric_cast<float32_t>(_ctx->TargetSize.height);
 
-        _ctx->ScissorRect.left = _ctx->ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x) * x_ratio);
-        _ctx->ScissorRect.top = _ctx->ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y) * y_ratio);
-        _ctx->ScissorRect.right = _ctx->ViewPortRect.x + iround<int32>(numeric_cast<float32>(rect.x + rect.width) * x_ratio);
-        _ctx->ScissorRect.bottom = _ctx->ViewPortRect.y + iround<int32>(numeric_cast<float32>(rect.y + rect.height) * y_ratio);
+        _ctx->ScissorRect.left = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x) * x_ratio);
+        _ctx->ScissorRect.top = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y) * y_ratio);
+        _ctx->ScissorRect.right = _ctx->ViewPortRect.x + iround<int32_t>(numeric_cast<float32_t>(rect.x + rect.width) * x_ratio);
+        _ctx->ScissorRect.bottom = _ctx->ViewPortRect.y + iround<int32_t>(numeric_cast<float32_t>(rect.y + rect.height) * y_ratio);
     }
     else {
         _ctx->ScissorRect.left = _ctx->ViewPortRect.x + rect.x;
@@ -1114,8 +1114,8 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     const auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex, 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
-    for (int32 i = 0; i < size.height; i++) {
-        const auto* src = static_cast<uint8*>(tex_resource.pData) + numeric_cast<size_t>(tex_resource.RowPitch) * i;
+    for (int32_t i = 0; i < size.height; i++) {
+        const auto* src = static_cast<uint8_t*>(tex_resource.pData) + numeric_cast<size_t>(tex_resource.RowPitch) * i;
         MemCopy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
@@ -1346,7 +1346,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
 
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
-            const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32) * 16;
+            const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32_t) * 16;
             MemCopy(cbuffer_resource.pData, &buf, bind_size);
         }
         else
@@ -1361,12 +1361,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjectionMatrixColMaj), 16 * sizeof(float32));
+        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjectionMatrixColMaj), 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32));
+        MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32_t));
     }
 
 #define CBUF_UPLOAD_BUFFER(buf) \
@@ -1464,7 +1464,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         }
 #endif
 
-        constexpr float32 blend_factor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+        constexpr float32_t blend_factor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
         _ctx->D3DDeviceContext->OMSetBlendState(DisableBlending ? nullptr : BlendState[pass].get(), blend_factor, 0xFFFFFFFF);
         _ctx->D3DDeviceContext->OMSetDepthStencilState(DepthStencilState[pass].get(), 0);
 

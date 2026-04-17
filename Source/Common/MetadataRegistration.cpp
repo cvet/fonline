@@ -45,22 +45,22 @@ static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vecto
 static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
 
-void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bin)
+void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Read data
     map<string_view, vector<vector<string_view>>> engine_data;
     auto reader = DataReader(metadata_bin);
-    const auto sections_count = reader.Read<uint16>();
+    const auto sections_count = reader.Read<uint16_t>();
 
     for (const auto i : iterate_range(sections_count)) {
         ignore_unused(i);
 
-        const auto section_name_size = reader.Read<uint16>();
+        const auto section_name_size = reader.Read<uint16_t>();
         string_view section_name = {reader.ReadPtr<char>(section_name_size), section_name_size};
 
-        const auto entries_count = reader.Read<uint32>();
+        const auto entries_count = reader.Read<uint32_t>();
         vector<vector<string_view>> entries;
         entries.reserve(entries_count);
 
@@ -68,12 +68,12 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8> metadata_bi
             ignore_unused(j);
 
             auto& cur_entry = entries.emplace_back();
-            const auto tokens_count = reader.Read<uint32>();
+            const auto tokens_count = reader.Read<uint32_t>();
 
             for (const auto k : iterate_range(tokens_count)) {
                 ignore_unused(k);
 
-                const auto token_size = reader.Read<uint16>();
+                const auto token_size = reader.Read<uint16_t>();
                 string_view token = {reader.ReadPtr<char>(token_size), token_size};
 
                 cur_entry.emplace_back(token);
@@ -107,7 +107,7 @@ static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vect
         const auto& enum_underlying_type = tokens[1];
 
         if (!enum_underlying_type.empty()) {
-            unordered_map<string, int32> key_values;
+            unordered_map<string, int32_t> key_values;
 
             for (size_t i = 2; i < tokens.size(); i += 2) {
                 const auto key = tokens[i];
@@ -169,7 +169,7 @@ static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vec
             const auto* prop = has_persistent ? //
                 prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
                 prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
-            meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
+            meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
         }
     }
 }
@@ -197,7 +197,7 @@ static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector
 
         const auto* prop = prop_registrator->RegisterProperty(prop_tokens);
         const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
-        meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32>(prop->GetRegIndex()));
+        meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }
 }
 
@@ -274,7 +274,7 @@ static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const ve
     }
 }
 
-auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<uint8>
+auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -169,7 +169,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback({reinterpret_cast<const uint8*>(payload.data()), payload.length()});
+        ReceiveCallback({reinterpret_cast<const uint8_t*>(payload.data()), payload.length()});
     }
 }
 
@@ -261,7 +261,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = run_thread("Network-WebSockets", [this] { Run(); });

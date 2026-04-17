@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr float32 IMGUI_UV_EPSILON = 0.001f;
+static constexpr float32_t IMGUI_UV_EPSILON = 0.001f;
 
 static void CheckImageSize(fsize32 image_size)
 {
@@ -53,7 +53,7 @@ static void CheckUvRange(fpos32 uv0, fpos32 uv1)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto in_range = [](float32 value) noexcept -> bool { return value >= -IMGUI_UV_EPSILON && value <= 1.0f + IMGUI_UV_EPSILON; };
+    const auto in_range = [](float32_t value) noexcept -> bool { return value >= -IMGUI_UV_EPSILON && value <= 1.0f + IMGUI_UV_EPSILON; };
 
     if (!in_range(uv0.x) || !in_range(uv0.y) || !in_range(uv1.x) || !in_range(uv1.y)) {
         throw ScriptException("Image UV args must be in [0, 1] range");
@@ -85,10 +85,10 @@ static auto MakeItemRect(const ImVec2& min_pos, const ImVec2& max_pos) -> irect3
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto left = iround<int32>(min_pos.x);
-    const auto top = iround<int32>(min_pos.y);
-    const auto right = std::max(left, iround<int32>(max_pos.x));
-    const auto bottom = std::max(top, iround<int32>(max_pos.y));
+    const auto left = iround<int32_t>(min_pos.x);
+    const auto top = iround<int32_t>(min_pos.y);
+    const auto right = std::max(left, iround<int32_t>(max_pos.x));
+    const auto bottom = std::max(top, iround<int32_t>(max_pos.y));
     return {left, top, right - left, bottom - top};
 }
 
@@ -110,7 +110,7 @@ static void RenderImageButtonFrame(ucolor bg_color)
     }
 }
 
-static void DrawItemSprite(ClientEngine* client, uint32 spr_id, fsize32 image_size, ucolor tint_color)
+static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_size, ucolor tint_color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -129,7 +129,7 @@ static void DrawItemSprite(ClientEngine* client, uint32 spr_id, fsize32 image_si
     client->SprMngr.PopScissor();
 }
 
-static void DrawItemSprite(ClientEngine* client, uint32 spr_id, fsize32 image_size, fpos32 uv0, fpos32 uv1, ucolor tint_color)
+static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_size, fpos32 uv0, fpos32 uv1, ucolor tint_color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -158,7 +158,7 @@ static void DrawItemSprite(ClientEngine* client, uint32 spr_id, fsize32 image_si
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32 sprId, fsize32 imageSize)
+FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize)
 {
     CheckImageSize(imageSize);
 
@@ -170,7 +170,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32 sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1)
+FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1)
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);
@@ -183,7 +183,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32 sprId, fsize32 imageSize)
+FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize)
 {
     CheckImageSize(imageSize);
 
@@ -202,7 +202,7 @@ FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32 sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1, ucolor bgColor, ucolor tintColor)
+FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1, ucolor bgColor, ucolor tintColor)
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);

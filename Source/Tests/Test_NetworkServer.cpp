@@ -77,9 +77,9 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     BakerTests::OverrideSetting(settings.ServerPort, port);
 
     shared_ptr<NetworkServerConnection> accepted_conn;
-    vector<uint8> received_data;
-    vector<uint8> sent_data;
-    const vector<uint8> response_data {4, 5, 6};
+    vector<uint8_t> received_data;
+    vector<uint8_t> sent_data;
+    const vector<uint8_t> response_data {4, 5, 6};
     size_t client_disconnect_count = 0;
     size_t server_disconnect_count = 0;
 
@@ -99,7 +99,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     REQUIRE(InterthreadListeners.count(port) == 1);
     CHECK_THROWS(NetworkServer::StartInterthreadServer(settings, [](shared_ptr<NetworkServerConnection>) { }));
 
-    auto client_send = InterthreadListeners[port]([&](const_span<uint8> buf) {
+    auto client_send = InterthreadListeners[port]([&](const_span<uint8_t> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
@@ -111,14 +111,14 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     REQUIRE(accepted_conn != nullptr);
     REQUIRE(client_send);
 
-    client_send(vector<uint8> {1, 2, 3});
+    client_send(vector<uint8_t> {1, 2, 3});
 
-    accepted_conn->SetAsyncCallbacks([&]() -> const_span<uint8> { return response_data; }, [&](const_span<uint8> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
+    accepted_conn->SetAsyncCallbacks([&]() -> const_span<uint8_t> { return response_data; }, [&](const_span<uint8_t> buf) { received_data.assign(buf.begin(), buf.end()); }, [&]() { server_disconnect_count++; });
 
-    CHECK(received_data == vector<uint8>({1, 2, 3}));
+    CHECK(received_data == vector<uint8_t>({1, 2, 3}));
 
     accepted_conn->Dispatch();
-    CHECK(sent_data == vector<uint8>({4, 5, 6}));
+    CHECK(sent_data == vector<uint8_t>({4, 5, 6}));
 
     accepted_conn->Disconnect();
     CHECK(accepted_conn->IsDisconnected());

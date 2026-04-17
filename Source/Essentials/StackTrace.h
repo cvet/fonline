@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32 STACK_TRACE_MAX_SIZE = 63;
+static constexpr uint32_t STACK_TRACE_MAX_SIZE = 63;
 
 #if FO_TRACY
 using SourceLocationData = tracy::SourceLocationData;
@@ -47,7 +47,7 @@ struct SourceLocationData;
 
 struct StackTraceData
 {
-    uint32 CallsCount {};
+    uint32_t CallsCount {};
     array<const SourceLocationData*, STACK_TRACE_MAX_SIZE + 1> CallTree {};
 };
 
@@ -102,7 +102,7 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 extern void PushStackTrace(const SourceLocationData* loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() noexcept -> const StackTraceData&;
-extern auto GetStackTraceEntry(uint32 deep) noexcept -> const SourceLocationData*;
+extern auto GetStackTraceEntry(uint32_t deep) noexcept -> const SourceLocationData*;
 extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
 
 #if !FO_NO_MANUAL_STACK_TRACE
@@ -111,8 +111,8 @@ struct StackTraceScopeEntry
     FO_FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept
     {
         auto& st = details::StackTrace;
-        const uint32 cc = st.CallsCount;
-        const uint32 idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
+        const uint32_t cc = st.CallsCount;
+        const uint32_t idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
         st.CallTree[idx] = &loc;
         st.CallsCount = cc + 1;
         StackTraceCounter = &st.CallsCount;
@@ -124,7 +124,7 @@ struct StackTraceScopeEntry
     auto operator=(const StackTraceScopeEntry&) -> StackTraceScopeEntry& = delete;
     auto operator=(StackTraceScopeEntry&&) noexcept -> StackTraceScopeEntry& = delete;
 
-    uint32* StackTraceCounter;
+    uint32_t* StackTraceCounter;
 };
 #endif
 

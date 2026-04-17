@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 struct hstring
 {
-    using hash_t = uint64;
+    using hash_t = uint64_t;
 
     struct entry
     {
@@ -66,8 +66,8 @@ struct hstring
     [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->Hash == other._entry->Hash; }
     [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->Hash < other._entry->Hash; }
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64 { return std::bit_cast<int64>(_entry->Hash); }
-    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64 { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
 
@@ -107,7 +107,7 @@ public:
 class HashStorage : public HashResolver
 {
 public:
-    using HashFunc = uint64 (*)(const void* data, size_t len);
+    using HashFunc = uint64_t (*)(const void* data, size_t len);
 
     explicit HashStorage(HashFunc hash_func = hashing_ex::hash);
     auto ToHashedString(string_view s) -> hstring override;

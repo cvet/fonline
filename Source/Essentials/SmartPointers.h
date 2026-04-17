@@ -204,8 +204,8 @@ public:
 private:
     T* _ptr;
 };
-static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<raw_ptr<int32>>);
+static_assert(sizeof(raw_ptr<int32_t>) == sizeof(int32_t*));
+static_assert(std::is_standard_layout_v<raw_ptr<int32_t>>);
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
@@ -327,8 +327,8 @@ public:
 private:
     T* _ptr;
 };
-static_assert(sizeof(unique_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<unique_ptr<int32>>);
+static_assert(sizeof(unique_ptr<int32_t>) == sizeof(int32_t*));
+static_assert(std::is_standard_layout_v<unique_ptr<int32_t>>);
 
 FO_END_NAMESPACE
 template<typename T>
@@ -500,7 +500,7 @@ private:
 
     T* _ptr {};
 };
-static_assert(std::is_standard_layout_v<refcount_ptr<int32>>);
+static_assert(std::is_standard_layout_v<refcount_ptr<int32_t>>);
 
 FO_END_NAMESPACE
 template<typename T>

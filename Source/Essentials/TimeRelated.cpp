@@ -51,7 +51,7 @@ struct LocalTimeData
         const std::time_t lt = std::mktime(&ltm);
         std::tm gtm = *std::gmtime(&lt); // NOLINT(concurrency-mt-unsafe)
         const std::time_t gt = std::mktime(&gtm);
-        const int64 offset = lt - gt;
+        const int64_t offset = lt - gt;
         Offset = std::chrono::seconds(offset);
     }
 
@@ -87,24 +87,24 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
     rest_day -= microseconds;
     const auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day);
 
-    result.year = static_cast<int32>(ymd.year());
-    result.month = static_cast<int32>(static_cast<uint32>(ymd.month()));
-    result.day = static_cast<int32>(static_cast<uint32>(ymd.day()));
-    result.hour = static_cast<int32>(hours.count());
-    result.minute = static_cast<int32>(minutes.count());
-    result.second = static_cast<int32>(seconds.count());
-    result.millisecond = static_cast<int32>(milliseconds.count());
-    result.microsecond = static_cast<int32>(microseconds.count());
-    result.nanosecond = static_cast<int32>(nanoseconds.count());
+    result.year = static_cast<int32_t>(ymd.year());
+    result.month = static_cast<int32_t>(static_cast<uint32_t>(ymd.month()));
+    result.day = static_cast<int32_t>(static_cast<uint32_t>(ymd.day()));
+    result.hour = static_cast<int32_t>(hours.count());
+    result.minute = static_cast<int32_t>(minutes.count());
+    result.second = static_cast<int32_t>(seconds.count());
+    result.millisecond = static_cast<int32_t>(milliseconds.count());
+    result.microsecond = static_cast<int32_t>(microseconds.count());
+    result.nanosecond = static_cast<int32_t>(nanoseconds.count());
 
     return result;
 }
 
-auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond, bool local) -> timespan
+auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {static_cast<uint32>(month)}, std::chrono::day {static_cast<uint32>(day)}};
+    const auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {static_cast<uint32_t>(month)}, std::chrono::day {static_cast<uint32_t>(day)}};
 
     if (!ymd.ok()) {
         throw GenericException("Invalid year/month/day");

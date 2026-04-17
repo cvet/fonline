@@ -42,7 +42,7 @@ namespace
     constexpr msize TEST_MAP_SIZE {20, 20};
 
     // Helper: create settings for a clear map (no obstacles)
-    static auto MakeClearSettings(mpos from, mpos to, int32 cut = 0) -> FindPathInput
+    static auto MakeClearSettings(mpos from, mpos to, int32_t cut = 0) -> FindPathInput
     {
         FindPathInput settings;
         settings.FromHex = from;
@@ -57,7 +57,7 @@ namespace
     }
 
     // Helper: create settings with a blocked-hex predicate
-    static auto MakeBlockedSettings(mpos from, mpos to, function<bool(mpos)> is_blocked, int32 cut = 0) -> FindPathInput
+    static auto MakeBlockedSettings(mpos from, mpos to, function<bool(mpos)> is_blocked, int32_t cut = 0) -> FindPathInput
     {
         FindPathInput settings = MakeClearSettings(from, to, cut);
         settings.CheckHex = [is_blocked = std::move(is_blocked)](mpos hex) -> HexBlockResult { return is_blocked(hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
@@ -182,13 +182,13 @@ TEST_CASE("PathFinding::FindPath")
         REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
         REQUIRE(!output.ControlSteps.empty());
 
-        uint16 prev = 0;
+        uint16_t prev = 0;
         for (const auto cs : output.ControlSteps) {
             CHECK(cs > prev);
             prev = cs;
         }
 
-        CHECK(prev == static_cast<uint16>(output.Steps.size()));
+        CHECK(prev == static_cast<uint16_t>(output.Steps.size()));
     }
 
     SECTION("FreeMovementProducesShorterControlSteps")
@@ -448,14 +448,14 @@ TEST_CASE("PathFinding::FindPath")
 
         REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
 
-        set<uint32> visited;
+        set<uint32_t> visited;
         auto cur = from;
         visited.insert(cur.x * 1000 + cur.y);
         for (const auto& step : output.Steps) {
             auto raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
             cur = TEST_MAP_SIZE.from_raw_pos(raw);
-            auto key = static_cast<uint32>(cur.x * 1000 + cur.y);
+            auto key = static_cast<uint32_t>(cur.x * 1000 + cur.y);
             CHECK(visited.find(key) == visited.end());
             visited.insert(key);
         }
@@ -470,13 +470,13 @@ TEST_CASE("PathFinding::FindPath")
         REQUIRE(!output.ControlSteps.empty());
 
         // Last control step must equal total steps
-        CHECK(output.ControlSteps.back() == static_cast<uint16>(output.Steps.size()));
+        CHECK(output.ControlSteps.back() == static_cast<uint16_t>(output.Steps.size()));
 
         // First control step must be >= 1
         CHECK(output.ControlSteps.front() >= 1);
 
         // Each control step segment uses a single direction (non-free movement)
-        uint16 prev_cs = 0;
+        uint16_t prev_cs = 0;
         for (const auto cs : output.ControlSteps) {
             // All steps in [prev_cs, cs) should be the same direction
             if (cs > prev_cs + 1) {

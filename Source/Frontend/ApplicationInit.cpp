@@ -44,11 +44,11 @@ unique_ptr<Application> App {};
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void SetupLogging(bool disable_log_tags);
-static auto LoadSettings(int32 argc, char** argv) -> GlobalSettings;
+static auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
 
-void InitApp(int32 argc, char** argv, AppInitFlags flags)
+void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -145,7 +145,7 @@ static void SetupLogging(bool disable_log_tags)
     }
 }
 
-auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
+auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -164,7 +164,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         string config_to_apply_dir;
         bool auto_find_config = false;
 
-        for (int32 i = 0; i < argc; i++) {
+        for (int32_t i = 0; i < argc; i++) {
             const string_view arg = strex(argv[i]).trim().strv();
 
             if (arg == "-ApplyConfig" || arg == "--ApplyConfig") {
@@ -206,7 +206,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         // Apply sub config
         vector<string> sub_configs_to_apply;
 
-        for (int32 i = 0; i < argc; i++) {
+        for (int32_t i = 0; i < argc; i++) {
             const string_view arg = strex(argv[i]).trim().strv();
 
             if (arg == "-ApplySubConfig" || arg == "--ApplySubConfig") {

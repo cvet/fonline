@@ -57,7 +57,7 @@ public:
     ~MetadataBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32 override { return 1; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 1; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
@@ -79,7 +79,7 @@ private:
         string_view Target {};
     };
 
-    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8>;
+    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>;
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
     void ParseFixedType(TagsParsingContext& ctx) const;

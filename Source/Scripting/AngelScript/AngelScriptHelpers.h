@@ -84,7 +84,7 @@ FO_BEGIN_NAMESPACE
 class BaseEngine;
 class AngelScriptBackend;
 
-[[noreturn]] void ThrowScriptCoreException(string_view file, int32 line, int32 result);
+[[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result);
 auto GetScriptBackend(BaseEngine* engine) -> AngelScriptBackend*;
 auto GetScriptBackend(AngelScript::asIScriptEngine* as_engine) -> AngelScriptBackend*;
 auto GetEngineMetadata(AngelScript::asIScriptEngine* as_engine) -> const EngineMetadata*;
@@ -104,7 +104,7 @@ auto CalcConstructAddrSpace(const Property* prop) -> size_t;
 void FreeConstructAddrSpace(const Property* prop, void* construct_addr);
 void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data, void* construct_addr, AngelScript::asIScriptEngine* as_engine);
 auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyRawData;
-auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string;
+auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string;
 auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
 
 #ifdef AS_MAX_PORTABILITY

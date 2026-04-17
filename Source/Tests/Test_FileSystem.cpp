@@ -89,7 +89,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsEndianReadsSeekingAndFragments")
     {
-        const array<uint8, 15> data {{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 'O', 'K'}};
+        const array<uint8_t, 15> data {{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 'O', 'K'}};
 
         FileReader reader {{data.data(), data.size()}};
 
@@ -112,7 +112,7 @@ TEST_CASE("FileSystem")
 
     SECTION("FileReaderSupportsNullTerminatedAndTrailingFragmentCases")
     {
-        const array<uint8, 11> data {{'H', 'i', 0, 'B', 'y', 'e', 0, 'O', 'K', '!', '!'}};
+        const array<uint8_t, 11> data {{'H', 'i', 0, 'B', 'y', 'e', 0, 'O', 'K', '!', '!'}};
 
         FileReader reader {{data.data(), data.size()}};
 

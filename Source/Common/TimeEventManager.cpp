@@ -45,7 +45,7 @@ TimeEventManager::TimeEventManager(BaseEngine& engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32
+auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -65,7 +65,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
     return _timeEventCounter;
 }
 
-auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id) const -> size_t
+auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -100,7 +100,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
     return 0;
 }
 
-void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data)
+void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -139,7 +139,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     }
 }
 
-void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id)
+void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -61,7 +61,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(*fs_file_size(file_path) == content.size());
         REQUIRE(fs_read_file(file_path).has_value());
         CHECK(*fs_read_file(file_path) == content);
-        CHECK(fs_compare_file_content(file_path, {reinterpret_cast<const uint8*>(content.data()), content.size()}));
+        CHECK(fs_compare_file_content(file_path, {reinterpret_cast<const uint8_t*>(content.data()), content.size()}));
 
         REQUIRE(fs_rename(file_path, renamed_path));
         CHECK_FALSE(fs_exists(file_path));
@@ -83,12 +83,12 @@ TEST_CASE("DiskFileSystem")
         REQUIRE(fs_write_file(nested_file, string_view {"nested"}));
 
         vector<string> flat_entries;
-        fs_iterate_dir(temp_dir, false, [&](string_view path, size_t, uint64) { flat_entries.emplace_back(path); });
+        fs_iterate_dir(temp_dir, false, [&](string_view path, size_t, uint64_t) { flat_entries.emplace_back(path); });
         CHECK(flat_entries.size() == 1);
         CHECK(flat_entries.front() == "top.txt");
 
         vector<string> recursive_entries;
-        fs_iterate_dir(temp_dir, true, [&](string_view path, size_t, uint64) { recursive_entries.emplace_back(path); });
+        fs_iterate_dir(temp_dir, true, [&](string_view path, size_t, uint64_t) { recursive_entries.emplace_back(path); });
         CHECK(recursive_entries.size() == 2);
         CHECK(std::ranges::find(recursive_entries, string {"top.txt"}) != recursive_entries.end());
         CHECK(std::ranges::find(recursive_entries, string {"sub/nested.txt"}) != recursive_entries.end());

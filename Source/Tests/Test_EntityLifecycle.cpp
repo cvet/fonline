@@ -54,7 +54,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -157,7 +157,7 @@ namespace EntityLifecycle
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -221,7 +221,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(cr != nullptr);
 
         // Check critter init event fired
-        int32 calls = 0;
+        int32_t calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterInitCalls"), calls));
         CHECK(calls >= 1);
 
@@ -237,7 +237,7 @@ TEST_CASE("EntityInitEvents")
         auto* item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
-        int32 calls = 0;
+        int32_t calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetItemInitCalls"), calls));
         CHECK(calls >= 1);
 
@@ -253,7 +253,7 @@ TEST_CASE("EntityInitEvents")
         auto* loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
-        int32 calls = 0;
+        int32_t calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetLocationInitCalls"), calls));
         CHECK(calls >= 1);
 
@@ -895,20 +895,20 @@ TEST_CASE("ScriptFunctionCalls")
 
     SECTION("CallFuncWithReturnValue")
     {
-        int32 result = 0;
+        int32_t result = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetItemInitCalls"), result));
         // Result is valid (we just check the API works)
     }
 
     SECTION("FindFuncReturnsFalseForMissing")
     {
-        auto func = server->FindFunc<int32>(fn("NonExistent::Function"));
+        auto func = server->FindFunc<int32_t>(fn("NonExistent::Function"));
         CHECK_FALSE(func);
     }
 
     SECTION("FindFuncWorksForExisting")
     {
-        auto func = server->FindFunc<int32>(fn("EntityLifecycle::GetItemInitCalls"));
+        auto func = server->FindFunc<int32_t>(fn("EntityLifecycle::GetItemInitCalls"));
         CHECK(func);
         if (func) {
             REQUIRE(func.Call());

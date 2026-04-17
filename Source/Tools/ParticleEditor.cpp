@@ -187,14 +187,14 @@ void ParticleEditor::OnDraw()
 
     auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
 
-    if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32>(draw_height + 120)})) {
+    if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64>(_impl->Particle->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle->GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
@@ -241,8 +241,8 @@ void ParticleEditor::OnDraw()
         _impl->Particle->Respawn();
     }
 
-    const auto frame_width = numeric_cast<float32>(draw_width);
-    const auto frame_height = numeric_cast<float32>(draw_height);
+    const auto frame_width = numeric_cast<float32_t>(draw_width);
+    const auto frame_height = numeric_cast<float32_t>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
     const auto proj_height = frame_height * (1.0f / _editor->Settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
@@ -289,7 +289,7 @@ void ParticleEditor::OnDraw()
 
 #define DRAW_SPK_FLOAT(label, get, set) \
     do { \
-        float32 val = obj->get(); \
+        float32_t val = obj->get(); \
         Changed |= ImGui::InputFloat(label, &val); \
         obj->set(val); \
     } while (0)
@@ -309,29 +309,29 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_FLOAT_FLOAT(label1, label2, get1, get2, set) \
     do { \
-        float32 val1 = obj->get1(); \
-        float32 val2 = obj->get2(); \
+        float32_t val1 = obj->get1(); \
+        float32_t val2 = obj->get2(); \
         Changed |= ImGui::InputFloat(label1, &val1); \
         Changed |= ImGui::InputFloat(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_INT(label, get, set) \
     do { \
-        int32 val = numeric_cast<int32>(obj->get()); \
+        int32_t val = numeric_cast<int32_t>(obj->get()); \
         Changed |= ImGui::InputInt(label, &val); \
         obj->set(val); \
     } while (0)
 #define DRAW_SPK_INT_INT(label1, label2, get1, get2, set) \
     do { \
-        int32 val1 = numeric_cast<int32>(obj->get1()); \
-        int32 val2 = numeric_cast<int32>(obj->get2()); \
+        int32_t val1 = numeric_cast<int32_t>(obj->get1()); \
+        int32_t val2 = numeric_cast<int32_t>(obj->get2()); \
         Changed |= ImGui::InputInt(label1, &val1); \
         Changed |= ImGui::InputInt(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_FLOAT_BOOL(label1, label2, get1, get2, set) \
     do { \
-        float32 val1 = obj->get1(); \
+        float32_t val1 = obj->get1(); \
         bool val2 = obj->get2(); \
         Changed |= ImGui::InputFloat(label1, &val1); \
         Changed |= ImGui::Checkbox(label2, &val2); \
@@ -339,52 +339,52 @@ void ParticleEditor::OnDraw()
     } while (0)
 #define DRAW_SPK_VECTOR(label, get, set) \
     do { \
-        float32 val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
+        float32_t val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
         Changed |= ImGui::InputFloat3(label, val); \
         obj->set(SPK::Vector3D(val[0], val[1], val[2])); \
     } while (0)
 #define DRAW_SPK_VECTOR_VECTOR(label1, label2, get1, get2, set) \
     do { \
-        float32 val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
-        float32 val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
+        float32_t val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
+        float32_t val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
         Changed |= ImGui::InputFloat3(label1, val1); \
         Changed |= ImGui::InputFloat3(label2, val2); \
         obj->set(SPK::Vector3D(val1[0], val1[1], val1[2]), SPK::Vector3D(val2[0], val2[1], val2[2])); \
     } while (0)
 #define DRAW_SPK_COLOR(label, get, set) \
     do { \
-        int32 val[4] = {obj->get().r, obj->get().g, obj->get().b, obj->get().a}; \
+        int32_t val[4] = {obj->get().r, obj->get().g, obj->get().b, obj->get().a}; \
         Changed |= ImGui::InputInt4(label, val); \
         obj->set(SPK::Color(val[0], val[1], val[2], val[3])); \
     } while (0)
 #define DRAW_SPK_COLOR_COLOR(label1, label2, get1, get2, set) \
     do { \
-        int32 val1[4] = {obj->get1().r, obj->get1().g, obj->get1().b, obj->get1().a}; \
-        int32 val2[4] = {obj->get2().r, obj->get2().g, obj->get2().b, obj->get2().a}; \
+        int32_t val1[4] = {obj->get1().r, obj->get1().g, obj->get1().b, obj->get1().a}; \
+        int32_t val2[4] = {obj->get2().r, obj->get2().g, obj->get2().b, obj->get2().a}; \
         Changed |= ImGui::InputInt4(label1, val1); \
         Changed |= ImGui::InputInt4(label2, val2); \
         obj->set(SPK::Color(val1[0], val1[1], val1[2], val1[3]), SPK::Color(val2[0], val2[1], val2[2], val2[3])); \
     } while (0)
 #define DRAW_SPK_COMBO(label, get, set, ...) \
     do { \
-        auto val = static_cast<int32>(obj->get()); \
+        auto val = static_cast<int32_t>(obj->get()); \
         const char* items[] = {__VA_ARGS__}; \
         Changed |= ImGui::Combo(label, &val, items, sizeof(items) / sizeof(items[0])); \
         obj->set(static_cast<decltype(obj->get())>(val)); \
     } while (0)
 #define DRAW_SPK_COMBO_COMBO(label1, label2, get1, get2, set) \
     do { \
-        auto val1 = static_cast<int32>(obj->get1()); \
-        auto val2 = static_cast<int32>(obj->get2()); \
+        auto val1 = static_cast<int32_t>(obj->get1()); \
+        auto val2 = static_cast<int32_t>(obj->get2()); \
         Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
         Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
         obj->set(static_cast<decltype(obj->get1())>(val1), static_cast<decltype(obj->get2())>(val2)); \
     } while (0)
 #define DRAW_SPK_COMBO_COMBO_COMBO(label1, label2, label3, get1, get2, get3, set) \
     do { \
-        auto val1 = static_cast<int32>(obj->get1()); \
-        auto val2 = static_cast<int32>(obj->get2()); \
-        auto val3 = static_cast<int32>(obj->get3()); \
+        auto val1 = static_cast<int32_t>(obj->get1()); \
+        auto val2 = static_cast<int32_t>(obj->get2()); \
+        auto val3 = static_cast<int32_t>(obj->get3()); \
         Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
         Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
         Changed |= ImGui::Combo(label3, &val3, items3, sizeof(items3) / sizeof(items3[0])); \
@@ -496,8 +496,8 @@ void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transforma
             ImGui::PopStyleColor();
         }
 
-        Changed |= ImGui::InputFloat3("Position", const_cast<float32*>(&obj->getTransform().getLocal()[12]));
-        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32*>(&obj->getTransform().getLocal()[4]));
+        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(&obj->getTransform().getLocal()[12]));
+        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(&obj->getTransform().getLocal()[4]));
 
         if (ImGui::Button("Fix transform")) {
             Changed |= true;
@@ -740,17 +740,17 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
     FO_STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32>(graph.size()))) {
-        int32 delIndex = -1;
-        int32 index = 0;
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
+        int32_t delIndex = -1;
+        int32_t index = 0;
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
             string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
 
             if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                ImGui::InputFloat("Start", const_cast<float32*>(&entry.y0));
-                ImGui::InputFloat("End", const_cast<float32*>(&entry.y1));
+                ImGui::InputFloat("Start", const_cast<float32_t*>(&entry.y0));
+                ImGui::InputFloat("End", const_cast<float32_t*>(&entry.y1));
 
                 ImGui::TreePop();
             }
@@ -766,14 +766,14 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
         if (delIndex != -1) {
             auto it = graph.begin();
-            for (int32 i = 0; i < delIndex; i++) {
+            for (int32_t i = 0; i < delIndex; i++) {
                 ++it;
             }
             graph.erase(it);
         }
 
         if (AddingMode) {
-            static float32 x = 0.0f;
+            static float32_t x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
                 obj->addEntry(x, 0.0f, 0.0f);
@@ -797,22 +797,22 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
     FO_STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32>(graph.size()))) {
-        int32 delIndex = -1;
-        int32 index = 0;
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
+        int32_t delIndex = -1;
+        int32_t index = 0;
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             const auto& entry = *it;
             string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
 
             if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                int32 c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
+                int32_t c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
                 const_cast<unsigned char&>(entry.y0.r) = numeric_cast<unsigned char>(c1[0]);
                 const_cast<unsigned char&>(entry.y0.g) = numeric_cast<unsigned char>(c1[1]);
                 const_cast<unsigned char&>(entry.y0.b) = numeric_cast<unsigned char>(c1[2]);
                 const_cast<unsigned char&>(entry.y0.a) = numeric_cast<unsigned char>(c1[3]);
-                int32 c2[] = {entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a};
+                int32_t c2[] = {entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a};
                 ImGui::InputInt4("End", c2);
                 const_cast<unsigned char&>(entry.y1.r) = numeric_cast<unsigned char>(c2[0]);
                 const_cast<unsigned char&>(entry.y1.g) = numeric_cast<unsigned char>(c2[1]);
@@ -833,14 +833,14 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 
         if (delIndex != -1) {
             auto it = graph.begin();
-            for (int32 i = 0; i < delIndex; i++) {
+            for (int32_t i = 0; i < delIndex; i++) {
                 ++it;
             }
             graph.erase(it);
         }
 
         if (AddingMode) {
-            static float32 x = 0.0f;
+            static float32_t x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
                 obj->addEntry(x, SPK::Color(), SPK::Color());
@@ -1214,10 +1214,10 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
     {
         auto&& effect_name = obj->GetEffectName();
 
-        int32 index = -1;
+        int32_t index = -1;
 
         if (const auto it = std::ranges::find(AllEffects, effect_name); it != AllEffects.end()) {
-            index = numeric_cast<int32>(std::distance(AllEffects.begin(), it));
+            index = numeric_cast<int32_t>(std::distance(AllEffects.begin(), it));
         }
 
         vector<const char*> eff_items;
@@ -1226,7 +1226,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             eff_items.push_back(eff.c_str());
         }
 
-        if (ImGui::Combo("Effect", &index, eff_items.data(), numeric_cast<int32>(eff_items.size()))) {
+        if (ImGui::Combo("Effect", &index, eff_items.data(), numeric_cast<int32_t>(eff_items.size()))) {
             Changed |= true;
             obj->SetEffectName(eff_items[index]);
         }
@@ -1236,10 +1236,10 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
     {
         auto&& texture_name = obj->GetTextureName();
 
-        int32 index = -1;
+        int32_t index = -1;
 
         if (const auto it = std::ranges::find(AllTextures, texture_name); it != AllTextures.end()) {
-            index = numeric_cast<int32>(std::distance(AllTextures.begin(), it));
+            index = numeric_cast<int32_t>(std::distance(AllTextures.begin(), it));
         }
 
         vector<const char*> tex_items;
@@ -1248,7 +1248,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             tex_items.push_back(tex.c_str());
         }
 
-        if (ImGui::Combo("Texture", &index, tex_items.data(), numeric_cast<int32>(tex_items.size()))) {
+        if (ImGui::Combo("Texture", &index, tex_items.data(), numeric_cast<int32_t>(tex_items.size()))) {
             Changed |= true;
             obj->SetTextureName(tex_items[index]);
         }
@@ -1262,11 +1262,11 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
     const char* items3[] = {"LOCK_LOOK", "LOCK_UP"};
     DRAW_SPK_COMBO_COMBO_COMBO("LookOrientation", "UpOrientation", "LockedAxis", getLookOrientation, getUpOrientation, getLockedAxis, setOrientation);
 
-    float32 look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
+    float32_t look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
     Changed |= ImGui::InputFloat3("LookVector", look);
     obj->lookVector = SPK::Vector3D(look[0], look[1], look[2]);
 
-    float32 up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
+    float32_t up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
     Changed |= ImGui::InputFloat3("UpVector", up);
     obj->upVector = SPK::Vector3D(up[0], up[1], up[2]);
 }
@@ -1276,8 +1276,8 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32>(get_size()))) {
-        int32 delIndex = -1;
+    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32_t>(get_size()))) {
+        int32_t delIndex = -1;
 
         for (size_t i = 0; i < get_size(); i++) {
             auto&& obj = get(i);
@@ -1291,7 +1291,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 
             if (RemovingMode) {
                 if (ImGui::Button(strex("Remove {}", name).c_str())) {
-                    delIndex = numeric_cast<int32>(i);
+                    delIndex = numeric_cast<int32_t>(i);
                 }
             }
         }

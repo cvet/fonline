@@ -67,10 +67,10 @@ struct ParsedFunctionAttributeRecord
     string Namespace {};
     string ObjectType {};
     string Name {};
-    uint32 OverloadIndex {};
+    uint32_t OverloadIndex {};
     vector<string> Attributes {};
     string SourceFile {};
-    uint32 SourceLine {};
+    uint32_t SourceLine {};
 };
 
 void CleanupScriptFunctionAttributes(AngelScript::asIScriptFunction* func);

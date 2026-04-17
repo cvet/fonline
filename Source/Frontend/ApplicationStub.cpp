@@ -48,7 +48,7 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer->CreateTexture(size, linear_filtered, with_depth); }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer->CreateDrawBuffer(is_static); }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer->CreateEffect(usage, name, loader); }
-    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override { return _renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override { return _renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return _renderer->IsRenderTargetFlipped(); }
 
     void SetRenderTarget(RenderTexture* tex) override
@@ -200,7 +200,7 @@ class StubAppAudio final : public IAppAudio
 public:
     [[nodiscard]] auto IsEnabled() const -> bool override { return false; }
 
-    auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool override
+    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -215,7 +215,7 @@ public:
         ignore_unused(stream_callback);
     }
 
-    void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume) override
+    void MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t volume) override
     {
         FO_STACK_TRACE_ENTRY();
 

@@ -47,7 +47,7 @@ class IAppWindow;
 FO_DECLARE_EXCEPTION(AppInitException);
 
 ///@ ExportEnum
-enum class KeyCode : uint8
+enum class KeyCode : uint8_t
 {
     None = 0x00,
     Escape = 0x01,
@@ -157,7 +157,7 @@ enum class KeyCode : uint8
 };
 
 ///@ ExportEnum
-enum class MouseButton : uint8
+enum class MouseButton : uint8_t
 {
     Left = 0,
     Right = 1,
@@ -173,7 +173,7 @@ enum class MouseButton : uint8
 
 struct InputEvent
 {
-    enum class EventType : uint8
+    enum class EventType : uint8_t
     {
         NoneEvent,
         MouseMoveEvent,
@@ -190,10 +190,10 @@ struct InputEvent
 
     struct MouseMoveEvent
     {
-        int32 MouseX {};
-        int32 MouseY {};
-        int32 DeltaX {};
-        int32 DeltaY {};
+        int32_t MouseX {};
+        int32_t MouseY {};
+        int32_t DeltaX {};
+        int32_t DeltaY {};
     } MouseMove {};
 
     struct MouseDownEvent
@@ -208,34 +208,34 @@ struct InputEvent
 
     struct MouseWheelEvent
     {
-        int32 Delta {};
+        int32_t Delta {};
     } MouseWheel {};
 
     struct TouchTapEvent
     {
-        int32 TouchX {};
-        int32 TouchY {};
+        int32_t TouchX {};
+        int32_t TouchY {};
     } TouchTap {};
 
     struct TouchDoubleTapEvent
     {
-        int32 TouchX {};
-        int32 TouchY {};
+        int32_t TouchX {};
+        int32_t TouchY {};
     } TouchDoubleTap {};
 
     struct TouchScrollEvent
     {
-        int32 TouchX {};
-        int32 TouchY {};
-        int32 DeltaX {};
-        int32 DeltaY {};
+        int32_t TouchX {};
+        int32_t TouchY {};
+        int32_t DeltaX {};
+        int32_t DeltaY {};
     } TouchScroll {};
 
     struct TouchZoomEvent
     {
-        int32 TouchX {};
-        int32 TouchY {};
-        float32 Factor {};
+        int32_t TouchX {};
+        int32_t TouchY {};
+        float32_t Factor {};
     } TouchZoom {};
 
     struct KeyDownEvent
@@ -311,7 +311,7 @@ public:
     [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 = 0;
+    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
 
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
@@ -343,15 +343,15 @@ public:
 class IAppAudio
 {
 public:
-    using AudioStreamCallback = function<void(uint8, span<uint8>)>;
+    using AudioStreamCallback = function<void(uint8_t, span<uint8_t>)>;
 
     virtual ~IAppAudio() = default;
 
     [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
 
-    virtual auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool = 0;
+    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
     virtual void SetSource(AudioStreamCallback stream_callback) = 0;
-    virtual void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume) = 0;
+    virtual void MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t volume) = 0;
     virtual void LockDevice() = 0;
     virtual void UnlockDevice() = 0;
 };
@@ -440,7 +440,7 @@ private:
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
-    int32 _nonConstHelper {};
+    int32_t _nonConstHelper {};
 };
 
 class AppRender final : public IAppRender
@@ -448,17 +448,17 @@ class AppRender final : public IAppRender
     friend class Application;
 
 public:
-    static constexpr int32 MAX_ATLAS_SIZE = 8192;
-    static constexpr int32 MIN_ATLAS_SIZE = 2048;
-    static const int32& MAX_ATLAS_WIDTH;
-    static const int32& MAX_ATLAS_HEIGHT;
-    static const int32& MAX_BONES;
+    static constexpr int32_t MAX_ATLAS_SIZE = 8192;
+    static constexpr int32_t MIN_ATLAS_SIZE = 2048;
+    static const int32_t& MAX_ATLAS_WIDTH;
+    static const int32_t& MAX_ATLAS_HEIGHT;
+    static const int32_t& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture* override;
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
 
     void SetRenderTarget(RenderTexture* tex) override;
@@ -473,7 +473,7 @@ private:
     }
 
     raw_ptr<Application> _app;
-    int32 _nonConstHelper {};
+    int32_t _nonConstHelper {};
 };
 
 class AppInput final : public IAppInput
@@ -505,7 +505,7 @@ private:
 
     raw_ptr<Application> _app;
     string _clipboardTextStorage {};
-    int32 _nonConstHelper {};
+    int32_t _nonConstHelper {};
     bool _shiftDown {};
     bool _ctrlDown {};
     bool _altDown {};
@@ -516,16 +516,16 @@ class AppAudio final : public IAppAudio
     friend class Application;
 
 public:
-    static const int32 AUDIO_FORMAT_U8;
-    static const int32 AUDIO_FORMAT_S16;
+    static const int32_t AUDIO_FORMAT_U8;
+    static const int32_t AUDIO_FORMAT_S16;
 
     using AudioStreamCallback = IAppAudio::AudioStreamCallback;
 
     [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool override;
+    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
     void SetSource(AudioStreamCallback stream_callback) override;
-    void MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume) override;
+    void MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t volume) override;
     void LockDevice() override;
     void UnlockDevice() override;
 
@@ -536,10 +536,10 @@ private:
     }
 
     raw_ptr<Application> _app;
-    int32 _nonConstHelper {};
+    int32_t _nonConstHelper {};
 };
 
-enum class AppInitFlags : uint8
+enum class AppInitFlags : uint8_t
 {
     None = 0x00,
     ClientMode = 0x01,
@@ -550,7 +550,7 @@ enum class AppInitFlags : uint8
 
 class Application final
 {
-    friend void InitApp(int32 argc, char** argv, AppInitFlags flags);
+    friend void InitApp(int32_t argc, char** argv, AppInitFlags flags);
     friend class SafeAlloc;
     friend class AppWindow;
     friend class AppRender;
@@ -584,7 +584,7 @@ public:
 
     static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
     static void ShowProgressWindow(string_view text, const ProgressWindowCallback& callback);
-    static void ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32>& selected);
+    static void ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32_t>& selected);
 
     GlobalSettings Settings;
 
@@ -603,10 +603,10 @@ public:
 private:
     struct TouchPointState
     {
-        int64 FingerId {-1};
+        int64_t FingerId {-1};
         ipos32 StartPos {};
         ipos32 LastPos {};
-        uint64 StartTime {};
+        uint64_t StartTime {};
         bool Active {};
         bool ScrollActive {};
     };
@@ -614,45 +614,45 @@ private:
     struct PendingTouchTapState
     {
         ipos32 Pos {};
-        uint64 ReleaseTime {};
+        uint64_t ReleaseTime {};
         bool Active {};
     };
 
-    static constexpr uint32 TOUCH_TAP_MAX_TIME_MS = 250;
-    static constexpr uint32 TOUCH_DOUBLE_TAP_MAX_TIME_MS = 200;
-    static constexpr int32 TOUCH_TAP_MAX_DIST = 12;
-    static constexpr int32 TOUCH_DOUBLE_TAP_MAX_DIST = 48;
+    static constexpr uint32_t TOUCH_TAP_MAX_TIME_MS = 250;
+    static constexpr uint32_t TOUCH_DOUBLE_TAP_MAX_TIME_MS = 200;
+    static constexpr int32_t TOUCH_TAP_MAX_DIST = 12;
+    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST = 48;
 
     struct Context;
 
     auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
-    auto ResolveTouchPos(float32 normalized_x, float32 normalized_y) const -> ipos32;
-    auto GetTouchElapsedMs(uint64 start_time, uint64 end_time) const -> uint32;
-    auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32;
-    auto FindTouchPoint(int64 finger_id) -> TouchPointState*;
-    auto FindOtherTouchPoint(int64 finger_id) -> TouchPointState*;
-    auto AcquireTouchPoint(int64 finger_id) -> TouchPointState*;
-    void ReleaseTouchPoint(int64 finger_id);
+    auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
+    auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
+    auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;
+    auto FindTouchPoint(int64_t finger_id) -> TouchPointState*;
+    auto FindOtherTouchPoint(int64_t finger_id) -> TouchPointState*;
+    auto AcquireTouchPoint(int64_t finger_id) -> TouchPointState*;
+    void ReleaseTouchPoint(int64_t finger_id);
     void ResetTouchGestures();
     void QueueTouchTap(ipos32 pos);
     void QueueTouchDoubleTap(ipos32 pos);
     void QueueTouchScroll(ipos32 pos, ipos32 delta);
-    void QueueTouchZoom(ipos32 pos, float32 factor);
+    void QueueTouchZoom(ipos32 pos, float32_t factor);
     void FlushPendingTouchTap();
 
     unique_ptr<Context> _ctx {};
-    uint64 _time {};
-    uint64 _timeFrequency {};
+    uint64_t _time {};
+    uint64_t _timeFrequency {};
     bool _isTablet {};
     bool _mouseCanUseGlobalState {};
-    int32 _pendingMouseLeaveFrame {};
-    int32 _mouseButtonsDown {};
+    int32_t _pendingMouseLeaveFrame {};
+    int32_t _mouseButtonsDown {};
     TouchPointState _touchPrimary {};
     TouchPointState _touchSecondary {};
     PendingTouchTapState _pendingTouchTap {};
     bool _touchPinchActive {};
     bool _touchTapSuppressed {};
-    float32 _touchLastPinchDistance {};
+    float32_t _touchLastPinchDistance {};
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};
@@ -667,7 +667,7 @@ private:
     EventDispatcher<> _onResumeDispatcher {OnResume};
     EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {OnQuit};
-    int32 _nonConstHelper {};
+    int32_t _nonConstHelper {};
 };
 
 inline auto AppWindow::GetRender() noexcept -> IAppRender&
@@ -696,7 +696,7 @@ inline auto AppWindow::GetWindowHandleForInput() const -> WindowInternalHandle*
 }
 
 extern unique_ptr<Application> App;
-extern void InitApp(int32 argc, char** argv, AppInitFlags flags = AppInitFlags::None);
+extern void InitApp(int32_t argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 
 FO_END_NAMESPACE

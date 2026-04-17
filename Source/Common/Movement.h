@@ -40,7 +40,7 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportEnum
-enum class MovingState : uint8
+enum class MovingState : uint8_t
 {
     InProgress = 0,
     Success = 1,
@@ -61,8 +61,8 @@ enum class MovingState : uint8
 struct MovingMetrics
 {
     mpos EndHex {};
-    float32 WholeTime {};
-    float32 WholeDist {};
+    float32_t WholeTime {};
+    float32_t WholeDist {};
 };
 
 struct MovingProgress
@@ -78,7 +78,7 @@ struct MovingRawProgress
     mpos Hex {};
     mpos SegmentStartHex {};
     ipos32 SegmentOffset {};
-    float32 NormalizedDist {};
+    float32_t NormalizedDist {};
     bool Completed {};
     bool Found {};
 };
@@ -87,8 +87,8 @@ struct MovingRawProgress
 class MovingContext final : public RefCounted<MovingContext>
 {
 public:
-    explicit MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset);
-    explicit MovingContext(msize map_size, uint16 speed, vector<mdir> steps, vector<uint16> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32 whole_time);
+    explicit MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset);
+    explicit MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32_t whole_time);
     MovingContext(const MovingContext&) = delete;
     MovingContext(MovingContext&&) noexcept = delete;
     auto operator=(const MovingContext&) -> MovingContext& = delete;
@@ -96,24 +96,24 @@ public:
     ~MovingContext() = default;
 
     [[nodiscard]] auto GetMapSize() const noexcept -> msize { return _mapSize; }
-    [[nodiscard]] auto GetSpeed() const noexcept -> uint16 { return _speed; }
+    [[nodiscard]] auto GetSpeed() const noexcept -> uint16_t { return _speed; }
     [[nodiscard]] auto GetSteps() const noexcept -> const vector<mdir>& { return _steps; }
-    [[nodiscard]] auto GetControlSteps() const noexcept -> const vector<uint16>& { return _controlSteps; }
+    [[nodiscard]] auto GetControlSteps() const noexcept -> const vector<uint16_t>& { return _controlSteps; }
     [[nodiscard]] auto GetStartHex() const noexcept -> mpos { return _startHex; }
     [[nodiscard]] auto GetEndHex() const noexcept -> mpos { return _endHex; }
     [[nodiscard]] auto GetPreBlockHex() const noexcept -> mpos { return _preBlockHex; }
     [[nodiscard]] auto GetBlockHex() const noexcept -> mpos { return _blockHex; }
-    [[nodiscard]] auto GetWholeTime() const noexcept -> float32 { return _wholeTime; }
-    [[nodiscard]] auto GetWholeDist() const noexcept -> float32 { return _wholeDist; }
+    [[nodiscard]] auto GetWholeTime() const noexcept -> float32_t { return _wholeTime; }
+    [[nodiscard]] auto GetWholeDist() const noexcept -> float32_t { return _wholeDist; }
     [[nodiscard]] auto GetStartHexOffset() const noexcept -> ipos16 { return _startHexOffset; }
     [[nodiscard]] auto GetEndHexOffset() const noexcept -> ipos16 { return _endHexOffset; }
-    [[nodiscard]] auto GetElapsedTime() const noexcept -> float32 { return _elapsedTime; }
-    [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32;
+    [[nodiscard]] auto GetElapsedTime() const noexcept -> float32_t { return _elapsedTime; }
+    [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t;
     [[nodiscard]] auto IsCompleted() const noexcept -> bool { return _completed; }
     [[nodiscard]] auto GetCompleteReason() const noexcept -> MovingState { return _completeReason; }
 
     [[nodiscard]] auto EvaluateMetrics() const -> MovingMetrics;
-    [[nodiscard]] auto EvaluateProjectedHex(float32 look_ahead_ms) const -> mpos;
+    [[nodiscard]] auto EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos;
     [[nodiscard]] auto EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos fallback_hex) const -> mpos;
     [[nodiscard]] auto EvaluatePathHexes(mpos current_hex) const -> vector<mpos>;
     [[nodiscard]] auto EvaluateProgress() const -> MovingProgress;
@@ -121,28 +121,28 @@ public:
 
     void UpdateCurrentTime(nanotime current_time);
     void UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex);
-    void ChangeSpeed(uint16 speed, nanotime current_time);
+    void ChangeSpeed(uint16_t speed, nanotime current_time);
     void Complete(MovingState reason) noexcept;
     void SetBlockHexes(mpos pre_block_hex, mpos block_hex) noexcept;
     void ValidateRuntimeState() const;
 
 private:
-    auto EvaluateRawProgress(float32 elapsed_time_ms) const -> MovingRawProgress;
+    auto EvaluateRawProgress(float32_t elapsed_time_ms) const -> MovingRawProgress;
     auto BuildProgress(const MovingRawProgress& raw_progress, mpos current_hex) const -> MovingProgress;
-    void EvaluateSegment(uint16 control_step_begin, uint16 control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32& dist) const;
+    void EvaluateSegment(uint16_t control_step_begin, uint16_t control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32_t& dist) const;
     void RecalculateMetrics();
 
     msize _mapSize {};
-    uint16 _speed {};
+    uint16_t _speed {};
     vector<mdir> _steps {};
-    vector<uint16> _controlSteps {};
+    vector<uint16_t> _controlSteps {};
     nanotime _startTime {};
     timespan _offsetTime {};
     mpos _startHex {};
     mpos _endHex {};
-    float32 _wholeTime {};
-    float32 _wholeDist {};
-    float32 _elapsedTime {};
+    float32_t _wholeTime {};
+    float32_t _wholeDist {};
+    float32_t _elapsedTime {};
     bool _completed {};
     MovingState _completeReason {MovingState::InProgress};
     ipos16 _startHexOffset {};

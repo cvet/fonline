@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources);
-auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8>;
+auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
 
 FO_END_NAMESPACE
 

@@ -136,11 +136,11 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
         // Hashes
         {
-            const auto hashes_count = reader.Read<uint32>();
+            const auto hashes_count = reader.Read<uint32_t>();
             string str;
 
-            for (uint32 i = 0; i < hashes_count; i++) {
-                const auto str_len = reader.Read<uint32>();
+            for (uint32_t i = 0; i < hashes_count; i++) {
+                const auto str_len = reader.Read<uint32_t>();
                 str.resize(str_len);
                 reader.ReadPtr(str.data(), str.length());
                 const auto hstr = _meta->Hashes.ToHashedString(str);
@@ -150,28 +150,28 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
         // Protos
         {
-            const auto types_count = reader.Read<uint32>();
-            vector<uint8> props_data;
+            const auto types_count = reader.Read<uint32_t>();
+            vector<uint8_t> props_data;
 
-            for (uint32 i = 0; i < types_count; i++) {
-                const auto protos_count = reader.Read<uint32>();
+            for (uint32_t i = 0; i < types_count; i++) {
+                const auto protos_count = reader.Read<uint32_t>();
 
-                const auto type_name_len = reader.Read<uint16>();
+                const auto type_name_len = reader.Read<uint16_t>();
                 const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
                 const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
                 FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name));
 
-                for (uint32 j = 0; j < protos_count; j++) {
-                    const auto proto_name_len = reader.Read<uint16>();
+                for (uint32_t j = 0; j < protos_count; j++) {
+                    const auto proto_name_len = reader.Read<uint16_t>();
                     const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
                     const auto proto_id = _meta->Hashes.ToHashedString(proto_name);
 
                     auto* proto = CreateProto(type_name, proto_id, nullptr);
 
-                    const auto data_size = reader.Read<uint32>();
+                    const auto data_size = reader.Read<uint32_t>();
                     props_data.resize(data_size);
-                    reader.ReadPtr<uint8>(props_data.data(), data_size);
+                    reader.ReadPtr<uint8_t>(props_data.data(), data_size);
                     proto->GetPropertiesForEdit().RestoreAllData(props_data);
                 }
             }

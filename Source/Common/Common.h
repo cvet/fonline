@@ -57,7 +57,7 @@ extern bool IsTestingInProgress;
 #define FO_DEFERRED // Lambda annotation
 
 ///@ ExportValueType ident ident_t Layout = int64-value
-using ident_t = strong_type<int64, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
+using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
 // Custom any as string
@@ -94,14 +94,14 @@ FO_END_NAMESPACE
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 FO_BEGIN_NAMESPACE
-using vec3 = glm::vec<3, float32, glm::defaultp>;
-using dvec3 = glm::vec<3, float64, glm::defaultp>;
-using mat44 = glm::mat<4, 4, float32, glm::defaultp>;
-using dmat44 = glm::mat<4, 4, float64, glm::defaultp>;
-using quaternion = glm::qua<float32, glm::defaultp>;
-using dquaternion = glm::qua<float64, glm::defaultp>;
-using color4 = glm::vec<4, float32, glm::defaultp>;
-using dcolor4 = glm::vec<4, float64, glm::defaultp>;
+using vec3 = glm::vec<3, float32_t, glm::defaultp>;
+using dvec3 = glm::vec<3, float64_t, glm::defaultp>;
+using mat44 = glm::mat<4, 4, float32_t, glm::defaultp>;
+using dmat44 = glm::mat<4, 4, float64_t, glm::defaultp>;
+using quaternion = glm::qua<float32_t, glm::defaultp>;
+using dquaternion = glm::qua<float64_t, glm::defaultp>;
+using color4 = glm::vec<4, float32_t, glm::defaultp>;
+using dcolor4 = glm::vec<4, float64_t, glm::defaultp>;
 
 FO_DECLARE_EXCEPTION(NotEnabled3DException);
 
@@ -269,7 +269,7 @@ static_assert(!some_property_plain_type<any_t>);
 static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 
 // Property type in network interaction
-enum class NetProperty : uint8
+enum class NetProperty : uint8_t
 {
     None = 0,
     Game, // No extra args
@@ -290,27 +290,27 @@ struct GameSettings
 #if FO_GEOMETRY == 1
     static constexpr bool HEXAGONAL_GEOMETRY = true;
     static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr int32 MAP_DIR_COUNT = 6;
+    static constexpr int32_t MAP_DIR_COUNT = 6;
 #elif FO_GEOMETRY == 2
     static constexpr bool HEXAGONAL_GEOMETRY = false;
     static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr int32 MAP_DIR_COUNT = 8;
+    static constexpr int32_t MAP_DIR_COUNT = 8;
 #else
 #error FO_GEOMETRY not specified
 #endif
-    static constexpr int32 MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
-    static constexpr int32 MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
-    static constexpr int32 MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32 MAP_CAMERA_ANGLE = FO_MAP_CAMERA_ANGLE;
-    static constexpr float32 MIN_ZOOM = 0.05f;
-    static constexpr float32 MAX_ZOOM = 20.0f;
-    static constexpr int32 DEFAULT_MAP_SIZE = 200;
-    static constexpr int32 MIN_MAP_SIZE = 10;
-    static constexpr int32 MAX_MAP_SIZE = 4000;
+    static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
+    static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
+    static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
+    static constexpr float32_t MAP_CAMERA_ANGLE = FO_MAP_CAMERA_ANGLE;
+    static constexpr float32_t MIN_ZOOM = 0.05f;
+    static constexpr float32_t MAX_ZOOM = 20.0f;
+    static constexpr int32_t DEFAULT_MAP_SIZE = 200;
+    static constexpr int32_t MIN_MAP_SIZE = 10;
+    static constexpr int32_t MAX_MAP_SIZE = 4000;
 };
 
 ///@ ExportEnum
-enum class EngineInfoMessage : uint16
+enum class EngineInfoMessage : uint16_t
 {
     None = 0,
 
@@ -357,7 +357,7 @@ enum class EngineInfoMessage : uint16
 };
 
 // Network messages
-enum class NetMessage : uint8
+enum class NetMessage : uint8_t
 {
     Handshake = 1,
     Disconnect = 2,
@@ -399,7 +399,7 @@ enum class NetMessage : uint8
     SendProperty = 121,
 };
 
-enum class EngineSideKind : uint8
+enum class EngineSideKind : uint8_t
 {
     ServerSide,
     ClientSide,
@@ -450,7 +450,7 @@ struct BaseTypeDesc
     size_t Size {};
 };
 
-enum class ComplexTypeKind : uint8
+enum class ComplexTypeKind : uint8_t
 {
     None = 0,
     Simple = 1,
@@ -530,19 +530,19 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     else if (type.IsInt && type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            fn(*cast_from_void<int8*>(p));
+            fn(*cast_from_void<int8_t*>(p));
             return;
         }
         case 2: {
-            fn(*cast_from_void<int16*>(p));
+            fn(*cast_from_void<int16_t*>(p));
             return;
         }
         case 4: {
-            fn(*cast_from_void<int32*>(p));
+            fn(*cast_from_void<int32_t*>(p));
             return;
         }
         case 8: {
-            fn(*cast_from_void<int64*>(p));
+            fn(*cast_from_void<int64_t*>(p));
             return;
         }
         default:
@@ -552,19 +552,19 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     else if (type.IsInt && !type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            fn(*cast_from_void<uint8*>(p));
+            fn(*cast_from_void<uint8_t*>(p));
             return;
         }
         case 2: {
-            fn(*cast_from_void<uint16*>(p));
+            fn(*cast_from_void<uint16_t*>(p));
             return;
         }
         case 4: {
-            fn(*cast_from_void<uint32*>(p));
+            fn(*cast_from_void<uint32_t*>(p));
             return;
         }
         case 8: {
-            fn(*cast_from_void<uint64*>(p));
+            fn(*cast_from_void<uint64_t*>(p));
             return;
         }
         default:
@@ -573,11 +573,11 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            fn(*cast_from_void<float32*>(p));
+            fn(*cast_from_void<float32_t*>(p));
             return;
         }
         else if (type.IsDoubleFloat) {
-            fn(*cast_from_void<float64*>(p));
+            fn(*cast_from_void<float64_t*>(p));
             return;
         }
     }
@@ -591,7 +591,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<uint8*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p) + field.Offset, field.Type, fn);
         }
 
         return;
@@ -612,19 +612,19 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     else if (type.IsInt && type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            fn(*cast_from_void<const int8*>(p));
+            fn(*cast_from_void<const int8_t*>(p));
             return;
         }
         case 2: {
-            fn(*cast_from_void<const int16*>(p));
+            fn(*cast_from_void<const int16_t*>(p));
             return;
         }
         case 4: {
-            fn(*cast_from_void<const int32*>(p));
+            fn(*cast_from_void<const int32_t*>(p));
             return;
         }
         case 8: {
-            fn(*cast_from_void<const int64*>(p));
+            fn(*cast_from_void<const int64_t*>(p));
             return;
         }
         default:
@@ -634,19 +634,19 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     else if (type.IsInt && !type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            fn(*cast_from_void<const uint8*>(p));
+            fn(*cast_from_void<const uint8_t*>(p));
             return;
         }
         case 2: {
-            fn(*cast_from_void<const uint16*>(p));
+            fn(*cast_from_void<const uint16_t*>(p));
             return;
         }
         case 4: {
-            fn(*cast_from_void<const uint32*>(p));
+            fn(*cast_from_void<const uint32_t*>(p));
             return;
         }
         case 8: {
-            fn(*cast_from_void<const uint64*>(p));
+            fn(*cast_from_void<const uint64_t*>(p));
             return;
         }
         default:
@@ -655,11 +655,11 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            fn(*cast_from_void<const float32*>(p));
+            fn(*cast_from_void<const float32_t*>(p));
             return;
         }
         else if (type.IsDoubleFloat) {
-            fn(*cast_from_void<const float64*>(p));
+            fn(*cast_from_void<const float64_t*>(p));
             return;
         }
     }
@@ -673,7 +673,7 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<const uint8*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p) + field.Offset, field.Type, fn);
         }
 
         return;
@@ -694,16 +694,16 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     else if (type.IsInt && type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const int8*>(a), *cast_from_void<const int8*>(b));
+            return fn(*cast_from_void<const int8_t*>(a), *cast_from_void<const int8_t*>(b));
         }
         case 2: {
-            return fn(*cast_from_void<const int16*>(a), *cast_from_void<const int16*>(b));
+            return fn(*cast_from_void<const int16_t*>(a), *cast_from_void<const int16_t*>(b));
         }
         case 4: {
-            return fn(*cast_from_void<const int32*>(a), *cast_from_void<const int32*>(b));
+            return fn(*cast_from_void<const int32_t*>(a), *cast_from_void<const int32_t*>(b));
         }
         case 8: {
-            return fn(*cast_from_void<const int64*>(a), *cast_from_void<const int64*>(b));
+            return fn(*cast_from_void<const int64_t*>(a), *cast_from_void<const int64_t*>(b));
         }
         default:
             break;
@@ -712,16 +712,16 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     else if (type.IsInt && !type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const uint8*>(a), *cast_from_void<const uint8*>(b));
+            return fn(*cast_from_void<const uint8_t*>(a), *cast_from_void<const uint8_t*>(b));
         }
         case 2: {
-            return fn(*cast_from_void<const uint16*>(a), *cast_from_void<const uint16*>(b));
+            return fn(*cast_from_void<const uint16_t*>(a), *cast_from_void<const uint16_t*>(b));
         }
         case 4: {
-            return fn(*cast_from_void<const uint32*>(a), *cast_from_void<const uint32*>(b));
+            return fn(*cast_from_void<const uint32_t*>(a), *cast_from_void<const uint32_t*>(b));
         }
         case 8: {
-            return fn(*cast_from_void<const uint64*>(a), *cast_from_void<const uint64*>(b));
+            return fn(*cast_from_void<const uint64_t*>(a), *cast_from_void<const uint64_t*>(b));
         }
         default:
             break;
@@ -729,10 +729,10 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            return fn(*cast_from_void<const float32*>(a), *cast_from_void<const float32*>(b));
+            return fn(*cast_from_void<const float32_t*>(a), *cast_from_void<const float32_t*>(b));
         }
         else if (type.IsDoubleFloat) {
-            return fn(*cast_from_void<const float64*>(a), *cast_from_void<const float64*>(b));
+            return fn(*cast_from_void<const float64_t*>(a), *cast_from_void<const float64_t*>(b));
         }
     }
     else if (type.IsHashedString) {
@@ -759,9 +759,9 @@ class NameResolver
 public:
     [[nodiscard]] virtual auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& = 0;
     [[nodiscard]] virtual auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32 = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32 = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32 value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed = nullptr) const -> const string& = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* = 0;
     virtual ~NameResolver() = default;
@@ -771,7 +771,7 @@ class FrameBalancer
 {
 public:
     FrameBalancer() = default;
-    FrameBalancer(bool enabled, int32 sleep, int32 fixed_fps);
+    FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps);
 
     [[nodiscard]] auto GetLoopDuration() const -> timespan { return _loopDuration; }
 
@@ -780,8 +780,8 @@ public:
 
 private:
     bool _enabled {};
-    int32 _sleep {};
-    int32 _fixedFps {};
+    int32_t _sleep {};
+    int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};
     timespan _idleTimeBalance {};
@@ -815,12 +815,12 @@ extern auto MakeSeededRandomGenerator() -> std::mt19937;
 extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 
 // Interthread communication between server and client
-using InterthreadDataCallback = function<void(span<const uint8>)>;
+using InterthreadDataCallback = function<void(span<const uint8_t>)>;
 extern std::mutex InterthreadListenersLocker;
-extern map<uint16, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum
-enum class CritterItemSlot : uint8
+enum class CritterItemSlot : uint8_t
 {
     Inventory = 0,
     Main = 1,
@@ -828,7 +828,7 @@ enum class CritterItemSlot : uint8
 };
 
 ///@ ExportEnum
-enum class CritterCondition : uint8
+enum class CritterCondition : uint8_t
 {
     Alive = 0,
     Knockout = 1,
@@ -842,7 +842,7 @@ enum class CritterCondition : uint8
 // for all others critters actions call only server
 //  flags actionExt item
 ///@ ExportEnum
-enum class CritterAction : uint16
+enum class CritterAction : uint16_t
 {
     None = 0,
     MoveItem = 2,
@@ -858,14 +858,14 @@ enum class CritterAction : uint16
 };
 
 ///@ ExportEnum
-enum class CritterStateAnim : uint16
+enum class CritterStateAnim : uint16_t
 {
     None = 0,
     Unarmed = 1,
 };
 
 ///@ ExportEnum
-enum class CritterActionAnim : uint16
+enum class CritterActionAnim : uint16_t
 {
     None = 0,
     Idle = 1,
@@ -884,7 +884,7 @@ enum class CritterActionAnim : uint16
 };
 
 ///@ ExportEnum
-enum class CritterSeeType : uint8
+enum class CritterSeeType : uint8_t
 {
     Any = 0,
     WhoSeeMe = 1,
@@ -892,7 +892,7 @@ enum class CritterSeeType : uint8
 };
 
 ///@ ExportEnum
-enum class CritterFindType : uint8
+enum class CritterFindType : uint8_t
 {
     Any = 0,
     NonDead = 0x01,
@@ -906,7 +906,7 @@ enum class CritterFindType : uint8
 };
 
 ///@ ExportEnum
-enum class ItemOwnership : uint8
+enum class ItemOwnership : uint8_t
 {
     MapHex = 0,
     CritterInventory = 1,
@@ -915,7 +915,7 @@ enum class ItemOwnership : uint8
 };
 
 ///@ ExportEnum
-enum class CornerType : uint8
+enum class CornerType : uint8_t
 {
     NorthSouth = 0,
     West = 1,
@@ -926,7 +926,7 @@ enum class CornerType : uint8
 };
 
 ///@ ExportEnum
-enum class MultihexGenerationType : uint8
+enum class MultihexGenerationType : uint8_t
 {
     None = 0,
     SameSibling = 1,
@@ -936,9 +936,9 @@ enum class MultihexGenerationType : uint8
 class AnimationResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool = 0;
     virtual ~AnimationResolver() = default;
 };
 

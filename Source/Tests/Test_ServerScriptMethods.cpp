@@ -55,7 +55,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -647,7 +647,7 @@ namespace ScriptMethodsTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -687,7 +687,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("AddAndCountItems")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterAddAndCountItems"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAddAndCountItems"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -695,7 +695,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("GetItems")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterGetItems"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItems"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -703,7 +703,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("GetItemById")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterGetItemById"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItemById"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -711,7 +711,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("DestroyItems")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterDestroyItems"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterDestroyItems"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -743,7 +743,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("StateQueries")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterStateQueries"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterStateQueries"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -751,7 +751,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("ConditionChange")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterConditionChange"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterConditionChange"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -759,7 +759,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("Direction")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterDirection"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterDirection"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -767,7 +767,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("Attachments")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestCritterAttachments"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAttachments"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -799,7 +799,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     SECTION("GetCritterById")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameGetCritter"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCritter"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -807,7 +807,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     SECTION("GetAllNpc")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameGetAllNpc"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetAllNpc"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -815,7 +815,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     SECTION("GetCrittersByFindType")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameGetCrittersByFindType"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCrittersByFindType"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -847,7 +847,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemQueries")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameItemQueries"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameItemQueries"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -855,7 +855,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("MoveItemBetweenCritters")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameMoveItemBetweenCritters"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemBetweenCritters"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -863,7 +863,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("MoveItemPartial")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameMoveItemPartial"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemPartial"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -871,7 +871,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("DestroyItemById")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameDestroyItemById"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemById"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -879,7 +879,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("DestroyItemPartialById")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestGameDestroyItemPartialById"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemPartialById"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -887,7 +887,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemOwnership")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestItemOwnership"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemOwnership"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -919,7 +919,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("Persistence")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestEntityPersistence"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestEntityPersistence"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -927,7 +927,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("DestroyCritterById")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestDestroyCritterById"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyCritterById"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -935,7 +935,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("BulkDestroyCritters")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -943,7 +943,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("BulkDestroyItems")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestBulkDestroyItems"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyItems"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -951,7 +951,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("DestroyEntityGeneric")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestDestroyEntityGeneric"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityGeneric"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -959,7 +959,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("PlayerCritterCreation")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestPlayerCritterCreation"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPlayerCritterCreation"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -991,7 +991,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("DatabaseQueries")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestDatabaseQueries"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseQueries"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -999,7 +999,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("TextPresent")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestTextPresent"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestTextPresent"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -1007,7 +1007,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("RegisteredPlayerIds")
     {
-        auto func = server->FindFunc<int32>(get_func("ScriptMethodsTest::TestRegisteredPlayerIds"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRegisteredPlayerIds"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

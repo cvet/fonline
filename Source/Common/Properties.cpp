@@ -37,10 +37,10 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr size_t OVERLAY_START_CAPACITY = 16;
-static constexpr uint8 FULL_DATA_STORE_TYPE = 0;
-static constexpr uint8 SEPARATE_PROPS_STORE_TYPE = 1;
+static constexpr uint8_t FULL_DATA_STORE_TYPE = 0;
+static constexpr uint8_t SEPARATE_PROPS_STORE_TYPE = 1;
 
-static auto RawDataEqual(const_span<uint8> left, const_span<uint8> right) noexcept -> bool
+static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -54,13 +54,13 @@ static auto RawDataEqual(const_span<uint8> left, const_span<uint8> right) noexce
     case 1:
         return left[0] == right[0];
     case 2: {
-        return *reinterpret_cast<const uint16*>(left.data()) == *reinterpret_cast<const uint16*>(right.data());
+        return *reinterpret_cast<const uint16_t*>(left.data()) == *reinterpret_cast<const uint16_t*>(right.data());
     }
     case 4: {
-        return *reinterpret_cast<const uint32*>(left.data()) == *reinterpret_cast<const uint32*>(right.data());
+        return *reinterpret_cast<const uint32_t*>(left.data()) == *reinterpret_cast<const uint32_t*>(right.data());
     }
     case 8: {
-        return *reinterpret_cast<const uint64*>(left.data()) == *reinterpret_cast<const uint64*>(right.data());
+        return *reinterpret_cast<const uint64_t*>(left.data()) == *reinterpret_cast<const uint64_t*>(right.data());
     }
     default:
         return MemCompare(left.data(), right.data(), left.size());
@@ -78,7 +78,7 @@ auto PropertyRawData::GetPtr() noexcept -> void*
     return _useDynamic ? _dynamicBuf.get() : _localBuf;
 }
 
-auto PropertyRawData::Alloc(size_t size) noexcept -> uint8*
+auto PropertyRawData::Alloc(size_t size) noexcept -> uint8_t*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -87,20 +87,20 @@ auto PropertyRawData::Alloc(size_t size) noexcept -> uint8*
 
     if (size > LOCAL_BUF_SIZE) {
         _useDynamic = true;
-        _dynamicBuf = SafeAlloc::MakeUniqueArr<uint8>(size);
+        _dynamicBuf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
     }
     else {
         _useDynamic = false;
     }
 
-    return cast_from_void<uint8*>(GetPtr());
+    return cast_from_void<uint8_t*>(GetPtr());
 }
 
-void PropertyRawData::Pass(span<const uint8> value) noexcept
+void PropertyRawData::Pass(span<const uint8_t> value) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _passedPtr = const_cast<uint8*>(value.data());
+    _passedPtr = const_cast<uint8_t*>(value.data());
     _dataSize = value.size();
     _useDynamic = false;
 }
@@ -109,7 +109,7 @@ void PropertyRawData::Pass(const void* value, size_t size) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _passedPtr = cast_from_void<uint8*>(const_cast<void*>(value));
+    _passedPtr = cast_from_void<uint8_t*>(const_cast<void*>(value));
     _dataSize = size;
     _useDynamic = false;
 }
@@ -174,9 +174,9 @@ void Properties::AllocData() noexcept
     FO_STRONG_ASSERT(_registrator->_registeredProperties.size() > 1);
 
     if (!_baseProps) {
-        _podData = SafeAlloc::MakeUniqueArr<uint8>(_registrator->_wholePodDataSize);
+        _podData = SafeAlloc::MakeUniqueArr<uint8_t>(_registrator->_wholePodDataSize);
         MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
-        _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8>, size_t>>(_registrator->_complexProperties.size());
+        _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8_t>, size_t>>(_registrator->_complexProperties.size());
     }
 }
 
@@ -226,7 +226,7 @@ auto Properties::IsOverlayPropertyIncluded(const Property* prop, bool with_prote
     return allowed_props.contains(prop->GetRegIndex());
 }
 
-auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32
+auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -246,7 +246,7 @@ auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32
         RepackOverlayData(new_capacity);
     }
 
-    const auto offset = static_cast<uint32>(_overlayDataSize);
+    const auto offset = static_cast<uint32_t>(_overlayDataSize);
     _overlayDataSize += data_size;
     return offset;
 }
@@ -266,7 +266,7 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
         new_capacity *= 2;
     }
 
-    auto new_data = new_capacity != 0 ? SafeAlloc::MakeUniqueArr<uint8>(new_capacity) : nullptr;
+    auto new_data = new_capacity != 0 ? SafeAlloc::MakeUniqueArr<uint8_t>(new_capacity) : nullptr;
     size_t new_size = 0;
 
     for (auto& entry : _overlayEntries) {
@@ -275,7 +275,7 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
                 MemCopy(new_data.get() + new_size, _overlayData.get() + entry.DataOffset, entry.DataSize);
             }
 
-            entry.DataOffset = static_cast<uint32>(new_size);
+            entry.DataOffset = static_cast<uint32_t>(new_size);
             new_size += entry.DataSize;
         }
         else {
@@ -404,7 +404,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
         _overlayGarbageSize = 0;
 
         if (_overlayDataSize != 0) {
-            _overlayData = SafeAlloc::MakeUniqueArr<uint8>(_overlayDataSize);
+            _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(_overlayDataSize);
             MemCopy(_overlayData.get(), other._overlayData.get(), _overlayDataSize);
         }
         else {
@@ -416,7 +416,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
         for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
             if (other._complexData[i].first) {
-                _complexData[i].first = SafeAlloc::MakeUniqueArr<uint8>(other._complexData[i].second);
+                _complexData[i].first = SafeAlloc::MakeUniqueArr<uint8_t>(other._complexData[i].second);
                 _complexData[i].second = other._complexData[i].second;
                 MemCopy(_complexData[i].first.get(), other._complexData[i].first.get(), other._complexData[i].second);
             }
@@ -444,17 +444,17 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
     for (const auto& data_prop : _registrator->_dataProperties) {
         const auto* prop = data_prop.Prop.get();
-        const auto other_raw_data = data_prop.IsPlain ? span<const uint8> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
+        const auto other_raw_data = data_prop.IsPlain ? span<const uint8_t> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8_t> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
 
         if (!RawDataEqual(_baseProps->GetRawData(prop), other_raw_data)) {
-            _overlayEntries.emplace_back(OverlayEntry {.PropRegIndex = prop->GetRegIndex(), .DataOffset = 0, .DataSize = numeric_cast<uint32>(other_raw_data.size())});
+            _overlayEntries.emplace_back(OverlayEntry {.PropRegIndex = prop->GetRegIndex(), .DataOffset = 0, .DataSize = numeric_cast<uint32_t>(other_raw_data.size())});
             total_overlay_data_size += other_raw_data.size();
         }
     }
 
     if (!_overlayEntries.empty()) {
         if (total_overlay_data_size != 0) {
-            _overlayData = SafeAlloc::MakeUniqueArr<uint8>(total_overlay_data_size);
+            _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(total_overlay_data_size);
         }
 
         _overlayDataSize = total_overlay_data_size;
@@ -476,8 +476,8 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
                 continue;
             }
 
-            const auto other_raw_data = data_prop.IsPlain ? span<const uint8> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
-            entry.DataOffset = numeric_cast<uint32>(data_offset);
+            const auto other_raw_data = data_prop.IsPlain ? span<const uint8_t> {other._podData.get() + data_prop.DataIndex, data_prop.DataSize} : span<const uint8_t> {other._complexData[data_prop.DataIndex].first.get(), other._complexData[data_prop.DataIndex].second};
+            entry.DataOffset = numeric_cast<uint32_t>(data_offset);
 
             if (entry.DataSize != 0) {
                 MemCopy(_overlayData.get() + data_offset, other_raw_data.data(), entry.DataSize);
@@ -521,7 +521,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
             const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
             FO_STRONG_ASSERT(prop);
 
-            const auto other_raw_data = span<const uint8>(entry.DataSize != 0 ? other._overlayData.get() + entry.DataOffset : nullptr, entry.DataSize);
+            const auto other_raw_data = span<const uint8_t>(entry.DataSize != 0 ? other._overlayData.get() + entry.DataOffset : nullptr, entry.DataSize);
 
             if (!RawDataEqual(GetRawData(prop.get()), other_raw_data)) {
                 SetRawData(prop.get(), other_raw_data);
@@ -533,22 +533,22 @@ void Properties::CopyFrom(const Properties& other) noexcept
     }
 }
 
-void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const
+void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashes) const
 {
     FO_STACK_TRACE_ENTRY();
 
     all_data.clear();
 
     auto writer = DataWriter(all_data);
-    writer.Write<uint32>(numeric_cast<uint32>(_registrator->_wholePodDataSize));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(_registrator->_wholePodDataSize));
     writer.Write<bool>(!!_baseProps);
 
     if (_baseProps) {
-        writer.Write<uint32>(numeric_cast<uint32>(_overlayEntries.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(_overlayEntries.size()));
 
         for (const auto& entry : _overlayEntries) {
-            writer.Write<uint16>(entry.PropRegIndex);
-            writer.Write<uint32>(entry.DataSize);
+            writer.Write<uint16_t>(entry.PropRegIndex);
+            writer.Write<uint32_t>(entry.DataSize);
 
             if (entry.DataSize != 0) {
                 FO_STRONG_ASSERT(_overlayData);
@@ -557,13 +557,13 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
         }
     }
     else {
-        int32 start_pos = -1;
-        constexpr int32 seek_step = 3;
+        int32_t start_pos = -1;
+        constexpr int32_t seek_step = 3;
 
         for (size_t i = 0; i < _registrator->_wholePodDataSize; i++) {
             if (_podData[i] != 0) {
                 if (start_pos == -1) {
-                    start_pos = numeric_cast<int32>(i);
+                    start_pos = numeric_cast<int32_t>(i);
                 }
 
                 i += seek_step;
@@ -571,8 +571,8 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
             else {
                 if (start_pos != -1) {
                     const size_t len = i - start_pos;
-                    writer.Write<uint32>(numeric_cast<uint32>(start_pos));
-                    writer.Write<uint32>(numeric_cast<uint32>(len));
+                    writer.Write<uint32_t>(numeric_cast<uint32_t>(start_pos));
+                    writer.Write<uint32_t>(numeric_cast<uint32_t>(len));
                     writer.WritePtr(_podData.get() + start_pos, len);
 
                     start_pos = -1;
@@ -582,20 +582,20 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
 
         if (start_pos != -1) {
             const size_t len = _registrator->_wholePodDataSize - start_pos;
-            writer.Write<uint32>(numeric_cast<uint32>(start_pos));
-            writer.Write<uint32>(numeric_cast<uint32>(len));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(start_pos));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(len));
             writer.WritePtr(_podData.get() + start_pos, len);
         }
 
-        writer.Write<uint32>(const_numeric_cast<uint32>(0));
-        writer.Write<uint32>(const_numeric_cast<uint32>(0));
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(0));
+        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(0));
 
         // Store complex properties
-        writer.Write<uint32>(numeric_cast<uint32>(_registrator->_complexProperties.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(_registrator->_complexProperties.size()));
 
         for (const auto& prop : _registrator->_complexProperties) {
             FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-            writer.Write<uint32>(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(_complexData[*prop->_complexDataIndex].second));
             writer.WritePtr(_complexData[*prop->_complexDataIndex].first.get(), _complexData[*prop->_complexDataIndex].second);
         }
     }
@@ -651,12 +651,12 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     }
 }
 
-void Properties::RestoreAllData(const vector<uint8>& all_data)
+void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader(all_data);
-    const auto whole_pod_data_size = reader.Read<uint32>();
+    const auto whole_pod_data_size = reader.Read<uint32_t>();
     FO_RUNTIME_ASSERT_STR(whole_pod_data_size == _registrator->_wholePodDataSize, "Run BakeResources");
     const auto has_overlay_data = reader.Read<bool>();
     FO_RUNTIME_ASSERT(!!_baseProps == has_overlay_data);
@@ -664,15 +664,15 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     if (_baseProps) {
         ResetOverlayData();
 
-        const auto overlay_entries_count = reader.Read<uint32>();
+        const auto overlay_entries_count = reader.Read<uint32_t>();
 
-        for (uint32 i = 0; i < overlay_entries_count; i++) {
-            const auto prop_index = reader.Read<uint16>();
+        for (uint32_t i = 0; i < overlay_entries_count; i++) {
+            const auto prop_index = reader.Read<uint16_t>();
             FO_RUNTIME_ASSERT(prop_index > 0 && prop_index < _registrator->_registeredProperties.size());
             const auto& prop = _registrator->_registeredProperties[prop_index];
             FO_RUNTIME_ASSERT(prop);
-            const auto data_size = reader.Read<uint32>();
-            SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
+            const auto data_size = reader.Read<uint32_t>();
+            SetRawData(prop.get(), {reader.ReadPtr<uint8_t>(data_size), data_size});
         }
     }
     else {
@@ -680,24 +680,24 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
         ResetComplexData();
 
         while (true) {
-            const auto start_pos = reader.Read<uint32>();
-            const auto len = reader.Read<uint32>();
+            const auto start_pos = reader.Read<uint32_t>();
+            const auto len = reader.Read<uint32_t>();
 
             if (start_pos == 0 && len == 0) {
                 break;
             }
 
-            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8>(len), len);
+            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8_t>(len), len);
         }
 
         // Read complex properties
-        const auto complex_props_count = reader.Read<uint32>();
+        const auto complex_props_count = reader.Read<uint32_t>();
         FO_RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
 
         for (const auto& prop : _registrator->_complexProperties) {
             FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
-            const auto data_size = reader.Read<uint32>();
-            SetRawData(prop.get(), {reader.ReadPtr<uint8>(data_size), data_size});
+            const auto data_size = reader.Read<uint32_t>();
+            SetRawData(prop.get(), {reader.ReadPtr<uint8_t>(data_size), data_size});
         }
     }
 
@@ -706,7 +706,7 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     _storeDataRevision++;
 }
 
-void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
+void Properties::StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -725,7 +725,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
     cache.PropertyIndices.clear();
 
     cache.Data.push_back(_baseProps ? &SEPARATE_PROPS_STORE_TYPE : &FULL_DATA_STORE_TYPE);
-    cache.Sizes.push_back(sizeof(uint8));
+    cache.Sizes.push_back(sizeof(uint8_t));
 
     if (_baseProps) {
         for (const auto& entry : _overlayEntries) {
@@ -740,12 +740,12 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
 
             cache.PropertyIndices.push_back(entry.PropRegIndex);
             cache.Data.push_back(raw_data.data());
-            cache.Sizes.push_back(numeric_cast<uint32>(raw_data.size()));
+            cache.Sizes.push_back(numeric_cast<uint32_t>(raw_data.size()));
         }
 
         if (!cache.PropertyIndices.empty()) {
-            cache.Data.insert(cache.Data.begin() + 1, reinterpret_cast<const uint8*>(cache.PropertyIndices.data()));
-            cache.Sizes.insert(cache.Sizes.begin() + 1, numeric_cast<uint32>(cache.PropertyIndices.size() * sizeof(uint16)));
+            cache.Data.insert(cache.Data.begin() + 1, reinterpret_cast<const uint8_t*>(cache.PropertyIndices.data()));
+            cache.Sizes.insert(cache.Sizes.begin() + 1, numeric_cast<uint32_t>(cache.PropertyIndices.size() * sizeof(uint16_t)));
         }
     }
     else {
@@ -757,7 +757,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
 
         // Store plain properties data
         cache.Data.push_back(_podData.get());
-        cache.Sizes.push_back(numeric_cast<uint32>(_registrator->_publicPodDataSpace.size()) + (with_protected ? numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size()) : 0));
+        cache.Sizes.push_back(numeric_cast<uint32_t>(_registrator->_publicPodDataSpace.size()) + (with_protected ? numeric_cast<uint32_t>(_registrator->_protectedPodDataSpace.size()) : 0));
 
         // Filter complex data to send
         for (size_t i = 0; i < cache.PropertyIndices.size();) {
@@ -765,7 +765,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
             FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
 
             if (!_complexData[*prop->_complexDataIndex].first) {
-                cache.PropertyIndices.erase(cache.PropertyIndices.begin() + numeric_cast<int32>(i));
+                cache.PropertyIndices.erase(cache.PropertyIndices.begin() + numeric_cast<int32_t>(i));
             }
             else {
                 i++;
@@ -774,13 +774,13 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
 
         // Store complex properties data
         if (!cache.PropertyIndices.empty()) {
-            cache.Data.push_back(reinterpret_cast<uint8*>(cache.PropertyIndices.data()));
-            cache.Sizes.push_back(numeric_cast<uint32>(cache.PropertyIndices.size()) * sizeof(uint16));
+            cache.Data.push_back(reinterpret_cast<uint8_t*>(cache.PropertyIndices.data()));
+            cache.Sizes.push_back(numeric_cast<uint32_t>(cache.PropertyIndices.size()) * sizeof(uint16_t));
 
             for (const auto index : cache.PropertyIndices) {
                 const auto& prop = _registrator->_registeredProperties[index];
                 cache.Data.push_back(_complexData[*prop->_complexDataIndex].first.get());
-                cache.Sizes.push_back(numeric_cast<uint32>(_complexData[*prop->_complexDataIndex].second));
+                cache.Sizes.push_back(numeric_cast<uint32_t>(_complexData[*prop->_complexDataIndex].second));
             }
         }
     }
@@ -788,24 +788,24 @@ void Properties::StoreData(bool with_protected, vector<const uint8*>** all_data,
     cache.Revision = _storeDataRevision;
 }
 
-void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<uint32>& all_data_sizes)
+void Properties::RestoreData(const vector<const uint8_t*>& all_data, const vector<uint32_t>& all_data_sizes)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
 
-    const auto apply_separate_props_data = [this](const vector<const uint8*>& separate_data, const vector<uint32>& separate_sizes) {
+    const auto apply_separate_props_data = [this](const vector<const uint8_t*>& separate_data, const vector<uint32_t>& separate_sizes) {
         if (separate_data.empty()) {
             return;
         }
 
-        const uint32 property_data_count = separate_sizes[0] / sizeof(uint16);
-        FO_RUNTIME_ASSERT(separate_sizes[0] == property_data_count * sizeof(uint16));
+        const uint32_t property_data_count = separate_sizes[0] / sizeof(uint16_t);
+        FO_RUNTIME_ASSERT(separate_sizes[0] == property_data_count * sizeof(uint16_t));
         FO_RUNTIME_ASSERT(separate_data.size() == 1 + property_data_count);
 
-        for (uint32 i = 0; i < property_data_count; i++) {
-            uint16 prop_index {};
-            MemCopy(&prop_index, separate_data[0] + i * sizeof(uint16), sizeof(uint16));
+        for (uint32_t i = 0; i < property_data_count; i++) {
+            uint16_t prop_index {};
+            MemCopy(&prop_index, separate_data[0] + i * sizeof(uint16_t), sizeof(uint16_t));
 
             FO_RUNTIME_ASSERT(prop_index > 0);
             FO_RUNTIME_ASSERT(prop_index < _registrator->_registeredProperties.size());
@@ -815,12 +815,12 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
         }
     };
 
-    const auto apply_full_data = [this](Properties& target, const vector<const uint8*>& full_data, const vector<uint32>& full_sizes) {
+    const auto apply_full_data = [this](Properties& target, const vector<const uint8_t*>& full_data, const vector<uint32_t>& full_sizes) {
         FO_RUNTIME_ASSERT(!full_sizes.empty());
 
-        const auto public_size = numeric_cast<uint32>(_registrator->_publicPodDataSpace.size());
-        const auto protected_size = numeric_cast<uint32>(_registrator->_protectedPodDataSpace.size());
-        const auto private_size = numeric_cast<uint32>(_registrator->_privatePodDataSpace.size());
+        const auto public_size = numeric_cast<uint32_t>(_registrator->_publicPodDataSpace.size());
+        const auto protected_size = numeric_cast<uint32_t>(_registrator->_protectedPodDataSpace.size());
+        const auto private_size = numeric_cast<uint32_t>(_registrator->_privatePodDataSpace.size());
         FO_RUNTIME_ASSERT(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size);
 
         if (full_sizes[0] != 0) {
@@ -828,9 +828,9 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
         }
 
         if (full_data.size() > 1) {
-            const uint32 comlplex_data_count = full_sizes[1] / sizeof(uint16);
+            const uint32_t comlplex_data_count = full_sizes[1] / sizeof(uint16_t);
             FO_RUNTIME_ASSERT(comlplex_data_count > 0);
-            vector<uint16> complex_indicies(comlplex_data_count);
+            vector<uint16_t> complex_indicies(comlplex_data_count);
             MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
@@ -853,13 +853,13 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
         return;
     }
 
-    FO_RUNTIME_ASSERT(all_data_sizes[0] == sizeof(uint8));
+    FO_RUNTIME_ASSERT(all_data_sizes[0] == sizeof(uint8_t));
 
-    uint8 store_type = 0;
+    uint8_t store_type = 0;
     MemCopy(&store_type, all_data[0], sizeof(store_type));
 
-    vector<const uint8*> payload_data(all_data.begin() + 1, all_data.end());
-    vector<uint32> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
+    vector<const uint8_t*> payload_data(all_data.begin() + 1, all_data.end());
+    vector<uint32_t> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
 
     if (store_type == SEPARATE_PROPS_STORE_TYPE) {
         if (_baseProps) {
@@ -887,16 +887,16 @@ void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<
     _storeDataRevision++;
 }
 
-void Properties::RestoreData(const vector<vector<uint8>>& all_data)
+void Properties::RestoreData(const vector<vector<uint8_t>>& all_data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<const uint8*> all_data_ext(all_data.size());
-    vector<uint32> all_data_sizes(all_data.size());
+    vector<const uint8_t*> all_data_ext(all_data.size());
+    vector<uint32_t> all_data_sizes(all_data.size());
 
     for (size_t i = 0; i < all_data.size(); i++) {
         all_data_ext[i] = !all_data[i].empty() ? all_data[i].data() : nullptr;
-        all_data_sizes[i] = numeric_cast<uint32>(all_data[i].size());
+        all_data_sizes[i] = numeric_cast<uint32_t>(all_data[i].size());
     }
 
     RestoreData(all_data_ext, all_data_sizes);
@@ -1076,7 +1076,7 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
         }
     }
 
-    const auto get_data_prop_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop, const Property* prop) noexcept -> span<const uint8> {
+    const auto get_data_prop_raw_data = [](const Properties& props, const PropertyRegistrator::DataPropertyEntry& data_prop, const Property* prop) noexcept -> span<const uint8_t> {
         if (props._baseProps) {
             return props.GetRawData(prop);
         }
@@ -1152,7 +1152,7 @@ void Properties::ValidateForRawData(const Property* prop) const noexcept(false)
     }
 }
 
-auto Properties::GetRawData(const Property* prop) const noexcept -> span<const uint8>
+auto Properties::GetRawData(const Property* prop) const noexcept -> span<const uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1205,7 +1205,7 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
     }
 }
 
-void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) noexcept
+void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1220,7 +1220,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) no
         }
 
         if (auto* entry = FindOverlayEntry(prop); entry != nullptr) {
-            const auto current_overlay_data = span<const uint8>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+            const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
 
             if (RawDataEqual(raw_data, current_overlay_data)) {
                 return;
@@ -1234,7 +1234,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) no
             else {
                 _overlayGarbageSize += entry->DataSize;
                 entry->DataOffset = AllocOverlayData(raw_data.size());
-                entry->DataSize = static_cast<uint32>(raw_data.size());
+                entry->DataSize = static_cast<uint32_t>(raw_data.size());
 
                 if (!raw_data.empty()) {
                     MemCopy(_overlayData.get() + entry->DataOffset, raw_data.data(), raw_data.size());
@@ -1245,7 +1245,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) no
             OverlayEntry new_entry;
             new_entry.PropRegIndex = prop->GetRegIndex();
             new_entry.DataOffset = AllocOverlayData(raw_data.size());
-            new_entry.DataSize = static_cast<uint32>(raw_data.size());
+            new_entry.DataSize = static_cast<uint32_t>(raw_data.size());
 
             if (!raw_data.empty()) {
                 MemCopy(_overlayData.get() + new_entry.DataOffset, raw_data.data(), raw_data.size());
@@ -1275,7 +1275,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8> raw_data) no
 
             if (raw_data.size() != complex_data.second) {
                 if (!raw_data.empty()) {
-                    complex_data.first = SafeAlloc::MakeUniqueArr<uint8>(raw_data.size());
+                    complex_data.first = SafeAlloc::MakeUniqueArr<uint8_t>(raw_data.size());
                     complex_data.second = raw_data.size();
                 }
                 else {
@@ -1312,7 +1312,7 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
             }
         }
 
-        SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
+        SetRawData(prop, {prop_data.GetPtrAs<uint8_t>(), prop_data.GetSize()});
 
         if (_entity) {
             for (const auto& setter : prop->_postSetters) {
@@ -1322,7 +1322,7 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
     }
 }
 
-auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
+auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1332,17 +1332,17 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
 
     if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            return numeric_cast<int32>(GetValue<uint8>(prop));
+            return numeric_cast<int32_t>(GetValue<uint8_t>(prop));
         }
         if (base_type.Size == 2) {
-            return numeric_cast<int32>(GetValue<uint16>(prop));
+            return numeric_cast<int32_t>(GetValue<uint16_t>(prop));
         }
         if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                return numeric_cast<int32>(GetValue<int32>(prop));
+                return numeric_cast<int32_t>(GetValue<int32_t>(prop));
             }
             else {
-                return numeric_cast<int32>(GetValue<uint32>(prop));
+                return numeric_cast<int32_t>(GetValue<uint32_t>(prop));
             }
         }
     }
@@ -1351,35 +1351,35 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            return iround<int32>(GetValue<float32>(prop));
+            return iround<int32_t>(GetValue<float32_t>(prop));
         }
         if (base_type.IsDoubleFloat) {
-            return iround<int32>(GetValue<float64>(prop));
+            return iround<int32_t>(GetValue<float64_t>(prop));
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            return numeric_cast<int32>(GetValue<int8>(prop));
+            return numeric_cast<int32_t>(GetValue<int8_t>(prop));
         }
         if (base_type.Size == 2) {
-            return numeric_cast<int32>(GetValue<int16>(prop));
+            return numeric_cast<int32_t>(GetValue<int16_t>(prop));
         }
         if (base_type.Size == 4) {
-            return numeric_cast<int32>(GetValue<int32>(prop));
+            return numeric_cast<int32_t>(GetValue<int32_t>(prop));
         }
         if (base_type.Size == 8) {
-            return numeric_cast<int32>(GetValue<int64>(prop));
+            return numeric_cast<int32_t>(GetValue<int64_t>(prop));
         }
     }
     else if (base_type.IsInt && !base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            return numeric_cast<int32>(GetValue<uint8>(prop));
+            return numeric_cast<int32_t>(GetValue<uint8_t>(prop));
         }
         if (base_type.Size == 2) {
-            return numeric_cast<int32>(GetValue<uint16>(prop));
+            return numeric_cast<int32_t>(GetValue<uint16_t>(prop));
         }
         if (base_type.Size == 4) {
-            return numeric_cast<int32>(GetValue<uint32>(prop));
+            return numeric_cast<int32_t>(GetValue<uint32_t>(prop));
         }
     }
 
@@ -1399,17 +1399,17 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
     }
     else if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            return any_t {strex("{}", GetValue<uint8>(prop))};
+            return any_t {strex("{}", GetValue<uint8_t>(prop))};
         }
         if (base_type.Size == 2) {
-            return any_t {strex("{}", GetValue<uint16>(prop))};
+            return any_t {strex("{}", GetValue<uint16_t>(prop))};
         }
         if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                return any_t {strex("{}", GetValue<int32>(prop))};
+                return any_t {strex("{}", GetValue<int32_t>(prop))};
             }
             else {
-                return any_t {strex("{}", GetValue<uint32>(prop))};
+                return any_t {strex("{}", GetValue<uint32_t>(prop))};
             }
         }
     }
@@ -1418,42 +1418,42 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            return any_t {strex("{}", GetValue<float32>(prop))};
+            return any_t {strex("{}", GetValue<float32_t>(prop))};
         }
         if (base_type.IsDoubleFloat) {
-            return any_t {strex("{}", GetValue<float64>(prop))};
+            return any_t {strex("{}", GetValue<float64_t>(prop))};
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            return any_t {strex("{}", GetValue<int8>(prop))};
+            return any_t {strex("{}", GetValue<int8_t>(prop))};
         }
         if (base_type.Size == 2) {
-            return any_t {strex("{}", GetValue<int16>(prop))};
+            return any_t {strex("{}", GetValue<int16_t>(prop))};
         }
         if (base_type.Size == 4) {
-            return any_t {strex("{}", GetValue<int32>(prop))};
+            return any_t {strex("{}", GetValue<int32_t>(prop))};
         }
         if (base_type.Size == 8) {
-            return any_t {strex("{}", GetValue<int64>(prop))};
+            return any_t {strex("{}", GetValue<int64_t>(prop))};
         }
     }
     else if (base_type.IsInt && !base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            return any_t {strex("{}", GetValue<uint8>(prop))};
+            return any_t {strex("{}", GetValue<uint8_t>(prop))};
         }
         if (base_type.Size == 2) {
-            return any_t {strex("{}", GetValue<uint16>(prop))};
+            return any_t {strex("{}", GetValue<uint16_t>(prop))};
         }
         if (base_type.Size == 4) {
-            return any_t {strex("{}", GetValue<uint32>(prop))};
+            return any_t {strex("{}", GetValue<uint32_t>(prop))};
         }
     }
 
     throw PropertiesException("Invalid property for get as any", prop->GetName());
 }
 
-void Properties::SetPlainDataValueAsInt(const Property* prop, int32 value)
+void Properties::SetPlainDataValueAsInt(const Property* prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1463,17 +1463,17 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int32 value)
 
     if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(value));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(value));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(value));
         }
         else if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                SetValue<int32>(prop, value);
+                SetValue<int32_t>(prop, value);
             }
             else {
-                SetValue<uint32>(prop, numeric_cast<uint32>(value));
+                SetValue<uint32_t>(prop, numeric_cast<uint32_t>(value));
             }
         }
     }
@@ -1482,35 +1482,35 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int32 value)
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            SetValue<float32>(prop, numeric_cast<float32>(value));
+            SetValue<float32_t>(prop, numeric_cast<float32_t>(value));
         }
         else if (base_type.IsDoubleFloat) {
-            SetValue<float64>(prop, numeric_cast<float64>(value));
+            SetValue<float64_t>(prop, numeric_cast<float64_t>(value));
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<int8>(prop, numeric_cast<int8>(value));
+            SetValue<int8_t>(prop, numeric_cast<int8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<int16>(prop, numeric_cast<int16>(value));
+            SetValue<int16_t>(prop, numeric_cast<int16_t>(value));
         }
         else if (base_type.Size == 4) {
-            SetValue<int32>(prop, value);
+            SetValue<int32_t>(prop, value);
         }
         else if (base_type.Size == 8) {
-            SetValue<int64>(prop, numeric_cast<int64>(value));
+            SetValue<int64_t>(prop, numeric_cast<int64_t>(value));
         }
     }
     else if (base_type.IsInt && !base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(value));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(value));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(value));
         }
         else if (base_type.Size == 4) {
-            SetValue<uint32>(prop, numeric_cast<uint32>(value));
+            SetValue<uint32_t>(prop, numeric_cast<uint32_t>(value));
         }
     }
     else {
@@ -1531,17 +1531,17 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
     }
     else if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(strvex(value).to_int32()));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(strvex(value).to_int32()));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(strvex(value).to_int32()));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(strvex(value).to_int32()));
         }
         else if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                SetValue<int32>(prop, strvex(value).to_int32());
+                SetValue<int32_t>(prop, strvex(value).to_int32());
             }
             else {
-                SetValue<uint32>(prop, strvex(value).to_uint32());
+                SetValue<uint32_t>(prop, strvex(value).to_uint32());
             }
         }
     }
@@ -1550,35 +1550,35 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            SetValue<float32>(prop, strvex(value).to_float32());
+            SetValue<float32_t>(prop, strvex(value).to_float32());
         }
         else if (base_type.IsDoubleFloat) {
-            SetValue<float64>(prop, strvex(value).to_float64());
+            SetValue<float64_t>(prop, strvex(value).to_float64());
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<int8>(prop, numeric_cast<int8>(strex(value).to_int32()));
+            SetValue<int8_t>(prop, numeric_cast<int8_t>(strex(value).to_int32()));
         }
         else if (base_type.Size == 2) {
-            SetValue<int16>(prop, numeric_cast<int16>(strex(value).to_int32()));
+            SetValue<int16_t>(prop, numeric_cast<int16_t>(strex(value).to_int32()));
         }
         else if (base_type.Size == 4) {
-            SetValue<int32>(prop, numeric_cast<int32>(strex(value).to_int32()));
+            SetValue<int32_t>(prop, numeric_cast<int32_t>(strex(value).to_int32()));
         }
         else if (base_type.Size == 8) {
-            SetValue<int64>(prop, numeric_cast<int64>(strex(value).to_int64()));
+            SetValue<int64_t>(prop, numeric_cast<int64_t>(strex(value).to_int64()));
         }
     }
     else if (base_type.IsInt && !base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(strex(value).to_int32()));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(strex(value).to_int32()));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(strex(value).to_int32()));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(strex(value).to_int32()));
         }
         else if (base_type.Size == 4) {
-            SetValue<uint32>(prop, numeric_cast<uint32>(strex(value).to_int32()));
+            SetValue<uint32_t>(prop, numeric_cast<uint32_t>(strex(value).to_int32()));
         }
     }
     else {
@@ -1586,7 +1586,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
     }
 }
 
-auto Properties::GetValueAsInt(int32 property_index) const -> int32
+auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1605,7 +1605,7 @@ auto Properties::GetValueAsInt(int32 property_index) const -> int32
     return GetPlainDataValueAsInt(prop);
 }
 
-auto Properties::GetValueAsAny(int32 property_index) const -> any_t
+auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1624,7 +1624,7 @@ auto Properties::GetValueAsAny(int32 property_index) const -> any_t
     return GetPlainDataValueAsAny(prop);
 }
 
-void Properties::SetValueAsInt(int32 property_index, int32 value)
+void Properties::SetValueAsInt(int32_t property_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1643,7 +1643,7 @@ void Properties::SetValueAsInt(int32 property_index, int32 value)
     SetPlainDataValueAsInt(prop, value);
 }
 
-void Properties::SetValueAsAny(int32 property_index, const any_t& value)
+void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1662,7 +1662,7 @@ void Properties::SetValueAsAny(int32 property_index, const any_t& value)
     SetPlainDataValueAsAny(prop, value);
 }
 
-void Properties::SetValueAsIntProps(int32 property_index, int32 value)
+void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1691,17 +1691,17 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     }
     else if (base_type.IsEnum) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(value));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(value));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(value));
         }
         else if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                SetValue<int32>(prop, numeric_cast<int32>(value));
+                SetValue<int32_t>(prop, numeric_cast<int32_t>(value));
             }
             else {
-                SetValue<uint32>(prop, numeric_cast<uint32>(value));
+                SetValue<uint32_t>(prop, numeric_cast<uint32_t>(value));
             }
         }
     }
@@ -1710,35 +1710,35 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     }
     else if (base_type.IsFloat) {
         if (base_type.IsSingleFloat) {
-            SetValue<float32>(prop, numeric_cast<float32>(value));
+            SetValue<float32_t>(prop, numeric_cast<float32_t>(value));
         }
         else if (base_type.IsDoubleFloat) {
-            SetValue<float64>(prop, numeric_cast<float64>(value));
+            SetValue<float64_t>(prop, numeric_cast<float64_t>(value));
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<int8>(prop, numeric_cast<int8>(value));
+            SetValue<int8_t>(prop, numeric_cast<int8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<int16>(prop, numeric_cast<int16>(value));
+            SetValue<int16_t>(prop, numeric_cast<int16_t>(value));
         }
         else if (base_type.Size == 4) {
-            SetValue<int32>(prop, value);
+            SetValue<int32_t>(prop, value);
         }
         else if (base_type.Size == 8) {
-            SetValue<int64>(prop, numeric_cast<int64>(value));
+            SetValue<int64_t>(prop, numeric_cast<int64_t>(value));
         }
     }
     else if (base_type.IsInt && !base_type.IsSignedInt) {
         if (base_type.Size == 1) {
-            SetValue<uint8>(prop, numeric_cast<uint8>(value));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(value));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16>(prop, numeric_cast<uint16>(value));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(value));
         }
         else if (base_type.Size == 4) {
-            SetValue<uint32>(prop, numeric_cast<uint32>(value));
+            SetValue<uint32_t>(prop, numeric_cast<uint32_t>(value));
         }
     }
     else {
@@ -1746,7 +1746,7 @@ void Properties::SetValueAsIntProps(int32 property_index, int32 value)
     }
 }
 
-void Properties::SetValueAsAnyProps(int32 property_index, const any_t& value)
+void Properties::SetValueAsAnyProps(int32_t property_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1805,7 +1805,7 @@ void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
     }
 
     if (!prop->IsVirtual()) {
-        SetRawData(prop, {prop_data.GetPtrAs<uint8>(), prop_data.GetSize()});
+        SetRawData(prop, {prop_data.GetPtrAs<uint8_t>(), prop_data.GetSize()});
 
         if (!prop->_postSetters.empty()) {
             for (auto& setter : prop->_postSetters) {
@@ -1834,7 +1834,7 @@ PropertyRegistrator::~PropertyRegistrator()
     FO_STACK_TRACE_ENTRY();
 }
 
-auto PropertyRegistrator::GetPropertyByIndex(int32 property_index) const noexcept -> const Property*
+auto PropertyRegistrator::GetPropertyByIndex(int32_t property_index) const noexcept -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1895,7 +1895,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     prop->_isCommon = tokens[0] == "Common";
     prop->_isServerOnly = tokens[0] == "Server";
     prop->_isClientOnly = tokens[0] == "Client";
-    FO_RUNTIME_ASSERT(static_cast<int32>(prop->_isCommon) + static_cast<int32>(prop->_isServerOnly) + static_cast<int32>(prop->_isClientOnly) == 1);
+    FO_RUNTIME_ASSERT(static_cast<int32_t>(prop->_isCommon) + static_cast<int32_t>(prop->_isServerOnly) + static_cast<int32_t>(prop->_isClientOnly) == 1);
 
     const auto type = _nameResolver->ResolveComplexType(tokens[1]);
     FO_RUNTIME_ASSERT(!type.IsMutable);
@@ -1963,7 +1963,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
 
             const auto group = tokens[i + 2];
-            int32 priority = 0;
+            int32_t priority = 0;
 
             if (i + 4 < tokens.size() && tokens[i + 3] == "^") {
                 priority = strex(tokens[i + 4]).to_int32();
@@ -1978,7 +1978,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
                 });
             }
             else {
-                _propertyGroups.emplace(group, vector<pair<raw_ptr<const Property>, int32>> {pair {prop.get(), priority}});
+                _propertyGroups.emplace(group, vector<pair<raw_ptr<const Property>, int32_t>> {pair {prop.get(), priority}});
             }
 
             i += 2;
@@ -2094,7 +2094,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
     FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeProtoReference());
 
-    const auto reg_index = numeric_cast<uint16>(_registeredProperties.size());
+    const auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
 
     // Disallow set or get accessors
     bool disabled = false;
@@ -2212,7 +2212,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     for (auto& data_prop : _dataProperties) {
         if (data_prop.IsPlain) {
             FO_STRONG_ASSERT(data_prop.Prop->_podDataOffset.has_value());
-            data_prop.DataIndex = numeric_cast<uint32>(*data_prop.Prop->_podDataOffset);
+            data_prop.DataIndex = numeric_cast<uint32_t>(*data_prop.Prop->_podDataOffset);
         }
     }
 
@@ -2220,11 +2220,11 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         if (!prop->IsVirtual()) {
             if (prop->IsPlainData()) {
                 FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16>(prop->GetBaseSize()), .IsPlain = true});
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
             }
             else {
                 FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
             }
 
             if (!prop->IsTemporary()) {

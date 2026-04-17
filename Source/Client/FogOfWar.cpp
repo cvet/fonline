@@ -95,7 +95,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     const auto half_hh = input.MapHexHeight / 2;
 
     const ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
-    const auto center_alpha = is_shoot ? uint8 {255} : uint8 {0};
+    const auto center_alpha = is_shoot ? uint8_t {255} : uint8_t {0};
     const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, center_alpha}, .PointOffset = &_drawOffset};
 
     auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
@@ -105,7 +105,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
     for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
         mdir dir;
-        int32 iterations;
+        int32_t iterations;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             dir = hdir((i + 2) % 6);
@@ -116,9 +116,9 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
             iterations = dist * 2;
         }
 
-        for (int32 j = 0; j < iterations; j++) {
+        for (int32_t j = 0; j < iterations; j++) {
             if (seek_start) {
-                for (int32 l = 0; l < dist; l++) {
+                for (int32_t l = 0; l < dist; l++) {
 #if FO_GEOMETRY == 1
                     GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::NorthEast);
 #elif FO_GEOMETRY == 2
@@ -141,14 +141,14 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_shoot_dist, true);
                 const auto block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
                 const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
-                const auto color = ucolor {255, numeric_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
+                const auto color = ucolor {255, numeric_cast<uint8_t>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
                 const auto* shoot_offset = result_shoot_dist < max_shoot_dist ? &_baseDrawOffset : &_drawOffset;
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = shoot_offset});
             }
             else {
                 const auto hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
-                const auto color = ucolor {255, numeric_cast<uint8>(target_dist * 255 / dist), 0, 0};
+                const auto color = ucolor {255, numeric_cast<uint8_t>(target_dist * 255 / dist), 0, 0};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = edge_offset});
             }
@@ -160,7 +160,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 }
 
-void FogOfWar::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32 duration)
+void FogOfWar::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -229,7 +229,7 @@ void FogOfWar::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
     }
 }
 
-void FogOfWar::UpdateTransition(nanotime frame_time, int32 duration)
+void FogOfWar::UpdateTransition(nanotime frame_time, int32_t duration)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -245,7 +245,7 @@ void FogOfWar::UpdateTransition(nanotime frame_time, int32 duration)
         return;
     }
 
-    const auto progress = std::clamp((frame_time - _transitionTime).div<float32>(std::chrono::milliseconds {clamped_duration}), 0.0f, 1.0f);
+    const auto progress = std::clamp((frame_time - _transitionTime).div<float32_t>(std::chrono::milliseconds {clamped_duration}), 0.0f, 1.0f);
 
     InterpolatePoints(_startPoints, _targetPoints, progress, _points);
 
@@ -314,29 +314,29 @@ auto FogOfWar::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge
     return arr_idx < points.size() ? points[arr_idx] : fallback;
 }
 
-auto FogOfWar::LerpFogColor(ucolor from, ucolor to, float32 t) -> ucolor
+auto FogOfWar::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto lerp_channel = [t](uint8 from_value, uint8 to_value) -> uint8 { return numeric_cast<uint8>(std::clamp(iround<int32>(lerp(numeric_cast<float32>(from_value), numeric_cast<float32>(to_value), t)), 0, 255)); };
+    const auto lerp_channel = [t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); };
 
     return ucolor {lerp_channel(from.comp.r, to.comp.r), lerp_channel(from.comp.g, to.comp.g), lerp_channel(from.comp.b, to.comp.b), lerp_channel(from.comp.a, to.comp.a)};
 }
 
-auto FogOfWar::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32 t) -> PrimitivePoint
+auto FogOfWar::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     PrimitivePoint result;
-    result.PointPos.x = iround<int32>(lerp(numeric_cast<float32>(from.PointPos.x), numeric_cast<float32>(to.PointPos.x), t));
-    result.PointPos.y = iround<int32>(lerp(numeric_cast<float32>(from.PointPos.y), numeric_cast<float32>(to.PointPos.y), t));
+    result.PointPos.x = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.x), numeric_cast<float32_t>(to.PointPos.x), t));
+    result.PointPos.y = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.y), numeric_cast<float32_t>(to.PointPos.y), t));
     result.PointColor = LerpFogColor(from.PointColor, to.PointColor, t);
     result.PointOffset = to.PointOffset ? to.PointOffset : from.PointOffset;
     result.PPointColor = to.PPointColor ? to.PPointColor : from.PPointColor;
     return result;
 }
 
-void FogOfWar::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32 t, vector<PrimitivePoint>& result_points)
+void FogOfWar::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points)
 {
     FO_NO_STACK_TRACE_ENTRY();
 

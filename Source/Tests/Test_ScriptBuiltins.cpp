@@ -54,7 +54,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -570,23 +570,23 @@ namespace ScriptBuiltins
             });
     }
 
-    static auto MakeMetadataWithGenderEnum() -> vector<uint8>
+    static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
     {
-        vector<uint8> metadata;
+        vector<uint8_t> metadata;
         auto writer = DataWriter(metadata);
 
-        writer.Write<uint16>(uint16 {1}); // 1 section
+        writer.Write<uint16_t>(uint16_t {1}); // 1 section
 
         const string_view section_name = "Enum";
-        writer.Write<uint16>(numeric_cast<uint16>(section_name.size()));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
         writer.WritePtr(section_name.data(), section_name.size());
-        writer.Write<uint32>(uint32 {1}); // 1 entry
+        writer.Write<uint32_t>(uint32_t {1}); // 1 entry
 
         // GenderType int Male 0 Female 1
-        writer.Write<uint32>(uint32 {6}); // 6 tokens
+        writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
 
         auto write_token = [&](string_view token) {
-            writer.Write<uint16>(numeric_cast<uint16>(token.size()));
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
             writer.WritePtr(token.data(), token.size());
         };
 
@@ -630,7 +630,7 @@ namespace ScriptBuiltins
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -670,7 +670,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // StringLength
     {
-        auto func = server->FindFunc<int32, string>(fn("ScriptBuiltins::StringLength"));
+        auto func = server->FindFunc<int32_t, string>(fn("ScriptBuiltins::StringLength"));
         REQUIRE(func);
         REQUIRE(func.Call(string {"hello"}));
         CHECK(func.GetResult() == 5);
@@ -690,7 +690,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // StringSubstr
     {
-        auto func = server->FindFunc<string, string, int32, int32>(fn("ScriptBuiltins::StringSubstr"));
+        auto func = server->FindFunc<string, string, int32_t, int32_t>(fn("ScriptBuiltins::StringSubstr"));
         REQUIRE(func);
         REQUIRE(func.Call(string {"Hello, World!"}, 7, 5));
         CHECK(func.GetResult() == "World");
@@ -698,12 +698,12 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // StringFindFirst / StringFindLast
     {
-        auto func_first = server->FindFunc<int32, string, string>(fn("ScriptBuiltins::StringFindFirst"));
+        auto func_first = server->FindFunc<int32_t, string, string>(fn("ScriptBuiltins::StringFindFirst"));
         REQUIRE(func_first);
         REQUIRE(func_first.Call(string {"abcabc"}, string {"bc"}));
         CHECK(func_first.GetResult() == 1);
 
-        auto func_last = server->FindFunc<int32, string, string>(fn("ScriptBuiltins::StringFindLast"));
+        auto func_last = server->FindFunc<int32_t, string, string>(fn("ScriptBuiltins::StringFindLast"));
         REQUIRE(func_last);
         REQUIRE(func_last.Call(string {"abcabc"}, string {"bc"}));
         CHECK(func_last.GetResult() == 4);
@@ -724,7 +724,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // StringToInt / StringToFloat
     {
-        auto func_int = server->FindFunc<int32, string>(fn("ScriptBuiltins::StringToInt"));
+        auto func_int = server->FindFunc<int32_t, string>(fn("ScriptBuiltins::StringToInt"));
         REQUIRE(func_int);
         REQUIRE(func_int.Call(string {"42"}));
         CHECK(func_int.GetResult() == 42);
@@ -737,7 +737,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // IntToString / FloatToString
     {
-        auto func_int = server->FindFunc<string, int32>(fn("ScriptBuiltins::IntToString"));
+        auto func_int = server->FindFunc<string, int32_t>(fn("ScriptBuiltins::IntToString"));
         REQUIRE(func_int);
         REQUIRE(func_int.Call(42));
         CHECK(func_int.GetResult() == "42");
@@ -763,7 +763,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // StringCompare
     {
-        auto func = server->FindFunc<int32, string, string>(fn("ScriptBuiltins::StringCompare"));
+        auto func = server->FindFunc<int32_t, string, string>(fn("ScriptBuiltins::StringCompare"));
         REQUIRE(func);
         REQUIRE(func.Call(string {"aaa"}, string {"bbb"}));
         CHECK(func.GetResult() == -1);
@@ -775,7 +775,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // ComprehensiveStringTest
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::ComprehensiveStringTest"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ComprehensiveStringTest"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
@@ -834,7 +834,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     // Empty any → int must return 0
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::EmptyAnyToInt"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::EmptyAnyToInt"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -866,38 +866,38 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     // ArrayLength with FindFunc<int, vector<int>>
     {
-        auto func = server->FindFunc<int32, vector<int32>>(fn("ScriptBuiltins::ArrayLength"));
+        auto func = server->FindFunc<int32_t, vector<int32_t>>(fn("ScriptBuiltins::ArrayLength"));
         REQUIRE(func);
 
-        vector<int32> arr {1, 2, 3, 4, 5};
+        vector<int32_t> arr {1, 2, 3, 4, 5};
         REQUIRE(func.Call(arr));
         CHECK(func.GetResult() == 5);
 
-        vector<int32> empty {};
+        vector<int32_t> empty {};
         REQUIRE(func.Call(empty));
         CHECK(func.GetResult() == 0);
     }
 
     // ArrayEmpty
     {
-        auto func = server->FindFunc<bool, vector<int32>>(fn("ScriptBuiltins::ArrayEmpty"));
+        auto func = server->FindFunc<bool, vector<int32_t>>(fn("ScriptBuiltins::ArrayEmpty"));
         REQUIRE(func);
 
-        vector<int32> arr {1};
+        vector<int32_t> arr {1};
         REQUIRE(func.Call(arr));
         CHECK(func.GetResult() == false);
 
-        vector<int32> empty {};
+        vector<int32_t> empty {};
         REQUIRE(func.Call(empty));
         CHECK(func.GetResult() == true);
     }
 
     // ArrayFind
     {
-        auto func = server->FindFunc<int32, vector<int32>, int32>(fn("ScriptBuiltins::ArrayFind"));
+        auto func = server->FindFunc<int32_t, vector<int32_t>, int32_t>(fn("ScriptBuiltins::ArrayFind"));
         REQUIRE(func);
 
-        vector<int32> arr {10, 20, 30, 40, 50};
+        vector<int32_t> arr {10, 20, 30, 40, 50};
         REQUIRE(func.Call(arr, 30));
         CHECK(func.GetResult() == 2);
         REQUIRE(func.Call(arr, 99));
@@ -906,7 +906,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     // ComprehensiveArrayTest
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::ComprehensiveArrayTest"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ComprehensiveArrayTest"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
@@ -914,7 +914,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     // NestedArraySum
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::NestedArraySum"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::NestedArraySum"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 21);
@@ -946,7 +946,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // DictLength
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::DictLength"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::DictLength"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 3);
@@ -962,7 +962,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // DictGetSet
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::DictGetSet"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::DictGetSet"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 60);
@@ -978,7 +978,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // DictClear
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::DictClear"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::DictClear"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -986,7 +986,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // DictIntKeys
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::DictIntKeys"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::DictIntKeys"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 660);
@@ -994,7 +994,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // ComprehensiveDictTest
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::ComprehensiveDictTest"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ComprehensiveDictTest"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);
@@ -1026,7 +1026,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 
     // ComprehensiveMathTest
     {
-        auto func = server->FindFunc<int32>(fn("ScriptBuiltins::ComprehensiveMathTest"));
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ComprehensiveMathTest"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 1);

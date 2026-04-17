@@ -41,8 +41,8 @@ TEST_CASE("GenericUtils")
 {
     SECTION("WyHash")
     {
-        const auto* data = reinterpret_cast<const uint8*>("abcdefg");
-        const auto* data2 = reinterpret_cast<const uint8*>("abcdefh");
+        const auto* data = reinterpret_cast<const uint8_t*>("abcdefg");
+        const auto* data2 = reinterpret_cast<const uint8_t*>("abcdefh");
 
         CHECK(hashing_ex::hash(data, 4) != 0);
         CHECK(hashing_ex::hash(data, 4) != hashing_ex::hash(data, 5));
@@ -75,7 +75,7 @@ TEST_CASE("GenericUtils")
         CHECK(t1 == 5);
         CHECK(t2 == 10);
 
-        const auto v = vector<int32> {3, 4, 5, 6, 7};
+        const auto v = vector<int32_t> {3, 4, 5, 6, 7};
         auto t3 = 0;
         auto t4 = 0;
         for (const auto i : iterate_range(v)) {
@@ -91,7 +91,7 @@ TEST_CASE("GenericUtils")
         }
         CHECK(t5 == 0);
 
-        const vector<int32> empty_v;
+        const vector<int32_t> empty_v;
         auto t6 = 0;
         for ([[maybe_unused]] const auto i : iterate_range(empty_v)) {
             t6++;

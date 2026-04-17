@@ -48,12 +48,12 @@ namespace
     class TestDerived final : public TestBase
     {
     public:
-        explicit TestDerived(int32 v) :
+        explicit TestDerived(int32_t v) :
             Value {v}
         {
         }
 
-        int32 Value {};
+        int32_t Value {};
     };
 
     class TestRefCounter final
@@ -62,7 +62,7 @@ namespace
         void AddRef() { ++RefCount; }
         void Release() { --RefCount; }
 
-        int32 RefCount {};
+        int32_t RefCount {};
     };
 }
 
@@ -98,7 +98,7 @@ TEST_CASE("CommonHelpers")
 
     SECTION("MakeIfNotExistsDestroyIfEmpty")
     {
-        unique_ptr<vector<int32>> values;
+        unique_ptr<vector<int32_t>> values;
         make_if_not_exists(values);
         REQUIRE(values);
         CHECK(values->empty());
@@ -114,13 +114,13 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorSafeHelpers")
     {
-        vector<int32> values = {1, 2};
+        vector<int32_t> values = {1, 2};
 
         CHECK(vec_safe_add_unique_value(values, 3));
         CHECK_FALSE(vec_safe_add_unique_value(values, 3));
         CHECK(vec_safe_remove_unique_value(values, 2));
         CHECK_FALSE(vec_safe_remove_unique_value(values, 9));
-        CHECK(vec_safe_remove_unique_value_if(values, [](int32 v) { return v == 1; }));
+        CHECK(vec_safe_remove_unique_value_if(values, [](int32_t v) { return v == 1; }));
 
         CHECK(values.size() == 1);
         CHECK(values.front() == 3);
@@ -128,21 +128,21 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorAlgorithms")
     {
-        const vector<int32> values = {5, 1, 3, 2};
+        const vector<int32_t> values = {5, 1, 3, 2};
 
-        const auto filtered = vec_filter(values, [](int32 v) { return v % 2 == 1; });
-        CHECK(filtered == vector<int32> {5, 1, 3});
+        const auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        CHECK(filtered == vector<int32_t> {5, 1, 3});
 
-        const auto transformed = vec_transform(values, [](int32 v) -> int32 { return v * 10; });
-        CHECK(transformed == vector<int32> {50, 10, 30, 20});
+        const auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
+        CHECK(transformed == vector<int32_t> {50, 10, 30, 20});
 
-        const auto sorted = vec_sorted(values, [](int32 l, int32 r) { return l < r; });
-        CHECK(sorted == vector<int32> {1, 2, 3, 5});
+        const auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        CHECK(sorted == vector<int32_t> {1, 2, 3, 5});
 
         CHECK(vec_exists(values, 3));
         CHECK_FALSE(vec_exists(values, 7));
 
-        const set<int32> uniq = {9, 8, 7};
+        const set<int32_t> uniq = {9, 8, 7};
         const auto copied = to_vector(uniq);
         CHECK(copied.size() == 3);
     }
@@ -153,8 +153,8 @@ TEST_CASE("CommonHelpers")
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(4));
         values.emplace_back(SafeAlloc::MakeUnique<TestDerived>(9));
 
-        const auto transformed = vec_transform(values, [](const auto& entry) -> int32 { return entry->Value; });
-        CHECK(transformed == vector<int32> {4, 9});
+        const auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
+        CHECK(transformed == vector<int32_t> {4, 9});
     }
 
     SECTION("CopyHoldRefPreservesPointerVector")

@@ -41,10 +41,10 @@ TEST_CASE("Containers")
 {
     SECTION("Concepts")
     {
-        STATIC_REQUIRE(vector_collection<vector<int32>>);
-        STATIC_REQUIRE(vector_collection<small_vector<int32, 4>>);
-        STATIC_REQUIRE(map_collection<map<int32, int32>>);
-        STATIC_REQUIRE(map_collection<unordered_map<int32, int32>>);
+        STATIC_REQUIRE(vector_collection<vector<int32_t>>);
+        STATIC_REQUIRE(vector_collection<small_vector<int32_t, 4>>);
+        STATIC_REQUIRE(map_collection<map<int32_t, int32_t>>);
+        STATIC_REQUIRE(map_collection<unordered_map<int32_t, int32_t>>);
     }
 
     SECTION("StringHash")
@@ -55,7 +55,7 @@ TEST_CASE("Containers")
 
     SECTION("VectorFormatterInt")
     {
-        const vector<int32> values = {1, 2, 3};
+        const vector<int32_t> values = {1, 2, 3};
         const auto text = std::format("{}", values);
         CHECK(text == "1 2 3");
     }
@@ -76,14 +76,14 @@ TEST_CASE("Containers")
 
     SECTION("VectorFormatterEmpty")
     {
-        const vector<int32> values;
+        const vector<int32_t> values;
         const auto text = std::format("{}", values);
         CHECK(text.empty());
     }
 
     SECTION("SmallVectorFormatter")
     {
-        small_vector<int32, 4> values;
+        small_vector<int32_t, 4> values;
         values.push_back(7);
         values.push_back(8);
         values.push_back(9);

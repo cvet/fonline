@@ -78,7 +78,7 @@ public:
     void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
     void StopAnim();
     void RefreshView(bool no_smooth = false);
-    void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call);
     void Process();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
@@ -97,18 +97,18 @@ private:
         CritterActionAnim ActionAnim {};
         refcount_ptr<Entity> ContextItem {};
         raw_ptr<const SpriteSheet> Frames {};
-        int32 FrameIndex {};
+        int32_t FrameIndex {};
         timespan FramesDuration {};
     };
 
 #if FO_ENABLE_3D
-    auto GetModelLayersData() const -> const int32*;
+    auto GetModelLayersData() const -> const int32_t*;
 #endif
     void OnDestroySelf() override;
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim();
-    void SetAnimSpr(const SpriteSheet* anim, int32 frm_index);
+    void SetAnimSpr(const SpriteSheet* anim, int32_t frm_index);
 
     refcount_ptr<MovingContext> _moving {};
 

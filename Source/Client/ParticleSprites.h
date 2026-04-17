@@ -61,7 +61,7 @@ public:
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     void Prewarm() override;
-    void SetTime(float32 normalized_time) override;
+    void SetTime(float32_t normalized_time) override;
     void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;

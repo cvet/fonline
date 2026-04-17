@@ -345,7 +345,7 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string
     return str != nullptr ? *str : def_val;
 }
 
-auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -361,7 +361,7 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
     return str != nullptr ? strvex(*str).to_int32() : 0;
 }
 
-auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32
+auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 

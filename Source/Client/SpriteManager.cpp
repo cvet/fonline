@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr float32 EGG_ENABLED_FLAG = 1.0f;
+static constexpr float32_t EGG_ENABLED_FLAG = 1.0f;
 
 Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {&spr_mngr},
@@ -111,13 +111,13 @@ SpriteManager::~SpriteManager()
     _window->Destroy();
 }
 
-auto SpriteManager::Random(int32 min_value, int32 max_value) -> int32
+auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(min_value <= max_value);
 
-    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
 
 auto SpriteManager::GetWindowSize() const -> isize32
@@ -299,10 +299,10 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     const auto height_from_i = tex->Size.height;
     const auto width_to_i = rt_stack.empty() ? _settings->ScreenWidth : rt_stack.back()->GetTexture()->Size.width;
     const auto height_to_i = rt_stack.empty() ? _settings->ScreenHeight : rt_stack.back()->GetTexture()->Size.height;
-    const auto width_from_f = numeric_cast<float32>(width_from_i);
-    const auto height_from_f = numeric_cast<float32>(height_from_i);
-    const auto width_to_f = numeric_cast<float32>(width_to_i);
-    const auto height_to_f = numeric_cast<float32>(height_to_i);
+    const auto width_from_f = numeric_cast<float32_t>(width_from_i);
+    const auto height_from_f = numeric_cast<float32_t>(height_from_i);
+    const auto width_to_f = numeric_cast<float32_t>(width_to_i);
+    const auto height_to_f = numeric_cast<float32_t>(height_to_i);
     const auto flip_from = tex->FlippedHeight;
     const auto flip_to = _render->IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->GetTexture()->FlippedHeight;
 
@@ -419,8 +419,8 @@ void SpriteManager::RefreshScissor()
 
     if (!_scissorStack.empty()) {
         _scissorRect = _scissorStack.front();
-        int32 right = _scissorRect.x + _scissorRect.width;
-        int32 bottom = _scissorRect.y + _scissorRect.height;
+        int32_t right = _scissorRect.x + _scissorRect.width;
+        int32_t bottom = _scissorRect.y + _scissorRect.height;
 
         for (size_t i = 1; i < _scissorStack.size(); i++) {
             _scissorRect.x = std::max(_scissorStack[i].x, _scissorRect.x);
@@ -623,8 +623,8 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
 
     auto xf = pos.x;
     auto yf = pos.y;
-    auto wf = numeric_cast<float32>(spr->GetSize().width);
-    auto hf = numeric_cast<float32>(spr->GetSize().height);
+    auto wf = numeric_cast<float32_t>(spr->GetSize().width);
+    auto hf = numeric_cast<float32_t>(spr->GetSize().height);
     const auto k = std::min(size.width / wf, size.height / hf);
 
     if (!stretch) {
@@ -776,21 +776,21 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
         return;
     }
 
-    auto width = numeric_cast<float32>(atlas_spr->GetSize().width);
-    auto height = numeric_cast<float32>(atlas_spr->GetSize().height);
+    auto width = numeric_cast<float32_t>(atlas_spr->GetSize().width);
+    auto height = numeric_cast<float32_t>(atlas_spr->GetSize().height);
 
     if (spr_size.width != 0 && spr_size.height != 0) {
-        width = numeric_cast<float32>(spr_size.width);
-        height = numeric_cast<float32>(spr_size.height);
+        width = numeric_cast<float32_t>(spr_size.width);
+        height = numeric_cast<float32_t>(spr_size.height);
     }
     else if (spr_size.width != 0) {
-        const auto ratio = numeric_cast<float32>(spr_size.width) / width;
-        width = numeric_cast<float32>(spr_size.width);
+        const auto ratio = numeric_cast<float32_t>(spr_size.width) / width;
+        width = numeric_cast<float32_t>(spr_size.width);
         height *= ratio;
     }
     else if (spr_size.height != 0) {
-        const auto ratio = numeric_cast<float32>(spr_size.height) / height;
-        height = numeric_cast<float32>(spr_size.height);
+        const auto ratio = numeric_cast<float32_t>(spr_size.height) / height;
+        height = numeric_cast<float32_t>(spr_size.height);
         width *= ratio;
     }
 
@@ -802,10 +802,10 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
     const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
     const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;
 
-    for (auto yy = numeric_cast<float32>(pos.y), end_y = numeric_cast<float32>(pos.y + size.height); yy < end_y;) {
+    for (auto yy = numeric_cast<float32_t>(pos.y), end_y = numeric_cast<float32_t>(pos.y + size.height); yy < end_y;) {
         const auto last_y = yy + height >= end_y;
 
-        for (auto xx = numeric_cast<float32>(pos.x), end_x = numeric_cast<float32>(pos.x + size.width); xx < end_x;) {
+        for (auto xx = numeric_cast<float32_t>(pos.x), end_x = numeric_cast<float32_t>(pos.x + size.width); xx < end_x;) {
             const auto last_x = xx + width >= end_x;
 
             const auto local_width = last_x ? end_x - xx : width;
@@ -893,12 +893,12 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpo
 {
     FO_STACK_TRACE_ENTRY();
 
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lb.x), iround<int32>(lb.y)}, .PointColor = color});
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lt.x), iround<int32>(lt.y)}, .PointColor = color});
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rb.x), iround<int32>(rb.y)}, .PointColor = color});
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(lt.x), iround<int32>(lt.y)}, .PointColor = color});
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rt.x), iround<int32>(rt.y)}, .PointColor = color});
-    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32>(rb.x), iround<int32>(rb.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(lb.x), iround<int32_t>(lb.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(lt.x), iround<int32_t>(lt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(rb.x), iround<int32_t>(rb.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(lt.x), iround<int32_t>(lt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(rt.x), iround<int32_t>(rt.y)}, .PointColor = color});
+    points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(rb.x), iround<int32_t>(rb.y)}, .PointColor = color});
 }
 
 void SpriteManager::InvalidateEgg(TransparentEggSlot slot)
@@ -935,14 +935,14 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, const MapSprite* m
         return;
     }
 
-    const auto rect_width = std::max(numeric_cast<float32>(rect.width), 1.0f);
-    const auto rect_height = std::max(numeric_cast<float32>(rect.height), 1.0f);
+    const auto rect_width = std::max(numeric_cast<float32_t>(rect.width), 1.0f);
+    const auto rect_height = std::max(numeric_cast<float32_t>(rect.height), 1.0f);
     auto& egg = _eggSlots[slot_index];
-    const auto egg_width = std::max(rect_width + numeric_cast<float32>(_settings->EggEllipseWidthExt), 1.0f);
-    const auto egg_height = std::max(rect_height + numeric_cast<float32>(_settings->EggEllipseHeightExt), 1.0f);
+    const auto egg_width = std::max(rect_width + numeric_cast<float32_t>(_settings->EggEllipseWidthExt), 1.0f);
+    const auto egg_height = std::max(rect_height + numeric_cast<float32_t>(_settings->EggEllipseHeightExt), 1.0f);
 
-    egg.Center.x = numeric_cast<float32>(rect.x) + rect_width * 0.5f;
-    egg.Center.y = numeric_cast<float32>(rect.y) + rect_height * 0.5f;
+    egg.Center.x = numeric_cast<float32_t>(rect.x) + rect_width * 0.5f;
+    egg.Center.y = numeric_cast<float32_t>(rect.y) + rect_height * 0.5f;
     egg.Radius.width = egg_width * 0.5f;
     egg.Radius.height = egg_height * 0.5f;
     egg.Hex = hex;
@@ -1024,7 +1024,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     vector<PrimitivePoint> debug_borders;
 
     for (auto& egg : _eggSlots) {
-        egg.DrawOffset = {numeric_cast<float32>(draw_area.x), numeric_cast<float32>(draw_area.y)};
+        egg.DrawOffset = {numeric_cast<float32_t>(draw_area.x), numeric_cast<float32_t>(draw_area.y)};
     }
 
     for (const auto& mspr : mspr_list.GetActiveSprites()) {
@@ -1072,9 +1072,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
                 const auto r2 = l2 != nullptr ? l2->comp.r : l->comp.r;
                 const auto g2 = l2 != nullptr ? l2->comp.g : l->comp.g;
                 const auto b2 = l2 != nullptr ? l2->comp.b : l->comp.b;
-                c.comp.r = numeric_cast<uint8>(std::min(c.comp.r + (l->comp.r + r2) / 2, 255));
-                c.comp.g = numeric_cast<uint8>(std::min(c.comp.g + (l->comp.g + g2) / 2, 255));
-                c.comp.b = numeric_cast<uint8>(std::min(c.comp.b + (l->comp.b + b2) / 2, 255));
+                c.comp.r = numeric_cast<uint8_t>(std::min(c.comp.r + (l->comp.r + r2) / 2, 255));
+                c.comp.g = numeric_cast<uint8_t>(std::min(c.comp.g + (l->comp.g + g2) / 2, 255));
+                c.comp.b = numeric_cast<uint8_t>(std::min(c.comp.b + (l->comp.b + b2) / 2, 255));
             };
 
             mix_light(color_r, light, mspr->GetLightRight());
@@ -1102,10 +1102,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Fill buffer
-        const float32 xf = numeric_cast<float32>(mspr_rect.x);
-        const float32 yf = numeric_cast<float32>(mspr_rect.y);
-        const float32 wf = numeric_cast<float32>(spr->GetSize().width);
-        const float32 hf = numeric_cast<float32>(spr->GetSize().height);
+        const float32_t xf = numeric_cast<float32_t>(mspr_rect.x);
+        const float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
+        const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
+        const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
         const auto start_vpos = _spritesDrawBuf->VertCount;
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
@@ -1138,11 +1138,11 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         // Corners indication
         if (_settings->ShowCorners && mspr->GetEggAppearence() != EggAppearenceType::None) {
             vector<PrimitivePoint> corner;
-            const float32 cx = wf / 2.0f;
+            const float32_t cx = wf / 2.0f;
 
             switch (mspr->GetEggAppearence()) {
             case EggAppearenceType::Always:
-                PrepareSquare(corner, irect32(iround<int32>(xf + cx - 2.0f), iround<int32>(yf + hf - 50.0f), 4, 50), ucolor {0x5F00FFFF});
+                PrepareSquare(corner, irect32(iround<int32_t>(xf + cx - 2.0f), iround<int32_t>(yf + hf - 50.0f), 4, 50), ucolor {0x5F00FFFF});
                 break;
             case EggAppearenceType::ByX:
                 PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 55.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 45.0f}, fpos32 {xf + cx - 5.0f, yf + hf - 5.0f}, fpos32 {xf + cx + 5.0f, yf + hf + 5.0f}, ucolor {0x5F00AF00});
@@ -1218,13 +1218,13 @@ auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearen
             continue;
         }
 
-        const auto dx = (numeric_cast<float32>(pos.x) - egg.Center.x) / egg.Radius.width;
-        const auto dy = (numeric_cast<float32>(pos.y) - egg.Center.y) / egg.Radius.height;
+        const auto dx = (numeric_cast<float32_t>(pos.x) - egg.Center.x) / egg.Radius.width;
+        const auto dy = (numeric_cast<float32_t>(pos.y) - egg.Center.y) / egg.Radius.height;
         const auto egg_alpha_raw = std::clamp(dx * dx + dy * dy, 0.0f, 1.0f);
         const auto transition_start = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         const auto egg_alpha = egg_alpha_raw <= transition_start ? 0.0f : (egg_alpha_raw - transition_start) / (1.0f - transition_start);
 
-        if (!CheckHitTest(iround<int32>(egg_alpha * 255.0f))) {
+        if (!CheckHitTest(iround<int32_t>(egg_alpha * 255.0f))) {
             return true;
         }
     }
@@ -1293,8 +1293,8 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
             pos -= ipos32(draw_area->x, draw_area->y);
         }
 
-        vbuf[i].PosX = numeric_cast<float32>(pos.x);
-        vbuf[i].PosY = numeric_cast<float32>(pos.y);
+        vbuf[i].PosX = numeric_cast<float32_t>(pos.x);
+        vbuf[i].PosY = numeric_cast<float32_t>(pos.y);
         vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
 
         ibuf[i] = numeric_cast<vindex_t>(i);
@@ -1346,8 +1346,8 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
 
     const auto* texture = as->GetAtlas()->GetTexture();
     const frect32 sr = as->GetAtlasRect();
-    const float32 txw = texture->SizeData[2];
-    const float32 txh = texture->SizeData[3];
+    const float32_t txw = texture->SizeData[2];
+    const float32_t txh = texture->SizeData[3];
     const frect32 textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
     const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->GetSize().width + 2, as->GetSize().height + 2));
 
@@ -1409,38 +1409,38 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_settings->Brightness != 0) {
-        const auto r = std::clamp(numeric_cast<int32>(color.comp.r) + _settings->Brightness, 0, 255);
-        const auto g = std::clamp(numeric_cast<int32>(color.comp.g) + _settings->Brightness, 0, 255);
-        const auto b = std::clamp(numeric_cast<int32>(color.comp.b) + _settings->Brightness, 0, 255);
-        return ucolor {numeric_cast<uint8>(r), numeric_cast<uint8>(g), numeric_cast<uint8>(b), color.comp.a};
+        const auto r = std::clamp(numeric_cast<int32_t>(color.comp.r) + _settings->Brightness, 0, 255);
+        const auto g = std::clamp(numeric_cast<int32_t>(color.comp.g) + _settings->Brightness, 0, 255);
+        const auto b = std::clamp(numeric_cast<int32_t>(color.comp.b) + _settings->Brightness, 0, 255);
+        return ucolor {numeric_cast<uint8_t>(r), numeric_cast<uint8_t>(g), numeric_cast<uint8_t>(b), color.comp.a};
     }
     else {
         return color;
     }
 }
 
-auto SpriteManager::GetFont(int32 num) -> FontData*
+auto SpriteManager::GetFont(int32_t num) -> FontData*
 {
     FO_STACK_TRACE_ENTRY();
 
     if (num < 0) {
         num = _defFontIndex;
     }
-    if (num < 0 || num >= numeric_cast<int32>(_allFonts.size())) {
+    if (num < 0 || num >= numeric_cast<int32_t>(_allFonts.size())) {
         return nullptr;
     }
 
     return _allFonts[num].get();
 }
 
-auto SpriteManager::GetFont(int32 num) const -> const FontData*
+auto SpriteManager::GetFont(int32_t num) const -> const FontData*
 {
     FO_STACK_TRACE_ENTRY();
 
     if (num < 0) {
         num = _defFontIndex;
     }
-    if (num < 0 || num >= numeric_cast<int32>(_allFonts.size())) {
+    if (num < 0 || num >= numeric_cast<int32_t>(_allFonts.size())) {
         return nullptr;
     }
 
@@ -1454,14 +1454,14 @@ void SpriteManager::ClearFonts()
     _allFonts.clear();
 }
 
-void SpriteManager::SetDefaultFont(int32 index)
+void SpriteManager::SetDefaultFont(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
     _defFontIndex = index;
 }
 
-void SpriteManager::SetFontEffect(int32 index, RenderEffect* effect)
+void SpriteManager::SetFontEffect(int32_t index, RenderEffect* effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1472,7 +1472,7 @@ void SpriteManager::SetFontEffect(int32 index, RenderEffect* effect)
     }
 }
 
-void SpriteManager::BuildFont(int32 index)
+void SpriteManager::BuildFont(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1480,17 +1480,17 @@ void SpriteManager::BuildFont(int32 index)
 
     // Fix texture coordinates
     auto* atlas_spr = font.ImageNormal.get();
-    auto tex_w = numeric_cast<float32>(atlas_spr->GetAtlas()->GetSize().width);
-    auto tex_h = numeric_cast<float32>(atlas_spr->GetAtlas()->GetSize().height);
+    auto tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
+    auto tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
     auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
     auto image_y = tex_h * atlas_spr->GetAtlasRect().y;
     auto max_h = 0;
 
     for (auto& letter : font.Letters | std::views::values) {
-        const auto x = numeric_cast<float32>(letter.Pos.x);
-        const auto y = numeric_cast<float32>(letter.Pos.y);
-        const auto w = numeric_cast<float32>(letter.Size.width);
-        const auto h = numeric_cast<float32>(letter.Size.height);
+        const auto x = numeric_cast<float32_t>(letter.Pos.x);
+        const auto y = numeric_cast<float32_t>(letter.Pos.y);
+        const auto w = numeric_cast<float32_t>(letter.Size.width);
+        const auto h = numeric_cast<float32_t>(letter.Size.height);
 
         letter.TexPos.x = (image_x + x - 1.0f) / tex_w;
         letter.TexPos.y = (image_y + y - 1.0f) / tex_h;
@@ -1506,20 +1506,20 @@ void SpriteManager::BuildFont(int32 index)
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
-    if (font.Letters.count(numeric_cast<uint32>(' ')) != 0) {
-        font.SpaceWidth = font.Letters[numeric_cast<uint32>(' ')].XAdvance;
+    if (font.Letters.count(numeric_cast<uint32_t>(' ')) != 0) {
+        font.SpaceWidth = font.Letters[numeric_cast<uint32_t>(' ')].XAdvance;
     }
 
     auto* si_bordered = dynamic_cast<AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->GetAtlas()->GetTexture() : nullptr;
 
-    const auto normal_ox = iround<int32>(tex_w * atlas_spr->GetAtlasRect().x);
-    const auto normal_oy = iround<int32>(tex_h * atlas_spr->GetAtlasRect().y);
-    const auto bordered_ox = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
-    const auto bordered_oy = si_bordered != nullptr ? iround<int32>(numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
+    const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
+    const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
+    const auto bordered_ox = si_bordered != nullptr ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
+    const auto bordered_oy = si_bordered != nullptr ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, int32 width, int32 x, int32 y) -> ucolor& { return tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ucolor& { return tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
     vector<ucolor> data_bordered;
 
@@ -1575,16 +1575,16 @@ void SpriteManager::BuildFont(int32 index)
         si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize(), data_bordered.data());
 
         // Fix texture coordinates on bordered texture
-        tex_w = numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().width);
-        tex_h = numeric_cast<float32>(si_bordered->GetAtlas()->GetSize().height);
+        tex_w = numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width);
+        tex_h = numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height);
         image_x = tex_w * si_bordered->GetAtlasRect().x;
         image_y = tex_h * si_bordered->GetAtlasRect().y;
 
         for (auto& letter : font.Letters | std::views::values) {
-            const auto x = numeric_cast<float32>(letter.Pos.x);
-            const auto y = numeric_cast<float32>(letter.Pos.y);
-            const auto w = numeric_cast<float32>(letter.Size.width);
-            const auto h = numeric_cast<float32>(letter.Size.height);
+            const auto x = numeric_cast<float32_t>(letter.Pos.x);
+            const auto y = numeric_cast<float32_t>(letter.Pos.y);
+            const auto w = numeric_cast<float32_t>(letter.Size.width);
+            const auto h = numeric_cast<float32_t>(letter.Size.height);
             letter.TexBorderedPos.x = (image_x + x - 1.0f) / tex_w;
             letter.TexBorderedPos.y = (image_y + y - 1.0f) / tex_h;
             letter.TexBorderedPos.width = (w + 2.0f) / tex_w;
@@ -1593,12 +1593,12 @@ void SpriteManager::BuildFont(int32 index)
     }
 }
 
-auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
+auto SpriteManager::LoadFontFO(int32_t index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     // Skip if loaded
-    if (skip_if_loaded && index < numeric_cast<int32>(_allFonts.size()) && _allFonts[index]) {
+    if (skip_if_loaded && index < numeric_cast<int32_t>(_allFonts.size()) && _allFonts[index]) {
         return true;
     }
 
@@ -1755,7 +1755,7 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
     }
 
     // Register
-    if (index >= numeric_cast<int32>(_allFonts.size())) {
+    if (index >= numeric_cast<int32_t>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
 
@@ -1766,7 +1766,7 @@ auto SpriteManager::LoadFontFO(int32 index, string_view font_name, AtlasType atl
     return true;
 }
 
-auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool
+auto SpriteManager::LoadFontBmf(int32_t index, string_view font_name, AtlasType atlas_type) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1788,7 +1788,7 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     auto reader = file.GetReader();
 
     const auto signature = reader.GetLEUInt32();
-    const auto make_signature = [](uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint32 { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
+    const auto make_signature = [](uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
 
     if (signature != make_signature('B', 'M', 'F', 3)) {
         WriteLog("Invalid signature of font '{}'", font_name);
@@ -1812,8 +1812,8 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     block_len = reader.GetLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    const int32 line_height = reader.GetLEUInt16();
-    const int32 base_height = reader.GetLEUInt16();
+    const int32_t line_height = reader.GetLEUInt16();
+    const int32_t base_height = reader.GetLEUInt16();
     reader.GoForward(2); // Texture width
     reader.GoForward(2); // Texture height
 
@@ -1853,12 +1853,12 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
         let.Pos.y = y + 1;
         let.Size.width = w - 2;
         let.Size.height = h - 2;
-        let.Offset.x = -numeric_cast<int32>(ox);
-        let.Offset.y = -numeric_cast<int32>(oy) + (line_height - base_height);
+        let.Offset.x = -numeric_cast<int32_t>(ox);
+        let.Offset.y = -numeric_cast<int32_t>(oy) + (line_height - base_height);
         let.XAdvance = xa + 1;
     }
 
-    font->LineHeight = font->Letters.count(numeric_cast<uint32>('W')) != 0 ? font->Letters[numeric_cast<uint32>('W')].Size.height : base_height;
+    font->LineHeight = font->Letters.count(numeric_cast<uint32_t>('W')) != 0 ? font->Letters[numeric_cast<uint32_t>('W')].Size.height : base_height;
     font->YAdvance = font->LineHeight / 2;
     font->MakeGray = true;
 
@@ -1887,7 +1887,7 @@ auto SpriteManager::LoadFontBmf(int32 index, string_view font_name, AtlasType at
     }
 
     // Register
-    if (index >= numeric_cast<int32>(_allFonts.size())) {
+    if (index >= numeric_cast<int32_t>(_allFonts.size())) {
         _allFonts.resize(index + 1);
     }
 
@@ -1920,7 +1920,7 @@ static void StrCopy(char* to, size_t size, string_view from)
     }
 }
 
-template<int32 Size>
+template<int32_t Size>
 static void StrCopy(char (&to)[Size], string_view from)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1937,7 +1937,7 @@ static void StrGoTo(char*& str, char ch)
     }
 }
 
-static void StrEraseInterval(char* str, int32 len)
+static void StrEraseInterval(char* str, int32_t len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1955,7 +1955,7 @@ static void StrEraseInterval(char* str, int32 len)
     *str = 0;
 }
 
-static void StrInsert(char* to, const char* from, int32 from_len)
+static void StrInsert(char* to, const char* from, int32_t from_len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1964,7 +1964,7 @@ static void StrInsert(char* to, const char* from, int32 from_len)
     }
 
     if (from_len == 0) {
-        from_len = numeric_cast<int32>(string_view(from).length());
+        from_len = numeric_cast<int32_t>(string_view(from).length());
     }
     if (from_len == 0) {
         return;
@@ -1986,7 +1986,7 @@ static void StrInsert(char* to, const char* from, int32 from_len)
     }
 }
 
-void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
+void SpriteManager::FormatText(FontFormatInfo& fi, int32_t fmt_type) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2014,16 +2014,16 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 
     // Colorize
     ucolor* dots = nullptr;
-    int32 d_offs = 0;
+    int32_t d_offs = 0;
     string buf;
 
     if (fmt_type == FORMAT_TYPE_DRAW && !IsBitSet(flags, FT_NO_COLORIZE)) {
         dots = fi.ColorDots.data();
     }
 
-    constexpr int32 dots_history_len = 10;
+    constexpr int32_t dots_history_len = 10;
     ucolor dots_history[dots_history_len] = {fi.DefColor};
-    int32 dots_history_cur = 0;
+    int32_t dots_history_cur = 0;
 
     for (auto* str_ = str; *str_ != 0;) {
         auto* s0 = str_;
@@ -2033,7 +2033,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
         auto* s2 = str_;
 
         if (dots != nullptr) {
-            auto d_len = numeric_cast<int32>(s2 - s1) + 1;
+            auto d_len = numeric_cast<int32_t>(s2 - s1) + 1;
             ucolor d;
 
             if (d_len == 2) {
@@ -2046,10 +2046,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
             }
             else {
                 if (*(s1 + 1) == 'x') {
-                    d = ucolor {numeric_cast<uint32>(std::strtoul(s1 + 2, nullptr, 16))};
+                    d = ucolor {numeric_cast<uint32_t>(std::strtoul(s1 + 2, nullptr, 16))};
                 }
                 else {
-                    d = ucolor {numeric_cast<uint32>(std::strtoul(s1 + 1, nullptr, 0))};
+                    d = ucolor {numeric_cast<uint32_t>(std::strtoul(s1 + 1, nullptr, 0))};
                 }
 
                 if (dots_history_cur < dots_history_len - 1) {
@@ -2057,7 +2057,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                 }
             }
 
-            dots[numeric_cast<int32>(s1 - str) - d_offs] = d;
+            dots[numeric_cast<int32_t>(s1 - str) - d_offs] = d;
             d_offs += d_len;
         }
 
@@ -2084,7 +2084,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
         auto letter_len = utf8::DecodeStrNtLen(&str[i]);
         auto letter = utf8::Decode(&str[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = numeric_cast<int32>(letter_len);
+        i_advance = numeric_cast<int32_t>(letter_len);
 
         auto x_advance = 0;
         switch (letter) {
@@ -2125,11 +2125,11 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                 }
 
                 StrEraseInterval(&str[i], j - i);
-                letter = numeric_cast<uint8>(str[i]);
+                letter = numeric_cast<uint8_t>(str[i]);
                 i_advance = 1;
 
                 if (fmt_type == FORMAT_TYPE_DRAW) {
-                    for (auto k = i, l = numeric_cast<int32>(fi.ColorDots.size()) - (j - i); k < l; k++) {
+                    for (auto k = i, l = numeric_cast<int32_t>(fi.ColorDots.size()) - (j - i); k < l; k++) {
                         fi.ColorDots[k] = fi.ColorDots[k + (j - i)];
                     }
                 }
@@ -2157,7 +2157,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                     StrInsert(&str[i], "\n", 0);
 
                     if (fmt_type == FORMAT_TYPE_DRAW) {
-                        for (auto k = numeric_cast<int32>(fi.ColorDots.size()) - 1; k > i; k--) {
+                        for (auto k = numeric_cast<int32_t>(fi.ColorDots.size()) - 1; k > i; k--) {
                             fi.ColorDots[k] = fi.ColorDots[k - 1];
                         }
                     }
@@ -2178,7 +2178,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
                     if (j > ii) {
                         StrEraseInterval(&str[ii], j - ii);
                         if (fmt_type == FORMAT_TYPE_DRAW) {
-                            for (auto k = ii, l = numeric_cast<int32>(fi.ColorDots.size()) - (j - ii); k < l; k++) {
+                            for (auto k = ii, l = numeric_cast<int32_t>(fi.ColorDots.size()) - (j - ii); k < l; k++) {
                                 fi.ColorDots[k] = fi.ColorDots[k + (j - ii)];
                             }
                         }
@@ -2241,7 +2241,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
     fi.MaxCurX = std::max(curx, fi.MaxCurX);
 
     if (skip_line_end != 0) {
-        auto len = numeric_cast<int32>(string_view(str).length());
+        auto len = numeric_cast<int32_t>(string_view(str).length());
 
         for (auto i = len - 2; i >= 0; i--) {
             if (str[i] == '\n') {
@@ -2280,8 +2280,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
 
     // Up text
     if (IsBitSet(flags, FT_UPPER) && fi.LinesAll > fi.LinesInRect) {
-        int32 j = 0;
-        int32 line_cur = 0;
+        int32_t j = 0;
+        int32_t line_cur = 0;
         ucolor last_color;
 
         for (; str[j] != 0; ++j) {
@@ -2321,14 +2321,14 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
     }
 
     bool can_count = false;
-    int32 spaces = 0;
-    int32 curstr = 0;
+    int32_t spaces = 0;
+    int32_t curstr = 0;
 
     for (auto i = 0, i_advance = 1;; i += i_advance) {
         auto letter_len = utf8::DecodeStrNtLen(&str[i]);
         auto letter = utf8::Decode(&str[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = numeric_cast<int32>(letter_len);
+        i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
         case ' ':
@@ -2395,7 +2395,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int32 fmt_type) const
     }
 }
 
-void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor color, int32 num_font)
+void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucolor color, int32_t num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2458,7 +2458,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     const auto start_ipos = ipos;
 
     auto variable_space = false;
-    int32 i_advance;
+    int32_t i_advance;
 
     for (auto i = 0; str_[i] != 0; i += i_advance) {
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
@@ -2479,7 +2479,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
         auto letter_len = utf8::DecodeStrNtLen(&str_[i]);
         auto letter = utf8::Decode(&str_[i], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
-        i_advance = numeric_cast<int32>(letter_len);
+        i_advance = numeric_cast<int32_t>(letter_len);
 
         switch (letter) {
         case ' ':
@@ -2529,8 +2529,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
 
             auto& v0 = vbuf[vpos++];
-            v0.PosX = numeric_cast<float32>(x);
-            v0.PosY = numeric_cast<float32>(y + h);
+            v0.PosX = numeric_cast<float32_t>(x);
+            v0.PosY = numeric_cast<float32_t>(y + h);
             v0.TexU = x1;
             v0.TexV = y2;
             v0.EggFlags[0] = 0.0f;
@@ -2538,8 +2538,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v0.Color = color;
 
             auto& v1 = vbuf[vpos++];
-            v1.PosX = numeric_cast<float32>(x);
-            v1.PosY = numeric_cast<float32>(y);
+            v1.PosX = numeric_cast<float32_t>(x);
+            v1.PosY = numeric_cast<float32_t>(y);
             v1.TexU = x1;
             v1.TexV = y1;
             v1.EggFlags[0] = 0.0f;
@@ -2547,8 +2547,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v1.Color = color;
 
             auto& v2 = vbuf[vpos++];
-            v2.PosX = numeric_cast<float32>(x + w);
-            v2.PosY = numeric_cast<float32>(y);
+            v2.PosX = numeric_cast<float32_t>(x + w);
+            v2.PosY = numeric_cast<float32_t>(y);
             v2.TexU = x2;
             v2.TexV = y1;
             v2.EggFlags[0] = 0.0f;
@@ -2556,8 +2556,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
             v2.Color = color;
 
             auto& v3 = vbuf[vpos++];
-            v3.PosX = numeric_cast<float32>(x + w);
-            v3.PosY = numeric_cast<float32>(y + h);
+            v3.PosX = numeric_cast<float32_t>(x + w);
+            v3.PosY = numeric_cast<float32_t>(y + h);
             v3.TexU = x2;
             v3.TexV = y2;
             v3.EggFlags[0] = 0.0f;
@@ -2585,7 +2585,7 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32 flags, ucolor
     }
 }
 
-auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font /* = -1 */) const -> int32
+auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32_t num_font /* = -1 */) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2616,7 +2616,7 @@ auto SpriteManager::GetLinesCount(isize32 size, string_view str, int32 num_font 
     return fi.LinesInRect;
 }
 
-auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font /* = -1 */) const -> int32
+auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32_t num_font /* = -1 */) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2639,7 +2639,7 @@ auto SpriteManager::GetLinesHeight(isize32 size, string_view str, int32 num_font
     return lines_count * font->LineHeight + (lines_count - 1) * font->YAdvance;
 }
 
-auto SpriteManager::GetLineHeight(int32 num_font) const -> int32
+auto SpriteManager::GetLineHeight(int32_t num_font) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2652,7 +2652,7 @@ auto SpriteManager::GetLineHeight(int32 num_font) const -> int32
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) const -> bool
+auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32_t num_font, uint32_t flags, isize32& result_size, int32_t& lines) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2685,7 +2685,7 @@ auto SpriteManager::GetTextInfo(isize32 size, string_view str, int32 num_font, u
     return true;
 }
 
-auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -> vector<string>
+auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32_t num_font) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2715,7 +2715,7 @@ auto SpriteManager::SplitLines(irect32 rect, string_view cstr, int32 num_font) -
     return result;
 }
 
-auto SpriteManager::HaveLetter(int32 num_font, uint32 letter) const -> bool
+auto SpriteManager::HaveLetter(int32_t num_font, uint32_t letter) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -71,8 +71,8 @@ public:
     {
         vector<raw_ptr<const ProtoItem>> ItemProtos {};
         vector<raw_ptr<const ProtoCritter>> CritterProtos {};
-        int32 Index {};
-        int32 Scroll {};
+        int32_t Index {};
+        int32_t Scroll {};
     };
 
     struct EntityBuf
@@ -109,7 +109,7 @@ public:
     {
         vector<UndoOp> UndoStack {};
         vector<UndoOp> RedoStack {};
-        int32 CleanUndoDepth {-1};
+        int32_t CleanUndoDepth {-1};
     };
 
     struct MoveCommandEntry
@@ -127,7 +127,7 @@ public:
 
     struct MessBoxMessage
     {
-        int32 Type {};
+        int32_t Type {};
         string Mess {};
         string Time {};
     };
@@ -195,8 +195,8 @@ public:
     void HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys);
     void UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup);
     void HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text);
-    void ChangeZoom(float32 new_zoom);
-    void DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font);
+    void ChangeZoom(float32_t new_zoom);
+    void DrawStr(const irect32& rect, string_view str, uint32_t flags, ucolor color, int32_t num_font);
 
     void CurDraw();
     void CurRMouseUp();
@@ -206,7 +206,7 @@ public:
     void CommitPendingSelectionMove();
     void ResetPendingSelectionMove();
 
-    auto IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool;
+    auto IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool;
     auto IsCurInRect(const irect32& rect) const -> bool;
     auto IsCurInInterface() const -> bool;
     auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
@@ -224,12 +224,12 @@ public:
     auto HandleMapLeftMouseDown() -> bool;
     void HandleLeftMouseUp();
     void HandleSelectionMouseDrag();
-    void SetActivePanelMode(int32 mode);
+    void SetActivePanelMode(int32_t mode);
 
     auto GetActiveSubTab() -> SubTab*;
     auto GetActiveSubTab() const -> const SubTab*;
-    auto GetActiveProtoIndex() const -> int32;
-    void SetActiveProtoIndex(int32 index);
+    auto GetActiveProtoIndex() const -> int32_t;
+    void SetActiveProtoIndex(int32_t index);
     void RefreshActiveProtoLists();
     auto IsItemMode() const -> bool { return ActiveItemProtos != nullptr && ActiveProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return ActiveCritterProtos != nullptr && ActiveProtoScroll != nullptr; }
@@ -240,7 +240,7 @@ public:
     void SelectAll();
     void SelectRemove(ClientEntity* entity, bool skip_refresh = false);
     void SelectClear();
-    auto SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool;
+    auto SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy, int32_t& offs_x, int32_t& offs_y) -> bool;
     void SelectDelete();
 
     auto CreateCritter(hstring pid, mpos hex) -> CritterView*;
@@ -265,7 +265,7 @@ public:
     void ApplyInspectorPropertyEdit(Entity* entity);
     void ResetInspectorPropertyEditState();
     auto CancelInspectorPropertyEdit() -> bool;
-    void SelectInspectorPropertyLine(int32 line);
+    void SelectInspectorPropertyLine(int32_t line);
     auto GetInspectorEntity() -> ClientEntity*;
 
     void DrawConsoleImGui();
@@ -279,7 +279,7 @@ public:
     auto GetRedoLabel() const -> string;
     auto ExecuteUndo() -> bool;
     auto ExecuteRedo() -> bool;
-    auto JumpHistoryToIndex(int32 target_index) -> bool;
+    auto JumpHistoryToIndex(int32_t target_index) -> bool;
     void ParseCommand(string_view command);
     auto LoadMap(string_view map_name) -> MapView*;
     auto LoadMapFromText(string_view map_name, const string& map_text) -> MapView*;
@@ -290,12 +290,12 @@ public:
     void ResetCurrentMapChanges();
     void SaveMap(MapView* map, string_view custom_name);
     void UnloadMap(MapView* map, bool clear_undo = true);
-    void ResizeMap(MapView* map, int32 width, int32 height);
+    void ResizeMap(MapView* map, int32_t width, int32_t height);
 
     void AddMess(string_view message_text);
     void MessBoxDraw();
 
-    void DrawIfaceLayer(int32 layer);
+    void DrawIfaceLayer(int32_t layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
     void CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity) const;
@@ -317,7 +317,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int32>& /*properties*/);
+    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int32_t>& /*properties*/);
 
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
@@ -326,11 +326,11 @@ public:
     vector<raw_ptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};
     unordered_map<hstring, shared_ptr<Sprite>> PreviewSprites {};
-    int32 CurMode {};
+    int32_t CurMode {};
     shared_ptr<Sprite> CurPDef {};
     shared_ptr<Sprite> CurPHand {};
-    int32 ActivePanelMode {};
-    int32 MouseHoldMode {};
+    int32_t ActivePanelMode {};
+    int32_t MouseHoldMode {};
     ipos32 MainPanelPos {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
@@ -359,24 +359,24 @@ public:
     raw_ptr<vector<raw_ptr<const ProtoItem>>> ActiveItemProtos {};
     raw_ptr<vector<raw_ptr<const ProtoCritter>>> ActiveCritterProtos {};
     mdir CritterDir {};
-    raw_ptr<int32> ActiveProtoScroll {};
-    int32 ProtoWidth {};
-    int32 ProtosOnScreen {};
+    raw_ptr<int32_t> ActiveProtoScroll {};
+    int32_t ProtoWidth {};
+    int32_t ProtosOnScreen {};
     array<char, 128> WorkspaceFilterBuf {};
     array<char, 256> ContentMapNameBuf {};
     array<char, 128> ContentMapFilterBuf {};
-    int32 ContentResizeW {};
-    int32 ContentResizeH {};
-    int32 CritterAnimState {};
-    int32 CritterAnimAction {};
+    int32_t ContentResizeW {};
+    int32_t ContentResizeH {};
+    int32_t CritterAnimState {};
+    int32_t CritterAnimAction {};
     array<char, 128> CritterAnimSequenceBuf {};
     array<char, 128> ScriptCallFuncBuf {};
     array<char, 256> ScriptCallArgsBuf {};
     array<char, 128> MapBrowserFilterBuf {};
-    int32 TabIndex[INT_MODE_COUNT] {};
+    int32_t TabIndex[INT_MODE_COUNT] {};
     refcount_ptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};
-    int32 TileLayer {};
+    int32_t TileLayer {};
     bool SelectItemsEnabled {};
     bool SelectSceneryEnabled {};
     bool SelectWallsEnabled {};
@@ -388,16 +388,16 @@ public:
     unordered_set<raw_ptr<ClientEntity>> SelectedEntitiesSet {};
     vector<EntityBuf> EntitiesBuffer {};
     ipos32 InspectorPos {24, 24};
-    int32 InspectorSelectedLine {};
+    int32_t InspectorSelectedLine {};
     string InspectorSelectedLineInitialValue {};
     string InspectorSelectedLineValue {};
     string InspectorEditBuf {};
-    int32 InspectorEditLine {-1};
-    int32 InspectorPendingFocusLine {-1};
-    int32 InspectorPendingFocusArrayIndex {-1};
-    int32 InspectorPendingCaretResetLine {-1};
-    int32 InspectorPendingCaretResetArrayIndex {-1};
-    int32 InspectorPendingCaretResetFrames {};
+    int32_t InspectorEditLine {-1};
+    int32_t InspectorPendingFocusLine {-1};
+    int32_t InspectorPendingFocusArrayIndex {-1};
+    int32_t InspectorPendingCaretResetLine {-1};
+    int32_t InspectorPendingCaretResetArrayIndex {-1};
+    int32_t InspectorPendingCaretResetFrames {};
     bool InspectorLastEditCellRectValid {};
     float InspectorLastEditCellMinX {};
     float InspectorLastEditCellMinY {};
@@ -413,16 +413,16 @@ public:
     array<char, 4096> ConsoleBuf {};
     bool ConsoleSyncFromState {true};
     vector<string> ConsoleHistory {};
-    int32 ConsoleHistoryCur {};
+    int32_t ConsoleHistoryCur {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};
-    int32 MessBoxScroll {};
+    int32_t MessBoxScroll {};
     raw_ptr<MapView> LastHistoryMap {};
-    int32 LastHistoryUndoCount {-1};
+    int32_t LastHistoryUndoCount {-1};
     bool UndoRedoInProgress {};
     size_t MaxUndoDepth {100};
     bool SpritesCanDraw {};
-    uint8 SelectAlpha {100};
+    uint8_t SelectAlpha {100};
 };
 
 FO_END_NAMESPACE

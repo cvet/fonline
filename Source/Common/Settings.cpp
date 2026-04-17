@@ -62,11 +62,11 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::floating_point<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
-        entry += numeric_cast<float32>(any_value.AsDouble());
+        entry += numeric_cast<float32_t>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
+        entry = static_cast<T>(static_cast<int64_t>(entry) | any_value.AsInt64());
     }
     else if constexpr (some_strong_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
@@ -113,7 +113,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(numeric_cast<float32>(arr_entry.AsDouble()));
+            entry.emplace_back(numeric_cast<float32_t>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -249,11 +249,11 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32 argc, char** argv)
+void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (int32 i = 0; i < argc; i++) {
+    for (int32_t i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -399,7 +399,7 @@ void GlobalSettings::ApplyAutoSettings()
 
     const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int32&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    const_cast<int32_t&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;
@@ -598,7 +598,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
             pack_info.MapperOnly = strvex(mapper_only).to_bool();
         }
-        if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
+        if (std::bit_cast<int8_t>(pack_info.ServerOnly) + std::bit_cast<int8_t>(pack_info.ClientOnly) + std::bit_cast<int8_t>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 

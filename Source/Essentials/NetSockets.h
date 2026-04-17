@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 #if FO_WINDOWS
 using socket_t = uintptr_t;
 #else
-using socket_t = int32;
+using socket_t = int32_t;
 #endif
 
 class net_sockets final
@@ -63,11 +63,11 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_sock; }
 
-    auto connect(string_view host, uint16 port) noexcept -> bool;
+    auto connect(string_view host, uint16_t port) noexcept -> bool;
     auto can_read(timespan timeout = {}) const noexcept -> bool;
     auto can_write(timespan timeout = {}) const noexcept -> bool;
-    auto send(const_span<uint8> data) noexcept -> int32;
-    auto receive(span<uint8> data) noexcept -> int32;
+    auto send(const_span<uint8_t> data) noexcept -> int32_t;
+    auto receive(span<uint8_t> data) noexcept -> int32_t;
     void close() noexcept;
 
 private:
@@ -89,7 +89,7 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_listenSock; }
 
-    auto listen(string_view bind_host, uint16 port, int32 backlog = 1) noexcept -> bool;
+    auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
     auto can_accept(timespan timeout = {}) const noexcept -> bool;
     auto accept() noexcept -> tcp_socket;
     void close() noexcept;
@@ -110,12 +110,12 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_sock; }
 
-    auto bind(string_view bind_host, uint16 port, bool reuse_addr = true) noexcept -> bool;
+    auto bind(string_view bind_host, uint16_t port, bool reuse_addr = true) noexcept -> bool;
     auto can_read(timespan timeout = {}) const noexcept -> bool;
     auto can_write(timespan timeout = {}) const noexcept -> bool;
     auto set_broadcast(bool enabled) noexcept -> bool;
-    auto send_to(string_view host, uint16 port, const_span<uint8> data) noexcept -> int32;
-    auto receive_from(span<uint8> data, string& out_host, uint16& out_port) noexcept -> int32;
+    auto send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t;
+    auto receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t;
     void close() noexcept;
 
 private:

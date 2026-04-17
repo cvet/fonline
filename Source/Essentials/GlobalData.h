@@ -68,6 +68,6 @@ constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 40;
 using GlobalDataCallback = void (*)();
 extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern int32 GlobalDataCallbacksCount;
+extern int32_t GlobalDataCallbacksCount;
 
 FO_END_NAMESPACE

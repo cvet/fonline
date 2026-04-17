@@ -49,7 +49,7 @@
 FO_BEGIN_NAMESPACE
 
 constexpr socket_t INVALID_SOCKET_VALUE = static_cast<socket_t>(-1);
-constexpr int32 SOCKET_ERROR_VALUE = static_cast<int32>(-1);
+constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
 using sock_addr_t = decltype(std::declval<sockaddr_in>().sin_addr.s_addr);
 
 static void CloseSocket(socket_t sock)
@@ -107,7 +107,7 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
         write_ptr = &write_set;
     }
 
-    const auto timeout_ms = std::max<int64>(timeout.milliseconds(), 0);
+    const auto timeout_ms = std::max<int64_t>(timeout.milliseconds(), 0);
 
     timeval timeout_tv {};
     timeout_tv.tv_sec = numeric_cast<decltype(timeout_tv.tv_sec)>(timeout_ms / 1000);
@@ -116,7 +116,7 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
 #if FO_WINDOWS
     const auto select_result = ::select(0, read_ptr, write_ptr, nullptr, &timeout_tv);
 #else
-    const auto select_result = ::select(numeric_cast<int32>(sock) + 1, read_ptr, write_ptr, nullptr, &timeout_tv);
+    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr, write_ptr, nullptr, &timeout_tv);
 #endif
 
     if (select_result <= 0) {
@@ -148,7 +148,7 @@ tcp_socket::tcp_socket(socket_t sock) noexcept :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto tcp_socket::connect(string_view host, uint16 port) noexcept -> bool
+auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -205,7 +205,7 @@ auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
     return WaitSocketReady(*_sock, false, true, timeout);
 }
 
-auto tcp_socket::send(const_span<uint8> data) noexcept -> int32
+auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -213,10 +213,10 @@ auto tcp_socket::send(const_span<uint8> data) noexcept -> int32
         return 0;
     }
 
-    return ::send(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32>(data.size()), 0);
+    return ::send(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32_t>(data.size()), 0);
 }
 
-auto tcp_socket::receive(span<uint8> data) noexcept -> int32
+auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -224,7 +224,7 @@ auto tcp_socket::receive(span<uint8> data) noexcept -> int32
         return 0;
     }
 
-    return ::recv(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32>(data.size()), 0);
+    return ::recv(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32_t>(data.size()), 0);
 }
 
 void tcp_socket::close() noexcept
@@ -234,7 +234,7 @@ void tcp_socket::close() noexcept
     _sock.reset();
 }
 
-auto tcp_server::listen(string_view bind_host, uint16 port, int32 backlog) noexcept -> bool
+auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -295,7 +295,7 @@ auto tcp_server::accept() noexcept -> tcp_socket
 
     sockaddr_in addr {};
 #if FO_WINDOWS
-    int32 addr_len = sizeof(addr);
+    int32_t addr_len = sizeof(addr);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
@@ -315,7 +315,7 @@ void tcp_server::close() noexcept
     _listenSock.reset();
 }
 
-auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexcept -> bool
+auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -329,7 +329,7 @@ auto udp_socket::bind(string_view bind_host, uint16 port, bool reuse_addr) noexc
 
 #if !FO_WEB
     if (reuse_addr) {
-        constexpr int32 opt = 1;
+        constexpr int32_t opt = 1;
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             CloseSocket(sock);
@@ -394,14 +394,14 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
     }
 
 #if !FO_WEB
-    const int32 opt = enabled ? 1 : 0;
+    const int32_t opt = enabled ? 1 : 0;
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&opt), sizeof(opt)) != SOCKET_ERROR_VALUE;
 #else
     return false;
 #endif
 }
 
-auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) noexcept -> int32
+auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -417,10 +417,10 @@ auto udp_socket::send_to(string_view host, uint16 port, const_span<uint8> data) 
         return 0;
     }
 
-    return ::sendto(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32>(data.size()), 0, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+    return ::sendto(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32_t>(data.size()), 0, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
 }
 
-auto udp_socket::receive_from(span<uint8> data, string& out_host, uint16& out_port) noexcept -> int32
+auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -433,17 +433,17 @@ auto udp_socket::receive_from(span<uint8> data, string& out_host, uint16& out_po
 
     sockaddr_in addr {};
 #if FO_WINDOWS
-    int32 addr_len = sizeof(addr);
+    int32_t addr_len = sizeof(addr);
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
-    const int32 result = ::recvfrom(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32>(data.size()), 0, reinterpret_cast<sockaddr*>(&addr), &addr_len);
+    const int32_t result = ::recvfrom(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32_t>(data.size()), 0, reinterpret_cast<sockaddr*>(&addr), &addr_len);
 
     if (result <= 0) {
         return result;
     }
 
-    const uint32 ip = ntohl(addr.sin_addr.s_addr);
+    const uint32_t ip = ntohl(addr.sin_addr.s_addr);
     out_host = strex("{}.{}.{}.{}", (ip >> 24U) & 0xFFU, (ip >> 16U) & 0xFFU, (ip >> 8U) & 0xFFU, ip & 0xFFU);
     out_port = ntohs(addr.sin_port);
     return result;

@@ -46,9 +46,9 @@ TEST_CASE("TimeRelated")
 
         CHECK((a + b).milliseconds() == 2000);
         CHECK((a - b).milliseconds() == 1000);
-        CHECK(a.to_ms<int32>() == 1500);
-        CHECK(a.to_sec<int32>() == 1);
-        CHECK(is_float_equal(a.div<float32>(b), 3.0f));
+        CHECK(a.to_ms<int32_t>() == 1500);
+        CHECK(a.to_sec<int32_t>() == 1);
+        CHECK(is_float_equal(a.div<float32_t>(b), 3.0f));
         CHECK(a > b);
         CHECK(timespan::zero == timespan {});
     }

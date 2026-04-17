@@ -42,19 +42,19 @@ namespace
     {
     public:
         virtual ~PtrBase() = default;
-        int32 Value {};
+        int32_t Value {};
     };
 
     class PtrDerived final : public PtrBase
     {
     public:
-        explicit PtrDerived(int32 value) { Value = value; }
+        explicit PtrDerived(int32_t value) { Value = value; }
     };
 
     class RefCountedValue final
     {
     public:
-        RefCountedValue(int32 value, int32* destroy_count) noexcept :
+        RefCountedValue(int32_t value, int32_t* destroy_count) noexcept :
             Value {value},
             DestroyCount {destroy_count}
         {
@@ -72,9 +72,9 @@ namespace
             }
         }
 
-        int32 RefCount {};
-        int32 Value {};
-        int32* DestroyCount {};
+        int32_t RefCount {};
+        int32_t Value {};
+        int32_t* DestroyCount {};
     };
 }
 
@@ -118,13 +118,13 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueDelPtrRunsCustomDeleter")
     {
-        int32 deleted_value = 0;
+        int32_t deleted_value = 0;
 
         {
-            unique_del_ptr<int32> ptr {new int32 {15}, [&](int32* value) {
-                                           deleted_value = *value;
-                                           delete value;
-                                       }};
+            unique_del_ptr<int32_t> ptr {new int32_t {15}, [&](int32_t* value) {
+                                             deleted_value = *value;
+                                             delete value;
+                                         }};
 
             REQUIRE(ptr);
             CHECK(*ptr == 15);
@@ -135,7 +135,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("RefcountPtrTracksReferencesAndReleaseOwnership")
     {
-        int32 destroy_count = 0;
+        int32_t destroy_count = 0;
         auto* raw = new RefCountedValue {33, &destroy_count};
 
         {

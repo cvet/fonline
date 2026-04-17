@@ -41,13 +41,13 @@ TEST_CASE("CommonEvents")
 {
     SECTION("DispatchAndManualUnsubscribe")
     {
-        EventObserver<int32> observer;
-        EventDispatcher<int32> dispatch(observer);
+        EventObserver<int32_t> observer;
+        EventDispatcher<int32_t> dispatch(observer);
         EventUnsubscriber unsubscriber;
-        int32 sum = 0;
+        int32_t sum = 0;
 
-        unsubscriber += (observer += [&](int32 value) { sum += value; });
-        unsubscriber += (observer += [&](int32 value) { sum += value * 10; });
+        unsubscriber += (observer += [&](int32_t value) { sum += value; });
+        unsubscriber += (observer += [&](int32_t value) { sum += value * 10; });
 
         dispatch(2);
         CHECK(sum == 22);
@@ -63,13 +63,13 @@ TEST_CASE("CommonEvents")
 
     SECTION("DestructorUnsubscribes")
     {
-        EventObserver<int32> observer;
-        EventDispatcher<int32> dispatch(observer);
-        int32 calls = 0;
+        EventObserver<int32_t> observer;
+        EventDispatcher<int32_t> dispatch(observer);
+        int32_t calls = 0;
 
         {
             EventUnsubscriber unsubscriber;
-            unsubscriber += (observer += [&](int32 value) { calls += value; });
+            unsubscriber += (observer += [&](int32_t value) { calls += value; });
 
             dispatch(5);
             CHECK(calls == 5);
@@ -81,12 +81,12 @@ TEST_CASE("CommonEvents")
 
     SECTION("MoveKeepsSubscriptionOwnership")
     {
-        EventObserver<int32> observer;
-        EventDispatcher<int32> dispatch(observer);
-        int32 calls = 0;
+        EventObserver<int32_t> observer;
+        EventDispatcher<int32_t> dispatch(observer);
+        int32_t calls = 0;
 
         EventUnsubscriber original;
-        original += (observer += [&](int32 value) { calls += value; });
+        original += (observer += [&](int32_t value) { calls += value; });
 
         EventUnsubscriber moved = std::move(original);
 
@@ -114,12 +114,12 @@ TEST_CASE("CommonUtilities")
         WriteSimpleTga(string(file_path.string()), image_size, pixels);
 
         REQUIRE(std::filesystem::exists(file_path));
-        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32));
+        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
 
         std::ifstream input(file_path, std::ios::binary);
         REQUIRE(input);
 
-        std::array<uint8, 18> header {};
+        std::array<uint8_t, 18> header {};
         input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
         REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
 
@@ -131,7 +131,7 @@ TEST_CASE("CommonUtilities")
         CHECK(header[16] == 32);
         CHECK(header[17] == 0x20);
 
-        std::array<uint32, 2> stored_pixels {};
+        std::array<uint32_t, 2> stored_pixels {};
         input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
         REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
 

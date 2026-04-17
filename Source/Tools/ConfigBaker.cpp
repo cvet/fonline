@@ -64,7 +64,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     const auto check_bake_config = [&](string_view sub_config) {
         const auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
             const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-            if (!_context->BakeChecker || _context->BakeChecker(cfg_name, std::numeric_limits<uint64>::max())) {
+            if (!_context->BakeChecker || _context->BakeChecker(cfg_name, std::numeric_limits<uint64_t>::max())) {
                 configs_to_bake.emplace(sub_config);
             }
         };
@@ -110,7 +110,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             string client_config_content;
             client_config_content.reserve(0x4000);
 
-            int32 settings_errors = 0;
+            int32_t settings_errors = 0;
 
             for (auto&& [key, value] : config_settings) {
                 const auto is_server_setting = server_settings.count(key) != 0;
@@ -151,7 +151,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             if (settings_errors == 0) {
                 const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-                    _context->WriteData(cfg_name, {reinterpret_cast<const uint8*>(cfg_content.data()), cfg_content.size()});
+                    _context->WriteData(cfg_name, {reinterpret_cast<const uint8_t*>(cfg_content.data()), cfg_content.size()});
                 };
 
                 write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content);

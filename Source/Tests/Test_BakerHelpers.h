@@ -69,35 +69,35 @@ namespace BakerTests
         OverrideSetting(settings.OpLogEnabled, false);
     }
 
-    inline auto MakeEmptyMetadataBlob() -> vector<uint8>
+    inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
     {
-        vector<uint8> metadata;
+        vector<uint8_t> metadata;
         auto writer = DataWriter(metadata);
-        writer.Write<uint16>(uint16 {0});
+        writer.Write<uint16_t>(uint16_t {0});
         return metadata;
     }
 
     template<typename ProtoType>
-    inline auto MakeSingleProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8>
+    inline auto MakeSingleProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8_t>
     {
-        vector<uint8> props_data;
+        vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
         ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
         proto.GetProperties().StoreAllData(props_data, str_hashes);
 
-        vector<uint8> protos_data;
+        vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
 
-        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32>(uint32 {1});
-        writer.Write<uint32>(uint32 {1});
-        writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
         writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
-        writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.WritePtr(proto_name.data(), proto_name.length());
-        writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         writer.WritePtr(props_data.data(), props_data.size());
 
         return protos_data;
@@ -114,20 +114,20 @@ namespace BakerTests
         struct Entry
         {
             string Path {};
-            vector<uint8> Data {};
-            uint64 WriteTime {};
+            vector<uint8_t> Data {};
+            uint64_t WriteTime {};
         };
 
         [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
         [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
 
-        void AddFile(string_view path, string_view content, uint64 write_time = 1) { AddFile(path, vector<uint8> {content.begin(), content.end()}, write_time); }
+        void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
 
-        void AddFile(string_view path, vector<uint8> data, uint64 write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
+        void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
 
         [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _entries.contains(string(path)); }
 
-        [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override
+        [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
         {
             const auto it = _entries.find(string(path));
 
@@ -140,7 +140,7 @@ namespace BakerTests
             return true;
         }
 
-        [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override
+        [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> override
         {
             const auto it = _entries.find(string(path));
 
@@ -153,13 +153,13 @@ namespace BakerTests
             size = it->second.Data.size();
             write_time = it->second.WriteTime;
 
-            auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
+            auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
             if (size != 0u) {
                 MemCopy(buf.get(), it->second.Data.data(), size);
             }
 
-            return unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
+            return unique_del_ptr<const uint8_t> {buf.release(), [](const uint8_t* p) FO_DEFERRED { delete[] p; }};
         }
 
         [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override
@@ -208,9 +208,9 @@ namespace BakerTests
             _fileSystem.AddCustomSource(std::move(ds));
         }
 
-        void AddTextFile(string_view path, string_view content, uint64 write_time = 1) { _dataSource->AddFile(path, content, write_time); }
+        void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
 
-        void AddBinaryFile(string_view path, vector<uint8> content, uint64 write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
+        void AddBinaryFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
 
         [[nodiscard]] auto ReadFile(string_view path) const -> File { return _fileSystem.ReadFile(path); }
 
@@ -221,7 +221,7 @@ namespace BakerTests
         FileSystem _fileSystem {};
     };
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8>
+    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -256,11 +256,11 @@ namespace BakerTests
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
 
-        void AddSourceFile(string_view path, string_view content, uint64 write_time = 1) { _sourceData->AddFile(path, content, write_time); }
+        void AddSourceFile(string_view path, string_view content, uint64_t write_time = 1) { _sourceData->AddFile(path, content, write_time); }
 
-        void AddBakedFile(string_view path, string_view content, uint64 write_time = 1) { _bakedData->AddFile(path, content, write_time); }
+        void AddBakedFile(string_view path, string_view content, uint64_t write_time = 1) { _bakedData->AddFile(path, content, write_time); }
 
-        void AddBakedFile(string_view path, vector<uint8> content, uint64 write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }
+        void AddBakedFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }
 
         [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
 
@@ -271,14 +271,14 @@ namespace BakerTests
             Outputs.clear();
 
             if (!bake_checker) {
-                bake_checker = [](string_view, uint64) { return true; };
+                bake_checker = [](string_view, uint64_t) { return true; };
             }
 
             return SafeAlloc::MakeShared<BakingContext>(BakingContext {
                 .Settings = &Settings,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
-                .WriteData = [this](string_view path, const_span<uint8> data) { Outputs[string(path)] = vector<uint8> {data.begin(), data.end()}; },
+                .WriteData = [this](string_view path, const_span<uint8_t> data) { Outputs[string(path)] = vector<uint8_t> {data.begin(), data.end()}; },
                 .BakedFiles = &BakedFiles,
                 .ForceSyncMode = true,
             });
@@ -294,7 +294,7 @@ namespace BakerTests
         GlobalSettings Settings;
         FileSystem SourceFiles {};
         FileSystem BakedFiles {};
-        unordered_map<string, vector<uint8>> Outputs {};
+        unordered_map<string, vector<uint8_t>> Outputs {};
 
     private:
         raw_ptr<MemoryDataSource> _sourceData {};
@@ -303,7 +303,7 @@ namespace BakerTests
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
-        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64) { return true; }, [](string_view, const_span<uint8>) {}, &rig.BakedFiles);
+        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) {}, &rig.BakedFiles);
     }
 }
 

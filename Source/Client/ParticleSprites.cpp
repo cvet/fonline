@@ -60,7 +60,7 @@ void ParticleSprite::Prewarm()
     _particle->Prewarm();
 }
 
-void ParticleSprite::SetTime(float32 normalized_time)
+void ParticleSprite::SetTime(float32_t normalized_time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -129,8 +129,8 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     }
 
     const auto draw_size = particle->GetDrawSize();
-    const auto frame_ratio = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(draw_size.height);
-    const auto proj_height = numeric_cast<float32>(draw_size.height) * (1.0f / _settings->ModelProjFactor);
+    const auto frame_ratio = numeric_cast<float32_t>(draw_size.width) / numeric_cast<float32_t>(draw_size.height);
+    const auto proj_height = numeric_cast<float32_t>(draw_size.height) * (1.0f / _settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
     const mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     const auto world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
@@ -140,10 +140,10 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(atlas_type, draw_size);
 
     frect32 atlas_rect;
-    atlas_rect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->GetSize().width);
-    atlas_rect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->GetSize().height);
-    atlas_rect.width = numeric_cast<float32>(draw_size.width) / numeric_cast<float32>(atlas->GetSize().width);
-    atlas_rect.height = numeric_cast<float32>(draw_size.height) / numeric_cast<float32>(atlas->GetSize().height);
+    atlas_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    atlas_rect.width = numeric_cast<float32_t>(draw_size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.height = numeric_cast<float32_t>(draw_size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
     const ipos32 offset = ipos32(0, draw_size.height / 4);
     auto particle_spr = SafeAlloc::MakeShared<ParticleSprite>(*_sprMngr, draw_size, offset, atlas, atlas_node, atlas_rect, this, std::move(particle));
@@ -210,10 +210,10 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     _sprMngr->GetRtMngr().PopRenderTarget();
 
     // Copy render
-    const int32 l = iround<int32>(particle_spr->GetAtlasRect().x * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().width));
-    const int32 t = iround<int32>(particle_spr->GetAtlasRect().y * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().height));
-    const int32 w = iround<int32>(particle_spr->GetAtlasRect().width * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().width));
-    const int32 h = iround<int32>(particle_spr->GetAtlasRect().height * numeric_cast<float32>(particle_spr->GetAtlas()->GetSize().height));
+    const int32_t l = iround<int32_t>(particle_spr->GetAtlasRect().x * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().width));
+    const int32_t t = iround<int32_t>(particle_spr->GetAtlasRect().y * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().height));
+    const int32_t w = iround<int32_t>(particle_spr->GetAtlasRect().width * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().width));
+    const int32_t h = iround<int32_t>(particle_spr->GetAtlasRect().height * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().height));
     const irect32 region_to = irect32(l, t, w, h);
 
     _sprMngr->GetRtMngr().PushRenderTarget(particle_spr->GetAtlas()->GetRenderTarget());

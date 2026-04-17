@@ -44,7 +44,7 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr uint32 NETMSG_SIGNATURE = 0x011E9422;
+    static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
     static constexpr hstring::hash_t DEBUG_HASH_VALUE = static_cast<hstring::hash_t>(~0);
 
     explicit NetBuffer(size_t buf_len);
@@ -54,23 +54,23 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> const_span<uint8> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t> { return {_bufData.data(), _bufEndPos}; }
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
-    void SetEncryptKey(uint32 seed);
+    void SetEncryptKey(uint32_t seed);
     virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int32 move) noexcept -> uint8;
-    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len) const noexcept;
+    auto EncryptKey(int32_t move) noexcept -> uint8_t;
+    void CopyBuf(const void* from, void* to, uint8_t crypt_key, size_t len) const noexcept;
 
-    vector<uint8> _bufData {};
+    vector<uint8_t> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
-    int32 _encryptKeyPos {};
-    uint8 _encryptKeys[CRYPT_KEYS_COUNT] {};
+    int32_t _encryptKeyPos {};
+    uint8_t _encryptKeys[CRYPT_KEYS_COUNT] {};
 };
 
 class NetOutBuffer final : public NetBuffer
@@ -89,7 +89,7 @@ public:
 
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
 
-    void Push(const_span<uint8> buf);
+    void Push(const_span<uint8_t> buf);
     void Push(const void* buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
@@ -104,7 +104,7 @@ public:
         requires(std::same_as<T, string_view> || std::same_as<T, string>)
     void Write(const T& value)
     {
-        const auto len = numeric_cast<uint32>(value.length());
+        const auto len = numeric_cast<uint32_t>(value.length());
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -116,7 +116,7 @@ public:
         WriteHashedString(value);
     }
 
-    void WritePropsData(vector<const uint8*>* props_data, const vector<uint32>* props_data_sizes);
+    void WritePropsData(vector<const uint8_t*>* props_data, const vector<uint32_t>* props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -145,7 +145,7 @@ public:
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
-    void AddData(const_span<uint8> buf);
+    void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
@@ -165,7 +165,7 @@ public:
     [[nodiscard]] auto Read() -> string
     {
         string result;
-        uint32 len = 0;
+        uint32_t len = 0;
         Pop(&len, sizeof(len));
         result.resize(len);
         Pop(result.data(), len);
@@ -179,7 +179,7 @@ public:
         return ReadHashedString(hash_resolver);
     }
 
-    void ReadPropsData(vector<vector<uint8>>& props_data);
+    void ReadPropsData(vector<vector<uint8_t>>& props_data);
 
     auto ReadMsg() -> NetMessage;
 

@@ -60,7 +60,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
 
     // Collect files
     vector<File> filtered_files;
-    uint64 max_write_time = 0;
+    uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
@@ -130,7 +130,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     }
 }
 
-auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8>
+auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -236,21 +236,21 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
     ctx.Meta->FinalizeRegistration();
 
     // Serialize data
-    vector<uint8> data;
+    vector<uint8_t> data;
     DataWriter writer(data);
 
-    writer.Write<uint16>(numeric_cast<uint16>(ctx.ResultTags.size()));
+    writer.Write<uint16_t>(numeric_cast<uint16_t>(ctx.ResultTags.size()));
 
     for (const auto& [tag_name, tag_values] : ctx.ResultTags) {
-        writer.Write<uint16>(numeric_cast<uint16>(tag_name.size()));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
         writer.WritePtr(tag_name.data(), tag_name.size());
-        writer.Write<uint32>(numeric_cast<uint32>(tag_values.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
 
         for (const auto& tag_value : tag_values) {
-            writer.Write<uint32>(numeric_cast<uint32>(tag_value.size()));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_value.size()));
 
             for (const auto& tag_value_part : tag_value) {
-                writer.Write<uint16>(numeric_cast<uint16>(tag_value_part.size()));
+                writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
                 writer.WritePtr(tag_value_part.data(), tag_value_part.size());
             }
         }
@@ -267,8 +267,8 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
     {
         bool IsEngine {};
         string UnderlyingType {};
-        vector<pair<string, optional<int64>>> Entries {};
-        unordered_map<string, int32> EngineEntries {};
+        vector<pair<string, optional<int64_t>>> Entries {};
+        unordered_map<string, int32_t> EngineEntries {};
     };
 
     map<string, EnumDesc> enums;
@@ -304,7 +304,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Enum codegen tag: cannot override engine enum value", tag_desc.SourceFile, tag_desc.LineNumber, enum_name, enum_entry);
         }
 
-        optional<int32> enum_value;
+        optional<int32_t> enum_value;
 
         if (tag_desc.Tokens.size() >= 3 && tag_desc.Tokens[2] == "=") {
             if (tag_desc.Tokens.size() < 4) {
@@ -314,7 +314,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 throw MetadataBakerException("Invalid Enum codegen tag: expected number after '='", tag_desc.SourceFile, tag_desc.LineNumber, tag_desc.Tokens[3]);
             }
 
-            int64 value;
+            int64_t value;
 
             if (tag_desc.Tokens[3] == "-") {
                 if (tag_desc.Tokens.size() < 5 || !strvex(tag_desc.Tokens[4]).is_number()) {
@@ -327,16 +327,16 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 value = strvex(tag_desc.Tokens[3]).to_int64();
             }
 
-            if (value < std::numeric_limits<int32>::min() || value > std::numeric_limits<int32>::max()) {
+            if (value < std::numeric_limits<int32_t>::min() || value > std::numeric_limits<int32_t>::max()) {
                 throw MetadataBakerException("Invalid Enum codegen tag: enum value out of int32 range", tag_desc.SourceFile, tag_desc.LineNumber, value);
             }
 
-            enum_value = numeric_cast<int32>(value);
+            enum_value = numeric_cast<int32_t>(value);
 
             if (std::ranges::any_of(enum_desc.Entries, [&](auto&& kv) { return kv.second == enum_value.value(); })) {
                 throw MetadataBakerException("Invalid Enum codegen tag: duplicate enum value", tag_desc.SourceFile, tag_desc.LineNumber, enum_value.value());
             }
-            if (enum_desc.IsEngine && std::ranges::any_of(enum_desc.EngineEntries, [&](auto&& kv) { return numeric_cast<int64>(kv.second) == enum_value.value(); })) {
+            if (enum_desc.IsEngine && std::ranges::any_of(enum_desc.EngineEntries, [&](auto&& kv) { return numeric_cast<int64_t>(kv.second) == enum_value.value(); })) {
                 throw MetadataBakerException("Invalid Enum codegen tag: duplicate enum value in engine enum", tag_desc.SourceFile, tag_desc.LineNumber, enum_value.value());
             }
         }
@@ -350,7 +350,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             continue;
         }
 
-        int64 last_value = -1;
+        int64_t last_value = -1;
 
         for (const auto& value : enum_desc.Entries | std::views::values) {
             if (value.has_value()) {
@@ -360,7 +360,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 
         if (enum_desc.IsEngine) {
             for (const auto& value : enum_desc.EngineEntries | std::views::values) {
-                last_value = std::max(numeric_cast<int64>(value), last_value);
+                last_value = std::max(numeric_cast<int64_t>(value), last_value);
             }
         }
 
@@ -383,8 +383,8 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             utype = "uint8";
         }
         else {
-            int64 min_value = std::numeric_limits<int32>::max();
-            int64 max_value = std::numeric_limits<int32>::min();
+            int64_t min_value = std::numeric_limits<int32_t>::max();
+            int64_t max_value = std::numeric_limits<int32_t>::min();
 
             for (const auto& value : enum_desc.Entries | std::views::values) {
                 if (value.has_value()) {
@@ -395,34 +395,34 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 
             if (enum_desc.IsEngine) {
                 for (const auto& value : enum_desc.EngineEntries | std::views::values) {
-                    min_value = std::min(numeric_cast<int64>(value), min_value);
-                    max_value = std::max(numeric_cast<int64>(value), max_value);
+                    min_value = std::min(numeric_cast<int64_t>(value), min_value);
+                    max_value = std::max(numeric_cast<int64_t>(value), max_value);
                 }
             }
 
             FO_RUNTIME_ASSERT(max_value >= min_value);
 
             if (min_value < 0) {
-                if (max_value > std::numeric_limits<int32>::max()) {
+                if (max_value > std::numeric_limits<int32_t>::max()) {
                     throw MetadataBakerException("Enum underlying type overflow: max value exceed int32 range", "", enum_name);
                 }
-                if (min_value < std::numeric_limits<int32>::min()) {
+                if (min_value < std::numeric_limits<int32_t>::min()) {
                     throw MetadataBakerException("Enum underlying type overflow: min value less than int32 range", "", enum_name);
                 }
 
                 utype = "int32";
             }
             else {
-                if (max_value <= numeric_cast<int64>(std::numeric_limits<uint8>::max())) {
+                if (max_value <= numeric_cast<int64_t>(std::numeric_limits<uint8_t>::max())) {
                     utype = "uint8";
                 }
-                else if (max_value <= numeric_cast<int64>(std::numeric_limits<uint16>::max())) {
+                else if (max_value <= numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())) {
                     utype = "uint16";
                 }
-                else if (max_value <= numeric_cast<int64>(std::numeric_limits<int32>::max())) {
+                else if (max_value <= numeric_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
                     utype = "int32";
                 }
-                else if (max_value <= numeric_cast<int64>(std::numeric_limits<uint32>::max())) {
+                else if (max_value <= numeric_cast<int64_t>(std::numeric_limits<uint32_t>::max())) {
                     utype = "uint32";
                 }
                 else {
@@ -458,17 +458,17 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
         }
 
         if (!enum_desc.IsEngine) {
-            unordered_map<string, int32> key_values;
+            unordered_map<string, int32_t> key_values;
 
             for (const auto& entry : enum_desc.Entries) {
-                key_values.emplace(string(entry.first), numeric_cast<int32>(entry.second.value()));
+                key_values.emplace(string(entry.first), numeric_cast<int32_t>(entry.second.value()));
             }
 
             ctx.Meta->RegisterEnumGroup(enum_name, enum_desc.UnderlyingType, std::move(key_values));
         }
         else {
             for (const auto& entry : enum_desc.Entries) {
-                ctx.Meta->RegisterEnumEntry(enum_name, entry.first, numeric_cast<int32>(entry.second.value()));
+                ctx.Meta->RegisterEnumEntry(enum_name, entry.first, numeric_cast<int32_t>(entry.second.value()));
             }
         }
 
@@ -587,7 +587,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         if (!ctx.Meta->IsValidEntityType(target_entity_hname)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown target entity type", tag_desc.SourceFile, tag_desc.LineNumber, target_entity_name);
         }
-        if (static_cast<int32>(has_no_sync) + static_cast<int32>(has_owner_sync) + static_cast<int32>(has_public_sync) > 1) {
+        if (static_cast<int32_t>(has_no_sync) + static_cast<int32_t>(has_owner_sync) + static_cast<int32_t>(has_public_sync) > 1) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: sync flags invalid mixture", tag_desc.SourceFile, tag_desc.LineNumber);
         }
         if (target == "Common" && !has_owner_sync && !has_public_sync && !has_no_sync) {
@@ -813,7 +813,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         if (is_virtual && (is_owner_sync || is_public_sync || is_no_sync)) {
             throw MetadataBakerException("Invalid Property codegen tag: synced property can't be virtual", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (static_cast<int32>(is_owner_sync) + static_cast<int32>(is_public_sync) + static_cast<int32>(is_no_sync) > 1) {
+        if (static_cast<int32_t>(is_owner_sync) + static_cast<int32_t>(is_public_sync) + static_cast<int32_t>(is_no_sync) > 1) {
             throw MetadataBakerException("Invalid Property codegen tag: sync flags invalid mixture", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
         if (is_modifiable_by_client && !is_synced) {
@@ -851,7 +851,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 
         const auto* prop = registrator->RegisterProperty(span(tokens).subspan(1));
         const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
-        ctx.Meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32>(prop->GetRegIndex()));
+        ctx.Meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
 
         result_tag_property.emplace_back(vec_transform(tokens, [](auto&& e) -> string { return string(e); }));
     }

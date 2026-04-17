@@ -65,7 +65,7 @@ TEST_CASE("TextBaker")
         TestRig rig;
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack", [](string_view, uint64) { return false; }));
+        TextBaker baker(rig.MakeContext("CorePack", [](string_view, uint64_t) { return false; }));
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());

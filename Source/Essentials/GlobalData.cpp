@@ -37,7 +37,7 @@ FO_BEGIN_NAMESPACE
 
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-int32 GlobalDataCallbacksCount;
+int32_t GlobalDataCallbacksCount;
 
 extern void CreateGlobalData()
 {

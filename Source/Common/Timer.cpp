@@ -60,7 +60,7 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
     const auto now_time = nanotime::now();
 
     if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
-        const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32>();
+        const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32_t>();
 
         if (dt > _settings->DeltaTimeCap) {
             _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);

@@ -196,7 +196,7 @@ protected:
 private:
     struct DbRequestsPerMinuteBucket
     {
-        int64 Second {};
+        int64_t Second {};
         size_t Count {};
     };
 

@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(DataReadingException);
 class DataReader
 {
 public:
-    explicit DataReader(const_span<uint8> buf) :
+    explicit DataReader(const_span<uint8_t> buf) :
         _dataBuf {buf}
     {
     }
@@ -97,14 +97,14 @@ public:
     }
 
 private:
-    const_span<uint8> _dataBuf;
+    const_span<uint8_t> _dataBuf;
     size_t _readPos {};
 };
 
 class MutableDataReader
 {
 public:
-    explicit MutableDataReader(span<uint8> buf) :
+    explicit MutableDataReader(span<uint8_t> buf) :
         _dataBuf {buf}
     {
     }
@@ -157,7 +157,7 @@ public:
     }
 
 private:
-    span<uint8> _dataBuf;
+    span<uint8_t> _dataBuf;
     size_t _readPos {};
 };
 
@@ -166,7 +166,7 @@ class DataWriter
 public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    explicit DataWriter(vector<uint8>& buf) noexcept :
+    explicit DataWriter(vector<uint8_t>& buf) noexcept :
         _dataBuf {&buf}
     {
         _dataBuf->reserve(BUF_RESERVE_SIZE);
@@ -199,7 +199,7 @@ private:
         _dataBuf->resize(_dataBuf->size() + size);
     }
 
-    raw_ptr<vector<uint8>> _dataBuf;
+    raw_ptr<vector<uint8_t>> _dataBuf;
 };
 
 FO_END_NAMESPACE

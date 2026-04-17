@@ -98,13 +98,13 @@ protected:
         vector<DataBaseKey> ids;
 
         while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
-            vector<uint8> key_data;
+            vector<uint8_t> key_data;
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
                 [](const void* output, unsigned output_len, void* user_data) {
-                    auto& result = *cast_from_void<vector<uint8>*>(user_data);
-                    result.assign(cast_from_void<const uint8*>(output), cast_from_void<const uint8*>(output) + output_len);
+                    auto& result = *cast_from_void<vector<uint8_t>*>(user_data);
+                    result.assign(cast_from_void<const uint8_t*>(output), cast_from_void<const uint8_t*>(output) + output_len);
                     return UNQLITE_OK;
                 },
                 &key_data);
@@ -113,7 +113,7 @@ protected:
                 throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_key_callback);
             }
 
-            ids.emplace_back(ParseUnQLiteKey(key_data.data(), numeric_cast<uint32>(key_data.size()), key_type));
+            ids.emplace_back(ParseUnQLiteKey(key_data.data(), numeric_cast<uint32_t>(key_data.size()), key_type));
 
             const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor);
 
@@ -146,7 +146,7 @@ protected:
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
 
-                if (!bson_init_static(&bson, cast_from_void<const uint8*>(output), output_len)) {
+                if (!bson_init_static(&bson, cast_from_void<const uint8_t*>(output), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
@@ -289,7 +289,7 @@ protected:
     }
 
 private:
-    static auto MakeUnQLiteKey(const DataBaseKey& key, DataBaseKeyType key_type) -> vector<uint8>
+    static auto MakeUnQLiteKey(const DataBaseKey& key, DataBaseKeyType key_type) -> vector<uint8_t>
     {
         if (key_type == DataBaseKeyType::IntId) {
             const auto* numeric_key = std::get_if<ident_t>(&key);
@@ -298,26 +298,26 @@ private:
                 throw DataBaseException("DbUnQLite Invalid numeric key type", FormatUnQLiteDbKey(key));
             }
 
-            static_assert(sizeof(ident_t) == sizeof(int64));
+            static_assert(sizeof(ident_t) == sizeof(int64_t));
 
-            vector<uint8> result(sizeof(int64));
+            vector<uint8_t> result(sizeof(int64_t));
             const auto value = numeric_key->underlying_value();
             std::memcpy(result.data(), &value, sizeof(value));
             return result;
         }
 
         const auto key_str = std::get<string>(key);
-        return vector<uint8>(key_str.begin(), key_str.end());
+        return vector<uint8_t>(key_str.begin(), key_str.end());
     }
 
-    static auto ParseUnQLiteKey(const void* key_data, uint32 key_len, DataBaseKeyType key_type) -> DataBaseKey
+    static auto ParseUnQLiteKey(const void* key_data, uint32_t key_len, DataBaseKeyType key_type) -> DataBaseKey
     {
         if (key_type == DataBaseKeyType::IntId) {
-            if (key_len != sizeof(int64)) {
+            if (key_len != sizeof(int64_t)) {
                 throw DataBaseException("DbUnQLite invalid numeric key size", key_len);
             }
 
-            int64 value {};
+            int64_t value {};
             std::memcpy(&value, key_data, sizeof(value));
 
             if (value <= 0) {
@@ -397,7 +397,7 @@ private:
     }
 
     string _storageDir {};
-    int32 _openFlags {};
+    int32_t _openFlags {};
     mutable std::recursive_mutex _storageLocker {};
     unordered_map<hstring, raw_ptr<unqlite>> _collections {};
 };

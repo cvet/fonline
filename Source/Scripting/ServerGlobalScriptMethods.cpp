@@ -71,7 +71,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
     Properties props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     return server->CreateCritter(protoId, forPlayer, &props_);
@@ -87,7 +87,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCrit
     Properties props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     return server->CreateCritter(proto->GetProtoId(), forPlayer, &props_);
@@ -116,7 +116,7 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ServerEngine* server, iden
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
 {
     ignore_unused(server);
 
@@ -139,7 +139,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr1, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item1, Item* item2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1, Item* item2)
 {
     ignore_unused(server);
 
@@ -161,7 +161,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item1, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
 {
     ignore_unused(server);
 
@@ -184,7 +184,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, Critter* cr)
 {
     ignore_unused(server);
 
@@ -207,7 +207,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, Cr
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, mpos hex)
 {
     ignore_unused(server);
 
@@ -224,7 +224,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
 {
     ignore_unused(server);
 
@@ -241,7 +241,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Crit
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, mpos hex)
 {
     ignore_unused(server);
 
@@ -257,7 +257,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
 {
     ignore_unused(server);
 
@@ -301,7 +301,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critt
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Critter* toCr)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -334,7 +334,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Map* toMap, mpos toHex)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -380,7 +380,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Item* toCont)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -397,7 +397,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Item* toCont, any_t stackId)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -525,7 +525,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32 count)
+FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32_t count)
 {
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
@@ -550,7 +550,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32 count)
+FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32_t count)
 {
     auto* item = server->EntityMngr.GetItem(itemId);
 
@@ -670,7 +670,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
@@ -688,7 +688,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLo
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, &props_);
@@ -708,7 +708,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
@@ -846,13 +846,13 @@ FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32 skipCount)
+FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount)
 {
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32 skipCount)
+FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
 {
     if (mapProto == nullptr) {
         throw ScriptException("Map proto arg is null");
@@ -933,13 +933,13 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32 skipCount)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount)
 {
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32 skipCount)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
 {
     if (locProto == nullptr) {
         throw ScriptException("Location proto arg is null");
@@ -949,7 +949,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32 propertyValue)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
@@ -1016,7 +1016,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, P
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32 propertyValue)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
     auto& locs = server->EntityMngr.GetLocations();
@@ -1371,7 +1371,7 @@ FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey t
     return server->GetLangPack().IsTextPresent(textKey);
 }
 
-static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
+static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {
         log = strex(log).replace('\r', '\n', '\n').erase('\r');
@@ -1467,7 +1467,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     ::CloseHandle(pi.hProcess);
     ::CloseHandle(pi.hThread);
 
-    return std::bit_cast<int32>(retval);
+    return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
     FILE* in = popen(string(command).c_str(), "r");
@@ -1494,7 +1494,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view command)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command)
 {
     ignore_unused(server);
 
@@ -1503,7 +1503,7 @@ FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view com
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view command, string& output)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command, string& output)
 {
     ignore_unused(server);
 

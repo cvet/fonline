@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset, msize map_size)
+LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, msize map_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -44,7 +44,7 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset
     TraceInit(start_hex, target_hex, dir_angle_offset);
 }
 
-LineTracer::LineTracer(mpos start_hex, float32 dir_angle, int32 dist, msize map_size)
+LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize map_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -65,29 +65,29 @@ LineTracer::LineTracer(mpos start_hex, float32 dir_angle, int32 dist, msize map_
         dy = dy > 0.0f ? 1.0f : -1.0f;
     }
 
-    const auto sx = numeric_cast<float32>(start_hex.x) + 0.5f;
-    const auto sy = numeric_cast<float32>(start_hex.y) + 0.5f;
-    const auto tx = iround<int32>(std::floor(sx + dx * numeric_cast<float32>(dist)));
-    const auto ty = iround<int32>(std::floor(sy + dy * numeric_cast<float32>(dist)));
+    const auto sx = numeric_cast<float32_t>(start_hex.x) + 0.5f;
+    const auto sy = numeric_cast<float32_t>(start_hex.y) + 0.5f;
+    const auto tx = iround<int32_t>(std::floor(sx + dx * numeric_cast<float32_t>(dist)));
+    const auto ty = iround<int32_t>(std::floor(sy + dy * numeric_cast<float32_t>(dist)));
     const auto target_hex = _mapSize.from_raw_pos(tx, ty);
 
     TraceInit(start_hex, target_hex, 0.0f);
 }
 
-void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_offset)
+void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto sx = numeric_cast<float32>(start_hex.x);
-    const auto sy = numeric_cast<float32>(start_hex.y);
-    const auto tx = numeric_cast<float32>(target_hex.x);
-    const auto ty = numeric_cast<float32>(target_hex.y);
+    const auto sx = numeric_cast<float32_t>(start_hex.x);
+    const auto sy = numeric_cast<float32_t>(start_hex.y);
+    const auto tx = numeric_cast<float32_t>(target_hex.x);
+    const auto ty = numeric_cast<float32_t>(target_hex.y);
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         constexpr auto bias = 0.02f;
 
-        const auto sx_odd = numeric_cast<float32>(std::abs(start_hex.x % 2));
-        const auto tx_odd = numeric_cast<float32>(std::abs(target_hex.x % 2));
+        const auto sx_odd = numeric_cast<float32_t>(std::abs(start_hex.x % 2));
+        const auto tx_odd = numeric_cast<float32_t>(std::abs(target_hex.x % 2));
 
         _xStart = sx * 3.0f + bias;
         _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + bias;
@@ -185,8 +185,8 @@ auto LineTracer::GetNextHex(mpos& hex) const -> mdir
 
     const auto left_hex_f = fpos32(left_hex);
     const auto right_hex_f = fpos32(right_hex);
-    const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
-    const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+    const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
+    const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
 
     // Left hand biased
     if (dist_left <= dist_right) {
@@ -206,7 +206,7 @@ void LineTracer::GetNextSquare(mpos& pos)
     _x += _dx;
     _y += _dy;
 
-    pos = _mapSize.clamp_pos(iround<int32>(std::floor(_x)), iround<int32>(std::floor(_y)));
+    pos = _mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)));
 }
 
 FO_END_NAMESPACE

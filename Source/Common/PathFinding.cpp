@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
+auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -51,7 +51,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
             worst = result;
             return true; // Short-circuit
         }
-        if (static_cast<int8>(result) > static_cast<int8>(worst)) {
+        if (static_cast<int8_t>(result) > static_cast<int8_t>(worst)) {
             worst = result;
         }
         return false;
@@ -60,7 +60,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
     // Extend base hex in movement direction
     auto raw_extended = ipos32 {hex.x, hex.y};
 
-    for (int32 k = 0; k < multihex; k++) {
+    for (int32_t k = 0; k < multihex; k++) {
         GeometryHelper::MoveHexByDirUnsafe(raw_extended, dir);
     }
 
@@ -74,7 +74,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
 
     // CW/CCW perimeter from extended hex
     const bool is_square_corner = (dir.hex().value() % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
-    const int32 steps_count = is_square_corner ? multihex * 2 : multihex;
+    const int32_t steps_count = is_square_corner ? multihex * 2 : multihex;
 
     // Clockwise
     {
@@ -93,7 +93,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
 
         auto raw_hex = raw_extended;
 
-        for (int32 k = 0; k < steps_count; k++) {
+        for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, cw_dir);
             FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
 
@@ -120,7 +120,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize
 
         auto raw_hex = raw_extended;
 
-        for (int32 k = 0; k < steps_count; k++) {
+        for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, ccw_dir);
             FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
 
@@ -154,11 +154,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     // Prepare grid
     const auto max_len = input.MaxLength;
     const auto grid_side = numeric_cast<size_t>(max_len * 2 + 2);
-    vector<int16> grid_buffer;
+    vector<int16_t> grid_buffer;
     grid_buffer.assign(grid_side * grid_side, 0);
 
     const auto grid_offset = input.FromHex;
-    const auto grid_at = [&](mpos hex) -> int16& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
+    const auto grid_at = [&](mpos hex) -> int16_t& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
 
     vector<mpos> next_hexes;
     vector<mpos> gag_hexes;
@@ -186,14 +186,14 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 break;
             }
 
-            const auto next_hex_index = numeric_cast<int16>(grid_at(cur_hex) + 1);
+            const auto next_hex_index = numeric_cast<int16_t>(grid_at(cur_hex) + 1);
 
             if (next_hex_index > max_len) {
                 output.Result = FindPathOutput::ResultType::TooFar;
                 return output;
             }
 
-            for (int32 j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
+            for (int32_t j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 auto raw_next_hex = ipos32 {cur_hex.x, cur_hex.y};
                 GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, hdir(j));
 
@@ -215,11 +215,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                     grid_cell = next_hex_index;
                 }
                 else if (block == HexBlockResult::DeferGag) {
-                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
+                    grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
                     gag_hexes.emplace_back(next_hex);
                 }
                 else if (block == HexBlockResult::DeferCritter) {
-                    grid_cell = numeric_cast<int16>(next_hex_index | 0x4000);
+                    grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
                     cr_hexes.emplace_back(next_hex);
                 }
                 else {
@@ -238,7 +238,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         if (!gag_hexes.empty() && !next_hexes.empty()) {
             const auto last_index = grid_at(next_hexes.back());
             const auto& gag_hex = gag_hexes.front();
-            const auto gag_index = numeric_cast<int16>(grid_at(gag_hex) ^ 0x4000);
+            const auto gag_index = numeric_cast<int16_t>(grid_at(gag_hex) ^ 0x4000);
 
             if (gag_index + 10 < last_index) {
                 grid_at(gag_hex) = gag_index;
@@ -274,15 +274,15 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     auto hex_index = grid_at(to_hex);
     auto cur_hex = to_hex;
     raw_steps.resize(hex_index - 1);
-    float32 base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
+    float32_t base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
 
     while (hex_index > 1) {
         hex_index--;
 
-        int32 best_step_dir = -1;
-        float32 best_step_angle_diff = 0.0f;
+        int32_t best_step_dir = -1;
+        float32_t best_step_angle_diff = 0.0f;
 
-        const auto check_hex = [&](int32 dir, ipos32 step_raw_hex) {
+        const auto check_hex = [&](int32_t dir, ipos32 step_raw_hex) {
             if (!map_size.is_valid_pos(step_raw_hex)) {
                 return;
             }
@@ -293,8 +293,8 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 return;
             }
 
-            const float32 angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
-            const float32 angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+            const float32_t angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
+            const float32_t angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
             if (best_step_dir == -1 || hex_index == 0) {
                 best_step_dir = dir;
@@ -409,7 +409,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         while (true) {
             mpos trace_hex2 = to_hex;
 
-            for (auto i = numeric_cast<int32>(raw_steps.size()) - 1; i >= 0; i--) {
+            for (auto i = numeric_cast<int32_t>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
                 mpos next_hex = trace_hex;
                 vector<mdir> direct_steps;
@@ -439,7 +439,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                     output.Steps.emplace_back(ds);
                 }
 
-                output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
+                output.ControlSteps.emplace_back(numeric_cast<uint16_t>(output.Steps.size()));
 
                 trace_hex = trace_hex2;
                 break;
@@ -465,7 +465,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
             }
 
-            output.ControlSteps.emplace_back(numeric_cast<uint16>(output.Steps.size()));
+            output.ControlSteps.emplace_back(numeric_cast<uint16_t>(output.Steps.size()));
         }
     }
 
@@ -489,7 +489,7 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
     auto prev_hex = next_hex;
     bool last_passed_ok = false;
 
-    for (int32 i = 0;; i++) {
+    for (int32_t i = 0;; i++) {
         if (i >= dist) {
             output.IsFullTrace = true;
             break;

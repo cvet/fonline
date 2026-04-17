@@ -928,9 +928,9 @@ def unified_type_to_meta_type(unified_type: str, valid_types: set[str]) -> str:
 
 def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
     type_map = {
-        'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
-        'int32': 'int32', 'uint32': 'uint32', 'int64': 'int64', 'uint64': 'uint64',
-        'float32': 'float32', 'float64': 'float64', 'bool': 'bool', 'void': 'void',
+        'int8_t': 'int8', 'uint8_t': 'uint8', 'int16_t': 'int16', 'uint16_t': 'uint16',
+        'int32_t': 'int32', 'uint32_t': 'uint32', 'int64_t': 'int64', 'uint64_t': 'uint64',
+        'float32_t': 'float32', 'float64_t': 'float64', 'bool': 'bool', 'void': 'void',
         'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
     if engine_type.startswith('ScriptFunc<'):
@@ -1490,7 +1490,9 @@ def meta_type_to_unified_type(meta_type: str, self_entity: str = 'SELF_ENTITY') 
 
 
 def map_meta_type(meta_type: str) -> str:
-    type_map = {'any': 'any_t'}
+    type_map = {'int8': 'int8_t', 'uint8': 'uint8_t', 'int16': 'int16_t', 'uint16': 'uint16_t',
+                'int32': 'int32_t', 'uint32': 'uint32_t', 'int64': 'int64_t', 'uint64': 'uint64_t',
+                'float32': 'float32_t', 'float64': 'float64_t', 'any': 'any_t'}
     return type_map[meta_type] if meta_type in type_map else meta_type
 
 
@@ -1628,9 +1630,9 @@ def generate_generic_code() -> None:
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
                 if 'SharedProperty' not in prop_tag.flags:
-                    global_lines.append('uint16 ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                 elif prop_tag.name not in common_parsed:
-                    global_lines.append('uint16 EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('uint16_t EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                     common_parsed.add(prop_tag.name)
                 index += 1
     global_lines.append('')

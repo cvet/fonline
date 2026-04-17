@@ -127,7 +127,7 @@ public:
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplyCommandLine(int32 argc, char** argv);
+    void ApplyCommandLine(int32_t argc, char** argv);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();

@@ -56,8 +56,8 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
     const auto y2 = pos.y - (_size.height - view_height - (_offset.y - view_height / 8));
 
     if (x2 >= 0 && y2 >= 0 && x2 < view_width && y2 < view_height) {
-        const auto atlas_x = pos.x + iround<int32>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-        const auto atlas_y = pos.y + iround<int32>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+        const auto atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
+        const auto atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
 
         return _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a > 0;
     }
@@ -135,16 +135,16 @@ void ModelSprite::SetSize(isize32 size)
     _model->SetupFrame(size);
 
     _size = size;
-    _offset.y = numeric_cast<int16>(size.height / 4);
+    _offset.y = numeric_cast<int16_t>(size.height / 4);
 
     auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(_atlasType, _size);
 
     _atlas = atlas;
     _atlasNode = atlas_node;
-    _atlasRect.x = numeric_cast<float32>(pos.x) / numeric_cast<float32>(atlas->GetSize().width);
-    _atlasRect.y = numeric_cast<float32>(pos.y) / numeric_cast<float32>(atlas->GetSize().height);
-    _atlasRect.width = numeric_cast<float32>(size.width) / numeric_cast<float32>(atlas->GetSize().width);
-    _atlasRect.height = numeric_cast<float32>(size.height) / numeric_cast<float32>(atlas->GetSize().height);
+    _atlasRect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    _atlasRect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    _atlasRect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
+    _atlasRect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 }
 
 void ModelSprite::DrawToAtlas()
@@ -239,10 +239,10 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     _sprMngr->GetRtMngr().PopRenderTarget();
 
     // Copy render
-    const int32 l = iround<int32>(model_spr->GetAtlasRect().x * numeric_cast<float32>(model_spr->GetAtlas()->GetSize().width));
-    const int32 t = iround<int32>(model_spr->GetAtlasRect().y * numeric_cast<float32>(model_spr->GetAtlas()->GetSize().height));
-    const int32 w = iround<int32>(model_spr->GetAtlasRect().width * numeric_cast<float32>(model_spr->GetAtlas()->GetSize().width));
-    const int32 h = iround<int32>(model_spr->GetAtlasRect().height * numeric_cast<float32>(model_spr->GetAtlas()->GetSize().height));
+    const int32_t l = iround<int32_t>(model_spr->GetAtlasRect().x * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
+    const int32_t t = iround<int32_t>(model_spr->GetAtlasRect().y * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
+    const int32_t w = iround<int32_t>(model_spr->GetAtlasRect().width * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
+    const int32_t h = iround<int32_t>(model_spr->GetAtlasRect().height * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().height));
     const irect32 region_to = irect32(l, t, w, h);
 
     _sprMngr->GetRtMngr().PushRenderTarget(model_spr->GetAtlas()->GetRenderTarget());

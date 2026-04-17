@@ -55,7 +55,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -1054,7 +1054,7 @@ namespace AdvOps
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -1087,7 +1087,7 @@ namespace AdvOps
     const auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
-    auto func = server->FindFunc<int32>(get_func("AdvOps::" func_name)); \
+    auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \
     REQUIRE(func); \
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)

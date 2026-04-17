@@ -9,7 +9,7 @@ TEST_CASE("TwoDimensionalGrid")
 {
     SECTION("DynamicGridCreatesCellsOnWriteAndReturnsEmptyForMissing")
     {
-        DynamicTwoDimensionalGrid<int32, ipos32, isize32> grid {{3, 3}};
+        DynamicTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{3, 3}};
 
         CHECK(grid.GetSize() == isize32 {3, 3});
         CHECK(grid.GetCellForReading({1, 1}) == 0);
@@ -23,7 +23,7 @@ TEST_CASE("TwoDimensionalGrid")
 
     SECTION("DynamicGridResizeDropsCellsOutsideNewBounds")
     {
-        DynamicTwoDimensionalGrid<int32, ipos32, isize32> grid {{4, 4}};
+        DynamicTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{4, 4}};
 
         grid.GetCellForWriting({3, 0}) = 30;
         grid.GetCellForWriting({0, 3}) = 40;
@@ -45,7 +45,7 @@ TEST_CASE("TwoDimensionalGrid")
 
     SECTION("StaticGridPreservesOverlapAcrossResize")
     {
-        StaticTwoDimensionalGrid<int32, ipos32, isize32> grid {{3, 3}};
+        StaticTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{3, 3}};
 
         grid.GetCellForWriting({0, 0}) = 7;
         grid.GetCellForWriting({2, 2}) = 9;
@@ -64,7 +64,7 @@ TEST_CASE("TwoDimensionalGrid")
 
     SECTION("StaticGridOutOfRangeReadReturnsEmptyCell")
     {
-        StaticTwoDimensionalGrid<int32, ipos32, isize32> grid {{2, 2}};
+        StaticTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{2, 2}};
 
         CHECK(grid.GetCellForReading({-1, 0}) == 0);
         CHECK(grid.GetCellForReading({2, 1}) == 0);

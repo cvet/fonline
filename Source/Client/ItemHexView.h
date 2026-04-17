@@ -65,10 +65,10 @@ public:
     void RefreshAlpha();
     void PlayAnim(hstring anim_name, bool looped, bool reversed);
     void StopAnim();
-    void SetAnimTime(float32 normalized_time);
+    void SetAnimTime(float32_t normalized_time);
     void SetAnimDir(mdir dir);
     void RefreshAnim();
-    void MoveToHex(mpos hex, float32 speed);
+    void MoveToHex(mpos hex, float32_t speed);
     void RefreshOffs();
     void SetMultihexEntries(vector<mpos> entries);
 
@@ -80,15 +80,15 @@ private:
     bool _animLooped {};
     bool _animReversed {};
     bool _animStopped {};
-    float32 _animTime {};
+    float32_t _animTime {};
     mdir _animDir {};
 
     bool _isMoving {};
-    float32 _moveSpeed {};
+    float32_t _moveSpeed {};
     fpos32 _moveStepOffset {};
     fpos32 _moveStartOffset {};
     fpos32 _moveCurOffset {};
-    float32 _moveWholeDist {};
+    float32_t _moveWholeDist {};
     nanotime _moveUpdateLastTime {};
     mdir _moveDir {};
     vector<mpos> _moveSteps {};

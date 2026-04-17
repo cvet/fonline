@@ -52,21 +52,21 @@ public:
     {
         bool Valid {};
         mpos BaseHex {};
-        int32 LookDistance {};
+        int32_t LookDistance {};
     };
 
     struct Input
     {
         bool Enabled {true};
-        int32 Distance {};
-        int32 FogExtraLength {};
-        int32 FogTransitionDuration {};
-        int32 MapHexWidth {};
-        int32 MapHexHeight {};
+        int32_t Distance {};
+        int32_t FogExtraLength {};
+        int32_t FogTransitionDuration {};
+        int32_t MapHexWidth {};
+        int32_t MapHexHeight {};
         msize MapSize {};
         nanotime FrameTime {};
         Origin FogOrigin {};
-        function<mpos(mpos, mpos, int32, bool)> TraceBulletToBlock {};
+        function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
     explicit FogOfWar(Kind kind) noexcept :
@@ -88,15 +88,15 @@ public:
 
 private:
     void BuildPoints(const Input& input, vector<PrimitivePoint>& points) const;
-    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32 duration);
-    void UpdateTransition(nanotime frame_time, int32 duration);
-    void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32 t, vector<PrimitivePoint>& result_points);
+    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
+    void UpdateTransition(nanotime frame_time, int32_t duration);
+    void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points);
     auto MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>;
 
     static auto GetCollapsePoint(const vector<PrimitivePoint>& points) -> PrimitivePoint;
     static auto SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge_count, size_t sample_edge_idx, size_t sample_edge_count, const PrimitivePoint& fallback) -> PrimitivePoint;
-    static auto LerpFogColor(ucolor from, ucolor to, float32 t) -> ucolor;
-    static auto LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32 t) -> PrimitivePoint;
+    static auto LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor;
+    static auto LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint;
 
     Kind _kind;
     bool _rebuildFog {};
@@ -106,7 +106,7 @@ private:
     ipos32 _drawOffset {};
     ipos32 _baseDrawOffset {};
     Origin _lastOrigin {};
-    int32 _lastDistance {};
+    int32_t _lastDistance {};
     nanotime _transitionTime {};
     vector<PrimitivePoint> _points {};
     vector<PrimitivePoint> _startPoints {};

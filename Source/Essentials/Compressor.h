@@ -48,8 +48,8 @@ public:
     Compressor() = delete;
 
     [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
-    [[nodiscard]] static auto Compress(const_span<uint8> data) -> vector<uint8>;
-    [[nodiscard]] static auto Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>;
+    [[nodiscard]] static auto Compress(const_span<uint8_t> data) -> vector<uint8_t>;
+    [[nodiscard]] static auto Decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
 };
 
 class StreamCompressor final
@@ -62,7 +62,7 @@ public:
     auto operator=(StreamCompressor&&) noexcept -> StreamCompressor&;
     ~StreamCompressor();
 
-    void Compress(const_span<uint8> buf, vector<uint8>& result);
+    void Compress(const_span<uint8_t> buf, vector<uint8_t>& result);
     void Reset() noexcept;
 
 private:
@@ -80,7 +80,7 @@ public:
     auto operator=(StreamDecompressor&&) noexcept -> StreamDecompressor&;
     ~StreamDecompressor();
 
-    void Decompress(const_span<uint8> buf, vector<uint8>& result);
+    void Decompress(const_span<uint8_t> buf, vector<uint8_t>& result);
     void Reset() noexcept;
 
 private:

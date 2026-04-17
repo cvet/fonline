@@ -48,7 +48,7 @@ void AssetExplorer::OnPreDraw()
     FO_STACK_TRACE_ENTRY();
 
     ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({300.0f, numeric_cast<float32>(App->MainWindow.GetSize().height)}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({300.0f, numeric_cast<float32_t>(App->MainWindow.GetSize().height)}, ImGuiCond_Always);
 }
 
 void AssetExplorer::OnDraw()

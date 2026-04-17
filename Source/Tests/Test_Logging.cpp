@@ -56,8 +56,8 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReplacementUsesLastRegisteredHandler")
     {
-        int32 first_count = 0;
-        int32 second_count = 0;
+        int32_t first_count = 0;
+        int32_t second_count = 0;
 
         SetLogCallback("replace", [&](string_view) { first_count++; });
         SetLogCallback("replace", [&](string_view) { second_count++; });
@@ -71,7 +71,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackCanBeClearedByEmptyKey")
     {
-        int32 callback_count = 0;
+        int32_t callback_count = 0;
 
         SetLogCallback("clear-me", [&](string_view) { callback_count++; });
         SetLogCallback("", {});

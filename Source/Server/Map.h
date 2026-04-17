@@ -88,7 +88,7 @@ public:
     [[nodiscard]] auto GetLocation() const noexcept -> const Location* { return _mapLocation.get(); }
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
-    [[nodiscard]] auto IsHexesMovable(mpos hex, int32 radius) const -> bool;
+    [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
     [[nodiscard]] auto HasLivingCritter(mpos hex, const Critter* ignore_cr) const noexcept -> bool;
     [[nodiscard]] auto IsBlockItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;
@@ -97,10 +97,10 @@ public:
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_items.empty(); }
     [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>> { return _items; }
     [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>;
-    [[nodiscard]] auto GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>;
+    [[nodiscard]] auto GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetTriggerItemsOnHex(mpos hex) -> vector<Item*>;
     [[nodiscard]] auto IsValidPlaceForItem(mpos hex, const ProtoItem* proto_item) const -> bool;
-    [[nodiscard]] auto FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>;
+    [[nodiscard]] auto FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool skip_unsafe) const -> optional<mpos>;
     [[nodiscard]] auto IsCritterOnHex(mpos hex, CritterFindType find_type) const -> bool;
     [[nodiscard]] auto IsCritterOnHex(mpos hex, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
@@ -109,7 +109,7 @@ public:
     [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>> { return _critters; }
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>;
-    [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _playerCritters; }
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _nonPlayerCritters; }
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
@@ -118,7 +118,7 @@ public:
     [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>> { return _staticMap->StaticItems; }
     [[nodiscard]] auto GetStaticItems(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
-    [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const -> bool;
 
@@ -135,7 +135,7 @@ public:
     void RemoveCritterFromField(Critter* cr);
     void RecacheHexFlags(mpos hex);
     void VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir);
-    auto CheckGagItems(mpos hex, int32 radius, const function<bool(const Item*)>& gag_callback) const -> bool;
+    auto CheckGagItems(mpos hex, int32_t radius, const function<bool(const Item*)>& gag_callback) const -> bool;
     auto CheckGagItem(mpos hex, const function<bool(const Item*)>& gag_callback) const -> bool;
 
     ///@ ExportEvent

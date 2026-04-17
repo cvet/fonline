@@ -20,7 +20,7 @@ TEST_CASE("CacheStorage")
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        const vector<uint8> payload {{0x10, 0x20, 0x30, 0x40}};
+        const vector<uint8_t> payload {{0x10, 0x20, 0x30, 0x40}};
 
         cache.SetString("greeting", "hello cache");
         cache.SetData("folder/item.bin", payload);

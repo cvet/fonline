@@ -37,8 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
-using test_meter = strong_type<int32, struct test_meter_tag, strong_type_bool_test_tag, strong_type_arithmetics_tag>;
-using test_id = strong_type<uint32, struct test_id_tag>;
+using test_meter = strong_type<int32_t, struct test_meter_tag, strong_type_bool_test_tag, strong_type_arithmetics_tag>;
+using test_id = strong_type<uint32_t, struct test_id_tag>;
 static_assert(some_strong_type<test_meter>);
 static_assert(some_strong_type<test_id>);
 

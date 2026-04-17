@@ -41,15 +41,15 @@ TEST_CASE("NetBuffer")
     SECTION("PrimitiveAndStringRoundtrip")
     {
         NetOutBuffer out_buf {8, false};
-        out_buf.Write<int32>(42);
-        out_buf.Write<float32>(12.5f);
+        out_buf.Write<int32_t>(42);
+        out_buf.Write<float32_t>(12.5f);
         out_buf.Write<string>(string {"hello"});
 
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
 
-        CHECK(in_buf.Read<int32>() == 42);
-        CHECK(in_buf.Read<float32>() == 12.5f);
+        CHECK(in_buf.Read<int32_t>() == 42);
+        CHECK(in_buf.Read<float32_t>() == 12.5f);
         CHECK(in_buf.Read<string>() == "hello");
         CHECK(in_buf.GetReadPos() == out_buf.GetDataSize());
     }
@@ -57,23 +57,23 @@ TEST_CASE("NetBuffer")
     SECTION("DiscardWriteBufDropsPrefix")
     {
         NetOutBuffer out_buf {8, false};
-        out_buf.Write<uint32>(111);
-        out_buf.Write<uint32>(222);
-        out_buf.DiscardWriteBuf(sizeof(uint32));
+        out_buf.Write<uint32_t>(111);
+        out_buf.Write<uint32_t>(222);
+        out_buf.DiscardWriteBuf(sizeof(uint32_t));
 
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
 
-        CHECK(in_buf.Read<uint32>() == 222);
-        CHECK(out_buf.GetDataSize() == sizeof(uint32));
+        CHECK(in_buf.Read<uint32_t>() == 222);
+        CHECK(out_buf.GetDataSize() == sizeof(uint32_t));
     }
 
     SECTION("DiscardWriteBufTooMuchResetsAndThrows")
     {
         NetOutBuffer out_buf {8, false};
-        out_buf.Write<uint32>(111);
+        out_buf.Write<uint32_t>(111);
 
-        CHECK_THROWS_AS(out_buf.DiscardWriteBuf(sizeof(uint32) + 1), NetBufferException);
+        CHECK_THROWS_AS(out_buf.DiscardWriteBuf(sizeof(uint32_t) + 1), NetBufferException);
         CHECK(out_buf.GetDataSize() == 0);
     }
 
@@ -81,7 +81,7 @@ TEST_CASE("NetBuffer")
     {
         NetOutBuffer out_buf {8, false};
         out_buf.StartMsg(NetMessage::Ping);
-        out_buf.Write<uint16>(321);
+        out_buf.Write<uint16_t>(321);
         out_buf.EndMsg();
 
         const auto data = out_buf.GetData();
@@ -94,7 +94,7 @@ TEST_CASE("NetBuffer")
         in_buf.AddData({data.data() + partial_size, 1});
         CHECK(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::Ping);
-        CHECK(in_buf.Read<uint16>() == 321);
+        CHECK(in_buf.Read<uint16_t>() == 321);
         in_buf.ShrinkReadBuf();
         CHECK(in_buf.GetDataSize() == 0);
         CHECK(in_buf.GetReadPos() == 0);
@@ -105,14 +105,14 @@ TEST_CASE("NetBuffer")
         NetOutBuffer out_buf {8, false};
         out_buf.SetEncryptKey(123456);
         out_buf.StartMsg(NetMessage::RemoteCall);
-        out_buf.Write<uint32>(0xABCD1234);
+        out_buf.Write<uint32_t>(0xABCD1234);
         out_buf.Write<string_view>("secret");
         out_buf.EndMsg();
 
         const auto data = out_buf.GetData();
-        CHECK(data.size() > sizeof(uint32));
+        CHECK(data.size() > sizeof(uint32_t));
 
-        uint32 stored_signature = 0;
+        uint32_t stored_signature = 0;
         std::memcpy(&stored_signature, data.data(), sizeof(stored_signature));
         CHECK(stored_signature != NetBuffer::NETMSG_SIGNATURE);
 
@@ -122,7 +122,7 @@ TEST_CASE("NetBuffer")
 
         CHECK(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::RemoteCall);
-        CHECK(in_buf.Read<uint32>() == 0xABCD1234);
+        CHECK(in_buf.Read<uint32_t>() == 0xABCD1234);
         CHECK(in_buf.Read<string>() == "secret");
     }
 
@@ -145,8 +145,8 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidSignatureThrows")
     {
         NetInBuffer in_buf {8};
-        const uint32 invalid_signature = 0xDEADBEEF;
-        in_buf.AddData({reinterpret_cast<const uint8*>(&invalid_signature), sizeof(invalid_signature)});
+        const uint32_t invalid_signature = 0xDEADBEEF;
+        in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
     }
@@ -154,11 +154,11 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidMessageLengthThrowsAndResetsBuffer")
     {
         NetInBuffer in_buf {8};
-        const uint32 signature = NetBuffer::NETMSG_SIGNATURE;
-        const uint32 invalid_len = sizeof(uint32) + sizeof(uint32) + sizeof(NetMessage) - 1;
+        const uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
+        const uint32_t invalid_len = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1;
 
-        in_buf.AddData({reinterpret_cast<const uint8*>(&signature), sizeof(signature)});
-        in_buf.AddData({reinterpret_cast<const uint8*>(&invalid_len), sizeof(invalid_len)});
+        in_buf.AddData({reinterpret_cast<const uint8_t*>(&signature), sizeof(signature)});
+        in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_len), sizeof(invalid_len)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
         CHECK(in_buf.GetDataSize() == 0);

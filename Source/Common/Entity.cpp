@@ -239,14 +239,14 @@ void Entity::MarkAsDestroyed() noexcept
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
+void Entity::StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
-void Entity::RestoreData(const vector<vector<uint8>>& props_data)
+void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -260,14 +260,14 @@ void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
     _props.SetValueFromData(prop, prop_data);
 }
 
-auto Entity::GetValueAsInt(const Property* prop) const -> int32
+auto Entity::GetValueAsInt(const Property* prop) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsInt(prop);
 }
 
-auto Entity::GetValueAsInt(int32 prop_index) const -> int32
+auto Entity::GetValueAsInt(int32_t prop_index) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -281,21 +281,21 @@ auto Entity::GetValueAsAny(const Property* prop) const -> any_t
     return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsAny(int32 prop_index) const -> any_t
+auto Entity::GetValueAsAny(int32_t prop_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsAny(prop_index);
 }
 
-void Entity::SetValueAsInt(const Property* prop, int32 value)
+void Entity::SetValueAsInt(const Property* prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
-void Entity::SetValueAsInt(int32 prop_index, int32 value)
+void Entity::SetValueAsInt(int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -309,7 +309,7 @@ void Entity::SetValueAsAny(const Property* prop, const any_t& value)
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsAny(int32 prop_index, const any_t& value)
+void Entity::SetValueAsAny(int32_t prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 

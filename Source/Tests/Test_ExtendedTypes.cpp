@@ -91,7 +91,7 @@ TEST_CASE("ExtendedTypes")
     {
         const fpos32 p1 {3.0f, 4.0f};
         CHECK(is_float_equal(p1.dist(), 5.0f));
-        CHECK(p1.round<int32>() == ipos32 {3, 4});
+        CHECK(p1.round<int32_t>() == ipos32 {3, 4});
 
         const fsize32 s1 {2.5f, 4.0f};
         CHECK(is_float_equal(s1.square(), 10.0f));

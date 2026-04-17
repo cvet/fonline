@@ -187,7 +187,7 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(MapperEngine
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, mpos hex, int32 layer, bool roof)
+FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, mpos hex, int32_t layer, bool roof)
 {
     if (mapper->GetCurMap() == nullptr) {
         throw ScriptException("Map not loaded");
@@ -196,7 +196,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, m
         throw ScriptException("Invalid hex args");
     }
 
-    const auto corrected_layer = numeric_cast<uint8>(std::clamp(layer, 0, 4));
+    const auto corrected_layer = numeric_cast<uint8_t>(std::clamp(layer, 0, 4));
 
     return mapper->GetCurMap()->AddMapperTile(pid, hex, corrected_layer, roof);
 }
@@ -226,11 +226,11 @@ FO_SCRIPT_API void Mapper_Game_ShowMap(MapperEngine* mapper, MapView* map)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(MapperEngine* mapper, int32& index)
+FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(MapperEngine* mapper, int32_t& index)
 {
     index = -1;
 
-    for (int32 i = 0, j = numeric_cast<int32>(mapper->LoadedMaps.size()); i < j; i++) {
+    for (int32_t i = 0, j = numeric_cast<int32_t>(mapper->LoadedMaps.size()); i < j; i++) {
         const auto& map = mapper->LoadedMaps[i];
         if (map.get() == mapper->GetCurMap()) {
             index = i;
@@ -261,7 +261,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(MapperEngine* mapper, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_ResizeMap(MapperEngine* mapper, int32 width, int32 height)
+FO_SCRIPT_API void Mapper_Game_ResizeMap(MapperEngine* mapper, int32_t width, int32_t height)
 {
     if (mapper->GetCurMap() == nullptr) {
         throw ScriptException("Map not loaded");
@@ -271,7 +271,7 @@ FO_SCRIPT_API void Mapper_Game_ResizeMap(MapperEngine* mapper, int32 width, int3
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(MapperEngine* mapper, int32 tab, string_view subTab)
+FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(MapperEngine* mapper, int32_t tab, string_view subTab)
 {
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -291,7 +291,7 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(MapperEngine* mapper, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(MapperEngine* mapper, int32 tab, string_view subTab)
+FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(MapperEngine* mapper, int32_t tab, string_view subTab)
 {
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -311,7 +311,7 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(MapperEngine* mapper
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, string_view subTab, readonly_vector<hstring> itemPids)
+FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32_t tab, string_view subTab, readonly_vector<hstring> itemPids)
 {
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -371,7 +371,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(MapperEngine* mapper, int32 tab, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32 tab, string_view subTab, readonly_vector<hstring> critterPids)
+FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32_t tab, string_view subTab, readonly_vector<hstring> critterPids)
 {
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -430,7 +430,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(MapperEngine* mapper, int32 tab
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_TabDelete(MapperEngine* mapper, int32 tab)
+FO_SCRIPT_API void Mapper_Game_TabDelete(MapperEngine* mapper, int32_t tab)
 {
     if (tab < 0 || tab >= MapperEngine::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -442,7 +442,7 @@ FO_SCRIPT_API void Mapper_Game_TabDelete(MapperEngine* mapper, int32 tab)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_TabSelect(MapperEngine* mapper, int32 tab, string_view subTab, bool show)
+FO_SCRIPT_API void Mapper_Game_TabSelect(MapperEngine* mapper, int32_t tab, string_view subTab, bool show)
 {
     if (tab < 0 || tab >= MapperEngine::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -463,7 +463,7 @@ FO_SCRIPT_API void Mapper_Game_TabSelect(MapperEngine* mapper, int32 tab, string
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_TabSetName(MapperEngine* mapper, int32 tab, string_view tabName)
+FO_SCRIPT_API void Mapper_Game_TabSetName(MapperEngine* mapper, int32_t tab, string_view tabName)
 {
     if (tab < 0 || tab >= MapperEngine::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");

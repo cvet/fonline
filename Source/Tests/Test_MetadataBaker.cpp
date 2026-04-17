@@ -50,23 +50,23 @@ namespace TestSettings
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
-        const auto tag_count = reader.Read<uint16>();
+        const auto tag_count = reader.Read<uint16_t>();
 
         vector<vector<string>> settings_entries;
 
-        for (uint16 i = 0; i < tag_count; i++) {
-            const auto tag_name_len = reader.Read<uint16>();
+        for (uint16_t i = 0; i < tag_count; i++) {
+            const auto tag_name_len = reader.Read<uint16_t>();
             const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
             const string tag_name {tag_name_ptr, tag_name_len};
-            const auto tag_value_count = reader.Read<uint32>();
+            const auto tag_value_count = reader.Read<uint32_t>();
 
-            for (uint32 j = 0; j < tag_value_count; j++) {
-                const auto value_parts_count = reader.Read<uint32>();
+            for (uint32_t j = 0; j < tag_value_count; j++) {
+                const auto value_parts_count = reader.Read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
-                for (uint32 k = 0; k < value_parts_count; k++) {
-                    const auto part_len = reader.Read<uint16>();
+                for (uint32_t k = 0; k < value_parts_count; k++) {
+                    const auto part_len = reader.Read<uint16_t>();
                     const auto* part_ptr = reader.ReadPtr<char>(part_len);
                     value_parts.emplace_back(part_ptr, part_len);
                 }
@@ -99,24 +99,24 @@ namespace TestMigration
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
-        const auto tag_count = reader.Read<uint16>();
+        const auto tag_count = reader.Read<uint16_t>();
 
         vector<vector<string>> migration_entries;
         vector<vector<string>> settings_entries;
 
-        for (uint16 i = 0; i < tag_count; i++) {
-            const auto tag_name_len = reader.Read<uint16>();
+        for (uint16_t i = 0; i < tag_count; i++) {
+            const auto tag_name_len = reader.Read<uint16_t>();
             const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
             const string tag_name {tag_name_ptr, tag_name_len};
-            const auto tag_value_count = reader.Read<uint32>();
+            const auto tag_value_count = reader.Read<uint32_t>();
 
-            for (uint32 j = 0; j < tag_value_count; j++) {
-                const auto value_parts_count = reader.Read<uint32>();
+            for (uint32_t j = 0; j < tag_value_count; j++) {
+                const auto value_parts_count = reader.Read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
-                for (uint32 k = 0; k < value_parts_count; k++) {
-                    const auto part_len = reader.Read<uint16>();
+                for (uint32_t k = 0; k < value_parts_count; k++) {
+                    const auto part_len = reader.Read<uint16_t>();
                     const auto* part_ptr = reader.ReadPtr<char>(part_len);
                     value_parts.emplace_back(part_ptr, part_len);
                 }

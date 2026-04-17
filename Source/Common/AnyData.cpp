@@ -63,7 +63,7 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
             const auto int_value = value.to_int64();
             const auto float_value = value.to_float64();
 
-            if (!is_float_equal(float_value, static_cast<float64>(int_value)) || (int_value != 0 && int_value != 1)) {
+            if (!is_float_equal(float_value, static_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
                 throw AnyDataException("Invalid bool numeric value", value_str);
             }
         }

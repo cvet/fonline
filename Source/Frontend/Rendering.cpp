@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 
 RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth) :
     Size {size},
-    SizeData {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height), 1.0f / numeric_cast<float32>(size.width), 1.0f / numeric_cast<float32>(size.height)},
+    SizeData {numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height), 1.0f / numeric_cast<float32_t>(size.width), 1.0f / numeric_cast<float32_t>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
@@ -80,11 +80,11 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
     FO_RUNTIME_ASSERT(passes >= 1);
-    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32>(EFFECT_MAX_PASSES));
+    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
-    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32>(EFFECT_MAX_PASSES)));
+    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }

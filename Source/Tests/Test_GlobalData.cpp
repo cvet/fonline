@@ -39,8 +39,8 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    int32 DeleteCallCount {};
-    vector<int32> DeleteCallOrder {};
+    int32_t DeleteCallCount {};
+    vector<int32_t> DeleteCallOrder {};
 
     void DeleteCallbackA()
     {
@@ -64,7 +64,7 @@ namespace
     {
         std::array<GlobalDataCallback, MAX_GLOBAL_DATA_CALLBACKS> SavedCreate {};
         std::array<GlobalDataCallback, MAX_GLOBAL_DATA_CALLBACKS> SavedDelete {};
-        int32 SavedCount {};
+        int32_t SavedCount {};
 
         GlobalDataCallbacksGuard()
         {
@@ -102,7 +102,7 @@ TEST_CASE("GlobalData")
         DeleteGlobalData();
 
         CHECK(DeleteCallCount == 3);
-        CHECK(DeleteCallOrder == vector<int32> {1, 2, 3});
+        CHECK(DeleteCallOrder == vector<int32_t> {1, 2, 3});
         CHECK(GlobalDataCallbacksCount == 3);
     }
 

@@ -81,15 +81,15 @@ public:
 
     [[nodiscard]] auto is_number() const noexcept -> bool;
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
-    [[nodiscard]] auto to_int32() const noexcept -> int32;
-    [[nodiscard]] auto to_uint32() const noexcept -> uint32;
-    [[nodiscard]] auto to_int64() const noexcept -> int64;
-    [[nodiscard]] auto to_float32() const noexcept -> float32;
-    [[nodiscard]] auto to_float64() const noexcept -> float64;
+    [[nodiscard]] auto to_int32() const noexcept -> int32_t;
+    [[nodiscard]] auto to_uint32() const noexcept -> uint32_t;
+    [[nodiscard]] auto to_int64() const noexcept -> int64_t;
+    [[nodiscard]] auto to_float32() const noexcept -> float32_t;
+    [[nodiscard]] auto to_float64() const noexcept -> float64_t;
     [[nodiscard]] auto to_bool() const noexcept -> bool;
 
     [[nodiscard]] auto split(char delimiter) const noexcept -> vector<string_view>;
-    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32>;
+    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32_t>;
     [[nodiscard]] auto tokenize() const noexcept -> vector<string_view>;
 
     auto substring_until(char separator) noexcept -> strvex&;
@@ -212,15 +212,15 @@ public:
 
     [[nodiscard]] auto is_number() const noexcept -> bool { return strvex::is_number(); }
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool { return strvex::is_explicit_bool(); }
-    [[nodiscard]] auto to_int32() const noexcept -> int32 { return strvex::to_int32(); }
-    [[nodiscard]] auto to_uint32() const noexcept -> uint32 { return strvex::to_uint32(); }
-    [[nodiscard]] auto to_int64() const noexcept -> int64 { return strvex::to_int64(); }
-    [[nodiscard]] auto to_float32() const noexcept -> float32 { return strvex::to_float32(); }
-    [[nodiscard]] auto to_float64() const noexcept -> float64 { return strvex::to_float64(); }
+    [[nodiscard]] auto to_int32() const noexcept -> int32_t { return strvex::to_int32(); }
+    [[nodiscard]] auto to_uint32() const noexcept -> uint32_t { return strvex::to_uint32(); }
+    [[nodiscard]] auto to_int64() const noexcept -> int64_t { return strvex::to_int64(); }
+    [[nodiscard]] auto to_float32() const noexcept -> float32_t { return strvex::to_float32(); }
+    [[nodiscard]] auto to_float64() const noexcept -> float64_t { return strvex::to_float64(); }
     [[nodiscard]] auto to_bool() const noexcept -> bool { return strvex::to_bool(); }
 
     [[nodiscard]] auto split(char delimiter) const noexcept -> vector<string>;
-    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32> { return strvex::split_to_int32(delimiter); }
+    [[nodiscard]] auto split_to_int32(char delimiter) const noexcept -> vector<int32_t> { return strvex::split_to_int32(delimiter); }
     [[nodiscard]] auto tokenize() const noexcept -> vector<string>;
 
     auto substring_until(char separator) noexcept -> strex&;
@@ -272,12 +272,12 @@ static_assert(!std::is_polymorphic_v<strex>);
 
 namespace utf8
 {
-    auto IsValid(uint32 ucs) noexcept -> bool;
+    auto IsValid(uint32_t ucs) noexcept -> bool;
     auto DecodeStrNtLen(const char* str) noexcept -> size_t;
-    auto Decode(const char* str, size_t& length) noexcept -> uint32;
-    auto Encode(uint32 ucs, char (&buf)[4]) noexcept -> size_t;
-    auto Lower(uint32 ucs) noexcept -> uint32;
-    auto Upper(uint32 ucs) noexcept -> uint32;
+    auto Decode(const char* str, size_t& length) noexcept -> uint32_t;
+    auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    auto Lower(uint32_t ucs) noexcept -> uint32_t;
+    auto Upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE

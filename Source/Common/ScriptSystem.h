@@ -44,16 +44,16 @@ FO_DECLARE_EXCEPTION(ScriptCallException);
 FO_DECLARE_EXCEPTION(ScriptCompilerException);
 
 // ReSharper disable CppInconsistentNaming
-enum class ScriptEnum_uint8 : uint8
+enum class ScriptEnum_uint8 : uint8_t
 {
 };
-enum class ScriptEnum_uint16 : uint16
+enum class ScriptEnum_uint16 : uint16_t
 {
 };
-enum class ScriptEnum_int32 : int32
+enum class ScriptEnum_int32 : int32_t
 {
 };
-enum class ScriptEnum_uint32 : uint32
+enum class ScriptEnum_uint32 : uint32_t
 {
 };
 // ReSharper restore CppInconsistentNaming
@@ -86,7 +86,7 @@ struct ScriptFuncDesc;
 
 struct DataAccessor
 {
-    [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32 = 0;
+    [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32_t = 0;
     [[nodiscard]] virtual auto GetArraySize(void* /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetArrayElement(void* /*data*/, size_t /*index*/) const -> void* { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetDictSize(void* /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
@@ -176,11 +176,11 @@ namespace NativeDataProvider
         function<void(void*, void*)> _addCallback {};
     };
 
-    using StorageEntryType = variant<int32, ArrayDataProxy, DictDataProxy, Entity*>;
+    using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, Entity*>;
 
     struct NativeDataAccessor final : DataAccessor
     {
-        [[nodiscard]] auto GetBackendIndex() const noexcept -> int32 override { return -1; }
+        [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return -1; }
         [[nodiscard]] auto GetArraySize(void* data) const -> size_t override { return cast_from_void<ArrayDataProxy*>(data)->Size(); }
         [[nodiscard]] auto GetArrayElement(void* data, size_t index) const -> void* override { return cast_from_void<ArrayDataProxy*>(data)->Get(index); }
         [[nodiscard]] auto GetDictSize(void* data) const -> size_t override { return cast_from_void<DictDataProxy*>(data)->Size(); }
@@ -435,7 +435,7 @@ namespace NativeDataCaller
 class ScriptSystemBackend
 {
 public:
-    static constexpr int32 ANGELSCRIPT_BACKEND_INDEX = 0;
+    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
     // static constexpr int32 MONO_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
@@ -559,7 +559,7 @@ public:
 
     void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
-    void AddInitFunc(ScriptFunc<void> func, int32 priority);
+    void AddInitFunc(ScriptFunc<void> func, int32_t priority);
 
     template<typename T>
         requires(!std::is_pointer_v<T>)
@@ -606,7 +606,7 @@ private:
     vector<function<void()>> _loopCallbacks {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
-    vector<pair<ScriptFunc<void>, int32>> _initFunc {};
+    vector<pair<ScriptFunc<void>, int32_t>> _initFunc {};
 };
 
 class ScriptHelpers final
@@ -617,10 +617,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32_t>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool

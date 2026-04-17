@@ -56,9 +56,9 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32 AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
-static constexpr uint8 AS_BYTECODE_POINTER_SIZE = sizeof(void*);
-static constexpr uint8 AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
+static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
+static constexpr uint8_t AS_BYTECODE_POINTER_SIZE = sizeof(void*);
+static constexpr uint8_t AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
 static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
 
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
@@ -159,7 +159,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     _entityMngr = dynamic_cast<EntityManagerApi*>(meta);
     _asEngine = as_engine;
 
-    int32 as_result;
+    int32_t as_result;
     FO_AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(AngelScriptMessage), cast_to_void(as_engine), AngelScript::asCALL_CDECL));
 
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true));
@@ -303,14 +303,14 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
-    const auto container_magic = reader.Read<uint32>();
+    const auto container_magic = reader.Read<uint32_t>();
 
     if (container_magic != AS_BYTECODE_CONTAINER_MAGIC) {
         throw ScriptException("Incompatible script bytecode container");
     }
 
-    const auto source_pointer_size = reader.Read<uint8>();
-    const auto source_endian_tag = reader.Read<uint8>();
+    const auto source_pointer_size = reader.Read<uint8_t>();
+    const auto source_endian_tag = reader.Read<uint8_t>();
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
         WriteLog("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
@@ -319,11 +319,11 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         WriteLog("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
     }
 
-    vector<AngelScript::asBYTE> buf(reader.Read<uint32>());
+    vector<AngelScript::asBYTE> buf(reader.Read<uint32_t>());
     MemCopy(buf.data(), reader.ReadPtr<AngelScript::asBYTE>(buf.size()), buf.size());
 
-    std::vector<uint8> lnt_data(reader.Read<uint32>());
-    MemCopy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
+    std::vector<uint8_t> lnt_data(reader.Read<uint32_t>());
+    MemCopy(lnt_data.data(), reader.ReadPtr<uint8_t>(lnt_data.size()), lnt_data.size());
     FO_RUNTIME_ASSERT(!buf.empty());
     FO_RUNTIME_ASSERT(!lnt_data.empty());
 
@@ -337,7 +337,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     _asEngine->SetUserData(cast_to_void(lnt), AS_PREPROCESSOR_LNT_USER_DATA);
 
     BinaryStream binary {buf};
-    int32 as_result = mod->LoadByteCode(&binary);
+    int32_t as_result = mod->LoadByteCode(&binary);
 
     if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);
@@ -362,7 +362,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         AngelScript::asUINT pos = 0;
 
         while (pos < bc_length) {
-            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
+            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(bc[pos]));
             const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
 
             if (instr_size == 0 || pos + instr_size > bc_length) {
@@ -377,7 +377,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         }
     }
 
-    FO_RUNTIME_ASSERT(script_bin.size() >= sizeof(uint32) + sizeof(uint8) + sizeof(uint8) + sizeof(uint32) + buf.size() + sizeof(uint32) + lnt_data.size());
+    FO_RUNTIME_ASSERT(script_bin.size() >= sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size());
     const auto records = DeserializeFunctionAttributeRecords(reader);
     reader.VerifyEnd();
 
@@ -398,7 +398,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }
 }
 
-auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<uint8>
+auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -469,11 +469,11 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     private:
         const string* _rootScript;
         const map<string, string>* _scriptFiles;
-        int32 _includeDeep {};
+        int32_t _includeDeep {};
     };
 
     map<string, string> final_script_files;
-    vector<tuple<int32, string, string>> final_script_files_order;
+    vector<tuple<int32_t, string, string>> final_script_files_order;
 
     for (const auto& script_file : files) {
         string script_name = string(script_file.GetNameNoExt());
@@ -483,7 +483,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         const auto line_sep = script_content.find('\n');
         const auto first_line = script_content.substr(0, line_sep);
 
-        int32 sort = 0;
+        int32_t sort = 0;
         const auto sort_pos = first_line.find("Sort ");
 
         if (sort_pos != string::npos) {
@@ -569,7 +569,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Create root module failed");
     }
 
-    int32 as_result = mod->AddScriptSection("Root", result.String.c_str());
+    int32_t as_result = mod->AddScriptSection("Root", result.String.c_str());
 
     if (as_result < 0) {
         throw ScriptCompilerException("Unable to add script section", as_result);
@@ -608,17 +608,17 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Unable to save byte code", as_result);
     }
 
-    std::vector<uint8> lnt_data;
+    std::vector<uint8_t> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     auto writer = DataWriter(data);
-    writer.Write<uint32>(AS_BYTECODE_CONTAINER_MAGIC);
-    writer.Write<uint8>(AS_BYTECODE_POINTER_SIZE);
-    writer.Write<uint8>(AS_BYTECODE_ENDIAN_TAG);
-    writer.Write<uint32>(numeric_cast<uint32>(buf.size()));
+    writer.Write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
+    writer.Write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
+    writer.Write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
-    writer.Write<uint32>(numeric_cast<uint32>(lnt_data.size()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
     SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;
@@ -646,7 +646,7 @@ void AngelScriptBackend::BindRequiredStuff()
                 auto func_wrapper = ScriptFunc<void>(unique_del_ptr<ScriptFuncDesc>(func_desc, [func_ = refcount_ptr(func)](auto&&) { }));
 
                 if (const auto raw_init_attr = FindFunctionAttribute(func, "ModuleInit"); !raw_init_attr.empty()) {
-                    int32 priority = 0;
+                    int32_t priority = 0;
                     const auto parsed = TryParseModuleFuncPriority(raw_init_attr, "ModuleInit", priority);
                     FO_RUNTIME_ASSERT(parsed);
                     _scriptSys->AddInitFunc(std::move(func_wrapper), priority);
@@ -666,7 +666,7 @@ void AngelScriptBackend::BindRequiredStuff()
             }
         });
 
-        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32> line, string_view function_name) {
+        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer != nullptr) {
                 nlohmann::json body;
                 body["reason"] = reason;
@@ -696,7 +696,7 @@ void AngelScriptBackend::BindRequiredStuff()
     }
 }
 
-auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32& priority) noexcept -> bool
+auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool
 {
     priority = 0;
 
@@ -711,7 +711,7 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
     }
 
     const auto args = raw_attribute.substr(attribute_name.length() + 1, raw_attribute.length() - attribute_name.length() - 2);
-    auto parsed_priority = int32 {};
+    auto parsed_priority = int32_t {};
     const auto* begin = args.data();
     const auto* end = begin + args.length();
     const auto [ptr, ec] = std::from_chars(begin, end, parsed_priority);

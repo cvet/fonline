@@ -42,8 +42,8 @@ FO_BEGIN_NAMESPACE
 class LineTracer final
 {
 public:
-    explicit LineTracer(mpos start_hex, mpos target_hex, float32 dir_angle_offset, msize map_size);
-    explicit LineTracer(mpos start_hex, float32 dir_angle, int32 dist, msize map_size);
+    explicit LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, msize map_size);
+    explicit LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize map_size);
     LineTracer(const LineTracer&) = delete;
     LineTracer(LineTracer&&) noexcept = default;
     auto operator=(const LineTracer&) -> LineTracer& = delete;
@@ -54,18 +54,18 @@ public:
     void GetNextSquare(mpos& pos);
 
 private:
-    void TraceInit(mpos start_hex, mpos target_hex, float32 dir_angle_offset);
+    void TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset);
 
     msize _mapSize {};
-    float32 _dirAngle {};
+    float32_t _dirAngle {};
     hdir _dirLeft {};
     hdir _dirRight {};
-    float32 _xStart {};
-    float32 _yStart {};
-    float32 _x {};
-    float32 _y {};
-    float32 _dx {};
-    float32 _dy {};
+    float32_t _xStart {};
+    float32_t _yStart {};
+    float32_t _x {};
+    float32_t _y {};
+    float32_t _dx {};
+    float32_t _dy {};
 };
 
 FO_END_NAMESPACE

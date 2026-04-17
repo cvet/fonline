@@ -70,7 +70,7 @@ private:
 };
 
 ///@ ExportEnum
-enum class ImGui_WindowFlags : uint32
+enum class ImGui_WindowFlags : uint32_t
 {
     None = 0, // ImGuiWindowFlags_None
     NoTitleBar = 1, // ImGuiWindowFlags_NoTitleBar
@@ -98,7 +98,7 @@ enum class ImGui_WindowFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_ChildFlags : uint32
+enum class ImGui_ChildFlags : uint32_t
 {
     None = 0, // ImGuiChildFlags_None
     Border = 1, // ImGuiChildFlags_Borders
@@ -113,7 +113,7 @@ enum class ImGui_ChildFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_Cond : uint32
+enum class ImGui_Cond : uint32_t
 {
     None = 0, // ImGuiCond_None
     Always = 1, // ImGuiCond_Always
@@ -123,7 +123,7 @@ enum class ImGui_Cond : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_SelectableFlags : uint32
+enum class ImGui_SelectableFlags : uint32_t
 {
     None = 0, // ImGuiSelectableFlags_None
     NoAutoClosePopups = 1, // ImGuiSelectableFlags_NoAutoClosePopups
@@ -134,7 +134,7 @@ enum class ImGui_SelectableFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TreeNodeFlags : uint32
+enum class ImGui_TreeNodeFlags : uint32_t
 {
     None = 0, // ImGuiTreeNodeFlags_None
     Selected = 1, // ImGuiTreeNodeFlags_Selected
@@ -156,7 +156,7 @@ enum class ImGui_TreeNodeFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_FocusedFlags : uint32
+enum class ImGui_FocusedFlags : uint32_t
 {
     None = 0, // ImGuiFocusedFlags_None
     ChildWindows = 1, // ImGuiFocusedFlags_ChildWindows
@@ -167,7 +167,7 @@ enum class ImGui_FocusedFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_HoveredFlags : uint32
+enum class ImGui_HoveredFlags : uint32_t
 {
     None = 0, // ImGuiHoveredFlags_None
     ChildWindows = 1, // ImGuiHoveredFlags_ChildWindows
@@ -186,7 +186,7 @@ enum class ImGui_HoveredFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TableFlags : uint32
+enum class ImGui_TableFlags : uint32_t
 {
     None = 0, // ImGuiTableFlags_None
     Resizable = 1, // ImGuiTableFlags_Resizable
@@ -227,7 +227,7 @@ enum class ImGui_TableFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TableColumnFlags : uint32
+enum class ImGui_TableColumnFlags : uint32_t
 {
     None = 0, // ImGuiTableColumnFlags_None
     Disabled = 1, // ImGuiTableColumnFlags_Disabled
@@ -256,14 +256,14 @@ enum class ImGui_TableColumnFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TableRowFlags : uint32
+enum class ImGui_TableRowFlags : uint32_t
 {
     None = 0, // ImGuiTableRowFlags_None
     Headers = 1, // ImGuiTableRowFlags_Headers
 };
 
 ///@ ExportEnum
-enum class ImGui_TableBgTarget : uint32
+enum class ImGui_TableBgTarget : uint32_t
 {
     None = 0, // ImGuiTableBgTarget_None
     RowBg0 = 1, // ImGuiTableBgTarget_RowBg0
@@ -272,7 +272,7 @@ enum class ImGui_TableBgTarget : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TabBarFlags : uint32
+enum class ImGui_TabBarFlags : uint32_t
 {
     None = 0, // ImGuiTabBarFlags_None
     Reorderable = 1, // ImGuiTabBarFlags_Reorderable
@@ -288,7 +288,7 @@ enum class ImGui_TabBarFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_TabItemFlags : uint32
+enum class ImGui_TabItemFlags : uint32_t
 {
     None = 0, // ImGuiTabItemFlags_None
     UnsavedDocument = 1, // ImGuiTabItemFlags_UnsavedDocument
@@ -303,7 +303,7 @@ enum class ImGui_TabItemFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_ComboFlags : uint32
+enum class ImGui_ComboFlags : uint32_t
 {
     None = 0, // ImGuiComboFlags_None
     PopupAlignLeft = 1, // ImGuiComboFlags_PopupAlignLeft
@@ -317,7 +317,7 @@ enum class ImGui_ComboFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_InputTextFlags : uint32
+enum class ImGui_InputTextFlags : uint32_t
 {
     None = 0, // ImGuiInputTextFlags_None
     CharsDecimal = 1, // ImGuiInputTextFlags_CharsDecimal
@@ -333,7 +333,7 @@ enum class ImGui_InputTextFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_PopupFlags : uint32
+enum class ImGui_PopupFlags : uint32_t
 {
     None = 0, // ImGuiPopupFlags_None
     MouseButtonRight = 1, // ImGuiPopupFlags_MouseButtonRight
@@ -347,7 +347,7 @@ enum class ImGui_PopupFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_MouseButton : int32
+enum class ImGui_MouseButton : int32_t
 {
     Left = 0, // ImGuiMouseButton_Left
     Right = 1, // ImGuiMouseButton_Right
@@ -355,7 +355,7 @@ enum class ImGui_MouseButton : int32
 };
 
 ///@ ExportEnum
-enum class ImGui_Dir : int32
+enum class ImGui_Dir : int32_t
 {
     None = -1, // ImGuiDir_None
     Left = 0, // ImGuiDir_Left
@@ -365,7 +365,7 @@ enum class ImGui_Dir : int32
 };
 
 ///@ ExportEnum
-enum class ImGui_SliderFlags : uint32
+enum class ImGui_SliderFlags : uint32_t
 {
     None = 0, // ImGuiSliderFlags_None
     Logarithmic = 32, // ImGuiSliderFlags_Logarithmic
@@ -379,7 +379,7 @@ enum class ImGui_SliderFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_ButtonFlags : uint32
+enum class ImGui_ButtonFlags : uint32_t
 {
     None = 0, // ImGuiButtonFlags_None
     MouseButtonLeft = 1, // ImGuiButtonFlags_MouseButtonLeft
@@ -389,7 +389,7 @@ enum class ImGui_ButtonFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_ColorEditFlags : uint32
+enum class ImGui_ColorEditFlags : uint32_t
 {
     None = 0, // ImGuiColorEditFlags_None
     NoAlpha = 2, // ImGuiColorEditFlags_NoAlpha
@@ -420,7 +420,7 @@ enum class ImGui_ColorEditFlags : uint32
 };
 
 ///@ ExportEnum
-enum class ImGui_Col : int32
+enum class ImGui_Col : int32_t
 {
     Text = 0, // ImGuiCol_Text
     TextDisabled = 1, // ImGuiCol_TextDisabled
@@ -462,7 +462,7 @@ enum class ImGui_Col : int32
 };
 
 ///@ ExportEnum
-enum class ImGui_StyleVar : int32
+enum class ImGui_StyleVar : int32_t
 {
     Alpha = 0, // ImGuiStyleVar_Alpha
     DisabledAlpha = 1, // ImGuiStyleVar_DisabledAlpha

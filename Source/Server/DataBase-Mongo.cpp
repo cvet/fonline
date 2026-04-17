@@ -182,7 +182,7 @@ protected:
                     throw DataBaseException("DbMongo invalid key type in collection", collection_name, MongoDbKeyTypeName(key_type));
                 }
 
-                uint32 len = 0;
+                uint32_t len = 0;
                 const auto* value = bson_iter_utf8(&iter, &len);
 
                 if (value == nullptr || len == 0) {

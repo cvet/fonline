@@ -73,7 +73,7 @@ class SpriteSheet final : public Sprite
     friend class ResourceManager;
 
 public:
-    SpriteSheet(SpriteManager& spr_mngr, int32 frames, int32 ticks, int32 dirs);
+    SpriteSheet(SpriteManager& spr_mngr, int32_t frames, int32_t ticks, int32_t dirs);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;
@@ -86,22 +86,22 @@ public:
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetCurSpr() const -> const Sprite*;
     [[nodiscard]] auto GetCurSpr() -> Sprite*;
-    [[nodiscard]] auto GetSpr(int32 num_frm) const -> const Sprite*;
-    [[nodiscard]] auto GetSpr(int32 num_frm) -> Sprite*;
+    [[nodiscard]] auto GetSpr(int32_t num_frm) const -> const Sprite*;
+    [[nodiscard]] auto GetSpr(int32_t num_frm) -> Sprite*;
     [[nodiscard]] auto GetDir(mdir dir) const -> const SpriteSheet*;
     [[nodiscard]] auto GetDir(mdir dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
-    [[nodiscard]] auto GetTime() const -> float32 override;
-    [[nodiscard]] auto GetWholeTicks() const noexcept -> int32 { return _wholeTicks; }
-    [[nodiscard]] auto GetFramesCount() const noexcept -> int32 { return _framesCount; }
+    [[nodiscard]] auto GetTime() const -> float32_t override;
+    [[nodiscard]] auto GetWholeTicks() const noexcept -> int32_t { return _wholeTicks; }
+    [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return _framesCount; }
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _stateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
-    [[nodiscard]] auto GetDirCount() const noexcept -> int32 { return _dirCount; }
+    [[nodiscard]] auto GetDirCount() const noexcept -> int32_t { return _dirCount; }
     [[nodiscard]] auto GetSprOffset() const noexcept -> const vector<ipos32>& { return _sprOffset; }
 
     auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
-    void SetTime(float32 normalized_time) override;
+    void SetTime(float32_t normalized_time) override;
     void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
@@ -112,15 +112,15 @@ private:
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};
-    int32 _framesCount {};
-    int32 _wholeTicks {};
+    int32_t _framesCount {};
+    int32_t _wholeTicks {};
     CritterStateAnim _stateAnim {};
     CritterActionAnim _actionAnim {};
-    int32 _dirCount {};
+    int32_t _dirCount {};
     shared_ptr<SpriteSheet> _dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 
     hdir _curDir {};
-    int32 _curIndex {};
+    int32_t _curIndex {};
     bool _playing {};
     bool _looped {};
     bool _reversed {};

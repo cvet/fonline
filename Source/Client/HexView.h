@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto GetSpriteOffset() const noexcept -> ipos32 { return _sprOffset; }
     [[nodiscard]] auto GetSpriteOffsetPtr() const noexcept -> const ipos32* { return &_sprOffset; }
     [[nodiscard]] auto GetDrawEffect() -> RenderEffect* { return _drawEffect.get(); }
-    [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8 { return _curAlpha; }
+    [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8_t { return _curAlpha; }
     [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _targetAlpha == 0; }
     [[nodiscard]] auto IsFading() const noexcept -> bool { return _fading; }
@@ -78,8 +78,8 @@ public:
     auto StoreFading() -> tuple<bool, bool, nanotime> { return {_fading, _fadeUp, _fadingTime}; }
     void RestoreFading(const tuple<bool, bool, nanotime>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
     void FadeUp();
-    void SetTargetAlpha(uint8 alpha);
-    void SetDefaultAlpha(uint8 alpha);
+    void SetTargetAlpha(uint8_t alpha);
+    void SetDefaultAlpha(uint8_t alpha);
     void RestoreAlpha();
     void RefreshSprite();
     void InvalidateSprite();
@@ -106,9 +106,9 @@ private:
 
     raw_ptr<RenderEffect> _drawEffect {};
 
-    uint8 _curAlpha {0xFF};
-    uint8 _defaultAlpha {0xFF};
-    uint8 _targetAlpha {0xFF};
+    uint8_t _curAlpha {0xFF};
+    uint8_t _defaultAlpha {0xFF};
+    uint8_t _targetAlpha {0xFF};
 
     bool _fading {};
     bool _fadeUp {};

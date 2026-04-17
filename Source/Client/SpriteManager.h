@@ -51,22 +51,22 @@ FO_BEGIN_NAMESPACE
 
 // Font flags
 // Todo: convert FT_ font flags to enum
-static constexpr uint32 FT_NOBREAK = 0x0001;
-static constexpr uint32 FT_NOBREAK_LINE = 0x0002;
-static constexpr uint32 FT_CENTERX = 0x0004;
-static constexpr uint32 FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
-static constexpr uint32 FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
-static constexpr uint32 FT_CENTERR = 0x0010;
-static constexpr uint32 FT_BOTTOM = 0x0020;
-static constexpr uint32 FT_UPPER = 0x0040;
-static constexpr uint32 FT_NO_COLORIZE = 0x0080;
-static constexpr uint32 FT_ALIGN = 0x0100;
-static constexpr uint32 FT_BORDERED = 0x0200;
-static constexpr auto FT_SKIPLINES(uint32 l) -> uint32
+static constexpr uint32_t FT_NOBREAK = 0x0001;
+static constexpr uint32_t FT_NOBREAK_LINE = 0x0002;
+static constexpr uint32_t FT_CENTERX = 0x0004;
+static constexpr uint32_t FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
+static constexpr uint32_t FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
+static constexpr uint32_t FT_CENTERR = 0x0010;
+static constexpr uint32_t FT_BOTTOM = 0x0020;
+static constexpr uint32_t FT_UPPER = 0x0040;
+static constexpr uint32_t FT_NO_COLORIZE = 0x0080;
+static constexpr uint32_t FT_ALIGN = 0x0100;
+static constexpr uint32_t FT_BORDERED = 0x0200;
+static constexpr auto FT_SKIPLINES(uint32_t l) -> uint32_t
 {
     return 0x0400 | (l << 16);
 }
-static constexpr auto FT_SKIPLINES_END(uint32 l) -> uint32
+static constexpr auto FT_SKIPLINES_END(uint32_t l) -> uint32_t
 {
     return 0x0800 | (l << 16);
 }
@@ -86,7 +86,7 @@ class SpriteManager;
 class AtlasSprite;
 
 ///@ ExportEnum
-enum class TransparentEggSlot : uint8
+enum class TransparentEggSlot : uint8_t
 {
     Primary = 0,
     Secondary = 1,
@@ -112,13 +112,13 @@ public:
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
-    [[nodiscard]] virtual auto GetTime() const -> float32 { return 0.0f; }
+    [[nodiscard]] virtual auto GetTime() const -> float32_t { return 0.0f; }
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(RenderEffect* effect) const noexcept { _drawEffect = effect; }
     virtual auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float32 normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
     virtual void SetDir(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
@@ -195,8 +195,8 @@ public:
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto Random(int32 min_value, int32 max_value) -> int32;
-    [[nodiscard]] auto CheckHitTest(int32 value) const -> bool { return value > _settings->SpriteHitValue; }
+    [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
+    [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
@@ -301,24 +301,24 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32 num_font) const -> int32;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32 num_font) const -> int32;
-    [[nodiscard]] auto GetLineHeight(int32 num_font) const -> int32;
-    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32 num_font, uint32 flags, isize32& result_size, int32& lines) const -> bool;
-    [[nodiscard]] auto HaveLetter(int32 num_font, uint32 letter) const -> bool;
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32_t num_font) const -> int32_t;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32_t num_font) const -> int32_t;
+    [[nodiscard]] auto GetLineHeight(int32_t num_font) const -> int32_t;
+    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32_t num_font, uint32_t flags, isize32& result_size, int32_t& lines) const -> bool;
+    [[nodiscard]] auto HaveLetter(int32_t num_font, uint32_t letter) const -> bool;
 
-    auto LoadFontFO(int32 index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(int32 index, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(int32 index);
-    void SetFontEffect(int32 index, RenderEffect* effect);
-    void DrawText(irect32 rect, string_view str, uint32 flags, ucolor color, int32 num_font);
-    auto SplitLines(irect32 rect, string_view cstr, int32 num_font) -> vector<string>;
+    auto LoadFontFO(int32_t index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
+    auto LoadFontBmf(int32_t index, string_view font_name, AtlasType atlas_type) -> bool;
+    void SetDefaultFont(int32_t index);
+    void SetFontEffect(int32_t index, RenderEffect* effect);
+    void DrawText(irect32 rect, string_view str, uint32_t flags, ucolor color, int32_t num_font);
+    auto SplitLines(irect32 rect, string_view cstr, int32_t num_font) -> vector<string>;
     void ClearFonts();
 
 private:
-    static constexpr int32 FORMAT_TYPE_DRAW = 0;
-    static constexpr int32 FORMAT_TYPE_SPLIT = 1;
-    static constexpr int32 FORMAT_TYPE_LCOUNT = 2;
+    static constexpr int32_t FORMAT_TYPE_DRAW = 0;
+    static constexpr int32_t FORMAT_TYPE_SPLIT = 1;
+    static constexpr int32_t FORMAT_TYPE_LCOUNT = 2;
 
     struct FontData
     {
@@ -327,7 +327,7 @@ private:
             ipos32 Pos {};
             isize32 Size {};
             ipos32 Offset {};
-            int32 XAdvance {};
+            int32_t XAdvance {};
             frect32 TexPos {};
             frect32 TexBorderedPos {};
         };
@@ -335,10 +335,10 @@ private:
         raw_ptr<RenderEffect> DrawEffect {};
         raw_ptr<RenderTexture> FontTex {};
         raw_ptr<RenderTexture> FontTexBordered {};
-        unordered_map<uint32, Letter> Letters {};
-        int32 SpaceWidth {};
-        int32 LineHeight {};
-        int32 YAdvance {};
+        unordered_map<uint32_t, Letter> Letters {};
+        int32_t SpaceWidth {};
+        int32_t LineHeight {};
+        int32_t YAdvance {};
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
         bool MakeGray {};
@@ -348,19 +348,19 @@ private:
     struct FontFormatInfo
     {
         raw_ptr<const FontData> CurFont {};
-        uint32 Flags {};
+        uint32_t Flags {};
         irect32 Rect {};
         vector<char> Str {};
         raw_ptr<char> PStr {};
-        int32 LinesAll {1};
-        int32 LinesInRect {};
-        int32 CurX {};
-        int32 CurY {};
-        int32 MaxCurX {};
+        int32_t LinesAll {1};
+        int32_t LinesInRect {};
+        int32_t CurX {};
+        int32_t CurY {};
+        int32_t MaxCurX {};
         vector<ucolor> ColorDots {};
-        vector<int32> LineWidth {};
-        vector<int32> LineSpaceWidth {};
-        int32 OffsColDots {};
+        vector<int32_t> LineWidth {};
+        vector<int32_t> LineSpaceWidth {};
+        int32_t OffsColDots {};
         ucolor DefColor {COLOR_TEXT};
         raw_ptr<vector<string>> StrLines {};
         bool IsError {};
@@ -387,14 +387,14 @@ private:
         }
     };
 
-    auto GetFont(int32 num) -> FontData*;
-    auto GetFont(int32 num) const -> const FontData*;
+    auto GetFont(int32_t num) -> FontData*;
+    auto GetFont(int32_t num) const -> const FontData*;
 
-    void BuildFont(int32 index);
-    void FormatText(FontFormatInfo& fi, int32 fmt_type) const;
+    void BuildFont(int32_t index);
+    void FormatText(FontFormatInfo& fi, int32_t fmt_type) const;
 
     vector<unique_ptr<FontData>> _allFonts {};
-    int32 _defFontIndex {};
+    int32_t _defFontIndex {};
     mutable FontFormatInfo _fontFormatInfoBuf {};
 };
 

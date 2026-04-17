@@ -57,7 +57,7 @@ public:
     [[nodiscard]] auto CreateRefClone() -> refcount_ptr<ItemView>;
 
     auto AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const Properties* props) -> ItemView*;
-    auto AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ItemView*;
     auto AddRawInnerItem(ItemView* item) -> ItemView*;
     void DestroyInnerItem(ItemView* item);
 

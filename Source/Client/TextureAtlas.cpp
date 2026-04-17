@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32 ATLAS_SPRITES_PADDING = 1;
+static constexpr int32_t ATLAS_SPRITES_PADDING = 1;
 
 TextureAtlas::TextureAtlas(AtlasType type, RenderTarget* rt) noexcept :
     _type {type},
@@ -123,8 +123,8 @@ void TextureAtlas::SpaceNode::Free() noexcept
         }
 
         if (all_children_free) {
-            int32 max_x = Pos.x + Size.width;
-            int32 max_y = Pos.y + Size.height;
+            int32_t max_x = Pos.x + Size.width;
+            int32_t max_y = Pos.y + Size.height;
 
             for (const auto& child : Children) {
                 max_x = std::max(max_x, child->Pos.x + child->Size.width);

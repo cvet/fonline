@@ -219,9 +219,9 @@ FO_SCRIPT_API void Client_Critter_RefreshView(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
-    int32 result = 0;
+    int32_t result = 0;
 
     for (const auto& item : self->GetInvItems()) {
         if (!protoId || item->GetProtoId() == protoId) {
@@ -233,13 +233,13 @@ FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, hstring protoId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
+FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
     }
 
-    int32 result = 0;
+    int32_t result = 0;
 
     for (const auto& item : self->GetInvItems()) {
         if (item->GetProtoId() == proto->GetProtoId()) {
@@ -325,7 +325,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32 propertyValue)
+FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
@@ -354,7 +354,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int32 propertyValue)
+FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
     auto& inv_items = self->GetInvItems();
@@ -384,7 +384,7 @@ FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos32& pos)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float32 moveX, float32 moveY, float32 moveZ)
+FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -409,7 +409,7 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32 normalizedTime, ScriptFunc<void, CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -476,7 +476,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32 speed)
+FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -484,15 +484,15 @@ FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos he
         throw ScriptException("Critter is not on map");
     }
 
-    const auto ox = numeric_cast<int16>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    const auto oy = numeric_cast<int16>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}}, speed);
     return hex_cr->GetMoving();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32 dir, int32 speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32_t dir, int32_t speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -528,7 +528,7 @@ FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, mdir dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Client_Critter_GetAlpha(CritterView* self)
+FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -536,7 +536,7 @@ FO_SCRIPT_API uint8 Client_Critter_GetAlpha(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_SetAlpha(CritterView* self, uint8 alpha)
+FO_SCRIPT_API void Client_Critter_SetAlpha(CritterView* self, uint8_t alpha)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -546,7 +546,7 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(CritterView* self, uint8 alpha)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32 itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto* item = self->GetInvItem(itemId);
     auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
@@ -564,7 +564,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::DropItem, static_cast<int32>(from_slot), item, true);
+            map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
         if (item->GetStackable() && itemCount < item->GetCount()) {
@@ -583,10 +583,10 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         }
 
         if (map_cr != nullptr) {
-            map_cr->Action(CritterAction::MoveItem, static_cast<int32>(from_slot), item, true);
+            map_cr->Action(CritterAction::MoveItem, static_cast<int32_t>(from_slot), item, true);
 
             if (swap_item != nullptr) {
-                map_cr->Action(CritterAction::SwapItems, static_cast<int32>(toSlot), swap_item, true);
+                map_cr->Action(CritterAction::SwapItems, static_cast<int32_t>(toSlot), swap_item, true);
             }
         }
     }

@@ -42,7 +42,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     FO_STACK_TRACE_ENTRY();
 
     string tmp;
-    uint32 len = 0;
+    uint32_t len = 0;
 
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
@@ -55,11 +55,11 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 
     _bonesHierarchy.resize(len);
 
-    for (uint32 i = 0, j = len; i < j; i++) {
+    for (uint32_t i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         _bonesHierarchy[i].resize(len);
 
-        for (uint32 k = 0, l = len; k < l; k++) {
+        for (uint32_t k = 0, l = len; k < l; k++) {
             reader.ReadPtr(&len, sizeof(len));
             tmp.resize(len);
             reader.ReadPtr(tmp.data(), len);
@@ -70,7 +70,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     reader.ReadPtr(&len, sizeof(len));
     _boneOutputs.resize(len);
 
-    for (uint32 i = 0, j = len; i < j; i++) {
+    for (uint32_t i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
@@ -94,7 +94,7 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     }
 }
 
-ModelAnimationController::ModelAnimationController(int32 track_count)
+ModelAnimationController::ModelAnimationController(int32_t track_count)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -134,79 +134,79 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
     o.Translation.resize(_tracks.size());
 }
 
-auto ModelAnimationController::RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32
+auto ModelAnimationController::RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     _anims->emplace_back(animation, reversed);
-    return numeric_cast<int32>(_anims->size() - 1);
+    return numeric_cast<int32_t>(_anims->size() - 1);
 }
 
-auto ModelAnimationController::GetAnimationBones(int32 index) const -> const vector<vector<hstring>>&
+auto ModelAnimationController::GetAnimationBones(int32_t index) const -> const vector<vector<hstring>>&
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32>(_anims->size()));
+    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
 
     return (*_anims)[index].first->GetBonesHierarchy();
 }
 
-auto ModelAnimationController::GetAnimationDuration(int32 index) const -> float32
+auto ModelAnimationController::GetAnimationDuration(int32_t index) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32>(_anims->size()));
+    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
 
     return (*_anims)[index].first->GetDuration();
 }
 
-auto ModelAnimationController::GetTrackEnable(int32 track) const -> bool
+auto ModelAnimationController::GetTrackEnable(int32_t track) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     return _tracks[track].Enabled;
 }
 
-auto ModelAnimationController::GetTrackSpeed(int32 track) const -> float32
+auto ModelAnimationController::GetTrackSpeed(int32_t track) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     return _tracks[track].Speed;
 }
 
-auto ModelAnimationController::GetTrackPosition(int32 track) const -> float32
+auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     return _tracks[track].Position;
 }
 
-auto ModelAnimationController::GetAnimationsCount() const -> int32
+auto ModelAnimationController::GetAnimationsCount() const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<int32>(_anims->size());
+    return numeric_cast<int32_t>(_anims->size());
 }
 
-void ModelAnimationController::SetTrackAnimation(int32 track, int32 anim_index, const unordered_set<hstring>* allowed_bones)
+void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_index, const unordered_set<hstring>* allowed_bones)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
     FO_RUNTIME_ASSERT(anim_index >= 0);
-    FO_RUNTIME_ASSERT(anim_index < numeric_cast<int32>(_anims->size()));
+    FO_RUNTIME_ASSERT(anim_index < numeric_cast<int32_t>(_anims->size()));
 
     const auto* anim = (*_anims)[anim_index].first;
     const auto reversed = (*_anims)[anim_index].second;
@@ -233,12 +233,12 @@ void ModelAnimationController::SetTrackAnimation(int32 track, int32 anim_index, 
     }
 }
 
-void ModelAnimationController::ResetBonesTransition(int32 skip_track, const vector<hstring>& bone_names)
+void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(skip_track >= 0);
-    FO_RUNTIME_ASSERT(skip_track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(skip_track < numeric_cast<int32_t>(_tracks.size()));
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
@@ -268,62 +268,62 @@ void ModelAnimationController::ResetEvents()
     }
 }
 
-void ModelAnimationController::AddEventEnable(int32 track, bool enable, float32 start_time)
+void ModelAnimationController::AddEventEnable(int32_t track, bool enable, float32_t start_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
 }
 
-void ModelAnimationController::AddEventSpeed(int32 track, float32 speed, float32 start_time, float32 smooth_time)
+void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, float32_t start_time, float32_t smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(int32 track, float32 weight, float32 start_time, float32 smooth_time)
+void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, float32_t start_time, float32_t smooth_time)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::SetTrackEnable(int32 track, bool enable)
+void ModelAnimationController::SetTrackEnable(int32_t track, bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(int32 track, float32 position)
+void ModelAnimationController::SetTrackPosition(int32_t track, float32_t position)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Position = position;
 }
 
-void ModelAnimationController::SetTrackSpeed(int32 track, float32 speed)
+void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32>(_tracks.size()));
+    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
 
     _tracks[track].Speed = speed;
 }
@@ -335,7 +335,7 @@ void ModelAnimationController::SetInterpolation(bool enabled)
     _interpolationDisabled = !enabled;
 }
 
-void ModelAnimationController::AdvanceTime(float32 time)
+void ModelAnimationController::AdvanceTime(float32_t time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -347,7 +347,7 @@ void ModelAnimationController::AdvanceTime(float32 time)
 
             if (_eventsTime >= event.StartTime) {
                 bool erase = false;
-                float32 value;
+                float32_t value;
 
                 if (_eventsTime < event.StartTime + event.SmoothTime) {
                     FO_RUNTIME_ASSERT(event.SmoothTime > 0.0f);
@@ -455,7 +455,7 @@ void ModelAnimationController::AdvanceTime(float32 time)
     }
 }
 
-void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float32 factor) const
+void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float32_t factor) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -467,7 +467,7 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
     }
 }
 
-void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32 factor) const
+void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32_t factor) const
 {
     FO_STACK_TRACE_ENTRY();
 

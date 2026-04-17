@@ -123,8 +123,8 @@ public:
 
         base::_size = size;
 
-        for (int64 y = 0; y < std::max(prev_height, base::_size.height); y++) {
-            for (int64 x = 0; x < std::max(prev_width, base::_size.width); x++) {
+        for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
+            for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if ((x >= base::_size.width || y >= base::_size.height) && x < prev_width && y < prev_height) {
                     const auto it = _cells.find(TPos {numeric_cast<decltype(std::declval<TPos>().x)>(x), numeric_cast<decltype(std::declval<TPos>().y)>(y)});
 
@@ -152,7 +152,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto count = static_cast<size_t>(static_cast<int64>(base::_size.width) * base::_size.height);
+        const auto count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
         _preallocatedCells.resize(count);
     }
 
@@ -162,7 +162,7 @@ public:
 
         FO_RUNTIME_VERIFY(base::_size.is_valid_pos(pos), _emptyCell);
 
-        const auto index = static_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
+        const auto index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
@@ -178,7 +178,7 @@ public:
 
         FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
 
-        const auto index = numeric_cast<size_t>(static_cast<int64>(pos.y) * base::_size.width + pos.x);
+        const auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
@@ -201,11 +201,11 @@ public:
         base::_size = size;
 
         vector<unique_ptr<TCell>> new_cells;
-        const auto new_count = numeric_cast<size_t>(numeric_cast<int64>(base::_size.width) * base::_size.height);
+        const auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
         new_cells.resize(new_count);
 
-        for (int64 y = 0; y < std::max(prev_height, base::_size.height); y++) {
-            for (int64 x = 0; x < std::max(prev_width, base::_size.width); x++) {
+        for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
+            for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
                 if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
                     const auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
                     const auto prev_index = numeric_cast<size_t>(y * prev_width + x);

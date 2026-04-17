@@ -54,7 +54,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -160,7 +160,7 @@ namespace ServerItemsTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -234,7 +234,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     REQUIRE(server->CallFunc(fn("ServerItemsTest::GetItemInitCalls"), init_calls));
     CHECK(init_calls >= 1);
 
-    int64 last_item_id = 0;
+    int64_t last_item_id = 0;
     REQUIRE(server->CallFunc(fn("ServerItemsTest::GetLastItemId"), last_item_id));
     CHECK(last_item_id == item_id.underlying_value());
 
@@ -305,7 +305,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     CHECK(inv_items2.size() >= 2);
 
     // Check via script
-    auto cr_item_count_func = server->FindFunc<int64, Critter*>(fn("ServerItemsTest::GetCritterItemCount"));
+    auto cr_item_count_func = server->FindFunc<int64_t, Critter*>(fn("ServerItemsTest::GetCritterItemCount"));
     REQUIRE(cr_item_count_func);
     REQUIRE(cr_item_count_func.Call(cr));
     CHECK(cr_item_count_func.GetResult() >= 2);

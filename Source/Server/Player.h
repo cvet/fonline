@@ -86,7 +86,7 @@ public:
     void Send_Teleport(const Critter* cr, mpos to_hex);
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
-    void Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item);
+    void Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item);
     void Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
@@ -96,9 +96,9 @@ public:
     void Send_RemoveCustomEntity(ident_t id);
 
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnGetAccess, int32 /*arg1*/, string& /*arg2*/);
+    FO_ENTITY_EVENT(OnGetAccess, int32_t /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8 /*arg2*/);
+    FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8_t /*arg2*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLogout);
 

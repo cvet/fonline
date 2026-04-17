@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto PrepareInputBuffer(string_view text, uint32 max_length) -> vector<char>
+static auto PrepareInputBuffer(string_view text, uint32_t max_length) -> vector<char>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,7 +75,7 @@ static auto ToImVec2(isize32 size) -> ImVec2
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)};
+    return {numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)};
 }
 
 static auto ToFPos32(const ImVec2& pos) -> fpos32
@@ -99,40 +99,40 @@ static auto ToImU32(ucolor color) -> ImU32
     return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
 }
 
-static auto ToColorComp(float32 value) -> uint8
+static auto ToColorComp(float32_t value) -> uint8_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint8>(std::clamp(iround<int32>(value * 255.0f), 0, 255));
+    return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(value * 255.0f), 0, 255));
 }
 
-static void ColorToFloat3(ucolor color, float32 (&values)[3])
+static void ColorToFloat3(ucolor color, float32_t (&values)[3])
 {
     FO_STACK_TRACE_ENTRY();
 
-    values[0] = numeric_cast<float32>(color.comp.r) / 255.0f;
-    values[1] = numeric_cast<float32>(color.comp.g) / 255.0f;
-    values[2] = numeric_cast<float32>(color.comp.b) / 255.0f;
+    values[0] = numeric_cast<float32_t>(color.comp.r) / 255.0f;
+    values[1] = numeric_cast<float32_t>(color.comp.g) / 255.0f;
+    values[2] = numeric_cast<float32_t>(color.comp.b) / 255.0f;
 }
 
-static void ColorToFloat4(ucolor color, float32 (&values)[4])
+static void ColorToFloat4(ucolor color, float32_t (&values)[4])
 {
     FO_STACK_TRACE_ENTRY();
 
-    values[0] = numeric_cast<float32>(color.comp.r) / 255.0f;
-    values[1] = numeric_cast<float32>(color.comp.g) / 255.0f;
-    values[2] = numeric_cast<float32>(color.comp.b) / 255.0f;
-    values[3] = numeric_cast<float32>(color.comp.a) / 255.0f;
+    values[0] = numeric_cast<float32_t>(color.comp.r) / 255.0f;
+    values[1] = numeric_cast<float32_t>(color.comp.g) / 255.0f;
+    values[2] = numeric_cast<float32_t>(color.comp.b) / 255.0f;
+    values[3] = numeric_cast<float32_t>(color.comp.a) / 255.0f;
 }
 
-static void StoreColor3(ucolor& color, const float32 (&values)[3])
+static void StoreColor3(ucolor& color, const float32_t (&values)[3])
 {
     FO_STACK_TRACE_ENTRY();
 
     color = ucolor(ToColorComp(values[0]), ToColorComp(values[1]), ToColorComp(values[2]), color.comp.a);
 }
 
-static void StoreColor4(ucolor& color, const float32 (&values)[4])
+static void StoreColor4(ucolor& color, const float32_t (&values)[4])
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -214,7 +214,7 @@ FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ScriptImGui* self, strin
 
 // ReSharper disable once CppInconsistentNaming
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ScriptImGui* self, int32 intId)
+FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ScriptImGui* self, int32_t intId)
 {
     ImGui::PushID(intId);
 }
@@ -227,7 +227,7 @@ FO_SCRIPT_API void Common_ImGui_PopID([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushStyleColor([[maybe_unused]] ScriptImGui* self, ImGui_Col colorId, float32 r, float32 g, float32 b, float32 a)
+FO_SCRIPT_API void Common_ImGui_PushStyleColor([[maybe_unused]] ScriptImGui* self, ImGui_Col colorId, float32_t r, float32_t g, float32_t b, float32_t a)
 {
     ImGui::PushStyleColor(static_cast<ImGuiCol>(colorId), ImVec4(r, g, b, a));
 }
@@ -239,19 +239,19 @@ FO_SCRIPT_API void Common_ImGui_PopStyleColor([[maybe_unused]] ScriptImGui* self
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PopStyleColor([[maybe_unused]] ScriptImGui* self, int32 count)
+FO_SCRIPT_API void Common_ImGui_PopStyleColor([[maybe_unused]] ScriptImGui* self, int32_t count)
 {
     ImGui::PopStyleColor(count);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushStyleVar([[maybe_unused]] ScriptImGui* self, ImGui_StyleVar styleVar, float32 value)
+FO_SCRIPT_API void Common_ImGui_PushStyleVar([[maybe_unused]] ScriptImGui* self, ImGui_StyleVar styleVar, float32_t value)
 {
     ImGui::PushStyleVar(static_cast<ImGuiStyleVar>(styleVar), value);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushStyleVarVec2([[maybe_unused]] ScriptImGui* self, ImGui_StyleVar styleVar, float32 x, float32 y)
+FO_SCRIPT_API void Common_ImGui_PushStyleVarVec2([[maybe_unused]] ScriptImGui* self, ImGui_StyleVar styleVar, float32_t x, float32_t y)
 {
     ImGui::PushStyleVar(static_cast<ImGuiStyleVar>(styleVar), ImVec2(x, y));
 }
@@ -263,7 +263,7 @@ FO_SCRIPT_API void Common_ImGui_PopStyleVar([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PopStyleVar([[maybe_unused]] ScriptImGui* self, int32 count)
+FO_SCRIPT_API void Common_ImGui_PopStyleVar([[maybe_unused]] ScriptImGui* self, int32_t count)
 {
     ImGui::PopStyleVar(count);
 }
@@ -271,25 +271,25 @@ FO_SCRIPT_API void Common_ImGui_PopStyleVar([[maybe_unused]] ScriptImGui* self, 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowPos([[maybe_unused]] ScriptImGui* self, ipos32 pos)
 {
-    ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y)));
+    ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(pos.x), numeric_cast<float32_t>(pos.y)));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowPos([[maybe_unused]] ScriptImGui* self, ipos32 pos, ImGui_Cond cond)
 {
-    ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32>(pos.x), numeric_cast<float32>(pos.y)), static_cast<ImGuiCond>(cond));
+    ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(pos.x), numeric_cast<float32_t>(pos.y)), static_cast<ImGuiCond>(cond));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowSize([[maybe_unused]] ScriptImGui* self, isize32 size)
 {
-    ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)));
+    ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowSize([[maybe_unused]] ScriptImGui* self, isize32 size, ImGui_Cond cond)
 {
-    ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)), static_cast<ImGuiCond>(cond));
+    ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), static_cast<ImGuiCond>(cond));
 }
 
 ///@ ExportMethod
@@ -307,13 +307,13 @@ FO_SCRIPT_API void Common_ImGui_SetNextWindowCollapsed([[maybe_unused]] ScriptIm
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowSizeConstraints([[maybe_unused]] ScriptImGui* self, isize32 sizeMin, isize32 sizeMax)
 {
-    ImGui::SetNextWindowSizeConstraints(ImVec2(numeric_cast<float32>(sizeMin.width), numeric_cast<float32>(sizeMin.height)), ImVec2(numeric_cast<float32>(sizeMax.width), numeric_cast<float32>(sizeMax.height)));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(numeric_cast<float32_t>(sizeMin.width), numeric_cast<float32_t>(sizeMin.height)), ImVec2(numeric_cast<float32_t>(sizeMax.width), numeric_cast<float32_t>(sizeMax.height)));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetNextWindowContentSize([[maybe_unused]] ScriptImGui* self, isize32 size)
 {
-    ImGui::SetNextWindowContentSize(ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)));
+    ImGui::SetNextWindowContentSize(ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)));
 }
 
 ///@ ExportMethod
@@ -329,7 +329,7 @@ FO_SCRIPT_API void Common_ImGui_SetNextWindowScroll([[maybe_unused]] ScriptImGui
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetNextWindowBgAlpha([[maybe_unused]] ScriptImGui* self, float32 alpha)
+FO_SCRIPT_API void Common_ImGui_SetNextWindowBgAlpha([[maybe_unused]] ScriptImGui* self, float32_t alpha)
 {
     ImGui::SetNextWindowBgAlpha(alpha);
 }
@@ -367,7 +367,7 @@ FO_SCRIPT_API fsize32 Common_ImGui_CalcTextSize([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API fsize32 Common_ImGui_CalcTextSize([[maybe_unused]] ScriptImGui* self, string_view text, bool hideTextAfterDoubleHash, float32 wrapWidth)
+FO_SCRIPT_API fsize32 Common_ImGui_CalcTextSize([[maybe_unused]] ScriptImGui* self, string_view text, bool hideTextAfterDoubleHash, float32_t wrapWidth)
 {
     const auto source = string(text);
     return ToFSize32(ImGui::CalcTextSize(source.c_str(), nullptr, hideTextAfterDoubleHash, wrapWidth));
@@ -380,37 +380,37 @@ FO_SCRIPT_API void Common_ImGui_AlignTextToFramePadding([[maybe_unused]] ScriptI
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float64 Common_ImGui_GetTime([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float64_t Common_ImGui_GetTime([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetTime();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Common_ImGui_GetFrameCount([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API int32_t Common_ImGui_GetFrameCount([[maybe_unused]] ScriptImGui* self)
 {
-    return numeric_cast<int32>(ImGui::GetFrameCount());
+    return numeric_cast<int32_t>(ImGui::GetFrameCount());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetTextLineHeight([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetTextLineHeight([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetTextLineHeight();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetTextLineHeightWithSpacing([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetTextLineHeightWithSpacing([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetTextLineHeightWithSpacing();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetFrameHeight([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetFrameHeight([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetFrameHeight();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetFrameHeightWithSpacing([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetFrameHeightWithSpacing([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetFrameHeightWithSpacing();
 }
@@ -446,49 +446,49 @@ FO_SCRIPT_API bool Common_ImGui_IsRectVisible([[maybe_unused]] ScriptImGui* self
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetWindowWidth([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetWindowWidth([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetWindowWidth();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetWindowHeight([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetWindowHeight([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetWindowHeight();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetScrollX([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetScrollX([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetScrollX();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetScrollY([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetScrollY([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetScrollY();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollX([[maybe_unused]] ScriptImGui* self, float32 scrollX)
+FO_SCRIPT_API void Common_ImGui_SetScrollX([[maybe_unused]] ScriptImGui* self, float32_t scrollX)
 {
     ImGui::SetScrollX(scrollX);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollY([[maybe_unused]] ScriptImGui* self, float32 scrollY)
+FO_SCRIPT_API void Common_ImGui_SetScrollY([[maybe_unused]] ScriptImGui* self, float32_t scrollY)
 {
     ImGui::SetScrollY(scrollY);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetScrollMaxX([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetScrollMaxX([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetScrollMaxX();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetScrollMaxY([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetScrollMaxY([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetScrollMaxY();
 }
@@ -500,7 +500,7 @@ FO_SCRIPT_API void Common_ImGui_SetScrollHereX([[maybe_unused]] ScriptImGui* sel
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollHereX([[maybe_unused]] ScriptImGui* self, float32 centerXRatio)
+FO_SCRIPT_API void Common_ImGui_SetScrollHereX([[maybe_unused]] ScriptImGui* self, float32_t centerXRatio)
 {
     ImGui::SetScrollHereX(centerXRatio);
 }
@@ -512,31 +512,31 @@ FO_SCRIPT_API void Common_ImGui_SetScrollHereY([[maybe_unused]] ScriptImGui* sel
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollHereY([[maybe_unused]] ScriptImGui* self, float32 centerYRatio)
+FO_SCRIPT_API void Common_ImGui_SetScrollHereY([[maybe_unused]] ScriptImGui* self, float32_t centerYRatio)
 {
     ImGui::SetScrollHereY(centerYRatio);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollFromPosX([[maybe_unused]] ScriptImGui* self, float32 localX)
+FO_SCRIPT_API void Common_ImGui_SetScrollFromPosX([[maybe_unused]] ScriptImGui* self, float32_t localX)
 {
     ImGui::SetScrollFromPosX(localX);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollFromPosX([[maybe_unused]] ScriptImGui* self, float32 localX, float32 centerXRatio)
+FO_SCRIPT_API void Common_ImGui_SetScrollFromPosX([[maybe_unused]] ScriptImGui* self, float32_t localX, float32_t centerXRatio)
 {
     ImGui::SetScrollFromPosX(localX, centerXRatio);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollFromPosY([[maybe_unused]] ScriptImGui* self, float32 localY)
+FO_SCRIPT_API void Common_ImGui_SetScrollFromPosY([[maybe_unused]] ScriptImGui* self, float32_t localY)
 {
     ImGui::SetScrollFromPosY(localY);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetScrollFromPosY([[maybe_unused]] ScriptImGui* self, float32 localY, float32 centerYRatio)
+FO_SCRIPT_API void Common_ImGui_SetScrollFromPosY([[maybe_unused]] ScriptImGui* self, float32_t localY, float32_t centerYRatio)
 {
     ImGui::SetScrollFromPosY(localY, centerYRatio);
 }
@@ -570,7 +570,7 @@ FO_SCRIPT_API void Common_ImGui_SeparatorText([[maybe_unused]] ScriptImGui* self
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetTreeNodeToLabelSpacing([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetTreeNodeToLabelSpacing([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetTreeNodeToLabelSpacing();
 }
@@ -588,25 +588,25 @@ FO_SCRIPT_API void Common_ImGui_SetNextItemOpen([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetContentRegionAvailX([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetContentRegionAvailX([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetContentRegionAvail().x;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetContentRegionAvailY([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetContentRegionAvailY([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetContentRegionAvail().y;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetCursorPosX([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetCursorPosX([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetCursorPosX();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_GetCursorPosY([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_GetCursorPosY([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::GetCursorPosY();
 }
@@ -618,7 +618,7 @@ FO_SCRIPT_API fpos32 Common_ImGui_GetCursorScreenPos([[maybe_unused]] ScriptImGu
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetCursorPos([[maybe_unused]] ScriptImGui* self, float32 x, float32 y)
+FO_SCRIPT_API void Common_ImGui_SetCursorPos([[maybe_unused]] ScriptImGui* self, float32_t x, float32_t y)
 {
     ImGui::SetCursorPos(ImVec2(x, y));
 }
@@ -636,7 +636,7 @@ FO_SCRIPT_API void Common_ImGui_PushTextWrapPos([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushTextWrapPos([[maybe_unused]] ScriptImGui* self, float32 wrapLocalPosX)
+FO_SCRIPT_API void Common_ImGui_PushTextWrapPos([[maybe_unused]] ScriptImGui* self, float32_t wrapLocalPosX)
 {
     ImGui::PushTextWrapPos(wrapLocalPosX);
 }
@@ -654,7 +654,7 @@ FO_SCRIPT_API void Common_ImGui_SetKeyboardFocusHere([[maybe_unused]] ScriptImGu
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetKeyboardFocusHere([[maybe_unused]] ScriptImGui* self, int32 offset)
+FO_SCRIPT_API void Common_ImGui_SetKeyboardFocusHere([[maybe_unused]] ScriptImGui* self, int32_t offset)
 {
     ImGui::SetKeyboardFocusHere(offset);
 }
@@ -676,19 +676,19 @@ FO_SCRIPT_API void Common_ImGui_SameLine([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SameLine([[maybe_unused]] ScriptImGui* self, float32 offsetFromStartX, float32 spacing)
+FO_SCRIPT_API void Common_ImGui_SameLine([[maybe_unused]] ScriptImGui* self, float32_t offsetFromStartX, float32_t spacing)
 {
     ImGui::SameLine(offsetFromStartX, spacing);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_SetNextItemWidth([[maybe_unused]] ScriptImGui* self, float32 itemWidth)
+FO_SCRIPT_API void Common_ImGui_SetNextItemWidth([[maybe_unused]] ScriptImGui* self, float32_t itemWidth)
 {
     ImGui::SetNextItemWidth(itemWidth);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PushItemWidth([[maybe_unused]] ScriptImGui* self, float32 itemWidth)
+FO_SCRIPT_API void Common_ImGui_PushItemWidth([[maybe_unused]] ScriptImGui* self, float32_t itemWidth)
 {
     ImGui::PushItemWidth(itemWidth);
 }
@@ -700,7 +700,7 @@ FO_SCRIPT_API void Common_ImGui_PopItemWidth([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API float32 Common_ImGui_CalcItemWidth([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API float32_t Common_ImGui_CalcItemWidth([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::CalcItemWidth();
 }
@@ -708,7 +708,7 @@ FO_SCRIPT_API float32 Common_ImGui_CalcItemWidth([[maybe_unused]] ScriptImGui* s
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_Dummy([[maybe_unused]] ScriptImGui* self, isize32 size)
 {
-    ImGui::Dummy(ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)));
+    ImGui::Dummy(ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)));
 }
 
 ///@ ExportMethod
@@ -718,7 +718,7 @@ FO_SCRIPT_API void Common_ImGui_Indent([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_Indent([[maybe_unused]] ScriptImGui* self, float32 indentW)
+FO_SCRIPT_API void Common_ImGui_Indent([[maybe_unused]] ScriptImGui* self, float32_t indentW)
 {
     ImGui::Indent(indentW);
 }
@@ -730,7 +730,7 @@ FO_SCRIPT_API void Common_ImGui_Unindent([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_Unindent([[maybe_unused]] ScriptImGui* self, float32 indentW)
+FO_SCRIPT_API void Common_ImGui_Unindent([[maybe_unused]] ScriptImGui* self, float32_t indentW)
 {
     ImGui::Unindent(indentW);
 }
@@ -758,7 +758,7 @@ FO_SCRIPT_API bool Common_ImGui_Checkbox([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self, string_view label, int32& flags, int32 flagsValue)
+FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& flags, int32_t flagsValue)
 {
     if (label.empty()) {
         throw ScriptException("Checkbox label arg is empty");
@@ -768,7 +768,7 @@ FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self, string_view label, uint32& flags, uint32 flagsValue)
+FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self, string_view label, uint32_t& flags, uint32_t flagsValue)
 {
     if (label.empty()) {
         throw ScriptException("Checkbox label arg is empty");
@@ -778,7 +778,7 @@ FO_SCRIPT_API bool Common_ImGui_CheckboxFlags([[maybe_unused]] ScriptImGui* self
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value)
+FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -788,7 +788,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, int32 step, int32 stepFast)
+FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, int32_t step, int32_t stepFast)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -798,7 +798,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, int32 step, int32 stepFast, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, int32_t step, int32_t stepFast, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -808,7 +808,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY)
+FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -826,7 +826,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -844,7 +844,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt2([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ)
+FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -863,7 +863,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -882,7 +882,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt3([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW)
+FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -902,7 +902,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -922,7 +922,7 @@ FO_SCRIPT_API bool Common_ImGui_InputInt4([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value, float32 speed, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value, float32_t speed, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -932,7 +932,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value, float32 speed, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value, float32_t speed, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -942,7 +942,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, float32 speed, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, float32_t speed, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -952,7 +952,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, stri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, float32 speed, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, float32_t speed, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -962,13 +962,13 @@ FO_SCRIPT_API bool Common_ImGui_DragInt([[maybe_unused]] ScriptImGui* self, stri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32 speed, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t speed, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::DragFloat2(string(label).c_str(), values, speed, minValue, maxValue);
 
     if (changed) {
@@ -980,13 +980,13 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32 speed, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t speed, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::DragFloat2(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -998,13 +998,13 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat2([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32 speed, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t speed, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::DragFloat3(string(label).c_str(), values, speed, minValue, maxValue);
 
     if (changed) {
@@ -1017,13 +1017,13 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32 speed, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t speed, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::DragFloat3(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -1036,13 +1036,13 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat3([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW, float32 speed, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW, float32_t speed, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::DragFloat4(string(label).c_str(), values, speed, minValue, maxValue);
 
     if (changed) {
@@ -1056,13 +1056,13 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW, float32 speed, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW, float32_t speed, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::DragFloat4(string(label).c_str(), values, speed, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -1076,7 +1076,7 @@ FO_SCRIPT_API bool Common_ImGui_DragFloat4([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, float32 speed, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, float32_t speed, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1094,7 +1094,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, float32 speed, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, float32_t speed, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1112,7 +1112,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt2([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, float32 speed, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, float32_t speed, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1131,7 +1131,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, float32 speed, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, float32_t speed, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1150,7 +1150,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt3([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW, float32 speed, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW, float32_t speed, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1170,7 +1170,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW, float32 speed, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW, float32_t speed, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Drag label arg is empty");
@@ -1190,7 +1190,7 @@ FO_SCRIPT_API bool Common_ImGui_DragInt4([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1200,7 +1200,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1210,7 +1210,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1220,13 +1220,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::SliderFloat2(string(label).c_str(), values, minValue, maxValue);
 
     if (changed) {
@@ -1238,13 +1238,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::SliderFloat2(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -1256,13 +1256,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat2([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::SliderFloat3(string(label).c_str(), values, minValue, maxValue);
 
     if (changed) {
@@ -1275,13 +1275,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::SliderFloat3(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -1294,13 +1294,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat3([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::SliderFloat4(string(label).c_str(), values, minValue, maxValue);
 
     if (changed) {
@@ -1314,13 +1314,13 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::SliderFloat4(string(label).c_str(), values, minValue, maxValue, "%.3f", static_cast<ImGuiSliderFlags>(flags));
 
     if (changed) {
@@ -1334,7 +1334,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderFloat4([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1352,7 +1352,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1370,7 +1370,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt2([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1389,7 +1389,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1408,7 +1408,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt3([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1428,7 +1428,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32& valueX, int32& valueY, int32& valueZ, int32& valueW, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& valueX, int32_t& valueY, int32_t& valueZ, int32_t& valueW, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1448,7 +1448,7 @@ FO_SCRIPT_API bool Common_ImGui_SliderInt4([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, float32& value, float32 minValue, float32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, float32_t& value, float32_t minValue, float32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1458,7 +1458,7 @@ FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, float32& value, float32 minValue, float32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, float32_t& value, float32_t minValue, float32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1468,7 +1468,7 @@ FO_SCRIPT_API bool Common_ImGui_VSliderFloat([[maybe_unused]] ScriptImGui* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_VSliderInt([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, int32& value, int32 minValue, int32 maxValue)
+FO_SCRIPT_API bool Common_ImGui_VSliderInt([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, int32_t& value, int32_t minValue, int32_t maxValue)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1478,7 +1478,7 @@ FO_SCRIPT_API bool Common_ImGui_VSliderInt([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_VSliderInt([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, int32& value, int32 minValue, int32 maxValue, ImGui_SliderFlags flags)
+FO_SCRIPT_API bool Common_ImGui_VSliderInt([[maybe_unused]] ScriptImGui* self, string_view label, fsize32 size, int32_t& value, int32_t minValue, int32_t maxValue, ImGui_SliderFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Slider label arg is empty");
@@ -1512,7 +1512,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginChild([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Child id arg is empty");
     }
 
-    return ImGui::BeginChild(string(strId).c_str(), ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)), border ? ImGuiChildFlags_Borders : ImGuiChildFlags_None);
+    return ImGui::BeginChild(string(strId).c_str(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), border ? ImGuiChildFlags_Borders : ImGuiChildFlags_None);
 }
 
 ///@ ExportMethod
@@ -1522,7 +1522,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginChild([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Child id arg is empty");
     }
 
-    return ImGui::BeginChild(string(strId).c_str(), ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)), static_cast<ImGuiChildFlags>(childFlags), static_cast<ImGuiWindowFlags>(windowFlags));
+    return ImGui::BeginChild(string(strId).c_str(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), static_cast<ImGuiChildFlags>(childFlags), static_cast<ImGuiWindowFlags>(windowFlags));
 }
 
 ///@ ExportMethod
@@ -1608,7 +1608,7 @@ FO_SCRIPT_API bool Common_ImGui_RadioButton([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_RadioButton([[maybe_unused]] ScriptImGui* self, string_view label, int32& value, int32 buttonValue)
+FO_SCRIPT_API bool Common_ImGui_RadioButton([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& value, int32_t buttonValue)
 {
     if (label.empty()) {
         throw ScriptException("Radio button label arg is empty");
@@ -1826,7 +1826,7 @@ FO_SCRIPT_API bool Common_ImGui_IsMouseDragging([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_IsMouseDragging([[maybe_unused]] ScriptImGui* self, ImGui_MouseButton mouseButton, float32 lockThreshold)
+FO_SCRIPT_API bool Common_ImGui_IsMouseDragging([[maybe_unused]] ScriptImGui* self, ImGui_MouseButton mouseButton, float32_t lockThreshold)
 {
     return ImGui::IsMouseDragging(static_cast<ImGuiMouseButton>(mouseButton), lockThreshold);
 }
@@ -1844,7 +1844,7 @@ FO_SCRIPT_API fpos32 Common_ImGui_GetMouseDragDelta([[maybe_unused]] ScriptImGui
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API fpos32 Common_ImGui_GetMouseDragDelta([[maybe_unused]] ScriptImGui* self, ImGui_MouseButton mouseButton, float32 lockThreshold)
+FO_SCRIPT_API fpos32 Common_ImGui_GetMouseDragDelta([[maybe_unused]] ScriptImGui* self, ImGui_MouseButton mouseButton, float32_t lockThreshold)
 {
     return ToFPos32(ImGui::GetMouseDragDelta(static_cast<ImGuiMouseButton>(mouseButton), lockThreshold));
 }
@@ -1884,7 +1884,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginItemTooltip([[maybe_unused]] ScriptImGui* s
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_SetItemTooltip([[maybe_unused]] ScriptImGui* self, string_view text)
 {
-    ImGui::SetItemTooltip("%.*s", numeric_cast<int32>(text.size()), string(text).c_str());
+    ImGui::SetItemTooltip("%.*s", numeric_cast<int32_t>(text.size()), string(text).c_str());
 }
 
 ///@ ExportMethod
@@ -2118,7 +2118,7 @@ FO_SCRIPT_API bool Common_ImGui_MenuItem([[maybe_unused]] ScriptImGui* self, str
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_BeginTable([[maybe_unused]] ScriptImGui* self, string_view strId, int32 columns)
+FO_SCRIPT_API bool Common_ImGui_BeginTable([[maybe_unused]] ScriptImGui* self, string_view strId, int32_t columns)
 {
     if (strId.empty()) {
         throw ScriptException("Table id arg is empty");
@@ -2131,7 +2131,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginTable([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_BeginTable([[maybe_unused]] ScriptImGui* self, string_view strId, int32 columns, ImGui_TableFlags flags)
+FO_SCRIPT_API bool Common_ImGui_BeginTable([[maybe_unused]] ScriptImGui* self, string_view strId, int32_t columns, ImGui_TableFlags flags)
 {
     if (strId.empty()) {
         throw ScriptException("Table id arg is empty");
@@ -2168,7 +2168,7 @@ FO_SCRIPT_API bool Common_ImGui_TableNextColumn([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_TableSetColumnIndex([[maybe_unused]] ScriptImGui* self, int32 columnN)
+FO_SCRIPT_API bool Common_ImGui_TableSetColumnIndex([[maybe_unused]] ScriptImGui* self, int32_t columnN)
 {
     return ImGui::TableSetColumnIndex(columnN);
 }
@@ -2210,7 +2210,7 @@ FO_SCRIPT_API void Common_ImGui_TableSetupColumn([[maybe_unused]] ScriptImGui* s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_TableSetupScrollFreeze([[maybe_unused]] ScriptImGui* self, int32 cols, int32 rows)
+FO_SCRIPT_API void Common_ImGui_TableSetupScrollFreeze([[maybe_unused]] ScriptImGui* self, int32_t cols, int32_t rows)
 {
     ImGui::TableSetupScrollFreeze(cols, rows);
 }
@@ -2222,25 +2222,25 @@ FO_SCRIPT_API void Common_ImGui_TableSetBgColor([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_TableSetBgColor([[maybe_unused]] ScriptImGui* self, ImGui_TableBgTarget target, ucolor color, int32 columnN)
+FO_SCRIPT_API void Common_ImGui_TableSetBgColor([[maybe_unused]] ScriptImGui* self, ImGui_TableBgTarget target, ucolor color, int32_t columnN)
 {
     ImGui::TableSetBgColor(static_cast<ImGuiTableBgTarget>(target), ToImU32(color), columnN);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Common_ImGui_TableGetColumnCount([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API int32_t Common_ImGui_TableGetColumnCount([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::TableGetColumnCount();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Common_ImGui_TableGetColumnIndex([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API int32_t Common_ImGui_TableGetColumnIndex([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::TableGetColumnIndex();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Common_ImGui_TableGetRowIndex([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API int32_t Common_ImGui_TableGetRowIndex([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::TableGetRowIndex();
 }
@@ -2252,7 +2252,7 @@ FO_SCRIPT_API string Common_ImGui_TableGetColumnName([[maybe_unused]] ScriptImGu
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Common_ImGui_TableGetColumnName([[maybe_unused]] ScriptImGui* self, int32 columnN)
+FO_SCRIPT_API string Common_ImGui_TableGetColumnName([[maybe_unused]] ScriptImGui* self, int32_t columnN)
 {
     return string(ImGui::TableGetColumnName(columnN));
 }
@@ -2264,19 +2264,19 @@ FO_SCRIPT_API ImGui_TableColumnFlags Common_ImGui_TableGetColumnFlags([[maybe_un
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ImGui_TableColumnFlags Common_ImGui_TableGetColumnFlags([[maybe_unused]] ScriptImGui* self, int32 columnN)
+FO_SCRIPT_API ImGui_TableColumnFlags Common_ImGui_TableGetColumnFlags([[maybe_unused]] ScriptImGui* self, int32_t columnN)
 {
     return static_cast<ImGui_TableColumnFlags>(ImGui::TableGetColumnFlags(columnN));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_TableSetColumnEnabled([[maybe_unused]] ScriptImGui* self, int32 columnN, bool enabled)
+FO_SCRIPT_API void Common_ImGui_TableSetColumnEnabled([[maybe_unused]] ScriptImGui* self, int32_t columnN, bool enabled)
 {
     ImGui::TableSetColumnEnabled(columnN, enabled);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Common_ImGui_TableGetHoveredColumn([[maybe_unused]] ScriptImGui* self)
+FO_SCRIPT_API int32_t Common_ImGui_TableGetHoveredColumn([[maybe_unused]] ScriptImGui* self)
 {
     return ImGui::TableGetHoveredColumn();
 }
@@ -2398,7 +2398,7 @@ FO_SCRIPT_API void Common_ImGui_LogToTTY([[maybe_unused]] ScriptImGui* self)
 
 // ReSharper disable once CppInconsistentNaming
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_LogToTTY([[maybe_unused]] ScriptImGui* self, int32 autoOpenDepth)
+FO_SCRIPT_API void Common_ImGui_LogToTTY([[maybe_unused]] ScriptImGui* self, int32_t autoOpenDepth)
 {
     ImGui::LogToTTY(autoOpenDepth);
 }
@@ -2410,7 +2410,7 @@ FO_SCRIPT_API void Common_ImGui_LogToFile([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_LogToFile([[maybe_unused]] ScriptImGui* self, int32 autoOpenDepth, string_view filename)
+FO_SCRIPT_API void Common_ImGui_LogToFile([[maybe_unused]] ScriptImGui* self, int32_t autoOpenDepth, string_view filename)
 {
     const auto filename_str = string(filename);
     ImGui::LogToFile(autoOpenDepth, filename_str.empty() ? nullptr : filename_str.c_str());
@@ -2423,7 +2423,7 @@ FO_SCRIPT_API void Common_ImGui_LogToClipboard([[maybe_unused]] ScriptImGui* sel
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_LogToClipboard([[maybe_unused]] ScriptImGui* self, int32 autoOpenDepth)
+FO_SCRIPT_API void Common_ImGui_LogToClipboard([[maybe_unused]] ScriptImGui* self, int32_t autoOpenDepth)
 {
     ImGui::LogToClipboard(autoOpenDepth);
 }
@@ -2443,7 +2443,7 @@ FO_SCRIPT_API void Common_ImGui_LogButtons([[maybe_unused]] ScriptImGui* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_LogText([[maybe_unused]] ScriptImGui* self, string_view text)
 {
-    ImGui::LogText("%.*s", numeric_cast<int32>(text.size()), string(text).c_str());
+    ImGui::LogText("%.*s", numeric_cast<int32_t>(text.size()), string(text).c_str());
 }
 
 ///@ ExportMethod
@@ -2467,7 +2467,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginCombo([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ScriptImGui* self, string_view label, int32& currentItem, string_view itemsSeparatedByZeros)
+FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& currentItem, string_view itemsSeparatedByZeros)
 {
     if (label.empty()) {
         throw ScriptException("Combo label arg is empty");
@@ -2478,7 +2478,7 @@ FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ScriptImGui* self, string
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ScriptImGui* self, string_view label, int32& currentItem, string_view itemsSeparatedByZeros, int32 popupMaxHeightInItems)
+FO_SCRIPT_API bool Common_ImGui_Combo([[maybe_unused]] ScriptImGui* self, string_view label, int32_t& currentItem, string_view itemsSeparatedByZeros, int32_t popupMaxHeightInItems)
 {
     if (label.empty()) {
         throw ScriptException("Combo label arg is empty");
@@ -2511,7 +2511,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginListBox([[maybe_unused]] ScriptImGui* self,
         throw ScriptException("List box label arg is empty");
     }
 
-    return ImGui::BeginListBox(string(label).c_str(), ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)));
+    return ImGui::BeginListBox(string(label).c_str(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)));
 }
 
 ///@ ExportMethod
@@ -2521,19 +2521,19 @@ FO_SCRIPT_API void Common_ImGui_EndListBox([[maybe_unused]] ScriptImGui* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32 fraction)
+FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32_t fraction)
 {
     ImGui::ProgressBar(fraction);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32 fraction, isize32 size)
+FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32_t fraction, isize32 size)
 {
     ImGui::ProgressBar(fraction, ToImVec2(size));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32 fraction, isize32 size, string_view overlay)
+FO_SCRIPT_API void Common_ImGui_ProgressBar([[maybe_unused]] ScriptImGui* self, float32_t fraction, isize32 size, string_view overlay)
 {
     const auto overlay_text = string(overlay);
     const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
@@ -2582,39 +2582,17 @@ FO_SCRIPT_API bool Common_ImGui_TextLinkOpenURL([[maybe_unused]] ScriptImGui* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PlotLines([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32> values)
+FO_SCRIPT_API void Common_ImGui_PlotLines([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32_t> values)
 {
     if (label.empty()) {
         throw ScriptException("Plot label arg is empty");
     }
 
-    ImGui::PlotLines(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32>(values.size()));
+    ImGui::PlotLines(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PlotLines([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32> values, int32 valuesOffset, string_view overlay, float32 scaleMin, float32 scaleMax, fsize32 graphSize)
-{
-    if (label.empty()) {
-        throw ScriptException("Plot label arg is empty");
-    }
-
-    const auto overlay_text = string(overlay);
-    const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
-    ImGui::PlotLines(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32> values)
-{
-    if (label.empty()) {
-        throw ScriptException("Plot label arg is empty");
-    }
-
-    ImGui::PlotHistogram(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32>(values.size()));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32> values, int32 valuesOffset, string_view overlay, float32 scaleMin, float32 scaleMax, fsize32 graphSize)
+FO_SCRIPT_API void Common_ImGui_PlotLines([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32_t> values, int32_t valuesOffset, string_view overlay, float32_t scaleMin, float32_t scaleMax, fsize32 graphSize)
 {
     if (label.empty()) {
         throw ScriptException("Plot label arg is empty");
@@ -2622,11 +2600,33 @@ FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ScriptImGui* self
 
     const auto overlay_text = string(overlay);
     const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
-    ImGui::PlotHistogram(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
+    ImGui::PlotLines(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_TextColored([[maybe_unused]] ScriptImGui* self, string_view text, float32 r, float32 g, float32 b, float32 a)
+FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32_t> values)
+{
+    if (label.empty()) {
+        throw ScriptException("Plot label arg is empty");
+    }
+
+    ImGui::PlotHistogram(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_ImGui_PlotHistogram([[maybe_unused]] ScriptImGui* self, string_view label, readonly_vector<float32_t> values, int32_t valuesOffset, string_view overlay, float32_t scaleMin, float32_t scaleMax, fsize32 graphSize)
+{
+    if (label.empty()) {
+        throw ScriptException("Plot label arg is empty");
+    }
+
+    const auto overlay_text = string(overlay);
+    const char* overlay_str = overlay_text.empty() ? nullptr : overlay_text.c_str();
+    ImGui::PlotHistogram(string(label).c_str(), values.empty() ? nullptr : values.data(), numeric_cast<int32_t>(values.size()), valuesOffset, overlay_str, scaleMin, scaleMax, ToImVec2(graphSize));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_ImGui_TextColored([[maybe_unused]] ScriptImGui* self, string_view text, float32_t r, float32_t g, float32_t b, float32_t a)
 {
     ImGui::TextColored(ImVec4(r, g, b, a), "%s", string(text).c_str());
 }
@@ -2642,7 +2642,7 @@ FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, int32 value)
+FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, int32_t value)
 {
     if (prefix.empty()) {
         throw ScriptException("Value prefix arg is empty");
@@ -2652,7 +2652,7 @@ FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, uint32 value)
+FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, uint32_t value)
 {
     if (prefix.empty()) {
         throw ScriptException("Value prefix arg is empty");
@@ -2662,7 +2662,7 @@ FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, float32 value)
+FO_SCRIPT_API void Common_ImGui_Value([[maybe_unused]] ScriptImGui* self, string_view prefix, float32_t value)
 {
     if (prefix.empty()) {
         throw ScriptException("Value prefix arg is empty");
@@ -2678,7 +2678,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit3([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[3];
+    float32_t values[3];
     ColorToFloat3(color, values);
     const auto changed = ImGui::ColorEdit3(string(label).c_str(), values);
 
@@ -2696,7 +2696,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit3([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[3];
+    float32_t values[3];
     ColorToFloat3(color, values);
     const auto changed = ImGui::ColorEdit3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
@@ -2714,7 +2714,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit4([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     const auto changed = ImGui::ColorEdit4(string(label).c_str(), values);
 
@@ -2732,7 +2732,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorEdit4([[maybe_unused]] ScriptImGui* self, s
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     const auto changed = ImGui::ColorEdit4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
@@ -2750,7 +2750,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker3([[maybe_unused]] ScriptImGui* self,
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[3];
+    float32_t values[3];
     ColorToFloat3(color, values);
     const auto changed = ImGui::ColorPicker3(string(label).c_str(), values);
 
@@ -2768,7 +2768,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker3([[maybe_unused]] ScriptImGui* self,
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[3];
+    float32_t values[3];
     ColorToFloat3(color, values);
     const auto changed = ImGui::ColorPicker3(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
@@ -2786,7 +2786,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker4([[maybe_unused]] ScriptImGui* self,
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     const auto changed = ImGui::ColorPicker4(string(label).c_str(), values);
 
@@ -2804,7 +2804,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorPicker4([[maybe_unused]] ScriptImGui* self,
         throw ScriptException("Color label arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     const auto changed = ImGui::ColorPicker4(string(label).c_str(), values, static_cast<ImGuiColorEditFlags>(flags));
 
@@ -2822,7 +2822,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorButton([[maybe_unused]] ScriptImGui* self, 
         throw ScriptException("Color button id arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     return ImGui::ColorButton(string(descId).c_str(), ImVec4(values[0], values[1], values[2], values[3]));
 }
@@ -2834,7 +2834,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorButton([[maybe_unused]] ScriptImGui* self, 
         throw ScriptException("Color button id arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     return ImGui::ColorButton(string(descId).c_str(), ImVec4(values[0], values[1], values[2], values[3]), static_cast<ImGuiColorEditFlags>(flags));
 }
@@ -2846,7 +2846,7 @@ FO_SCRIPT_API bool Common_ImGui_ColorButton([[maybe_unused]] ScriptImGui* self, 
         throw ScriptException("Color button id arg is empty");
     }
 
-    float32 values[4];
+    float32_t values[4];
     ColorToFloat4(color, values);
     return ImGui::ColorButton(string(descId).c_str(), ImVec4(values[0], values[1], values[2], values[3]), static_cast<ImGuiColorEditFlags>(flags), ToImVec2(size));
 }
@@ -2858,7 +2858,7 @@ FO_SCRIPT_API void Common_ImGui_SetColorEditOptions([[maybe_unused]] ScriptImGui
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value)
+FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -2868,7 +2868,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value, float32 step, float32 stepFast)
+FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value, float32_t step, float32_t stepFast)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -2878,7 +2878,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32& value, float32 step, float32 stepFast, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& value, float32_t step, float32_t stepFast, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -2888,13 +2888,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat([[maybe_unused]] ScriptImGui* self, s
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY)
+FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::InputFloat2(string(label).c_str(), values);
 
     if (changed) {
@@ -2906,13 +2906,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[2] {valueX, valueY};
+    float32_t values[2] {valueX, valueY};
     const auto changed = ImGui::InputFloat2(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
@@ -2924,13 +2924,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat2([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ)
+FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::InputFloat3(string(label).c_str(), values);
 
     if (changed) {
@@ -2943,13 +2943,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[3] {valueX, valueY, valueZ};
+    float32_t values[3] {valueX, valueY, valueZ};
     const auto changed = ImGui::InputFloat3(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
@@ -2962,13 +2962,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat3([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW)
+FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::InputFloat4(string(label).c_str(), values);
 
     if (changed) {
@@ -2982,13 +2982,13 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32& valueX, float32& valueY, float32& valueZ, float32& valueW, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, string_view label, float32_t& valueX, float32_t& valueY, float32_t& valueZ, float32_t& valueW, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
     }
 
-    float32 values[4] {valueX, valueY, valueZ, valueW};
+    float32_t values[4] {valueX, valueY, valueZ, valueW};
     const auto changed = ImGui::InputFloat4(string(label).c_str(), values, "%.3f", static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
@@ -3002,7 +3002,7 @@ FO_SCRIPT_API bool Common_ImGui_InputFloat4([[maybe_unused]] ScriptImGui* self, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32 maxLength)
+FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32_t maxLength)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -3022,7 +3022,7 @@ FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32 maxLength, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32_t maxLength, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -3042,7 +3042,7 @@ FO_SCRIPT_API bool Common_ImGui_InputText([[maybe_unused]] ScriptImGui* self, st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32 maxLength, isize32 size)
+FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32_t maxLength, isize32 size)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -3052,7 +3052,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui*
     }
 
     auto buffer = PrepareInputBuffer(value, maxLength);
-    const auto changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)));
+    const auto changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)));
 
     if (changed) {
         value = buffer.data();
@@ -3062,7 +3062,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32 maxLength, isize32 size, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui* self, string_view label, string& value, uint32_t maxLength, isize32 size, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -3072,7 +3072,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui*
     }
 
     auto buffer = PrepareInputBuffer(value, maxLength);
-    const auto changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32>(size.width), numeric_cast<float32>(size.height)), static_cast<ImGuiInputTextFlags>(flags));
+    const auto changed = ImGui::InputTextMultiline(string(label).c_str(), buffer.data(), buffer.size(), ImVec2(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)), static_cast<ImGuiInputTextFlags>(flags));
 
     if (changed) {
         value = buffer.data();
@@ -3082,7 +3082,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextMultiline([[maybe_unused]] ScriptImGui*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ScriptImGui* self, string_view label, string_view hint, string& value, uint32 maxLength)
+FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ScriptImGui* self, string_view label, string_view hint, string& value, uint32_t maxLength)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");
@@ -3104,7 +3104,7 @@ FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ScriptImGui* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ScriptImGui* self, string_view label, string_view hint, string& value, uint32 maxLength, ImGui_InputTextFlags flags)
+FO_SCRIPT_API bool Common_ImGui_InputTextWithHint([[maybe_unused]] ScriptImGui* self, string_view label, string_view hint, string& value, uint32_t maxLength, ImGui_InputTextFlags flags)
 {
     if (label.empty()) {
         throw ScriptException("Input label arg is empty");

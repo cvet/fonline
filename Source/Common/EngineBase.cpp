@@ -47,68 +47,68 @@ struct EngineBaseData
                     type.IsInt = true;
                     type.IsInt8 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int8);
+                    type.Size = sizeof(int8_t);
                 }},
             {"int16",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt16 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int16);
+                    type.Size = sizeof(int16_t);
                 }},
             {"int32",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt32 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int32);
+                    type.Size = sizeof(int32_t);
                 }},
             {"int64",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt64 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int64);
+                    type.Size = sizeof(int64_t);
                 }},
             {"uint8",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt8 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint8);
+                    type.Size = sizeof(uint8_t);
                 }},
             {"uint16",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt16 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint16);
+                    type.Size = sizeof(uint16_t);
                 }},
             {"uint32",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt32 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint32);
+                    type.Size = sizeof(uint32_t);
                 }},
             {"uint64",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt64 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint64);
+                    type.Size = sizeof(uint64_t);
                 }},
             {"float32",
                 [](BaseTypeDesc& type) {
                     type.IsFloat = true;
                     type.IsSingleFloat = true;
-                    type.Size = sizeof(float32);
+                    type.Size = sizeof(float32_t);
                 }},
             {"float64",
                 [](BaseTypeDesc& type) {
                     type.IsFloat = true;
                     type.IsDoubleFloat = true;
-                    type.Size = sizeof(float64);
+                    type.Size = sizeof(float64_t);
                 }},
             {"bool",
                 [](BaseTypeDesc& type) {
@@ -266,10 +266,10 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
     const auto* prop = persistent ? //
         registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
         registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
-    RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
+    RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
 }
 
-void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32>&& key_values)
+void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -277,7 +277,7 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     FO_RUNTIME_ASSERT(IsValidBaseType(underlying_type));
     FO_RUNTIME_ASSERT(_enums.count(name) == 0);
 
-    unordered_map<int32, string> key_values_rev;
+    unordered_map<int32_t, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
         FO_RUNTIME_ASSERT_STR(key != "None" || value <= 0, strex("Wrong enum {}", name));
@@ -296,7 +296,7 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     RegisterBaseType(name);
 }
 
-void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name, int32 entry_value)
+void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -886,7 +886,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
     return pair(type, tokens_len);
 }
 
-auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int32
+auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -904,7 +904,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed)
     return it->second;
 }
 
-auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int32
+auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -933,7 +933,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_n
     return value_it->second;
 }
 
-auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32 value, bool* failed) const -> const string&
+auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed) const -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1116,16 +1116,16 @@ void BaseEngine::FrameAdvance()
     }
 }
 
-auto BaseEngine::Random(int32 min_value, int32 max_value) const -> int32
+auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(min_value <= max_value);
 
-    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
 
-void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
+void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1148,7 +1148,7 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_RUNTIME_ASSERT(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls().size());
 }
 
-void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8> data)
+void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 

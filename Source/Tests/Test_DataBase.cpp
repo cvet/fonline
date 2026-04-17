@@ -338,7 +338,7 @@ namespace
         bool _failBackendWrites {};
     };
 
-    auto MakeDoc(std::initializer_list<pair<string_view, int64>> values) -> AnyData::Document
+    auto MakeDoc(std::initializer_list<pair<string_view, int64_t>> values) -> AnyData::Document
     {
         AnyData::Document doc;
 
@@ -402,9 +402,9 @@ namespace
     {
         const_cast<bool&>(settings.OpLogEnabled) = true;
         const_cast<string&>(settings.OpLogPath) = string(oplog_path);
-        const_cast<int32&>(settings.ReconnectRetryPeriod) = 20;
-        const_cast<int32&>(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
-        const_cast<int32&>(settings.PanicShutdownTimeout) = 1;
+        const_cast<int32_t&>(settings.ReconnectRetryPeriod) = 20;
+        const_cast<int32_t&>(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
+        const_cast<int32_t&>(settings.PanicShutdownTimeout) = 1;
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
@@ -434,8 +434,8 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
     const auto record_id = ident_t {1001};
 
     db.Insert(collection, record_id, MakeDoc({{"a", 1}}));
-    db.Update(collection, record_id, "b", numeric_cast<int64>(2));
-    db.Update(collection, record_id, "a", numeric_cast<int64>(3));
+    db.Update(collection, record_id, "b", numeric_cast<int64_t>(2));
+    db.Update(collection, record_id, "a", numeric_cast<int64_t>(3));
 
     db.StartCommitChanges();
     db.WaitCommitChanges();
@@ -455,7 +455,7 @@ TEST_CASE("DataBaseGetDocumentAppliesConcurrentPendingChange")
     const auto record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
-    db.SetOnGetRecord([&] { db.Update(collection, record_id, "value", numeric_cast<int64>(2)); });
+    db.SetOnGetRecord([&] { db.Update(collection, record_id, "value", numeric_cast<int64_t>(2)); });
 
     const auto doc = db.GetDocument(collection, record_id);
 
@@ -475,12 +475,12 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
     const auto record_id = ident_t {1001};
 
     constexpr size_t worker_count = 4;
-    constexpr int64 updates_per_worker = 5;
-    unordered_set<int64> expected_values;
+    constexpr int64_t updates_per_worker = 5;
+    unordered_set<int64_t> expected_values;
 
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
-        for (int64 update_index = 0; update_index < updates_per_worker; update_index++) {
-            expected_values.emplace(numeric_cast<int64>(100 + worker_index * 10 + update_index));
+        for (int64_t update_index = 0; update_index < updates_per_worker; update_index++) {
+            expected_values.emplace(numeric_cast<int64_t>(100 + worker_index * 10 + update_index));
         }
     }
 
@@ -505,8 +505,8 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
 
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         workers.emplace_back([&, worker_index] {
-            for (int64 update_index = 0; update_index < updates_per_worker; update_index++) {
-                const auto value = numeric_cast<int64>(100 + worker_index * 10 + update_index);
+            for (int64_t update_index = 0; update_index < updates_per_worker; update_index++) {
+                const auto value = numeric_cast<int64_t>(100 + worker_index * 10 + update_index);
                 db.Update(collection, record_id, "value", value);
             }
         });
@@ -552,7 +552,7 @@ TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
     }};
 
     db.WaitUntilBlockedReadEntered();
-    db.Update(collection, record_id, "value", numeric_cast<int64>(2));
+    db.Update(collection, record_id, "value", numeric_cast<int64_t>(2));
     db.WaitCommitChanges();
     db.UnblockRecordRead();
 
@@ -575,7 +575,7 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChanges")
 
     db.PrimeRecord(collection, target_id, MakeDoc({{"value", 1}}));
     db.PrimeRecord(collection, other_id, MakeDoc({{"value", 10}}));
-    db.SetOnGetRecord([&] { db.Update(collection, other_id, "value", numeric_cast<int64>(20)); });
+    db.SetOnGetRecord([&] { db.Update(collection, other_id, "value", numeric_cast<int64_t>(20)); });
 
     const auto doc = db.GetDocument(collection, target_id);
 
@@ -601,7 +601,7 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
 
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         for (size_t record_index = 0; record_index < records_per_worker; record_index++) {
-            const auto other_id = ident_t {numeric_cast<int64>(2000 + worker_index * 100 + record_index)};
+            const auto other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
             db.PrimeRecord(collection, other_id, MakeDoc({{"value", 10}}));
         }
     }
@@ -627,10 +627,10 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
     for (size_t worker_index = 0; worker_index < worker_count; worker_index++) {
         workers.emplace_back([&, worker_index] {
             for (size_t record_index = 0; record_index < records_per_worker; record_index++) {
-                const auto other_id = ident_t {numeric_cast<int64>(2000 + worker_index * 100 + record_index)};
+                const auto other_id = ident_t {numeric_cast<int64_t>(2000 + worker_index * 100 + record_index)};
 
-                for (int64 update_index = 0; update_index < 5; update_index++) {
-                    db.Update(collection, other_id, "value", numeric_cast<int64>(1000 + worker_index * 100 + record_index * 10 + update_index));
+                for (int64_t update_index = 0; update_index < 5; update_index++) {
+                    db.Update(collection, other_id, "value", numeric_cast<int64_t>(1000 + worker_index * 100 + record_index * 10 + update_index));
                 }
             }
         });
@@ -670,10 +670,10 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
     for (size_t thread_index = 0; thread_index < thread_count; thread_index++) {
         workers.emplace_back([&, thread_index] {
             for (size_t record_index = 0; record_index < records_per_thread; record_index++) {
-                const auto id = ident_t {numeric_cast<int64>(thread_index * 100 + record_index + 1)};
-                db.Insert(collection, id, MakeDoc({{"thread", numeric_cast<int64>(thread_index)}}));
-                db.Update(collection, id, "record", numeric_cast<int64>(record_index));
-                db.Update(collection, id, "value", numeric_cast<int64>(thread_index * 1000 + record_index));
+                const auto id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
+                db.Insert(collection, id, MakeDoc({{"thread", numeric_cast<int64_t>(thread_index)}}));
+                db.Update(collection, id, "record", numeric_cast<int64_t>(record_index));
+                db.Update(collection, id, "value", numeric_cast<int64_t>(thread_index * 1000 + record_index));
             }
         });
     }
@@ -686,13 +686,13 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
 
     for (size_t thread_index = 0; thread_index < thread_count; thread_index++) {
         for (size_t record_index = 0; record_index < records_per_thread; record_index++) {
-            const auto id = ident_t {numeric_cast<int64>(thread_index * 100 + record_index + 1)};
+            const auto id = ident_t {numeric_cast<int64_t>(thread_index * 100 + record_index + 1)};
             const auto doc = db.SnapshotRecord(collection, id);
 
             REQUIRE(!doc.Empty());
-            CHECK(doc["thread"].AsInt64() == numeric_cast<int64>(thread_index));
-            CHECK(doc["record"].AsInt64() == numeric_cast<int64>(record_index));
-            CHECK(doc["value"].AsInt64() == numeric_cast<int64>(thread_index * 1000 + record_index));
+            CHECK(doc["thread"].AsInt64() == numeric_cast<int64_t>(thread_index));
+            CHECK(doc["record"].AsInt64() == numeric_cast<int64_t>(record_index));
+            CHECK(doc["value"].AsInt64() == numeric_cast<int64_t>(thread_index * 1000 + record_index));
         }
     }
 }
@@ -1009,7 +1009,7 @@ TEST_CASE("DataBaseSupportsStringKeys")
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
 
-    db.Update(collection, record_id, "other", numeric_cast<int64>(7));
+    db.Update(collection, record_id, "other", numeric_cast<int64_t>(7));
     db.WaitCommitChanges();
 
     doc = db.SnapshotRecord(collection, record_id);
@@ -1369,7 +1369,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    const_cast<int32&>(settings.JsonIndent) = 2;
+    const_cast<int32_t&>(settings.JsonIndent) = 2;
     auto db = ConnectToDataBase(settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
@@ -1393,7 +1393,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     REQUIRE(json_content.has_value());
     CHECK(json_content->find("\n  \"value\"") != string::npos);
 
-    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Update(collection, first_id, "value", numeric_cast<int64_t>(3));
     db.Delete(collection, second_id);
     db.WaitCommitChanges();
 
@@ -1462,7 +1462,7 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     CHECK(doc["value"].AsInt64() == 1);
     CHECK(doc["other"].AsInt64() == 7);
 
-    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Update(collection, first_id, "value", numeric_cast<int64_t>(3));
     db.Delete(collection, second_id);
     db.WaitCommitChanges();
 
@@ -1536,7 +1536,7 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     CHECK(doc["value"].AsInt64() == 1);
     CHECK(doc["other"].AsInt64() == 7);
 
-    db.Update(collection, first_id, "value", numeric_cast<int64>(3));
+    db.Update(collection, first_id, "value", numeric_cast<int64_t>(3));
     db.Delete(collection, second_id);
     db.WaitCommitChanges();
 

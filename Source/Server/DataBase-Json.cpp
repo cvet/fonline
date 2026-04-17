@@ -255,7 +255,7 @@ private:
 
     mutable std::mutex _storageLocker {};
     string _storageDir {};
-    int32 _jsonIndent {};
+    int32_t _jsonIndent {};
 };
 
 auto CreateJsonDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*

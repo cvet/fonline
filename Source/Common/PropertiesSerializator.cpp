@@ -45,7 +45,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
     AnyData::Document doc;
 
     for (size_t i = 1; i < props->GetRegistrator()->GetPropertiesCount(); i++) {
-        const auto* prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32>(i));
+        const auto* prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i));
 
         if (prop->IsDisabled()) {
             continue;
@@ -234,7 +234,7 @@ static auto ReadTextTokenView(const char* str, string_view& result) -> const cha
     return str[pos] != 0 ? &str[pos + 1] : &str[pos];
 }
 
-static void AppendRawBytes(vector<uint8>& data, const void* value, size_t size)
+static void AppendRawBytes(vector<uint8_t>& data, const void* value, size_t size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -243,11 +243,11 @@ static void AppendRawBytes(vector<uint8>& data, const void* value, size_t size)
     MemCopy(data.data() + old_size, value, size);
 }
 
-static void AppendRawString(vector<uint8>& data, string_view str)
+static void AppendRawString(vector<uint8_t>& data, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str_len = numeric_cast<uint32>(str.length());
+    const auto str_len = numeric_cast<uint32_t>(str.length());
     AppendRawBytes(data, &str_len, sizeof(str_len));
 
     if (!str.empty()) {
@@ -267,7 +267,7 @@ static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> str
     return decoded_storage;
 }
 
-static auto ParseStrictIntText(string_view text) -> int64
+static auto ParseStrictIntText(string_view text) -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -281,7 +281,7 @@ static auto ParseStrictIntText(string_view text) -> int64
     return value.to_int64();
 }
 
-static auto ParseStrictFloatText(string_view text) -> float64
+static auto ParseStrictFloatText(string_view text) -> float64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -310,7 +310,7 @@ static auto ParseStrictBoolText(string_view text) -> bool
         const auto int_value = value.to_int64();
         const auto float_value = value.to_float64();
 
-        if (!is_float_equal(float_value, numeric_cast<float64>(int_value)) || (int_value != 0 && int_value != 1)) {
+        if (!is_float_equal(float_value, numeric_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
             throw PropertySerializationException("Invalid bool numeric value", text);
         }
     }
@@ -318,46 +318,46 @@ static auto ParseStrictBoolText(string_view text) -> bool
     return value.to_bool();
 }
 
-static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
+static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
 
-static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& primitive_type, string_view text)
+static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& primitive_type, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (primitive_type.IsInt8) {
-        const auto value = numeric_cast<int8>(ParseStrictIntText(text));
+        const auto value = numeric_cast<int8_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt16) {
-        const auto value = numeric_cast<int16>(ParseStrictIntText(text));
+        const auto value = numeric_cast<int16_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt32) {
-        const auto value = numeric_cast<int32>(ParseStrictIntText(text));
+        const auto value = numeric_cast<int32_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsInt64) {
-        const auto value = numeric_cast<int64>(ParseStrictIntText(text));
+        const auto value = numeric_cast<int64_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt8) {
-        const auto value = numeric_cast<uint8>(ParseStrictIntText(text));
+        const auto value = numeric_cast<uint8_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt16) {
-        const auto value = numeric_cast<uint16>(ParseStrictIntText(text));
+        const auto value = numeric_cast<uint16_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsUInt32) {
-        const auto value = numeric_cast<uint32>(ParseStrictIntText(text));
+        const auto value = numeric_cast<uint32_t>(ParseStrictIntText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsSingleFloat) {
-        const auto value = numeric_cast<float32>(ParseStrictFloatText(text));
+        const auto value = numeric_cast<float32_t>(ParseStrictFloatText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsDoubleFloat) {
-        const auto value = numeric_cast<float64>(ParseStrictFloatText(text));
+        const auto value = numeric_cast<float64_t>(ParseStrictFloatText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsBool) {
@@ -369,7 +369,7 @@ static void AppendPrimitiveFromText(vector<uint8>& data, const BaseTypeDesc& pri
     }
 }
 
-static void AppendComplexStructFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static void AppendComplexStructFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -392,7 +392,7 @@ static void AppendComplexStructFromText(vector<uint8>& data, const Property* pro
     }
 }
 
-static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -430,22 +430,22 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, co
     else if (base_type.IsEnum) {
         string decoded_storage;
         const auto decoded = DecodeTextIfNeeded(text, decoded_storage);
-        int32 enum_value = 0;
+        int32_t enum_value = 0;
 
         if (strvex(decoded).is_number()) {
-            enum_value = numeric_cast<int32>(strvex(decoded).to_int64());
+            enum_value = numeric_cast<int32_t>(strvex(decoded).to_int64());
             ignore_unused(name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
         }
         else {
             enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);
         }
 
-        if (base_type.Size == sizeof(uint8)) {
-            const auto value = numeric_cast<uint8>(enum_value);
+        if (base_type.Size == sizeof(uint8_t)) {
+            const auto value = numeric_cast<uint8_t>(enum_value);
             AppendRawBytes(data, &value, sizeof(value));
         }
-        else if (base_type.Size == sizeof(uint16)) {
-            const auto value = numeric_cast<uint16>(enum_value);
+        else if (base_type.Size == sizeof(uint16_t)) {
+            const auto value = numeric_cast<uint16_t>(enum_value);
             AppendRawBytes(data, &value, sizeof(value));
         }
         else {
@@ -464,19 +464,19 @@ static void AppendBaseTypeFromText(vector<uint8>& data, const Property* prop, co
     }
 }
 
-static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8>
+static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
     const char* s = decoded.c_str();
     string_view token;
-    vector<uint8> data;
-    data.reserve(std::max<size_t>(decoded.length() + sizeof(uint32), 32));
-    uint32 arr_size = 0;
+    vector<uint8_t> data;
+    data.reserve(std::max<size_t>(decoded.length() + sizeof(uint32_t), 32));
+    uint32_t arr_size = 0;
 
     if (is_array_of_string) {
-        data.resize(sizeof(uint32));
+        data.resize(sizeof(uint32_t));
     }
 
     while ((s = ReadTextTokenView(s, token)) != nullptr) {
@@ -491,36 +491,36 @@ static auto ParseArrayFromText(const Property* prop, const BaseTypeDesc& base_ty
     return data;
 }
 
-static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& primitive_type, const uint8*& pdata)
+static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& primitive_type, const uint8_t*& pdata)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (primitive_type.IsInt8) {
-        result += strex("{}", *reinterpret_cast<const int8*>(pdata));
+        result += strex("{}", *reinterpret_cast<const int8_t*>(pdata));
     }
     else if (primitive_type.IsInt16) {
-        result += strex("{}", *reinterpret_cast<const int16*>(pdata));
+        result += strex("{}", *reinterpret_cast<const int16_t*>(pdata));
     }
     else if (primitive_type.IsInt32) {
-        result += strex("{}", *reinterpret_cast<const int32*>(pdata));
+        result += strex("{}", *reinterpret_cast<const int32_t*>(pdata));
     }
     else if (primitive_type.IsInt64) {
-        result += strex("{}", *reinterpret_cast<const int64*>(pdata));
+        result += strex("{}", *reinterpret_cast<const int64_t*>(pdata));
     }
     else if (primitive_type.IsUInt8) {
-        result += strex("{}", *reinterpret_cast<const uint8*>(pdata));
+        result += strex("{}", *reinterpret_cast<const uint8_t*>(pdata));
     }
     else if (primitive_type.IsUInt16) {
-        result += strex("{}", *reinterpret_cast<const uint16*>(pdata));
+        result += strex("{}", *reinterpret_cast<const uint16_t*>(pdata));
     }
     else if (primitive_type.IsUInt32) {
-        result += strex("{}", *reinterpret_cast<const uint32*>(pdata));
+        result += strex("{}", *reinterpret_cast<const uint32_t*>(pdata));
     }
     else if (primitive_type.IsSingleFloat) {
-        result += strex("{:f}", *reinterpret_cast<const float32*>(pdata)).rtrim("0").rtrim(".");
+        result += strex("{:f}", *reinterpret_cast<const float32_t*>(pdata)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsDoubleFloat) {
-        result += strex("{:f}", *reinterpret_cast<const float64*>(pdata)).rtrim("0").rtrim(".");
+        result += strex("{:f}", *reinterpret_cast<const float64_t*>(pdata)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsBool) {
         result += *reinterpret_cast<const bool*>(pdata) ? "True" : "False";
@@ -532,12 +532,12 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
     pdata += primitive_type.Size;
 }
 
-static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata)
+static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8_t*& pdata)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.IsString) {
-        const uint32 str_len = *reinterpret_cast<const uint32*>(pdata);
+        const uint32_t str_len = *reinterpret_cast<const uint32_t*>(pdata);
         pdata += sizeof(str_len);
         StringEscaping::AppendCodeString(result, {reinterpret_cast<const char*>(pdata), str_len});
         pdata += str_len;
@@ -553,7 +553,7 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
         StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
     }
     else if (base_type.IsEnum) {
-        int32 enum_value = 0;
+        int32_t enum_value = 0;
         MemCopy(&enum_value, pdata, base_type.Size);
         pdata += base_type.Size;
         StringEscaping::AppendCodeString(result, name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
@@ -585,12 +585,12 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
     }
 }
 
-static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8*& pdata) -> AnyData::Value
+static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const uint8_t*& pdata) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.IsString) {
-        const uint32 str_len = *reinterpret_cast<const uint32*>(pdata);
+        const uint32_t str_len = *reinterpret_cast<const uint32_t*>(pdata);
         pdata += sizeof(str_len);
         const auto* pstr = reinterpret_cast<const char*>(pdata);
         pdata += str_len;
@@ -602,7 +602,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         return hash_resolver.ResolveHash(hash).as_str();
     }
     else if (base_type.IsEnum) {
-        int32 enum_value = 0;
+        int32_t enum_value = 0;
         MemCopy(&enum_value, pdata, base_type.Size);
         pdata += base_type.Size;
         return name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
@@ -612,31 +612,31 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         pdata += primitive_type.Size;
 
         if (primitive_type.IsInt8) {
-            return numeric_cast<int64>(*reinterpret_cast<const int8*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const int8_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt16) {
-            return numeric_cast<int64>(*reinterpret_cast<const int16*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const int16_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt32) {
-            return numeric_cast<int64>(*reinterpret_cast<const int32*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const int32_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt64) {
-            return numeric_cast<int64>(*reinterpret_cast<const int64*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const int64_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt8) {
-            return numeric_cast<int64>(*reinterpret_cast<const uint8*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const uint8_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt16) {
-            return numeric_cast<int64>(*reinterpret_cast<const uint16*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const uint16_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt32) {
-            return numeric_cast<int64>(*reinterpret_cast<const uint32*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(*reinterpret_cast<const uint32_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsFloat) {
-            return numeric_cast<float64>(*reinterpret_cast<const float32*>(pdata - primitive_type.Size));
+            return numeric_cast<float64_t>(*reinterpret_cast<const float32_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsDoubleFloat) {
-            return numeric_cast<float64>(*reinterpret_cast<const float64*>(pdata - primitive_type.Size));
+            return numeric_cast<float64_t>(*reinterpret_cast<const float64_t*>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsBool) {
             return *reinterpret_cast<const bool*>(pdata - primitive_type.Size);
@@ -662,7 +662,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
     }
 }
 
-auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<const uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -690,19 +690,19 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
         AnyData::Array arr;
 
         if (!raw_data.empty()) {
-            uint32 arr_size;
+            uint32_t arr_size;
 
             if (prop->IsArrayOfString()) {
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
-                pdata += sizeof(uint32);
+                pdata += sizeof(uint32_t);
             }
             else {
-                arr_size = numeric_cast<uint32>(raw_data.size() / base_type.Size);
+                arr_size = numeric_cast<uint32_t>(raw_data.size() / base_type.Size);
             }
 
             arr.Reserve(arr_size);
 
-            for (uint32 i = 0; i < arr_size; i++) {
+            for (uint32_t i = 0; i < arr_size; i++) {
                 auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
                 arr.EmplaceBack(std::move(arr_entry));
             }
@@ -718,46 +718,46 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
             const auto& dict_key_type_ = prop->GetDictKeyType();
             const auto& dict_key_type = dict_key_type_.IsSimpleStruct ? dict_key_type_.StructLayout->Fields.front().Type : dict_key_type_;
 
-            const auto get_key_string = [&dict_key_type, &hash_resolver, &name_resolver](const uint8* p) -> string {
+            const auto get_key_string = [&dict_key_type, &hash_resolver, &name_resolver](const uint8_t* p) -> string {
                 if (dict_key_type.IsString) {
-                    const uint32 str_len = *reinterpret_cast<const uint32*>(p);
-                    return string {reinterpret_cast<const char*>(p + sizeof(uint32)), str_len};
+                    const uint32_t str_len = *reinterpret_cast<const uint32_t*>(p);
+                    return string {reinterpret_cast<const char*>(p + sizeof(uint32_t)), str_len};
                 }
                 else if (dict_key_type.IsHashedString) {
                     const auto hash = *reinterpret_cast<const hstring::hash_t*>(p);
                     return hash_resolver.ResolveHash(hash).as_str();
                 }
                 else if (dict_key_type.IsEnum) {
-                    int32 enum_value = 0;
+                    int32_t enum_value = 0;
                     MemCopy(&enum_value, p, dict_key_type.Size);
                     return name_resolver.ResolveEnumValueName(dict_key_type.Name, enum_value);
                 }
                 else if (dict_key_type.IsInt8) {
-                    return strex("{}", *reinterpret_cast<const int8*>(p));
+                    return strex("{}", *reinterpret_cast<const int8_t*>(p));
                 }
                 else if (dict_key_type.IsInt16) {
-                    return strex("{}", *reinterpret_cast<const int16*>(p));
+                    return strex("{}", *reinterpret_cast<const int16_t*>(p));
                 }
                 else if (dict_key_type.IsInt32) {
-                    return strex("{}", *reinterpret_cast<const int32*>(p));
+                    return strex("{}", *reinterpret_cast<const int32_t*>(p));
                 }
                 else if (dict_key_type.IsInt64) {
-                    return strex("{}", *reinterpret_cast<const int64*>(p));
+                    return strex("{}", *reinterpret_cast<const int64_t*>(p));
                 }
                 else if (dict_key_type.IsUInt8) {
-                    return strex("{}", *reinterpret_cast<const uint8*>(p));
+                    return strex("{}", *reinterpret_cast<const uint8_t*>(p));
                 }
                 else if (dict_key_type.IsUInt16) {
-                    return strex("{}", *reinterpret_cast<const uint16*>(p));
+                    return strex("{}", *reinterpret_cast<const uint16_t*>(p));
                 }
                 else if (dict_key_type.IsUInt32) {
-                    return strex("{}", *reinterpret_cast<const uint32*>(p));
+                    return strex("{}", *reinterpret_cast<const uint32_t*>(p));
                 }
                 else if (dict_key_type.IsSingleFloat) {
-                    return strex("{}", *reinterpret_cast<const float32*>(p));
+                    return strex("{}", *reinterpret_cast<const float32_t*>(p));
                 }
                 else if (dict_key_type.IsDoubleFloat) {
-                    return strex("{}", *reinterpret_cast<const float64*>(p));
+                    return strex("{}", *reinterpret_cast<const float64_t*>(p));
                 }
                 else if (dict_key_type.IsBool) {
                     return *reinterpret_cast<const bool*>(p) ? "True" : "False";
@@ -767,10 +767,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                 }
             };
 
-            const auto get_key_len = [&dict_key_type](const uint8* p) -> size_t {
+            const auto get_key_len = [&dict_key_type](const uint8_t* p) -> size_t {
                 if (dict_key_type.IsString) {
-                    const uint32 str_len = *reinterpret_cast<const uint32*>(p);
-                    return sizeof(uint32) + str_len;
+                    const uint32_t str_len = *reinterpret_cast<const uint32_t*>(p);
+                    return sizeof(uint32_t) + str_len;
                 }
                 else {
                     return dict_key_type.Size;
@@ -783,14 +783,14 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     pdata += get_key_len(key_data);
                     string key_str = get_key_string(key_data);
 
-                    uint32 arr_size;
+                    uint32_t arr_size;
                     MemCopy(&arr_size, pdata, sizeof(arr_size));
-                    pdata += sizeof(uint32);
+                    pdata += sizeof(uint32_t);
 
                     AnyData::Array arr;
                     arr.Reserve(arr_size);
 
-                    for (uint32 i = 0; i < arr_size; i++) {
+                    for (uint32_t i = 0; i < arr_size; i++) {
                         auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
                         arr.EmplaceBack(std::move(arr_entry));
                     }
@@ -824,7 +824,7 @@ void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
 
-    const auto set_data = [props, prop](span<const uint8> raw_data) { props->SetRawData(prop, raw_data); };
+    const auto set_data = [props, prop](span<const uint8_t> raw_data) { props->SetRawData(prop, raw_data); };
 
     return LoadPropertyFromValue(prop, value, set_data, hash_resolver, name_resolver);
 }
@@ -928,7 +928,7 @@ auto PropertiesSerializator::SavePropertyToText(const Properties* props, const P
     return SavePropertyToText(prop, props->GetRawData(prop), hash_resolver, name_resolver);
 }
 
-auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const uint8> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -954,17 +954,17 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
         bool next_iteration = false;
 
         if (!raw_data.empty()) {
-            uint32 arr_size;
+            uint32_t arr_size;
 
             if (prop->IsArrayOfString()) {
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
-                pdata += sizeof(uint32);
+                pdata += sizeof(uint32_t);
             }
             else {
-                arr_size = numeric_cast<uint32>(raw_data.size() / base_type.Size);
+                arr_size = numeric_cast<uint32_t>(raw_data.size() / base_type.Size);
             }
 
-            for (uint32 i = 0; i < arr_size; i++) {
+            for (uint32_t i = 0; i < arr_size; i++) {
                 if (next_iteration) {
                     arr_str.append(" ");
                 }
@@ -985,9 +985,9 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
         const auto& dict_key_type_ = prop->GetDictKeyType();
         const auto& dict_key_type = dict_key_type_.IsSimpleStruct ? dict_key_type_.StructLayout->Fields.front().Type : dict_key_type_;
 
-        const auto append_key_to_dict = [&](string& str, const uint8*& key_pdata) {
+        const auto append_key_to_dict = [&](string& str, const uint8_t*& key_pdata) {
             if (dict_key_type.IsString) {
-                const uint32 str_len = *reinterpret_cast<const uint32*>(key_pdata);
+                const uint32_t str_len = *reinterpret_cast<const uint32_t*>(key_pdata);
                 key_pdata += sizeof(str_len);
                 StringEscaping::AppendCodeString(str, {reinterpret_cast<const char*>(key_pdata), str_len});
                 key_pdata += str_len;
@@ -998,7 +998,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                 StringEscaping::AppendCodeString(str, hash_resolver.ResolveHash(hash).as_str());
             }
             else if (dict_key_type.IsEnum) {
-                int32 enum_value = 0;
+                int32_t enum_value = 0;
                 MemCopy(&enum_value, key_pdata, dict_key_type.Size);
                 key_pdata += dict_key_type.Size;
                 StringEscaping::AppendCodeString(str, name_resolver.ResolveEnumValueName(dict_key_type.Name, enum_value));
@@ -1022,11 +1022,11 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
             if (prop->IsDictOfArray()) {
                 string arr_str;
                 arr_str.reserve(64);
-                uint32 arr_size;
+                uint32_t arr_size;
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
                 pdata += sizeof(arr_size);
 
-                for (uint32 i = 0; i < arr_size; i++) {
+                for (uint32_t i = 0; i < arr_size; i++) {
                     if (i != 0) {
                         arr_str.append(" ");
                     }
@@ -1051,7 +1051,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
     return NormalizeTopLevelCodedString(std::move(result));
 }
 
-static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8*& pdata)
+static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, uint8_t*& pdata)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1097,13 +1097,13 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         pdata += base_type.Size;
     }
     else if (base_type.IsEnum) {
-        int32 enum_value = 0;
+        int32_t enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
             enum_value = name_resolver.ResolveEnumValue(base_type.Name, value.AsString());
         }
         else if (value.Type() == AnyData::ValueType::Int64) {
-            enum_value = numeric_cast<int32>(value.AsInt64());
+            enum_value = numeric_cast<int32_t>(value.AsInt64());
             const auto& enum_value_name = name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
             ignore_unused(enum_value_name);
         }
@@ -1111,11 +1111,11 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
             throw PropertySerializationException("Wrong enum value type (not string or int)");
         }
 
-        if (base_type.Size == sizeof(uint8)) {
-            *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+        if (base_type.Size == sizeof(uint8_t)) {
+            *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(enum_value);
         }
-        else if (base_type.Size == sizeof(uint16)) {
-            *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+        else if (base_type.Size == sizeof(uint16_t)) {
+            *reinterpret_cast<uint16_t*>(pdata) = numeric_cast<uint16_t>(enum_value);
         }
         else {
             MemCopy(pdata, &enum_value, base_type.Size);
@@ -1127,31 +1127,31 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         const auto& primitive_type = base_type.IsSimpleStruct ? base_type.StructLayout->Fields.front().Type : base_type;
 
         if (primitive_type.IsInt8) {
-            ConvertToNumber(value, *reinterpret_cast<int8*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<int8_t*>(pdata));
         }
         else if (primitive_type.IsInt16) {
-            ConvertToNumber(value, *reinterpret_cast<int16*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<int16_t*>(pdata));
         }
         else if (primitive_type.IsInt32) {
-            ConvertToNumber(value, *reinterpret_cast<int32*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<int32_t*>(pdata));
         }
         else if (primitive_type.IsInt64) {
-            ConvertToNumber(value, *reinterpret_cast<int64*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<int64_t*>(pdata));
         }
         else if (primitive_type.IsUInt8) {
-            ConvertToNumber(value, *reinterpret_cast<uint8*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<uint8_t*>(pdata));
         }
         else if (primitive_type.IsUInt16) {
-            ConvertToNumber(value, *reinterpret_cast<uint16*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<uint16_t*>(pdata));
         }
         else if (primitive_type.IsUInt32) {
-            ConvertToNumber(value, *reinterpret_cast<uint32*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<uint32_t*>(pdata));
         }
         else if (primitive_type.IsSingleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<float32*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<float32_t*>(pdata));
         }
         else if (primitive_type.IsDoubleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<float64*>(pdata));
+            ConvertToNumber(value, *reinterpret_cast<float64_t*>(pdata));
         }
         else if (primitive_type.IsBool) {
             ConvertToNumber(value, *reinterpret_cast<bool*>(pdata));
@@ -1201,7 +1201,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
     }
 }
 
-void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(span<const uint8>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1215,14 +1215,14 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         if (base_type.Size > sizeof(size_t)) {
             PropertyRawData struct_data;
             struct_data.Alloc(base_type.Size);
-            auto* pdata = struct_data.GetPtrAs<uint8>();
+            auto* pdata = struct_data.GetPtrAs<uint8_t>();
 
             ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, value, pdata);
 
-            set_data({struct_data.GetPtrAs<uint8>(), base_type.Size});
+            set_data({struct_data.GetPtrAs<uint8_t>(), base_type.Size});
         }
         else {
-            uint8 primitive_data[sizeof(size_t)];
+            uint8_t primitive_data[sizeof(size_t)];
             auto* pdata = primitive_data;
 
             ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, value, pdata);
@@ -1234,7 +1234,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         string str_buf;
         const auto& str = ConvertToString(value, str_buf);
 
-        set_data({reinterpret_cast<const uint8*>(str.c_str()), str.length()});
+        set_data({reinterpret_cast<const uint8_t*>(str.c_str()), str.length()});
     }
     else if (prop->IsArray()) {
         if (value.Type() != AnyData::ValueType::Array) {
@@ -1251,23 +1251,23 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         string str_buf;
 
         if (prop->IsArrayOfString()) {
-            size_t data_size = sizeof(uint32);
+            size_t data_size = sizeof(uint32_t);
 
             for (const auto& arr_entry : arr) {
                 string_view str = ConvertToString(arr_entry, str_buf);
-                data_size += sizeof(uint32) + str.length();
+                data_size += sizeof(uint32_t) + str.length();
             }
 
-            auto data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
             auto* pdata = data.get();
 
-            *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(arr.Size());
-            pdata += sizeof(uint32);
+            *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(arr.Size());
+            pdata += sizeof(uint32_t);
 
             for (const auto& arr_entry : arr) {
                 const auto& str = ConvertToString(arr_entry, str_buf);
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(str.length());
-                pdata += sizeof(uint32);
+                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(str.length());
+                pdata += sizeof(uint32_t);
                 MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
             }
@@ -1277,7 +1277,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         }
         else {
             const size_t data_size = arr.Size() * base_type.Size;
-            auto data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
             auto* pdata = data.get();
 
             for (const auto& arr_entry : arr) {
@@ -1309,7 +1309,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
 
         for (auto&& [dict_key, dict_value] : dict) {
             if (dict_key_type.IsString) {
-                data_size += sizeof(uint32) + dict_key.length();
+                data_size += sizeof(uint32_t) + dict_key.length();
             }
             else {
                 data_size += dict_key_type.Size;
@@ -1322,11 +1322,11 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
 
                 const auto& arr = dict_value.AsArray();
 
-                data_size += sizeof(uint32);
+                data_size += sizeof(uint32_t);
 
                 if (prop->IsDictOfArrayOfString()) {
                     for (const auto& arr_entry : arr) {
-                        data_size += sizeof(uint32) + ConvertToString(arr_entry, str_buf).length();
+                        data_size += sizeof(uint32_t) + ConvertToString(arr_entry, str_buf).length();
                     }
                 }
                 else {
@@ -1334,7 +1334,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
             else if (prop->IsDictOfString()) {
-                data_size += sizeof(uint32) + ConvertToString(dict_value, str_buf).length();
+                data_size += sizeof(uint32_t) + ConvertToString(dict_value, str_buf).length();
             }
             else {
                 data_size += base_type.Size;
@@ -1342,13 +1342,13 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
         }
 
         // Write data
-        auto data = SafeAlloc::MakeUniqueArr<uint8>(data_size);
+        auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
         auto* pdata = data.get();
 
         for (auto&& [dict_key, dict_value] : dict) {
             // Key
             if (dict_key_type.IsString) {
-                const auto key_len = numeric_cast<uint32>(dict_key.length());
+                const auto key_len = numeric_cast<uint32_t>(dict_key.length());
                 MemCopy(pdata, &key_len, sizeof(key_len));
                 pdata += sizeof(key_len);
                 MemCopy(pdata, dict_key.c_str(), dict_key.length());
@@ -1358,44 +1358,44 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
             }
             else if (dict_key_type.IsEnum) {
-                const int32 enum_value = name_resolver.ResolveEnumValue(dict_key_type.Name, dict_key);
+                const int32_t enum_value = name_resolver.ResolveEnumValue(dict_key_type.Name, dict_key);
 
-                if (dict_key_type.Size == sizeof(uint8)) {
-                    *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(enum_value);
+                if (dict_key_type.Size == sizeof(uint8_t)) {
+                    *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(enum_value);
                 }
-                else if (dict_key_type.Size == sizeof(uint16)) {
-                    *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(enum_value);
+                else if (dict_key_type.Size == sizeof(uint16_t)) {
+                    *reinterpret_cast<uint16_t*>(pdata) = numeric_cast<uint16_t>(enum_value);
                 }
                 else {
                     MemCopy(pdata, &enum_value, dict_key_type.Size);
                 }
             }
             else if (dict_key_type.IsInt8) {
-                *reinterpret_cast<int8*>(pdata) = numeric_cast<int8>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int8_t*>(pdata) = numeric_cast<int8_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt16) {
-                *reinterpret_cast<int16*>(pdata) = numeric_cast<int16>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int16_t*>(pdata) = numeric_cast<int16_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt32) {
-                *reinterpret_cast<int32*>(pdata) = numeric_cast<int32>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int32_t*>(pdata) = numeric_cast<int32_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsInt64) {
-                *reinterpret_cast<int64*>(pdata) = numeric_cast<int64>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int64_t*>(pdata) = numeric_cast<int64_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt8) {
-                *reinterpret_cast<uint8*>(pdata) = numeric_cast<uint8>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt16) {
-                *reinterpret_cast<uint16*>(pdata) = numeric_cast<uint16>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint16_t*>(pdata) = numeric_cast<uint16_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsUInt32) {
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(strvex(dict_key).to_int64());
             }
             else if (dict_key_type.IsSingleFloat) {
-                *reinterpret_cast<float32*>(pdata) = numeric_cast<float32>(strvex(dict_key).to_float32());
+                *reinterpret_cast<float32_t*>(pdata) = numeric_cast<float32_t>(strvex(dict_key).to_float32());
             }
             else if (dict_key_type.IsDoubleFloat) {
-                *reinterpret_cast<float64*>(pdata) = numeric_cast<float64>(strvex(dict_key).to_float64());
+                *reinterpret_cast<float64_t*>(pdata) = numeric_cast<float64_t>(strvex(dict_key).to_float64());
             }
             else if (dict_key_type.IsBool) {
                 *reinterpret_cast<bool*>(pdata) = strvex(dict_key).to_bool();
@@ -1412,14 +1412,14 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             if (prop->IsDictOfArray()) {
                 const auto& arr = dict_value.AsArray();
 
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(arr.Size());
-                pdata += sizeof(uint32);
+                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(arr.Size());
+                pdata += sizeof(uint32_t);
 
                 if (prop->IsDictOfArrayOfString()) {
                     for (const auto& arr_entry : arr) {
                         const auto& str = ConvertToString(arr_entry, str_buf);
-                        *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(str.length());
-                        pdata += sizeof(uint32);
+                        *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(str.length());
+                        pdata += sizeof(uint32_t);
                         MemCopy(pdata, str.c_str(), str.length());
                         pdata += str.length();
                     }
@@ -1432,8 +1432,8 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             }
             else if (prop->IsDictOfString()) {
                 const auto& str = ConvertToString(dict_value, str_buf);
-                *reinterpret_cast<uint32*>(pdata) = numeric_cast<uint32>(str.length());
-                pdata += sizeof(uint32);
+                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(str.length());
+                pdata += sizeof(uint32_t);
                 MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
             }
@@ -1457,8 +1457,8 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
     FO_RUNTIME_ASSERT(!prop->IsDisabled());
     FO_RUNTIME_ASSERT(!prop->IsVirtual());
 
-    const auto set_data = [props, prop](span<const uint8> raw_data) { props->SetRawData(prop, raw_data); };
-    vector<uint8> data;
+    const auto set_data = [props, prop](span<const uint8_t> raw_data) { props->SetRawData(prop, raw_data); };
+    vector<uint8_t> data;
 
     if (prop->IsString()) {
         const auto decoded = StringEscaping::DecodeString(text);
@@ -1506,15 +1506,15 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
                 const auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
 
                 if (prop->IsDictOfArrayOfString()) {
-                    const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32*>(arr_data.data());
+                    const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32_t*>(arr_data.data());
                     AppendRawBytes(data, &arr_count, sizeof(arr_count));
 
-                    if (arr_data.size() > sizeof(uint32)) {
-                        AppendRawBytes(data, arr_data.data() + sizeof(uint32), arr_data.size() - sizeof(uint32));
+                    if (arr_data.size() > sizeof(uint32_t)) {
+                        AppendRawBytes(data, arr_data.data() + sizeof(uint32_t), arr_data.size() - sizeof(uint32_t));
                     }
                 }
                 else {
-                    const auto arr_count = numeric_cast<uint32>(prop->GetBaseSize() == 0 ? 0 : arr_data.size() / prop->GetBaseSize());
+                    const auto arr_count = numeric_cast<uint32_t>(prop->GetBaseSize() == 0 ? 0 : arr_data.size() / prop->GetBaseSize());
                     AppendRawBytes(data, &arr_count, sizeof(arr_count));
 
                     if (!arr_data.empty()) {

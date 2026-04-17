@@ -174,7 +174,7 @@ static auto Entity_GetSelfForEvent(Entity* entity) -> Entity*
     return entity;
 }
 
-static auto Entity_GetValueAsInt(const Entity* entity, int32 prop_index) -> int32
+static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -196,7 +196,7 @@ static auto Entity_GetValueAsInt(const Entity* entity, int32 prop_index) -> int3
     return entity->GetValueAsInt(prop);
 }
 
-static void Entity_SetValueAsInt(Entity* entity, int32 prop_index, int32 value)
+static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -221,7 +221,7 @@ static void Entity_SetValueAsInt(Entity* entity, int32 prop_index, int32 value)
     entity->SetValueAsInt(prop, value);
 }
 
-static auto Entity_GetValueAsAny(const Entity* entity, int32 prop_index) -> any_t
+static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -243,7 +243,7 @@ static auto Entity_GetValueAsAny(const Entity* entity, int32 prop_index) -> any_
     return entity->GetValueAsAny(prop);
 }
 
-static void Entity_SetValueAsAny(Entity* entity, int32 prop_index, any_t value)
+static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -409,7 +409,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
 
     auto* as_engine = gen->GetEngine();
     auto* result = CreateScriptArray(as_engine, is_fixed_type ? strex("array<{}>", entity_type).c_str() : strex("array<Proto{}>", entity_type).c_str());
-    result->Reserve(numeric_cast<int32>(protos.size()));
+    result->Reserve(numeric_cast<int32_t>(protos.size()));
 
     for (const auto& proto : protos | std::views::values) {
         auto* entity = static_cast<Entity*>(proto.get_no_const());
@@ -426,7 +426,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     const auto* engine = GetGameEngine(gen->GetEngine());
     const auto entity_type = engine->Hashes.ToHashedString(entity_name);
-    const auto prop_enum = static_cast<int32>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
+    const auto prop_enum = static_cast<int32_t>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
     const auto& prop_value = *cast_from_void<const any_t*>(gen->GetAddressOfArg(1));
     const auto* registrator = engine->GetPropertyRegistrator(entity_name);
     FO_RUNTIME_ASSERT(registrator);
@@ -492,7 +492,7 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
     auto* entity_mngr = backend->GetEntityMngr();
     const auto* entities = *cast_from_void<ScriptArray**>(gen->GetAddressOfArg(0));
 
-    for (int32 i = 0; i < entities->GetSize(); i++) {
+    for (int32_t i = 0; i < entities->GetSize(); i++) {
         auto* entity = *cast_from_void<Entity**>(entities->At(i));
 
         if (entity != nullptr) {
@@ -578,7 +578,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
         }
 
         auto* arr = CreateScriptArray(as_engine, strex("array<{}>", holder_entry.TargetType).c_str());
-        arr->Reserve(numeric_cast<int32>(result_entities.size()));
+        arr->Reserve(numeric_cast<int32_t>(result_entities.size()));
 
         for (auto* result_entity : result_entities) {
             arr->InsertLast(cast_to_void(&result_entity));
@@ -602,11 +602,11 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     const auto* registrator = backend->GetMetadata()->GetPropertyRegistrator(entity_name);
     const auto prop_enum = *cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
 
-    if (static_cast<int32>(prop_enum) == 0) {
+    if (static_cast<int32_t>(prop_enum) == 0) {
         throw ScriptException("'None' is not valid property entry in this context");
     }
 
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
     FO_RUNTIME_ASSERT(prop);
 
     if (const auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
@@ -628,9 +628,9 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
 
-    int32 type_id;
+    int32_t type_id;
     AngelScript::asDWORD flags;
-    int32 as_result;
+    int32_t as_result;
     FO_AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
     if (const auto* as_type_info = as_engine->GetTypeInfoById(type_id); as_type_info == nullptr || string_view(as_type_info->GetName()) != entity_name || flags != 0) {
@@ -670,18 +670,18 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     auto* as_engine = gen->GetEngine();
     auto* backend = GetScriptBackend(as_engine);
     const auto* registrator = backend->GetMetadata()->GetPropertyRegistrator(entity_name);
     const auto prop_enum = *cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
 
-    if (static_cast<int32>(prop_enum) == 0) {
+    if (static_cast<int32_t>(prop_enum) == 0) {
         throw ScriptException("'None' is not valid property entry in this context");
     }
 
-    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32>(prop_enum));
+    const auto* prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
     FO_RUNTIME_ASSERT(prop);
 
     if (const auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
@@ -697,7 +697,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
     }
 
-    int32 type_id;
+    int32_t type_id;
     AngelScript::asDWORD flags;
     FO_AS_VERIFY(func->GetParam(0, &type_id, &flags));
 
@@ -805,7 +805,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     const auto* engine = GetGameEngine(gen->GetEngine());
-    const auto prop_enum = static_cast<int32>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
+    const auto prop_enum = static_cast<int32_t>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
     bool& is_disabled = *cast_from_void<bool*>(gen->GetArgAddress(1));
     bool& is_virtual = *cast_from_void<bool*>(gen->GetArgAddress(2));
     bool& is_dict = *cast_from_void<bool*>(gen->GetArgAddress(3));
@@ -815,7 +815,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     bool& is_int = *cast_from_void<bool*>(gen->GetArgAddress(7));
     bool& is_float = *cast_from_void<bool*>(gen->GetArgAddress(8));
     bool& is_bool = *cast_from_void<bool*>(gen->GetArgAddress(9));
-    int32& base_size = *cast_from_void<int32*>(gen->GetArgAddress(10));
+    int32_t& base_size = *cast_from_void<int32_t*>(gen->GetArgAddress(10));
     bool& is_synced = *cast_from_void<bool*>(gen->GetArgAddress(11));
 
     if (prop_enum == 0) {
@@ -836,7 +836,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     is_int = prop->IsBaseTypeInt();
     is_float = prop->IsBaseTypeFloat();
     is_bool = prop->IsBaseTypeBool();
-    base_size = numeric_cast<int32>(prop->GetBaseSize());
+    base_size = numeric_cast<int32_t>(prop->GetBaseSize());
     is_synced = prop->IsSynced();
 }
 
@@ -993,7 +993,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     auto* backend = GetScriptBackend(as_engine);
     const auto* meta = backend->GetMetadata();
 
@@ -1193,7 +1193,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
             const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
@@ -1231,7 +1231,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
             const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {

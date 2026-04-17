@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::DisableLogTags);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
 
         FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
+            const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
                 const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
+            const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
                 const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 

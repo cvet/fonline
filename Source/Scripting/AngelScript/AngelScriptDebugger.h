@@ -45,9 +45,9 @@ namespace AngelScript
 FO_BEGIN_NAMESPACE
 
 class AngelScriptBackend;
-enum class AngelScriptContextSetupReason : uint8;
+enum class AngelScriptContextSetupReason : uint8_t;
 
-enum class DebuggerStepMode : uint8
+enum class DebuggerStepMode : uint8_t
 {
     None,
     In,

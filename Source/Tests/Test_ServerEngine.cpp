@@ -45,9 +45,9 @@ namespace
 {
     constexpr msize SERVER_TEST_MAP_SIZE {200, 200};
     constexpr mpos SERVER_TEST_MOVE_START_HEX {20, 20};
-    constexpr uint16 SERVER_TEST_MOVE_SPEED = 100;
+    constexpr uint16_t SERVER_TEST_MOVE_SPEED = 100;
     const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
-    const vector<uint16> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
+    const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
     static auto MakeServerTestSettings() -> GlobalSettings
     {
@@ -61,43 +61,43 @@ namespace
         return settings;
     }
 
-    static auto MakeEmptyMapBlob() -> vector<uint8>
+    static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
-        vector<uint8> map_data;
+        vector<uint8_t> map_data;
         auto writer = DataWriter(map_data);
-        writer.Write<uint32>(uint32 {0});
-        writer.Write<uint32>(uint32 {0});
-        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {0});
         return map_data;
     }
 
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8>
+    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8> props_data;
+        vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
         ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties().StoreAllData(props_data, str_hashes);
 
-        vector<uint8> protos_data;
+        vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
 
-        writer.Write<uint32>(uint32 {0});
+        writer.Write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32>(uint32 {1});
-        writer.Write<uint32>(uint32 {1});
-        writer.Write<uint16>(numeric_cast<uint16>(type_name.as_str().length()));
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
         writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
-        writer.Write<uint16>(numeric_cast<uint16>(proto_name.length()));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.WritePtr(proto_name.data(), proto_name.length());
-        writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         writer.WritePtr(props_data.data(), props_data.size());
 
         return protos_data;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -304,7 +304,7 @@ namespace ServerEngineTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -514,7 +514,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
     REQUIRE(cr != nullptr);
 
     int critter_init_calls = 0;
-    int64 last_critter_id = 0;
+    int64_t last_critter_id = 0;
     bool last_first_time = false;
 
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetCritterInitCalls"), critter_init_calls));
@@ -623,22 +623,22 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
 
     const auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
-    vector<int32> values {1, 2, 3};
-    auto sum_array_func = server->FindFunc<int32, vector<int32>>(get_func_name("ServerEngineTest::UnitTestSumArray"));
+    vector<int32_t> values {1, 2, 3};
+    auto sum_array_func = server->FindFunc<int32_t, vector<int32_t>>(get_func_name("ServerEngineTest::UnitTestSumArray"));
     REQUIRE(sum_array_func);
     REQUIRE(sum_array_func.Call(values));
     CHECK(sum_array_func.GetResult() == 6);
 
-    auto mutate_array_func = server->FindFunc<void, vector<int32>&>(get_func_name("ServerEngineTest::UnitTestMutateArray"));
+    auto mutate_array_func = server->FindFunc<void, vector<int32_t>&>(get_func_name("ServerEngineTest::UnitTestMutateArray"));
     REQUIRE(mutate_array_func);
     REQUIRE(mutate_array_func.Call(values));
-    CHECK(values == vector<int32> {11, 2, 3, 77});
+    CHECK(values == vector<int32_t> {11, 2, 3, 77});
 
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
     auto* cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
 
-    auto critter_id_func = server->FindFunc<int64, Critter*>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
+    auto critter_id_func = server->FindFunc<int64_t, Critter*>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
     REQUIRE(critter_id_func);
     REQUIRE(critter_id_func.Call(cr));
     CHECK(critter_id_func.GetResult() == cr->GetId().underlying_value());
@@ -709,7 +709,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32>(template_moving->GetWholeTime()) + 100}};
+        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr, moving, nullptr);
@@ -764,7 +764,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32>(template_moving->GetWholeTime()) + 100}};
+        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr, moving, nullptr);

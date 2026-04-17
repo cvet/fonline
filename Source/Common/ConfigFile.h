@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-enum class ConfigFileOption : uint8
+enum class ConfigFileOption : uint8_t
 {
     None = 0,
     CollectContent = 0x1,
@@ -59,8 +59,8 @@ public:
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view;
-    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32;
-    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int32 def_val) const noexcept -> int32;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t;
+    [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string_view, string_view>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string_view, string_view>*>;
     [[nodiscard]] auto GetSections() noexcept -> multimap<string_view, map<string_view, string_view>>&;

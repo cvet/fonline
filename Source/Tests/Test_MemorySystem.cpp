@@ -24,7 +24,7 @@ TEST_CASE("MemorySystem")
 
     SECTION("MemCallocAndReallocPreservePrefix")
     {
-        auto* ptr = static_cast<uint32*>(MemCalloc(3, sizeof(uint32)));
+        auto* ptr = static_cast<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
         REQUIRE(ptr != nullptr);
         CHECK(ptr[0] == 0);
         CHECK(ptr[1] == 0);
@@ -34,7 +34,7 @@ TEST_CASE("MemorySystem")
         ptr[1] = 22;
         ptr[2] = 33;
 
-        auto* grown = static_cast<uint32*>(MemRealloc(ptr, sizeof(uint32) * 5));
+        auto* grown = static_cast<uint32_t*>(MemRealloc(ptr, sizeof(uint32_t) * 5));
         REQUIRE(grown != nullptr);
         CHECK(grown[0] == 11);
         CHECK(grown[1] == 22);
@@ -47,12 +47,12 @@ TEST_CASE("MemorySystem")
     {
         struct TestValue
         {
-            explicit TestValue(int32 value_) noexcept :
+            explicit TestValue(int32_t value_) noexcept :
                 Value {value_}
             {
             }
 
-            int32 Value {};
+            int32_t Value {};
         };
 
         const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
@@ -63,7 +63,7 @@ TEST_CASE("MemorySystem")
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32>(4);
+        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);
@@ -75,7 +75,7 @@ TEST_CASE("MemorySystem")
     {
         struct TestRefCounted final : RefCounted<TestRefCounted>
         {
-            TestRefCounted(int32 value_, int32* destroyed_) noexcept :
+            TestRefCounted(int32_t value_, int32_t* destroyed_) noexcept :
                 Value {value_},
                 Destroyed {destroyed_}
             {
@@ -83,11 +83,11 @@ TEST_CASE("MemorySystem")
 
             ~TestRefCounted() { ++*Destroyed; }
 
-            int32 Value {};
-            int32* Destroyed {};
+            int32_t Value {};
+            int32_t* Destroyed {};
         };
 
-        int32 destroyed = 0;
+        int32_t destroyed = 0;
 
         {
             auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);

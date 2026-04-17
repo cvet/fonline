@@ -48,7 +48,7 @@ namespace TestClientServerIntegration
 {
     static std::atomic_uint16_t IntegrationTestPort {46000};
 
-    static auto MakeServerScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeServerScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -81,7 +81,7 @@ namespace ClientServerIntegrationServer
             });
     }
 
-    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8>
+    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerClientEngine compiler_engine {metadata_resources};
 
@@ -172,7 +172,7 @@ namespace ClientServerIntegrationClient
             });
     }
 
-    static auto MakeServerTestSettings(uint16 port) -> GlobalSettings
+    static auto MakeServerTestSettings(uint16_t port) -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -185,7 +185,7 @@ namespace ClientServerIntegrationClient
         return settings;
     }
 
-    static auto MakeClientTestSettings(uint16 port) -> GlobalSettings
+    static auto MakeClientTestSettings(uint16_t port) -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -252,7 +252,7 @@ namespace ClientServerIntegrationClient
     {
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 6000; i++) {
+        for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -295,7 +295,7 @@ namespace ClientServerIntegrationClient
         FO_RUNTIME_ASSERT(client);
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 2000; i++) {
+        for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
 
             if (client->IsConnected() && client->GetCurPlayer() != nullptr && GetServerConnectionCount(server) == 1) {
@@ -313,7 +313,7 @@ namespace ClientServerIntegrationClient
         FO_RUNTIME_ASSERT(client);
         FO_RUNTIME_ASSERT(server);
 
-        for (int32 i = 0; i < 2000; i++) {
+        for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
 
             if (!client->IsConnecting() && !client->IsConnected() && client->GetCurPlayer() == nullptr && GetServerConnectionCount(server) == 0) {

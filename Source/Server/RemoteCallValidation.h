@@ -41,6 +41,6 @@ class EngineMetadata;
 
 FO_DECLARE_EXCEPTION(RemoteCallValidationException);
 
-void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8> data, const EngineMetadata& meta);
+void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta);
 
 FO_END_NAMESPACE

@@ -47,47 +47,47 @@ TEST_CASE("SafeArithmetics")
 
     SECTION("NumericCast")
     {
-        CHECK(numeric_cast<int32>(uint16 {123}) == 123);
-        CHECK(clamp_to<uint8>(int32 {-1}) == 0);
-        CHECK(clamp_to<uint8>(int32 {300}) == 255);
-        CHECK(clamp_to<int8>(int32 {127}) == 127);
-        CHECK(clamp_to<int8>(int32 {128}) == std::numeric_limits<int8>::max());
-        CHECK(clamp_to<int8>(int32 {-129}) == std::numeric_limits<int8>::min());
-        CHECK(numeric_cast<int64>(uint32 {4294967295u}) == 4294967295ll);
+        CHECK(numeric_cast<int32_t>(uint16_t {123}) == 123);
+        CHECK(clamp_to<uint8_t>(int32_t {-1}) == 0);
+        CHECK(clamp_to<uint8_t>(int32_t {300}) == 255);
+        CHECK(clamp_to<int8_t>(int32_t {127}) == 127);
+        CHECK(clamp_to<int8_t>(int32_t {128}) == std::numeric_limits<int8_t>::max());
+        CHECK(clamp_to<int8_t>(int32_t {-129}) == std::numeric_limits<int8_t>::min());
+        CHECK(numeric_cast<int64_t>(uint32_t {4294967295u}) == 4294967295ll);
 
-        CHECK_THROWS_AS((numeric_cast<int8>(int32 {128})), OverflowException);
-        CHECK_THROWS_AS((numeric_cast<uint8>(int32 {-1})), OverflowException);
+        CHECK_THROWS_AS((numeric_cast<int8_t>(int32_t {128})), OverflowException);
+        CHECK_THROWS_AS((numeric_cast<uint8_t>(int32_t {-1})), OverflowException);
     }
 
     SECTION("CheckedDiv")
     {
-        CHECK(checked_div<int32>(10, 2) == 5);
-        CHECK_THROWS_AS((checked_div<int32>(10, 0)), DivisionByZeroException);
-        CHECK_THROWS_AS((checked_div<float32>(1.0f, 0.0f)), DivisionByZeroException);
-        CHECK_THROWS_AS((checked_div<float32>(1.0f, std::numeric_limits<float32>::epsilon() * 0.5f)), DivisionByZeroException);
-        CHECK(checked_div<float32>(1.0f, std::numeric_limits<float32>::epsilon() * 2.0f) > 0.0f);
+        CHECK(checked_div<int32_t>(10, 2) == 5);
+        CHECK_THROWS_AS((checked_div<int32_t>(10, 0)), DivisionByZeroException);
+        CHECK_THROWS_AS((checked_div<float32_t>(1.0f, 0.0f)), DivisionByZeroException);
+        CHECK_THROWS_AS((checked_div<float32_t>(1.0f, std::numeric_limits<float32_t>::epsilon() * 0.5f)), DivisionByZeroException);
+        CHECK(checked_div<float32_t>(1.0f, std::numeric_limits<float32_t>::epsilon() * 2.0f) > 0.0f);
     }
 
     SECTION("CheckedIntegerOverflow")
     {
-        CHECK(checked_add<int32>(100, 23) == 123);
-        CHECK(checked_sub<int32>(100, 23) == 77);
-        CHECK(checked_mul<int32>(12, 11) == 132);
+        CHECK(checked_add<int32_t>(100, 23) == 123);
+        CHECK(checked_sub<int32_t>(100, 23) == 77);
+        CHECK(checked_mul<int32_t>(12, 11) == 132);
 
-        CHECK_THROWS_AS((checked_add<int32>(std::numeric_limits<int32>::max(), 1)), OverflowException);
-        CHECK_THROWS_AS((checked_add<int32>(std::numeric_limits<int32>::min(), -1)), OverflowException);
-        CHECK_THROWS_AS((checked_sub<int32>(std::numeric_limits<int32>::min(), 1)), OverflowException);
-        CHECK_THROWS_AS((checked_sub<int32>(std::numeric_limits<int32>::max(), -1)), OverflowException);
-        CHECK_THROWS_AS((checked_mul<int32>(std::numeric_limits<int32>::max(), 2)), OverflowException);
-        CHECK_THROWS_AS((checked_mul<int32>(std::numeric_limits<int32>::min(), -1)), OverflowException);
+        CHECK_THROWS_AS((checked_add<int32_t>(std::numeric_limits<int32_t>::max(), 1)), OverflowException);
+        CHECK_THROWS_AS((checked_add<int32_t>(std::numeric_limits<int32_t>::min(), -1)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<int32_t>(std::numeric_limits<int32_t>::min(), 1)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<int32_t>(std::numeric_limits<int32_t>::max(), -1)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<int32_t>(std::numeric_limits<int32_t>::max(), 2)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<int32_t>(std::numeric_limits<int32_t>::min(), -1)), OverflowException);
 
-        CHECK(checked_add<uint32>(10u, 20u) == 30u);
-        CHECK(checked_sub<uint32>(20u, 10u) == 10u);
-        CHECK(checked_mul<uint32>(12u, 11u) == 132u);
+        CHECK(checked_add<uint32_t>(10u, 20u) == 30u);
+        CHECK(checked_sub<uint32_t>(20u, 10u) == 10u);
+        CHECK(checked_mul<uint32_t>(12u, 11u) == 132u);
 
-        CHECK_THROWS_AS((checked_add<uint32>(std::numeric_limits<uint32>::max(), 1u)), OverflowException);
-        CHECK_THROWS_AS((checked_sub<uint32>(0u, 1u)), OverflowException);
-        CHECK_THROWS_AS((checked_mul<uint32>(std::numeric_limits<uint32>::max(), 2u)), OverflowException);
+        CHECK_THROWS_AS((checked_add<uint32_t>(std::numeric_limits<uint32_t>::max(), 1u)), OverflowException);
+        CHECK_THROWS_AS((checked_sub<uint32_t>(0u, 1u)), OverflowException);
+        CHECK_THROWS_AS((checked_mul<uint32_t>(std::numeric_limits<uint32_t>::max(), 2u)), OverflowException);
     }
 
     SECTION("Lerp")
@@ -110,7 +110,7 @@ TEST_CASE("SafeArithmetics")
         }
         CHECK(sum == 10);
 
-        const vector<int32> values = {4, 5, 6};
+        const vector<int32_t> values = {4, 5, 6};
         size_t idx_sum = 0;
         for (const auto i : iterate_range(values)) {
             idx_sum += i;
@@ -120,11 +120,11 @@ TEST_CASE("SafeArithmetics")
 
     SECTION("IRoundAndConstCast")
     {
-        CHECK(iround<int32>(1.4f) == 1);
-        CHECK(iround<int32>(1.6f) == 2);
-        CHECK(iround<int32>(-1.6f) == -2);
+        CHECK(iround<int32_t>(1.4f) == 1);
+        CHECK(iround<int32_t>(1.6f) == 2);
+        CHECK(iround<int32_t>(-1.6f) == -2);
 
-        constexpr int32 casted = const_numeric_cast<int32>(uint16 {42});
+        constexpr int32_t casted = const_numeric_cast<int32_t>(uint16_t {42});
         STATIC_REQUIRE(casted == 42);
     }
 }

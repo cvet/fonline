@@ -63,7 +63,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
 {
     if (count <= 0) {
         return nullptr;
@@ -73,7 +73,7 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32 count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -87,7 +87,7 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32 coun
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
 {
     if (count <= 0) {
         return nullptr;
@@ -97,7 +97,7 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, an
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32 count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");

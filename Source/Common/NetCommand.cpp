@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 struct CmdDef
 {
     char Name[20];
-    uint8 Id;
+    uint8_t Id;
 };
 
 static constexpr CmdDef CMD_LIST[] = {
@@ -77,7 +77,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     }
     istringstream args_str(args);
 
-    uint8 cmd = 0;
+    uint8_t cmd = 0;
     for (const auto& cur_cmd : CMD_LIST) {
         if (strex(cmd_str).compare_ignore_case(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
@@ -110,8 +110,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_MOVECRIT: {
         ident_t cr_id;
-        int16 hex_x = 0;
-        int16 hex_y = 0;
+        int16_t hex_x = 0;
+        int16_t hex_y = 0;
         if (!(args_str >> cr_id >> hex_x >> hex_y)) {
             logcb("Invalid arguments. Example: move cr_id hx hy");
             break;
@@ -160,10 +160,10 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_ADDITEM: {
-        int16 hex_x = 0;
-        int16 hex_y = 0;
+        int16_t hex_x = 0;
+        int16_t hex_y = 0;
         string proto_name;
-        int32 count = 0;
+        int32_t count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additem hx hy name count");
             break;
@@ -179,7 +179,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_ADDITEM_SELF: {
         string proto_name;
-        int32 count = 0;
+        int32_t count = 0;
         if (!(args_str >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additemself name count");
             break;
@@ -194,15 +194,15 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_ADDNPC: {
-        int16 hex_x = 0;
-        int16 hex_y = 0;
-        uint16 dir = 0;
+        int16_t hex_x = 0;
+        int16_t hex_y = 0;
+        uint16_t dir = 0;
         string proto_name;
         if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
             logcb("Invalid arguments. Example: addnpc hx hy dir name");
             break;
         }
-        if (dir > std::numeric_limits<uint8>::max()) {
+        if (dir > std::numeric_limits<uint8_t>::max()) {
             logcb("Invalid arguments. Example: addnpc hx hy dir name");
             break;
         }
@@ -212,7 +212,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.Write(mpos(hex_x, hex_y));
-        buf.Write(numeric_cast<uint8>(dir));
+        buf.Write(numeric_cast<uint8_t>(dir));
         buf.Write(pid);
         buf.EndMsg();
     } break;

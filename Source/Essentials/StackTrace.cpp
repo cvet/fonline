@@ -43,7 +43,7 @@ extern void PushStackTrace(const SourceLocationData* loc) noexcept
 #if !FO_NO_MANUAL_STACK_TRACE
     auto& st = details::StackTrace;
     const auto cc = st.CallsCount;
-    const uint32 idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
+    const uint32_t idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
     st.CallTree[idx] = loc;
     st.CallsCount = cc + 1;
 #endif
@@ -65,7 +65,7 @@ auto GetStackTrace() noexcept -> const StackTraceData&
     return details::StackTrace;
 }
 
-extern auto GetStackTraceEntry(uint32 deep) noexcept -> const SourceLocationData*
+extern auto GetStackTraceEntry(uint32_t deep) noexcept -> const SourceLocationData*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -93,7 +93,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
     char itoa_buf[64] = {};
 
-    for (uint32 i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
+    for (uint32_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
         const auto& entry = st.CallTree[i - 1];
         string_view file_name = entry->file;
 
@@ -112,7 +112,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
     if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
         WriteBaseLog("- ...and ");
-        WriteBaseLog(ItoA(static_cast<int64>(st.CallsCount - STACK_TRACE_MAX_SIZE), itoa_buf, 10));
+        WriteBaseLog(ItoA(static_cast<int64_t>(st.CallsCount - STACK_TRACE_MAX_SIZE), itoa_buf, 10));
         WriteBaseLog(" more entries\n");
     }
 

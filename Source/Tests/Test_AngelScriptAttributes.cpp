@@ -1281,7 +1281,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         auto stream = BytecodeStream {bytecode};
         REQUIRE(mod->SaveByteCode(&stream) >= 0);
 
-        vector<uint8> payload;
+        vector<uint8_t> payload;
         auto writer = DataWriter {payload};
         SerializeFunctionAttributeRecords(writer, parsed.Records);
 

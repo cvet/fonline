@@ -35,7 +35,7 @@ TEST_CASE("DataSource")
         CHECK(recursive->IsFileExists("nested/child.txt"));
 
         size_t size = 0;
-        uint64 write_time = 0;
+        uint64_t write_time = 0;
         CHECK(recursive->GetFileInfo("nested/child.txt", size, write_time));
         CHECK(size == 5);
         CHECK(write_time != 0);
@@ -68,7 +68,7 @@ TEST_CASE("DataSource")
 
         const DataSourceRef ds_ref {mounted.get()};
         size_t size = 0;
-        uint64 write_time = 0;
+        uint64_t write_time = 0;
 
         CHECK(ds_ref.IsDiskDir());
         CHECK(ds_ref.IsFileExists("entry.bin"));
@@ -93,7 +93,7 @@ TEST_CASE("DataSource")
         REQUIRE(maybe_pack);
 
         size_t size = 123;
-        uint64 write_time = 456;
+        uint64_t write_time = 456;
 
         CHECK_FALSE(maybe_dir->IsDiskDir());
         CHECK(maybe_dir->GetPackName() == "Dummy");
@@ -125,7 +125,7 @@ TEST_CASE("DataSource")
         REQUIRE(files_list);
 
         size_t size = 0;
-        uint64 write_time = 0;
+        uint64_t write_time = 0;
         CHECK(files_list->GetPackName() == "@FilesList");
         CHECK(files_list->IsFileExists(listed_file));
         CHECK(files_list->GetFileInfo(listed_file, size, write_time));

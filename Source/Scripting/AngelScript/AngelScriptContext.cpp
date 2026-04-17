@@ -95,7 +95,7 @@ auto AngelScriptContextExtendedData::Get(const AngelScript::asIScriptContext* ct
     return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData());
 }
 
-AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32>, string_view)> debugger_stop_callback) :
+AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32_t>, string_view)> debugger_stop_callback) :
     _asEngine {as_engine},
     _overrunTimeout {overrun_timeout},
     _debuggerStopCallback {std::move(debugger_stop_callback)}
@@ -104,7 +104,7 @@ AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngin
 
     as_engine->SetContextUserDataCleanupCallback(CleanupScriptContext);
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     FO_AS_VERIFY(as_engine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
 }
 
@@ -130,7 +130,7 @@ void AngelScriptContextManager::CreateContext()
     ignore_unused(AngelScriptEndCall);
 #endif
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     FO_AS_VERIFY(ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), nullptr, AngelScript::asCALL_CDECL));
 
     if (_contextSetupCallback) {
@@ -178,7 +178,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
     try {
         FO_RUNTIME_ASSERT(ctx->GetState() != AngelScript::asEXECUTION_ACTIVE);
 
-        int32 as_result = 0;
+        int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
         refcount_ptr ctx_holder = ctx;
@@ -264,7 +264,7 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 exec_result = 0;
+    int32_t exec_result = 0;
 
     {
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
@@ -348,7 +348,7 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
 
             if (_debuggerStopCallback) {
                 string source_path;
-                std::optional<uint32> source_line;
+                std::optional<uint32_t> source_line;
                 string function_name;
 
                 if (const auto* ex_func = ctx->GetExceptionFunction(); ex_func != nullptr) {
@@ -363,7 +363,7 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
                     source_path = ex_orig_file;
 
                     if (ex_orig_line != 0) {
-                        source_line = numeric_cast<uint32>(ex_orig_line - 1);
+                        source_line = numeric_cast<uint32_t>(ex_orig_line - 1);
                     }
                 }
 
@@ -487,11 +487,11 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript
     }
 
     if (storage == nullptr) {
-        const int32 ctx_line = ctx->GetLineNumber();
+        const int32_t ctx_line = ctx->GetLineNumber();
 
         const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
         const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
-        const auto orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
+        const auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
 
         const auto* func_decl = func->GetDeclaration(true);
 
@@ -592,7 +592,7 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
     const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-    const auto ex_orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ex_line, lnt));
+    const auto ex_orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ex_line, lnt));
 
     const auto* func_decl = ex_func->GetDeclaration(true);
 

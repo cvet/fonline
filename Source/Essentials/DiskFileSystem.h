@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-using FsFileVisitor = function<void(string_view, size_t, uint64)>;
+using FsFileVisitor = function<void(string_view, size_t, uint64_t)>;
 
 // Filesystem helpers
 [[nodiscard]] auto fs_make_path(string_view path) -> std::u8string;
@@ -51,12 +51,12 @@ using FsFileVisitor = function<void(string_view, size_t, uint64)>;
 [[nodiscard]] auto fs_is_absolute_path(string_view path) noexcept -> bool;
 [[nodiscard]] auto fs_is_relative_path(string_view path) noexcept -> bool;
 [[nodiscard]] auto fs_create_directories(string_view dir) noexcept -> bool;
-[[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64;
-[[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64>;
+[[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64_t;
+[[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
 [[nodiscard]] auto fs_read_file(string_view path) -> optional<string>;
-[[nodiscard]] auto fs_compare_file_content(string_view path, const_span<uint8> content) -> bool;
+[[nodiscard]] auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
 [[nodiscard]] auto fs_write_file(string_view path, string_view content) -> bool;
-[[nodiscard]] auto fs_write_file(string_view path, const_span<uint8> content) -> bool;
+[[nodiscard]] auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;
 [[nodiscard]] auto fs_remove_file(string_view path) noexcept -> bool;
 [[nodiscard]] auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
 [[nodiscard]] auto fs_touch_file(string_view path) noexcept -> bool;
@@ -68,6 +68,6 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
 [[nodiscard]] auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool;
 [[nodiscard]] auto stream_get_size(std::istream& stream) -> size_t;
 [[nodiscard]] auto stream_get_read_pos(std::istream& stream) -> size_t;
-[[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32 offset, std::ios_base::seekdir origin) -> bool;
+[[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
 
 FO_END_NAMESPACE

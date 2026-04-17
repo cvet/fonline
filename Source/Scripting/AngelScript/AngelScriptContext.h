@@ -52,7 +52,7 @@ FO_BEGIN_NAMESPACE
 struct DebuggerStepState;
 class Property;
 
-enum class AngelScriptContextSetupReason : uint8
+enum class AngelScriptContextSetupReason : uint8_t
 {
     Create,
     Request,
@@ -63,7 +63,7 @@ struct AngelScriptContextExtendedData
 {
     raw_ptr<AngelScript::asIScriptContext> Root {};
     raw_ptr<AngelScript::asIScriptContext> Parent {};
-    int32 ExceptionCount {};
+    int32_t ExceptionCount {};
     bool ExecutionActive {};
     size_t ExecutionCalls {};
     nanotime SuspendEndTime {};
@@ -84,7 +84,7 @@ struct AngelScriptContextExtendedData
 class AngelScriptContextManager final
 {
 public:
-    explicit AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32>, string_view)> debugger_stop_callback = nullptr);
+    explicit AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, std::optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
@@ -110,7 +110,7 @@ private:
     vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts {};
     bool _nonConstHelper {};
-    function<void(string_view, string_view, string_view, std::optional<uint32>, string_view)> _debuggerStopCallback {};
+    function<void(string_view, string_view, string_view, std::optional<uint32_t>, string_view)> _debuggerStopCallback {};
     function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> _contextSetupCallback {};
 };
 

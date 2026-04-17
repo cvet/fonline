@@ -131,11 +131,11 @@ static auto NextSignificantLexem(LexemIt it, const Preprocessor::LexemList& lexe
     return it;
 }
 
-static auto CountNewlines(LexemIt begin, LexemIt end) -> uint32
+static auto CountNewlines(LexemIt begin, LexemIt end) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 count = 0;
+    uint32_t count = 0;
 
     for (auto it = begin; it != end; ++it) {
         const auto& lex = *it;
@@ -144,7 +144,7 @@ static auto CountNewlines(LexemIt begin, LexemIt end) -> uint32
             count += 1;
         }
         if (lex.Type == Preprocessor::COMMENT) {
-            count += numeric_cast<uint32>(std::ranges::count(lex.Value, '\n'));
+            count += numeric_cast<uint32_t>(std::ranges::count(lex.Value, '\n'));
         }
     }
 
@@ -200,7 +200,7 @@ static auto MakeCurrentTypeName(const vector<string>& type_stack) -> string
     return type_stack.empty() ? string {} : type_stack.back();
 }
 
-static auto FormatAttributeError(const Preprocessor::LineNumberTranslator* lnt, uint32 line, string_view message) -> string
+static auto FormatAttributeError(const Preprocessor::LineNumberTranslator* lnt, uint32_t line, string_view message) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -546,7 +546,7 @@ static auto FindModuleObjectType(AngelScript::asIScriptModule* mod, string_view 
     return nullptr;
 }
 
-static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFunction* func, const Preprocessor::LineNumberTranslator* lnt) -> optional<pair<string, uint32>>
+static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFunction* func, const Preprocessor::LineNumberTranslator* lnt) -> optional<pair<string, uint32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -563,11 +563,11 @@ static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFu
     }
 
     if (lnt != nullptr) {
-        const auto line = numeric_cast<uint32>(row);
+        const auto line = numeric_cast<uint32_t>(row);
         return pair {string {Preprocessor::ResolveOriginalFile(line, lnt)}, Preprocessor::ResolveOriginalLine(line, lnt)};
     }
 
-    return pair {section != nullptr ? string {section} : string {}, numeric_cast<uint32>(row)};
+    return pair {section != nullptr ? string {section} : string {}, numeric_cast<uint32_t>(row)};
 }
 
 static auto HasAttribute(const ScriptFunctionAttributeUserData* user_data, string_view attribute) noexcept -> bool
@@ -662,7 +662,7 @@ static auto FormatUsageErrorLocation(const ScriptBytecodeLocation& location, con
     FO_STACK_TRACE_ENTRY();
 
     if (lnt != nullptr) {
-        const auto line = numeric_cast<uint32>(location.Row);
+        const auto line = numeric_cast<uint32_t>(location.Row);
         return strex("{}({},1)", Preprocessor::ResolveOriginalFile(line, lnt), Preprocessor::ResolveOriginalLine(line, lnt)).str();
     }
 
@@ -688,7 +688,7 @@ static auto ResolveInstructionFunction(const AngelScript::asDWORD* instruction, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(*instruction));
+    const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(*instruction));
 
     switch (opcode) {
     case AngelScript::asBC_CALL:
@@ -709,7 +709,7 @@ static void SerializeString(DataWriter& writer, string_view value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<uint32>(numeric_cast<uint32>(value.length()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(value.length()));
     writer.WritePtr(value.data(), value.length());
 }
 
@@ -717,7 +717,7 @@ static auto DeserializeString(DataReader& reader) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto value_len = reader.Read<uint32>();
+    const auto value_len = reader.Read<uint32_t>();
     string value;
     value.resize(value_len);
 
@@ -770,9 +770,9 @@ auto ParseFunctionAttributeRecords(Preprocessor::Context* pp_ctx, Preprocessor::
     vector<ScriptSourceScopeKind> scope_stack;
     vector<string> namespace_stack;
     vector<string> type_stack;
-    map<tuple<string, string, string>, uint32> overload_indexes;
+    map<tuple<string, string, string>, uint32_t> overload_indexes;
     const auto* lnt = Preprocessor::GetLineNumberTranslator(pp_ctx);
-    uint32 line = 1;
+    uint32_t line = 1;
 
     for (LexemIt it = lexems.cbegin(); it != lexems.cend();) {
         if (it->Type == Preprocessor::NEWLINE) {
@@ -897,21 +897,21 @@ void SerializeFunctionAttributeRecords(DataWriter& writer, const vector<ParsedFu
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<uint32>(numeric_cast<uint32>(records.size()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(records.size()));
 
     for (const auto& record : records) {
         SerializeString(writer, record.Namespace);
         SerializeString(writer, record.ObjectType);
         SerializeString(writer, record.Name);
-        writer.Write<uint32>(record.OverloadIndex);
-        writer.Write<uint32>(numeric_cast<uint32>(record.Attributes.size()));
+        writer.Write<uint32_t>(record.OverloadIndex);
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(record.Attributes.size()));
 
         for (const auto& attr : record.Attributes) {
             SerializeString(writer, attr);
         }
 
         SerializeString(writer, record.SourceFile);
-        writer.Write<uint32>(record.SourceLine);
+        writer.Write<uint32_t>(record.SourceLine);
     }
 }
 
@@ -920,25 +920,25 @@ auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFun
     FO_STACK_TRACE_ENTRY();
 
     vector<ParsedFunctionAttributeRecord> records;
-    const auto count = reader.Read<uint32>();
+    const auto count = reader.Read<uint32_t>();
     records.reserve(count);
 
-    for (uint32 i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < count; i++) {
         ParsedFunctionAttributeRecord record;
         record.Namespace = DeserializeString(reader);
         record.ObjectType = DeserializeString(reader);
         record.Name = DeserializeString(reader);
-        record.OverloadIndex = reader.Read<uint32>();
+        record.OverloadIndex = reader.Read<uint32_t>();
 
-        const auto attrs_count = reader.Read<uint32>();
+        const auto attrs_count = reader.Read<uint32_t>();
         record.Attributes.reserve(attrs_count);
 
-        for (uint32 j = 0; j < attrs_count; j++) {
+        for (uint32_t j = 0; j < attrs_count; j++) {
             record.Attributes.emplace_back(DeserializeString(reader));
         }
 
         record.SourceFile = DeserializeString(reader);
-        record.SourceLine = reader.Read<uint32>();
+        record.SourceLine = reader.Read<uint32_t>();
         records.emplace_back(std::move(record));
     }
 
@@ -978,7 +978,7 @@ auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vecto
         AngelScript::asIScriptFunction* target_func = nullptr;
 
         if (record.ObjectType.empty()) {
-            uint32 ordinal = 0;
+            uint32_t ordinal = 0;
 
             for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
                 auto* func = mod->GetFunctionByIndex(i);
@@ -999,7 +999,7 @@ auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vecto
             }
         }
         else if (const auto* ti = FindModuleObjectType(mod, record.Namespace, record.ObjectType); ti != nullptr) {
-            uint32 ordinal = 0;
+            uint32_t ordinal = 0;
 
             for (AngelScript::asUINT j = 0; j < ti->GetMethodCount(); j++) {
                 auto* func = ti->GetMethodByIndex(j, false);
@@ -1084,7 +1084,7 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
         }
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
-            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
+            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(bc[pos]));
             const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
             const auto* instruction = bc + pos;
 
@@ -1108,7 +1108,7 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
     return errors;
 }
 
-static auto TryParseAttributePriority(string_view raw_attribute, string_view attribute_name, int32& priority) noexcept -> bool
+static auto TryParseAttributePriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1131,7 +1131,7 @@ static auto TryParseAttributePriority(string_view raw_attribute, string_view att
         return false;
     }
 
-    auto parsed_priority = int32 {};
+    auto parsed_priority = int32_t {};
     const auto* begin = args.data();
     const auto* end = begin + args.length();
     const auto [ptr, ec] = std::from_chars(begin, end, parsed_priority);
@@ -1177,7 +1177,7 @@ static void ValidateSpecialAttribute(string& errors, const AngelScript::asIScrip
         return;
     }
 
-    int32 priority {};
+    int32_t priority {};
 
     if (!TryParseAttributePriority(raw_attribute, attribute_name, priority)) {
         AppendSpecialAttributeError(errors, func, raw_attribute, "expected an optional single integer priority argument", lnt);
@@ -1208,7 +1208,7 @@ auto ValidateSpecialFunctionAttributes(AngelScript::asIScriptModule* mod, const 
     return errors;
 }
 
-static auto IsScriptTypeNamed(AngelScript::asIScriptEngine* engine, int32 type_id, string_view type_name) noexcept -> bool
+static auto IsScriptTypeNamed(AngelScript::asIScriptEngine* engine, int32_t type_id, string_view type_name) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1216,7 +1216,7 @@ static auto IsScriptTypeNamed(AngelScript::asIScriptEngine* engine, int32 type_i
     return type_info != nullptr && string_view(type_info->GetName()) == type_name;
 }
 
-static auto IsSupportedAdminRemoteCallArgType(AngelScript::asIScriptEngine* engine, int32 type_id, bool expect_any) noexcept -> bool
+static auto IsSupportedAdminRemoteCallArgType(AngelScript::asIScriptEngine* engine, int32_t type_id, bool expect_any) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1237,7 +1237,7 @@ static auto IsSupportedAdminRemoteCallSignature(const AngelScript::asIScriptFunc
     AngelScript::asUINT first_payload_index = 0;
 
     if (param_count > 0) {
-        int32 first_param_type_id = 0;
+        int32_t first_param_type_id = 0;
         AngelScript::asDWORD first_param_flags = 0;
         const char* first_param_name = nullptr;
 
@@ -1262,7 +1262,7 @@ static auto IsSupportedAdminRemoteCallSignature(const AngelScript::asIScriptFunc
         return true;
     }
 
-    int32 first_payload_type_id = 0;
+    int32_t first_payload_type_id = 0;
     AngelScript::asDWORD first_payload_flags = 0;
     const char* first_payload_name = nullptr;
 
@@ -1280,7 +1280,7 @@ static auto IsSupportedAdminRemoteCallSignature(const AngelScript::asIScriptFunc
     }
 
     for (AngelScript::asUINT index = first_payload_index + 1; index < param_count; index++) {
-        int32 param_type_id = 0;
+        int32_t param_type_id = 0;
         AngelScript::asDWORD param_flags = 0;
         const char* param_name = nullptr;
 
@@ -1456,7 +1456,7 @@ auto ValidateEventSubscriptions(AngelScript::asIScriptModule* mod, const Preproc
         const auto clear_pending = [&]() { pending = {}; };
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
-            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8>(bc[pos]));
+            const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(bc[pos]));
             const auto instr_size = AngelScript::asBCTypeSize[AngelScript::asBCInfo[opcode].type];
             const auto* instruction = bc + pos;
 

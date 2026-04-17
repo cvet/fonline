@@ -30,7 +30,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_EXIT);
+        CHECK(in_buf.Read<uint8_t>() == CMD_EXIT);
     }
 
     SECTION("MoveCommandSerializesCritterAndHex")
@@ -45,7 +45,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_MOVECRIT);
+        CHECK(in_buf.Read<uint8_t>() == CMD_MOVECRIT);
         CHECK(in_buf.Read<ident_t>() == ident_t {42});
         const auto pos = in_buf.Read<mpos>();
         CHECK(pos == mpos {17, 23});
@@ -63,9 +63,9 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_ADDITEM_SELF);
+        CHECK(in_buf.Read<uint8_t>() == CMD_ADDITEM_SELF);
         CHECK(in_buf.Read<hstring>(hashes).as_str() == "ammo_10mm");
-        CHECK(in_buf.Read<int32>() == 5);
+        CHECK(in_buf.Read<int32_t>() == 5);
     }
 
     SECTION("AddNpcAndAddLocSerializeHashedProtos")
@@ -81,16 +81,16 @@ TEST_CASE("NetCommand")
         npc_in.AddData(npc_buf.GetData());
         REQUIRE(npc_in.NeedProcess());
         CHECK(npc_in.ReadMsg() == NetMessage::SendCommand);
-        CHECK(npc_in.Read<uint8>() == CMD_ADDNPC);
+        CHECK(npc_in.Read<uint8_t>() == CMD_ADDNPC);
         CHECK(npc_in.Read<mpos>() == mpos {3, 4});
-        CHECK(npc_in.Read<uint8>() == 5);
+        CHECK(npc_in.Read<uint8_t>() == 5);
         CHECK(npc_in.Read<hstring>(hashes).as_str() == "critter_proto");
 
         NetInBuffer loc_in {8};
         loc_in.AddData(loc_buf.GetData());
         REQUIRE(loc_in.NeedProcess());
         CHECK(loc_in.ReadMsg() == NetMessage::SendCommand);
-        CHECK(loc_in.Read<uint8>() == CMD_ADDLOCATION);
+        CHECK(loc_in.Read<uint8_t>() == CMD_ADDLOCATION);
         CHECK(loc_in.Read<hstring>(hashes).as_str() == "town_proto");
     }
 
@@ -106,7 +106,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_PROPERTY);
+        CHECK(in_buf.Read<uint8_t>() == CMD_PROPERTY);
         CHECK(in_buf.Read<ident_t>() == ident_t {77});
         CHECK(in_buf.Read<string>() == "Health");
         CHECK(in_buf.Read<bool>());
@@ -125,7 +125,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_PROPERTY);
+        CHECK(in_buf.Read<uint8_t>() == CMD_PROPERTY);
         CHECK(in_buf.Read<ident_t>() == ident_t {88});
         CHECK(in_buf.Read<string>() == "Stamina");
         CHECK_FALSE(in_buf.Read<bool>());
@@ -144,7 +144,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_RUNSCRIPT);
+        CHECK(in_buf.Read<uint8_t>() == CMD_RUNSCRIPT);
         CHECK(in_buf.Read<string>() == "module::Func");
         CHECK(in_buf.Read<string>() == "alpha");
         CHECK(in_buf.Read<string>() == "beta");
@@ -163,7 +163,7 @@ TEST_CASE("NetCommand")
 
         REQUIRE(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8>() == CMD_LOG);
+        CHECK(in_buf.Read<uint8_t>() == CMD_LOG);
         CHECK(in_buf.Read<string>() == "--");
     }
 

@@ -46,7 +46,7 @@
 
 FO_BEGIN_NAMESPACE
 
-[[noreturn]] void ThrowScriptCoreException(string_view file, int32 line, int32 result)
+[[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -304,7 +304,7 @@ auto NormalizeScriptPropertyDecl(string_view decl) -> string
         size_t element_begin = array_pos;
 
         if (element_begin > 0 && fixed_decl[element_begin - 1] == '>') {
-            int32 nested_level = 1;
+            int32_t nested_level = 1;
             element_begin--;
 
             while (element_begin > 0) {
@@ -382,7 +382,7 @@ auto CalcConstructAddrSpace(const Property* prop) -> size_t
             return sizeof(hstring);
         }
         else if (prop->IsBaseTypeEnum()) {
-            return sizeof(int32);
+            return sizeof(int32_t);
         }
         else if (prop->IsBaseTypePrimitive()) {
             return prop->GetBaseSize();
@@ -458,13 +458,13 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         return const_cast<ProtoEntity*>(proto);
     };
 
-    const auto resolve_enum = [](const void* eptr, size_t elen) -> int32 {
-        int32 result = 0;
+    const auto resolve_enum = [](const void* eptr, size_t elen) -> int32_t {
+        int32_t result = 0;
         MemCopy(&result, eptr, elen);
         return result;
     };
 
-    const auto* data = prop_data.GetPtrAs<uint8>();
+    const auto* data = prop_data.GetPtrAs<uint8_t>();
     const auto data_size = prop_data.GetSize();
 
     if (prop->IsPlainData()) {
@@ -478,8 +478,8 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         }
         else if (prop->IsBaseTypeEnum()) {
             FO_RUNTIME_ASSERT(data_size != 0);
-            FO_RUNTIME_ASSERT(data_size <= sizeof(int32));
-            MemFill(construct_addr, 0, sizeof(int32));
+            FO_RUNTIME_ASSERT(data_size <= sizeof(int32_t));
+            MemFill(construct_addr, 0, sizeof(int32_t));
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
@@ -502,19 +502,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
-                uint32 arr_size;
+                uint32_t arr_size;
                 MemCopy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
 
-                arr->Resize(numeric_cast<int32>(arr_size));
+                arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                for (uint32 i = 0; i < arr_size; i++) {
-                    uint32 str_size;
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    uint32_t str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
 
                     string str(reinterpret_cast<const char*>(data), str_size);
-                    arr->SetValue(numeric_cast<int32>(i), cast_to_void(&str));
+                    arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
 
                     data += str_size;
                 }
@@ -522,12 +522,12 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         }
         else if (prop->IsBaseTypeProtoReference()) {
             if (data_size != 0) {
-                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
-                arr->Resize(numeric_cast<int32>(arr_size));
+                const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                for (uint32 i = 0; i < arr_size; i++) {
+                for (uint32_t i = 0; i < arr_size; i++) {
                     auto* fixed_type = resolve_fixed_type(data);
-                    arr->SetValue(numeric_cast<int32>(i), cast_to_void(&fixed_type));
+                    arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&fixed_type));
 
                     data += sizeof(hstring::hash_t);
                 }
@@ -535,12 +535,12 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         }
         else if (prop->IsBaseTypeHash()) {
             if (data_size != 0) {
-                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
-                arr->Resize(numeric_cast<int32>(arr_size));
+                const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                for (uint32 i = 0; i < arr_size; i++) {
+                for (uint32_t i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
-                    arr->SetValue(numeric_cast<int32>(i), cast_to_void(&hvalue));
+                    arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&hvalue));
 
                     data += sizeof(hstring::hash_t);
                 }
@@ -548,33 +548,33 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         }
         else if (prop->IsBaseTypeEnum()) {
             if (data_size != 0) {
-                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
-                arr->Resize(numeric_cast<int32>(arr_size));
+                const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                if (prop->GetBaseSize() == sizeof(int32)) {
+                if (prop->GetBaseSize() == sizeof(int32_t)) {
                     MemCopy(arr->At(0), data, data_size);
                 }
                 else {
-                    for (uint32 i = 0; i < arr_size; i++) {
-                        MemCopy(arr->At(numeric_cast<int32>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        MemCopy(arr->At(numeric_cast<int32_t>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
                 }
             }
         }
         else if (prop->IsBaseTypePrimitive()) {
             if (data_size != 0) {
-                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
-                arr->Resize(numeric_cast<int32>(arr_size));
+                const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32_t>(arr_size));
                 MemCopy(arr->At(0), data, data_size);
             }
         }
         else if (prop->IsBaseTypeStruct()) {
             if (data_size != 0) {
-                const auto arr_size = numeric_cast<uint32>(data_size / prop->GetBaseSize());
-                arr->Resize(numeric_cast<int32>(arr_size));
+                const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
+                arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                for (uint32 i = 0; i < arr_size; i++) {
-                    MemCopy(arr->At(numeric_cast<int32>(i)), data, prop->GetBaseSize());
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    MemCopy(arr->At(numeric_cast<int32_t>(i)), data, prop->GetBaseSize());
                     data += prop->GetBaseSize();
                 }
             }
@@ -596,14 +596,14 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeyTypeSize();
                     }
 
-                    uint32 arr_size;
+                    uint32_t arr_size;
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
@@ -611,63 +611,63 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                uint32 str_size;
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                uint32_t str_size;
                                 MemCopy(&str_size, data, sizeof(str_size));
                                 data += sizeof(str_size);
 
                                 string str(reinterpret_cast<const char*>(data), str_size);
-                                arr->SetValue(numeric_cast<int32>(i), cast_to_void(&str));
+                                arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
                                 data += str_size;
                             }
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                            for (uint32 i = 0; i < arr_size; i++) {
+                            for (uint32_t i = 0; i < arr_size; i++) {
                                 auto* fixed_type = resolve_fixed_type(data);
-                                arr->SetValue(numeric_cast<int32>(i), cast_to_void(&fixed_type));
+                                arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&fixed_type));
 
                                 data += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                            for (uint32 i = 0; i < arr_size; i++) {
+                            for (uint32_t i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
-                                arr->SetValue(numeric_cast<int32>(i), cast_to_void(&hvalue));
+                                arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&hvalue));
 
                                 data += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeEnum()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                            if (prop->GetBaseSize() == sizeof(int32)) {
+                            if (prop->GetBaseSize() == sizeof(int32_t)) {
                                 MemCopy(arr->At(0), data, arr_size * prop->GetBaseSize());
                             }
                             else {
-                                for (uint32 i = 0; i < arr_size; i++) {
-                                    MemCopy(arr->At(numeric_cast<int32>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
+                                for (uint32_t i = 0; i < arr_size; i++) {
+                                    MemCopy(arr->At(numeric_cast<int32_t>(i)), data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
 
                             data += arr_size * prop->GetBaseSize();
                         }
                         else if (prop->IsBaseTypePrimitive()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
                             MemCopy(arr->At(0), data, arr_size * prop->GetBaseSize());
                             data += arr_size * prop->GetBaseSize();
                         }
                         else if (prop->IsBaseTypeStruct()) {
-                            arr->Resize(numeric_cast<int32>(arr_size));
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
 
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                MemCopy(arr->At(numeric_cast<int32>(i)), data, prop->GetBaseSize());
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                MemCopy(arr->At(numeric_cast<int32_t>(i)), data, prop->GetBaseSize());
                                 data += prop->GetBaseSize();
                             }
                         }
@@ -677,7 +677,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(cast_to_void(&key_str), cast_to_void(&arr));
                     }
@@ -703,21 +703,21 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
                         data += prop->GetDictKeyTypeSize();
                     }
 
-                    uint32 str_size;
+                    uint32_t str_size;
                     MemCopy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint32);
+                    data += sizeof(uint32_t);
 
                     auto str = string {reinterpret_cast<const char*>(data), str_size};
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
                         dict->Set(cast_to_void(&key_str), cast_to_void(&str));
                     }
@@ -743,7 +743,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     const auto* key = data;
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         data += sizeof(key_len) + key_len;
                     }
                     else {
@@ -751,7 +751,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     }
 
                     if (prop->IsDictKeyString()) {
-                        const uint32 key_len = *reinterpret_cast<const uint32*>(key);
+                        const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
 
                         if (prop->IsBaseTypeProtoReference()) {
@@ -863,27 +863,27 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
         const auto* arr = *cast_from_void<ScriptArray**>(as_obj);
 
         if (prop->IsArrayOfString()) {
-            const auto arr_size = numeric_cast<uint32>(arr != nullptr ? arr->GetSize() : 0);
+            const auto arr_size = numeric_cast<uint32_t>(arr != nullptr ? arr->GetSize() : 0);
 
             if (arr_size != 0) {
                 // Calculate size
-                size_t data_size = sizeof(uint32);
+                size_t data_size = sizeof(uint32_t);
 
-                for (uint32 i = 0; i < arr_size; i++) {
-                    const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32>(i)));
-                    data_size += sizeof(uint32) + numeric_cast<uint32>(str.length());
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32_t>(i)));
+                    data_size += sizeof(uint32_t) + numeric_cast<uint32_t>(str.length());
                 }
 
                 // Make buffer
                 auto* buf = prop_data.Alloc(data_size);
 
                 MemCopy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint32);
+                buf += sizeof(uint32_t);
 
-                for (uint32 i = 0; i < arr_size; i++) {
-                    const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32>(i)));
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32_t>(i)));
 
-                    const auto str_size = numeric_cast<uint32>(str.length());
+                    const auto str_size = numeric_cast<uint32_t>(str.length());
                     MemCopy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
@@ -895,15 +895,15 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
             }
         }
         else {
-            const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const uint32_t arr_size = (arr != nullptr ? arr->GetSize() : 0);
             const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
             if (data_size != 0) {
                 if (prop->IsBaseTypeProtoReference()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint32 i = 0; i < arr_size; i++) {
-                        const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32>(i)));
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32_t>(i)));
                         const auto pid = resolve_proto_hash(entity);
                         MemCopy(buf, &pid, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
@@ -912,21 +912,21 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                 else if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint32 i = 0; i < arr_size; i++) {
-                        const auto hash = cast_from_void<const hstring*>(arr->At(numeric_cast<int32>(i)))->as_hash();
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        const auto hash = cast_from_void<const hstring*>(arr->At(numeric_cast<int32_t>(i)))->as_hash();
                         MemCopy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
                     }
                 }
                 else if (prop->IsBaseTypeEnum()) {
-                    if (prop->GetBaseSize() == sizeof(int32)) {
+                    if (prop->GetBaseSize() == sizeof(int32_t)) {
                         prop_data.Pass(arr->At(0), data_size);
                     }
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
-                        for (uint32 i = 0; i < arr_size; i++) {
-                            MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
+                        for (uint32_t i = 0; i < arr_size; i++) {
+                            MemCopy(buf, arr->At(numeric_cast<int32_t>(i)), prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
                     }
@@ -937,8 +937,8 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                 else if (prop->IsBaseTypeStruct()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (uint32 i = 0; i < arr_size; i++) {
-                        MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        MemCopy(buf, arr->At(numeric_cast<int32_t>(i)), prop->GetBaseSize());
                         buf += prop->GetBaseSize();
                     }
                 }
@@ -959,7 +959,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                 for (auto&& [key, value] : dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *cast_from_void<const string*>(key);
-                        const auto key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32_t>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -967,13 +967,13 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     }
 
                     const auto* arr = *cast_from_void<const ScriptArray**>(value);
-                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    const uint32_t arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
-                        for (uint32 i = 0; i < arr_size; i++) {
-                            const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32>(i)));
-                            data_size += sizeof(uint32) + numeric_cast<uint32>(str.length());
+                        for (uint32_t i = 0; i < arr_size; i++) {
+                            const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32_t>(i)));
+                            data_size += sizeof(uint32_t) + numeric_cast<uint32_t>(str.length());
                         }
                     }
                     else {
@@ -989,7 +989,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *cast_from_void<const string*>(key);
-                        const auto key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32_t>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1001,7 +1001,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         buf += prop->GetDictKeyTypeSize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32*>(key);
+                        const auto ekey = *cast_from_void<const int32_t*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
@@ -1010,17 +1010,17 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         buf += prop->GetDictKeyTypeSize();
                     }
 
-                    const uint32 arr_size = (arr != nullptr ? arr->GetSize() : 0);
-                    MemCopy(buf, &arr_size, sizeof(uint32));
+                    const uint32_t arr_size = (arr != nullptr ? arr->GetSize() : 0);
+                    MemCopy(buf, &arr_size, sizeof(uint32_t));
                     buf += sizeof(arr_size);
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32>(i)));
-                                const auto str_size = numeric_cast<uint32>(str.length());
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                const auto& str = *cast_from_void<const string*>(arr->At(numeric_cast<int32_t>(i)));
+                                const auto str_size = numeric_cast<uint32_t>(str.length());
 
-                                MemCopy(buf, &str_size, sizeof(uint32));
+                                MemCopy(buf, &str_size, sizeof(uint32_t));
                                 buf += sizeof(str_size);
 
                                 if (str_size != 0) {
@@ -1030,28 +1030,28 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                             }
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32>(i)));
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                const auto* entity = *cast_from_void<Entity**>(arr->At(numeric_cast<int32_t>(i)));
                                 const auto pid = resolve_proto_hash(entity);
                                 MemCopy(buf, &pid, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeHash()) {
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                const auto hash = cast_from_void<const hstring*>(arr->At(numeric_cast<int32>(i)))->as_hash();
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                const auto hash = cast_from_void<const hstring*>(arr->At(numeric_cast<int32_t>(i)))->as_hash();
                                 MemCopy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
                         }
                         else if (prop->IsBaseTypeEnum()) {
-                            if (prop->GetBaseSize() == sizeof(int32)) {
+                            if (prop->GetBaseSize() == sizeof(int32_t)) {
                                 MemCopy(buf, arr->At(0), arr_size * prop->GetBaseSize());
                                 buf += arr_size * prop->GetBaseSize();
                             }
                             else {
-                                for (uint32 i = 0; i < arr_size; i++) {
-                                    MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
+                                for (uint32_t i = 0; i < arr_size; i++) {
+                                    MemCopy(buf, arr->At(numeric_cast<int32_t>(i)), prop->GetBaseSize());
                                     buf += prop->GetBaseSize();
                                 }
                             }
@@ -1061,8 +1061,8 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                             buf += arr_size * prop->GetBaseSize();
                         }
                         else if (prop->IsBaseTypeStruct()) {
-                            for (uint32 i = 0; i < arr_size; i++) {
-                                MemCopy(buf, arr->At(numeric_cast<int32>(i)), prop->GetBaseSize());
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                MemCopy(buf, arr->At(numeric_cast<int32_t>(i)), prop->GetBaseSize());
                                 buf += prop->GetBaseSize();
                             }
                         }
@@ -1081,7 +1081,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                 for (auto&& [key, value] : dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *cast_from_void<const string*>(key);
-                        const auto key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32_t>(key_str.length());
                         data_size += sizeof(key_len) + key_len;
                     }
                     else {
@@ -1089,20 +1089,20 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     }
 
                     const auto& str = *cast_from_void<const string*>(value);
-                    const auto str_size = numeric_cast<uint32>(str.length());
+                    const auto str_size = numeric_cast<uint32_t>(str.length());
 
                     data_size += sizeof(str_size) + str_size;
                 }
 
                 // Make buffer
-                uint8* buf = prop_data.Alloc(data_size);
+                uint8_t* buf = prop_data.Alloc(data_size);
 
                 for (auto&& [key, value] : dict->GetMap()) {
                     const auto& str = *cast_from_void<const string*>(value);
 
                     if (prop->IsDictKeyString()) {
                         const auto& key_str = *cast_from_void<const string*>(key);
-                        const auto key_len = numeric_cast<uint32>(key_str.length());
+                        const auto key_len = numeric_cast<uint32_t>(key_str.length());
                         MemCopy(buf, &key_len, sizeof(key_len));
                         buf += sizeof(key_len);
                         MemCopy(buf, key_str.c_str(), key_len);
@@ -1114,7 +1114,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         buf += prop->GetDictKeyTypeSize();
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32*>(key);
+                        const auto ekey = *cast_from_void<const int32_t*>(key);
                         MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
@@ -1123,8 +1123,8 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         buf += prop->GetDictKeyTypeSize();
                     }
 
-                    const auto str_size = numeric_cast<uint32>(str.length());
-                    MemCopy(buf, &str_size, sizeof(uint32));
+                    const auto str_size = numeric_cast<uint32_t>(str.length());
+                    MemCopy(buf, &str_size, sizeof(uint32_t));
                     buf += sizeof(str_size);
 
                     if (str_size != 0) {
@@ -1143,7 +1143,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 
                 for (const auto& key : dict->GetMap() | std::views::keys) {
                     const auto& key_str = *cast_from_void<const string*>(key);
-                    const auto key_len = numeric_cast<uint32>(key_str.length());
+                    const auto key_len = numeric_cast<uint32_t>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
                     data_size += value_element_size;
                 }
@@ -1153,7 +1153,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 
                 for (auto&& [key, value] : dict->GetMap()) {
                     const auto& key_str = *cast_from_void<const string*>(key);
-                    const auto key_len = numeric_cast<uint32>(key_str.length());
+                    const auto key_len = numeric_cast<uint32_t>(key_str.length());
 
                     MemCopy(buf, &key_len, sizeof(key_len));
                     buf += sizeof(key_len);
@@ -1192,7 +1192,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         MemCopy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32*>(key);
+                        const auto ekey = *cast_from_void<const int32_t*>(key);
                         MemCopy(buf, &ekey, key_element_size);
                     }
                     else {
@@ -1226,7 +1226,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
     return prop_data;
 }
 
-auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string
+auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1236,25 +1236,25 @@ auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string
     case AngelScript::asTYPEID_BOOL:
         return strex("bool: {}", *cast_from_void<const bool*>(ptr) ? "true" : "false");
     case AngelScript::asTYPEID_INT8:
-        return strex("int8: {}", *cast_from_void<const int8*>(ptr));
+        return strex("int8: {}", *cast_from_void<const int8_t*>(ptr));
     case AngelScript::asTYPEID_INT16:
-        return strex("int16: {}", *cast_from_void<const int16*>(ptr));
+        return strex("int16: {}", *cast_from_void<const int16_t*>(ptr));
     case AngelScript::asTYPEID_INT32:
-        return strex("int32: {}", *cast_from_void<const int32*>(ptr));
+        return strex("int32: {}", *cast_from_void<const int32_t*>(ptr));
     case AngelScript::asTYPEID_INT64:
-        return strex("int64: {}", *cast_from_void<const int64*>(ptr));
+        return strex("int64: {}", *cast_from_void<const int64_t*>(ptr));
     case AngelScript::asTYPEID_UINT8:
-        return strex("uint8: {}", *cast_from_void<const uint8*>(ptr));
+        return strex("uint8: {}", *cast_from_void<const uint8_t*>(ptr));
     case AngelScript::asTYPEID_UINT16:
-        return strex("uint16: {}", *cast_from_void<const uint16*>(ptr));
+        return strex("uint16: {}", *cast_from_void<const uint16_t*>(ptr));
     case AngelScript::asTYPEID_UINT32:
-        return strex("uint32: {}", *cast_from_void<const uint32*>(ptr));
+        return strex("uint32: {}", *cast_from_void<const uint32_t*>(ptr));
     case AngelScript::asTYPEID_UINT64:
-        return strex("uint64: {}", *cast_from_void<const uint64*>(ptr));
+        return strex("uint64: {}", *cast_from_void<const uint64_t*>(ptr));
     case AngelScript::asTYPEID_FLOAT:
-        return strex("float32: {}", *cast_from_void<const float32*>(ptr));
+        return strex("float32: {}", *cast_from_void<const float32_t*>(ptr));
     case AngelScript::asTYPEID_DOUBLE:
-        return strex("float64: {}", *cast_from_void<const float64*>(ptr));
+        return strex("float64: {}", *cast_from_void<const float64_t*>(ptr));
     default:
         break;
     }
@@ -1291,7 +1291,7 @@ auto GetScriptObjectInfo(const void* ptr, int32 type_id) -> string
     }
 
     if (const auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
-        const auto enum_value = *cast_from_void<const int32*>(ptr);
+        const auto enum_value = *cast_from_void<const int32_t*>(ptr);
 
         if (meta->IsValidBaseType(type_name)) {
             bool failed = false;

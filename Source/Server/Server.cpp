@@ -253,7 +253,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             const auto& registrator = type_desc.PropRegistrator;
 
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -270,7 +270,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         {
             const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
                 for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                    const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+                    const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                     if (prop->IsDisabled()) {
                         continue;
@@ -301,11 +301,11 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         // Properties with custom behaviours
         {
-            const auto set_setter = [](const auto* registrator, int32 prop_index, PropertySetCallback callback) {
+            const auto set_setter = [](const auto* registrator, int32_t prop_index, PropertySetCallback callback) {
                 const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddSetter(std::move(callback));
             };
-            const auto set_post_setter = [](const auto* registrator, int32 prop_index, PropertyPostSetCallback callback) {
+            const auto set_post_setter = [](const auto* registrator, int32_t prop_index, PropertyPostSetCallback callback) {
                 const auto* prop = registrator->GetPropertyByIndex(prop_index);
                 prop->AddPostSetter(std::move(callback));
             };
@@ -368,10 +368,10 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 const auto data = file.GetData();
                 _updateFilesData.push_back(data);
 
-                writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
+                writer.Write<int16_t>(numeric_cast<int16_t>(file.GetPath().length()));
                 writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-                writer.Write<uint32>(numeric_cast<uint32>(data.size()));
-                writer.Write<uint32>(numeric_cast<uint32>(hashing_ex::hash(data.data(), data.size())));
+                writer.Write<uint32_t>(numeric_cast<uint32_t>(data.size()));
+                writer.Write<uint32_t>(numeric_cast<uint32_t>(hashing_ex::hash(data.data(), data.size())));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -381,7 +381,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             }
 
             // Complete files list
-            writer.Write<int16>(const_numeric_cast<int16>(-1));
+            writer.Write<int16_t>(const_numeric_cast<int16_t>(-1));
         }
 
         return std::nullopt;
@@ -658,7 +658,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             _stats.Uptime = cur_time - _stats.ServerStartTime;
 
 #if FO_TRACY
-            TracyPlot("Server loops per second", numeric_cast<int64>(_stats.LoopsPerSecond));
+            TracyPlot("Server loops per second", numeric_cast<int64_t>(_stats.LoopsPerSecond));
 #endif
 
             return std::chrono::milliseconds {0};
@@ -917,7 +917,7 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Max loop time: {}\n", _stats.LoopMaxTime);
     buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
     buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-    buf += strex("Compress ratio: {}\n", numeric_cast<float64>(_stats.DataReal) / numeric_cast<float64>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+    buf += strex("Compress ratio: {}\n", numeric_cast<float64_t>(_stats.DataReal) / numeric_cast<float64_t>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
     buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
     return buf;
@@ -1118,7 +1118,7 @@ void ServerEngine::ProcessConnection(ServerConnection* connection)
     }
 }
 
-void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
+void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1140,7 +1140,7 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     auto out_buf = player->GetConnection()->WriteMsg(NetMessage::RemoteCall);
 
     out_buf->Write<hstring>(name);
-    out_buf->Write<int32>(numeric_cast<int32>(data.size()));
+    out_buf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
     out_buf->Push(data);
 }
 
@@ -1151,7 +1151,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     SetLogCallback("Process_Command", logcb);
     auto remove_log_callback = scope_exit([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
 
-    const auto cmd = buf.Read<uint8>();
+    const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
     auto allow_command = OnPlayerAllowCommand.Fire(player, cmd);
 
@@ -1270,7 +1270,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_ADDITEM: {
         const auto hex = buf.Read<mpos>();
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<int32>();
+        const auto count = buf.Read<int32_t>();
 
         auto* map = EntityMngr.GetMap(player_cr->GetMapId());
 
@@ -1284,7 +1284,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_ADDITEM_SELF: {
         const auto pid = buf.Read<hstring>(Hashes);
-        const auto count = buf.Read<int32>();
+        const auto count = buf.Read<int32_t>();
 
         if (count > 0) {
             ItemMngr.AddItemCritter(player_cr, pid, count);
@@ -1767,7 +1767,7 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     const auto outdated = comp_version != Settings.CompatibilityVersion;
 
     // Begin data encrypting
-    const auto in_encrypt_key = in_buf->Read<uint32>();
+    const auto in_encrypt_key = in_buf->Read<uint32_t>();
 
     if (in_encrypt_key == 0) {
         WriteLog("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
@@ -1779,11 +1779,11 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
 
     in_buf.Unlock();
 
-    const uint32 out_encrypt_key = //
-        (numeric_cast<uint32>(Random(1, 255)) << 24) | //
-        (numeric_cast<uint32>(Random(1, 255)) << 16) | //
-        (numeric_cast<uint32>(Random(1, 255)) << 8) | //
-        (numeric_cast<uint32>(Random(1, 255)) << 0);
+    const uint32_t out_encrypt_key = //
+        (numeric_cast<uint32_t>(Random(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(Random(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(Random(1, 255)) << 0);
 
     {
         auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
@@ -1799,13 +1799,13 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     }
 
     if (!outdated) {
-        vector<const uint8*>* global_vars_data = nullptr;
-        vector<uint32>* global_vars_data_sizes = nullptr;
+        vector<const uint8_t*>* global_vars_data = nullptr;
+        vector<uint32_t>* global_vars_data_sizes = nullptr;
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-        out_buf->Write(numeric_cast<uint32>(_updateFilesDesc.size()));
+        out_buf->Write(numeric_cast<uint32_t>(_updateFilesDesc.size()));
         out_buf->Push(_updateFilesDesc);
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
         out_buf->Write(GameTime.GetSynchronizedTime());
@@ -1850,7 +1850,7 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
 
     auto in_buf = connection->ReadBuf();
 
-    const auto file_index = in_buf->Read<uint32>();
+    const auto file_index = in_buf->Read<uint32_t>();
 
     in_buf.Unlock();
 
@@ -1860,7 +1860,7 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
         return;
     }
 
-    connection->UpdateFileIndex = numeric_cast<int32>(file_index);
+    connection->UpdateFileIndex = numeric_cast<int32_t>(file_index);
     connection->UpdateFilePortion = 0;
 
     Process_UpdateFileData(connection);
@@ -1882,11 +1882,11 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     auto update_portion = Settings.UpdateFileSendSize;
     const auto offset = connection->UpdateFilePortion * update_portion;
 
-    if (offset + update_portion < numeric_cast<int32>(update_file_data.size())) {
+    if (offset + update_portion < numeric_cast<int32_t>(update_file_data.size())) {
         connection->UpdateFilePortion++;
     }
     else {
-        update_portion = numeric_cast<int32>(update_file_data.size()) % update_portion;
+        update_portion = numeric_cast<int32_t>(update_file_data.size()) % update_portion;
         connection->UpdateFileIndex = -1;
     }
 
@@ -2041,23 +2041,23 @@ void ServerEngine::Process_Move(Player* player)
 
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
-    const auto speed = in_buf->Read<uint16>();
+    const auto speed = in_buf->Read<uint16_t>();
     const auto start_hex = in_buf->Read<mpos>();
 
-    const auto steps_count = in_buf->Read<uint16>();
+    const auto steps_count = in_buf->Read<uint16_t>();
     vector<mdir> steps;
     steps.resize(steps_count);
 
-    for (uint16 i = 0; i < steps_count; i++) {
+    for (uint16_t i = 0; i < steps_count; i++) {
         steps[i] = mdir(in_buf->Read<hdir>());
     }
 
-    const auto control_steps_count = in_buf->Read<uint16>();
-    vector<uint16> control_steps;
+    const auto control_steps_count = in_buf->Read<uint16_t>();
+    vector<uint16_t> control_steps;
     control_steps.resize(control_steps_count);
 
-    for (uint16 i = 0; i < control_steps_count; i++) {
-        control_steps[i] = in_buf->Read<uint16>();
+    for (uint16_t i = 0; i < control_steps_count; i++) {
+        control_steps[i] = in_buf->Read<uint16_t>();
     }
 
     const auto end_hex_offset = in_buf->Read<ipos16>();
@@ -2091,7 +2091,7 @@ void ServerEngine::Process_Move(Player* player)
         return;
     }
 
-    int32 corrected_speed = speed;
+    int32_t corrected_speed = speed;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
         WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
@@ -2113,7 +2113,7 @@ void ServerEngine::Process_Move(Player* player)
 
         // Insert part of path to beginning of whole path
         for (auto& control_step : control_steps) {
-            control_step += numeric_cast<uint16>(find_result.Steps.size());
+            control_step += numeric_cast<uint16_t>(find_result.Steps.size());
         }
 
         control_steps.insert(control_steps.begin(), find_result.ControlSteps.begin(), find_result.ControlSteps.end());
@@ -2161,8 +2161,8 @@ void ServerEngine::Process_Move(Player* player)
                 control_steps.pop_back();
             }
 
-            if (control_steps.empty() || control_steps.back() != numeric_cast<uint16>(valid_step_count)) {
-                control_steps.push_back(numeric_cast<uint16>(valid_step_count));
+            if (control_steps.empty() || control_steps.back() != numeric_cast<uint16_t>(valid_step_count)) {
+                control_steps.push_back(numeric_cast<uint16_t>(valid_step_count));
             }
 
             path_truncated = true;
@@ -2176,15 +2176,15 @@ void ServerEngine::Process_Move(Player* player)
         WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
 
-    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16>(GameSettings::MAP_HEX_WIDTH / 2));
-    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16>(GameSettings::MAP_HEX_HEIGHT / 2));
+    const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
 
-    StartCritterMoving(cr, numeric_cast<uint16>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
+    StartCritterMoving(cr, numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, player);
 
     if (path_truncated) {
         player->Send_Moving(cr);
     }
-    if (corrected_speed != numeric_cast<int32>(speed)) {
+    if (corrected_speed != numeric_cast<int32_t>(speed)) {
         player->Send_MovingSpeed(cr);
     }
 }
@@ -2227,7 +2227,7 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
-    int32 zero_speed = 0;
+    int32_t zero_speed = 0;
 
     if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
@@ -2287,7 +2287,7 @@ void ServerEngine::Process_Property(Player* player)
 
     Critter* cr = player->GetControlledCritter();
 
-    const auto data_size = in_buf->Read<uint32>();
+    const auto data_size = in_buf->Read<uint32_t>();
 
     // Todo: control max size explicitly, add option to property registration
     if (data_size > 0xFFFF) {
@@ -2318,7 +2318,7 @@ void ServerEngine::Process_Property(Player* player)
         break;
     }
 
-    const auto property_index = in_buf->Read<uint16>();
+    const auto property_index = in_buf->Read<uint16_t>();
 
     PropertyRawData prop_data;
     in_buf->Pop(prop_data.Alloc(data_size), data_size);
@@ -2501,9 +2501,9 @@ void ServerEngine::OnSaveEntityValue(Entity* entity, const Property* prop)
         const auto time = GameTime.GetSynchronizedTime();
 
         AnyData::Document doc;
-        doc.Emplace("Time", numeric_cast<int64>(time.milliseconds()));
+        doc.Emplace("Time", numeric_cast<int64_t>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
-        doc.Emplace("EntityId", numeric_cast<int64>(entry_id.underlying_value()));
+        doc.Emplace("EntityId", numeric_cast<int64_t>(entry_id.underlying_value()));
         doc.Emplace("Property", prop->GetName());
         doc.Emplace("Value", std::move(value));
 
@@ -2666,7 +2666,7 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *cast_from_void<const uint32*>(new_value);
+    const auto new_count = *cast_from_void<const uint32_t*>(new_value);
     FO_RUNTIME_ASSERT(item);
 
     if (!item->GetStackable() && new_count != 1) {
@@ -2819,7 +2819,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         const auto target_hex = progress.Hex;
 
         if (old_hex != target_hex) {
-            const auto dir = mdir(iround<int32>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
+            const auto dir = mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
             const auto multihex = cr->GetMultihex();
 
             const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
@@ -2914,7 +2914,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
 }
 
-void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<mdir>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator)
+void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2926,7 +2926,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16 speed, const vector<md
     StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
-void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16 speed)
+void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2961,13 +2961,13 @@ void ServerEngine::Process_RemoteCall(Player* player)
     auto in_buf = connection->ReadBuf();
 
     const auto remote_call_name = in_buf->Read<hstring>(Hashes);
-    const auto remote_call_data_size = in_buf->Read<int32>();
+    const auto remote_call_data_size = in_buf->Read<int32_t>();
 
     if (remote_call_data_size < 0) {
         throw GenericException("Invalid data size", remote_call_data_size);
     }
 
-    vector<uint8> remote_call_data;
+    vector<uint8_t> remote_call_data;
     remote_call_data.resize(remote_call_data_size);
     in_buf->Pop(remote_call_data.data(), remote_call_data_size);
 
@@ -2984,7 +2984,7 @@ void ServerEngine::Process_RemoteCall(Player* player)
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }
 
-auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> Item*
+auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3010,7 +3010,7 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count,
     if (item != nullptr && !proto->GetStackable() && count > 1) {
         const auto fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
 
-        for (int32 i = 0; i < fixed_count; i++) {
+        for (int32_t i = 0; i < fixed_count; i++) {
             if (add_item() == nullptr) {
                 break;
             }
@@ -3025,7 +3025,7 @@ auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = static_cast<uint32>(hashing_ex::hash(reinterpret_cast<const uint8*>(player_name.data()), player_name.length()));
+    const auto hash_value = static_cast<uint32_t>(hashing_ex::hash(reinterpret_cast<const uint8_t*>(player_name.data()), player_name.length()));
     FO_RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }

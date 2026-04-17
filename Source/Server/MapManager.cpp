@@ -82,12 +82,12 @@ void MapManager::LoadFromResources()
 
             // Read hashes
             {
-                const auto hashes_count = reader.Read<uint32>();
+                const auto hashes_count = reader.Read<uint32_t>();
 
                 string str;
 
-                for (uint32 i = 0; i < hashes_count; i++) {
-                    const auto str_len = reader.Read<uint32>();
+                for (uint32_t i = 0; i < hashes_count; i++) {
+                    const auto str_len = reader.Read<uint32_t>();
                     str.resize(str_len);
                     reader.ReadPtr(str.data(), str.length());
                     const auto hstr = _engine->Hashes.ToHashedString(str);
@@ -97,11 +97,11 @@ void MapManager::LoadFromResources()
 
             // Read entities
             {
-                vector<uint8> props_data;
+                vector<uint8_t> props_data;
 
                 // Read critters
                 {
-                    const auto cr_count = reader.Read<uint32>();
+                    const auto cr_count = reader.Read<uint32_t>();
 
                     static_map->CritterBillets.reserve(cr_count);
 
@@ -119,9 +119,9 @@ void MapManager::LoadFromResources()
                         }
 
                         auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint32>();
+                        const auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
-                        reader.ReadPtr<uint8>(props_data.data(), props_data_size);
+                        reader.ReadPtr<uint8_t>(props_data.data(), props_data_size);
                         cr_props.RestoreAllData(props_data);
 
                         auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, cr_proto, &cr_props);
@@ -137,7 +137,7 @@ void MapManager::LoadFromResources()
 
                 // Read items
                 {
-                    const auto item_count = reader.Read<uint32>();
+                    const auto item_count = reader.Read<uint32_t>();
 
                     static_map->ItemBillets.reserve(item_count);
                     static_map->HexItemBillets.reserve(item_count);
@@ -159,9 +159,9 @@ void MapManager::LoadFromResources()
                         }
 
                         auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
-                        const auto props_data_size = reader.Read<uint32>();
+                        const auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
-                        reader.ReadPtr<uint8>(props_data.data(), props_data_size);
+                        reader.ReadPtr<uint8_t>(props_data.data(), props_data_size);
                         item_props.RestoreAllData(props_data);
 
                         auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine.get(), ident_t {}, item_proto, &item_props);
@@ -259,7 +259,7 @@ void MapManager::LoadFromResources()
 
             // Scroll blocks
             const irect32 scroll_area = map_proto->GetScrollAxialArea();
-            const int32 scroll_block_size = _engine->Settings.ScrollBlockSize;
+            const int32_t scroll_block_size = _engine->Settings.ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
                 for (const auto hx : iterate_range(map_size.width)) {
@@ -513,7 +513,7 @@ void MapManager::RegenerateMap(Map* map)
     }
 }
 
-auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
+auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -530,7 +530,7 @@ auto MapManager::GetMapByPid(hstring map_pid, int32 skip_count) noexcept -> Map*
     return nullptr;
 }
 
-auto MapManager::GetLocationByPid(hstring loc_pid, int32 skip_count) noexcept -> Location*
+auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> Location*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -629,7 +629,7 @@ void MapManager::DestroyMapInternal(Map* map)
     _engine->EntityMngr.UnregisterMap(map);
 }
 
-auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int32 max_dist, float32 angle, const Critter* find_cr, CritterFindType find_type, bool check_last_movable, bool collect_critters) const -> TraceResult
+auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int32_t max_dist, float32_t angle, const Critter* find_cr, CritterFindType find_type, bool check_last_movable, bool collect_critters) const -> TraceResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -646,7 +646,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     auto prev_hex = next_hex;
     bool last_passed_ok = false;
 
-    for (int32 i = 0;; i++) {
+    for (int32_t i = 0;; i++) {
         if (i >= dist) {
             output.IsFullTrace = true;
             break;
@@ -697,7 +697,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     return output;
 }
 
-auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32 multihex, int32 cut, function<bool(const Item*)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, function<bool(const Item*)> gag_callback) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -742,7 +742,7 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
     return PathFinding::FindPath(settings);
 }
 
-void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius)
+void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32_t> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -759,7 +759,7 @@ void MapManager::TransferToGlobal(Critter* cr, ident_t global_cr_id)
     Transfer(cr, nullptr, {}, mdir {}, std::nullopt, global_cr_id);
 }
 
-void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32> safe_radius, ident_t global_cr_id)
+void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1094,10 +1094,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
         }
     }
 
-    const int32 dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
-    const int32 show_cr_dist1 = cr->GetShowCritterDist1();
-    const int32 show_cr_dist2 = cr->GetShowCritterDist2();
-    const int32 show_cr_dist3 = cr->GetShowCritterDist3();
+    const int32_t dist = GeometryHelper::GetDistance(cr->GetHex(), target->GetHex());
+    const int32_t show_cr_dist1 = cr->GetShowCritterDist1();
+    const int32_t show_cr_dist2 = cr->GetShowCritterDist2();
+    const int32_t show_cr_dist3 = cr->GetShowCritterDist3();
 
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {
@@ -1187,7 +1187,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, int32 look, mpos hex, mdir dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

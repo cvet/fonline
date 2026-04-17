@@ -45,17 +45,17 @@ FO_BEGIN_NAMESPACE
 
 static constexpr ipos32 MAPPER_CONSOLE_WINDOW_OFFSET = {0, 6};
 static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.ini";
-static constexpr int32 DAY_TIME_WRAP_MINUTES = 1440;
-static constexpr int32 DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
+static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
+static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
 
-static auto MakeRectFromEdges(int32 left, int32 top, int32 right, int32 bottom) -> irect32
+static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
     return {left, top, right - left, bottom - top};
 }
 
-static auto ShiftDayTimeWithWrap(int32 day_time, int32 delta_minutes) -> int32
+static auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,14 +72,14 @@ static auto ShiftDayTimeWithWrap(int32 day_time, int32 delta_minutes) -> int32
     return day_time;
 }
 
-static auto ScaleZoomValue(float32 current_zoom, float32 factor) -> float32
+static auto ScaleZoomValue(float32_t current_zoom, float32_t factor) -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return std::clamp(current_zoom * factor, GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
 }
 
-static auto GetTileLayerFromKey(KeyCode key) -> optional<int32>
+static auto GetTileLayerFromKey(KeyCode key) -> optional<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -205,9 +205,9 @@ static auto MakeDefaultInspectorArrayElement(const Property* prop) -> AnyData::V
 
     switch (GetInspectorValueType(prop)) {
     case AnyData::ValueType::Int64:
-        return AnyData::Value {int64 {0}};
+        return AnyData::Value {int64_t {0}};
     case AnyData::ValueType::Float64:
-        return AnyData::Value {float64 {0.0}};
+        return AnyData::Value {float64_t {0.0}};
     case AnyData::ValueType::Bool:
         return AnyData::Value {false};
     case AnyData::ValueType::String:
@@ -645,11 +645,11 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     const auto history_str = Cache.GetString("mapper_console.txt");
     ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
-    while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
+    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
-    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+    ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
 }
 
 void MapperEngine::InitIface()
@@ -846,8 +846,8 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
     else if (ev_type == InputEvent::EventType::MouseMoveEvent) {
         if (_curMap != nullptr && MouseHoldMode == INT_PAN) {
             const auto zoom = _curMap->GetSpritesZoom();
-            const fpos32 pan_delta {-numeric_cast<float32>(ev.MouseMove.DeltaX) / zoom, -numeric_cast<float32>(ev.MouseMove.DeltaY) / zoom};
-            const fpos32 screen_pan_delta {-numeric_cast<float32>(ev.MouseMove.DeltaX), -numeric_cast<float32>(ev.MouseMove.DeltaY)};
+            const fpos32 pan_delta {-numeric_cast<float32_t>(ev.MouseMove.DeltaX) / zoom, -numeric_cast<float32_t>(ev.MouseMove.DeltaY) / zoom};
+            const fpos32 screen_pan_delta {-numeric_cast<float32_t>(ev.MouseMove.DeltaX), -numeric_cast<float32_t>(ev.MouseMove.DeltaY)};
 
             if (ev.MouseMove.DeltaX != 0 || ev.MouseMove.DeltaY != 0) {
                 RightMouseDragged = true;
@@ -856,7 +856,7 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
                 RightMouseVelocityAccum += screen_pan_delta;
 
                 const auto now_time = nanotime::now();
-                const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32>();
+                const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32_t>();
                 if (sample_ms >= 8.0f) {
                     RightMouseInertia = RightMouseVelocityAccum * (1000.0f / sample_ms);
                     RightMouseVelocityAccum = {};
@@ -910,7 +910,7 @@ void MapperEngine::ProcessRightMouseInertia()
         return;
     }
 
-    const auto dt_ms = std::max(GameTime.GetFrameDeltaTime().to_ms<float32>(), 1.0f);
+    const auto dt_ms = std::max(GameTime.GetFrameDeltaTime().to_ms<float32_t>(), 1.0f);
     const auto dt_sec = dt_ms / 1000.0f;
     const auto zoom = std::max(_curMap->GetSpritesZoom(), 0.001f);
     _curMap->InstantScroll((RightMouseInertia * dt_sec) / zoom);
@@ -1007,16 +1007,16 @@ void MapperEngine::HandleMapperKeyboardEvent(const InputEvent& ev)
     const auto dikup = ev_type == InputEvent::EventType::KeyUpEvent ? ev.KeyUp.Code : KeyCode::None;
 
     // Avoid repeating
-    if (dikdw != KeyCode::None && PressedKeys[static_cast<int32>(dikdw)]) {
+    if (dikdw != KeyCode::None && PressedKeys[static_cast<int32_t>(dikdw)]) {
         return;
     }
-    if (dikup != KeyCode::None && !PressedKeys[static_cast<int32>(dikup)]) {
+    if (dikup != KeyCode::None && !PressedKeys[static_cast<int32_t>(dikup)]) {
         return;
     }
 
     // Keyboard states, to know outside function
-    PressedKeys[static_cast<int32>(dikup)] = false;
-    PressedKeys[static_cast<int32>(dikdw)] = true;
+    PressedKeys[static_cast<int32_t>(dikup)] = false;
+    PressedKeys[static_cast<int32_t>(dikdw)] = true;
 
     const auto block_hotkeys = IsImGuiTextInputActive();
     HandlePrimaryMapperHotkeys(dikdw, block_hotkeys);
@@ -1261,11 +1261,11 @@ void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_tex
     if (!ConsoleEdit && dikdw == KeyCode::Grave) {
         ConsoleEdit = true;
         ConsoleStr.clear();
-        ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+        ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
     }
 }
 
-void MapperEngine::ChangeZoom(float32 new_zoom)
+void MapperEngine::ChangeZoom(float32_t new_zoom)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1275,8 +1275,8 @@ void MapperEngine::ChangeZoom(float32 new_zoom)
 
     const fpos32 mouse_pos = fpos32(App->Input.GetMousePosition());
     const fsize32 screen_size = fsize32(_curMap->GetScreenSize());
-    const float32 mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
-    const float32 mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
+    const float32_t mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
+    const float32_t mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
 
     _curMap->ChangeZoom(new_zoom, {mouse_x_factor, mouse_y_factor});
 }
@@ -1523,7 +1523,7 @@ auto MapperEngine::ExecuteUndo() -> bool
 
     ctx = GetUndoContext(active_map.get(), true);
     ctx->RedoStack.emplace_back(std::move(op));
-    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
+    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32_t>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
     return true;
 }
 
@@ -1553,7 +1553,7 @@ auto MapperEngine::ExecuteRedo() -> bool
 
     ctx = GetUndoContext(active_map.get(), true);
     ctx->UndoStack.emplace_back(std::move(op));
-    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
+    SetMapDirty(active_map.get(), ctx->CleanUndoDepth < 0 || numeric_cast<int32_t>(ctx->UndoStack.size()) != ctx->CleanUndoDepth);
     return true;
 }
 
@@ -1726,7 +1726,7 @@ auto MapperEngine::ApplyEntityPropertyText(Entity* entity, const Property* prop,
 
         if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
             if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
-                for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+                for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
                     if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, hdir(i), _curMap->GetSize())) {
                         auto main_mesh_items = vec_filter(_curMap->GetItemsOnHex(hex), [&](auto&& item2) -> bool {
                             if (SelectedEntitiesSet.contains(item2.get())) {
@@ -1766,8 +1766,8 @@ void MapperEngine::DrawMainPanelImGui()
         const auto pos = ImGui::GetWindowPos();
         const auto size = ImGui::GetWindowSize();
 
-        MainPanelPos = {iround<int32>(pos.x), iround<int32>(pos.y)};
-        MainPanelWindowRect = {0, 0, iround<int32>(size.x), iround<int32>(size.y)};
+        MainPanelPos = {iround<int32_t>(pos.x), iround<int32_t>(pos.y)};
+        MainPanelWindowRect = {0, 0, iround<int32_t>(size.x), iround<int32_t>(size.y)};
         MainPanelContentRect = {12, MainPanelWindowRect.height + 8, 520, 120};
         ProtosOnScreen = std::max(1, ProtoWidth > 0 ? MainPanelContentRect.width / ProtoWidth : 1);
 
@@ -1805,7 +1805,7 @@ void MapperEngine::DrawMainPanelImGui()
             if (ImGui::MenuItem("Console", "~", ConsoleEdit)) {
                 ConsoleEdit = !ConsoleEdit;
                 if (ConsoleEdit) {
-                    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+                    ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
                 }
             }
 
@@ -1905,7 +1905,7 @@ void MapperEngine::DrawMainPanelImGui()
         if (_curMap != nullptr && IsMapDirty(_curMap.get())) {
             constexpr const char* dirty_label = "*** Save ***";
             const auto label_width = ImGui::CalcTextSize(dirty_label).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-            const auto right_x = numeric_cast<float32>(MainPanelWindowRect.width) - label_width - ImGui::GetStyle().ItemSpacing.x * 2.0f;
+            const auto right_x = numeric_cast<float32_t>(MainPanelWindowRect.width) - label_width - ImGui::GetStyle().ItemSpacing.x * 2.0f;
 
             if (ImGui::GetCursorPosX() < right_x) {
                 ImGui::SetCursorPosX(right_x);
@@ -1946,8 +1946,8 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
     ImGui::SetNextWindowPos(
         {
-            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x),
-            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y),
+            numeric_cast<float32_t>(MainPanelPos.x + MainPanelContentRect.x),
+            numeric_cast<float32_t>(MainPanelPos.y + MainPanelContentRect.y),
         },
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({500.0f, 600.0f}, ImGuiCond_FirstUseEver);
@@ -2073,7 +2073,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
             ImGui::Separator();
 
             if (ImGui::BeginChild("##WorkspaceProtoList", {0.0f, 0.0f}, false)) {
-                const auto draw_proto_entry = [&](int32 index, string_view label, const Sprite* sprite, auto&& on_select) {
+                const auto draw_proto_entry = [&](int32_t index, string_view label, const Sprite* sprite, auto&& on_select) {
                     ImGui::PushID(index);
                     const auto selected = index == GetActiveProtoIndex();
                     const auto row_height = 72.0f;
@@ -2095,8 +2095,8 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                             const auto uv = atlas_sprite->GetAtlasRect();
                             const auto sprite_size = sprite->GetSize();
                             const auto scale = std::min(56.0f / std::max(1, sprite_size.width), 56.0f / std::max(1, sprite_size.height));
-                            const auto draw_width = numeric_cast<float32>(sprite_size.width) * scale;
-                            const auto draw_height = numeric_cast<float32>(sprite_size.height) * scale;
+                            const auto draw_width = numeric_cast<float32_t>(sprite_size.width) * scale;
+                            const auto draw_height = numeric_cast<float32_t>(sprite_size.height) * scale;
                             const ImVec2 image_min {preview_min.x + (56.0f - draw_width) * 0.5f, preview_min.y + (56.0f - draw_height) * 0.5f};
                             const ImVec2 image_max {image_min.x + draw_width, image_min.y + draw_height};
                             draw_list->AddImage(const_cast<RenderTexture*>(texture), image_min, image_max, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
@@ -2115,7 +2115,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                 if (const auto* texture = atlas_sprite->GetBatchTexture(); texture != nullptr) {
                                     const auto uv = atlas_sprite->GetAtlasRect();
                                     const auto sprite_size = sprite->GetSize();
-                                    ImGui::Image(const_cast<RenderTexture*>(texture), {numeric_cast<float32>(std::max(1, sprite_size.width)), numeric_cast<float32>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                                    ImGui::Image(const_cast<RenderTexture*>(texture), {numeric_cast<float32_t>(std::max(1, sprite_size.width)), numeric_cast<float32_t>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
                                 }
                                 else {
                                     ImGui::TextDisabled("No texture");
@@ -2133,10 +2133,10 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                 };
 
                 if (IsItemMode() && ActiveItemProtos != nullptr) {
-                    vector<int32> visible_indices;
+                    vector<int32_t> visible_indices;
                     visible_indices.reserve(ActiveItemProtos->size());
 
-                    for (int32 i = 0; i < numeric_cast<int32>(ActiveItemProtos->size()); i++) {
+                    for (int32_t i = 0; i < numeric_cast<int32_t>(ActiveItemProtos->size()); i++) {
                         const auto& proto = (*ActiveItemProtos)[i];
 
                         if (ContainsCaseInsensitive(proto->GetName(), filter)) {
@@ -2145,9 +2145,9 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     }
 
                     ImGuiListClipper clipper;
-                    clipper.Begin(numeric_cast<int32>(visible_indices.size()), 72.0f);
+                    clipper.Begin(numeric_cast<int32_t>(visible_indices.size()), 72.0f);
                     while (clipper.Step()) {
-                        for (int32 row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+                        for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                             const auto i = visible_indices[row];
                             const auto& proto = (*ActiveItemProtos)[i];
                             const auto label = string(proto->GetName());
@@ -2199,10 +2199,10 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     }
                 }
                 else if (IsCritMode() && ActiveCritterProtos != nullptr) {
-                    vector<int32> visible_indices;
+                    vector<int32_t> visible_indices;
                     visible_indices.reserve(ActiveCritterProtos->size());
 
-                    for (int32 i = 0; i < numeric_cast<int32>(ActiveCritterProtos->size()); i++) {
+                    for (int32_t i = 0; i < numeric_cast<int32_t>(ActiveCritterProtos->size()); i++) {
                         const auto& proto = (*ActiveCritterProtos)[i];
 
                         if (ContainsCaseInsensitive(proto->GetName(), filter)) {
@@ -2211,9 +2211,9 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     }
 
                     ImGuiListClipper clipper;
-                    clipper.Begin(numeric_cast<int32>(visible_indices.size()), 72.0f);
+                    clipper.Begin(numeric_cast<int32_t>(visible_indices.size()), 72.0f);
                     while (clipper.Step()) {
-                        for (int32 row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+                        for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                             const auto i = visible_indices[row];
                             const auto& proto = (*ActiveCritterProtos)[i];
                             const auto label = string(proto->GetName());
@@ -2252,8 +2252,8 @@ void MapperEngine::DrawContentWindowImGui()
 
     ImGui::SetNextWindowPos(
         {
-            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x),
-            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 162),
+            numeric_cast<float32_t>(MainPanelPos.x + MainPanelContentRect.x),
+            numeric_cast<float32_t>(MainPanelPos.y + MainPanelContentRect.y + 162),
         },
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({520.0f, 540.0f}, ImGuiCond_FirstUseEver);
@@ -2265,8 +2265,8 @@ void MapperEngine::DrawContentWindowImGui()
 
     auto& map_name_buf = ContentMapNameBuf;
     auto& map_filter_buf = ContentMapFilterBuf;
-    int32& resize_w = ContentResizeW;
-    int32& resize_h = ContentResizeH;
+    int32_t& resize_w = ContentResizeW;
+    int32_t& resize_h = ContentResizeH;
 
     const auto run_button_action = [](bool triggered, auto&& action) {
         if (triggered) {
@@ -2287,7 +2287,7 @@ void MapperEngine::DrawContentWindowImGui()
         if (!SelectedEntities.empty()) {
             auto inner_items = GetEntityInnerItems(SelectedEntities.front().get());
 
-            ImGui::Text("Container items: %d", numeric_cast<int32>(inner_items.size()));
+            ImGui::Text("Container items: %d", numeric_cast<int32_t>(inner_items.size()));
 
             if (ImGui::BeginChild("##ContainerItems", {0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f}, true)) {
                 for (const auto& inner_item : inner_items) {
@@ -2466,8 +2466,8 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
 
     ImGui::SetNextWindowPos(
         {
-            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
-            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 132),
+            numeric_cast<float32_t>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
+            numeric_cast<float32_t>(MainPanelPos.y + MainPanelContentRect.y + 132),
         },
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({360.0f, 160.0f}, ImGuiCond_FirstUseEver);
@@ -2477,8 +2477,8 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
         return;
     }
 
-    int32& anim_state = CritterAnimState;
-    int32& anim_action = CritterAnimAction;
+    int32_t& anim_state = CritterAnimState;
+    int32_t& anim_action = CritterAnimAction;
     auto& anim_sequence_buf = CritterAnimSequenceBuf;
 
     ImGui::InputInt("State", &anim_state);
@@ -2508,8 +2508,8 @@ void MapperEngine::DrawScriptCallWindowImGui()
 
     ImGui::SetNextWindowPos(
         {
-            numeric_cast<float32>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
-            numeric_cast<float32>(MainPanelPos.y + MainPanelContentRect.y + 304),
+            numeric_cast<float32_t>(MainPanelPos.x + MainPanelContentRect.x + MainPanelContentRect.width + 24),
+            numeric_cast<float32_t>(MainPanelPos.y + MainPanelContentRect.y + 304),
         },
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({380.0f, 140.0f}, ImGuiCond_FirstUseEver);
@@ -2588,7 +2588,7 @@ void MapperEngine::DrawMapListWindowImGui()
 
     std::ranges::sort(map_names);
 
-    ImGui::Text("Maps: %d", numeric_cast<int32>(map_names.size()));
+    ImGui::Text("Maps: %d", numeric_cast<int32_t>(map_names.size()));
     ImGui::Separator();
 
     if (ImGui::BeginChild("##AllMapsList", {0.0f, 0.0f}, true)) {
@@ -2647,7 +2647,7 @@ void MapperEngine::DrawMapWindowImGui()
 
     mpos hex;
     _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
-    const int32 day_time = GetGlobalDayTime();
+    const int32_t day_time = GetGlobalDayTime();
     const auto map_name = string(_curMap->GetName());
     const auto rotate_selected_critters = [&] {
         for (auto& entity : SelectedEntities) {
@@ -2806,7 +2806,7 @@ void MapperEngine::DrawInspectorImGui()
     const auto* cr = dynamic_cast<CritterView*>(entity);
     const char* type_name = cr != nullptr ? "Critter" : (item != nullptr && !item->GetStatic() ? "Dynamic Item" : "Static Item");
 
-    ImGui::SetNextWindowPos({numeric_cast<float32>(InspectorPos.x), numeric_cast<float32>(InspectorPos.y)}, ImGuiCond_Once);
+    ImGui::SetNextWindowPos({numeric_cast<float32_t>(InspectorPos.x), numeric_cast<float32_t>(InspectorPos.y)}, ImGuiCond_Once);
     ImGui::SetNextWindowSize({380.0f, 520.0f}, ImGuiCond_Once);
 
     auto keep_open = InspectorVisible;
@@ -2820,7 +2820,7 @@ void MapperEngine::DrawInspectorImGui()
     }
 
     const auto pos = ImGui::GetWindowPos();
-    InspectorPos = {iround<int32>(pos.x), iround<int32>(pos.y)};
+    InspectorPos = {iround<int32_t>(pos.x), iround<int32_t>(pos.y)};
 
     auto compatible_candidates = 0;
     const auto is_same_inspector_entity_type = [&](const ClientEntity* selected_entity) {
@@ -2847,14 +2847,14 @@ void MapperEngine::DrawInspectorImGui()
         ImGui::Checkbox(apply_to_all_label.c_str(), &InspectorApplyToAll);
     }
 
-    constexpr int32 START_LINE = 3;
+    constexpr int32_t START_LINE = 3;
     string& edit_buf = InspectorEditBuf;
-    int32& edit_line = InspectorEditLine;
-    int32& pending_focus_line = InspectorPendingFocusLine;
-    int32& pending_focus_array_index = InspectorPendingFocusArrayIndex;
-    int32& pending_caret_reset_line = InspectorPendingCaretResetLine;
-    int32& pending_caret_reset_array_index = InspectorPendingCaretResetArrayIndex;
-    int32& pending_caret_reset_frames = InspectorPendingCaretResetFrames;
+    int32_t& edit_line = InspectorEditLine;
+    int32_t& pending_focus_line = InspectorPendingFocusLine;
+    int32_t& pending_focus_array_index = InspectorPendingFocusArrayIndex;
+    int32_t& pending_caret_reset_line = InspectorPendingCaretResetLine;
+    int32_t& pending_caret_reset_array_index = InspectorPendingCaretResetArrayIndex;
+    int32_t& pending_caret_reset_frames = InspectorPendingCaretResetFrames;
     bool& last_edit_cell_rect_valid = InspectorLastEditCellRectValid;
     float& last_edit_cell_min_x = InspectorLastEditCellMinX;
     float& last_edit_cell_min_y = InspectorLastEditCellMinY;
@@ -2874,7 +2874,7 @@ void MapperEngine::DrawInspectorImGui()
 
     const auto clear_edit_state = [&]() { ResetInspectorPropertyEditState(); };
 
-    const auto begin_edit_state = [&](int32 line, int32 array_index = 0) {
+    const auto begin_edit_state = [&](int32_t line, int32_t array_index = 0) {
         edit_line = line;
         sync_edit_buf();
         pending_focus_line = line;
@@ -2884,13 +2884,13 @@ void MapperEngine::DrawInspectorImGui()
         pending_caret_reset_frames = 2;
     };
 
-    const auto reset_selected_line_state = [&](int32 selected_line) {
+    const auto reset_selected_line_state = [&](int32_t selected_line) {
         SelectInspectorPropertyLine(selected_line);
         sync_edit_buf();
         clear_edit_state();
     };
 
-    const auto keep_selected_line_edit_state = [&](int32 selected_line) {
+    const auto keep_selected_line_edit_state = [&](int32_t selected_line) {
         SelectInspectorPropertyLine(selected_line);
         sync_edit_buf();
         edit_line = selected_line;
@@ -2937,20 +2937,20 @@ void MapperEngine::DrawInspectorImGui()
 
     auto apply_value = [&](Entity* target_entity) { ApplyInspectorPropertyEdit(target_entity); };
 
-    const auto apply_selected_value = [&](int32 selected_line) {
+    const auto apply_selected_value = [&](int32_t selected_line) {
         apply_value(entity);
         apply_to_compatible_selected_entities(apply_value);
         reset_selected_line_state(selected_line);
     };
 
-    const auto apply_selected_value_keep_edit = [&](int32 selected_line) {
+    const auto apply_selected_value_keep_edit = [&](int32_t selected_line) {
         apply_value(entity);
         apply_to_compatible_selected_entities(apply_value);
         keep_selected_line_edit_state(selected_line);
     };
 
-    const auto reset_selected_value = [&](int32 selected_line) {
-        if (selected_line < START_LINE || selected_line - START_LINE >= numeric_cast<int32>(ShowProps.size())) {
+    const auto reset_selected_value = [&](int32_t selected_line) {
+        if (selected_line < START_LINE || selected_line - START_LINE >= numeric_cast<int32_t>(ShowProps.size())) {
             return;
         }
 
@@ -2995,7 +2995,7 @@ void MapperEngine::DrawInspectorImGui()
             draw_summary_row("ProtoId", dynamic_cast<EntityWithProto*>(entity)->GetProtoId());
 
             for (size_t i = 0; i < ShowProps.size(); i++) {
-                const auto line = START_LINE + numeric_cast<int32>(i);
+                const auto line = START_LINE + numeric_cast<int32_t>(i);
                 const auto* prop = ShowProps[i].get();
 
                 ImGui::PushID(line);
@@ -3051,7 +3051,7 @@ void MapperEngine::DrawInspectorImGui()
                     auto cancel_requested = false;
                     auto finish_edit_requested = false;
                     auto focus_consumed = false;
-                    const auto edit_text_value = [&](float32 item_width = -58.0f) {
+                    const auto edit_text_value = [&](float32_t item_width = -58.0f) {
                         ImGui::SetNextItemWidth(item_width);
                         if (request_focus) {
                             ImGui::SetKeyboardFocusHere();
@@ -3066,7 +3066,7 @@ void MapperEngine::DrawInspectorImGui()
                         cancel_requested = ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
                     };
 
-                    const auto edit_struct_fields = [&](vector<string>& field_values, int32 struct_id, bool request_focus, bool request_caret_reset) {
+                    const auto edit_struct_fields = [&](vector<string>& field_values, int32_t struct_id, bool request_focus, bool request_caret_reset) {
                         auto struct_changed = false;
 
                         for (size_t field_index = 0; field_index < field_values.size(); field_index++) {
@@ -3156,9 +3156,9 @@ void MapperEngine::DrawInspectorImGui()
                             for (size_t entry_index = 0; entry_index < struct_entries.size(); entry_index++) {
                                 auto field_values = ParseInspectorStructFields(*struct_layout, struct_entries[entry_index]).value_or(vector<string>(struct_layout->Fields.size()));
 
-                                ImGui::PushID(numeric_cast<int32>(entry_index));
+                                ImGui::PushID(numeric_cast<int32_t>(entry_index));
                                 ImGui::SeparatorText(strex("Item {}", entry_index).str().c_str());
-                                array_changed |= edit_struct_fields(field_values, numeric_cast<int32>(entry_index), focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index), pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
+                                array_changed |= edit_struct_fields(field_values, numeric_cast<int32_t>(entry_index), focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index), pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                 struct_entries[entry_index] = SerializeInspectorStringArray(field_values);
                                 if (ImGui::SmallButton("Remove")) {
                                     remove_index = entry_index;
@@ -3176,7 +3176,7 @@ void MapperEngine::DrawInspectorImGui()
                                 struct_entries.emplace_back(SerializeInspectorStringArray(vector<string>(struct_layout->Fields.size())));
                                 array_changed = true;
                                 pending_focus_line = line;
-                                pending_focus_array_index = numeric_cast<int32>(struct_entries.size()) - 1;
+                                pending_focus_array_index = numeric_cast<int32_t>(struct_entries.size()) - 1;
                                 pending_caret_reset_line = line;
                                 pending_caret_reset_array_index = pending_focus_array_index;
                                 pending_caret_reset_frames = 2;
@@ -3200,7 +3200,7 @@ void MapperEngine::DrawInspectorImGui()
                             std::optional<size_t> remove_index {};
 
                             for (size_t entry_index = 0; entry_index < entries.size(); entry_index++) {
-                                ImGui::PushID(numeric_cast<int32>(entry_index));
+                                ImGui::PushID(numeric_cast<int32_t>(entry_index));
 
                                 if (focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index)) {
                                     ImGui::SetKeyboardFocusHere();
@@ -3302,7 +3302,7 @@ void MapperEngine::DrawInspectorImGui()
                                 entries.emplace_back(MakeDefaultInspectorArrayElement(prop));
                                 array_changed = true;
                                 pending_focus_line = line;
-                                pending_focus_array_index = numeric_cast<int32>(entries.size()) - 1;
+                                pending_focus_array_index = numeric_cast<int32_t>(entries.size()) - 1;
                                 pending_caret_reset_line = line;
                                 pending_caret_reset_array_index = pending_focus_array_index;
                                 pending_caret_reset_frames = 2;
@@ -3437,7 +3437,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
 
     constexpr auto start_line = 3;
 
-    if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32>(ShowProps.size())) {
+    if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size())) {
         const auto& prop = ShowProps[InspectorSelectedLine - start_line];
 
         if (prop) {
@@ -3475,7 +3475,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
     }
 }
 
-void MapperEngine::SelectInspectorPropertyLine(int32 line)
+void MapperEngine::SelectInspectorPropertyLine(int32_t line)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3486,10 +3486,10 @@ void MapperEngine::SelectInspectorPropertyLine(int32 line)
     InspectorSelectedLineInitialValue = InspectorSelectedLineValue = "";
 
     if (const auto* entity = GetInspectorEntity(); entity != nullptr) {
-        if (InspectorSelectedLine - start_line >= numeric_cast<int32>(ShowProps.size())) {
-            InspectorSelectedLine = numeric_cast<int32>(ShowProps.size()) + start_line - 1;
+        if (InspectorSelectedLine - start_line >= numeric_cast<int32_t>(ShowProps.size())) {
+            InspectorSelectedLine = numeric_cast<int32_t>(ShowProps.size()) + start_line - 1;
         }
-        if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32>(ShowProps.size()) && (ShowProps[InspectorSelectedLine - start_line] != nullptr)) {
+        if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size()) && (ShowProps[InspectorSelectedLine - start_line] != nullptr)) {
             InspectorSelectedLineInitialValue = InspectorSelectedLineValue = entity->GetProperties().SavePropertyToText(ShowProps[InspectorSelectedLine - start_line].get());
         }
     }
@@ -3540,7 +3540,7 @@ auto MapperEngine::GetInspectorEntity() -> ClientEntity*
     ShowProps.clear();
 
     if (entity != nullptr) {
-        vector<int32> prop_indices;
+        vector<int32_t> prop_indices;
         OnInspectorProperties.Fire(entity, prop_indices);
 
         for (const auto prop_index : prop_indices) {
@@ -3662,13 +3662,13 @@ void MapperEngine::HandleLeftMouseUp()
                 }
                 else {
                     const auto map_size = _curMap->GetSize();
-                    const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
-                    const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
-                    const int32 fy = std::min(SelectHex1.y, SelectHex2.y);
-                    const int32 ty = std::max(SelectHex1.y, SelectHex2.y);
+                    const int32_t fx = std::min(SelectHex1.x, SelectHex2.x);
+                    const int32_t tx = std::max(SelectHex1.x, SelectHex2.x);
+                    const int32_t fy = std::min(SelectHex1.y, SelectHex2.y);
+                    const int32_t ty = std::max(SelectHex1.y, SelectHex2.y);
 
-                    for (int32 i = fx; i <= tx; i++) {
-                        for (int32 j = fy; j <= ty; j++) {
+                    for (int32_t i = fx; i <= tx; i++) {
+                        for (int32_t j = fy; j <= ty; j++) {
                             hexes.emplace_back(map_size.from_raw_pos(i, j));
                         }
                     }
@@ -3769,10 +3769,10 @@ void MapperEngine::HandleSelectionMouseDrag()
             }
             else {
                 const auto map_size = _curMap->GetSize();
-                const int32 fx = std::min(SelectHex1.x, SelectHex2.x);
-                const int32 tx = std::max(SelectHex1.x, SelectHex2.x);
-                const int32 fy = std::min(SelectHex1.y, SelectHex2.y);
-                const int32 ty = std::max(SelectHex1.y, SelectHex2.y);
+                const int32_t fx = std::min(SelectHex1.x, SelectHex2.x);
+                const int32_t tx = std::max(SelectHex1.x, SelectHex2.x);
+                const int32_t fy = std::min(SelectHex1.y, SelectHex2.y);
+                const int32_t ty = std::max(SelectHex1.y, SelectHex2.y);
 
                 for (auto i = fx; i <= tx; i++) {
                     for (auto j = fy; j <= ty; j++) {
@@ -3785,8 +3785,8 @@ void MapperEngine::HandleSelectionMouseDrag()
         }
     }
     else if (MouseHoldMode == INT_MOVE_SELECTION) {
-        auto offs_hx = numeric_cast<int32>(SelectHex2.x) - numeric_cast<int32>(SelectHex1.x);
-        auto offs_hy = numeric_cast<int32>(SelectHex2.y) - numeric_cast<int32>(SelectHex1.y);
+        auto offs_hx = numeric_cast<int32_t>(SelectHex2.x) - numeric_cast<int32_t>(SelectHex1.x);
+        auto offs_hy = numeric_cast<int32_t>(SelectHex2.y) - numeric_cast<int32_t>(SelectHex1.y);
         auto offs_x = Settings.MousePos.x - SelectPos.x;
         auto offs_y = Settings.MousePos.y - SelectPos.y;
 
@@ -3821,7 +3821,7 @@ auto MapperEngine::GetActiveSubTab() const -> const SubTab*
     return ActiveSubTabs[ActivePanelMode].get();
 }
 
-auto MapperEngine::GetActiveProtoIndex() const -> int32
+auto MapperEngine::GetActiveProtoIndex() const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3836,7 +3836,7 @@ auto MapperEngine::GetActiveProtoIndex() const -> int32
     return 0;
 }
 
-void MapperEngine::SetActiveProtoIndex(int32 index)
+void MapperEngine::SetActiveProtoIndex(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3889,7 +3889,7 @@ void MapperEngine::RefreshActiveProtoLists()
     }
 }
 
-void MapperEngine::SetActivePanelMode(int32 mode)
+void MapperEngine::SetActivePanelMode(int32_t mode)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4166,7 +4166,7 @@ void MapperEngine::SelectClear()
     _curMap->DefferedRefreshItems();
 }
 
-auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int32& offs_x, int32& offs_y) -> bool
+auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy, int32_t& offs_x, int32_t& offs_y) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4193,7 +4193,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
     }
 
     // Setup hex moving switcher
-    int32 switcher = 0;
+    int32_t switcher = 0;
 
     if (!SelectedEntities.empty()) {
         if (auto cr = SelectedEntities.front().dyn_cast<CritterHexView>()) {
@@ -4206,12 +4206,12 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
 
     const auto move_hex = [&](ipos32& raw_hex) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            int32 sw = switcher;
+            int32_t sw = switcher;
 
-            for (int32 k = 0; k < std::abs(offs_hx); k++, sw++) {
+            for (int32_t k = 0; k < std::abs(offs_hx); k++, sw++) {
                 GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hx > 0 ? ((sw % 2) != 0 ? hdir::West : hdir::SouthWest) : ((sw % 2) != 0 ? hdir::NorthEast : hdir::East));
             }
-            for (int32 k = 0; k < std::abs(offs_hy); k++) {
+            for (int32_t k = 0; k < std::abs(offs_hy); k++) {
                 GeometryHelper::MoveHexByDirUnsafe(raw_hex, offs_hy > 0 ? hdir::SouthEast : hdir::NorthWest);
             }
         }
@@ -4222,10 +4222,10 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
     };
 
     if (!hex_move) {
-        float32& small_ox = SelectionSmallOffsetX;
-        float32& small_oy = SelectionSmallOffsetY;
-        const auto ox = numeric_cast<float32>(offs_x) / _curMap->GetSpritesZoom() + small_ox;
-        const auto oy = numeric_cast<float32>(offs_y) / _curMap->GetSpritesZoom() + small_oy;
+        float32_t& small_ox = SelectionSmallOffsetX;
+        float32_t& small_oy = SelectionSmallOffsetY;
+        const auto ox = numeric_cast<float32_t>(offs_x) / _curMap->GetSpritesZoom() + small_ox;
+        const auto oy = numeric_cast<float32_t>(offs_y) / _curMap->GetSpritesZoom() + small_oy;
 
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
@@ -4240,8 +4240,8 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             small_oy = 0.0f;
         }
 
-        offs_x = iround<int32>(ox);
-        offs_y = iround<int32>(oy);
+        offs_x = iround<int32_t>(ox);
+        offs_y = iround<int32_t>(oy);
     }
     else {
         for (auto& entity : SelectedEntities) {
@@ -4294,13 +4294,13 @@ auto MapperEngine::SelectMove(bool hex_move, int32& offs_hx, int32& offs_hy, int
             entry.EntityId = item->GetId();
             entry.HasOffset = true;
             entry.OldOffset = item->GetOffset();
-            entry.NewOffset = {numeric_cast<int16>(ox), numeric_cast<int16>(oy)};
+            entry.NewOffset = {numeric_cast<int16_t>(ox), numeric_cast<int16_t>(oy)};
             if (entry.OldOffset == entry.NewOffset) {
                 continue;
             }
             move_entries.emplace_back(std::move(entry));
 
-            item->SetOffset({numeric_cast<int16>(ox), numeric_cast<int16>(oy)});
+            item->SetOffset({numeric_cast<int16_t>(ox), numeric_cast<int16_t>(oy)});
             item->RefreshAnim();
         }
         else {
@@ -4559,7 +4559,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         }
     }
     else if (proto->GetIsTile()) {
-        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, numeric_cast<uint8>(TileLayer), PreviewRoofTiles);
+        item = _curMap->AddMapperTile(proto->GetProtoId(), corrected_hex, numeric_cast<uint8_t>(TileLayer), PreviewRoofTiles);
     }
     else {
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
@@ -4895,7 +4895,7 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* i
     }
 
     // Neighbor hexes
-    for (int32 i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+    for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
         if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, hdir(i), map->GetSize())) {
             if (auto* mergable_item = find_mergable_item_on_hex(hex2); mergable_item != nullptr) {
                 result.emplace(mergable_item);
@@ -5088,8 +5088,8 @@ void MapperEngine::BufferPaste()
     SelectClear();
 
     for (const auto& entity_buf : EntitiesBuffer) {
-        const auto raw_hx = numeric_cast<int32>(entity_buf.Hex.x) + hx_offset;
-        const auto raw_hy = numeric_cast<int32>(entity_buf.Hex.y) + hy_offset;
+        const auto raw_hx = numeric_cast<int32_t>(entity_buf.Hex.x) + hx_offset;
+        const auto raw_hy = numeric_cast<int32_t>(entity_buf.Hex.y) + hy_offset;
 
         if (!_curMap->GetSize().is_valid_pos(raw_hx, raw_hy)) {
             continue;
@@ -5154,7 +5154,7 @@ void MapperEngine::BufferPaste()
     }
 }
 
-auto MapperEngine::JumpHistoryToIndex(int32 target_index) -> bool
+auto MapperEngine::JumpHistoryToIndex(int32_t target_index) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5163,12 +5163,12 @@ auto MapperEngine::JumpHistoryToIndex(int32 target_index) -> bool
     }
 
     const auto* ctx = GetUndoContext(_curMap.get(), false);
-    const auto total_count = ctx != nullptr ? numeric_cast<int32>(ctx->UndoStack.size() + ctx->RedoStack.size()) : 0;
+    const auto total_count = ctx != nullptr ? numeric_cast<int32_t>(ctx->UndoStack.size() + ctx->RedoStack.size()) : 0;
     target_index = std::clamp(target_index, 0, total_count);
 
     while (true) {
         const auto* cur_ctx = GetUndoContext(_curMap.get(), false);
-        const auto applied_count = cur_ctx != nullptr ? numeric_cast<int32>(cur_ctx->UndoStack.size()) : 0;
+        const auto applied_count = cur_ctx != nullptr ? numeric_cast<int32_t>(cur_ctx->UndoStack.size()) : 0;
 
         if (applied_count == target_index) {
             return true;
@@ -5210,12 +5210,12 @@ void MapperEngine::DrawHistoryWindowImGui()
     }
 
     const auto* ctx = GetUndoContext(_curMap.get(), false);
-    const auto undo_count = ctx != nullptr ? numeric_cast<int32>(ctx->UndoStack.size()) : 0;
-    const auto redo_count = ctx != nullptr ? numeric_cast<int32>(ctx->RedoStack.size()) : 0;
+    const auto undo_count = ctx != nullptr ? numeric_cast<int32_t>(ctx->UndoStack.size()) : 0;
+    const auto redo_count = ctx != nullptr ? numeric_cast<int32_t>(ctx->RedoStack.size()) : 0;
     const auto total_count = undo_count + redo_count;
 
     auto& last_history_map = LastHistoryMap;
-    int32& last_history_undo_count = LastHistoryUndoCount;
+    int32_t& last_history_undo_count = LastHistoryUndoCount;
     const auto scroll_to_current = ImGui::IsWindowAppearing() || last_history_map != _curMap.get() || last_history_undo_count != undo_count;
 
     last_history_map = _curMap.get();
@@ -5224,7 +5224,7 @@ void MapperEngine::DrawHistoryWindowImGui()
     ImGui::Text("Applied: %d / %d", undo_count, total_count);
     ImGui::Separator();
 
-    const auto draw_history_button = [&](string_view label, int32 target_index, bool is_current) {
+    const auto draw_history_button = [&](string_view label, int32_t target_index, bool is_current) {
         const auto button_label = is_current ? strex("%s  [current]", label).str() : string(label);
         if (is_current) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -5253,7 +5253,7 @@ void MapperEngine::DrawHistoryWindowImGui()
         if (ctx != nullptr && undo_count > 0) {
             ImGui::SeparatorText("Undo");
 
-            for (int32 index = 0; index < undo_count; index++) {
+            for (int32_t index = 0; index < undo_count; index++) {
                 const auto label = strex("{}. {}", index + 1, ctx->UndoStack[numeric_cast<size_t>(index)].Label).str();
                 draw_history_button(label, index + 1, false);
             }
@@ -5268,7 +5268,7 @@ void MapperEngine::DrawHistoryWindowImGui()
         if (ctx != nullptr && redo_count > 0) {
             ImGui::SeparatorText("Redo");
 
-            for (int32 index = 0; index < redo_count; index++) {
+            for (int32_t index = 0; index < redo_count; index++) {
                 const auto redo_index = redo_count - 1 - index;
                 const auto target_index = undo_count + index + 1;
                 const auto label = strex("{}. {}", target_index, ctx->RedoStack[numeric_cast<size_t>(redo_index)].Label).str();
@@ -5282,7 +5282,7 @@ void MapperEngine::DrawHistoryWindowImGui()
     ImGui::End();
 }
 
-void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32 flags, ucolor color, int32 num_font)
+void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32_t flags, ucolor color, int32_t num_font)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5321,24 +5321,24 @@ void MapperEngine::CurDraw()
         if (spr != nullptr) {
             const auto zoom = _curMap->GetSpritesZoom();
             ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
-            pos += ipos32(iround<int32>(numeric_cast<float32>(proto->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(proto->GetOffset().y) * zoom));
-            pos += ipos32(iround<int32>(numeric_cast<float32>(spr->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(spr->GetOffset().y) * zoom));
-            pos += ipos32(iround<int32>(numeric_cast<float32>(Settings.MapHexWidth / 2) * zoom), iround<int32>(numeric_cast<float32>(Settings.MapHexHeight) * zoom));
-            pos -= ipos32(iround<int32>(numeric_cast<float32>(spr->GetSize().width / 2) * zoom), iround<int32>(numeric_cast<float32>(spr->GetSize().height) * zoom));
+            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().y) * zoom));
+            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().y) * zoom));
+            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(Settings.MapHexWidth / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(Settings.MapHexHeight) * zoom));
+            pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom));
 
             if (proto->GetIsTile()) {
                 if (PreviewRoofTiles) {
-                    pos.x += iround<int32>(numeric_cast<float32>(Settings.MapRoofOffsX) * zoom);
-                    pos.y += iround<int32>(numeric_cast<float32>(Settings.MapRoofOffsY) * zoom);
+                    pos.x += iround<int32_t>(numeric_cast<float32_t>(Settings.MapRoofOffsX) * zoom);
+                    pos.y += iround<int32_t>(numeric_cast<float32_t>(Settings.MapRoofOffsY) * zoom);
                 }
                 else {
-                    pos.x += iround<int32>(numeric_cast<float32>(Settings.MapTileOffsX) * zoom);
-                    pos.y += iround<int32>(numeric_cast<float32>(Settings.MapTileOffsY) * zoom);
+                    pos.x += iround<int32_t>(numeric_cast<float32_t>(Settings.MapTileOffsX) * zoom);
+                    pos.y += iround<int32_t>(numeric_cast<float32_t>(Settings.MapTileOffsY) * zoom);
                 }
             }
 
-            const auto width = iround<int32>(numeric_cast<float32>(spr->GetSize().width) * zoom);
-            const auto height = iround<int32>(numeric_cast<float32>(spr->GetSize().height) * zoom);
+            const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
+            const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
             SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
         }
         return;
@@ -5360,11 +5360,11 @@ void MapperEngine::CurDraw()
 
         const auto zoom = _curMap->GetSpritesZoom();
         ipos32 pos = _curMap->MapToScreenPos(_curMap->GetHexMapPos(hex));
-        pos += ipos32(iround<int32>(numeric_cast<float32>(anim->GetOffset().x) * zoom), iround<int32>(numeric_cast<float32>(anim->GetOffset().y) * zoom));
-        pos -= ipos32(iround<int32>(numeric_cast<float32>(anim->GetSize().width / 2) * zoom), iround<int32>(numeric_cast<float32>(anim->GetSize().height) * zoom));
+        pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(anim->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(anim->GetOffset().y) * zoom));
+        pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom));
 
-        const auto width = iround<int32>(numeric_cast<float32>(anim->GetSize().width) * zoom);
-        const auto height = iround<int32>(numeric_cast<float32>(anim->GetSize().height) * zoom);
+        const auto width = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width) * zoom);
+        const auto height = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom);
         SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
     }
 }
@@ -5442,7 +5442,7 @@ void MapperEngine::CurRMouseUp()
     if (MouseHoldMode == INT_PAN) {
         if (RightMouseDragged) {
             const auto now_time = nanotime::now();
-            const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32>();
+            const auto sample_ms = (now_time - RightMouseVelocityTime).to_ms<float32_t>();
 
             if ((RightMouseVelocityAccum.x != 0.0f || RightMouseVelocityAccum.y != 0.0f) && sample_ms > 0.0f) {
                 RightMouseInertia = RightMouseVelocityAccum * (1000.0f / sample_ms);
@@ -5507,7 +5507,7 @@ void MapperEngine::SetCurMode(int cur_mode)
     }
 }
 
-auto MapperEngine::IsCurInRect(const irect32& rect, int32 ax, int32 ay) const -> bool
+auto MapperEngine::IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5560,8 +5560,8 @@ void MapperEngine::DrawConsoleImGui()
         std::copy_n(ConsoleStr.data(), copy_len, console_buf.data());
     };
 
-    const auto base_y = numeric_cast<float32>(MainPanelPos.y + MainPanelWindowRect.height + MAPPER_CONSOLE_WINDOW_OFFSET.y);
-    const auto base_x = numeric_cast<float32>(MainPanelPos.x + MAPPER_CONSOLE_WINDOW_OFFSET.x);
+    const auto base_y = numeric_cast<float32_t>(MainPanelPos.y + MainPanelWindowRect.height + MAPPER_CONSOLE_WINDOW_OFFSET.y);
+    const auto base_x = numeric_cast<float32_t>(MainPanelPos.x + MAPPER_CONSOLE_WINDOW_OFFSET.x);
 
     ImGui::SetNextWindowPos({base_x, base_y}, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.85f);
@@ -5595,8 +5595,8 @@ void MapperEngine::DrawConsoleImGui()
                 }
             }
             else if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
-                if (ConsoleHistoryCur + 1 >= numeric_cast<int32>(ConsoleHistory.size())) {
-                    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+                if (ConsoleHistoryCur + 1 >= numeric_cast<int32_t>(ConsoleHistory.size())) {
+                    ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
                     ConsoleStr.clear();
                 }
                 else {
@@ -5635,18 +5635,18 @@ void MapperEngine::ConsoleSubmitCommand()
     // Keep history unique and bounded.
     ConsoleHistory.emplace_back(ConsoleStr);
 
-    for (int32 i = 0; i < numeric_cast<int32>(ConsoleHistory.size()) - 1; i++) {
+    for (int32_t i = 0; i < numeric_cast<int32_t>(ConsoleHistory.size()) - 1; i++) {
         if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
             ConsoleHistory.erase(ConsoleHistory.begin() + i);
             i = -1;
         }
     }
 
-    while (numeric_cast<int32>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
+    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
-    ConsoleHistoryCur = numeric_cast<int32>(ConsoleHistory.size());
+    ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
 
     string history_str;
     for (const auto& str : ConsoleHistory) {
@@ -5752,7 +5752,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        vector<int32> anims = strvex(command.substr(1)).split_to_int32(' ');
+        vector<int32_t> anims = strvex(command.substr(1)).split_to_int32(' ');
 
         if (anims.empty()) {
             return;
@@ -5815,8 +5815,8 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "size" && _curMap) {
             AddMess("Resize map");
 
-            int32 maxhx = 0;
-            int32 maxhy = 0;
+            int32_t maxhx = 0;
+            int32_t maxhy = 0;
 
             if (!(icommand >> maxhx >> maxhy)) {
                 AddMess("Invalid args");
@@ -6070,7 +6070,7 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 
     OnEditMapSave.Fire(map);
     auto* ctx = GetUndoContext(map, true);
-    ctx->CleanUndoDepth = numeric_cast<int32>(ctx->UndoStack.size());
+    ctx->CleanUndoDepth = numeric_cast<int32_t>(ctx->UndoStack.size());
     SetMapDirty(map, false);
 }
 
@@ -6096,7 +6096,7 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     LoadedMaps.erase(it);
 }
 
-void MapperEngine::ResizeMap(MapView* map, int32 width, int32 height)
+void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -6107,7 +6107,7 @@ void MapperEngine::ResizeMap(MapView* map, int32 width, int32 height)
     const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
-    map->Resize(msize(numeric_cast<int16>(corrected_width), numeric_cast<int16>(corrected_height)));
+    map->Resize(msize(numeric_cast<int16_t>(corrected_width), numeric_cast<int16_t>(corrected_height)));
     map->InstantScrollTo(map->GetWorkHex());
 
     if (_curMap == map) {
@@ -6135,15 +6135,15 @@ void MapperEngine::AddMess(string_view message_text)
     MessBoxCurText = "";
 
     const irect32 ir(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height);
-    int32 max_lines = ir.height / 10;
+    int32_t max_lines = ir.height / 10;
 
     if (ir == irect32()) {
         max_lines = 20;
     }
 
-    int32 cur_mess = numeric_cast<int32>(MessBox.size()) - 1;
+    int32_t cur_mess = numeric_cast<int32_t>(MessBox.size()) - 1;
 
-    for (int32 i = 0, j = 0; cur_mess >= 0; cur_mess--) {
+    for (int32_t i = 0, j = 0; cur_mess >= 0; cur_mess--) {
         MessBoxMessage& m = MessBox[cur_mess];
 
         // Scroll
@@ -6171,7 +6171,7 @@ void MapperEngine::MessBoxDraw()
     DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
-void MapperEngine::DrawIfaceLayer(int32 layer)
+void MapperEngine::DrawIfaceLayer(int32_t layer)
 {
     FO_STACK_TRACE_ENTRY();
 

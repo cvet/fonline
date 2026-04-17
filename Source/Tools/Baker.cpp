@@ -238,7 +238,7 @@ void MasterBaker::BakeAllInternal()
 
         pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
 
-        const auto bake_checker = [context = pack_bake_context.get(), &force_baking](string_view path, uint64 write_time) -> bool {
+        const auto bake_checker = [context = pack_bake_context.get(), &force_baking](string_view path, uint64_t write_time) -> bool {
             context->BakedFilePaths.emplace(path);
 
             if (!force_baking) {
@@ -250,7 +250,7 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        const auto write_data = [context = pack_bake_context.get()](string_view path, span<const uint8> baked_data) {
+        const auto write_data = [context = pack_bake_context.get()](string_view path, span<const uint8_t> baked_data) {
             const auto res_path = strex(context->OutputDir).combine_path(path).str();
 
             if (!fs_compare_file_content(res_path, baked_data)) {
@@ -270,7 +270,7 @@ void MasterBaker::BakeAllInternal()
         return pack_bake_context;
     };
 
-    const auto bake_pack = [](PackBakeContext* bake_context, int32 bake_order) {
+    const auto bake_pack = [](PackBakeContext* bake_context, int32_t bake_order) {
         for (auto& baker : bake_context->Bakers) {
             if (baker->GetOrder() == bake_order) {
                 if (!bake_context->FirstBake) {
@@ -334,7 +334,7 @@ void MasterBaker::BakeAllInternal()
     }
 
     // Run bake contexts
-    int32 bake_order = -10;
+    int32_t bake_order = -10;
 
     while (true) {
         vector<std::future<void>> res_bakings;
@@ -391,7 +391,7 @@ void MasterBaker::BakeAllInternal()
         }
     }
 
-    fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64 write_time) {
+    fs_iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
 
         if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
@@ -531,8 +531,8 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
     for (const auto& res_pack : res_packs) {
         auto& res_entry = _inputResources.emplace_back();
         res_entry.Name = res_pack.Name;
-        const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64 write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
-        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8> data) { WriteData(res_pack_name, path, data); };
+        const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
+        const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) { WriteData(res_pack_name, path, data); };
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
         for (const auto& dir : res_pack.InputDirs) {
@@ -548,13 +548,13 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
     }
 
     // Evaluate output files
-    const auto check_file = [&](string_view path, uint64 write_time) {
+    const auto check_file = [&](string_view path, uint64_t write_time) {
         auto locker = std::scoped_lock(_outputFilesLocker);
         _outputFiles.emplace(path, write_time);
         return false;
     };
 
-    const auto write_file = [](string_view path, span<const uint8> data) {
+    const auto write_file = [](string_view path, span<const uint8_t> data) {
         ignore_unused(path, data);
         FO_UNREACHABLE_PLACE();
     };
@@ -577,7 +577,7 @@ auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path
     return strex(_settings->BakeOutput).combine_path(res_pack_name).combine_path(path);
 }
 
-auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64 write_time) -> bool
+auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -592,7 +592,7 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
     return false;
 }
 
-void BakerDataSource::WriteData(string_view res_pack_name, string_view path, span<const uint8> data)
+void BakerDataSource::WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -603,11 +603,11 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, spa
     FO_RUNTIME_ASSERT(write_file_ok);
 }
 
-auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_time, unique_del_ptr<const uint8>* data) const -> bool
+auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_time, unique_del_ptr<const uint8_t>* data) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint64 input_write_time;
+    uint64_t input_write_time;
 
     {
         auto locker = std::scoped_lock(_outputFilesLocker);
@@ -629,13 +629,13 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64& write_tim
         FO_RUNTIME_ASSERT(write_time != 0);
 
         if (data != nullptr) {
-            auto buf = SafeAlloc::MakeUniqueArr<uint8>(size);
+            auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
             if (size != 0u) {
                 MemCopy(buf.get(), output_data->data(), size);
             }
 
-            *data = unique_del_ptr<const uint8> {buf.release(), [](const uint8* p) FO_DEFERRED { delete[] p; }};
+            *data = unique_del_ptr<const uint8_t> {buf.release(), [](const uint8_t* p) FO_DEFERRED { delete[] p; }};
         }
     };
 
@@ -689,7 +689,7 @@ auto BakerDataSource::IsFileExists(string_view path) const -> bool
     return _outputFiles.contains(path);
 }
 
-auto BakerDataSource::GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool
+auto BakerDataSource::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -700,11 +700,11 @@ auto BakerDataSource::GetFileInfo(string_view path, size_t& size, uint64& write_
     return false;
 }
 
-auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
+auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_del_ptr<const uint8> data;
+    unique_del_ptr<const uint8_t> data;
 
     if (FindFile(path, size, write_time, &data)) {
         return data;

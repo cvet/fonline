@@ -66,8 +66,8 @@ static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey;
 static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
-static auto ShouldEscapeDbStringByte(uint8 byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
-static auto DecodeHexDigit(char ch) -> uint8;
+static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
+static auto DecodeHexDigit(char ch) -> uint8_t;
 
 DataBase::DataBase() = default;
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -923,7 +923,7 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
 
     std::scoped_lock locker {_dbRequestsMetricLocker};
 
-    auto& bucket = _dbRequestsPerMinuteBuckets[static_cast<size_t>(now_second % numeric_cast<int64>(_dbRequestsPerMinuteBuckets.size()))];
+    auto& bucket = _dbRequestsPerMinuteBuckets[static_cast<size_t>(now_second % numeric_cast<int64_t>(_dbRequestsPerMinuteBuckets.size()))];
 
     if (bucket.Second != now_second) {
         bucket.Second = now_second;
@@ -1292,7 +1292,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     auto key_buf = strex(key);
     const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
     const char* key_data = escaped_key.data();
-    const auto key_len = numeric_cast<int32>(escaped_key.length());
+    const auto key_len = numeric_cast<int32_t>(escaped_key.length());
 
     if (value.Type() == AnyData::ValueType::Int64) {
         if (!bson_append_int64(bson, key_data, key_len, value.AsInt64())) {
@@ -1310,7 +1310,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key_data, key_len, value.AsString().c_str(), numeric_cast<int32>(value.AsString().length()))) {
+        if (!bson_append_utf8(bson, key_data, key_len, value.AsString().c_str(), numeric_cast<int32_t>(value.AsString().length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
         }
     }
@@ -1371,7 +1371,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
     const auto* value = bson_iter_value(iter);
 
     if (value->value_type == BSON_TYPE_INT32) {
-        return numeric_cast<int64>(value->value.v_int32);
+        return numeric_cast<int64_t>(value->value.v_int32);
     }
     else if (value->value_type == BSON_TYPE_INT64) {
         return value->value.v_int64;
@@ -1488,10 +1488,10 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
     FO_STACK_TRACE_ENTRY();
 
     if (value.is_number_integer() || value.is_number_unsigned()) {
-        return numeric_cast<int64>(value.get<int64>());
+        return numeric_cast<int64_t>(value.get<int64_t>());
     }
     if (value.is_number_float()) {
-        return value.get<float64>();
+        return value.get<float64_t>();
     }
     if (value.is_boolean()) {
         return value.get<bool>();
@@ -1743,7 +1743,7 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         result += "s_";
 
         for (const auto ch : value) {
-            const auto byte = static_cast<uint8>(ch);
+            const auto byte = static_cast<uint8_t>(ch);
             result.push_back(hex_digits[byte >> 4]);
             result.push_back(hex_digits[byte & 0x0F]);
         }
@@ -1755,7 +1755,7 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     result.reserve(value.size());
 
     for (const auto ch : value) {
-        const auto byte = static_cast<uint8>(ch);
+        const auto byte = static_cast<uint8_t>(ch);
 
         if (!ShouldEscapeDbStringByte(byte, escaping)) {
             result.push_back(ch);
@@ -1819,7 +1819,7 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
     return decoded_value;
 }
 
-static auto ShouldEscapeDbStringByte(uint8 byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
+static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1839,18 +1839,18 @@ static auto ShouldEscapeDbStringByte(uint8 byte, DataBaseStringKeyEscaping escap
     return true;
 }
 
-static auto DecodeHexDigit(char ch) -> uint8
+static auto DecodeHexDigit(char ch) -> uint8_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (ch >= '0' && ch <= '9') {
-        return static_cast<uint8>(ch - '0');
+        return static_cast<uint8_t>(ch - '0');
     }
     if (ch >= 'a' && ch <= 'f') {
-        return static_cast<uint8>(10 + ch - 'a');
+        return static_cast<uint8_t>(10 + ch - 'a');
     }
     if (ch >= 'A' && ch <= 'F') {
-        return static_cast<uint8>(10 + ch - 'A');
+        return static_cast<uint8_t>(10 + ch - 'A');
     }
 
     throw DataBaseException("Invalid database key hex digit", string_view {&ch, 1});

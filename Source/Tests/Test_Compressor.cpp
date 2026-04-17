@@ -47,10 +47,10 @@ TEST_CASE("Compressor")
 
     SECTION("CompressDecompressRoundtrip")
     {
-        vector<uint8> src;
+        vector<uint8_t> src;
         src.reserve(4096);
         for (auto i = 0; i < 4096; i++) {
-            src.emplace_back(static_cast<uint8>(i % 251));
+            src.emplace_back(static_cast<uint8_t>(i % 251));
         }
 
         const auto compressed = Compressor::Compress(src);
@@ -62,13 +62,13 @@ TEST_CASE("Compressor")
 
     SECTION("DecompressInvalidData")
     {
-        const vector<uint8> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
+        const vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
         CHECK_THROWS_AS((Compressor::Decompress(invalid, 2)), DecompressException);
     }
 
     SECTION("DecompressExpandsBufferWhenApproximationIsTooSmall")
     {
-        vector<uint8> src(4096, 0x2A);
+        vector<uint8_t> src(4096, 0x2A);
 
         const auto compressed = Compressor::Compress(src);
         REQUIRE(compressed.size() < src.size());
@@ -79,22 +79,22 @@ TEST_CASE("Compressor")
 
     SECTION("StreamRoundtrip")
     {
-        vector<uint8> part1;
-        vector<uint8> part2;
+        vector<uint8_t> part1;
+        vector<uint8_t> part2;
         for (auto i = 0; i < 128; i++) {
-            part1.emplace_back(static_cast<uint8>(i));
-            part2.emplace_back(static_cast<uint8>(255 - i));
+            part1.emplace_back(static_cast<uint8_t>(i));
+            part2.emplace_back(static_cast<uint8_t>(255 - i));
         }
 
         StreamCompressor compressor;
-        vector<uint8> comp1;
-        vector<uint8> comp2;
+        vector<uint8_t> comp1;
+        vector<uint8_t> comp2;
         compressor.Compress(part1, comp1);
         compressor.Compress(part2, comp2);
 
         StreamDecompressor decompressor;
-        vector<uint8> dec1;
-        vector<uint8> dec2;
+        vector<uint8_t> dec1;
+        vector<uint8_t> dec2;
         decompressor.Decompress(comp1, dec1);
         decompressor.Decompress(comp2, dec2);
 

@@ -142,7 +142,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         throw GenericException("Critter proto not found", proto_id);
     }
 
-    int32 multihex;
+    int32_t multihex;
 
     if (props != nullptr) {
         auto props_copy = props->Copy();
@@ -160,7 +160,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         const auto hexes_around = GeometryHelper::HexesInRadius(2);
         const auto map_size = map->GetSize();
 
-        for (int32 i = 1; i <= hexes_around; i++) {
+        for (int32_t i = 1; i <= hexes_around; i++) {
             auto check_hex = hex;
 
             if (!GeometryHelper::MoveHexAroundAway(check_hex, i, map_size)) {

@@ -51,10 +51,10 @@ public:
 
     [[nodiscard]] virtual auto HasEntry(string_view entry_name) const -> bool = 0;
     [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
-    [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8> = 0;
+    [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8_t> = 0;
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
-    virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
+    virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -70,11 +70,11 @@ public:
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t> override;
 
     auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uint8> data) override;
+    void SetData(string_view entry_name, const_span<uint8_t> data) override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -96,11 +96,11 @@ public:
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t> override;
 
     auto InitCacheStorage() -> bool;
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uint8> data) override;
+    void SetData(string_view entry_name, const_span<uint8_t> data) override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -140,7 +140,7 @@ auto CacheStorage::GetString(string_view entry_name) const -> string
     return _impl->GetString(entry_name);
 }
 
-auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8>
+auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -154,7 +154,7 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
     _impl->SetString(entry_name, str);
 }
 
-void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
+void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -220,7 +220,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     return *str;
 }
 
-auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
+auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,7 +231,7 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
         return {};
     }
 
-    return vector<uint8>(data->begin(), data->end());
+    return vector<uint8_t>(data->begin(), data->end());
 }
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
@@ -249,7 +249,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
+void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -314,7 +314,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
     }
 
     auto* db_non_const = const_cast<unqlite*>(_db.get());
-    const auto r = unqlite_kv_fetch_callback(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
+    const auto r = unqlite_kv_fetch_callback(db_non_const, entry_name.data(), numeric_cast<int32_t>(entry_name.length()), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -332,7 +332,7 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
         return;
     }
 
-    auto r = unqlite_kv_delete(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()));
+    auto r = unqlite_kv_delete(_db.get(), entry_name.data(), numeric_cast<int32_t>(entry_name.length()));
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't delete cache entry '{}'", entry_name);
@@ -359,7 +359,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     auto* db_non_const = const_cast<unqlite*>(_db.get());
 
     unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), nullptr, &size);
+    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32_t>(entry_name.length()), nullptr, &size);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -372,7 +372,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     string str;
     str.resize(numeric_cast<size_t>(size));
 
-    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), str.data(), &size);
+    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32_t>(entry_name.length()), str.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -382,7 +382,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     return str;
 }
 
-auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
+auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -393,7 +393,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
     auto* db_non_const = const_cast<unqlite*>(_db.get());
 
     unqlite_int64 size = 0;
-    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), nullptr, &size);
+    auto r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32_t>(entry_name.length()), nullptr, &size);
 
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -403,10 +403,10 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
         return {};
     }
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     data.resize(numeric_cast<size_t>(size));
 
-    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32>(entry_name.length()), data.data(), &size);
+    r = unqlite_kv_fetch(db_non_const, entry_name.data(), numeric_cast<int32_t>(entry_name.length()), data.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -424,7 +424,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()), str.data(), numeric_cast<unqlite_int64>(str.length()));
+    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32_t>(entry_name.length()), str.data(), numeric_cast<unqlite_int64>(str.length()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);
@@ -438,7 +438,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
+void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -446,7 +446,7 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data
         return;
     }
 
-    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32>(entry_name.length()), data.data(), numeric_cast<unqlite_int64>(data.size()));
+    auto r = unqlite_kv_store(_db.get(), entry_name.data(), numeric_cast<int32_t>(entry_name.length()), data.data(), numeric_cast<unqlite_int64>(data.size()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);

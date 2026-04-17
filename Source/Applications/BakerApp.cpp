@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::DisableLogTags);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
 
         bool baking_result;
 

@@ -97,7 +97,7 @@ bool OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 }
 })";
 
-    const auto server_only_bake = [](string_view path, uint64) { return path.ends_with(".fopro-bin-server"); };
+    const auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
 
     SECTION("BakesItemScriptPropertiesWhenCallbacksHaveItemAttributes")
     {

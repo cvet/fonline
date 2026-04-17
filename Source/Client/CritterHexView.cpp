@@ -140,7 +140,7 @@ void CritterHexView::MoveAttachedCritters()
     }
 }
 
-void CritterHexView::Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call /* = true */)
+void CritterHexView::Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call /* = true */)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -284,10 +284,10 @@ void CritterHexView::RefreshView(bool no_smooth)
 #if FO_ENABLE_3D
     if (_model) {
         const auto scale_factor = GetScaleFactor();
-        const auto scale = scale_factor != 0 ? numeric_cast<float32>(scale_factor) / 1000.0f : 1.0f;
+        const auto scale = scale_factor != 0 ? numeric_cast<float32_t>(scale_factor) / 1000.0f : 1.0f;
         _model->SetScale(scale, scale, scale);
 
-        const auto moving_speed = IsMoving() ? iround<int32>(numeric_cast<float32>(GetMoving()->GetSpeed()) / scale) : 0;
+        const auto moving_speed = IsMoving() ? iround<int32_t>(numeric_cast<float32_t>(GetMoving()->GetSpeed()) / scale) : 0;
         _model->UpdatePose(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
     }
 #endif
@@ -329,7 +329,7 @@ void CritterHexView::RefreshView(bool no_smooth)
             ignore_unused(no_smooth);
 
             if (IsMoving()) {
-                if (GetMoving()->GetSpeed() < numeric_cast<uint16>(_engine->Settings.RunAnimStartSpeed)) {
+                if (GetMoving()->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
                 }
                 else {
@@ -377,13 +377,13 @@ auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionA
 }
 
 #if FO_ENABLE_3D
-auto CritterHexView::GetModelLayersData() const -> const int32*
+auto CritterHexView::GetModelLayersData() const -> const int32_t*
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
-    FO_RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int32) * MODEL_LAYERS_COUNT);
-    return reinterpret_cast<const int32*>(prop_raw_data.data());
+    FO_RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT);
+    return reinterpret_cast<const int32_t*>(prop_raw_data.data());
 }
 
 void CritterHexView::RefreshModel()
@@ -498,8 +498,8 @@ void CritterHexView::Process()
         _offsExtNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {30};
 
         const auto dist = _offsExt.dist();
-        const auto dist_div = iround<int32>(dist) / 10;
-        const auto mul = std::max(numeric_cast<float32>(dist_div), 1.0f);
+        const auto dist_div = iround<int32_t>(dist) / 10;
+        const auto mul = std::max(numeric_cast<float32_t>(dist_div), 1.0f);
 
         _offsExt.x += _offsExtSpeed.x * mul;
         _offsExt.y += _offsExtSpeed.y * mul;
@@ -524,9 +524,9 @@ void CritterHexView::Process()
     {
         auto& cur_anim = _curAnim.has_value() ? _curAnim.value() : _idle2dAnim;
 
-        const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32>() * 100 / cur_anim.FramesDuration.to_ms<int32>();
+        const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32_t>() * 100 / cur_anim.FramesDuration.to_ms<int32_t>();
         const auto frm_proc = _curAnim.has_value() ? std::min(anim_proc, 100) : anim_proc % 100;
-        const auto frm_index = lerp(0, cur_anim.Frames->GetFramesCount() - 1, numeric_cast<float32>(frm_proc) / 100.0f);
+        const auto frm_index = lerp(0, cur_anim.Frames->GetFramesCount() - 1, numeric_cast<float32_t>(frm_proc) / 100.0f);
 
         if (frm_index != cur_anim.FrameIndex) {
             cur_anim.FrameIndex = frm_index;
@@ -635,7 +635,7 @@ auto CritterHexView::GetViewRect() const -> irect32
     return GetMapSprite()->GetViewRect();
 }
 
-void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32 frm_index)
+void CritterHexView::SetAnimSpr(const SpriteSheet* anim, int32_t frm_index)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -662,10 +662,10 @@ void CritterHexView::AddExtraOffs(ipos32 offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _offsExt.x += numeric_cast<float32>(offset.x);
-    _offsExt.y += numeric_cast<float32>(offset.y);
+    _offsExt.x += numeric_cast<float32_t>(offset.x);
+    _offsExt.y += numeric_cast<float32_t>(offset.y);
 
-    _offsExtSpeed = GeometryHelper::GetStepsCoords({}, {iround<int32>(_offsExt.x), iround<int32>(_offsExt.y)});
+    _offsExtSpeed = GeometryHelper::GetStepsCoords({}, {iround<int32_t>(_offsExt.x), iround<int32_t>(_offsExt.y)});
     _offsExtSpeed.x = -_offsExtSpeed.x;
     _offsExtSpeed.y = -_offsExtSpeed.y;
 
@@ -679,7 +679,7 @@ void CritterHexView::RefreshOffs()
     FO_STACK_TRACE_ENTRY();
 
     const auto hex_offset = GetHexOffset();
-    _sprOffset = ipos32(hex_offset) + _offsExt.round<int32>() + _offsAnim;
+    _sprOffset = ipos32(hex_offset) + _offsExt.round<int32_t>() + _offsAnim;
 }
 
 auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool

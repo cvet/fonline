@@ -48,7 +48,7 @@ FO_DECLARE_EXCEPTION(ClientConnectionException);
 class ClientConnection final
 {
 public:
-    enum class ConnectResult : uint8
+    enum class ConnectResult : uint8_t
     {
         Success,
         Outdated,
@@ -101,7 +101,7 @@ private:
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
     StreamDecompressor _decompressor {};
-    vector<uint8> _unpackedReceivedBuf {};
+    vector<uint8_t> _unpackedReceivedBuf {};
     size_t _bytesSend {};
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};

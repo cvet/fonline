@@ -85,7 +85,7 @@ extern auto IsRunInDebugger() noexcept -> bool
 
 #elif FO_MAC
     std::call_once(RunInDebuggerOnce, [] {
-        int32 mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+        int32_t mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
         struct kinfo_proc info = {};
         size_t size = sizeof(info);
         if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
@@ -126,11 +126,11 @@ extern auto BreakIntoDebugger() noexcept -> bool
     return false;
 }
 
-extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
+extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 {
-    int32 i = 0;
+    int32_t i = 0;
     bool is_negative = false;
-    uint64 unsigned_num = 0;
+    uint64_t unsigned_num = 0;
 
     if (num == 0) {
         buf[i++] = '0';
@@ -140,12 +140,12 @@ extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
 
     if (num < 0 && base == 10) {
         is_negative = true;
-        unsigned_num = static_cast<uint64>(-(num + 1)) + 1;
+        unsigned_num = static_cast<uint64_t>(-(num + 1)) + 1;
 
         while (unsigned_num != 0) {
-            const auto rem = unsigned_num % static_cast<uint64>(base);
+            const auto rem = unsigned_num % static_cast<uint64_t>(base);
             buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
-            unsigned_num /= static_cast<uint64>(base);
+            unsigned_num /= static_cast<uint64_t>(base);
         }
     }
     else {
@@ -162,8 +162,8 @@ extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*
 
     buf[i] = '\0';
 
-    int32 start = 0;
-    int32 end = i - 1;
+    int32_t start = 0;
+    int32_t end = i - 1;
 
     while (start < end) {
         const char ch = buf[start];

@@ -69,11 +69,11 @@ static void ValidateScissorRect(irect32 rect)
     FO_RUNTIME_ASSERT(rect.height >= 0);
 }
 
-static auto GetFallbackTextureSizeData() -> const float32*
+static auto GetFallbackTextureSizeData() -> const float32_t*
 {
     FO_STACK_TRACE_ENTRY();
 
-    static constexpr float32 FallbackSizeData[4] {1.0f, 1.0f, 1.0f, 1.0f};
+    static constexpr float32_t FallbackSizeData[4] {1.0f, 1.0f, 1.0f, 1.0f};
 
     return FallbackSizeData;
 }
@@ -104,8 +104,8 @@ public:
         vector<ucolor> result;
         result.resize(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height));
 
-        for (int32 y = 0; y < size.height; y++) {
-            for (int32 x = 0; x < size.width; x++) {
+        for (int32_t y = 0; y < size.height; y++) {
+            for (int32_t x = 0; x < size.width; x++) {
                 const ipos32 src_pos {pos.x + x, pos.y + y};
                 const size_t dst_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x);
                 result[dst_index] = _pixels[CalcTextureIndex(*this, src_pos)];
@@ -127,10 +127,10 @@ public:
 
         FO_RUNTIME_ASSERT(data != nullptr);
 
-        const int32 pitch = use_dest_pitch ? Size.width : size.width;
+        const int32_t pitch = use_dest_pitch ? Size.width : size.width;
 
-        for (int32 y = 0; y < size.height; y++) {
-            for (int32 x = 0; x < size.width; x++) {
+        for (int32_t y = 0; y < size.height; y++) {
+            for (int32_t x = 0; x < size.width; x++) {
                 const ipos32 dst_pos {pos.x + x, pos.y + y};
                 const size_t src_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x);
                 _pixels[CalcTextureIndex(*this, dst_pos)] = data[src_index];
@@ -261,8 +261,8 @@ public:
 
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
                 auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-                const float32* size_data = main_tex != nullptr ? main_tex->SizeData : GetFallbackTextureSizeData();
-                MemCopy(main_tex_buf->MainTexSize, size_data, 4 * sizeof(float32));
+                const float32_t* size_data = main_tex != nullptr ? main_tex->SizeData : GetFallbackTextureSizeData();
+                MemCopy(main_tex_buf->MainTexSize, size_data, 4 * sizeof(float32_t));
             }
         }
 
@@ -297,16 +297,16 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
     return SafeAlloc::MakeUnique<Null_Effect>(usage, name, loader);
 }
 
-auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
+auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    const float32 r_l = right - left;
-    const float32 t_b = top - bottom;
-    const float32 f_n = farp - nearp;
-    const float32 tx = -(right + left) / r_l;
-    const float32 ty = -(top + bottom) / t_b;
-    const float32 tz = -(farp + nearp) / f_n;
+    const float32_t r_l = right - left;
+    const float32_t t_b = top - bottom;
+    const float32_t f_n = farp - nearp;
+    const float32_t tx = -(right + left) / r_l;
+    const float32_t ty = -(top + bottom) / t_b;
+    const float32_t tz = -(farp + nearp) / f_n;
 
     mat44 result {1.0f};
 

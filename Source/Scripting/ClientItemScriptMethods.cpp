@@ -59,7 +59,7 @@ FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, int32 count)
+FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, int32_t count)
 {
     auto cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
@@ -140,7 +140,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32 normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32_t normalizedTime)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetAnimTime(normalizedTime);
@@ -166,7 +166,7 @@ FO_SCRIPT_API bool Client_Item_IsMoving(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_MoveToHex(ItemView* self, mpos hex, float32 speed)
+FO_SCRIPT_API void Client_Item_MoveToHex(ItemView* self, mpos hex, float32_t speed)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->MoveToHex(hex, speed);
@@ -189,14 +189,14 @@ FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8 Client_Item_GetAlpha(ItemView* self)
+FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ItemView* self)
 {
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
     return hex_item != nullptr ? hex_item->GetCurAlpha() : 0xFF;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8 alpha)
+FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8_t alpha)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
         hex_item->SetTargetAlpha(alpha);

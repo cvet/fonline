@@ -83,7 +83,7 @@ static auto GetFunctionDeclarationString(const AngelScript::asIScriptFunction* f
     return func != nullptr && func->GetDeclaration(true, true, false) != nullptr ? func->GetDeclaration(true, true, false) : "<unknown>";
 }
 
-static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFunction* func, const Preprocessor::LineNumberTranslator* lnt) -> optional<pair<string, uint32>>
+static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFunction* func, const Preprocessor::LineNumberTranslator* lnt) -> optional<pair<string, uint32_t>>
 {
     if (func == nullptr) {
         return std::nullopt;
@@ -98,11 +98,11 @@ static auto ResolveDeclaredFunctionSourceLocation(const AngelScript::asIScriptFu
     }
 
     if (lnt != nullptr) {
-        const auto line = numeric_cast<uint32>(row);
+        const auto line = numeric_cast<uint32_t>(row);
         return pair {string {Preprocessor::ResolveOriginalFile(line, lnt)}, Preprocessor::ResolveOriginalLine(line, lnt)};
     }
 
-    return pair {section != nullptr ? string {section} : string {}, numeric_cast<uint32>(row)};
+    return pair {section != nullptr ? string {section} : string {}, numeric_cast<uint32_t>(row)};
 }
 
 static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> string
@@ -131,7 +131,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     const auto& outbound_call = *cast_from_void<const RemoteCallDesc*>(gen->GetAuxiliary());
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     DataWriter writer(data);
 
     const function<void(const void*, const BaseTypeDesc&)> write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
@@ -142,12 +142,12 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             });
         }
         else if (type.IsEnum) {
-            const int32 enum_value = *cast_from_void<const int32*>(ptr);
-            writer.Write<int32>(enum_value);
+            const int32_t enum_value = *cast_from_void<const int32_t*>(ptr);
+            writer.Write<int32_t>(enum_value);
         }
         else if (type.IsString) {
             const auto& str = *cast_from_void<const string*>(ptr);
-            writer.Write<int32>(numeric_cast<int32>(str.length()));
+            writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
             writer.WritePtr(str.c_str(), str.length());
         }
         else if (type.IsHashedString) {
@@ -156,7 +156,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (type.IsStruct) {
             for (const auto& field : type.StructLayout->Fields) {
-                write_simple(static_cast<const uint8*>(ptr) + field.Offset, field.Type);
+                write_simple(static_cast<const uint8_t*>(ptr) + field.Offset, field.Type);
             }
         }
         else {
@@ -173,19 +173,19 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
             const auto* arr = *cast_from_void<const ScriptArray**>(arg_ptr);
-            const auto arr_size = arr != nullptr ? numeric_cast<int32>(arr->GetSize()) : 0;
-            writer.Write<int32>(arr_size);
+            const auto arr_size = arr != nullptr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
+            writer.Write<int32_t>(arr_size);
 
             if (arr != nullptr) {
-                for (int32 j = 0; j < arr_size; j++) {
+                for (int32_t j = 0; j < arr_size; j++) {
                     write_simple(arr->At(j), arg.Type.BaseType);
                 }
             }
         }
         else if (arg.Type.Kind == ComplexTypeKind::Dict) {
             const auto* dict = *cast_from_void<const ScriptDict**>(arg_ptr);
-            const auto dict_size = dict != nullptr ? numeric_cast<int32>(dict->GetSize()) : 0;
-            writer.Write<int32>(dict_size);
+            const auto dict_size = dict != nullptr ? numeric_cast<int32_t>(dict->GetSize()) : 0;
+            writer.Write<int32_t>(dict_size);
 
             if (dict != nullptr) {
                 for (const auto& kv : dict->GetMap()) {
@@ -196,19 +196,19 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
         }
         else if (arg.Type.Kind == ComplexTypeKind::DictOfArray) {
             const auto* dict = *cast_from_void<const ScriptDict**>(arg_ptr);
-            const auto dict_size = dict != nullptr ? numeric_cast<int32>(dict->GetSize()) : 0;
-            writer.Write<int32>(dict_size);
+            const auto dict_size = dict != nullptr ? numeric_cast<int32_t>(dict->GetSize()) : 0;
+            writer.Write<int32_t>(dict_size);
 
             if (dict != nullptr) {
                 for (const auto& kv : dict->GetMap()) {
                     write_simple(kv.first, arg.Type.KeyType.value());
 
                     const auto* arr = *cast_from_void<const ScriptArray**>(kv.second);
-                    const auto arr_size = arr != nullptr ? numeric_cast<int32>(arr->GetSize()) : 0;
-                    writer.Write<int32>(arr_size);
+                    const auto arr_size = arr != nullptr ? numeric_cast<int32_t>(arr->GetSize()) : 0;
+                    writer.Write<int32_t>(arr_size);
 
                     if (arr != nullptr) {
-                        for (int32 j = 0; j < arr_size; j++) {
+                        for (int32_t j = 0; j < arr_size; j++) {
                             write_simple(arr->At(j), arg.Type.BaseType);
                         }
                     }
@@ -223,7 +223,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     engine->SendRemoteCall(outbound_call.Name, entity, data);
 }
 
-static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity* entity, span<uint8> data, BaseEngine* engine, AngelScript::asIScriptFunction* func)
+static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity* entity, span<uint8_t> data, BaseEngine* engine, AngelScript::asIScriptFunction* func)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -232,7 +232,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32, string, hstring, vector<uint8>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<int32_t, string, hstring, vector<uint8_t>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
     const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
@@ -240,10 +240,10 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return reader.ReadPtr<void>(type.Size);
         }
         else if (type.IsEnum) {
-            return reader.ReadPtr<void>(sizeof(int32));
+            return reader.ReadPtr<void>(sizeof(int32_t));
         }
         else if (type.IsString) {
-            const auto str_len = reader.Read<int32>();
+            const auto str_len = reader.Read<int32_t>();
             FO_RUNTIME_ASSERT(str_len >= 0);
             const auto* s = reader.ReadPtr<char>(str_len);
             return cast_to_void(&std::get<string>(temp_data.emplace_back(string(s, str_len))));
@@ -254,7 +254,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return cast_to_void(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
         }
         else if (type.IsStruct) {
-            auto& buf = std::get<vector<uint8>>(temp_data.emplace_back(vector<uint8>(type.Size, 0)));
+            auto& buf = std::get<vector<uint8_t>>(temp_data.emplace_back(vector<uint8_t>(type.Size, 0)));
             for (const auto& field : type.StructLayout->Fields) {
                 void* field_data = read_simple(field.Type);
                 MemCopy(buf.data() + field.Offset, field_data, field.Type.Size);
@@ -287,43 +287,43 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             data_storage[arg_index++] = value;
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
-            const auto arr_size = reader.Read<int32>();
+            const auto arr_size = reader.Read<int32_t>();
             FO_RUNTIME_ASSERT(arr_size >= 0);
             auto* arr = CreateScriptArray(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptArray>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptArray>::adopt, arr))).get_pp());
             arr->Reserve(arr_size);
 
-            for (int32 j = 0; j < arr_size; j++) {
+            for (int32_t j = 0; j < arr_size; j++) {
                 void* value = read_simple(arg.Type.BaseType);
                 arr->InsertLast(value);
             }
         }
         else if (arg.Type.Kind == ComplexTypeKind::Dict) {
-            const auto dict_size = reader.Read<int32>();
+            const auto dict_size = reader.Read<int32_t>();
             FO_RUNTIME_ASSERT(dict_size >= 0);
             auto* dict = CreateScriptDict(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptDict>::adopt, dict))).get_pp());
 
-            for (int32 j = 0; j < dict_size; j++) {
+            for (int32_t j = 0; j < dict_size; j++) {
                 void* key = read_simple(arg.Type.KeyType.value());
                 void* value = read_simple(arg.Type.BaseType);
                 dict->Set(key, value);
             }
         }
         else if (arg.Type.Kind == ComplexTypeKind::DictOfArray) {
-            const auto dict_size = reader.Read<int32>();
+            const auto dict_size = reader.Read<int32_t>();
             FO_RUNTIME_ASSERT(dict_size >= 0);
             auto* dict = CreateScriptDict(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptDict>::adopt, dict))).get_pp());
 
-            for (int32 j = 0; j < dict_size; j++) {
+            for (int32_t j = 0; j < dict_size; j++) {
                 void* key = read_simple(arg.Type.KeyType.value());
 
-                const auto arr_size = reader.Read<int32>();
+                const auto arr_size = reader.Read<int32_t>();
                 FO_RUNTIME_ASSERT(arr_size >= 0);
                 auto* arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg.Type.BaseType)).c_str());
 
-                for (int32 l = 0; l < arr_size; l++) {
+                for (int32_t l = 0; l < arr_size; l++) {
                     void* value = read_simple(arg.Type.BaseType);
                     arr->InsertLast(value);
                 }
@@ -351,7 +351,7 @@ void RegisterAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     const auto* meta = GetEngineMetadata(as_engine);
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("RemoteCaller", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOHANDLE));
@@ -396,7 +396,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
         if (auto* func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call); func != nullptr) {
             if (backend->HasGameEngine()) {
                 auto* engine = backend->GetGameEngine();
-                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8> data) FO_DEFERRED {
+                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8_t> data) FO_DEFERRED {
                     FO_RUNTIME_ASSERT(name == inbound_call.Name);
                     InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
                 });
@@ -447,7 +447,7 @@ auto ValidateAngelScriptRemoteCallAttributes(AngelScript::asIScriptModule* mod, 
         }
     }
 
-    const auto append_error = [&errors](optional<pair<string, uint32>> location, const string& error) {
+    const auto append_error = [&errors](optional<pair<string, uint32_t>> location, const string& error) {
         if (!errors.empty()) {
             errors.append("\n");
         }

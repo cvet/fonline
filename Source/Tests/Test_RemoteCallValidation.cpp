@@ -86,28 +86,28 @@ TEST_CASE("RemoteCallValidation")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeSimpleArg(enum_type, "enum_value"), MakeSimpleArg(float_type, "float_value"), MakeSimpleArg(hstring_type, "hash_value"), MakeArrayArg(int_type, "numbers"), MakeDictOfArrayArg(hstring_type, uint16_type, "mapped_values"), MakeSimpleArg(struct_type, "packed_struct")});
 
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
         const string text = "text";
-        const uint16 first_uint16 = 7;
-        const uint16 second_uint16 = 8;
-        const uint8 true_bool = 1;
+        const uint16_t first_uint16 = 7;
+        const uint16_t second_uint16 = 8;
+        const uint8_t true_bool = 1;
 
-        writer.Write<int32>(numeric_cast<int32>(text.length()));
+        writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
         writer.WritePtr(text.data(), text.length());
-        writer.Write<int32>(1);
-        writer.Write<float32>(42.0f);
+        writer.Write<int32_t>(1);
+        writer.Write<float32_t>(42.0f);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32>(2);
-        writer.Write<int32>(10);
-        writer.Write<int32>(20);
-        writer.Write<int32>(1);
+        writer.Write<int32_t>(2);
+        writer.Write<int32_t>(10);
+        writer.Write<int32_t>(20);
+        writer.Write<int32_t>(1);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32>(2);
-        writer.Write<uint16>(first_uint16);
-        writer.Write<uint16>(second_uint16);
-        writer.Write<float32>(3.5f);
-        writer.Write<uint8>(true_bool);
+        writer.Write<int32_t>(2);
+        writer.Write<uint16_t>(first_uint16);
+        writer.Write<uint16_t>(second_uint16);
+        writer.Write<float32_t>(3.5f);
+        writer.Write<uint8_t>(true_bool);
 
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
@@ -115,11 +115,11 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects invalid UTF-8 strings")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
-        const uint8 bytes[] = {0xC3, 0x28};
+        const uint8_t bytes[] = {0xC3, 0x28};
 
-        writer.Write<int32>(2);
+        writer.Write<int32_t>(2);
         writer.WritePtr(bytes, std::size(bytes));
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
@@ -128,10 +128,10 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects invalid enum values")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
 
-        writer.Write<int32>(77);
+        writer.Write<int32_t>(77);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
     }
@@ -139,12 +139,12 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects non finite floats inside arrays")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeArrayArg(float_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
 
-        writer.Write<int32>(2);
-        writer.Write<float32>(1.0f);
-        writer.Write<float32>(std::numeric_limits<float32>::infinity());
+        writer.Write<int32_t>(2);
+        writer.Write<float32_t>(1.0f);
+        writer.Write<float32_t>(std::numeric_limits<float32_t>::infinity());
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
     }
@@ -152,7 +152,7 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects unknown hashed strings")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(hstring_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
         const hstring::hash_t unknown_hash = hashing_ex::hash("MissingHash", 11);
 
@@ -164,11 +164,11 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects invalid bool values")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(bool_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
-        const uint8 invalid_bool = 2;
+        const uint8_t invalid_bool = 2;
 
-        writer.Write<uint8>(invalid_bool);
+        writer.Write<uint8_t>(invalid_bool);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
     }
@@ -176,14 +176,14 @@ TEST_CASE("RemoteCallValidation")
     SECTION("Rejects truncated nested collections")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeDictOfArrayArg(hstring_type, uint16_type)});
-        vector<uint8> data;
+        vector<uint8_t> data;
         DataWriter writer(data);
-        const uint16 first_uint16 = 7;
+        const uint16_t first_uint16 = 7;
 
-        writer.Write<int32>(1);
+        writer.Write<int32_t>(1);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
-        writer.Write<int32>(2);
-        writer.Write<uint16>(first_uint16);
+        writer.Write<int32_t>(2);
+        writer.Write<uint16_t>(first_uint16);
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
     }

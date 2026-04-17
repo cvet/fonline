@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-FileHeader::FileHeader(string_view path, size_t size, uint64 write_time, const DataSource* ds) :
+FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, const DataSource* ds) :
     _isLoaded {true},
     _filePath {path},
     _fileSize {size},
@@ -100,7 +100,7 @@ auto FileHeader::GetSize() const -> size_t
     return _fileSize;
 }
 
-auto FileHeader::GetWriteTime() const -> uint64
+auto FileHeader::GetWriteTime() const -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -127,7 +127,7 @@ auto FileHeader::Copy() const -> FileHeader
     return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.get());
 }
 
-File::File(string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf) :
+File::File(string_view path, size_t size, uint64_t write_time, const DataSource* ds, unique_del_ptr<const uint8_t>&& buf) :
     FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
 {
@@ -157,20 +157,20 @@ auto File::GetStr() const -> string
     return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
 
-auto File::GetData() const -> vector<uint8>
+auto File::GetData() const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_isLoaded);
     FO_RUNTIME_ASSERT(_fileBuf);
 
-    vector<uint8> result;
+    vector<uint8_t> result;
     result.resize(_fileSize);
     MemCopy(result.data(), _fileBuf.get(), _fileSize);
     return result;
 }
 
-auto File::GetBuf() const -> const uint8*
+auto File::GetBuf() const -> const uint8_t*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -190,7 +190,7 @@ auto File::GetReader() const -> FileReader
     return FileReader({_fileBuf.get(), _fileSize});
 }
 
-FileReader::FileReader(const_span<uint8> buf) :
+FileReader::FileReader(const_span<uint8_t> buf) :
     _buf {buf}
 {
     FO_STACK_TRACE_ENTRY();
@@ -203,17 +203,17 @@ auto FileReader::GetStr() const -> string
     return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
 }
 
-auto FileReader::GetData() const -> vector<uint8>
+auto FileReader::GetData() const -> vector<uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    vector<uint8> result;
+    vector<uint8_t> result;
     result.resize(_buf.size());
     MemCopy(result.data(), _buf.data(), _buf.size());
     return result;
 }
 
-auto FileReader::GetBuf() const -> const uint8*
+auto FileReader::GetBuf() const -> const uint8_t*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -227,7 +227,7 @@ auto FileReader::GetSize() const -> size_t
     return _buf.size();
 }
 
-auto FileReader::GetCurBuf() const -> const uint8*
+auto FileReader::GetCurBuf() const -> const uint8_t*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -279,11 +279,11 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     }
 
     for (size_t i = _curPos; i <= _buf.size() - fragment.size(); i++) {
-        if (_buf[i] == std::bit_cast<uint8>(fragment[0])) {
+        if (_buf[i] == std::bit_cast<uint8_t>(fragment[0])) {
             bool not_match = false;
 
             for (size_t j = 1; j < fragment.size(); j++) {
-                if (_buf[numeric_cast<size_t>(i) + j] != std::bit_cast<uint8>(fragment[j])) {
+                if (_buf[numeric_cast<size_t>(i) + j] != std::bit_cast<uint8_t>(fragment[j])) {
                     not_match = true;
                     break;
                 }
@@ -323,7 +323,7 @@ auto FileReader::GetStrNT() -> string
         throw FileSystemExeption("Invalid read pos");
     }
 
-    uint32 len = 0;
+    uint32_t len = 0;
 
     while (*(_buf.data() + _curPos + len) != 0) {
         len++;
@@ -338,11 +338,11 @@ auto FileReader::GetStrNT() -> string
     return str;
 }
 
-auto FileReader::GetUInt8() -> uint8
+auto FileReader::GetUInt8() -> uint8_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint8) > _buf.size()) {
+    if (_curPos + sizeof(uint8_t) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
@@ -350,48 +350,48 @@ auto FileReader::GetUInt8() -> uint8
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt16() -> uint16
+auto FileReader::GetBEUInt16() -> uint16_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint16) > _buf.size()) {
+    if (_curPos + sizeof(uint16_t) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint16 res = 0;
-    auto* cres = reinterpret_cast<uint8*>(&res);
+    uint16_t res = 0;
+    auto* cres = reinterpret_cast<uint8_t*>(&res);
     cres[1] = _buf[_curPos++];
     cres[0] = _buf[_curPos++];
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt16() -> uint16
+auto FileReader::GetLEUInt16() -> uint16_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint16) > _buf.size()) {
+    if (_curPos + sizeof(uint16_t) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint16 res = 0;
-    auto* cres = reinterpret_cast<uint8*>(&res);
+    uint16_t res = 0;
+    auto* cres = reinterpret_cast<uint8_t*>(&res);
     cres[0] = _buf[_curPos++];
     cres[1] = _buf[_curPos++];
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt32() -> uint32
+auto FileReader::GetBEUInt32() -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint32) > _buf.size()) {
+    if (_curPos + sizeof(uint32_t) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint32 res = 0;
-    auto* cres = reinterpret_cast<uint8*>(&res);
+    uint32_t res = 0;
+    auto* cres = reinterpret_cast<uint8_t*>(&res);
 
     for (auto i = 3; i >= 0; i--) {
         cres[i] = _buf[_curPos++];
@@ -401,16 +401,16 @@ auto FileReader::GetBEUInt32() -> uint32
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt32() -> uint32
+auto FileReader::GetLEUInt32() -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curPos + sizeof(uint32) > _buf.size()) {
+    if (_curPos + sizeof(uint32_t) > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    uint32 res = 0;
-    auto* cres = reinterpret_cast<uint8*>(&res);
+    uint32_t res = 0;
+    auto* cres = reinterpret_cast<uint8_t*>(&res);
 
     for (auto i = 0; i <= 3; i++) {
         cres[i] = _buf[_curPos++];
@@ -556,7 +556,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
             }
 
             size_t size = 0;
-            uint64 write_time = 0;
+            uint64_t write_time = 0;
             const auto ok = ds->GetFileInfo(path, size, write_time);
             FO_RUNTIME_ASSERT(ok);
             auto file_header = FileHeader(path, size, write_time, ds.get());
@@ -592,7 +592,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;
-        uint64 write_time = 0;
+        uint64_t write_time = 0;
 
         if (auto buf = ds->OpenFile(path, size, write_time)) {
             return File(path, size, write_time, ds.get(), std::move(buf));
@@ -619,7 +619,7 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;
-        uint64 write_time = 0;
+        uint64_t write_time = 0;
 
         if (ds->GetFileInfo(path, size, write_time)) {
             return FileHeader(path, size, write_time, ds.get());

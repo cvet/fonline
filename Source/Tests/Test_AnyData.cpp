@@ -41,7 +41,7 @@ TEST_CASE("AnyData")
 {
     SECTION("Int 1")
     {
-        AnyData::Value val = numeric_cast<int64>(1234);
+        AnyData::Value val = numeric_cast<int64_t>(1234);
         CHECK(AnyData::ValueToString(val) == "1234");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Int64));
     }
@@ -119,10 +119,10 @@ TEST_CASE("AnyData")
     SECTION("Array of ints")
     {
         AnyData::Array arr;
-        arr.EmplaceBack(numeric_cast<int64>(1));
-        arr.EmplaceBack(numeric_cast<int64>(2));
-        arr.EmplaceBack(numeric_cast<int64>(3));
-        arr.EmplaceBack(numeric_cast<int64>(4));
+        arr.EmplaceBack(numeric_cast<int64_t>(1));
+        arr.EmplaceBack(numeric_cast<int64_t>(2));
+        arr.EmplaceBack(numeric_cast<int64_t>(3));
+        arr.EmplaceBack(numeric_cast<int64_t>(4));
         CHECK(AnyData::ValueToString(arr.Copy()) == "1 2 3 4");
         CHECK(arr == AnyData::ParseValue(AnyData::ValueToString(arr.Copy()), false, true, AnyData::ValueType::Int64).AsArray());
     }
@@ -140,9 +140,9 @@ TEST_CASE("AnyData")
     SECTION("Dict with ints")
     {
         AnyData::Dict dict;
-        dict.Emplace("key1", numeric_cast<int64>(1));
-        dict.Emplace("key2", numeric_cast<int64>(2));
-        dict.Emplace("key3", numeric_cast<int64>(3));
+        dict.Emplace("key1", numeric_cast<int64_t>(1));
+        dict.Emplace("key2", numeric_cast<int64_t>(2));
+        dict.Emplace("key3", numeric_cast<int64_t>(3));
         CHECK(AnyData::ValueToString(dict.Copy()) == "key1 1 key2 2 key3 3");
         CHECK(dict == AnyData::ParseValue(AnyData::ValueToString(dict.Copy()), true, false, AnyData::ValueType::Int64).AsDict());
     }
@@ -160,9 +160,9 @@ TEST_CASE("AnyData")
     SECTION("Dict of array 1")
     {
         AnyData::Array arr1;
-        arr1.EmplaceBack(numeric_cast<int64>(1));
-        arr1.EmplaceBack(numeric_cast<int64>(2));
-        arr1.EmplaceBack(numeric_cast<int64>(3));
+        arr1.EmplaceBack(numeric_cast<int64_t>(1));
+        arr1.EmplaceBack(numeric_cast<int64_t>(2));
+        arr1.EmplaceBack(numeric_cast<int64_t>(3));
         AnyData::Dict dict;
         dict.Emplace("key1", std::move(arr1));
 
@@ -191,7 +191,7 @@ TEST_CASE("AnyData")
     SECTION("ArrayCopyIsDeep")
     {
         AnyData::Dict nested;
-        nested.Emplace("k", numeric_cast<int64>(42));
+        nested.Emplace("k", numeric_cast<int64_t>(42));
 
         AnyData::Array original;
         original.EmplaceBack(std::move(nested));
@@ -199,7 +199,7 @@ TEST_CASE("AnyData")
         auto copied = original.Copy();
 
         auto mutable_nested_copy = copied[0].AsDict().Copy();
-        mutable_nested_copy.Assign("k", numeric_cast<int64>(100));
+        mutable_nested_copy.Assign("k", numeric_cast<int64_t>(100));
 
         CHECK(original[0].AsDict()["k"].AsInt64() == 42);
         CHECK(mutable_nested_copy["k"].AsInt64() == 100);

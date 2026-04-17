@@ -61,7 +61,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 
     // Collect files
     vector<File> filtered_files;
-    uint64 max_write_time = 0;
+    uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();

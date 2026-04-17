@@ -42,14 +42,14 @@ struct Application::Context
     vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
 };
 
-static constexpr int32 MAX_ATLAS_WIDTH_ = 2048;
-static constexpr int32 MAX_ATLAS_HEIGHT_ = 2048;
-static constexpr int32 MAX_BONES_ = 32;
-const int32& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const int32& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const int32& AppRender::MAX_BONES {MAX_BONES_};
-const int32 AppAudio::AUDIO_FORMAT_U8 = 0;
-const int32 AppAudio::AUDIO_FORMAT_S16 = 1;
+static constexpr int32_t MAX_ATLAS_WIDTH_ = 2048;
+static constexpr int32_t MAX_ATLAS_HEIGHT_ = 2048;
+static constexpr int32_t MAX_BONES_ = 32;
+const int32_t& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const int32_t& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const int32_t& AppRender::MAX_BONES {MAX_BONES_};
+const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
+const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
@@ -144,7 +144,7 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     return reinterpret_cast<WindowInternalHandle*>(ptr);
 }
 
-auto Application::ResolveTouchPos(float32 normalized_x, float32 normalized_y) const -> ipos32
+auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -154,7 +154,7 @@ auto Application::ResolveTouchPos(float32 normalized_x, float32 normalized_y) co
     return {0, 0};
 }
 
-auto Application::GetTouchElapsedMs(uint64 start_time, uint64 end_time) const -> uint32
+auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -164,7 +164,7 @@ auto Application::GetTouchElapsedMs(uint64 start_time, uint64 end_time) const ->
     return 0;
 }
 
-auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32
+auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -174,7 +174,7 @@ auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32
     return 0.0f;
 }
 
-auto Application::FindTouchPoint(int64 finger_id) -> TouchPointState*
+auto Application::FindTouchPoint(int64_t finger_id) -> TouchPointState*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -185,7 +185,7 @@ auto Application::FindTouchPoint(int64 finger_id) -> TouchPointState*
     return nullptr;
 }
 
-auto Application::FindOtherTouchPoint(int64 finger_id) -> TouchPointState*
+auto Application::FindOtherTouchPoint(int64_t finger_id) -> TouchPointState*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -196,7 +196,7 @@ auto Application::FindOtherTouchPoint(int64 finger_id) -> TouchPointState*
     return nullptr;
 }
 
-auto Application::AcquireTouchPoint(int64 finger_id) -> TouchPointState*
+auto Application::AcquireTouchPoint(int64_t finger_id) -> TouchPointState*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -207,7 +207,7 @@ auto Application::AcquireTouchPoint(int64 finger_id) -> TouchPointState*
     return nullptr;
 }
 
-void Application::ReleaseTouchPoint(int64 finger_id)
+void Application::ReleaseTouchPoint(int64_t finger_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -251,7 +251,7 @@ void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
     ignore_unused(delta);
 }
 
-void Application::QueueTouchZoom(ipos32 pos, float32 factor)
+void Application::QueueTouchZoom(ipos32 pos, float32_t factor)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -535,7 +535,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return _app->_ctx->HeadlessRenderer->CreateEffect(usage, name, file_loader);
 }
 
-auto AppRender::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -648,7 +648,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_RUNTIME_ASSERT(IsEnabled());
 }
 
-auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uint8>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -664,7 +664,7 @@ auto AppAudio::ConvertAudio(int32 format, int32 channels, int32 rate, vector<uin
     return true;
 }
 
-void AppAudio::MixAudio(uint8* output, const uint8* buf, size_t len, int32 volume)
+void AppAudio::MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t volume)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -714,7 +714,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
     callback();
 }
 
-void Application::ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32>& selected)
+void Application::ChooseOptionsWindow(string_view title, const vector<string>& options, set<int32_t>& selected)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -731,7 +731,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     if (!selected.empty()) {
         std::cout << "Default input:";
 
-        for (const int32 sel : selected) {
+        for (const int32_t sel : selected) {
             std::cout << " " << (sel + 1);
         }
 
@@ -748,8 +748,8 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     if (!in_selected.empty()) {
         selected.clear();
 
-        for (const int32 sel : in_selected) {
-            if (sel >= 1 && sel < numeric_cast<int32>(options.size() + 1)) {
+        for (const int32_t sel : in_selected) {
+            if (sel >= 1 && sel < numeric_cast<int32_t>(options.size() + 1)) {
                 selected.emplace(sel - 1);
             }
         }

@@ -151,9 +151,9 @@ auto TextPack::GetStr(TextPackKey key) const -> const string&
         break;
 
     default:
-        const int32 random_skip = std::uniform_int_distribution<int32> {0, numeric_cast<int32>(str_count)}(_randomGenerator)-1;
+        const int32_t random_skip = std::uniform_int_distribution<int32_t> {0, numeric_cast<int32_t>(str_count)}(_randomGenerator)-1;
 
-        for (int32 i = 0; i < random_skip; i++) {
+        for (int32_t i = 0; i < random_skip; i++) {
             ++it;
         }
 
@@ -211,37 +211,37 @@ auto TextPack::CheckIntersections(const TextPack& other) const -> bool
     return result;
 }
 
-auto TextPack::GetBinaryData() const -> vector<uint8>
+auto TextPack::GetBinaryData() const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     auto writer = DataWriter {data};
 
-    writer.Write<uint32>(numeric_cast<uint32>(_strData.size()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(_strData.size()));
 
     for (auto&& [key, str] : _strData) {
         WriteKeyPart(writer, key.Collection.underlying_value());
         WriteKeyPart(writer, key.Key1);
         WriteKeyPart(writer, key.Key2);
         WriteKeyPart(writer, key.Key3);
-        writer.Write<uint32>(numeric_cast<uint32>(str.length()));
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
         writer.WritePtr(str.data(), str.length());
     }
 
     return data;
 }
 
-auto TextPack::LoadFromBinaryData(const vector<uint8>& data, string_view collection) -> bool
+auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view collection) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     auto reader = DataReader {data};
     const auto collection_key = TextPackName {MakeKeyPart(collection)};
 
-    const auto count = reader.Read<uint32>();
+    const auto count = reader.Read<uint32_t>();
 
-    for (uint32 i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < count; i++) {
         TextPackKey key;
 
         key.Collection = TextPackName {ReadKeyPart(reader)};
@@ -253,7 +253,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8>& data, string_view collect
             key.Collection = collection_key;
         }
 
-        const auto str_len = reader.Read<uint32>();
+        const auto str_len = reader.Read<uint32_t>();
 
         string str;
 
@@ -492,7 +492,7 @@ void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
     FO_STACK_TRACE_ENTRY();
 
     const auto& str = part.as_str();
-    writer.Write<uint32>(numeric_cast<uint32>(str.length()));
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
         writer.WritePtr(str.data(), str.length());
@@ -503,7 +503,7 @@ auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto str_len = reader.Read<uint32>();
+    const auto str_len = reader.Read<uint32_t>();
 
     if (str_len == 0) {
         return {};

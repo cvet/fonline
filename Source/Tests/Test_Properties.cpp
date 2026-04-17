@@ -55,7 +55,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = true;
                 type.IsInt8 = true;
-                type.Size = sizeof(int8);
+                type.Size = sizeof(int8_t);
                 return type;
             };
 
@@ -66,7 +66,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = true;
                 type.IsInt16 = true;
-                type.Size = sizeof(int16);
+                type.Size = sizeof(int16_t);
                 return type;
             };
 
@@ -77,7 +77,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
-                type.Size = sizeof(int32);
+                type.Size = sizeof(int32_t);
                 return type;
             };
 
@@ -88,7 +88,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = true;
                 type.IsInt64 = true;
-                type.Size = sizeof(int64);
+                type.Size = sizeof(int64_t);
                 return type;
             };
 
@@ -99,7 +99,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = false;
                 type.IsUInt8 = true;
-                type.Size = sizeof(uint8);
+                type.Size = sizeof(uint8_t);
                 return type;
             };
 
@@ -110,7 +110,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = false;
                 type.IsUInt16 = true;
-                type.Size = sizeof(uint16);
+                type.Size = sizeof(uint16_t);
                 return type;
             };
 
@@ -121,7 +121,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = false;
                 type.IsUInt32 = true;
-                type.Size = sizeof(uint32);
+                type.Size = sizeof(uint32_t);
                 return type;
             };
 
@@ -140,7 +140,7 @@ namespace
                 type.IsPrimitive = true;
                 type.IsFloat = true;
                 type.IsSingleFloat = true;
-                type.Size = sizeof(float32);
+                type.Size = sizeof(float32_t);
                 return type;
             };
 
@@ -150,7 +150,7 @@ namespace
                 type.IsPrimitive = true;
                 type.IsFloat = true;
                 type.IsDoubleFloat = true;
-                type.Size = sizeof(float64);
+                type.Size = sizeof(float64_t);
                 return type;
             };
 
@@ -189,7 +189,7 @@ namespace
                 type.IsInt = true;
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
-                type.Size = sizeof(int32);
+                type.Size = sizeof(int32_t);
                 type.EnumUnderlyingType = &_types.at("int32");
                 return type;
             };
@@ -301,7 +301,7 @@ namespace
             return type;
         }
 
-        [[nodiscard]] auto ResolveEnumValue(string_view value_name, bool* failed = nullptr) const -> int32 override
+        [[nodiscard]] auto ResolveEnumValue(string_view value_name, bool* failed = nullptr) const -> int32_t override
         {
             if (const auto it = _enum_values.find(string(value_name)); it != _enum_values.end()) {
                 if (failed != nullptr) {
@@ -319,9 +319,9 @@ namespace
             throw EnumResolveException("Enum value is not supported in test resolver");
         }
 
-        [[nodiscard]] auto ResolveEnumValue(string_view, string_view value_name, bool* failed = nullptr) const -> int32 override { return ResolveEnumValue(value_name, failed); }
+        [[nodiscard]] auto ResolveEnumValue(string_view, string_view value_name, bool* failed = nullptr) const -> int32_t override { return ResolveEnumValue(value_name, failed); }
 
-        [[nodiscard]] auto ResolveEnumValueName(string_view, int32 enum_value, bool* failed = nullptr) const -> const string& override
+        [[nodiscard]] auto ResolveEnumValueName(string_view, int32_t enum_value, bool* failed = nullptr) const -> const string& override
         {
             if (const auto it = _enum_names.find(enum_value); it != _enum_names.end()) {
                 if (failed != nullptr) {
@@ -363,17 +363,17 @@ namespace
     private:
         unordered_map<string, BaseTypeDesc> _types {};
         unordered_map<string, StructLayoutDesc> _layouts {};
-        unordered_map<string, int32> _enum_values {};
-        unordered_map<int32, string> _enum_names {};
+        unordered_map<string, int32_t> _enum_values {};
+        unordered_map<int32_t, string> _enum_names {};
         HashStorage _proto_hashes {};
         unique_ptr<PropertyRegistrator> _proto_registrator {};
         unordered_map<hstring::hash_t, unordered_map<hstring::hash_t, refcount_ptr<ProtoCustomEntity>>> _protos {};
         string _empty {};
     };
 
-    auto MakeOwnedStoreData(vector<const uint8*>* raw_data, vector<uint32>* raw_sizes) -> vector<vector<uint8>>
+    auto MakeOwnedStoreData(vector<const uint8_t*>* raw_data, vector<uint32_t>* raw_sizes) -> vector<vector<uint8_t>>
     {
-        vector<vector<uint8>> result;
+        vector<vector<uint8_t>> result;
         result.reserve(raw_data->size());
 
         for (size_t i = 0; i < raw_data->size(); i++) {
@@ -419,10 +419,10 @@ namespace
         unique_ptr<Properties> Proto {};
         unique_ptr<Properties> PackedSource {};
         unique_ptr<Properties> FullSource {};
-        vector<vector<uint8>> PackedPublicChunks {};
-        vector<vector<uint8>> FullPublicChunks {};
-        vector<uint8> PackedAllData {};
-        vector<uint8> FullAllData {};
+        vector<vector<uint8_t>> PackedPublicChunks {};
+        vector<vector<uint8_t>> FullPublicChunks {};
+        vector<uint8_t> PackedAllData {};
+        vector<uint8_t> FullAllData {};
         size_t PackedPublicBytes {};
         size_t FullPublicBytes {};
         int TotalProps {};
@@ -475,8 +475,8 @@ namespace
                 SetOverrideValue(*FullSource, spec);
             }
 
-            vector<const uint8*>* raw_data = nullptr;
-            vector<uint32>* raw_sizes = nullptr;
+            vector<const uint8_t*>* raw_data = nullptr;
+            vector<uint32_t>* raw_sizes = nullptr;
 
             PackedSource->StoreData(false, &raw_data, &raw_sizes);
             PackedPublicChunks = MakeOwnedStoreData(raw_data, raw_sizes);
@@ -498,7 +498,7 @@ namespace
             }
         }
 
-        [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8>>& chunks) -> size_t
+        [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
         {
             size_t total = 0;
 
@@ -532,7 +532,7 @@ namespace
         [[nodiscard]] auto DiagnoseTextSerializationFailure(const Properties& props) -> string
         {
             for (size_t i = 1; i < Registrator.GetPropertiesCount(); i++) {
-                const auto* prop = Registrator.GetPropertyByIndex(numeric_cast<int32>(i));
+                const auto* prop = Registrator.GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (prop->IsDisabled() || !prop->IsPersistent()) {
                     continue;
@@ -580,7 +580,7 @@ namespace
         {
             switch (spec.Kind) {
             case PerfPropertyKind::PublicInt:
-                props.SetValue<int32>(spec.Prop, numeric_cast<int32>(spec.Index * 2));
+                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(spec.Index * 2));
                 break;
             case PerfPropertyKind::PublicString:
                 props.SetValue<string>(spec.Prop, strex("proto-{}-squad", spec.Index));
@@ -589,10 +589,10 @@ namespace
                 props.SetValue<bool>(spec.Prop, spec.Index % 2 == 0);
                 break;
             case PerfPropertyKind::PublicFloat:
-                props.SetValue<float32>(spec.Prop, static_cast<float32>(spec.Index) * 0.25f);
+                props.SetValue<float32_t>(spec.Prop, static_cast<float32_t>(spec.Index) * 0.25f);
                 break;
             case PerfPropertyKind::LocalInt:
-                props.SetValue<int32>(spec.Prop, numeric_cast<int32>(spec.Index % 100));
+                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(spec.Index % 100));
                 break;
             }
         }
@@ -601,7 +601,7 @@ namespace
         {
             switch (spec.Kind) {
             case PerfPropertyKind::PublicInt:
-                props.SetValue<int32>(spec.Prop, numeric_cast<int32>(1000 + spec.Index * 3));
+                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(1000 + spec.Index * 3));
                 break;
             case PerfPropertyKind::PublicString:
                 props.SetValue<string>(spec.Prop, strex("override-{}-payload", spec.Index));
@@ -610,10 +610,10 @@ namespace
                 props.SetValue<bool>(spec.Prop, spec.Index % 3 == 0);
                 break;
             case PerfPropertyKind::PublicFloat:
-                props.SetValue<float32>(spec.Prop, 10.0f + static_cast<float32>(spec.Index) * 0.5f);
+                props.SetValue<float32_t>(spec.Prop, 10.0f + static_cast<float32_t>(spec.Index) * 0.5f);
                 break;
             case PerfPropertyKind::LocalInt:
-                props.SetValue<int32>(spec.Prop, numeric_cast<int32>((spec.Index * 7) % 300));
+                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>((spec.Index * 7) % 300));
                 break;
             }
         }
@@ -669,22 +669,22 @@ namespace
             AnyData::Array first_path;
 
             AnyData::Array first_a;
-            first_a.EmplaceBack(int64 {first_base});
-            first_a.EmplaceBack(float64 {0.5});
+            first_a.EmplaceBack(int64_t {first_base});
+            first_a.EmplaceBack(float64_t {0.5});
             first_a.EmplaceBack(true);
             first_path.EmplaceBack(AnyData::Value {std::move(first_a)});
 
             AnyData::Array first_b;
-            first_b.EmplaceBack(int64 {first_base + 1});
-            first_b.EmplaceBack(float64 {1.25});
+            first_b.EmplaceBack(int64_t {first_base + 1});
+            first_b.EmplaceBack(float64_t {1.25});
             first_b.EmplaceBack(false);
             first_path.EmplaceBack(AnyData::Value {std::move(first_b)});
 
             AnyData::Array second_path;
 
             AnyData::Array second_a;
-            second_a.EmplaceBack(int64 {second_base});
-            second_a.EmplaceBack(float64 {2.5});
+            second_a.EmplaceBack(int64_t {second_base});
+            second_a.EmplaceBack(float64_t {2.5});
             second_a.EmplaceBack(true);
             second_path.EmplaceBack(AnyData::Value {std::move(second_a)});
 
@@ -724,9 +724,9 @@ namespace
         unique_ptr<Properties> Proto {};
         unique_ptr<Properties> Full {};
         unique_ptr<Properties> DerivedSource {};
-        vector<vector<uint8>> DerivedPublicChunks {};
-        vector<uint8> FullAllData {};
-        vector<uint8> DerivedAllData {};
+        vector<vector<uint8_t>> DerivedPublicChunks {};
+        vector<uint8_t> FullAllData {};
+        vector<uint8_t> DerivedAllData {};
 
         PropertiesPerfFixture() :
             Registrator("PerfEntity", EngineSideKind::ServerSide, Hashes, Resolver)
@@ -760,8 +760,8 @@ namespace
             Full = unique_ptr<Properties>(new Properties(&Registrator));
 
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                Proto->SetValue<int32>(PublicIntProps[i], numeric_cast<int32>(i));
-                Full->SetValue<int32>(PublicIntProps[i], numeric_cast<int32>(i * 3 + 1));
+                Proto->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
+                Full->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
             }
 
             for (size_t i = 0; i < PublicStringProps.size(); i++) {
@@ -781,7 +781,7 @@ namespace
             DerivedSource = unique_ptr<Properties>(new Properties(&Registrator, Proto.get()));
 
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                DerivedSource->SetValue<int32>(PublicIntProps[i], numeric_cast<int32>(100 + i));
+                DerivedSource->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(100 + i));
             }
 
             for (size_t i = 0; i < PublicStringProps.size(); i++) {
@@ -794,8 +794,8 @@ namespace
                 DerivedSource->SetValue<bool>(OwnerBoolProps[i], i % 3 == 0);
             }
 
-            vector<const uint8*>* raw_data = nullptr;
-            vector<uint32>* raw_sizes = nullptr;
+            vector<const uint8_t*>* raw_data = nullptr;
+            vector<uint32_t>* raw_sizes = nullptr;
             DerivedSource->StoreData(false, &raw_data, &raw_sizes);
             DerivedPublicChunks = MakeOwnedStoreData(raw_data, raw_sizes);
 
@@ -839,28 +839,28 @@ namespace
                 AnyData::Array first_path;
 
                 AnyData::Array first_path_point_a;
-                first_path_point_a.EmplaceBack(int64 {1});
-                first_path_point_a.EmplaceBack(float64 {0.5});
+                first_path_point_a.EmplaceBack(int64_t {1});
+                first_path_point_a.EmplaceBack(float64_t {0.5});
                 first_path_point_a.EmplaceBack(true);
                 first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_a)});
 
                 AnyData::Array first_path_point_b;
-                first_path_point_b.EmplaceBack(int64 {2});
-                first_path_point_b.EmplaceBack(float64 {1.25});
+                first_path_point_b.EmplaceBack(int64_t {2});
+                first_path_point_b.EmplaceBack(float64_t {1.25});
                 first_path_point_b.EmplaceBack(false);
                 first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_b)});
 
                 AnyData::Array second_path;
 
                 AnyData::Array second_path_point_a;
-                second_path_point_a.EmplaceBack(int64 {7});
-                second_path_point_a.EmplaceBack(float64 {4.75});
+                second_path_point_a.EmplaceBack(int64_t {7});
+                second_path_point_a.EmplaceBack(float64_t {4.75});
                 second_path_point_a.EmplaceBack(true);
                 second_path.EmplaceBack(AnyData::Value {std::move(second_path_point_a)});
 
                 AnyData::Array second_path_point_b;
-                second_path_point_b.EmplaceBack(int64 {8});
-                second_path_point_b.EmplaceBack(float64 {9.5});
+                second_path_point_b.EmplaceBack(int64_t {8});
+                second_path_point_b.EmplaceBack(float64_t {9.5});
                 second_path_point_b.EmplaceBack(false);
                 second_path.EmplaceBack(AnyData::Value {std::move(second_path_point_b)});
 
@@ -910,7 +910,7 @@ TEST_CASE("PropertiesOverlay")
     const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties proto(&registrator);
-    proto.SetValue<int32>(value_prop, 10);
+    proto.SetValue<int32_t>(value_prop, 10);
     proto.SetValue<bool>(flag_prop, true);
     proto.SetValue<string>(name_prop, "proto-name");
 
@@ -919,16 +919,16 @@ TEST_CASE("PropertiesOverlay")
         Properties props(&registrator, &proto);
 
         CHECK(props.HasBaseProperties());
-        CHECK(props.GetValue<int32>(value_prop) == 10);
+        CHECK(props.GetValue<int32_t>(value_prop) == 10);
         CHECK(props.GetValue<bool>(flag_prop));
         CHECK(props.GetValue<string>(name_prop) == "proto-name");
 
-        props.SetValue<int32>(value_prop, 25);
-        CHECK(props.GetValue<int32>(value_prop) == 25);
-        CHECK(proto.GetValue<int32>(value_prop) == 10);
+        props.SetValue<int32_t>(value_prop, 25);
+        CHECK(props.GetValue<int32_t>(value_prop) == 25);
+        CHECK(proto.GetValue<int32_t>(value_prop) == 10);
 
-        props.SetValue<int32>(value_prop, 10);
-        CHECK(props.GetValue<int32>(value_prop) == 10);
+        props.SetValue<int32_t>(value_prop, 10);
+        CHECK(props.GetValue<int32_t>(value_prop) == 10);
 
         props.SetValue<string>(name_prop, "proto-name");
         CHECK(props.GetValue<string>(name_prop) == "proto-name");
@@ -938,7 +938,7 @@ TEST_CASE("PropertiesOverlay")
     SECTION("StoresAndRestoresSparseOverrides")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(value_prop, 42);
+        props.SetValue<int32_t>(value_prop, 42);
         props.SetValue<bool>(flag_prop, false);
         props.SetValue<string>(name_prop, "");
 
@@ -947,8 +947,8 @@ TEST_CASE("PropertiesOverlay")
         CHECK(diff.contains("Flag"));
         CHECK(diff.contains("Name"));
 
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         props.StoreData(false, &raw_data, &raw_sizes);
 
         auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
@@ -956,20 +956,20 @@ TEST_CASE("PropertiesOverlay")
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
 
-        CHECK(restored.GetValue<int32>(value_prop) == 42);
+        CHECK(restored.GetValue<int32_t>(value_prop) == 42);
         CHECK_FALSE(restored.GetValue<bool>(flag_prop));
         CHECK(restored.GetValue<string>(name_prop).empty());
 
         auto copied = props.Copy();
         CHECK(copied.HasBaseProperties());
-        CHECK(copied.GetValue<int32>(value_prop) == 42);
+        CHECK(copied.GetValue<int32_t>(value_prop) == 42);
         CHECK_FALSE(copied.GetValue<bool>(flag_prop));
         CHECK(copied.GetValue<string>(name_prop).empty());
 
         Properties snapshot(&registrator);
         snapshot.CopyFrom(props);
         snapshot.CopyFrom(props);
-        CHECK(snapshot.GetValue<int32>(value_prop) == 42);
+        CHECK(snapshot.GetValue<int32_t>(value_prop) == 42);
         CHECK_FALSE(snapshot.GetValue<bool>(flag_prop));
         CHECK(snapshot.GetValue<string>(name_prop).empty());
 
@@ -980,7 +980,7 @@ TEST_CASE("PropertiesOverlay")
     SECTION("CopyFromFullSourceBuildsCanonicalDerivedOverlay")
     {
         Properties source(&registrator);
-        source.SetValue<int32>(value_prop, 42);
+        source.SetValue<int32_t>(value_prop, 42);
         source.SetValue<bool>(flag_prop, true);
         source.SetValue<string>(name_prop, "full-name");
 
@@ -988,44 +988,44 @@ TEST_CASE("PropertiesOverlay")
         derived.CopyFrom(source);
         derived.CopyFrom(source);
 
-        CHECK(derived.GetValue<int32>(value_prop) == 42);
+        CHECK(derived.GetValue<int32_t>(value_prop) == 42);
         CHECK(derived.GetValue<bool>(flag_prop));
         CHECK(derived.GetValue<string>(name_prop) == "full-name");
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         derived.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32>() == 2);
+        CHECK(reader.Read<uint32_t>() == 2);
     }
 
     SECTION("StoreAllDataUsesOverlayBaseBackedData")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(value_prop, 77);
+        props.SetValue<int32_t>(value_prop, 77);
         props.SetValue<bool>(flag_prop, false);
         props.SetValue<string>(name_prop, "override-name");
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
 
-        CHECK(reader.Read<uint32>() == 3);
+        CHECK(reader.Read<uint32_t>() == 3);
 
-        const auto expected_size = sizeof(uint32) + sizeof(bool) + sizeof(uint32) + 3 * (sizeof(uint16) + sizeof(uint32)) + props.GetRawData(value_prop).size() + props.GetRawData(flag_prop).size() + props.GetRawData(name_prop).size();
+        const auto expected_size = sizeof(uint32_t) + sizeof(bool) + sizeof(uint32_t) + 3 * (sizeof(uint16_t) + sizeof(uint32_t)) + props.GetRawData(value_prop).size() + props.GetRawData(flag_prop).size() + props.GetRawData(name_prop).size();
         CHECK(all_data.size() == expected_size);
 
         Properties restored(&registrator, &proto);
         restored.RestoreAllData(all_data);
 
-        CHECK(restored.GetValue<int32>(value_prop) == 77);
+        CHECK(restored.GetValue<int32_t>(value_prop) == 77);
         CHECK_FALSE(restored.GetValue<bool>(flag_prop));
         CHECK(restored.GetValue<string>(name_prop) == "override-name");
     }
@@ -1036,44 +1036,44 @@ TEST_CASE("PropertiesOverlay")
 
         props.SetValue<bool>(flag_prop, false);
         props.SetValue<bool>(flag_prop, false);
-        props.SetValue<int32>(value_prop, 77);
-        props.SetValue<int32>(value_prop, 77);
+        props.SetValue<int32_t>(value_prop, 77);
+        props.SetValue<int32_t>(value_prop, 77);
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32>() == 2);
+        CHECK(reader.Read<uint32_t>() == 2);
 
         props.SetValue<bool>(flag_prop, true);
         props.SetValue<bool>(flag_prop, true);
-        props.SetValue<int32>(value_prop, 10);
-        props.SetValue<int32>(value_prop, 10);
+        props.SetValue<int32_t>(value_prop, 10);
+        props.SetValue<int32_t>(value_prop, 10);
 
         props.StoreAllData(all_data, str_hashes);
 
         DataReader empty_reader(all_data);
-        CHECK(empty_reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(empty_reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(empty_reader.Read<bool>());
-        CHECK(empty_reader.Read<uint32>() == 0);
+        CHECK(empty_reader.Read<uint32_t>() == 0);
         empty_reader.VerifyEnd();
     }
 
     SECTION("RestoreAllDataRejectsMismatchedStorageMode")
     {
-        vector<uint8> full_data;
+        vector<uint8_t> full_data;
         set<hstring> str_hashes;
         proto.StoreAllData(full_data, str_hashes);
         Properties derived(&registrator, &proto);
         CHECK_THROWS(derived.RestoreAllData(full_data));
 
         Properties derived_data(&registrator, &proto);
-        derived_data.SetValue<int32>(value_prop, 55);
+        derived_data.SetValue<int32_t>(value_prop, 55);
 
-        vector<uint8> diff_data;
+        vector<uint8_t> diff_data;
         derived_data.StoreAllData(diff_data, str_hashes);
 
         Properties full_props(&registrator);
@@ -1092,29 +1092,29 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     const auto* public_name_prop = registrator.RegisterProperty({"Common", "string", "PublicName", "Mutable", "Persistent", "PublicSync"});
 
     Properties proto(&registrator);
-    proto.SetValue<int32>(public_value_prop, 10);
+    proto.SetValue<int32_t>(public_value_prop, 10);
     proto.SetValue<bool>(owner_flag_prop, true);
     proto.SetValue<string>(public_name_prop, "base");
 
     SECTION("StoreDataPublicOnlySkipsOwnerSyncOverrides")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(public_value_prop, 42);
+        props.SetValue<int32_t>(public_value_prop, 42);
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         props.StoreData(false, &raw_data, &raw_sizes);
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
         REQUIRE(raw_data->size() == 4);
         REQUIRE(raw_sizes->size() == 4);
-        CHECK((*raw_sizes)[0] == sizeof(uint8));
-        CHECK((*raw_sizes)[1] == sizeof(uint16) * 2);
+        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
+        CHECK((*raw_sizes)[1] == sizeof(uint16_t) * 2);
 
-        uint8 store_type = 0xFF;
+        uint8_t store_type = 0xFF;
         MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1123,7 +1123,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
 
-        CHECK(restored.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored.GetValue<bool>(owner_flag_prop));
         CHECK(restored.GetValue<string>(public_name_prop) == "public-override");
 
@@ -1131,7 +1131,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         restored_full.CopyFrom(proto);
         restored_full.RestoreData(owned_chunks);
 
-        CHECK(restored_full.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_full.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored_full.GetValue<bool>(owner_flag_prop));
         CHECK(restored_full.GetValue<string>(public_name_prop) == "public-override");
     }
@@ -1139,22 +1139,22 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     SECTION("StoreDataWithProtectedKeepsOwnerSyncOverrides")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(public_value_prop, 42);
+        props.SetValue<int32_t>(public_value_prop, 42);
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         props.StoreData(true, &raw_data, &raw_sizes);
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
         REQUIRE(raw_data->size() == 5);
         REQUIRE(raw_sizes->size() == 5);
-        CHECK((*raw_sizes)[0] == sizeof(uint8));
-        CHECK((*raw_sizes)[1] == sizeof(uint16) * 3);
+        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
+        CHECK((*raw_sizes)[1] == sizeof(uint16_t) * 3);
 
-        uint8 store_type = 0xFF;
+        uint8_t store_type = 0xFF;
         MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1163,7 +1163,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
 
-        CHECK(restored.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored.GetValue<bool>(owner_flag_prop));
         CHECK(restored.GetValue<string>(public_name_prop) == "public-override");
 
@@ -1171,7 +1171,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         restored_full.CopyFrom(proto);
         restored_full.RestoreData(owned_chunks);
 
-        CHECK(restored_full.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_full.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored_full.GetValue<bool>(owner_flag_prop));
         CHECK(restored_full.GetValue<string>(public_name_prop) == "public-override");
     }
@@ -1181,19 +1181,19 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         Properties props(&registrator, &proto);
         props.SetValue<string>(public_name_prop, "");
 
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         props.StoreData(false, &raw_data, &raw_sizes);
 
         REQUIRE(raw_data != nullptr);
         REQUIRE(raw_sizes != nullptr);
         REQUIRE(raw_data->size() == 3);
         REQUIRE(raw_sizes->size() == 3);
-        CHECK((*raw_sizes)[0] == sizeof(uint8));
-        CHECK((*raw_sizes)[1] == sizeof(uint16));
+        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
+        CHECK((*raw_sizes)[1] == sizeof(uint16_t));
         CHECK((*raw_sizes)[2] == 0);
 
-        uint8 store_type = 0xFF;
+        uint8_t store_type = 0xFF;
         MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1208,20 +1208,20 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     SECTION("StoreDataKeepsSeparateCachesPerProtectionMode")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(public_value_prop, 42);
+        props.SetValue<int32_t>(public_value_prop, 42);
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8*>* public_data = nullptr;
-        vector<uint32>* public_sizes = nullptr;
+        vector<const uint8_t*>* public_data = nullptr;
+        vector<uint32_t>* public_sizes = nullptr;
         props.StoreData(false, &public_data, &public_sizes);
 
-        vector<const uint8*>* protected_data = nullptr;
-        vector<uint32>* protected_sizes = nullptr;
+        vector<const uint8_t*>* protected_data = nullptr;
+        vector<uint32_t>* protected_sizes = nullptr;
         props.StoreData(true, &protected_data, &protected_sizes);
 
-        vector<const uint8*>* public_data_again = nullptr;
-        vector<uint32>* public_sizes_again = nullptr;
+        vector<const uint8_t*>* public_data_again = nullptr;
+        vector<uint32_t>* public_sizes_again = nullptr;
         props.StoreData(false, &public_data_again, &public_sizes_again);
 
         REQUIRE(public_data != nullptr);
@@ -1238,13 +1238,13 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         Properties restored_public(&registrator, &proto);
         restored_public.RestoreData(public_chunks);
-        CHECK(restored_public.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_public.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored_public.GetValue<bool>(owner_flag_prop));
         CHECK(restored_public.GetValue<string>(public_name_prop) == "public-override");
 
         Properties restored_protected(&registrator, &proto);
         restored_protected.RestoreData(protected_chunks);
-        CHECK(restored_protected.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_protected.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored_protected.GetValue<bool>(owner_flag_prop));
         CHECK(restored_protected.GetValue<string>(public_name_prop) == "public-override");
     }
@@ -1252,59 +1252,59 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     SECTION("StoreDataCacheInvalidatesAfterMutationAndRestore")
     {
         Properties derived(&registrator, &proto);
-        derived.SetValue<int32>(public_value_prop, 42);
+        derived.SetValue<int32_t>(public_value_prop, 42);
 
-        vector<const uint8*>* derived_before_data = nullptr;
-        vector<uint32>* derived_before_sizes = nullptr;
+        vector<const uint8_t*>* derived_before_data = nullptr;
+        vector<uint32_t>* derived_before_sizes = nullptr;
         derived.StoreData(false, &derived_before_data, &derived_before_sizes);
         auto derived_before_chunks = MakeOwnedStoreData(derived_before_data, derived_before_sizes);
 
         derived.SetValue<string>(public_name_prop, "changed");
 
-        vector<const uint8*>* derived_after_data = nullptr;
-        vector<uint32>* derived_after_sizes = nullptr;
+        vector<const uint8_t*>* derived_after_data = nullptr;
+        vector<uint32_t>* derived_after_sizes = nullptr;
         derived.StoreData(false, &derived_after_data, &derived_after_sizes);
         auto derived_after_chunks = MakeOwnedStoreData(derived_after_data, derived_after_sizes);
 
         Properties restored_before(&registrator, &proto);
         restored_before.RestoreData(derived_before_chunks);
-        CHECK(restored_before.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_before.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored_before.GetValue<string>(public_name_prop) == "base");
 
         Properties restored_after(&registrator, &proto);
         restored_after.RestoreData(derived_after_chunks);
-        CHECK(restored_after.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_after.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored_after.GetValue<string>(public_name_prop) == "changed");
 
         Properties full_target(&registrator);
-        full_target.SetValue<int32>(public_value_prop, 10);
+        full_target.SetValue<int32_t>(public_value_prop, 10);
         full_target.SetValue<bool>(owner_flag_prop, true);
         full_target.SetValue<string>(public_name_prop, "base");
 
-        vector<const uint8*>* full_before_data = nullptr;
-        vector<uint32>* full_before_sizes = nullptr;
+        vector<const uint8_t*>* full_before_data = nullptr;
+        vector<uint32_t>* full_before_sizes = nullptr;
         full_target.StoreData(false, &full_before_data, &full_before_sizes);
 
         Properties full_source(&registrator);
-        full_source.SetValue<int32>(public_value_prop, 77);
+        full_source.SetValue<int32_t>(public_value_prop, 77);
         full_source.SetValue<bool>(owner_flag_prop, false);
         full_source.SetValue<string>(public_name_prop, "restored");
 
-        vector<const uint8*>* full_source_data = nullptr;
-        vector<uint32>* full_source_sizes = nullptr;
+        vector<const uint8_t*>* full_source_data = nullptr;
+        vector<uint32_t>* full_source_sizes = nullptr;
         full_source.StoreData(false, &full_source_data, &full_source_sizes);
         auto full_source_chunks = MakeOwnedStoreData(full_source_data, full_source_sizes);
 
         full_target.RestoreData(full_source_chunks);
 
-        vector<const uint8*>* full_after_data = nullptr;
-        vector<uint32>* full_after_sizes = nullptr;
+        vector<const uint8_t*>* full_after_data = nullptr;
+        vector<uint32_t>* full_after_sizes = nullptr;
         full_target.StoreData(false, &full_after_data, &full_after_sizes);
         auto full_after_chunks = MakeOwnedStoreData(full_after_data, full_after_sizes);
 
         Properties full_restored(&registrator);
         full_restored.RestoreData(full_after_chunks);
-        CHECK(full_restored.GetValue<int32>(public_value_prop) == 77);
+        CHECK(full_restored.GetValue<int32_t>(public_value_prop) == 77);
         CHECK_FALSE(full_restored.GetValue<bool>(owner_flag_prop));
         CHECK(full_restored.GetValue<string>(public_name_prop) == "restored");
     }
@@ -1312,53 +1312,53 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     SECTION("StoreDataCacheInvalidatesOnOwnerOnlyMutation")
     {
         Properties props(&registrator);
-        props.SetValue<int32>(public_value_prop, 42);
+        props.SetValue<int32_t>(public_value_prop, 42);
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8*>* public_before_data = nullptr;
-        vector<uint32>* public_before_sizes = nullptr;
+        vector<const uint8_t*>* public_before_data = nullptr;
+        vector<uint32_t>* public_before_sizes = nullptr;
         props.StoreData(false, &public_before_data, &public_before_sizes);
         const auto public_before_chunks = MakeOwnedStoreData(public_before_data, public_before_sizes);
 
-        vector<const uint8*>* protected_before_data = nullptr;
-        vector<uint32>* protected_before_sizes = nullptr;
+        vector<const uint8_t*>* protected_before_data = nullptr;
+        vector<uint32_t>* protected_before_sizes = nullptr;
         props.StoreData(true, &protected_before_data, &protected_before_sizes);
         const auto protected_before_chunks = MakeOwnedStoreData(protected_before_data, protected_before_sizes);
 
         props.SetValue<bool>(owner_flag_prop, true);
 
-        vector<const uint8*>* public_after_data = nullptr;
-        vector<uint32>* public_after_sizes = nullptr;
+        vector<const uint8_t*>* public_after_data = nullptr;
+        vector<uint32_t>* public_after_sizes = nullptr;
         props.StoreData(false, &public_after_data, &public_after_sizes);
         const auto public_after_chunks = MakeOwnedStoreData(public_after_data, public_after_sizes);
 
-        vector<const uint8*>* protected_after_data = nullptr;
-        vector<uint32>* protected_after_sizes = nullptr;
+        vector<const uint8_t*>* protected_after_data = nullptr;
+        vector<uint32_t>* protected_after_sizes = nullptr;
         props.StoreData(true, &protected_after_data, &protected_after_sizes);
         const auto protected_after_chunks = MakeOwnedStoreData(protected_after_data, protected_after_sizes);
 
         Properties restored_public_before(&registrator);
         restored_public_before.RestoreData(public_before_chunks);
-        CHECK(restored_public_before.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_public_before.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored_public_before.GetValue<bool>(owner_flag_prop));
         CHECK(restored_public_before.GetValue<string>(public_name_prop) == "public-override");
 
         Properties restored_public_after(&registrator);
         restored_public_after.RestoreData(public_after_chunks);
-        CHECK(restored_public_after.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_public_after.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored_public_after.GetValue<bool>(owner_flag_prop));
         CHECK(restored_public_after.GetValue<string>(public_name_prop) == "public-override");
 
         Properties restored_protected_before(&registrator);
         restored_protected_before.RestoreData(protected_before_chunks);
-        CHECK(restored_protected_before.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_protected_before.GetValue<int32_t>(public_value_prop) == 42);
         CHECK_FALSE(restored_protected_before.GetValue<bool>(owner_flag_prop));
         CHECK(restored_protected_before.GetValue<string>(public_name_prop) == "public-override");
 
         Properties restored_protected_after(&registrator);
         restored_protected_after.RestoreData(protected_after_chunks);
-        CHECK(restored_protected_after.GetValue<int32>(public_value_prop) == 42);
+        CHECK(restored_protected_after.GetValue<int32_t>(public_value_prop) == 42);
         CHECK(restored_protected_after.GetValue<bool>(owner_flag_prop));
         CHECK(restored_protected_after.GetValue<string>(public_name_prop) == "public-override");
     }
@@ -1367,20 +1367,20 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     {
         Properties props(&registrator, &proto);
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32>() == 0);
+        CHECK(reader.Read<uint32_t>() == 0);
         reader.VerifyEnd();
 
         Properties restored(&registrator, &proto);
         restored.RestoreAllData(all_data);
 
-        CHECK(restored.GetValue<int32>(public_value_prop) == 10);
+        CHECK(restored.GetValue<int32_t>(public_value_prop) == 10);
         CHECK(restored.GetValue<bool>(owner_flag_prop));
         CHECK(restored.GetValue<string>(public_name_prop) == "base");
     }
@@ -1388,50 +1388,50 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
     SECTION("CopyFromRebasesInheritedDerivedValuesToAnotherBase")
     {
         Properties source_base(&registrator);
-        source_base.SetValue<int32>(public_value_prop, 5);
+        source_base.SetValue<int32_t>(public_value_prop, 5);
         source_base.SetValue<bool>(owner_flag_prop, false);
         source_base.SetValue<string>(public_name_prop, "source");
 
         Properties target_base(&registrator);
-        target_base.SetValue<int32>(public_value_prop, 100);
+        target_base.SetValue<int32_t>(public_value_prop, 100);
         target_base.SetValue<bool>(owner_flag_prop, true);
         target_base.SetValue<string>(public_name_prop, "target");
 
         Properties source_props(&registrator, &source_base);
-        source_props.SetValue<int32>(public_value_prop, 77);
+        source_props.SetValue<int32_t>(public_value_prop, 77);
 
         Properties target_props(&registrator, &target_base);
         target_props.CopyFrom(source_props);
         target_props.CopyFrom(source_props);
 
-        CHECK(target_props.GetValue<int32>(public_value_prop) == 77);
+        CHECK(target_props.GetValue<int32_t>(public_value_prop) == 77);
         CHECK_FALSE(target_props.GetValue<bool>(owner_flag_prop));
         CHECK(target_props.GetValue<string>(public_name_prop) == "source");
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32>() == 3);
+        CHECK(reader.Read<uint32_t>() == 3);
     }
 
     SECTION("CopyFromRebasesDerivedValuesToAnotherBase")
     {
         Properties source_base(&registrator);
-        source_base.SetValue<int32>(public_value_prop, 5);
+        source_base.SetValue<int32_t>(public_value_prop, 5);
         source_base.SetValue<bool>(owner_flag_prop, false);
         source_base.SetValue<string>(public_name_prop, "source");
 
         Properties target_base(&registrator);
-        target_base.SetValue<int32>(public_value_prop, 100);
+        target_base.SetValue<int32_t>(public_value_prop, 100);
         target_base.SetValue<bool>(owner_flag_prop, true);
         target_base.SetValue<string>(public_name_prop, "target");
 
         Properties source_props(&registrator, &source_base);
-        source_props.SetValue<int32>(public_value_prop, 77);
+        source_props.SetValue<int32_t>(public_value_prop, 77);
         source_props.SetValue<bool>(owner_flag_prop, true);
         source_props.SetValue<string>(public_name_prop, "custom");
 
@@ -1439,18 +1439,18 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         target_props.CopyFrom(source_props);
         target_props.CopyFrom(source_props);
 
-        CHECK(target_props.GetValue<int32>(public_value_prop) == 77);
+        CHECK(target_props.GetValue<int32_t>(public_value_prop) == 77);
         CHECK(target_props.GetValue<bool>(owner_flag_prop));
         CHECK(target_props.GetValue<string>(public_name_prop) == "custom");
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
         DataReader reader(all_data);
-        CHECK(reader.Read<uint32>() == registrator.GetWholeDataSize());
+        CHECK(reader.Read<uint32_t>() == registrator.GetWholeDataSize());
         CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32>() == 2);
+        CHECK(reader.Read<uint32_t>() == 2);
     }
 }
 
@@ -1465,23 +1465,23 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
     const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
-    props.SetValue<int32>(value_prop, 123);
+    props.SetValue<int32_t>(value_prop, 123);
     props.SetValue<bool>(flag_prop, true);
     props.SetValue<string>(name_prop, "full-roundtrip");
 
-    vector<uint8> all_data;
+    vector<uint8_t> all_data;
     set<hstring> str_hashes;
     props.StoreAllData(all_data, str_hashes);
 
     Properties restored(&registrator);
     restored.RestoreAllData(all_data);
 
-    CHECK(restored.GetValue<int32>(value_prop) == 123);
+    CHECK(restored.GetValue<int32_t>(value_prop) == 123);
     CHECK(restored.GetValue<bool>(flag_prop));
     CHECK(restored.GetValue<string>(name_prop) == "full-roundtrip");
 
     auto copied = props.Copy();
-    CHECK(copied.GetValue<int32>(value_prop) == 123);
+    CHECK(copied.GetValue<int32_t>(value_prop) == 123);
     CHECK(copied.GetValue<bool>(flag_prop));
     CHECK(copied.GetValue<string>(name_prop) == "full-roundtrip");
 
@@ -1491,18 +1491,18 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
     SECTION("StoreAllDataPreservesZeroSizedString")
     {
         Properties empty_string_props(&registrator);
-        empty_string_props.SetValue<int32>(value_prop, 123);
+        empty_string_props.SetValue<int32_t>(value_prop, 123);
         empty_string_props.SetValue<bool>(flag_prop, true);
         empty_string_props.SetValue<string>(name_prop, "");
 
-        vector<uint8> empty_string_data;
+        vector<uint8_t> empty_string_data;
         set<hstring> empty_string_hashes;
         empty_string_props.StoreAllData(empty_string_data, empty_string_hashes);
 
         Properties restored_empty_string(&registrator);
         restored_empty_string.RestoreAllData(empty_string_data);
 
-        CHECK(restored_empty_string.GetValue<int32>(value_prop) == 123);
+        CHECK(restored_empty_string.GetValue<int32_t>(value_prop) == 123);
         CHECK(restored_empty_string.GetValue<bool>(flag_prop));
         CHECK(restored_empty_string.GetValue<string>(name_prop).empty());
     }
@@ -1519,18 +1519,18 @@ TEST_CASE("PropertiesFullStorageCopyFrom")
     const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties source(&registrator);
-    source.SetValue<int32>(value_prop, 321);
+    source.SetValue<int32_t>(value_prop, 321);
     source.SetValue<bool>(flag_prop, true);
     source.SetValue<string>(name_prop, "copy-source");
 
     Properties target(&registrator);
-    target.SetValue<int32>(value_prop, 111);
+    target.SetValue<int32_t>(value_prop, 111);
     target.SetValue<bool>(flag_prop, false);
     target.SetValue<string>(name_prop, "copy-target");
 
     target.CopyFrom(source);
 
-    CHECK(target.GetValue<int32>(value_prop) == 321);
+    CHECK(target.GetValue<int32_t>(value_prop) == 321);
     CHECK(target.GetValue<bool>(flag_prop));
     CHECK(target.GetValue<string>(name_prop) == "copy-source");
 
@@ -1548,85 +1548,85 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
     const auto* local_value_prop = registrator.RegisterProperty({"Common", "int32", "LocalValue", "Mutable", "Persistent", "NoSync"});
 
     Properties proto(&registrator);
-    proto.SetValue<int32>(synced_value_prop, 10);
-    proto.SetValue<int32>(local_value_prop, 0);
+    proto.SetValue<int32_t>(synced_value_prop, 10);
+    proto.SetValue<int32_t>(local_value_prop, 0);
 
     SECTION("EmptyRestoreKeepsUnsyncedOverride")
     {
         Properties props(&registrator, &proto);
-        props.SetValue<int32>(local_value_prop, 1);
+        props.SetValue<int32_t>(local_value_prop, 1);
 
-        vector<vector<uint8>> empty_data;
+        vector<vector<uint8_t>> empty_data;
         props.RestoreData(empty_data);
 
-        CHECK(props.GetValue<int32>(synced_value_prop) == 10);
-        CHECK(props.GetValue<int32>(local_value_prop) == 1);
+        CHECK(props.GetValue<int32_t>(synced_value_prop) == 10);
+        CHECK(props.GetValue<int32_t>(local_value_prop) == 1);
     }
 
     SECTION("NetworkRestoreKeepsUnsyncedOverride")
     {
         Properties server_state(&registrator, &proto);
-        server_state.SetValue<int32>(synced_value_prop, 42);
+        server_state.SetValue<int32_t>(synced_value_prop, 42);
 
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         server_state.StoreData(false, &raw_data, &raw_sizes);
         auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
 
         Properties client_state(&registrator, &proto);
-        client_state.SetValue<int32>(local_value_prop, 1);
+        client_state.SetValue<int32_t>(local_value_prop, 1);
         client_state.RestoreData(owned_chunks);
 
-        CHECK(client_state.GetValue<int32>(synced_value_prop) == 42);
-        CHECK(client_state.GetValue<int32>(local_value_prop) == 1);
+        CHECK(client_state.GetValue<int32_t>(synced_value_prop) == 42);
+        CHECK(client_state.GetValue<int32_t>(local_value_prop) == 1);
     }
 
     SECTION("EmptyRestoreClearsSyncedOverrideButKeepsUnsyncedOverride")
     {
         Properties client_state(&registrator, &proto);
-        client_state.SetValue<int32>(synced_value_prop, 99);
-        client_state.SetValue<int32>(local_value_prop, 1);
+        client_state.SetValue<int32_t>(synced_value_prop, 99);
+        client_state.SetValue<int32_t>(local_value_prop, 1);
 
-        vector<vector<uint8>> empty_data;
+        vector<vector<uint8_t>> empty_data;
         client_state.RestoreData(empty_data);
 
-        CHECK(client_state.GetValue<int32>(synced_value_prop) == 10);
-        CHECK(client_state.GetValue<int32>(local_value_prop) == 1);
+        CHECK(client_state.GetValue<int32_t>(synced_value_prop) == 10);
+        CHECK(client_state.GetValue<int32_t>(local_value_prop) == 1);
     }
 
     SECTION("RestoreAllDataEmptySnapshotClearsUnsyncedOverride")
     {
         Properties server_snapshot(&registrator, &proto);
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         server_snapshot.StoreAllData(all_data, str_hashes);
 
         Properties client_state(&registrator, &proto);
-        client_state.SetValue<int32>(synced_value_prop, 99);
-        client_state.SetValue<int32>(local_value_prop, 1);
+        client_state.SetValue<int32_t>(synced_value_prop, 99);
+        client_state.SetValue<int32_t>(local_value_prop, 1);
         client_state.RestoreAllData(all_data);
 
-        CHECK(client_state.GetValue<int32>(synced_value_prop) == 10);
-        CHECK(client_state.GetValue<int32>(local_value_prop) == 0);
+        CHECK(client_state.GetValue<int32_t>(synced_value_prop) == 10);
+        CHECK(client_state.GetValue<int32_t>(local_value_prop) == 0);
     }
 
     SECTION("RestoreAllDataRestoresUnsyncedOverrideFromSnapshot")
     {
         Properties server_snapshot(&registrator, &proto);
-        server_snapshot.SetValue<int32>(synced_value_prop, 42);
-        server_snapshot.SetValue<int32>(local_value_prop, 7);
+        server_snapshot.SetValue<int32_t>(synced_value_prop, 42);
+        server_snapshot.SetValue<int32_t>(local_value_prop, 7);
 
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
         server_snapshot.StoreAllData(all_data, str_hashes);
 
         Properties client_state(&registrator, &proto);
-        client_state.SetValue<int32>(synced_value_prop, 99);
-        client_state.SetValue<int32>(local_value_prop, 1);
+        client_state.SetValue<int32_t>(synced_value_prop, 99);
+        client_state.SetValue<int32_t>(local_value_prop, 1);
         client_state.RestoreAllData(all_data);
 
-        CHECK(client_state.GetValue<int32>(synced_value_prop) == 42);
-        CHECK(client_state.GetValue<int32>(local_value_prop) == 7);
+        CHECK(client_state.GetValue<int32_t>(synced_value_prop) == 42);
+        CHECK(client_state.GetValue<int32_t>(local_value_prop) == 7);
     }
 }
 
@@ -1644,12 +1644,12 @@ TEST_CASE("PropertiesCompareData")
     SECTION("FullStorageFastPath")
     {
         Properties left(&registrator);
-        left.SetValue<int32>(value_prop, 10);
+        left.SetValue<int32_t>(value_prop, 10);
         left.SetValue<bool>(flag_prop, true);
         left.SetValue<string>(name_prop, "same");
 
         Properties right(&registrator);
-        right.SetValue<int32>(value_prop, 10);
+        right.SetValue<int32_t>(value_prop, 10);
         right.SetValue<bool>(flag_prop, true);
         right.SetValue<string>(name_prop, "same");
 
@@ -1662,17 +1662,17 @@ TEST_CASE("PropertiesCompareData")
     SECTION("DerivedSameBaseFastPath")
     {
         Properties proto(&registrator);
-        proto.SetValue<int32>(value_prop, 1);
+        proto.SetValue<int32_t>(value_prop, 1);
         proto.SetValue<bool>(flag_prop, false);
         proto.SetValue<string>(name_prop, "proto");
 
         Properties left(&registrator, &proto);
-        left.SetValue<int32>(value_prop, 20);
+        left.SetValue<int32_t>(value_prop, 20);
         left.SetValue<string>(name_prop, "override");
 
         Properties right(&registrator, &proto);
         right.SetValue<string>(name_prop, "override");
-        right.SetValue<int32>(value_prop, 20);
+        right.SetValue<int32_t>(value_prop, 20);
 
         CHECK(left.CompareData(right, {}, false));
 
@@ -1683,12 +1683,12 @@ TEST_CASE("PropertiesCompareData")
     SECTION("IgnoreTemporaryAndIgnorePropsUseFallback")
     {
         Properties left(&registrator);
-        left.SetValue<int32>(value_prop, 10);
-        left.SetValue<int32>(temp_prop, 1);
+        left.SetValue<int32_t>(value_prop, 10);
+        left.SetValue<int32_t>(temp_prop, 1);
 
         Properties right(&registrator);
-        right.SetValue<int32>(value_prop, 99);
-        right.SetValue<int32>(temp_prop, 2);
+        right.SetValue<int32_t>(value_prop, 99);
+        right.SetValue<int32_t>(temp_prop, 2);
 
         array<const Property*, 1> ignored_props {{value_prop}};
         const span<const Property*> ignored_props_span {ignored_props.data(), ignored_props.size()};
@@ -1701,7 +1701,7 @@ TEST_CASE("PropertiesCompareData")
     SECTION("SelfCompareReturnsTrue")
     {
         Properties props(&registrator);
-        props.SetValue<int32>(value_prop, 10);
+        props.SetValue<int32_t>(value_prop, 10);
         props.SetValue<string>(name_prop, "self");
 
         CHECK(props.CompareData(props, {}, false));
@@ -1710,16 +1710,16 @@ TEST_CASE("PropertiesCompareData")
     SECTION("MixedFullAndDerivedUseFallback")
     {
         Properties proto(&registrator);
-        proto.SetValue<int32>(value_prop, 1);
+        proto.SetValue<int32_t>(value_prop, 1);
         proto.SetValue<bool>(flag_prop, false);
         proto.SetValue<string>(name_prop, "proto");
 
         Properties derived(&registrator, &proto);
-        derived.SetValue<int32>(value_prop, 10);
+        derived.SetValue<int32_t>(value_prop, 10);
         derived.SetValue<string>(name_prop, "override");
 
         Properties full(&registrator);
-        full.SetValue<int32>(value_prop, 10);
+        full.SetValue<int32_t>(value_prop, 10);
         full.SetValue<bool>(flag_prop, false);
         full.SetValue<string>(name_prop, "override");
 
@@ -1745,35 +1745,35 @@ TEST_CASE("PropertiesCustomAccessors")
     Properties props(&registrator);
     props.SetEntity(reinterpret_cast<Entity*>(size_t {1}));
 
-    int32 setter_calls = 0;
-    int32 post_setter_calls = 0;
-    int32 virtual_value = 7;
+    int32_t setter_calls = 0;
+    int32_t post_setter_calls = 0;
+    int32_t virtual_value = 7;
 
     plain_prop->AddSetter([&](Entity*, const Property*, PropertyRawData& prop_data) {
         setter_calls++;
-        prop_data.SetAs<int32>(prop_data.GetAs<int32>() + 5);
+        prop_data.SetAs<int32_t>(prop_data.GetAs<int32_t>() + 5);
     });
     plain_prop->AddPostSetter([&](Entity*, const Property*) { post_setter_calls++; });
 
     virtual_prop->SetGetter([&](Entity*, const Property*) {
         PropertyRawData prop_data;
-        prop_data.SetAs<int32>(virtual_value);
+        prop_data.SetAs<int32_t>(virtual_value);
         return prop_data;
     });
-    virtual_prop->AddSetter([&](Entity*, const Property*, PropertyRawData& prop_data) { virtual_value = prop_data.GetAs<int32>(); });
+    virtual_prop->AddSetter([&](Entity*, const Property*, PropertyRawData& prop_data) { virtual_value = prop_data.GetAs<int32_t>(); });
 
-    props.SetValue<int32>(plain_prop, 10);
-    CHECK(props.GetValue<int32>(plain_prop) == 15);
+    props.SetValue<int32_t>(plain_prop, 10);
+    CHECK(props.GetValue<int32_t>(plain_prop) == 15);
     CHECK(setter_calls == 1);
     CHECK(post_setter_calls == 1);
 
-    CHECK(props.GetValue<int32>(virtual_prop) == 7);
-    props.SetValue<int32>(virtual_prop, 21);
+    CHECK(props.GetValue<int32_t>(virtual_prop) == 7);
+    props.SetValue<int32_t>(virtual_prop, 21);
     CHECK(virtual_value == 21);
-    CHECK(props.GetValue<int32>(virtual_prop) == 21);
+    CHECK(props.GetValue<int32_t>(virtual_prop) == 21);
 
     PropertyRawData prop_data;
-    prop_data.SetAs<int32>(1);
+    prop_data.SetAs<int32_t>(1);
     CHECK_THROWS(props.SetValue(virtual_without_setter_prop, prop_data));
 }
 
@@ -1783,52 +1783,52 @@ TEST_CASE("PropertyRawDataStorageModes")
     {
         PropertyRawData data;
 
-        data.SetAs<int32>(1234);
+        data.SetAs<int32_t>(1234);
 
-        CHECK(data.GetSize() == sizeof(int32));
-        CHECK(data.GetAs<int32>() == 1234);
+        CHECK(data.GetSize() == sizeof(int32_t));
+        CHECK(data.GetAs<int32_t>() == 1234);
 
-        *data.GetPtrAs<int32>() = 4321;
-        CHECK(data.GetAs<int32>() == 4321);
+        *data.GetPtrAs<int32_t>() = 4321;
+        CHECK(data.GetAs<int32_t>() == 4321);
     }
 
     SECTION("PassAliasesExternalDataUntilStoreIfPassed")
     {
-        int32 external_value = 55;
+        int32_t external_value = 55;
         PropertyRawData data;
 
         data.Pass(&external_value, sizeof(external_value));
 
-        CHECK(data.GetAs<int32>() == 55);
+        CHECK(data.GetAs<int32_t>() == 55);
 
         external_value = 77;
-        CHECK(data.GetAs<int32>() == 77);
+        CHECK(data.GetAs<int32_t>() == 77);
 
         data.StoreIfPassed();
-        CHECK(data.GetAs<int32>() == 77);
+        CHECK(data.GetAs<int32_t>() == 77);
 
         external_value = 99;
-        CHECK(data.GetAs<int32>() == 77);
+        CHECK(data.GetAs<int32_t>() == 77);
 
-        *data.GetPtrAs<int32>() = 101;
-        CHECK(data.GetAs<int32>() == 101);
+        *data.GetPtrAs<int32_t>() = 101;
+        CHECK(data.GetAs<int32_t>() == 101);
         CHECK(external_value == 99);
     }
 
     SECTION("LargeAllocUsesDynamicOwnedBuffer")
     {
         PropertyRawData data;
-        array<uint8, PropertyRawData::LOCAL_BUF_SIZE + 8> source {};
+        array<uint8_t, PropertyRawData::LOCAL_BUF_SIZE + 8> source {};
 
         for (size_t i = 0; i < source.size(); i++) {
-            source[i] = numeric_cast<uint8>(i % 251);
+            source[i] = numeric_cast<uint8_t>(i % 251);
         }
 
         data.Set(source.data(), source.size());
 
         CHECK(data.GetSize() == source.size());
 
-        auto* stored = data.GetPtrAs<uint8>();
+        auto* stored = data.GetPtrAs<uint8_t>();
         REQUIRE(stored != nullptr);
         CHECK(std::equal(source.begin(), source.end(), stored));
 
@@ -1850,7 +1850,7 @@ TEST_CASE("PropertiesTextRoundTrip")
 
     Properties props(&registrator);
     props.SetValue(tags_prop, vector<string> {"alpha", "beta", ""});
-    props.SetValue(values_prop, vector<int32> {10, 20, 30});
+    props.SetValue(values_prop, vector<int32_t> {10, 20, 30});
 
     const auto text_data = props.SaveToText(nullptr);
     REQUIRE(text_data.contains("Tags"));
@@ -1860,7 +1860,7 @@ TEST_CASE("PropertiesTextRoundTrip")
     restored.ApplyFromText(text_data);
 
     CHECK(restored.GetValue<vector<string>>(tags_prop) == vector<string> {"alpha", "beta", ""});
-    CHECK(restored.GetValue<vector<int32>>(values_prop) == vector<int32> {10, 20, 30});
+    CHECK(restored.GetValue<vector<int32_t>>(values_prop) == vector<int32_t> {10, 20, 30});
 }
 
 TEST_CASE("PropertiesHashAndEnumConversions")
@@ -1918,29 +1918,29 @@ TEST_CASE("PropertiesNumericWidthConversions")
     Properties props(&registrator);
 
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {string {"-12"}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int16_prop, AnyData::Value {float64 {345.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int16_prop, AnyData::Value {float64_t {345.0}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int32_prop, AnyData::Value {string {"True"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, int64_prop, AnyData::Value {true}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {string {"7"}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint16_prop, AnyData::Value {float64 {1024.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint16_prop, AnyData::Value {float64_t {1024.0}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, uint32_prop, AnyData::Value {string {"false"}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {int64 {2}}, hashes, resolver));
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {float64 {0.0}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {int64_t {2}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {float64_t {0.0}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"True"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {string {"1.25"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {string {"False"}}, hashes, resolver));
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {true}, hashes, resolver));
 
-    CHECK(props.GetValue<int8>(int8_prop) == -12);
-    CHECK(props.GetValue<int16>(int16_prop) == 345);
-    CHECK(props.GetValue<int32>(int32_prop) == 1);
-    CHECK(props.GetValue<int64>(int64_prop) == 1);
-    CHECK(props.GetValue<uint8>(uint8_prop) == 7);
-    CHECK(props.GetValue<uint16>(uint16_prop) == 1024);
-    CHECK(props.GetValue<uint32>(uint32_prop) == 0);
+    CHECK(props.GetValue<int8_t>(int8_prop) == -12);
+    CHECK(props.GetValue<int16_t>(int16_prop) == 345);
+    CHECK(props.GetValue<int32_t>(int32_prop) == 1);
+    CHECK(props.GetValue<int64_t>(int64_prop) == 1);
+    CHECK(props.GetValue<uint8_t>(uint8_prop) == 7);
+    CHECK(props.GetValue<uint16_t>(uint16_prop) == 1024);
+    CHECK(props.GetValue<uint32_t>(uint32_prop) == 0);
     CHECK(props.GetValue<bool>(bool_prop));
-    CHECK(props.GetValue<float32>(float32_prop) == Catch::Approx(1.25f));
-    CHECK(props.GetValue<float64>(float64_prop) == Catch::Approx(0.0));
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.25f));
+    CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(0.0));
     CHECK(props.GetValue<string>(string_prop) == "true");
     CHECK(PropertiesSerializator::SavePropertyToText(&props, string_prop, hashes, resolver) == "true");
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
@@ -1988,14 +1988,14 @@ TEST_CASE("PropertiesTextScalarWidthConversions")
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "-1", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, bool_prop, "0.5", hashes, resolver));
 
-    CHECK(props.GetValue<int8>(int8_prop) == -12);
-    CHECK(props.GetValue<int16>(int16_prop) == 345);
-    CHECK(props.GetValue<int64>(int64_prop) == 9876543210);
-    CHECK(props.GetValue<uint8>(uint8_prop) == 7);
-    CHECK(props.GetValue<uint16>(uint16_prop) == 1024);
-    CHECK(props.GetValue<uint32>(uint32_prop) == 65536);
-    CHECK(props.GetValue<float32>(float32_prop) == Catch::Approx(1.25f));
-    CHECK(props.GetValue<float64>(float64_prop) == Catch::Approx(2.5));
+    CHECK(props.GetValue<int8_t>(int8_prop) == -12);
+    CHECK(props.GetValue<int16_t>(int16_prop) == 345);
+    CHECK(props.GetValue<int64_t>(int64_prop) == 9876543210);
+    CHECK(props.GetValue<uint8_t>(uint8_prop) == 7);
+    CHECK(props.GetValue<uint16_t>(uint16_prop) == 1024);
+    CHECK(props.GetValue<uint32_t>(uint32_prop) == 65536);
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.25f));
+    CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(2.5));
     CHECK_FALSE(props.GetValue<bool>(bool_prop));
 
     CHECK(PropertiesSerializator::SavePropertyToText(&props, int8_prop, hashes, resolver) == "-12");
@@ -2035,12 +2035,12 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 
     const auto samples_value = []() {
         AnyData::Array low_samples;
-        low_samples.EmplaceBack(int64 {-3});
-        low_samples.EmplaceBack(int64 {0});
+        low_samples.EmplaceBack(int64_t {-3});
+        low_samples.EmplaceBack(int64_t {0});
 
         AnyData::Array high_samples;
-        high_samples.EmplaceBack(int64 {4});
-        high_samples.EmplaceBack(int64 {9});
+        high_samples.EmplaceBack(int64_t {4});
+        high_samples.EmplaceBack(int64_t {9});
 
         AnyData::Dict samples;
         samples.Emplace("-0.5", AnyData::Value {std::move(low_samples)});
@@ -2135,7 +2135,7 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     CHECK(PropertiesSerializator::SavePropertyToValue(&restored, item_prop, hashes, resolver) == AnyData::Value {string {"knife"}});
     CHECK(PropertiesSerializator::SavePropertyToValue(&restored, loot_sets_prop, hashes, resolver) == loot_sets_value);
 
-    vector<uint8> all_data;
+    vector<uint8_t> all_data;
     set<hstring> str_hashes;
     restored.StoreAllData(all_data, str_hashes);
 
@@ -2163,13 +2163,13 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
 
     Properties props(&registrator);
 
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, hash_prop, AnyData::Value {int64 {42}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, hash_prop, AnyData::Value {int64_t {42}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {true}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64 {99}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64_t {99}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {string {"not-bool"}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, bool_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, string_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {int64 {10}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, values_prop, AnyData::Value {int64_t {10}}, hashes, resolver));
 
     AnyData::Array invalid_numeric_values;
     invalid_numeric_values.EmplaceBack(string {"not-a-number"});
@@ -2199,7 +2199,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, map_prop, AnyData::Value {string {""}}, hashes, resolver));
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, map_prop, hashes, resolver) == AnyData::Value {string {""}});
 
-    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64 {1}}, hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {int64_t {1}}, hashes, resolver));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
@@ -2217,7 +2217,7 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
     Properties second(&registrator);
     second.SetValue<hstring>(hash_prop, hashes.ToHashedString("beta"));
 
-    vector<uint8> all_data;
+    vector<uint8_t> all_data;
     set<hstring> str_hashes;
 
     first.StoreAllData(all_data, str_hashes);
@@ -2241,8 +2241,8 @@ TEST_CASE("PropertiesDictConversions")
 
     const auto counters_value = []() {
         AnyData::Dict counters;
-        counters.Emplace("alpha", int64 {10});
-        counters.Emplace("beta", int64 {-5});
+        counters.Emplace("alpha", int64_t {10});
+        counters.Emplace("beta", int64_t {-5});
         return AnyData::Value {std::move(counters)};
     }();
 
@@ -2314,13 +2314,13 @@ TEST_CASE("PropertiesNumericDictConversions")
 
     const auto checkpoints_value = []() {
         AnyData::Array false_points;
-        false_points.EmplaceBack(int64 {0});
-        false_points.EmplaceBack(int64 {5});
+        false_points.EmplaceBack(int64_t {0});
+        false_points.EmplaceBack(int64_t {5});
 
         AnyData::Array true_points;
-        true_points.EmplaceBack(int64 {11});
-        true_points.EmplaceBack(int64 {22});
-        true_points.EmplaceBack(int64 {33});
+        true_points.EmplaceBack(int64_t {11});
+        true_points.EmplaceBack(int64_t {22});
+        true_points.EmplaceBack(int64_t {33});
 
         AnyData::Dict checkpoints;
         checkpoints.Emplace("False", AnyData::Value {std::move(false_points)});
@@ -2432,12 +2432,12 @@ TEST_CASE("PropertiesFloatDictConversions")
 
     const auto samples_value = []() {
         AnyData::Array low_samples;
-        low_samples.EmplaceBack(float64 {-2.5});
-        low_samples.EmplaceBack(float64 {0.125});
+        low_samples.EmplaceBack(float64_t {-2.5});
+        low_samples.EmplaceBack(float64_t {0.125});
 
         AnyData::Array high_samples;
-        high_samples.EmplaceBack(float64 {1.25});
-        high_samples.EmplaceBack(float64 {2.5});
+        high_samples.EmplaceBack(float64_t {1.25});
+        high_samples.EmplaceBack(float64_t {2.5});
 
         AnyData::Dict samples;
         samples.Emplace("-0.5", AnyData::Value {std::move(low_samples)});
@@ -2482,13 +2482,13 @@ TEST_CASE("PropertiesStructDictConversions")
         AnyData::Dict leaders;
 
         AnyData::Array north_waypoint;
-        north_waypoint.EmplaceBack(int64 {10});
-        north_waypoint.EmplaceBack(float64 {1.5});
+        north_waypoint.EmplaceBack(int64_t {10});
+        north_waypoint.EmplaceBack(float64_t {1.5});
         north_waypoint.EmplaceBack(true);
 
         AnyData::Array south_waypoint;
-        south_waypoint.EmplaceBack(int64 {20});
-        south_waypoint.EmplaceBack(float64 {3.25});
+        south_waypoint.EmplaceBack(int64_t {20});
+        south_waypoint.EmplaceBack(float64_t {3.25});
         south_waypoint.EmplaceBack(false);
 
         leaders.Emplace("north", AnyData::Value {std::move(north_waypoint)});
@@ -2500,22 +2500,22 @@ TEST_CASE("PropertiesStructDictConversions")
         AnyData::Array first_path;
 
         AnyData::Array first_path_point_a;
-        first_path_point_a.EmplaceBack(int64 {1});
-        first_path_point_a.EmplaceBack(float64 {0.5});
+        first_path_point_a.EmplaceBack(int64_t {1});
+        first_path_point_a.EmplaceBack(float64_t {0.5});
         first_path_point_a.EmplaceBack(true);
         first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_a)});
 
         AnyData::Array first_path_point_b;
-        first_path_point_b.EmplaceBack(int64 {2});
-        first_path_point_b.EmplaceBack(float64 {1.25});
+        first_path_point_b.EmplaceBack(int64_t {2});
+        first_path_point_b.EmplaceBack(float64_t {1.25});
         first_path_point_b.EmplaceBack(false);
         first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_b)});
 
         AnyData::Array second_path;
 
         AnyData::Array second_path_point_a;
-        second_path_point_a.EmplaceBack(int64 {7});
-        second_path_point_a.EmplaceBack(float64 {4.75});
+        second_path_point_a.EmplaceBack(int64_t {7});
+        second_path_point_a.EmplaceBack(float64_t {4.75});
         second_path_point_a.EmplaceBack(true);
         second_path.EmplaceBack(AnyData::Value {std::move(second_path_point_a)});
 
@@ -2564,8 +2564,8 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
 
     AnyData::Dict invalid_leader_from_array;
     AnyData::Array short_waypoint;
-    short_waypoint.EmplaceBack(int64 {10});
-    short_waypoint.EmplaceBack(float64 {1.5});
+    short_waypoint.EmplaceBack(int64_t {10});
+    short_waypoint.EmplaceBack(float64_t {1.5});
     invalid_leader_from_array.Emplace("north", AnyData::Value {std::move(short_waypoint)});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, leader_prop, AnyData::Value {std::move(invalid_leader_from_array)}, hashes, resolver));
 
@@ -2616,7 +2616,7 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
     CHECK(empty_doc.Empty());
 
     Properties proto(&registrator);
-    proto.SetValue<int32>(counter_prop, 7);
+    proto.SetValue<int32_t>(counter_prop, 7);
     proto.SetValue<string>(title_prop, "proto title");
 
     Properties props(&registrator, &proto);
@@ -2642,15 +2642,15 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
     const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
-    doc.Emplace("$version", int64 {3});
+    doc.Emplace("$version", int64_t {3});
     doc.Emplace("_meta", string {"ignored"});
-    doc.Emplace("Counter", int64 {15});
+    doc.Emplace("Counter", int64_t {15});
     doc.Emplace("Title", string {"  south gate  "});
-    doc.Emplace("UnknownField", int64 {99});
+    doc.Emplace("UnknownField", int64_t {99});
 
     Properties props(&registrator);
     CHECK(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
-    CHECK(props.GetValue<int32>(counter_prop) == 15);
+    CHECK(props.GetValue<int32_t>(counter_prop) == 15);
     CHECK(props.GetValue<string>(title_prop) == "  south gate  ");
 }
 
@@ -2669,7 +2669,7 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 
     Properties props(&registrator);
     CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
-    CHECK(props.GetValue<int32>(counter_prop) == 0);
+    CHECK(props.GetValue<int32_t>(counter_prop) == 0);
     CHECK(props.GetValue<bool>(enabled_prop));
 }
 
@@ -2690,7 +2690,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 
     Properties props(&registrator);
     CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
-    CHECK(props.GetValue<int32>(counter_prop) == 0);
+    CHECK(props.GetValue<int32_t>(counter_prop) == 0);
     CHECK(props.GetValue<string>(title_prop).empty());
     CHECK(props.GetValue<bool>(enabled_prop));
 }
@@ -2707,7 +2707,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 
     AnyData::Document doc;
     doc.Emplace("HashValue", AnyData::Value {AnyData::Array {}});
-    doc.Emplace("ItemProto", AnyData::Value {int64 {7}});
+    doc.Emplace("ItemProto", AnyData::Value {int64_t {7}});
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
@@ -2734,7 +2734,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 
     Properties props(&registrator);
     CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
-    CHECK(props.GetValue<vector<int32>>(values_prop).empty());
+    CHECK(props.GetValue<vector<int32_t>>(values_prop).empty());
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
 }
@@ -2825,20 +2825,20 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 
     BENCHMARK("StoreData full cached public")
     {
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
         fixture.Full->StoreData(false, &raw_data, &raw_sizes);
         return raw_sizes->size();
     };
 
     BENCHMARK_ADVANCED("StoreData full after plain mutation")(Catch::Benchmark::Chronometer meter)
     {
-        uint32 counter = 0;
-        vector<const uint8*>* raw_data = nullptr;
-        vector<uint32>* raw_sizes = nullptr;
+        uint32_t counter = 0;
+        vector<const uint8_t*>* raw_data = nullptr;
+        vector<uint32_t>* raw_sizes = nullptr;
 
         meter.measure([&](int) {
-            fixture.Full->SetValue<int32>(fixture.PublicIntProps.front(), numeric_cast<int32>(++counter));
+            fixture.Full->SetValue<int32_t>(fixture.PublicIntProps.front(), numeric_cast<int32_t>(++counter));
             fixture.Full->StoreData(false, &raw_data, &raw_sizes);
             return (*raw_sizes)[0];
         });
@@ -2849,13 +2849,13 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         meter.measure([&](int) {
             Properties target(&fixture.Registrator, fixture.Proto.get());
             target.RestoreData(fixture.DerivedPublicChunks);
-            return target.GetValueFast<int32>(fixture.PublicIntProps.front());
+            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
     };
 
     BENCHMARK_ADVANCED("StoreAllData full snapshot")(Catch::Benchmark::Chronometer meter)
     {
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
@@ -2866,7 +2866,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("StoreAllData derived snapshot")(Catch::Benchmark::Chronometer meter)
     {
-        vector<uint8> all_data;
+        vector<uint8_t> all_data;
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
@@ -2880,7 +2880,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         meter.measure([&](int) {
             Properties target(&fixture.Registrator);
             target.RestoreAllData(fixture.FullAllData);
-            return target.GetValueFast<int32>(fixture.PublicIntProps.front());
+            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
     };
 
@@ -2889,7 +2889,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         meter.measure([&](int) {
             Properties target(&fixture.Registrator, fixture.Proto.get());
             target.RestoreAllData(fixture.DerivedAllData);
-            return target.GetValueFast<int32>(fixture.PublicIntProps.front());
+            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
     };
 
@@ -2898,7 +2898,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         meter.measure([&](int) {
             Properties target(&fixture.Registrator, fixture.Proto.get());
             target.CopyFrom(*fixture.Full);
-            return target.GetValueFast<int32>(fixture.PublicIntProps.front());
+            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
     };
 
@@ -2971,12 +2971,12 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK("Read simple int packed")
             {
-                return fixture.PackedSource->GetValueFast<int32>(fixture.ProbeIntProp);
+                return fixture.PackedSource->GetValueFast<int32_t>(fixture.ProbeIntProp);
             };
 
             BENCHMARK("Read simple int full")
             {
-                return fixture.FullSource->GetValueFast<int32>(fixture.ProbeIntProp);
+                return fixture.FullSource->GetValueFast<int32_t>(fixture.ProbeIntProp);
             };
 
             BENCHMARK("Read simple string packed")
@@ -2992,11 +2992,11 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("Modify simple int packed")(Catch::Benchmark::Chronometer meter)
             {
                 Properties target(&fixture.Registrator, fixture.Proto.get());
-                int32 counter = 0;
+                int32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<int32>(fixture.ProbeIntProp, numeric_cast<int32>(10000 + ++counter));
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    target.SetValue<int32_t>(fixture.ProbeIntProp, numeric_cast<int32_t>(10000 + ++counter));
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
@@ -3004,18 +3004,18 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             {
                 Properties target(&fixture.Registrator);
                 target.CopyFrom(*fixture.Proto);
-                int32 counter = 0;
+                int32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<int32>(fixture.ProbeIntProp, numeric_cast<int32>(10000 + ++counter));
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    target.SetValue<int32_t>(fixture.ProbeIntProp, numeric_cast<int32_t>(10000 + ++counter));
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
             BENCHMARK_ADVANCED("Modify simple string packed")(Catch::Benchmark::Chronometer meter)
             {
                 Properties target(&fixture.Registrator, fixture.Proto.get());
-                uint32 counter = 0;
+                uint32_t counter = 0;
 
                 meter.measure([&](int) {
                     target.SetValue<string>(fixture.ProbeStringProp, strex("packed-{}", ++counter).str());
@@ -3027,7 +3027,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             {
                 Properties target(&fixture.Registrator);
                 target.CopyFrom(*fixture.Proto);
-                uint32 counter = 0;
+                uint32_t counter = 0;
 
                 meter.measure([&](int) {
                     target.SetValue<string>(fixture.ProbeStringProp, strex("full-{}", ++counter).str());
@@ -3040,7 +3040,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator, fixture.Proto.get());
                     fixture.ApplyOverrides(target);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
@@ -3050,14 +3050,14 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                     Properties target(&fixture.Registrator);
                     target.CopyFrom(*fixture.Proto);
                     fixture.ApplyOverrides(target);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
             BENCHMARK_ADVANCED("StoreData packed public payload")(Catch::Benchmark::Chronometer meter)
             {
-                vector<const uint8*>* raw_data = nullptr;
-                vector<uint32>* raw_sizes = nullptr;
+                vector<const uint8_t*>* raw_data = nullptr;
+                vector<uint32_t>* raw_sizes = nullptr;
 
                 meter.measure([&](int) {
                     fixture.PackedSource->StoreData(false, &raw_data, &raw_sizes);
@@ -3067,8 +3067,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("StoreData full public payload")(Catch::Benchmark::Chronometer meter)
             {
-                vector<const uint8*>* raw_data = nullptr;
-                vector<uint32>* raw_sizes = nullptr;
+                vector<const uint8_t*>* raw_data = nullptr;
+                vector<uint32_t>* raw_sizes = nullptr;
 
                 meter.measure([&](int) {
                     fixture.FullSource->StoreData(false, &raw_data, &raw_sizes);
@@ -3081,7 +3081,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator, fixture.Proto.get());
                     target.RestoreData(fixture.PackedPublicChunks);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
@@ -3091,13 +3091,13 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                     Properties target(&fixture.Registrator);
                     target.CopyFrom(*fixture.Proto);
                     target.RestoreData(fixture.FullPublicChunks);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
             BENCHMARK_ADVANCED("StoreAllData packed snapshot")(Catch::Benchmark::Chronometer meter)
             {
-                vector<uint8> all_data;
+                vector<uint8_t> all_data;
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
@@ -3108,7 +3108,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("StoreAllData full snapshot")(Catch::Benchmark::Chronometer meter)
             {
-                vector<uint8> all_data;
+                vector<uint8_t> all_data;
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
@@ -3122,7 +3122,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator, fixture.Proto.get());
                     target.RestoreAllData(fixture.PackedAllData);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
 
@@ -3131,7 +3131,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator);
                     target.RestoreAllData(fixture.FullAllData);
-                    return target.GetValueFast<int32>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
                 });
             };
         }
@@ -3180,7 +3180,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Modify complex patrol packed via any props")(Catch::Benchmark::Chronometer meter)
     {
         Properties target(&fixture.Registrator, fixture.Proto.get());
-        uint32 counter = 0;
+        uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
@@ -3193,7 +3193,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     {
         Properties target(&fixture.Registrator);
         target.CopyFrom(*fixture.Proto);
-        uint32 counter = 0;
+        uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
@@ -3205,7 +3205,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Modify complex mode sets packed via any props")(Catch::Benchmark::Chronometer meter)
     {
         Properties target(&fixture.Registrator, fixture.Proto.get());
-        uint32 counter = 0;
+        uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;
@@ -3218,7 +3218,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     {
         Properties target(&fixture.Registrator);
         target.CopyFrom(*fixture.Proto);
-        uint32 counter = 0;
+        uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;

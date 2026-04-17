@@ -44,9 +44,9 @@ FO_SCRIPT_API string Server_Player_GetHost(Player* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Player_GetPort(Player* self)
+FO_SCRIPT_API int32_t Server_Player_GetPort(Player* self)
 {
-    return numeric_cast<int32>(self->GetConnection()->GetPort());
+    return numeric_cast<int32_t>(self->GetConnection()->GetPort());
 }
 
 ///@ ExportMethod

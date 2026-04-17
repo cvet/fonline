@@ -64,7 +64,7 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
 
     if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32>(1000.0f / numeric_cast<float32>(_settings->Animation3dFPS));
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
     }
 }
 
@@ -73,13 +73,13 @@ ParticleManager::~ParticleManager()
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ParticleManager::Random(int32 min_value, int32 max_value) -> int32
+auto ParticleManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(min_value <= max_value);
 
-    return std::uniform_int_distribution<int32> {min_value, max_value}(_randomGenerator);
+    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
 
 auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSystem>
@@ -145,11 +145,11 @@ bool ParticleSystem::IsActive() const
     return _impl->System->isActive();
 }
 
-auto ParticleSystem::GetElapsedTime() const -> float32
+auto ParticleSystem::GetElapsedTime() const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<float32>(_elapsedTime);
+    return numeric_cast<float32_t>(_elapsedTime);
 }
 
 auto ParticleSystem::GetBaseSystem() -> SPK::System*
@@ -170,8 +170,8 @@ auto ParticleSystem::GetDrawSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 max_draw_width = 0;
-    int32 max_draw_height = 0;
+    int32_t max_draw_width = 0;
+    int32_t max_draw_height = 0;
 
     for (size_t i = 0; i < _impl->System->getNbGroups(); i++) {
         auto&& group = _impl->System->getGroup(i);
@@ -205,7 +205,7 @@ auto ParticleSystem::NeedDraw() const -> bool
     return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold) && _impl->System->isActive();
 }
 
-void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32 look_dir_angle, const vec3& view_offset)
+void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -226,7 +226,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         vec3 result_pos_pos {};
         vec3 result_pos_scale {};
         vec3 skew {};
-        glm::vec<4, float32, glm::defaultp> perspective {};
+        glm::vec<4, float32_t, glm::defaultp> perspective {};
         quaternion rotation {};
         glm::decompose(view_offset_mat * world * pos_offset_mat, result_pos_scale, rotation, result_pos_pos, skew, perspective);
         result_pos_rot = glm::eulerAngles(rotation);
@@ -257,15 +257,15 @@ void ParticleSystem::Prewarm()
         return;
     }
 
-    const float32 max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
-    const float32 init_time = numeric_cast<float32>(_particleMngr->Random(0, iround<int32>(max_lifetime * 1000.0f))) / 1000.0f;
+    const float32_t max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
+    const float32_t init_time = numeric_cast<float32_t>(_particleMngr->Random(0, iround<int32_t>(max_lifetime * 1000.0f))) / 1000.0f;
 
-    for (float32 dt = 0.0f; dt < init_time;) {
+    for (float32_t dt = 0.0f; dt < init_time;) {
         _impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
         dt += PREWARM_STEP;
     }
 
-    _elapsedTime += numeric_cast<float64>(init_time);
+    _elapsedTime += numeric_cast<float64_t>(init_time);
 }
 
 void ParticleSystem::Respawn()
@@ -283,7 +283,7 @@ void ParticleSystem::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = (time - _lastDrawTime).to_ms<float32>() * 0.001f;
+    const auto dt = (time - _lastDrawTime).to_ms<float32_t>() * 0.001f;
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -292,7 +292,7 @@ void ParticleSystem::Draw()
         return;
     }
 
-    _elapsedTime += numeric_cast<float64>(dt);
+    _elapsedTime += numeric_cast<float64_t>(dt);
 
     if (dt > 0.0f) {
         _impl->System->updateParticles(dt);

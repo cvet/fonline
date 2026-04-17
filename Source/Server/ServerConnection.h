@@ -92,7 +92,7 @@ public:
     ~ServerConnection();
 
     [[nodiscard]] auto GetHost() const noexcept -> string_view;
-    [[nodiscard]] auto GetPort() const noexcept -> uint16;
+    [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
 
@@ -108,13 +108,13 @@ public:
     nanotime PingNextTime {};
     bool PingOk {true};
     nanotime LastActivityTime {};
-    int32 UpdateFileIndex {-1};
-    int32 UpdateFilePortion {};
+    int32_t UpdateFileIndex {-1};
+    int32_t UpdateFilePortion {};
 
 private:
     void StartAsyncSend();
-    auto AsyncSendData() -> const_span<uint8>;
-    void AsyncReceiveData(const_span<uint8> buf);
+    auto AsyncSendData() -> const_span<uint8_t>;
+    void AsyncReceiveData(const_span<uint8_t> buf);
 
     raw_ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
@@ -122,7 +122,7 @@ private:
     std::mutex _inBufLocker {};
     NetOutBuffer _outBuf;
     std::mutex _outBufLocker {};
-    vector<uint8> _sendBuf {};
+    vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
     bool _gracefulDisconnected {};
 };

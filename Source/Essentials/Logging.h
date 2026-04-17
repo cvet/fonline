@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 using LogFunc = function<void(string_view)>;
 
-enum class LogType : uint8
+enum class LogType : uint8_t
 {
     Info,
     InfoSection,

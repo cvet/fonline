@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-enum class HexBlockResult : int8
+enum class HexBlockResult : int8_t
 {
     Passable = 0, // Hex is passable for movement
     Blocked = -1, // Permanently blocked
@@ -53,16 +53,16 @@ struct FindPathInput
     mpos FromHex {};
     mpos ToHex {};
     msize MapSize {};
-    int32 MaxLength {}; // Maximum BFS depth (from engine Settings.MaxPathFindLength)
-    int32 Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
-    int32 Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
+    int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.MaxPathFindLength)
+    int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
+    int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
     bool FreeMovement {}; // Use LineTracer optimization for control steps
     function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
 };
 
 struct FindPathOutput
 {
-    enum class ResultType : int8
+    enum class ResultType : int8_t
     {
         Unknown = -1,
         Ok = 0,
@@ -77,7 +77,7 @@ struct FindPathOutput
 
     ResultType Result {ResultType::Unknown};
     vector<mdir> Steps {};
-    vector<uint16> ControlSteps {};
+    vector<uint16_t> ControlSteps {};
     mpos NewToHex {};
 };
 
@@ -85,8 +85,8 @@ struct TraceLineInput
 {
     mpos StartHex {};
     mpos TargetHex {};
-    int32 MaxDist {}; // 0 means use distance (start, target)
-    float32 Angle {};
+    int32_t MaxDist {}; // 0 means use distance (start, target)
+    float32_t Angle {};
     msize MapSize {};
     bool CheckLastMovable {};
     function<bool(mpos)> IsHexBlocked {}; // Return true if hex is blocked (stops trace)
@@ -107,7 +107,7 @@ namespace PathFinding
     // Check a single hex or multihex perimeter in a given BFS direction
     // For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
     // Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
-    [[nodiscard]] auto CheckHexWithMultihex(mpos hex, mdir dir, int32 multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
+    [[nodiscard]] auto CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
 
     // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;

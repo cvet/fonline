@@ -56,8 +56,8 @@ class ScriptArray final
 
 public:
     static auto Create(AngelScript::asITypeInfo* ti) -> ScriptArray*;
-    static auto Create(AngelScript::asITypeInfo* ti, int32 length) -> ScriptArray*;
-    static auto Create(AngelScript::asITypeInfo* ti, int32 length, void* def_val) -> ScriptArray*;
+    static auto Create(AngelScript::asITypeInfo* ti, int32_t length) -> ScriptArray*;
+    static auto Create(AngelScript::asITypeInfo* ti, int32_t length, void* def_val) -> ScriptArray*;
     static auto Create(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptArray*;
 
     ScriptArray(ScriptArray&&) noexcept = delete;
@@ -71,36 +71,36 @@ public:
 
     auto GetArrayObjectType() -> AngelScript::asITypeInfo*;
     auto GetArrayObjectType() const -> const AngelScript::asITypeInfo*;
-    auto GetArrayTypeId() const -> int32;
-    auto GetElementTypeId() const -> int32;
+    auto GetArrayTypeId() const -> int32_t;
+    auto GetElementTypeId() const -> int32_t;
 
-    auto GetSize() const -> int32 { return static_cast<int32>(_buffer.size() / _elementSize); }
-    auto GetCapacity() const -> int32 { return static_cast<int32>(_buffer.capacity() / _elementSize); }
+    auto GetSize() const -> int32_t { return static_cast<int32_t>(_buffer.size() / _elementSize); }
+    auto GetCapacity() const -> int32_t { return static_cast<int32_t>(_buffer.capacity() / _elementSize); }
     auto IsEmpty() const -> bool { return _buffer.empty(); }
-    void Reserve(int32 max_elements);
-    void Resize(int32 num_elements);
-    auto At(int32 index) const -> void*;
-    void SetValue(int32 index, void* value);
-    void InsertAt(int32 index, void* value);
-    void InsertAt(int32 index, const ScriptArray& other);
+    void Reserve(int32_t max_elements);
+    void Resize(int32_t num_elements);
+    auto At(int32_t index) const -> void*;
+    void SetValue(int32_t index, void* value);
+    void InsertAt(int32_t index, void* value);
+    void InsertAt(int32_t index, const ScriptArray& other);
     void InsertLast(void* value);
-    void RemoveAt(int32 index);
+    void RemoveAt(int32_t index);
     void RemoveLast();
-    void RemoveRange(int32 start, int32 num_elements);
+    void RemoveRange(int32_t start, int32_t num_elements);
     void SortAsc();
     void SortDesc();
-    void SortAsc(int32 start_at, int32 count);
-    void SortDesc(int32 start_at, int32 count);
-    void Sort(int32 start_at, int32 count, bool asc);
+    void SortAsc(int32_t start_at, int32_t count);
+    void SortDesc(int32_t start_at, int32_t count);
+    void Sort(int32_t start_at, int32_t count, bool asc);
     void Reverse();
-    auto Find(void* value) const -> int32;
-    auto Find(int32 start_at, void* value) const -> int32;
-    auto FindByRef(void* ref) const -> int32;
-    auto FindByRef(int32 start_at, void* ref) const -> int32;
+    auto Find(void* value) const -> int32_t;
+    auto Find(int32_t start_at, void* value) const -> int32_t;
+    auto FindByRef(void* ref) const -> int32_t;
+    auto FindByRef(int32_t start_at, void* ref) const -> int32_t;
     auto GetBuffer() -> void* { return cast_to_void(_buffer.data()); }
     auto GetBuffer() const -> void* { return cast_to_void(_buffer.data()); }
 
-    auto GetRefCount() const -> int32;
+    auto GetRefCount() const -> int32_t;
     void SetFlag() const;
     auto GetFlag() const -> bool;
     void EnumReferences(AngelScript::asIScriptEngine* engine);
@@ -108,32 +108,32 @@ public:
 
 private:
     explicit ScriptArray(AngelScript::asITypeInfo* ti, void* init_list);
-    explicit ScriptArray(int32 length, AngelScript::asITypeInfo* ti);
-    explicit ScriptArray(int32 length, void* def_val, AngelScript::asITypeInfo* ti);
+    explicit ScriptArray(int32_t length, AngelScript::asITypeInfo* ti);
+    explicit ScriptArray(int32_t length, void* def_val, AngelScript::asITypeInfo* ti);
     explicit ScriptArray(const ScriptArray& other);
     ~ScriptArray();
 
-    auto GetArrayItemPointer(int32 index) -> void*;
-    auto GetArrayItemPointer(int32 index) const -> void*;
+    auto GetArrayItemPointer(int32_t index) -> void*;
+    auto GetArrayItemPointer(int32_t index) const -> void*;
     auto GetDataPointer(void* buf) const -> void*;
     void Copy(void* dst, void* src) const;
     void PrecacheSubTypeData();
-    void CheckArraySize(int32 num_elements) const;
-    void Resize(int32 delta, int32 at);
-    void CreateBuffer(int32 num_elements);
+    void CheckArraySize(int32_t num_elements) const;
+    void Resize(int32_t delta, int32_t at);
+    void CreateBuffer(int32_t num_elements);
     void DeleteBuffer() noexcept;
     void CopyBuffer(const ScriptArray& src);
-    void Construct(int32 start, int32 end);
-    void Destruct(int32 start, int32 end);
+    void Construct(int32_t start, int32_t end);
+    void Destruct(int32_t start, int32_t end);
     auto Equals(void* a, void* b, AngelScript::asIScriptContext* ctx) const -> bool;
     auto Less(void* a, void* b, bool asc, AngelScript::asIScriptContext* ctx) const -> bool;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
-    int32 _subTypeId;
-    int32 _elementSize {};
+    int32_t _subTypeId;
+    int32_t _elementSize {};
     raw_ptr<ScriptArrayTypeData> _subTypeData {};
-    vector<uint8> _buffer {};
-    mutable int32 _refCount {1};
+    vector<uint8_t> _buffer {};
+    mutable int32_t _refCount {1};
     mutable bool _gcFlag {};
 };
 

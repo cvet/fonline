@@ -74,7 +74,7 @@ public:
 
 private:
     struct Impl;
-    auto Random(int32 min_value, int32 max_value) -> int32;
+    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
 
     unique_ptr<Impl> _impl;
     raw_ptr<RenderSettings> _settings;
@@ -84,7 +84,7 @@ private:
     raw_ptr<GameTimer> _gameTime;
     TextureLoader _textureLoader;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    int32 _animUpdateThreshold {};
+    int32_t _animUpdateThreshold {};
     mat44 _projMatColMaj {};
     mat44 _viewMatColMaj {};
 };
@@ -95,7 +95,7 @@ class ParticleSystem final
     friend class SafeAlloc;
 
 public:
-    static constexpr float32 PREWARM_STEP = 0.5f;
+    static constexpr float32_t PREWARM_STEP = 0.5f;
 
     ParticleSystem(const ParticleSystem&) = delete;
     ParticleSystem(ParticleSystem&&) noexcept = default;
@@ -104,13 +104,13 @@ public:
     ~ParticleSystem();
 
     [[nodiscard]] auto IsActive() const -> bool;
-    [[nodiscard]] auto GetElapsedTime() const -> float32;
+    [[nodiscard]] auto GetElapsedTime() const -> float32_t;
     [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32 look_dir_angle, const vec3& view_offset);
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset);
     void Prewarm();
     void Respawn();
     void Draw();
@@ -126,7 +126,7 @@ private:
     raw_ptr<ParticleManager> _particleMngr;
     mat44 _projMat {};
     vec3 _viewOffset {};
-    float64 _elapsedTime {};
+    float64_t _elapsedTime {};
     bool _forceDraw {};
     nanotime _lastDrawTime {};
 };

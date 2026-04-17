@@ -48,8 +48,8 @@ struct ServerServiceAppData
 {
     refcount_ptr<ServerEngine> Server {};
     std::thread ServerThread {};
-    uint32 LastState {};
-    uint32 CheckPoint {};
+    uint32_t LastState {};
+    uint32_t CheckPoint {};
 #if FO_WINDOWS
     SERVICE_STATUS_HANDLE FOServiceStatusHandle {};
 #endif
@@ -59,7 +59,7 @@ FO_GLOBAL_DATA(ServerServiceAppData, Data);
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv);
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode);
-static void SetFOServiceStatus(uint32 state);
+static void SetFOServiceStatus(uint32_t state);
 #endif
 
 static void ServerEntry()
@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
             // Change executable path, if changed
             if (service != nullptr) {
                 // ReSharper disable once CppLocalVariableMayBeConst
-                alignas(QUERY_SERVICE_CONFIGW) uint8 service_cfg_buf[8192] = {};
+                alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
                 DWORD dw = 0;
@@ -212,7 +212,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             args[i] = args_holder.back().data();
         }
 
-        InitApp(numeric_cast<int32>(argc), args.data(), AppInitFlags::PrebakeResources);
+        InitApp(numeric_cast<int32_t>(argc), args.data(), AppInitFlags::PrebakeResources);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
 
@@ -269,7 +269,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
     }
 }
 
-static void SetFOServiceStatus(uint32 state)
+static void SetFOServiceStatus(uint32_t state)
 {
     if (state == 0) {
         state = Data->LastState;

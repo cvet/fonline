@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    auto MakeInput(mpos chosen_hex, nanotime frame_time, int32 transition_duration = 0) -> FogOfWar::Input
+    auto MakeInput(mpos chosen_hex, nanotime frame_time, int32_t transition_duration = 0) -> FogOfWar::Input
     {
         FogOfWar::Input input;
         input.FogExtraLength = 0;
@@ -52,7 +52,7 @@ namespace
         input.FogOrigin.Valid = true;
         input.FogOrigin.BaseHex = chosen_hex;
         input.FogOrigin.LookDistance = 1;
-        input.TraceBulletToBlock = [](mpos, mpos target_hex, int32, bool) { return target_hex; };
+        input.TraceBulletToBlock = [](mpos, mpos target_hex, int32_t, bool) { return target_hex; };
         return input;
     }
 }
@@ -207,7 +207,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 1;
-        input.TraceBulletToBlock = [](mpos start, mpos, int32, bool) { return start; };
+        input.TraceBulletToBlock = [](mpos start, mpos, int32_t, bool) { return start; };
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
@@ -224,7 +224,7 @@ TEST_CASE("FogOfWar")
         auto input = MakeInput({10, 10}, nanotime {});
         input.FogOrigin.LookDistance = 6;
         input.Distance = 6;
-        input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32, bool) {
+        input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32_t, bool) {
             constexpr auto block_dist = 3;
 
             if (GeometryHelper::GetDistance(start, target) <= block_dist) {
@@ -243,7 +243,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8>(3 * 255 / 7));
+        CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8_t>(3 * 255 / 7));
     }
 }
 

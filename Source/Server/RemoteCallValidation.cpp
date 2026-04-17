@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 
-void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8> data, const EngineMetadata& meta)
+void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -66,51 +66,51 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
     }
     else if (type.Kind == ComplexTypeKind::Array) {
-        const int32 arr_size = reader.Read<int32>();
+        const int32_t arr_size = reader.Read<int32_t>();
 
         if (arr_size < 0) {
             throw RemoteCallValidationException("Negative array size", type.BaseType.Name, arr_size);
         }
 
-        for (int32 i = 0; i < arr_size; i++) {
+        for (int32_t i = 0; i < arr_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
         }
     }
     else if (type.Kind == ComplexTypeKind::Dict) {
-        const int32 dict_size = reader.Read<int32>();
+        const int32_t dict_size = reader.Read<int32_t>();
 
         if (dict_size < 0) {
             throw RemoteCallValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
 
-        for (int32 i = 0; i < dict_size; i++) {
+        for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
             ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
         }
     }
     else if (type.Kind == ComplexTypeKind::DictOfArray) {
-        const int32 dict_size = reader.Read<int32>();
+        const int32_t dict_size = reader.Read<int32_t>();
 
         if (dict_size < 0) {
             throw RemoteCallValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
 
-        for (int32 i = 0; i < dict_size; i++) {
+        for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
 
-            const int32 arr_size = reader.Read<int32>();
+            const int32_t arr_size = reader.Read<int32_t>();
 
             if (arr_size < 0) {
                 throw RemoteCallValidationException("Negative array size", type.BaseType.Name, arr_size);
             }
 
-            for (int32 j = 0; j < arr_size; j++) {
+            for (int32_t j = 0; j < arr_size; j++) {
                 ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
             }
         }
     }
     else {
-        const int32 type_kind = static_cast<int32>(type.Kind);
+        const int32_t type_kind = static_cast<int32_t>(type.Kind);
         throw RemoteCallValidationException("Unsupported remote call container type", type_kind);
     }
 }
@@ -120,25 +120,25 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     FO_STACK_TRACE_ENTRY();
 
     if (type.IsBool) {
-        const uint8 value = reader.Read<uint8>();
+        const uint8_t value = reader.Read<uint8_t>();
 
         if (value > 1) {
             throw RemoteCallValidationException("Invalid bool value", type.Name, value);
         }
     }
     else if (type.IsInt) {
-        reader.ReadPtr<uint8>(type.Size);
+        reader.ReadPtr<uint8_t>(type.Size);
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            const float32 value = reader.Read<float32>();
+            const float32_t value = reader.Read<float32_t>();
 
             if (!std::isfinite(value)) {
                 throw RemoteCallValidationException("Invalid float32 value", type.Name, value);
             }
         }
         else if (type.IsDoubleFloat) {
-            const float64 value = reader.Read<float64>();
+            const float64_t value = reader.Read<float64_t>();
 
             if (!std::isfinite(value)) {
                 throw RemoteCallValidationException("Invalid float64 value", type.Name, value);
@@ -149,7 +149,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsEnum) {
-        const int32 value = reader.Read<int32>();
+        const int32_t value = reader.Read<int32_t>();
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
         ignore_unused(hstr);
@@ -159,7 +159,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsString) {
-        const int32 str_len = reader.Read<int32>();
+        const int32_t str_len = reader.Read<int32_t>();
 
         if (str_len < 0) {
             throw RemoteCallValidationException("Negative string length", type.Name, str_len);

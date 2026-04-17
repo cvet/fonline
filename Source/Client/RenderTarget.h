@@ -50,7 +50,7 @@ class RenderTarget
     friend class RenderTargetManager;
 
 public:
-    enum class SizeKindType : uint8
+    enum class SizeKindType : uint8_t
     {
         Custom,
         Screen,

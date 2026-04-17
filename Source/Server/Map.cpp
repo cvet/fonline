@@ -74,7 +74,7 @@ void Map::SetLocation(Location* loc) noexcept
     _mapLocation = loc;
 }
 
-auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>
+auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool skip_unsafe) const -> optional<mpos>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -86,8 +86,8 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
     }
 
     const auto hexes_around = GeometryHelper::HexesInRadius(seek_radius);
-    int32 pos = GetEngine()->Random(1, hexes_around);
-    int32 iterations = 0;
+    int32_t pos = GetEngine()->Random(1, hexes_around);
+    int32_t iterations = 0;
 
     while (true) {
         if (++iterations > hexes_around) {
@@ -202,7 +202,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
         const auto hex = cr->GetHex();
         const auto hexes_around = GeometryHelper::HexesInRadius(multihex);
 
-        for (int32 i = 1; i < hexes_around; i++) {
+        for (int32_t i = 1; i < hexes_around; i++) {
             if (auto hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
                 auto& field = _hexField->GetCellForWriting(hex_around);
 
@@ -409,13 +409,13 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
     return !field.ShootBlocked && !static_field.ShootBlocked;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
+auto Map::IsHexesMovable(mpos hex, int32_t radius) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto hexes_around = GeometryHelper::HexesInRadius(radius);
 
-    for (int32 i = 0; i < hexes_around; i++) {
+    for (int32_t i = 0; i < hexes_around; i++) {
         if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
             if (!IsHexMovable(check_hex)) {
                 return false;
@@ -527,7 +527,7 @@ auto Map::GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>
     return field2.Items;
 }
 
-auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
+auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -536,7 +536,7 @@ auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
     vector<raw_ptr<Item>> items;
     items.reserve(numeric_cast<size_t>(hexes_around) * 2);
 
-    for (int32 i = 0; i < hexes_around; i++) {
+    for (int32_t i = 0; i < hexes_around; i++) {
         if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
             const auto& field = _hexField->GetCellForReading(hex_around);
 
@@ -747,7 +747,7 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<
     return critters;
 }
 
-auto Map::GetCrittersInRadius(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>
+auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<Critter*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -830,7 +830,7 @@ auto Map::GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>
     return _staticMap->HexField->GetCellForWriting(hex).StaticItems;
 }
 
-auto Map::GetStaticItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>
+auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<StaticItem*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -950,13 +950,13 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 }
 
-auto Map::CheckGagItems(mpos hex, int32 radius, const function<bool(const Item*)>& gag_callback) const -> bool
+auto Map::CheckGagItems(mpos hex, int32_t radius, const function<bool(const Item*)>& gag_callback) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto hexes_around = GeometryHelper::HexesInRadius(radius);
 
-    for (int32 i = 0; i < hexes_around; i++) {
+    for (int32_t i = 0; i < hexes_around; i++) {
         if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
             if (IsHexMovable(check_hex)) {
                 continue;

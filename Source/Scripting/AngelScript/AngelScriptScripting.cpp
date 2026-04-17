@@ -62,7 +62,7 @@ struct AngelScriptAllocator
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        constexpr SafeAllocator<uint8> allocator;
+        constexpr SafeAllocator<uint8_t> allocator;
         return allocator.allocate(size);
     }
 
@@ -70,8 +70,8 @@ struct AngelScriptAllocator
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        constexpr SafeAllocator<uint8> allocator;
-        allocator.deallocate(static_cast<uint8*>(ptr), 0);
+        constexpr SafeAllocator<uint8_t> allocator;
+        allocator.deallocate(static_cast<uint8_t*>(ptr), 0);
     }
 };
 
@@ -107,7 +107,7 @@ void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources)
     pas_backend->BindRequiredStuff();
 }
 
-auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8>
+auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 

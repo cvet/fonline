@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32>>& funcs, ScriptFunc<void> func, int32 priority)
+static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32_t>>& funcs, ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -47,7 +47,7 @@ static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32>>& funcs, ScriptFu
     std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
-static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32>>& funcs, string_view error)
+static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, string_view error)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -63,16 +63,16 @@ void ScriptSystem::MapScriptTypes(EngineMetadata* meta)
     FO_STACK_TRACE_ENTRY();
 
     MapEngineType<bool>(meta->GetBaseType("bool"));
-    MapEngineType<int8>(meta->GetBaseType("int8"));
-    MapEngineType<int16>(meta->GetBaseType("int16"));
-    MapEngineType<int32>(meta->GetBaseType("int32"));
-    MapEngineType<int64>(meta->GetBaseType("int64"));
-    MapEngineType<uint8>(meta->GetBaseType("uint8"));
-    MapEngineType<uint16>(meta->GetBaseType("uint16"));
-    MapEngineType<uint32>(meta->GetBaseType("uint32"));
-    MapEngineType<uint64>(meta->GetBaseType("uint64"));
-    MapEngineType<float32>(meta->GetBaseType("float32"));
-    MapEngineType<float64>(meta->GetBaseType("float64"));
+    MapEngineType<int8_t>(meta->GetBaseType("int8"));
+    MapEngineType<int16_t>(meta->GetBaseType("int16"));
+    MapEngineType<int32_t>(meta->GetBaseType("int32"));
+    MapEngineType<int64_t>(meta->GetBaseType("int64"));
+    MapEngineType<uint8_t>(meta->GetBaseType("uint8"));
+    MapEngineType<uint16_t>(meta->GetBaseType("uint16"));
+    MapEngineType<uint32_t>(meta->GetBaseType("uint32"));
+    MapEngineType<uint64_t>(meta->GetBaseType("uint64"));
+    MapEngineType<float32_t>(meta->GetBaseType("float32"));
+    MapEngineType<float64_t>(meta->GetBaseType("float64"));
     MapEngineType<ident_t>(meta->GetBaseType("ident"));
     MapEngineType<timespan>(meta->GetBaseType("timespan"));
     MapEngineType<nanotime>(meta->GetBaseType("nanotime"));
@@ -101,10 +101,10 @@ void ScriptSystem::MapScriptTypes(EngineMetadata* meta)
     MapEngineType<LocationProperty>(meta->GetBaseType("LocationProperty"));
     MapEngineType<Entity>(meta->GetBaseType("Entity"));
 
-    MapEngineDictType<int32, int32>(meta->GetBaseType("int32"), meta->GetBaseType("int32"));
+    MapEngineDictType<int32_t, int32_t>(meta->GetBaseType("int32"), meta->GetBaseType("int32"));
     MapEngineDictType<string, string>(meta->GetBaseType("string"), meta->GetBaseType("string"));
-    MapEngineDictType<ItemProperty, int32>(meta->GetBaseType("ItemProperty"), meta->GetBaseType("int32"));
-    MapEngineDictType<CritterProperty, int32>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<ItemProperty, int32_t>(meta->GetBaseType("ItemProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<CritterProperty, int32_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("int32"));
     MapEngineDictType<CritterProperty, any_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("any"));
     MapEngineDictType<LocationProperty, any_t>(meta->GetBaseType("LocationProperty"), meta->GetBaseType("any"));
 }
@@ -129,7 +129,7 @@ void ScriptSystem::ShutdownBackends()
     _backends.clear();
 }
 
-void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
+void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -210,7 +210,7 @@ void ScriptSystem::ProcessScriptEvents()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 

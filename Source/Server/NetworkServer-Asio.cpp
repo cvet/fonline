@@ -65,7 +65,7 @@ private:
 
     unique_ptr<asio::ip::tcp::socket> _socket;
     std::atomic_bool _writePending {};
-    std::vector<uint8> _inBufData {};
+    std::vector<uint8_t> _inBufData {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -225,7 +225,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();

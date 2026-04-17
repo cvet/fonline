@@ -48,7 +48,7 @@ FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
-static std::unique_ptr<std::unique_ptr<uint8[]>[]> BackupMemoryChunks;
+static std::unique_ptr<std::unique_ptr<uint8_t[]>[]> BackupMemoryChunks;
 static std::atomic_size_t BackupMemoryChunksCount;
 
 // Replace memory allocator
@@ -369,10 +369,10 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    BackupMemoryChunks = std::make_unique<std::unique_ptr<uint8[]>[]>(BACKUP_MEMORY_CHUNKS);
+    BackupMemoryChunks = std::make_unique<std::unique_ptr<uint8_t[]>[]>(BACKUP_MEMORY_CHUNKS);
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        BackupMemoryChunks[i] = std::make_unique<uint8[]>(BACKUP_MEMORY_CHUNK_SIZE);
+        BackupMemoryChunks[i] = std::make_unique<uint8_t[]>(BACKUP_MEMORY_CHUNK_SIZE);
     }
 
     BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
@@ -418,10 +418,10 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
     WriteBaseLog(type_str);
     WriteBaseLog("\n");
     WriteBaseLog("Count: ");
-    WriteBaseLog(ItoA(static_cast<int64>(count), itoa_buf, 10));
+    WriteBaseLog(ItoA(static_cast<int64_t>(count), itoa_buf, 10));
     WriteBaseLog("\n");
     WriteBaseLog("Size: ");
-    WriteBaseLog(ItoA(static_cast<int64>(size), itoa_buf, 10));
+    WriteBaseLog(ItoA(static_cast<int64_t>(size), itoa_buf, 10));
     WriteBaseLog("\n\n");
     SafeWriteStackTrace(GetStackTrace());
 
