@@ -132,7 +132,7 @@ macro(SetDefaultVariables defaultValue)
 endmacro()
 
 macro(SetOptionValues)
-	set(optionArgs ${ARGN})
+	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
 	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
 
@@ -143,13 +143,13 @@ macro(SetOptionValues)
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
 		if(NOT DEFINED ${optionName} OR "${${optionName}}" STREQUAL "")
-			set(${optionName} ${optionValue})
+			set(${optionName} "${optionValue}")
 		endif()
 	endwhile()
 endmacro()
 
 macro(SetStringCacheValues)
-	set(optionArgs ${ARGN})
+	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
 	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
 
@@ -164,7 +164,7 @@ macro(SetStringCacheValues)
 endmacro()
 
 macro(SetBoolCacheValues)
-	set(optionArgs ${ARGN})
+	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
 	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
 
@@ -247,24 +247,10 @@ macro(AddEngineSources)
 	endwhile()
 endmacro()
 
-macro(AddPackageEntries package)
-	set(packageArgs ${ARGN})
-	ListLength(packageArgs packageArgsCount)
-	MathExpr(packageArgsRemainder "${packageArgsCount} % 4")
 
-	if(NOT packageArgsRemainder EQUAL 0)
-		AbortMessage("AddPackageEntries expects groups of 4 arguments")
-	endif()
-
-	while(packageArgs)
-		ListPopFront(packageArgs binary platform arch packType)
-		AddToPackage(${package} ${binary} ${platform} ${arch} ${packType})
-	endwhile()
-endmacro()
-
-macro(CreatePackage package config)
+macro(CreatePackage package)
 	AppendList(FO_PACKAGES ${package})
-	set(Package_${package}_Config ${config})
+	set(Package_${package}_Config "")
 	set(Package_${package}_Parts "")
 endmacro()
 
@@ -272,9 +258,48 @@ macro(AddToPackage package binary platform arch packType)
 	AppendList(Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}")
 endmacro()
 
-macro(DefinePackage package config)
-	CreatePackage(${package} ${config})
-	AddPackageEntries(${package} ${ARGN})
+macro(AddPackageOption package optionName optionValue)
+	set(Package_${package}_Option_${optionName} "${optionValue}")
+endmacro()
+
+macro(DefinePackage package)
+	CreatePackage(${package})
+	set(packageArgs "${ARGN}")
+
+	while(packageArgs)
+		ListPopFront(packageArgs packageKeyword)
+
+		if(packageKeyword STREQUAL "CONFIG")
+			if(NOT packageArgs)
+				AbortMessage("DefinePackage ${package} CONFIG expects a value")
+			endif()
+
+			ListPopFront(packageArgs packageConfig)
+			set(Package_${package}_Config "${packageConfig}")
+		elseif(packageKeyword STREQUAL "BINARY")
+			ListLength(packageArgs packageArgsCount)
+			if(packageArgsCount LESS 4)
+				AbortMessage("DefinePackage ${package} BINARY expects target, platform, arch, and pack type")
+			endif()
+
+			ListPopFront(packageArgs binary platform arch packType)
+			AddToPackage(${package} ${binary} ${platform} ${arch} ${packType})
+		elseif(packageKeyword STREQUAL "OPTION")
+			ListLength(packageArgs packageArgsCount)
+			if(packageArgsCount LESS 2)
+				AbortMessage("DefinePackage ${package} OPTION expects name and value")
+			endif()
+
+			ListPopFront(packageArgs optionName optionValue)
+			AddPackageOption(${package} ${optionName} "${optionValue}")
+		else()
+			AbortMessage("DefinePackage ${package} got unexpected keyword: ${packageKeyword}")
+		endif()
+	endwhile()
+
+	if("${Package_${package}_Config}" STREQUAL "")
+		AbortMessage("DefinePackage ${package} requires CONFIG")
+	endif()
 endmacro()
 
 macro(EnableCoreLibraryIfAny outputVar)
@@ -294,9 +319,14 @@ macro(AddNativeOptimizationFlags)
 endmacro()
 
 macro(SetBinaryOutputPath outputVar targetName)
+	set(_fo_binary_output_postfix "")
+	if(NOT "${FO_BINARY_OUTPUT_POSTFIX}" STREQUAL "")
+		set(_fo_binary_output_postfix "-${FO_BINARY_OUTPUT_POSTFIX}")
+	endif()
+
 	set(
 		${outputVar}
-		"${FO_OUTPUT_PATH}/Binaries/${targetName}-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>")
+		"${FO_OUTPUT_PATH}/Binaries/${targetName}-${FO_BUILD_PLATFORM}$<${expr_PrefixConfig}:-$<CONFIG>>${_fo_binary_output_postfix}")
 endmacro()
 
 macro(WriteBuildHash target)

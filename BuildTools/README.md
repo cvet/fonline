@@ -16,6 +16,8 @@ The validation project scaffold continues to live under `Engine/BuildTools/valid
 Build scripts (sh/bat) can be called both from current directory (e.g. `./linux.sh`) or repository root (e.g. `BuildTools/linux.sh`).  
 Following environment variables may be set before starting build scripts:
 
+BuildTools consumes only project-specific overrides with the `FO_` prefix. Any declared `FO_*` CMake option can be overridden from an environment variable with the same name. Standard tool variables such as `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `ANDROID_NDK_ROOT` are reserved for spawned external tools and are not read as BuildTools inputs.
+
 #### FO_ENGINE_ROOT
 
 Path to root directory of FOnline repository.  
@@ -31,6 +33,10 @@ Default behaviour is build in current directory plus `Workspace`.
 
 *Default: `$PWD/Workspace`*  
 *Example: `export FO_ENGINE_ROOT=/mnt/d/fonline-workspace`*
+
+#### FO_ANDROID_HOME / FO_ANDROID_SDK_ROOT / FO_ANDROID_NDK_ROOT
+
+Optional explicit Android SDK and NDK overrides for BuildTools. If not set, BuildTools uses prepared workspace locations and then the system `/usr/lib/android-sdk` fallback on Linux when available.
 
 ## Shared workspace preparation
 
