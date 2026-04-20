@@ -13,9 +13,9 @@ DeclareRequiredValueOptions(
 
 DeclareValueOptions(
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
-	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000)
-
-DeclareValueOption(FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
+	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
+	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
@@ -526,6 +526,11 @@ endif()
 
 # Output path
 StatusMessage("Output path: ${FO_OUTPUT_PATH}")
+
+if(NOT "${FO_BINARY_OUTPUT_POSTFIX}" STREQUAL "")
+	StatusMessage("Binary output postfix: ${FO_BINARY_OUTPUT_POSTFIX}")
+endif()
+
 SetBinaryOutputPath(FO_CLIENT_OUTPUT Client)
 SetBinaryOutputPath(FO_SERVER_OUTPUT Server)
 SetBinaryOutputPath(FO_EDITOR_OUTPUT Editor)

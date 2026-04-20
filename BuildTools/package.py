@@ -39,6 +39,7 @@ ANDROID_ABI_BY_ARCH = {
 	'x86': 'x86',
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
+RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,6 +66,7 @@ def parse_args() -> argparse.Namespace:
 	# Web: Raw Zip
 	parser.add_argument('-config', dest='config', required=True, help='config name')
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
+	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
 	return parser.parse_args()
@@ -207,6 +209,8 @@ class Packager:
 			entry += '-Profiling_OnDemand'
 		if self.has_pack('Debug'):
 			entry += '-Debug'
+		if self.args.binary_output_postfix:
+			entry += '-' + self.args.binary_output_postfix
 		return entry
 
 	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
@@ -223,10 +227,25 @@ class Packager:
 		else:
 			log('PDB file NOT included')
 
+	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str) -> None:
+		primary_file_name = primary_name + primary_ext
+		for entry_name in sorted(os.listdir(bin_path)):
+			entry_path = os.path.join(bin_path, entry_name)
+			if not os.path.isfile(entry_path):
+				continue
+			if entry_name == primary_file_name:
+				continue
+			if os.path.splitext(entry_name)[1].lower() not in RUNTIME_COMPANION_EXTENSIONS:
+				continue
+
+			log('Runtime companion included', entry_name)
+			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
+
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
 		self.patch_packaged_binary(output_file_path, additional_config_data)
+		self.copy_runtime_companions(bin_path, input_name, output_ext)
 		return output_file_path
 
 	def select_platform_packager(self) -> Callable[[], None]:
@@ -521,7 +540,7 @@ class Packager:
 		if self.has_pack('WebServer'):
 			shutil.copy(os.path.join(self.build_tools_path, 'web', 'simple-web-server.py'), os.path.join(self.target_output_path, 'web-server.py'))
 
-		emsdk_root = buildtools.resolve_env().get('EMSDK', '')
+		emsdk_root = buildtools.resolve_env().get('FO_EMSDK', '')
 		assert emsdk_root, 'Workspace EMSDK is not prepared'
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
@@ -689,8 +708,8 @@ class Packager:
 		self.patch_android_icon()
 
 		android_env = buildtools.resolve_env()
-		android_home = android_env.get('ANDROID_HOME', '') or android_env.get('ANDROID_SDK_ROOT', '')
-		android_ndk_root = android_env.get('ANDROID_NDK_ROOT', '')
+		android_home = android_env.get('FO_ANDROID_HOME', '') or android_env.get('FO_ANDROID_SDK_ROOT', '')
+		android_ndk_root = android_env.get('FO_ANDROID_NDK_ROOT', '')
 
 		if android_home:
 			local_properties_path = os.path.join(self.target_output_path, 'local.properties')

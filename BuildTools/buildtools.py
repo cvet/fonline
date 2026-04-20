@@ -275,7 +275,7 @@ def resolve_android_sdk_host_tag() -> str:
 
 
 def resolve_emscripten_toolchain(env: Mapping[str, str]) -> Path:
-	return Path(env['EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
+	return Path(env['FO_EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
 
 
 def resolve_apple_cmake() -> str:
@@ -346,6 +346,7 @@ def resolve_env() -> EnvMap:
 	engine_root = Path(os.environ.get('FO_ENGINE_ROOT') or (script_dir / '..')).resolve()
 	workspace = Path(os.environ.get('FO_WORKSPACE') or (Path.cwd() / 'Workspace')).resolve()
 	output = Path(os.environ.get('FO_OUTPUT') or (workspace / 'output')).resolve()
+	binary_output_postfix = os.environ.get('FO_BINARY_OUTPUT_POSTFIX', '')
 	third_party = engine_root / 'ThirdParty'
 
 	env: EnvMap = {
@@ -353,29 +354,30 @@ def resolve_env() -> EnvMap:
 		'FO_ENGINE_ROOT': str(engine_root),
 		'FO_WORKSPACE': str(workspace),
 		'FO_OUTPUT': str(output),
-		'EMSDK': resolve_workspace_emsdk_root(workspace),
-		'EMSCRIPTEN_VERSION': read_first_line(third_party / 'emscripten'),
-		'ANDROID_NDK_VERSION': read_first_line(third_party / 'android-ndk'),
-		'ANDROID_SDK_VERSION': read_first_line(third_party / 'android-sdk'),
-		'ANDROID_NATIVE_API_LEVEL_NUMBER': read_first_line(third_party / 'android-api'),
+		'FO_BINARY_OUTPUT_POSTFIX': binary_output_postfix,
+		'FO_EMSDK': resolve_workspace_emsdk_root(workspace),
+		'FO_EMSCRIPTEN_VERSION': read_first_line(third_party / 'emscripten'),
+		'FO_ANDROID_NDK_VERSION': read_first_line(third_party / 'android-ndk'),
+		'FO_ANDROID_SDK_VERSION': read_first_line(third_party / 'android-sdk'),
+		'FO_ANDROID_NATIVE_API_LEVEL_NUMBER': read_first_line(third_party / 'android-api'),
 		'FO_DOTNET_RUNTIME': read_first_line(third_party / 'dotnet-runtime'),
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
 	}
 
 	workspace_android_sdk = resolve_workspace_android_sdk_root(workspace)
 	if workspace_android_sdk:
-		env['ANDROID_HOME'] = workspace_android_sdk
-		env['ANDROID_SDK_ROOT'] = workspace_android_sdk
-	elif 'ANDROID_HOME' not in os.environ and Path('/usr/lib/android-sdk').is_dir():
-		env['ANDROID_HOME'] = '/usr/lib/android-sdk'
-		env['ANDROID_SDK_ROOT'] = '/usr/lib/android-sdk'
+		env['FO_ANDROID_HOME'] = workspace_android_sdk
+		env['FO_ANDROID_SDK_ROOT'] = workspace_android_sdk
+	elif 'FO_ANDROID_HOME' not in os.environ and 'FO_ANDROID_SDK_ROOT' not in os.environ and Path('/usr/lib/android-sdk').is_dir():
+		env['FO_ANDROID_HOME'] = '/usr/lib/android-sdk'
+		env['FO_ANDROID_SDK_ROOT'] = '/usr/lib/android-sdk'
 	else:
-		env['ANDROID_HOME'] = os.environ.get('ANDROID_HOME', '')
-		env['ANDROID_SDK_ROOT'] = os.environ.get('ANDROID_SDK_ROOT', '')
+		env['FO_ANDROID_HOME'] = os.environ.get('FO_ANDROID_HOME', '')
+		env['FO_ANDROID_SDK_ROOT'] = os.environ.get('FO_ANDROID_SDK_ROOT', '')
 
 	ndk_root = workspace / 'android-ndk'
 	dotnet_runtime_root = workspace / 'dotnet' / 'runtime'
-	env['ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('ANDROID_NDK_ROOT', '')
+	env['FO_ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('FO_ANDROID_NDK_ROOT', '')
 	env['FO_DOTNET_RUNTIME_ROOT'] = os.environ.get('FO_DOTNET_RUNTIME_ROOT') or (str(dotnet_runtime_root) if dotnet_runtime_root.is_dir() else '')
 	return env
 
@@ -400,14 +402,15 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_ENGINE_ROOT',
 		'FO_WORKSPACE',
 		'FO_OUTPUT',
-		'EMSDK',
-		'EMSCRIPTEN_VERSION',
-		'ANDROID_HOME',
-		'ANDROID_SDK_ROOT',
-		'ANDROID_NDK_VERSION',
-		'ANDROID_SDK_VERSION',
-		'ANDROID_NATIVE_API_LEVEL_NUMBER',
-		'ANDROID_NDK_ROOT',
+		'FO_BINARY_OUTPUT_POSTFIX',
+		'FO_EMSDK',
+		'FO_EMSCRIPTEN_VERSION',
+		'FO_ANDROID_HOME',
+		'FO_ANDROID_SDK_ROOT',
+		'FO_ANDROID_NDK_VERSION',
+		'FO_ANDROID_SDK_VERSION',
+		'FO_ANDROID_NATIVE_API_LEVEL_NUMBER',
+		'FO_ANDROID_NDK_ROOT',
 		'FO_DOTNET_RUNTIME',
 		'FO_DOTNET_RUNTIME_ROOT',
 		'FO_IOS_SDK',
@@ -703,23 +706,23 @@ def build_toolset_version() -> str:
 
 
 def build_emscripten_version(env: Mapping[str, str]) -> str:
-	version = env.get('EMSCRIPTEN_VERSION', '')
+	version = env.get('FO_EMSCRIPTEN_VERSION', '')
 	if not version:
-		raise SystemExit('EMSCRIPTEN_VERSION is not configured')
+		raise SystemExit('FO_EMSCRIPTEN_VERSION is not configured')
 	return version
 
 
 def build_android_ndk_version(env: Mapping[str, str]) -> str:
-	version = env.get('ANDROID_NDK_VERSION', '')
+	version = env.get('FO_ANDROID_NDK_VERSION', '')
 	if not version:
-		raise SystemExit('ANDROID_NDK_VERSION is not configured')
+		raise SystemExit('FO_ANDROID_NDK_VERSION is not configured')
 	return version
 
 
 def build_android_sdk_version(env: Mapping[str, str]) -> str:
-	version = env.get('ANDROID_SDK_VERSION', '')
+	version = env.get('FO_ANDROID_SDK_VERSION', '')
 	if not version:
-		raise SystemExit('ANDROID_SDK_VERSION is not configured')
+		raise SystemExit('FO_ANDROID_SDK_VERSION is not configured')
 	return version
 
 
@@ -822,12 +825,20 @@ def reset_build_dir(build_dir: Path) -> None:
 	ensure_dir(build_dir)
 
 
-def make_toolset_cmake_args(output_path: str, config_name: str | None = None) -> list[str]:
-	return [f'-DFO_OUTPUT_PATH={to_cmake_path(output_path)}', *build_flag_args('toolset', config=config_name)]
+def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '') -> list[str]:
+	args = [f'-DFO_OUTPUT_PATH={to_cmake_path(output_path)}']
+	if binary_output_postfix:
+		args.append(f'-DFO_BINARY_OUTPUT_POSTFIX={binary_output_postfix}')
+	return args
+
+
+def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
+	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *build_flag_args('toolset', config=config_name)]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 	output = env['FO_OUTPUT']
+	binary_output_postfix = env.get('FO_BINARY_OUTPUT_POSTFIX', '')
 	project_root = env['FO_PROJECT_ROOT']
 	build_dir = resolve_toolset_build_dir(env)
 	reset_build_dir(build_dir)
@@ -839,13 +850,13 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 			'Visual Studio 17 2022',
 			'-A',
 			'x64',
-			*make_toolset_cmake_args(output),
+			*make_toolset_cmake_args(output, binary_output_postfix=binary_output_postfix),
 			to_cmake_path(project_root),
 		], cwd=build_dir)
 		return
 
 	build_env = make_linux_build_env()
-	configure_cmd = make_unix_makefiles_configure_cmd(*make_toolset_cmake_args(output, config_name='Release'), project_root)
+	configure_cmd = make_unix_makefiles_configure_cmd(*make_toolset_cmake_args(output, config_name='Release', binary_output_postfix=binary_output_postfix), project_root)
 	run(configure_cmd, cwd=build_dir, env=build_env)
 
 
@@ -1222,7 +1233,7 @@ def make_android_toolchain_settings(platform_name: str, env: Mapping[str, str]) 
 	android_abi = resolve_android_abi(platform_name)
 	return [
 		f'-DANDROID_ABI={android_abi}',
-		f'-DANDROID_PLATFORM=android-{env["ANDROID_NATIVE_API_LEVEL_NUMBER"]}',
+		f'-DANDROID_PLATFORM=android-{env["FO_ANDROID_NATIVE_API_LEVEL_NUMBER"]}',
 		'-DANDROID_STL=c++_static',
 	]
 
@@ -1280,7 +1291,7 @@ def make_platform_configure_cmd(
 		configure_cmd.append(to_cmake_path(source_path))
 		return configure_cmd
 	if platform_name in ANDROID_PLATFORMS:
-		toolchain_file = to_cmake_path(f'{env["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake')
+		toolchain_file = to_cmake_path(f'{env["FO_ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake')
 		toolchain_settings = make_android_toolchain_settings(platform_name, env)
 		return make_android_configure_cmd(toolchain_file, toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name in APPLE_PLATFORMS:
@@ -1350,6 +1361,7 @@ def run_platform_configure_build(
 def configure_build(platform_name: str, target_name: str, config: str, env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	output = env['FO_OUTPUT']
+	binary_output_postfix = env.get('FO_BINARY_OUTPUT_POSTFIX', '')
 	project_root = env['FO_PROJECT_ROOT']
 	build_dir = resolve_configure_build_dir(env, platform_name, target_name, config)
 	ensure_dir(workspace)
@@ -1365,7 +1377,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		build_dir,
 		config,
 		env,
-		extra_cmake_args=[f'-DFO_OUTPUT_PATH={to_cmake_path(output)}'],
+		extra_cmake_args=make_output_path_cmake_args(output, binary_output_postfix),
 	)
 
 	ready_path.touch()

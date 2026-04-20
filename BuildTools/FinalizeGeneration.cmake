@@ -1502,10 +1502,21 @@ foreach(package ${FO_PACKAGES})
             SetValue(config ${Package_${package}_Config})
         endif()
 
-        AppendList(packageCommands
-            -config "${config}"
-            -input ${FO_OUTPUT_PATH}
-            -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
+        AppendList(packageCommands -config "${config}")
+
+        AppendList(packageCommands -input "${FO_OUTPUT_PATH}")
+
+        if(DEFINED Package_${package}_Option_BINARY_OUTPUT_POSTFIX)
+            SetValue(packageBinaryOutputPostfix "${Package_${package}_Option_BINARY_OUTPUT_POSTFIX}")
+        else()
+            SetValue(packageBinaryOutputPostfix "${FO_BINARY_OUTPUT_POSTFIX}")
+        endif()
+
+        if(NOT "${packageBinaryOutputPostfix}" STREQUAL "")
+            AppendList(packageCommands -binary-output-postfix "${packageBinaryOutputPostfix}")
+        endif()
+
+        AppendList(packageCommands -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}")
 
         StatusMessage("  ${target} for ${platform}-${arch} in ${pack} with ${config} config")
         AddCustomCommand(TARGET MakePackage-${package} POST_BUILD
