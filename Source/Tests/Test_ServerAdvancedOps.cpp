@@ -732,9 +732,8 @@ namespace AdvOps
         string trimmed = s.trim();
         if (trimmed != "hello") return -1;
 
-        // trim() default only strips spaces; pass explicit chars for tabs/newlines
         string s2 = "  \t  test  \n  ";
-        string trimmed2 = s2.trim(" \t\n\r");
+        string trimmed2 = s2.trim();
         if (trimmed2 != "test") return -2;
 
         return 0;

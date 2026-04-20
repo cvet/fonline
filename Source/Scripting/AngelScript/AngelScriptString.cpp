@@ -960,9 +960,9 @@ void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string lower() const", FO_SCRIPT_FUNC_THIS(ScriptString_Lower), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string upper() const", FO_SCRIPT_FUNC_THIS(ScriptString_Upper), FO_SCRIPT_FUNC_THIS_CONV));
 
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trim(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_Trim), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimBegin(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimBegin), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimEnd(const string &in chars = \" \") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimEnd), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trim(const string &in chars = \" \\t\\n\\r\") const", FO_SCRIPT_FUNC_THIS(ScriptString_Trim), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimBegin(const string &in chars = \" \\t\\n\\r\") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimBegin), FO_SCRIPT_FUNC_THIS_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string trimEnd(const string &in chars = \" \\t\\n\\r\") const", FO_SCRIPT_FUNC_THIS(ScriptString_TrimEnd), FO_SCRIPT_FUNC_THIS_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "array<string>@ split(const string &in) const", FO_SCRIPT_FUNC_THIS(ScriptString_Split), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "array<string>@ split(const string &in, bool removeEmptyEntries) const", FO_SCRIPT_FUNC_THIS(ScriptString_SplitExt), FO_SCRIPT_FUNC_THIS_CONV));

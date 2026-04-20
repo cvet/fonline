@@ -476,7 +476,7 @@ namespace ScriptBuiltins
         string replaced = s.replace("World", "Test");
         if (replaced != "Hello, Test!") return -21;
 
-        string trimmed = "  hello  ".trim();
+        string trimmed = "\t  hello  \r\n".trim();
         if (trimmed != "hello") return -22;
 
         return 1;

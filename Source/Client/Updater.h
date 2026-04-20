@@ -63,7 +63,7 @@ private:
         string Name;
         size_t Size {};
         size_t RemaningSize {};
-        uint32_t Hash {};
+        uint64_t Hash {};
     };
 
     void AddText(string_view text);

@@ -1212,7 +1212,7 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1220,6 +1220,13 @@ FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collect
     if (!id) {
         throw ScriptException("Record id arg is zero");
     }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, id)) {
+        throw ScriptException("Record already exists");
+    }
 
     AnyData::Document doc;
 
@@ -1237,17 +1244,11 @@ FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collect
         doc.Emplace(key, string(value));
     }
 
-    if (server->DbStorage.Valid(collectionName, id)) {
-        server->DbStorage.Delete(collectionName, id);
-    }
-
-    if (!keyValues.empty()) {
-        server->DbStorage.Insert(collectionName, id, doc);
-    }
+    server->DbStorage.Insert(collectionName, id, doc);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1255,6 +1256,13 @@ FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collect
     if (id.empty()) {
         throw ScriptException("Record id arg is empty");
     }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, string(id))) {
+        throw ScriptException("Record already exists");
+    }
 
     AnyData::Document doc;
 
@@ -1272,13 +1280,98 @@ FO_SCRIPT_API void Server_Game_DbSetRecord(ServerEngine* server, hstring collect
         doc.Emplace(key, string(value));
     }
 
-    if (server->DbStorage.Valid(collectionName, string(id))) {
-        server->DbStorage.Delete(collectionName, string(id));
-    }
+    server->DbStorage.Insert(collectionName, string(id), doc);
+}
 
-    if (!keyValues.empty()) {
-        server->DbStorage.Insert(collectionName, string(id), doc);
+namespace
+{
+    template<typename T>
+    static void ValidateAndUpdateRecord(ServerEngine* server, hstring collectionName, const auto& id, string_view key, const T& value)
+    {
+        if (!collectionName) {
+            throw ScriptException("Collection name arg is empty");
+        }
+        if constexpr (std::is_same_v<std::decay_t<decltype(id)>, ident_t>) {
+            if (!id) {
+                throw ScriptException("Record id arg is zero");
+            }
+        }
+        else {
+            if (id.empty()) {
+                throw ScriptException("Record id arg is empty");
+            }
+        }
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if constexpr (std::is_same_v<T, string_view>) {
+            if (!strvex(value).is_valid_utf8()) {
+                throw ScriptException("Record value has invalid encoding");
+            }
+        }
+
+        if (!server->DbStorage.Valid(collectionName, id)) {
+            throw ScriptException("Record not found");
+        }
+
+        if constexpr (std::is_same_v<T, string_view>) {
+            server->DbStorage.Update(collectionName, id, key, string(value));
+        }
+        else {
+            server->DbStorage.Update(collectionName, id, key, value);
+        }
     }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, ident_t id, string_view key, string_view value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, string_view id, string_view key, string_view value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, int64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, string_view id, string_view key, int64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, float64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, string_view id, string_view key, float64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, ident_t id, string_view key, bool value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, string_view id, string_view key, bool value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
 }
 
 ///@ ExportMethod

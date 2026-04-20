@@ -703,7 +703,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     function_name = line_tokens[function_token_index - 1]
     ret = engine_type_to_meta_type(''.join(line_tokens[1:function_token_index - 1]), valid_types)
 
-    function_tokens = function_name.split('_')
+    function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
 
     target = function_tokens[0].strip()
