@@ -423,7 +423,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
             InitModules();
 
-            if (!OnInit.Fire()) {
+            if (OnInit.Fire() == EventResult::StopChain) {
                 throw ServerInitException("Initialization script failed");
             }
 
@@ -431,7 +431,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             if (globals_doc.Empty()) {
                 WriteLog("Generate world");
 
-                if (!OnGenerateWorld.Fire()) {
+                if (OnGenerateWorld.Fire() == EventResult::StopChain) {
                     throw ServerInitException("Generate world script failed");
                 }
             }
@@ -456,7 +456,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             WriteLog("Start world");
 
             // Start script
-            if (!OnStart.Fire()) {
+            if (OnStart.Fire() == EventResult::StopChain) {
                 throw ServerInitException("Start script failed");
             }
         }
@@ -1157,7 +1157,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
 
     const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
-    auto allow_command = OnPlayerAllowCommand.Fire(player, cmd);
+    const auto allow_command = OnPlayerAllowCommand.Fire(player, cmd) == EventResult::ContinueChain;
 
     if (!allow_command) {
         logcb("Command refused");
@@ -2097,7 +2097,7 @@ void ServerEngine::Process_Move(Player* player)
 
     int32_t corrected_speed = speed;
 
-    if (!OnPlayerMoveCritter.Fire(player, cr, corrected_speed)) {
+    if (OnPlayerMoveCritter.Fire(player, cr, corrected_speed) == EventResult::StopChain) {
         WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
         player->Send_Moving(cr);
         return;
@@ -2233,7 +2233,7 @@ void ServerEngine::Process_StopMove(Player* player)
 
     int32_t zero_speed = 0;
 
-    if (!OnPlayerMoveCritter.Fire(player, cr, zero_speed)) {
+    if (OnPlayerMoveCritter.Fire(player, cr, zero_speed) == EventResult::StopChain) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
@@ -2272,7 +2272,7 @@ void ServerEngine::Process_Dir(Player* player)
 
     mdir checked_dir = dir;
 
-    if (!OnPlayerDirCritter.Fire(player, cr, checked_dir)) {
+    if (OnPlayerDirCritter.Fire(player, cr, checked_dir) == EventResult::StopChain) {
         WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
         player->Send_Dir(cr);
         return;

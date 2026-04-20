@@ -980,12 +980,12 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     // May call on destroyed entity
     if (!entity->IsDestroyed() && entity->HasEventCallbacks(event.Name)) {
         ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
-            const bool result = entity->FireEvent(event.Name, call);
-            new (gen->GetAddressOfReturnLocation()) bool(result);
+            const auto result = entity->FireEvent(event.Name, call);
+            new (gen->GetAddressOfReturnLocation()) Entity::EventResult(result);
         });
     }
     else {
-        new (gen->GetAddressOfReturnLocation()) bool(true);
+        new (gen->GetAddressOfReturnLocation()) Entity::EventResult(Entity::EventResult::ContinueChain);
     }
 }
 
@@ -1302,7 +1302,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}()", event_type_name, event.Name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_GetSelfForEvent), FO_SCRIPT_FUNC_THIS_CONV));
 
             if (!event.Exported) {
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("bool Fire({})", event_args_decl).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Fire), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("EventResult Fire({})", event_args_decl).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Fire), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
             }
         }
     }

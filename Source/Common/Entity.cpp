@@ -137,7 +137,7 @@ void Entity::ClearAllTimeEvents() noexcept
     _timeEvents.reset();
 }
 
-auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool
+auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -147,7 +147,7 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> b
         }
     }
 
-    return true;
+    return EventResult::ContinueChain;
 }
 
 void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
@@ -183,17 +183,17 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t su
     }
 }
 
-auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool
+auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
     if (callbacks.empty()) {
-        return true;
+        return EventResult::ContinueChain;
     }
 
-    bool all_return_true = true;
+    bool had_exception = false;
 
     // Callbacks vector may be changed/invalidated during cycle work
     for (const auto& cb : copy(callbacks)) {
@@ -204,19 +204,15 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
-            result = EventResult::ContinueChainButReturnFalse;
+            had_exception = true;
         }
 
-        if (result != EventResult::ContinueChain && result != EventResult::ContinueChainButReturnFalse) {
-            all_return_true = false;
-        }
-
-        if (result == EventResult::StopChainAndReturnFalse || result == EventResult::StopChainAndReturnTrue) {
-            return all_return_true;
+        if (result == EventResult::StopChain) {
+            return EventResult::StopChain;
         }
     }
 
-    return all_return_true;
+    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
 }
 
 void Entity::MarkAsDestroying() noexcept
@@ -404,7 +400,7 @@ EntityEvent::EntityEvent(Entity* entity, const char* callback_name) noexcept :
     FO_NO_STACK_TRACE_ENTRY();
 }
 
-auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> bool
+auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 {
     FO_STACK_TRACE_ENTRY();
 

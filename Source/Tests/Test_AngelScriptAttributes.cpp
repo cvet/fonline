@@ -325,9 +325,7 @@ namespace
         REQUIRE(engine->RegisterFuncdef("void DummyEventFunc()") >= 0);
         REQUIRE(engine->RegisterEnum("EventResult") >= 0);
         REQUIRE(engine->RegisterEnumValue("EventResult", "ContinueChain", 0) >= 0);
-        REQUIRE(engine->RegisterEnumValue("EventResult", "ContinueChainButReturnFalse", 1) >= 0);
-        REQUIRE(engine->RegisterEnumValue("EventResult", "StopChainAndReturnFalse", 2) >= 0);
-        REQUIRE(engine->RegisterEnumValue("EventResult", "StopChainAndReturnTrue", 3) >= 0);
+        REQUIRE(engine->RegisterEnumValue("EventResult", "StopChain", 1) >= 0);
         REQUIRE(engine->RegisterFuncdef("EventResult DummyEventFuncResult()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyEvent", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
         REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", asFUNCTION(GetDummyEvent), asCALL_CDECL) >= 0);

@@ -5654,7 +5654,7 @@ void MapperEngine::ConsoleSubmitCommand()
     }
     Cache.SetString("mapper_console.txt", history_str);
 
-    const auto process_command = OnMapperMessage.Fire(ConsoleStr);
+    const auto process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
     AddMess(ConsoleStr);
 
     if (process_command) {

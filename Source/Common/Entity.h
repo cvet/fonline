@@ -133,9 +133,7 @@ public:
     enum class EventResult : int32_t
     {
         ContinueChain,
-        StopChainAndReturnFalse,
-        StopChainAndReturnTrue,
-        ContinueChainButReturnFalse, // Used in exceptions when chain should be continued but result is false
+        StopChain,
     };
 
     using EventCallback = function<EventResult(FuncCallData&)>;
@@ -212,7 +210,7 @@ public:
     void UnsubscribeAllEvent(string_view event_name) noexcept;
     void UnsubscribeAllEvents() noexcept;
     void ClearAllTimeEvents() noexcept;
-    auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool;
+    auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> EventResult;
     void AddInnerEntity(hstring entry, Entity* entity);
     void RemoveInnerEntity(hstring entry, Entity* entity);
     void ClearInnerEntities();
@@ -236,7 +234,7 @@ private:
     auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
     void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
     void UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept;
-    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool;
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
@@ -256,7 +254,7 @@ public:
 
 protected:
     EntityEvent(Entity* entity, const char* callback_name) noexcept;
-    auto FireEvent(FuncCallData& call) noexcept -> bool;
+    auto FireEvent(FuncCallData& call) noexcept -> Entity::EventResult;
     auto CheckCallbacks() -> bool;
 
     raw_ptr<Entity> _entity;
@@ -273,12 +271,12 @@ public:
     {
     }
 
-    auto Fire(Args... args) noexcept -> bool
+    auto Fire(Args... args) noexcept -> Entity::EventResult
     {
         FO_STACK_TRACE_ENTRY_NAMED(Name.c_str());
 
         if (!CheckCallbacks()) {
-            return true;
+            return Entity::EventResult::ContinueChain;
         }
 
         if (_entity->IsGlobal()) {
