@@ -1238,6 +1238,8 @@ void ClientEngine::Net_OnCritterPos()
         cr->SetHexOffset(hex_offset);
         cr->RefreshOffs();
     }
+
+    cr->RefreshView();
 }
 
 void ClientEngine::Net_OnCritterAttachments()
