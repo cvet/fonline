@@ -4177,7 +4177,7 @@ void EngineCallback_Loop()
     }
 }
 
-void RefreshItemViewsByItemId(ident itemId, bool includeSourceViews = true)
+void RefreshItemViewsByItemId(ident itemId)
 {
     if (itemId == ZERO_IDENT) {
         return;
@@ -4189,7 +4189,7 @@ void RefreshItemViewsByItemId(ident itemId, bool includeSourceViews = true)
     for (int i = 0; i < itemViews.length(); i++) {
         ItemView itemView = itemViews[i];
 
-        if (itemView.HasItemId(itemId) || (includeSourceViews && itemView.HasSourceItemId(itemId))) {
+        if (itemView.HasItemId(itemId) || itemView.HasSourceItemId(itemId)) {
             itemView.Resort();
         }
     }
