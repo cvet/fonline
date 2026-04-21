@@ -2285,6 +2285,25 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
     Settings.Language = lang_name;
 }
 
+auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (lang_name.empty() || lang_name == Settings.Language) {
+        return _curLang;
+    }
+
+    for (auto&& [cached_lang_name, cached_pack] : _langPackCache) {
+        if (cached_lang_name == lang_name) {
+            return cached_pack;
+        }
+    }
+
+    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {Hashes});
+    cached_pack.LoadFromResources(Resources, lang_name);
+    return cached_pack;
+}
+
 void ClientEngine::UnloadMap()
 {
     FO_STACK_TRACE_ENTRY();

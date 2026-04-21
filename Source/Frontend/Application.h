@@ -639,11 +639,13 @@ private:
     void QueueTouchScroll(ipos32 pos, ipos32 delta);
     void QueueTouchZoom(ipos32 pos, float32_t factor);
     void FlushPendingTouchTap();
+    void UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor);
 
     unique_ptr<Context> _ctx {};
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
+    bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};
     int32_t _mouseButtonsDown {};

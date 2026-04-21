@@ -623,6 +623,12 @@ FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textK
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, string_view langName, TextPackKey textKey)
+{
+    return client->GetLangPack(langName).GetText(textKey);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32_t skipCount)
 {
     return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));

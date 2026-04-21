@@ -394,6 +394,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     if (IsEnumSet(flags, AppInitFlags::ClientMode) && (Settings.HideNativeCursor || !Input.IsMouseAvailable())) {
         SDL_HideCursor();
+        _nativeCursorHidden = true;
     }
 
     if (_isTablet) {
@@ -871,6 +872,32 @@ void Application::FlushPendingTouchTap()
 
     QueueTouchTap(_pendingTouchTap.Pos);
     _pendingTouchTap = {};
+}
+
+void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_ctx->ActiveRendererType == RenderType::Null || _isTablet) {
+        return;
+    }
+
+    const bool should_hide_cursor = !Input.IsMouseAvailable() || (Settings.HideNativeCursor && !imguiOverlayWantsCursor);
+
+    if (should_hide_cursor == _nativeCursorHidden) {
+        return;
+    }
+
+    if (should_hide_cursor) {
+        SDL_HideCursor();
+    }
+    else {
+        SDL_ShowCursor();
+    }
+
+    _nativeCursorHidden = should_hide_cursor;
 }
 
 void Application::BeginFrame()
@@ -1373,6 +1400,7 @@ void Application::EndFrame()
 
     // Render ImGui
     ImGui::Render();
+    UpdateNativeCursorVisibility(ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantTextInput);
 
     const auto* draw_data = ImGui::GetDrawData();
 

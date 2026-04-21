@@ -130,6 +130,7 @@ public:
     [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
     [[nodiscard]] auto GetGlobalMapCritters() noexcept -> vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const TextPack& { return _curLang; }
+    [[nodiscard]] auto GetLangPack(string_view lang_name) -> const TextPack&;
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
     [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
     [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
@@ -355,6 +356,7 @@ protected:
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
     TextPack _curLang {Hashes};
+    vector<pair<string, TextPack>> _langPackCache {};
 
     unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
