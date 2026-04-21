@@ -898,16 +898,16 @@ void ClientEngine::Net_OnAddCritter()
         }
 #endif
 
-        if (items_count != 0) {
-            _curMap->UpdateCritterLightSource(hex_cr);
-        }
-
         if (is_chosen) {
             _curMap->RebuildFog();
         }
 
         hex_cr->RefreshView(true);
         hex_cr->RefreshOffs();
+
+        if (items_count != 0 && !is_chosen) {
+            _curMap->UpdateCritterLightSource(hex_cr);
+        }
     }
 
     OnCritterIn.Fire(cr.get());
