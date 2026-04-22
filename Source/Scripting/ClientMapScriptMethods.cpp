@@ -152,7 +152,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 FO_SCRIPT_API ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Item id arg is zero");
+        throw ScriptException("Invalid hex arg");
     }
 
     return self->GetItemOnHex(hex);
@@ -168,7 +168,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self)
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Item id arg is zero");
+        throw ScriptException("Invalid hex arg");
     }
 
     return vec_transform(self->GetItemsOnHex(hex), [](auto&& item) -> ItemView* { return item.get(); });
@@ -686,6 +686,12 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetEntityAtScreen(pos, 0, true).first;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsHexValid(MapView* self, mpos hex)
+{
+    return self->GetSize().is_valid_pos(hex);
 }
 
 ///@ ExportMethod

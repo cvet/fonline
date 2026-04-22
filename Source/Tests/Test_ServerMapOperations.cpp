@@ -141,6 +141,21 @@ namespace MapOpsTest
         return 0;
     }
 
+    void TestMapGetItemOnHexInvalidHexThrows()
+    {
+        Location@ loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        map.GetItemOnHex(mpos(-1, -1), "TestItem".hstr());
+    }
+
     int TestMapGetItemInRadius()
     {
         Location@ loc = CreateTestLocation();
@@ -192,6 +207,21 @@ namespace MapOpsTest
         return 0;
     }
 
+    void TestMapAddCritterInvalidHexThrows()
+    {
+        Location@ loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        map.AddCritter("TestCritter".hstr(), mpos(-1, -1), mdir(0));
+    }
+
     int TestMapGetCritterOnHex()
     {
         Location@ loc = CreateTestLocation();
@@ -219,6 +249,21 @@ namespace MapOpsTest
 
         Game.DestroyLocation(loc);
         return 0;
+    }
+
+    void TestMapGetCritterOnHexInvalidHexThrows()
+    {
+        Location@ loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        map.GetCritterOnHex(mpos(-1, -1));
     }
 
     int TestMapGetCrittersByFindType()
@@ -358,15 +403,41 @@ namespace MapOpsTest
 
         // Check multiple hexes
         bool hexesMovable = map.IsHexesMovable(hex, 1);
+        if (!hexesMovable) return -4;
 
         // Shootable check
         bool shootable = map.IsHexShootable(hex);
+        if (!shootable) return -5;
 
         // Outside area check
         bool outside = map.IsOutsideArea(hex);
+        if (outside) return -6;
+
+        if (!map.IsHexValid(hex)) return -7;
+
+        mpos invalidNegative(-1, -1);
+        if (map.IsHexValid(invalidNegative)) return -8;
+
+        mpos invalidOverflow(1000, 1000);
+        if (map.IsHexValid(invalidOverflow)) return -9;
 
         Game.DestroyLocation(loc);
         return 0;
+    }
+
+    void TestMapIsHexMovableInvalidHexThrows()
+    {
+        Location@ loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        map.IsHexMovable(mpos(-1, -1));
     }
 
     int TestMapBlockUnblock()
@@ -530,6 +601,21 @@ namespace MapOpsTest
 
         Game.DestroyLocation(loc);
         return 0;
+    }
+
+    void TestMapGetStaticItemsOnHexInvalidHexThrows()
+    {
+        Location@ loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map@ map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        map.GetStaticItemsOnHex(mpos(-1, -1));
     }
 
  )" + R"(
@@ -1063,6 +1149,18 @@ namespace MapOpsTest
         CHECK(func.GetResult() == 0); \
     }
 
+#define RUN_FUNC_THROWS(func_name, expected_message) \
+    { \
+        auto func = server->FindFunc<void>(get_func(func_name)); \
+        REQUIRE(func); \
+        const auto prev_callback = GetExceptionCallback(); \
+        string message; \
+        SetExceptionCallback([&](string_view msg, string_view, bool) { message = string(msg); }); \
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+        CHECK_FALSE(func.Call()); \
+        CHECK(message.find(expected_message) != string::npos); \
+    }
+
 TEST_CASE("MapItemOperations")
 {
     MAKE_SERVER;
@@ -1082,6 +1180,11 @@ TEST_CASE("MapItemOperations")
         RUN_FUNC("MapOpsTest::TestMapGetItemOnHex");
     }
 
+    SECTION("GetItemOnHexInvalidHexThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapGetItemOnHexInvalidHexThrows", "Invalid hex arg");
+    }
+
     SECTION("GetItemInRadius")
     {
         RUN_FUNC("MapOpsTest::TestMapGetItemInRadius");
@@ -1097,9 +1200,19 @@ TEST_CASE("MapCritterOperations")
         RUN_FUNC("MapOpsTest::TestMapAddCritter");
     }
 
+    SECTION("AddCritterInvalidHexThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapAddCritterInvalidHexThrows", "Invalid hex arg");
+    }
+
     SECTION("GetCritterOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetCritterOnHex");
+    }
+
+    SECTION("GetCritterOnHexInvalidHexThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapGetCritterOnHexInvalidHexThrows", "Invalid hex arg");
     }
 
     SECTION("GetCrittersByFindType")
@@ -1130,6 +1243,11 @@ TEST_CASE("MapHexOperations")
     SECTION("HexMovable")
     {
         RUN_FUNC("MapOpsTest::TestMapHexMovable");
+    }
+
+    SECTION("HexMovableInvalidHexThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapIsHexMovableInvalidHexThrows", "Invalid hex arg");
     }
 
     SECTION("BlockUnblock")
@@ -1175,6 +1293,11 @@ TEST_CASE("MapStaticItems")
     SECTION("GetStaticItems")
     {
         RUN_FUNC("MapOpsTest::TestMapGetStaticItems");
+    }
+
+    SECTION("GetStaticItemsOnHexInvalidHexThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapGetStaticItemsOnHexInvalidHexThrows", "Invalid hex arg");
     }
 }
 
