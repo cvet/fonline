@@ -1144,7 +1144,7 @@ FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, 
         y -= height;
     }
 
-    client->SprMngr.DrawText({x, y, width, height}, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
+    client->SprMngr.DrawText(irect32 {x, y, width, height}, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
 }
 
 ///@ ExportMethod

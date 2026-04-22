@@ -5286,7 +5286,7 @@ void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32_t flags,
 {
     FO_STACK_TRACE_ENTRY();
 
-    SprMngr.DrawText({rect.x, rect.y, rect.width, rect.height}, str, flags, color, num_font);
+    SprMngr.DrawText(rect, str, flags, color, num_font);
 }
 
 void MapperEngine::CurDraw()

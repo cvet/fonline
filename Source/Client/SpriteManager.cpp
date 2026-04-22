@@ -2510,10 +2510,10 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucol
 
             const auto& l = it->second;
 
-            const auto x = curx - l.Offset.x - 1;
-            const auto y = cury - l.Offset.y - 1;
-            const auto w = l.Size.width + 2;
-            const auto h = l.Size.height + 2;
+            const auto x = numeric_cast<float32_t>(curx - l.Offset.x - 1);
+            const auto y = numeric_cast<float32_t>(cury - l.Offset.y - 1);
+            const auto w = numeric_cast<float32_t>(l.Size.width + 2);
+            const auto h = numeric_cast<float32_t>(l.Size.height + 2);
 
             const auto& texture_uv = IsBitSet(flags, FT_BORDERED) ? l.TexBorderedPos : l.TexPos;
             const auto x1 = texture_uv.x;
@@ -2529,8 +2529,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucol
             ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
 
             auto& v0 = vbuf[vpos++];
-            v0.PosX = numeric_cast<float32_t>(x);
-            v0.PosY = numeric_cast<float32_t>(y + h);
+            v0.PosX = x;
+            v0.PosY = y + h;
             v0.TexU = x1;
             v0.TexV = y2;
             v0.EggFlags[0] = 0.0f;
@@ -2538,8 +2538,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucol
             v0.Color = color;
 
             auto& v1 = vbuf[vpos++];
-            v1.PosX = numeric_cast<float32_t>(x);
-            v1.PosY = numeric_cast<float32_t>(y);
+            v1.PosX = x;
+            v1.PosY = y;
             v1.TexU = x1;
             v1.TexV = y1;
             v1.EggFlags[0] = 0.0f;
@@ -2547,8 +2547,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucol
             v1.Color = color;
 
             auto& v2 = vbuf[vpos++];
-            v2.PosX = numeric_cast<float32_t>(x + w);
-            v2.PosY = numeric_cast<float32_t>(y);
+            v2.PosX = x + w;
+            v2.PosY = y;
             v2.TexU = x2;
             v2.TexV = y1;
             v2.EggFlags[0] = 0.0f;
@@ -2556,8 +2556,8 @@ void SpriteManager::DrawText(irect32 rect, string_view str, uint32_t flags, ucol
             v2.Color = color;
 
             auto& v3 = vbuf[vpos++];
-            v3.PosX = numeric_cast<float32_t>(x + w);
-            v3.PosY = numeric_cast<float32_t>(y + h);
+            v3.PosX = x + w;
+            v3.PosY = y + h;
             v3.TexU = x2;
             v3.TexV = y2;
             v3.EggFlags[0] = 0.0f;
