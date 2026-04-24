@@ -2859,6 +2859,24 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                 cr->SendAndBroadcast_Moving();
                 return;
             }
+
+            OnCritterMoved.Fire(cr, old_hex);
+
+            if (!validate_moving(target_hex)) {
+                return;
+            }
+
+            MapMngr.ProcessVisibleCritters(cr);
+
+            if (!validate_moving(target_hex)) {
+                return;
+            }
+
+            MapMngr.ProcessVisibleItems(cr);
+
+            if (!validate_moving(target_hex)) {
+                return;
+            }
         }
 
         const auto cr_hex = cr->GetHex();
