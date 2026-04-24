@@ -70,6 +70,12 @@ FO_SCRIPT_API bool Client_Game_IsMouseAvailable(ClientEngine* client)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API GamepadState Client_Game_GetGamepadState(ClientEngine* client)
+{
+    return client->SprMngr.GetInput().GetGamepadState();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(ClientEngine* client)
 {
     return client->SprMngr.IsFullscreen();

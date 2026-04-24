@@ -2473,7 +2473,7 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
-void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32_t> pos_or_dir, int32_t speed)
+void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2505,17 +2505,16 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
             }
         }
         else if (pos_or_dir.index() == 1) {
-            const auto quad_dir = std::get<1>(pos_or_dir);
+            const auto dir = std::get<1>(pos_or_dir);
 
-            if (quad_dir != -1) {
-                hex = cr->GetHex();
-                vector<mdir> raw_steps;
+            hex = cr->GetHex();
+            hex_offset = cr->GetHexOffset();
+            vector<mdir> raw_steps;
 
-                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, quad_dir, cr->GetMultihex())) {
-                    steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
-                    control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
-                    try_move = true;
-                }
+            if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, dir, cr->GetMultihex())) {
+                steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
+                control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
+                try_move = true;
             }
         }
     }
@@ -2523,7 +2522,6 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     if (try_move) {
         cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), hex_offset));
         cr->GetMoving()->ValidateRuntimeState();
-
         cr->RefreshView();
         Net_SendMove(cr);
     }

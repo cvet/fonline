@@ -41,13 +41,13 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
-///@ ExportValueType TextPackName TextPackName Layout = hstring-value
+///@ ExportValueType Layout = hstring-Name
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
-///@ ExportValueType LanguageName LanguageName Layout = hstring-value
+///@ ExportValueType Layout = hstring-Name
 using LanguageName = strong_type<hstring, struct LanguageName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
-///@ ExportValueType TextPackKey TextPackKey Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
+///@ ExportValueType Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
 struct TextPackKey
 {
     constexpr TextPackKey() noexcept = default;

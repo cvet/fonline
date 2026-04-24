@@ -73,6 +73,9 @@ const int32_t& AppRender::MAX_BONES {MaxBones};
 const int32_t AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
+static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;
+static constexpr float32_t GAMEPAD_TRIGGER_DEADZONE = 0.15f;
+
 static auto WindowPosToScreenPos(Renderer* renderer, isize32 screen_size, ipos32 pos) -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
@@ -146,6 +149,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     // Initialize input events
     if (SDL_WasInit(SDL_INIT_EVENTS) == 0 && !SDL_InitSubSystem(SDL_INIT_EVENTS)) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
+    }
+
+    if (!Settings.Input.DisableGamepad && SDL_WasInit(SDL_INIT_GAMEPAD) == 0 && !SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
+        WriteLog("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
     }
 
     _ctx->EventsQueue = SafeAlloc::MakeUnique<vector<InputEvent>>();
@@ -267,6 +274,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         {SDL_BUTTON_MASK(7), MouseButton::Ext3},
         {SDL_BUTTON_MASK(8), MouseButton::Ext4},
     });
+
+    if (!Settings.Input.DisableGamepad) {
+        RefreshGamepadConnection();
+    }
 
     // Initialize audio
     if (!Settings.DisableAudio) {
@@ -517,6 +528,8 @@ Application::~Application()
 
     _ctx->AudioStreamWriter = nullptr;
     _ctx->AudioStreamBuf = nullptr;
+
+    CloseGamepad();
 
     for (const auto window : _allWindows) {
         if (window == nullptr || window == &MainWindow || !window->_windowHandle) {
@@ -900,6 +913,186 @@ void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
     _nativeCursorHidden = should_hide_cursor;
 }
 
+void Application::CloseGamepad()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_gamepadHandle != nullptr) {
+        SDL_CloseGamepad(static_cast<SDL_Gamepad*>(_gamepadHandle));
+        _gamepadHandle = nullptr;
+    }
+
+    _gamepadInstanceId = -1;
+    _gamepadState = {};
+}
+
+void Application::RefreshGamepadConnection()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_gamepadHandle != nullptr || SDL_WasInit(SDL_INIT_GAMEPAD) == 0) {
+        return;
+    }
+
+    int count = 0;
+    SDL_JoystickID* gamepads = SDL_GetGamepads(&count);
+
+    if (gamepads == nullptr) {
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        auto* gamepad = SDL_OpenGamepad(gamepads[i]);
+
+        if (gamepad == nullptr) {
+            continue;
+        }
+
+        _gamepadHandle = gamepad;
+        _gamepadInstanceId = numeric_cast<int32_t>(SDL_GetGamepadID(gamepad));
+        _gamepadState.Available = true;
+
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_LEFTX, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX));
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_LEFTY, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY));
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_RIGHTX, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTX));
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_RIGHTY, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTY));
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_LEFT_TRIGGER, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER));
+        UpdateGamepadAxis(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_SOUTH, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_SOUTH));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_EAST, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_EAST));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_WEST, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_WEST));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_NORTH, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_NORTH));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_BACK, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_BACK));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_START, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_START));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_LEFT_STICK, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_RIGHT_STICK, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_RIGHT_STICK));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_DPAD_UP, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_DPAD_DOWN, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_DPAD_LEFT, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT));
+        UpdateGamepadButton(SDL_GAMEPAD_BUTTON_DPAD_RIGHT, SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT));
+
+        break;
+    }
+
+    SDL_free(gamepads);
+}
+
+void Application::UpdateGamepadAxis(int32_t axis, int32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    const auto normalize_gamepad_stick_axis = [](int32_t axis_value) -> float32_t {
+        FO_STACK_TRACE_ENTRY();
+
+        const auto normalized = axis_value >= 0 ? numeric_cast<float32_t>(axis_value) / 32767.0f : numeric_cast<float32_t>(axis_value) / 32768.0f;
+        const auto abs_value = std::abs(normalized);
+
+        if (abs_value <= GAMEPAD_STICK_DEADZONE) {
+            return 0.0f;
+        }
+
+        const auto scaled = std::clamp((abs_value - GAMEPAD_STICK_DEADZONE) / (1.0f - GAMEPAD_STICK_DEADZONE), 0.0f, 1.0f);
+        return normalized < 0.0f ? -scaled : scaled;
+    };
+
+    const auto normalize_gamepad_trigger_axis = [](int32_t axis_value) -> float32_t {
+        FO_STACK_TRACE_ENTRY();
+
+        const auto normalized = std::clamp(numeric_cast<float32_t>(axis_value) / 32767.0f, 0.0f, 1.0f);
+
+        if (normalized <= GAMEPAD_TRIGGER_DEADZONE) {
+            return 0.0f;
+        }
+
+        return std::clamp((normalized - GAMEPAD_TRIGGER_DEADZONE) / (1.0f - GAMEPAD_TRIGGER_DEADZONE), 0.0f, 1.0f);
+    };
+
+    switch (static_cast<SDL_GamepadAxis>(axis)) {
+    case SDL_GAMEPAD_AXIS_LEFTX:
+        _gamepadState.LeftStickX = normalize_gamepad_stick_axis(value);
+        break;
+    case SDL_GAMEPAD_AXIS_LEFTY:
+        _gamepadState.LeftStickY = normalize_gamepad_stick_axis(value);
+        break;
+    case SDL_GAMEPAD_AXIS_RIGHTX:
+        _gamepadState.RightStickX = normalize_gamepad_stick_axis(value);
+        break;
+    case SDL_GAMEPAD_AXIS_RIGHTY:
+        _gamepadState.RightStickY = normalize_gamepad_stick_axis(value);
+        break;
+    case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+        _gamepadState.LeftTrigger = normalize_gamepad_trigger_axis(value);
+        break;
+    case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
+        _gamepadState.RightTrigger = normalize_gamepad_trigger_axis(value);
+        break;
+    default:
+        break;
+    }
+}
+
+void Application::UpdateGamepadButton(int32_t button, bool pressed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    switch (static_cast<SDL_GamepadButton>(button)) {
+    case SDL_GAMEPAD_BUTTON_SOUTH:
+        _gamepadState.South = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_EAST:
+        _gamepadState.East = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_WEST:
+        _gamepadState.West = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_NORTH:
+        _gamepadState.North = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_BACK:
+        _gamepadState.Back = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_START:
+        _gamepadState.Start = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+        _gamepadState.LeftStickButton = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+        _gamepadState.RightStickButton = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+        _gamepadState.LeftShoulder = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+        _gamepadState.RightShoulder = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_DPAD_UP:
+        _gamepadState.DpadUp = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+        _gamepadState.DpadDown = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+        _gamepadState.DpadLeft = pressed;
+        break;
+    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+        _gamepadState.DpadRight = pressed;
+        break;
+    default:
+        break;
+    }
+}
+
 void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1156,6 +1349,26 @@ void Application::BeginFrame()
             float32_t wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
             io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.wheel.which));
             io.AddMouseWheelEvent(wheel_x, wheel_y);
+        } break;
+        case SDL_EVENT_GAMEPAD_ADDED: {
+            RefreshGamepadConnection();
+        } break;
+        case SDL_EVENT_GAMEPAD_REMOVED: {
+            if (_gamepadInstanceId == numeric_cast<int32_t>(sdl_event.gdevice.which)) {
+                CloseGamepad();
+                RefreshGamepadConnection();
+            }
+        } break;
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION: {
+            if (_gamepadInstanceId == numeric_cast<int32_t>(sdl_event.gaxis.which)) {
+                UpdateGamepadAxis(sdl_event.gaxis.axis, sdl_event.gaxis.value);
+            }
+        } break;
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP: {
+            if (_gamepadInstanceId == numeric_cast<int32_t>(sdl_event.gbutton.which)) {
+                UpdateGamepadButton(sdl_event.gbutton.button, sdl_event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN);
+            }
         } break;
         case SDL_EVENT_KEY_UP:
         case SDL_EVENT_KEY_DOWN: {
@@ -1833,6 +2046,13 @@ auto AppInput::IsMouseAvailable() const noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     return _app->_ctx->ActiveRendererType != RenderType::Null && !_app->_isTablet;
+}
+
+auto AppInput::GetGamepadState() const noexcept -> GamepadState
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _app->_gamepadState;
 }
 
 auto AppInput::GetMousePosition() const -> ipos32

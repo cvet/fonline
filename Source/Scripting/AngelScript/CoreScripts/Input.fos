@@ -29,6 +29,10 @@ bool IsMousePressed(MouseButton button)
 {
     return MousePressed[button];
 }
+GamepadState GetGamepadState()
+{
+    return Game.GetGamepadState();
+}
 bool IsCtrlDown()
 {
     return KeyPressed[KeyCode::Rcontrol] || KeyPressed[KeyCode::Lcontrol];

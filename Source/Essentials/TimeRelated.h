@@ -44,7 +44,7 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
-///@ ExportValueType timespan timespan Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class timespan
 {
 public:
@@ -132,7 +132,7 @@ struct time_desc_t
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
 auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
-///@ ExportValueType nanotime nanotime Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class nanotime
 {
 public:
@@ -202,7 +202,7 @@ private:
 };
 static_assert(some_strong_type<nanotime>);
 
-///@ ExportValueType synctime synctime Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class synctime
 {
 public:

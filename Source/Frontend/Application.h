@@ -171,6 +171,34 @@ enum class MouseButton : uint8_t
     Ext4 = 9,
 };
 
+///@ ExportValueType Layout = float32-LeftStickX+float32-LeftStickY+float32-RightStickX+float32-RightStickY+float32-LeftTrigger+float32-RightTrigger+bool-Available+bool-South+bool-East+bool-West+bool-North+bool-Back+bool-Start+bool-LeftStickButton+bool-RightStickButton+bool-LeftShoulder+bool-RightShoulder+bool-DpadUp+bool-DpadDown+bool-DpadLeft+bool-DpadRight+bool-Reserved
+struct GamepadState
+{
+    float32_t LeftStickX {};
+    float32_t LeftStickY {};
+    float32_t RightStickX {};
+    float32_t RightStickY {};
+    float32_t LeftTrigger {};
+    float32_t RightTrigger {};
+    bool Available {};
+    bool South {};
+    bool East {};
+    bool West {};
+    bool North {};
+    bool Back {};
+    bool Start {};
+    bool LeftStickButton {};
+    bool RightStickButton {};
+    bool LeftShoulder {};
+    bool RightShoulder {};
+    bool DpadUp {};
+    bool DpadDown {};
+    bool DpadLeft {};
+    bool DpadRight {};
+    bool Reserved {};
+};
+static_assert(sizeof(GamepadState) == 40 && std::is_standard_layout_v<GamepadState>);
+
 struct InputEvent
 {
     enum class EventType : uint8_t
@@ -327,6 +355,7 @@ public:
 
     [[nodiscard]] virtual auto IsMouseAvailable() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto GetMousePosition() const -> ipos32 = 0;
+    [[nodiscard]] virtual auto GetGamepadState() const noexcept -> GamepadState = 0;
     [[nodiscard]] virtual auto GetClipboardText() -> const string& = 0;
     [[nodiscard]] virtual auto IsShiftDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsCtrlDown() const noexcept -> bool = 0;
@@ -485,6 +514,7 @@ public:
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
+    [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override;
     [[nodiscard]] auto GetClipboardText() -> const string& override;
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
     [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }
@@ -640,6 +670,10 @@ private:
     void QueueTouchZoom(ipos32 pos, float32_t factor);
     void FlushPendingTouchTap();
     void UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor);
+    void CloseGamepad();
+    void RefreshGamepadConnection();
+    void UpdateGamepadAxis(int32_t axis, int32_t value);
+    void UpdateGamepadButton(int32_t button, bool pressed);
 
     unique_ptr<Context> _ctx {};
     uint64_t _time {};
@@ -655,6 +689,9 @@ private:
     bool _touchPinchActive {};
     bool _touchTapSuppressed {};
     float32_t _touchLastPinchDistance {};
+    void* _gamepadHandle {};
+    int32_t _gamepadInstanceId {-1};
+    GamepadState _gamepadState {};
     unique_ptr<RenderDrawBuffer> _imguiDrawBuf {};
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};

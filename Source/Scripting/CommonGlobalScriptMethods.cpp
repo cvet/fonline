@@ -36,6 +36,7 @@
 #include "Application.h"
 #include "EngineBase.h"
 #include "Geometry.h"
+#include "LineTracer.h"
 #include "ScriptSystem.h"
 #include "TextPack.h"
 
@@ -296,6 +297,84 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(BaseEngine* engine, mpos fromHex, 
     ignore_unused(engine);
 
     hexOffset = GeometryHelper::GetHexOffset(fromHex, toHex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize mapSize, mpos fromHex, mpos toHex, int32_t dist, float32_t dirAngleOffset, ipos32 startOffset, ipos32 targetOffset)
+{
+    ignore_unused(engine);
+
+    if (dist < 0) {
+        throw ScriptException("Trace distance must be non-negative");
+    }
+
+    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    LineTracer tracer(fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset);
+
+    vector<mpos> line;
+    line.reserve(numeric_cast<size_t>(dist));
+
+    auto cur_hex = fromHex;
+
+    for (auto i = 0; i < dist; i++) {
+        const auto prev_hex = cur_hex;
+
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            tracer.GetNextHex(cur_hex);
+        }
+        else {
+            tracer.GetNextSquare(cur_hex);
+        }
+
+        if (cur_hex == prev_hex) {
+            break;
+        }
+
+        line.emplace_back(cur_hex);
+    }
+
+    return line;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize mapSize, mpos fromHex, float32_t dirAngle, int32_t dist, ipos32 startOffset, ipos32 targetOffset, mpos& targetHex)
+{
+    ignore_unused(engine);
+
+    if (dist < 0) {
+        throw ScriptException("Trace distance must be non-negative");
+    }
+
+    const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
+    const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+
+    LineTracer tracer(fromHex, dirAngle, dist, mapSize, start_offset, target_offset);
+
+    vector<mpos> line;
+    line.reserve(numeric_cast<size_t>(dist));
+
+    auto cur_hex = fromHex;
+
+    for (auto i = 0; i < dist; i++) {
+        const auto prev_hex = cur_hex;
+
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            tracer.GetNextHex(cur_hex);
+        }
+        else {
+            tracer.GetNextSquare(cur_hex);
+        }
+
+        if (cur_hex == prev_hex) {
+            break;
+        }
+
+        line.emplace_back(cur_hex);
+    }
+
+    targetHex = line.empty() ? fromHex : line.back();
+    return line;
 }
 
 ///@ ExportMethod

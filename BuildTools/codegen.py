@@ -437,11 +437,30 @@ def find_enclosing_property_entity(lines: list[str], line_index: int) -> str | N
     return None
 
 
+def find_following_declaration(lines: list[str], line_index: int) -> str | None:
+    for index in range(line_index + 1, len(lines)):
+        declaration = lines[index].strip()
+        if not declaration or declaration.startswith('//'):
+            continue
+        return declaration
+    return None
+
+
+def infer_declared_type_name(declaration: str) -> str:
+    if declaration.startswith('struct ') or declaration.startswith('class '):
+        return declaration.split()[1]
+    if declaration.startswith('using '):
+        separator = declaration.find('=')
+        assert separator != -1, 'Invalid using declaration'
+        return declaration[len('using '):separator].strip()
+    assert False, 'Unable to infer type name from declaration'
+
+
 def resolve_export_tag_context(tag_name: str, lines: list[str], line_index: int) -> TagContext:
     if tag_name == 'ExportEnum':
         return collect_stripped_block(lines, line_index + 1, '};', trim_left=True)
     if tag_name == 'ExportValueType':
-        return True
+        return find_following_declaration(lines, line_index)
     if tag_name == 'ExportProperty':
         property_entity = find_enclosing_property_entity(lines, line_index)
         assert property_entity is not None
@@ -1068,11 +1087,25 @@ def parse_export_value_type_tags(valid_types: set[str]) -> None:
         comment = tag_meta.comment
 
         try:
-            tokens = tokenize(tag_info)
+            tokens = tokenize(tag_info or '')
 
-            type_name = tokens[0]
-            native_type = tokens[1]
-            export_flags = tokens[2:]
+            assert isinstance(tag_context, str) and tag_context, 'No declaration found for ExportValueType'
+            native_type = infer_declared_type_name(tag_context)
+            type_name = native_type
+            export_flags = tokens
+
+            if export_flags and export_flags[0] == 'Name':
+                assert len(export_flags) >= 3, 'No Name specified in ExportValueType'
+                assert export_flags[1] == '=', 'Expected "=" after Name tag'
+                type_name = export_flags[2]
+                export_flags = export_flags[3:]
+            elif export_flags and export_flags[0] != 'Layout':
+                type_name = export_flags[0]
+                export_flags = export_flags[1:]
+
+                if export_flags and export_flags[0] not in ('Layout', 'Name'):
+                    native_type = export_flags[0]
+                    export_flags = export_flags[1:]
 
             assert 'Layout' in export_flags, 'No Layout specified in ExportValueType'
             assert export_flags[export_flags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'

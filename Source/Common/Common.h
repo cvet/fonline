@@ -56,7 +56,7 @@ extern bool IsTestingInProgress;
 #define FO_NON_NULL // Pointer annotation
 #define FO_DEFERRED // Lambda annotation
 
-///@ ExportValueType ident ident_t Layout = int64-value
+///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 

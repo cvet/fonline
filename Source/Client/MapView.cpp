@@ -3418,73 +3418,32 @@ bool MapView::CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int3
     return !!FindPath(cr, start_hex, target_hex, cut);
 }
 
-bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, int32_t quad_dir, int32_t multihex) const
+bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const
 {
     FO_STACK_TRACE_ENTRY();
 
     hex_offset = {};
 
-    const auto try_move = [this, &start_hex, &dir_steps, multihex](mdir dir) {
-        auto check_hex = start_hex;
+    constexpr int32_t some_big_path_len = 30;
+    LineTracer tracer(start_hex, numeric_cast<float32_t>(dir.angle()), some_big_path_len, _mapSize);
+    auto next_hex = start_hex;
 
-        if (!GeometryHelper::MoveHexByDir(check_hex, dir, _mapSize)) {
-            return false;
-        }
+    for (int32_t i = 0; i < some_big_path_len; i++) {
+        const auto next_dir = tracer.GetNextHex(next_hex);
 
-        if (multihex > 0) {
-            const auto result = PathFinding::CheckHexWithMultihex(check_hex, dir, multihex, _mapSize, [this](mpos h) { return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable; });
+        const auto result = PathFinding::CheckHexWithMultihex(next_hex, next_dir, multihex, _mapSize, [this](mpos h) { //
+            return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        });
 
-            if (result == HexBlockResult::Blocked) {
-                return false;
-            }
+        if (result == HexBlockResult::Passable) {
+            dir_steps.emplace_back(next_dir);
         }
         else {
-            if (_hexField->GetCellForReading(check_hex).MoveBlocked) {
-                return false;
-            }
-        }
-
-        start_hex = check_hex;
-        dir_steps.emplace_back(dir);
-        return true;
-    };
-
-    const auto try_move2 = [&try_move, &hex_offset](mdir dir1, mdir dir2) {
-        if (try_move(dir1)) {
-            if (!try_move(dir2)) {
-                hex_offset.x = dir1.hex() == hdir::NorthEast ? -16 : 16;
-                return false;
-            }
-            return true;
-        }
-
-        if (try_move(dir2)) {
-            if (!try_move(dir1)) {
-                hex_offset.x = dir2.hex() == hdir::NorthWest ? 16 : -16;
-                return false;
-            }
-            return true;
-        }
-
-        return false;
-    };
-
-    constexpr auto some_big_path_len = 200;
-
-    for (auto i = 0, j = (quad_dir == 3 || quad_dir == 7 ? some_big_path_len / 2 : some_big_path_len); i < j; i++) {
-        if ((quad_dir == 0 && !try_move(start_hex.x % 2 == 0 ? hdir::NorthEast : hdir::East)) || //
-            (quad_dir == 1 && !try_move(hdir::East)) || //
-            (quad_dir == 2 && !try_move(hdir::SouthEast)) || //
-            (quad_dir == 3 && !try_move2(hdir::SouthWest, hdir::SouthEast)) || //
-            (quad_dir == 4 && !try_move(start_hex.x % 2 == 0 ? hdir::West : hdir::SouthWest)) || //
-            (quad_dir == 5 && !try_move(hdir::West)) || //
-            (quad_dir == 6 && !try_move(hdir::NorthWest)) || //
-            (quad_dir == 7 && !try_move2(hdir::NorthEast, hdir::NorthWest))) {
-            return i > 0;
+            break;
         }
     }
 
-    return true;
+    return !dir_steps.empty();
 }
 
 void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks)

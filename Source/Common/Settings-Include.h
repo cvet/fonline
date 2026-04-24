@@ -311,6 +311,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(InputSettings, virtual BaseSettings);
+VARIABLE_SETTING(bool, Input, DisableGamepad, false); // If true, gamepad support is disabled
 VARIABLE_SETTING(int32_t, Input, DoubleClickTime, 500); // Double-click time in milliseconds
 VARIABLE_SETTING(int32_t, Input, ConsoleHistorySize, 100); // Console history size
 VARIABLE_SETTING(ipos32, Input, MousePos); // Mouse position (read only)

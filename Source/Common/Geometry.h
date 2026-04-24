@@ -38,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 // Todo: make hex position customizable, to allow to add third Z coordinate
-///@ ExportValueType mpos mpos Layout = int16-x+int16-y
+///@ ExportValueType Layout = int16-x+int16-y
 struct mpos : ipos<int16_t>
 {
     constexpr mpos() noexcept = default;
@@ -52,7 +52,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
-///@ ExportValueType msize msize Layout = int16-width+int16-height
+///@ ExportValueType Layout = int16-width+int16-height
 struct msize : isize<int16_t>
 {
     constexpr msize() noexcept = default;
@@ -103,7 +103,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 
-///@ ExportValueType hdir hdir Layout = int8-value
+///@ ExportValueType Layout = int8-value
 class hdir
 {
 public:
@@ -154,7 +154,7 @@ inline constexpr hdir hdir::NorthWest {6};
 inline constexpr hdir hdir::North {7};
 #endif
 
-///@ ExportValueType mdir mdir Layout = int16-angle
+///@ ExportValueType Layout = int16-angle
 class mdir
 {
 public:
