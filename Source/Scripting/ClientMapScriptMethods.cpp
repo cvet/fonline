@@ -735,9 +735,25 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetShootBorders(MapView* self, bool enabled, int32_t dist)
+FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
 {
-    self->SetShootBorders(enabled, dist);
+    self->SetFogOfWar(fogId, cr, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, mpos hex, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    self->SetFogOfWar(fogId, hex, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_ClearFogOfWar(MapView* self, hstring fogId)
+{
+    self->ClearFogOfWar(fogId);
 }
 
 ///@ ExportMethod

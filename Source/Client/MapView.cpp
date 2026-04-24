@@ -133,8 +133,10 @@ void MapView::OnDestroySelf()
     _mapSprites.InvalidateAll();
     _hexField.reset();
     _viewField.clear();
-    _fogLook.Clear();
-    _fogShoot.Clear();
+    for (auto& fog_layer : _fogLayers) {
+        fog_layer.Fog.Clear();
+    }
+    _fogLayers.clear();
     _visibleLightSources.clear();
     _lightPoints.clear();
     _lightSoftPoints.clear();
@@ -2485,10 +2487,9 @@ void MapView::DrawMap()
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
-                const auto& fog_look_points = _fogLook.GetPoints();
-                const auto& fog_shoot_points = _fogShoot.GetPoints();
-                _engine->SprMngr.DrawPoints(fog_look_points, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
-                _engine->SprMngr.DrawPoints(fog_shoot_points, RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
+                for (auto& fog_layer : _fogLayers) {
+                    _engine->SprMngr.DrawPoints(fog_layer.Fog.GetPoints(), RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
+                }
 
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
@@ -2529,28 +2530,48 @@ void MapView::PrepareFogToDraw()
         return block_hex;
     };
 
-    raw_ptr<const ipos32> sprite_offset;
+    for (auto& fog_layer : _fogLayers) {
+        auto fog_input = input;
+        fog_input.Enabled = fog_layer.Input.Enabled;
+        fog_input.Distance = fog_layer.Input.Distance;
+        fog_input.Radius = fog_layer.Input.Radius;
+        fog_input.OverlayColor = fog_layer.Input.OverlayColor;
+        fog_input.CenterColor = fog_layer.Input.CenterColor;
+        fog_input.TraceMode = fog_layer.Input.TraceMode;
+        fog_input.CheckShootBlocks = fog_layer.Input.CheckShootBlocks;
 
-    if (const auto it = std::ranges::find_if(_critters, [](auto&& cr) { return cr->GetIsChosen(); }); it != _critters.end()) {
-        input.FogOrigin.Valid = true;
-        input.FogOrigin.BaseHex = (*it)->GetHex();
-        input.FogOrigin.LookDistance = (*it)->GetLookDistance();
-        sprite_offset = (*it)->GetSpriteOffsetPtr();
+        ipos32 base_draw_offset {};
+        ipos32 draw_offset {};
+
+        if (fog_layer.FollowCritter) {
+            const auto* cr = GetCritter(fog_layer.OriginCritterId);
+            if (cr == nullptr) {
+                fog_layer.Fog.Clear();
+                continue;
+            }
+
+            fog_input.FogOrigin.Valid = true;
+            fog_input.FogOrigin.BaseHex = cr->GetHex();
+            fog_input.FogOrigin.LookDistance = cr->GetLookDistance();
+
+            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
+            draw_offset = base_draw_offset + *cr->GetSpriteOffsetPtr();
+        }
+        else {
+            if (!fog_layer.Input.FogOrigin.Valid) {
+                fog_layer.Fog.Clear();
+                continue;
+            }
+
+            fog_input.FogOrigin = fog_layer.Input.FogOrigin;
+            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
+            draw_offset = base_draw_offset;
+        }
+
+        fog_layer.Fog.SetBaseDrawOffset(base_draw_offset);
+        fog_layer.Fog.SetDrawOffset(draw_offset);
+        fog_layer.Fog.Prepare(fog_input);
     }
-
-    const auto base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(input.FogOrigin.BaseHex));
-    const auto draw_offset = base_draw_offset + (sprite_offset != nullptr ? *sprite_offset : ipos32 {});
-
-    _fogLook.SetBaseDrawOffset(base_draw_offset);
-    _fogLook.SetDrawOffset(draw_offset);
-    _fogLook.Prepare(input);
-
-    auto shoot_input = input;
-    shoot_input.Enabled = _shootBordersEnabled;
-    shoot_input.Distance = _shootBordersDist;
-    _fogShoot.SetBaseDrawOffset(base_draw_offset);
-    _fogShoot.SetDrawOffset(draw_offset);
-    _fogShoot.Prepare(shoot_input);
 }
 
 auto MapView::IsOutsideArea(mpos hex) const -> bool
@@ -3559,18 +3580,106 @@ void MapView::RebuildFog()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _fogLook.RequestRebuild();
-    _fogShoot.RequestRebuild();
+    for (auto& fog_layer : _fogLayers) {
+        fog_layer.Fog.RequestRebuild();
+    }
 }
 
-void MapView::SetShootBorders(bool enabled, int32_t dist)
+auto MapView::FindFogLayer(hstring fog_id) noexcept -> FogLayer*
+{
+    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
+    return it != _fogLayers.end() ? &*it : nullptr;
+}
+
+auto MapView::FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*
+{
+    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
+    return it != _fogLayers.end() ? &*it : nullptr;
+}
+
+void MapView::SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_shootBordersEnabled != enabled || _shootBordersDist != dist) {
-        _shootBordersEnabled = enabled;
-        _shootBordersDist = dist;
-        _fogShoot.RequestRebuild();
+    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    if (hex_cr == nullptr || hex_cr->GetMap() != this) {
+        ClearFogOfWar(fog_id);
+        return;
+    }
+
+    FogOfWar::Input input;
+    input.Distance = distance;
+    input.Radius = radius;
+    input.OverlayColor = overlay_color;
+    input.CenterColor = center_color;
+    input.TraceMode = traced ? FogOfWar::TraceMode::Overlay : FogOfWar::TraceMode::None;
+    input.CheckShootBlocks = check_shoot_blocks;
+    auto* fog_layer = FindFogLayer(fog_id);
+
+    if (fog_layer == nullptr) {
+        _fogLayers.emplace_back(fog_id);
+        fog_layer = &_fogLayers.back();
+        fog_layer->Fog.RequestRebuild();
+    }
+
+    if (!fog_layer->FollowCritter || fog_layer->OriginCritterId != hex_cr->GetId() || //
+        fog_layer->Input.Enabled != input.Enabled || fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
+        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
+        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
+        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
+        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
+        fog_layer->Fog.RequestRebuild();
+    }
+
+    fog_layer->Input = input;
+    fog_layer->OriginCritterId = hex_cr->GetId();
+    fog_layer->FollowCritter = true;
+}
+
+void MapView::SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FogOfWar::Input input;
+    input.Distance = distance;
+    input.Radius = radius;
+    input.OverlayColor = overlay_color;
+    input.CenterColor = center_color;
+    input.TraceMode = traced ? FogOfWar::TraceMode::Overlay : FogOfWar::TraceMode::None;
+    input.CheckShootBlocks = check_shoot_blocks;
+    input.FogOrigin.Valid = true;
+    input.FogOrigin.BaseHex = hex;
+    input.FogOrigin.LookDistance = radius;
+
+    auto* fog_layer = FindFogLayer(fog_id);
+
+    if (fog_layer == nullptr) {
+        _fogLayers.emplace_back(fog_id);
+        fog_layer = &_fogLayers.back();
+        fog_layer->Fog.RequestRebuild();
+    }
+
+    if (fog_layer->FollowCritter || fog_layer->OriginCritterId != ident_t {} || fog_layer->Input.Enabled != input.Enabled || //
+        fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
+        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
+        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
+        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
+        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
+        fog_layer->Fog.RequestRebuild();
+    }
+
+    fog_layer->Input = input;
+    fog_layer->OriginCritterId = {};
+    fog_layer->FollowCritter = false;
+}
+
+void MapView::ClearFogOfWar(hstring fog_id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (auto* fog_layer = FindFogLayer(fog_id); fog_layer != nullptr) {
+        fog_layer->Fog.Clear();
+        std::erase_if(_fogLayers, [fog_id](const auto& entry) { return entry.Id == fog_id; });
     }
 }
 

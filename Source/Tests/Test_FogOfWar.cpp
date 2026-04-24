@@ -61,7 +61,7 @@ TEST_CASE("FogOfWar")
 {
     SECTION("Builds look border primitives for chosen critter")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
         fog.RequestRebuild();
 
         auto input = MakeInput({10, 10}, nanotime {});
@@ -72,22 +72,67 @@ TEST_CASE("FogOfWar")
         CHECK(fog.GetPoints().front().PointColor.comp.a == 0);
     }
 
-    SECTION("Builds shoot border primitives with Kind::Shoot")
+    SECTION("Builds shoot border primitives with traced overlay input")
     {
-        FogOfWar fog {FogOfWar::Kind::Shoot};
+        FogOfWar fog;
         fog.RequestRebuild();
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 3;
+        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.OverlayColor = ucolor {255, 96, 0, 255};
+        input.CenterColor = ucolor {0, 0, 0, 255};
         fog.Prepare(input);
 
         CHECK(fog.GetPoints().size() == 10);
         CHECK(fog.GetPoints().front().PointColor.comp.a == 255);
     }
 
+    SECTION("Builds observation border primitives with traced overlay tint")
+    {
+        FogOfWar fog;
+        fog.RequestRebuild();
+
+        auto input = MakeInput({10, 10}, nanotime {});
+        input.Distance = 3;
+        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.OverlayColor = ucolor {96, 224, 96, 255};
+        fog.Prepare(input);
+
+        CHECK(fog.GetPoints().size() == 10);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 77);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.g) == 181);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.b) == 77);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.a) == 255);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.r) == 45);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.g) == 105);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.b) == 45);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.a) == 255);
+    }
+
+    SECTION("Builds traced overlay primitives with custom tint")
+    {
+        FogOfWar fog;
+        fog.RequestRebuild();
+
+        auto input = MakeInput({10, 10}, nanotime {});
+        input.Distance = 3;
+        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.OverlayColor = ucolor {255, 96, 176, 255};
+        fog.Prepare(input);
+
+        CHECK(fog.GetPoints().size() == 10);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 207);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.g) == 77);
+        CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.b) == 142);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.r) == 120);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.g) == 45);
+        CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.b) == 82);
+    }
+
     SECTION("Produces no points when disabled")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
         fog.RequestRebuild();
 
         auto input = MakeInput({10, 10}, nanotime {});
@@ -99,7 +144,7 @@ TEST_CASE("FogOfWar")
 
     SECTION("Keeps local fog geometry stable while origin changes")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
         fog.RequestRebuild();
 
         auto input = MakeInput({10, 10}, nanotime {});
@@ -126,7 +171,7 @@ TEST_CASE("FogOfWar")
 
     SECTION("Collapses to origin when disabled")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
 
         auto input = MakeInput({10, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
         fog.Prepare(input);
@@ -156,7 +201,7 @@ TEST_CASE("FogOfWar")
 
     SECTION("Expands from origin when re-enabled")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
 
         auto input = MakeInput({10, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
         fog.Prepare(input);
@@ -185,7 +230,7 @@ TEST_CASE("FogOfWar")
 
     SECTION("First appearance expands from origin")
     {
-        FogOfWar fog {FogOfWar::Kind::Look};
+        FogOfWar fog;
 
         auto input = MakeInput({10, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
         fog.Prepare(input);
@@ -201,12 +246,15 @@ TEST_CASE("FogOfWar")
 
     SECTION("Blocked shoot edge points use base draw offset")
     {
-        FogOfWar fog {FogOfWar::Kind::Shoot};
+        FogOfWar fog;
         fog.SetDrawOffset({100, 50});
         fog.SetBaseDrawOffset({100, 0});
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 1;
+        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.OverlayColor = ucolor {255, 96, 0, 255};
+        input.CenterColor = ucolor {0, 0, 0, 255};
         input.TraceBulletToBlock = [](mpos start, mpos, int32_t, bool) { return start; };
         fog.Prepare(input);
 
@@ -217,13 +265,16 @@ TEST_CASE("FogOfWar")
         CHECK(*fog.GetPoints()[2].PointOffset == ipos32 {100, 50});
     }
 
-    SECTION("Blocked shoot rays keep the same whole-distance saturation slope")
+    SECTION("Blocked shoot rays keep the same overlay strength slope")
     {
-        FogOfWar fog {FogOfWar::Kind::Shoot};
+        FogOfWar fog;
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.FogOrigin.LookDistance = 6;
         input.Distance = 6;
+        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.OverlayColor = ucolor {255, 96, 0, 255};
+        input.CenterColor = ucolor {0, 0, 0, 255};
         input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32_t, bool) {
             constexpr auto block_dist = 3;
 
@@ -243,7 +294,8 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8_t>(3 * 255 / 7));
+        CHECK(fog.GetPoints()[0].PointColor.comp.r == numeric_cast<uint8_t>(160 + 3 * 95 / 7));
+        CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8_t>((numeric_cast<int32_t>(fog.GetPoints()[0].PointColor.comp.r) * 96) / 255));
     }
 }
 
