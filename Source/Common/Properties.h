@@ -149,6 +149,7 @@ public:
     [[nodiscard]] auto IsBaseTypeFixedType() const noexcept -> bool { return _baseType.IsFixedType; }
     [[nodiscard]] auto IsBaseTypeEntityProto() const noexcept -> bool { return _baseType.IsEntityProto; }
     [[nodiscard]] auto IsBaseTypeProtoReference() const noexcept -> bool { return _baseType.IsFixedType || _baseType.IsEntityProto; }
+    [[nodiscard]] auto IsBaseTypeRefType() const noexcept -> bool { return _baseType.IsRefType; }
     [[nodiscard]] auto IsBaseTypeEnum() const noexcept -> bool { return _baseType.IsEnum; }
     [[nodiscard]] auto IsBaseTypeResource() const noexcept -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeString() const noexcept -> bool { return _baseType.IsString; }

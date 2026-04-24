@@ -932,8 +932,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     event_data.SubscriptionPtr = std::bit_cast<uintptr_t>(func);
     event_data.Priority = priority;
-    event_data.OneShot = false;
-    event_data.Deferred = false;
+    event_data.HasExplicitResult = func->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
 
     entity->SubscribeEvent(event.Name, std::move(event_data));
 }
@@ -1194,7 +1193,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : ((prop->IsBaseTypeProtoReference() || prop->IsBaseTypeRefType()) ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
@@ -1232,7 +1231,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : ((prop->IsBaseTypeProtoReference() || prop->IsBaseTypeRefType()) ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();

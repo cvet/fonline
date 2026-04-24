@@ -394,6 +394,9 @@ auto CalcConstructAddrSpace(const Property* prop) -> size_t
             FO_UNREACHABLE_PLACE();
         }
     }
+    else if (prop->IsBaseTypeRefType()) {
+        return sizeof(void*);
+    }
     else if (prop->IsString()) {
         return sizeof(string);
     }
@@ -415,6 +418,13 @@ void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
             cast_from_void<hstring*>(construct_addr)->~hstring();
+        }
+    }
+    else if (prop->IsBaseTypeRefType()) {
+        auto* ref_obj = *static_cast<void**>(construct_addr);
+
+        if (ref_obj != nullptr) {
+            cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
         }
     }
     else if (prop->IsString()) {
@@ -494,6 +504,9 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
             FO_UNREACHABLE_PLACE();
         }
     }
+    else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
+        *static_cast<void**>(construct_addr) = CreateRefTypeScriptObjectFromProperty(prop, {data, data_size});
+    }
     else if (prop->IsString()) {
         new (construct_addr) string(reinterpret_cast<const char*>(data), data_size);
     }
@@ -517,6 +530,30 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
 
                     data += str_size;
+                }
+            }
+        }
+        else if (prop->IsBaseTypeRefType()) {
+            if (data_size != 0) {
+                uint32_t arr_size;
+                MemCopy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(arr_size);
+
+                arr->Resize(numeric_cast<int32_t>(arr_size));
+
+                for (uint32_t i = 0; i < arr_size; i++) {
+                    uint32_t ref_data_size;
+                    MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                    data += sizeof(ref_data_size);
+
+                    auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                    arr->SetValue(numeric_cast<int32_t>(i), &ref_obj);
+
+                    if (ref_obj != nullptr) {
+                        cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                    }
+
+                    data += ref_data_size;
                 }
             }
         }
@@ -607,7 +644,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
-                    auto* arr = CreateScriptArray(as_engine, strex("array<{}>", prop->GetBaseTypeName()).c_str());
+                    auto* arr = CreateScriptArray(as_engine, strex("array<{}{}>", prop->GetBaseTypeName(), prop->IsBaseTypeRefType() ? "@" : "").c_str());
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -621,6 +658,24 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                                 string str(reinterpret_cast<const char*>(data), str_size);
                                 arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
                                 data += str_size;
+                            }
+                        }
+                        else if (prop->IsBaseTypeRefType()) {
+                            arr->Resize(numeric_cast<int32_t>(arr_size));
+
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                uint32_t ref_data_size;
+                                MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                                data += sizeof(ref_data_size);
+
+                                auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                                arr->SetValue(numeric_cast<int32_t>(i), &ref_obj);
+
+                                if (ref_obj != nullptr) {
+                                    cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                                }
+
+                                data += ref_data_size;
                             }
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
@@ -754,7 +809,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         const uint32_t key_len = *reinterpret_cast<const uint32_t*>(key);
                         const auto key_str = string {reinterpret_cast<const char*>(key + sizeof(key_len)), key_len};
 
-                        if (prop->IsBaseTypeProtoReference()) {
+                        if (prop->IsBaseTypeRefType()) {
+                            uint32_t ref_data_size;
+                            MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                            data += sizeof(ref_data_size);
+
+                            auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                            dict->Set(cast_to_void(&key_str), &ref_obj);
+
+                            if (ref_obj != nullptr) {
+                                cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                            }
+                        }
+                        else if (prop->IsBaseTypeProtoReference()) {
                             auto* fixed_type = resolve_fixed_type(data);
                             dict->Set(cast_to_void(&key_str), cast_to_void(&fixed_type));
                         }
@@ -769,7 +836,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     else if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
 
-                        if (prop->IsBaseTypeProtoReference()) {
+                        if (prop->IsBaseTypeRefType()) {
+                            uint32_t ref_data_size;
+                            MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                            data += sizeof(ref_data_size);
+
+                            auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                            dict->Set(cast_to_void(&hkey), &ref_obj);
+
+                            if (ref_obj != nullptr) {
+                                cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                            }
+                        }
+                        else if (prop->IsBaseTypeProtoReference()) {
                             auto* fixed_type = resolve_fixed_type(data);
                             dict->Set(cast_to_void(&hkey), cast_to_void(&fixed_type));
                         }
@@ -784,7 +863,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeyTypeSize());
 
-                        if (prop->IsBaseTypeProtoReference()) {
+                        if (prop->IsBaseTypeRefType()) {
+                            uint32_t ref_data_size;
+                            MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                            data += sizeof(ref_data_size);
+
+                            auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                            dict->Set(cast_to_void(&ekey), &ref_obj);
+
+                            if (ref_obj != nullptr) {
+                                cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                            }
+                        }
+                        else if (prop->IsBaseTypeProtoReference()) {
                             auto* fixed_type = resolve_fixed_type(data);
                             dict->Set(cast_to_void(&ekey), cast_to_void(&fixed_type));
                         }
@@ -797,7 +888,19 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         }
                     }
                     else {
-                        if (prop->IsBaseTypeProtoReference()) {
+                        if (prop->IsBaseTypeRefType()) {
+                            uint32_t ref_data_size;
+                            MemCopy(&ref_data_size, data, sizeof(ref_data_size));
+                            data += sizeof(ref_data_size);
+
+                            auto* ref_obj = CreateRefTypeScriptObjectFromProperty(prop, {data, ref_data_size});
+                            dict->Set(cast_to_void(key), &ref_obj);
+
+                            if (ref_obj != nullptr) {
+                                cast_from_void<DynamicRefTypeInstance*>(ref_obj)->Release();
+                            }
+                        }
+                        else if (prop->IsBaseTypeProtoReference()) {
                             auto* fixed_type = resolve_fixed_type(data);
                             dict->Set(cast_to_void(key), cast_to_void(&fixed_type));
                         }
@@ -810,7 +913,9 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                         }
                     }
 
-                    data += prop->GetBaseSize();
+                    if (!prop->IsBaseTypeRefType()) {
+                        data += prop->GetBaseSize();
+                    }
                 }
             }
         }
@@ -855,6 +960,13 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
             prop_data.Set(as_obj, prop->GetBaseSize());
         }
     }
+    else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
+        auto* ref_obj = *static_cast<void**>(as_obj);
+
+        if (ref_obj != nullptr) {
+            prop_data = ConvertRefTypeScriptObjectToProperty(prop, ref_obj);
+        }
+    }
     else if (prop->IsString()) {
         const auto& str = *cast_from_void<const string*>(as_obj);
         prop_data.Pass(str.data(), str.length());
@@ -896,10 +1008,44 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
         }
         else {
             const uint32_t arr_size = (arr != nullptr ? arr->GetSize() : 0);
-            const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
+            const size_t data_size = [&]() -> size_t {
+                if (arr == nullptr || arr_size == 0) {
+                    return 0;
+                }
+
+                if (prop->IsBaseTypeRefType()) {
+                    size_t size = sizeof(uint32_t);
+
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(arr->At(numeric_cast<int32_t>(i))));
+                        size += sizeof(uint32_t) + ref_data.GetSize();
+                    }
+
+                    return size;
+                }
+
+                return numeric_cast<size_t>(arr_size * prop->GetBaseSize());
+            }();
 
             if (data_size != 0) {
-                if (prop->IsBaseTypeProtoReference()) {
+                if (prop->IsBaseTypeRefType()) {
+                    auto* buf = prop_data.Alloc(data_size);
+                    MemCopy(buf, &arr_size, sizeof(arr_size));
+                    buf += sizeof(arr_size);
+
+                    for (uint32_t i = 0; i < arr_size; i++) {
+                        auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(arr->At(numeric_cast<int32_t>(i))));
+                        const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
+                        MemCopy(buf, &ref_data_size, sizeof(ref_data_size));
+                        buf += sizeof(ref_data_size);
+
+                        if (ref_data_size != 0) {
+                            MemCopy(buf, ref_data.GetPtr(), ref_data.GetSize());
+                            buf += ref_data.GetSize();
+                        }
+                    }
+                }
+                else if (prop->IsBaseTypeProtoReference()) {
                     auto* buf = prop_data.Alloc(data_size);
 
                     for (uint32_t i = 0; i < arr_size; i++) {
@@ -976,6 +1122,12 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                             data_size += sizeof(uint32_t) + numeric_cast<uint32_t>(str.length());
                         }
                     }
+                    else if (prop->IsBaseTypeRefType()) {
+                        for (uint32_t i = 0; i < arr_size; i++) {
+                            auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(arr->At(numeric_cast<int32_t>(i))));
+                            data_size += sizeof(uint32_t) + ref_data.GetSize();
+                        }
+                    }
                     else {
                         data_size += arr_size * prop->GetBaseSize();
                     }
@@ -1026,6 +1178,19 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                                 if (str_size != 0) {
                                     MemCopy(buf, str.c_str(), str_size);
                                     buf += str_size;
+                                }
+                            }
+                        }
+                        else if (prop->IsBaseTypeRefType()) {
+                            for (uint32_t i = 0; i < arr_size; i++) {
+                                auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(arr->At(numeric_cast<int32_t>(i))));
+                                const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
+                                MemCopy(buf, &ref_data_size, sizeof(ref_data_size));
+                                buf += sizeof(ref_data_size);
+
+                                if (ref_data_size != 0) {
+                                    MemCopy(buf, ref_data.GetPtr(), ref_data.GetSize());
+                                    buf += ref_data.GetSize();
                                 }
                             }
                         }
@@ -1139,13 +1304,18 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                 // Calculate size
                 size_t data_size = 0;
 
-                const auto value_element_size = prop->GetBaseSize();
-
-                for (const auto& key : dict->GetMap() | std::views::keys) {
+                for (auto&& [key, value] : dict->GetMap()) {
                     const auto& key_str = *cast_from_void<const string*>(key);
                     const auto key_len = numeric_cast<uint32_t>(key_str.length());
                     data_size += sizeof(key_len) + key_len;
-                    data_size += value_element_size;
+
+                    if (prop->IsBaseTypeRefType()) {
+                        auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(value));
+                        data_size += sizeof(uint32_t) + ref_data.GetSize();
+                    }
+                    else {
+                        data_size += prop->GetBaseSize();
+                    }
                 }
 
                 // Make buffer
@@ -1160,28 +1330,58 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     MemCopy(buf, key_str.c_str(), key_len);
                     buf += key_len;
 
-                    if (prop->IsBaseTypeProtoReference()) {
+                    if (prop->IsBaseTypeRefType()) {
+                        auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(value));
+                        const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
+                        MemCopy(buf, &ref_data_size, sizeof(ref_data_size));
+                        buf += sizeof(ref_data_size);
+
+                        if (ref_data_size != 0) {
+                            MemCopy(buf, ref_data.GetPtr(), ref_data.GetSize());
+                            buf += ref_data.GetSize();
+                        }
+                    }
+                    else if (prop->IsBaseTypeProtoReference()) {
                         const auto* entity = *cast_from_void<Entity**>(value);
                         const auto pid = resolve_proto_hash(entity);
-                        MemCopy(buf, &pid, value_element_size);
+                        MemCopy(buf, &pid, prop->GetBaseSize());
                     }
                     else if (prop->IsBaseTypeHash()) {
                         const auto hash = cast_from_void<const hstring*>(value)->as_hash();
-                        MemCopy(buf, &hash, value_element_size);
+                        MemCopy(buf, &hash, prop->GetBaseSize());
                     }
                     else {
-                        MemCopy(buf, value, value_element_size);
+                        MemCopy(buf, value, prop->GetBaseSize());
                     }
 
-                    buf += value_element_size;
+                    if (!prop->IsBaseTypeRefType()) {
+                        buf += prop->GetBaseSize();
+                    }
                 }
             }
         }
         else {
             const auto key_element_size = prop->GetDictKeyTypeSize();
-            const auto value_element_size = prop->GetBaseSize();
-            const auto whole_element_size = key_element_size + value_element_size;
-            const auto data_size = dict != nullptr ? dict->GetSize() * whole_element_size : 0;
+            const auto data_size = [&]() {
+                if (dict == nullptr || dict->GetSize() == 0) {
+                    return size_t {};
+                }
+
+                if (!prop->IsBaseTypeRefType()) {
+                    return numeric_cast<size_t>(dict->GetSize()) * (key_element_size + prop->GetBaseSize());
+                }
+
+                size_t size = 0;
+
+                for (auto&& [key, value] : dict->GetMap()) {
+                    ignore_unused(key);
+                    size += key_element_size;
+                    auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(value));
+                    size += sizeof(uint32_t) + ref_data.GetSize();
+                }
+
+                return size;
+            }();
 
             if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
@@ -1201,20 +1401,33 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
 
                     buf += key_element_size;
 
-                    if (prop->IsBaseTypeProtoReference()) {
+                    if (prop->IsBaseTypeRefType()) {
+                        auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, *static_cast<void**>(value));
+                        const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
+                        MemCopy(buf, &ref_data_size, sizeof(ref_data_size));
+                        buf += sizeof(ref_data_size);
+
+                        if (ref_data_size != 0) {
+                            MemCopy(buf, ref_data.GetPtr(), ref_data.GetSize());
+                            buf += ref_data.GetSize();
+                        }
+                    }
+                    else if (prop->IsBaseTypeProtoReference()) {
                         const auto* entity = *cast_from_void<Entity**>(value);
                         const auto pid = resolve_proto_hash(entity);
-                        MemCopy(buf, &pid, value_element_size);
+                        MemCopy(buf, &pid, prop->GetBaseSize());
                     }
                     else if (prop->IsBaseTypeHash()) {
                         const auto hash = cast_from_void<const hstring*>(value)->as_hash();
-                        MemCopy(buf, &hash, value_element_size);
+                        MemCopy(buf, &hash, prop->GetBaseSize());
                     }
                     else {
-                        MemCopy(buf, value, value_element_size);
+                        MemCopy(buf, value, prop->GetBaseSize());
                     }
 
-                    buf += value_element_size;
+                    if (!prop->IsBaseTypeRefType()) {
+                        buf += prop->GetBaseSize();
+                    }
                 }
             }
         }
@@ -1333,6 +1546,61 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
     }
 
     return hash_resolver.ToHashedString(func_name);
+}
+
+auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator.get());
+    ref_instance->LoadFromRawData(base_type, raw_data);
+
+    return ref_instance.release_ownership();
+}
+
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as_obj) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+
+    if (as_obj == nullptr) {
+        return {};
+    }
+
+    auto* ref_instance = cast_from_void<DynamicRefTypeInstance*>(as_obj);
+    return ref_instance->GetSerializedRawData(base_type);
+}
+
+auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint8_t> raw_data) -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop->IsBaseTypeRefType());
+
+    return CreateRefTypeScriptObjectFromRawData(prop->GetBaseType(), raw_data);
+}
+
+auto ConvertRefTypeScriptObjectToProperty(const Property* prop, void* as_obj) -> PropertyRawData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop->IsBaseTypeRefType());
+    const auto raw_data = ConvertRefTypeScriptObjectToRawData(prop->GetBaseType(), as_obj);
+
+    PropertyRawData prop_data;
+
+    if (!raw_data.empty()) {
+        prop_data.Set(raw_data.data(), raw_data.size());
+    }
+
+    return prop_data;
 }
 
 FO_END_NAMESPACE

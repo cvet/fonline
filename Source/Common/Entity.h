@@ -101,7 +101,6 @@ struct EntityEventDesc
     string Name {};
     vector<ArgDesc> Args {};
     bool Exported {};
-    bool Deferred {};
 };
 
 struct EntityTypeDesc
@@ -153,8 +152,7 @@ public:
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
         EventPriority Priority {EventPriority::Normal};
-        bool OneShot {}; // Todo: improve entity event OneShot
-        bool Deferred {}; // Todo: improve entity event Deferred
+        bool HasExplicitResult {};
     };
 
     struct TimeEventData

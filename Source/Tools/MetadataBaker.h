@@ -69,11 +69,20 @@ private:
         vector<string_view> Tokens {};
     };
 
+    struct RefTypeState
+    {
+        string Target {};
+        string SourceFile {};
+        size_t LineNumber {};
+        vector<pair<string, string>> Fields {};
+    };
+
     struct TagsParsingContext
     {
         unique_ptr<EngineMetadata> Meta {};
         unordered_set<string> OtherEntityTypes {};
         unordered_map<string, unordered_map<string, string>> ComponentScopes {};
+        unordered_map<string, RefTypeState> RefTypes {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};
@@ -83,6 +92,8 @@ private:
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
     void ParseFixedType(TagsParsingContext& ctx) const;
+    void ParseValueType(TagsParsingContext& ctx) const;
+    void ParseRefType(TagsParsingContext& ctx) const;
     void ParseEntityHolder(TagsParsingContext& ctx) const;
     void ParseProperty(TagsParsingContext& ctx) const;
     void ParseEvent(TagsParsingContext& ctx) const;

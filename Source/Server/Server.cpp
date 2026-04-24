@@ -1940,7 +1940,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
     player->SetLogined(true);
     player->Send_LoginSuccess();
 
-    if (!OnPlayerLogin.Fire(player, nullptr)) {
+    if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
         player->MarkAsDestroyed();
@@ -2003,7 +2003,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         player->SetLogined(true);
         player->Send_LoginSuccess();
 
-        if (!OnPlayerLogin.Fire(player, nullptr)) {
+        if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
             player->MarkAsDestroyed();
             EntityMngr.UnregisterPlayer(player);
             registered_player = false;
@@ -2018,7 +2018,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         unlogined_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
 
-        if (!OnPlayerLogin.Fire(player, unlogined_player)) {
+        if (OnPlayerLogin.Fire(player, unlogined_player) == Entity::EventResult::StopChain) {
             player->SetLogined(false);
             player->GetConnection()->GracefulDisconnect();
             return nullptr;

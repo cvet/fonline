@@ -189,6 +189,13 @@ namespace
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
     }
 
+    static void RegisterDummyRouteSnapshotType(asIScriptEngine* engine)
+    {
+        REQUIRE(engine->RegisterObjectType("RouteSnapshot", 0, asOBJ_REF) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+    }
+
     static void DummyScheduler_StartTimeEvent(asIScriptGeneric* gen)
     {
         ignore_unused(gen->GetObject());
@@ -1098,6 +1105,26 @@ void Activate(int value)
 }
 )";
 
+    static constexpr string_view ServerRemoteCallRefTypePositiveScript = R"(
+namespace RemoteCallTest
+{
+[[ServerRemoteCall]]
+void Activate(Player@+ player, RouteSnapshot@+ value)
+{
+}
+}
+)";
+
+    static constexpr string_view ClientRemoteCallRefTypePositiveScript = R"(
+namespace RemoteCallTest
+{
+[[ClientRemoteCall]]
+void Activate(RouteSnapshot@+ value)
+{
+}
+}
+)";
+
     static constexpr string_view ServerRemoteCallWrongSignatureScript = R"(
 namespace RemoteCallTest
 {
@@ -2002,6 +2029,57 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
+
+        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        CHECK(remote_call_error.empty());
+    }
+
+    SECTION("AllowsMatchingServerRemoteCallImplementationsWithRefType")
+    {
+        auto parsed = ParseScript("RemoteCallServerRefTypePositive.fos", ServerRemoteCallRefTypePositiveScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyPlayerType(engine);
+        RegisterDummyRouteSnapshotType(engine);
+
+        auto* mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("RouteSnapshot");
+        meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
+        meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
+
+        const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
+        CHECK(remote_call_error.empty());
+    }
+
+    SECTION("AllowsMatchingClientRemoteCallImplementationsWithRefType")
+    {
+        auto parsed = ParseScript("RemoteCallClientRefTypePositive.fos", ClientRemoteCallRefTypePositiveScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyRouteSnapshotType(engine);
+
+        auto* mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ClientSide);
+        meta.RegisterRefType("RouteSnapshot");
+        meta.RegisterRefTypeLayout("RouteSnapshot", {{"Note", "string"}});
+        meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("RouteSnapshot"))}));
 
         const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
         CHECK(remote_call_error.empty());
