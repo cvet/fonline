@@ -58,6 +58,7 @@ public:
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps; }
 
     void SetSynchronizedTime(synctime time) noexcept;
+    void SetSynchronizedTimeMonotonic(synctime time) noexcept;
     void FrameAdvance(bool clamp_to_cap);
 
 private:
@@ -68,6 +69,7 @@ private:
     timespan _debuggingOffset {};
 
     synctime _syncTimeBase {};
+    synctime _syncTimeFloor {};
     nanotime _syncTimeSet {};
 
     int32_t _fps {};

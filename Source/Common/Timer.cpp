@@ -49,6 +49,25 @@ void GameTimer::SetSynchronizedTime(synctime time) noexcept
     FO_STACK_TRACE_ENTRY();
 
     _syncTimeBase = time;
+    _syncTimeFloor = time;
+    _syncTimeSet = _frameTime;
+}
+
+void GameTimer::SetSynchronizedTimeMonotonic(synctime time) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_syncTimeBase) {
+        SetSynchronizedTime(time);
+        return;
+    }
+
+    const auto projected_time = _syncTimeBase + (_frameTime - _syncTimeSet);
+    const auto current_time = projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
+    const bool is_frozen = current_time > projected_time;
+
+    _syncTimeBase = is_frozen && time < projected_time ? projected_time : time;
+    _syncTimeFloor = time > current_time ? time : current_time;
     _syncTimeSet = _frameTime;
 }
 
@@ -93,7 +112,8 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
         throw TimeNotSyncException("Time is not synchronized yet");
     }
 
-    return _syncTimeBase + (_frameTime - _syncTimeSet);
+    const auto projected_time = _syncTimeBase + (_frameTime - _syncTimeSet);
+    return projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
 }
 
 FO_END_NAMESPACE

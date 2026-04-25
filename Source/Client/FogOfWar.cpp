@@ -48,6 +48,11 @@ void FogOfWar::Clear()
     _transitionTime = {};
     _lastOrigin = {};
     _lastDistance = {};
+    _lastRadius = {};
+    _lastOverlayColor = {};
+    _lastCenterColor = {};
+    _lastTraceMode = TraceModeType::None;
+    _lastCheckShootBlocks = true;
     _points.clear();
     _startPoints.clear();
     _targetPoints.clear();
@@ -57,13 +62,21 @@ void FogOfWar::Prepare(const Input& input)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (input.Enabled != _lastEnabled || input.FogOrigin.Valid != _lastOrigin.Valid || (input.FogOrigin.Valid && (input.FogOrigin.BaseHex != _lastOrigin.BaseHex || input.FogOrigin.LookDistance != _lastOrigin.LookDistance)) || input.Distance != _lastDistance) {
+    if (input.Enabled != _lastEnabled || input.FogOrigin.Valid != _lastOrigin.Valid || //
+        (input.FogOrigin.Valid && (input.FogOrigin.BaseHex != _lastOrigin.BaseHex || input.FogOrigin.LookDistance != _lastOrigin.LookDistance)) || //
+        input.Distance != _lastDistance || input.Radius != _lastRadius || input.OverlayColor != _lastOverlayColor || //
+        input.CenterColor != _lastCenterColor || input.TraceMode != _lastTraceMode || input.CheckShootBlocks != _lastCheckShootBlocks) {
         _rebuildFog = true;
     }
 
     _lastEnabled = input.Enabled;
     _lastOrigin = input.FogOrigin;
     _lastDistance = input.Distance;
+    _lastRadius = input.Radius;
+    _lastOverlayColor = input.OverlayColor;
+    _lastCenterColor = input.CenterColor;
+    _lastTraceMode = input.TraceMode;
+    _lastCheckShootBlocks = input.CheckShootBlocks;
 
     if (_rebuildFog) {
         _rebuildFog = false;
@@ -86,17 +99,30 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
         return;
     }
 
-    FO_RUNTIME_ASSERT(input.TraceBulletToBlock);
+    const auto is_traced_overlay = input.TraceMode == TraceModeType::Overlay;
+    const auto dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
+    if (dist <= 0) {
+        return;
+    }
 
-    const auto is_shoot = _kind == Kind::Shoot;
-    const auto dist = input.FogOrigin.LookDistance + input.FogExtraLength;
+    if (is_traced_overlay) {
+        FO_RUNTIME_ASSERT(input.TraceBulletToBlock);
+    }
+
     const auto base_hex = input.FogOrigin.BaseHex;
     const auto half_hw = input.MapHexWidth / 2;
     const auto half_hh = input.MapHexHeight / 2;
+    const auto has_custom_overlay_color = input.OverlayColor.comp.a != 0;
+    const auto has_custom_center_color = input.CenterColor.comp.a != 0;
+    const auto default_overlay_color = ucolor {96, 224, 96, 255};
+    const auto overlay_color = has_custom_overlay_color ? input.OverlayColor : default_overlay_color;
 
     const ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
-    const auto center_alpha = is_shoot ? uint8_t {255} : uint8_t {0};
-    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = ucolor {0, 0, 0, center_alpha}, .PointOffset = &_drawOffset};
+    const auto center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
+    const auto traced_color = ucolor {numeric_cast<uint8_t>(overlay_color.comp.r * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.g * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.b * 120 / 255), center_alpha};
+    const auto default_center_color = is_traced_overlay ? traced_color : ucolor {0, 0, 0, center_alpha};
+    const auto center_color = has_custom_center_color ? input.CenterColor : default_center_color;
+    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = &_drawOffset};
 
     auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
     size_t points_added = 0;
@@ -136,15 +162,19 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
             const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
             const auto* edge_offset = target_dist < dist ? &_baseDrawOffset : &_drawOffset;
 
-            if (is_shoot) {
-                const auto max_shoot_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
-                const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_shoot_dist, true);
+            if (is_traced_overlay) {
+                const auto max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
+                const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_overlay_dist, input.CheckShootBlocks);
                 const auto block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
-                const auto result_shoot_dist = GeometryHelper::GetDistance(base_hex, block_hex);
-                const auto color = ucolor {255, numeric_cast<uint8_t>(result_shoot_dist * 255 / max_shoot_dist), 0, 255};
-                const auto* shoot_offset = result_shoot_dist < max_shoot_dist ? &_baseDrawOffset : &_drawOffset;
+                const auto result_overlay_dist = GeometryHelper::GetDistance(base_hex, block_hex);
+                const auto overlay_strength = numeric_cast<uint8_t>(160 + result_overlay_dist * 95 / max_overlay_dist);
+                const auto color_r = numeric_cast<uint8_t>(overlay_color.comp.r * overlay_strength / 255);
+                const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
+                const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
+                const auto color = ucolor {color_r, color_g, color_b, 255};
+                const auto* overlay_offset = result_overlay_dist < max_overlay_dist ? &_baseDrawOffset : &_drawOffset;
 
-                fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = shoot_offset});
+                fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
             }
             else {
                 const auto hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));

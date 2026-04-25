@@ -55,6 +55,7 @@ FO_DECLARE_EXCEPTION(MapViewLoadException);
 class ClientEngine;
 class ItemHexView;
 class CritterHexView;
+class CritterView;
 
 // Light flags
 static constexpr uint8_t LIGHT_GLOBAL = 0x40;
@@ -137,6 +138,20 @@ public:
         vector<uint16_t> ControlSteps {};
     };
 
+    struct FogLayer
+    {
+        explicit FogLayer(hstring id) noexcept :
+            Id {id}
+        {
+        }
+
+        hstring Id {};
+        FogOfWar Fog {};
+        FogOfWar::Input Input {};
+        ident_t OriginCritterId {};
+        bool FollowCritter {};
+    };
+
     MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
@@ -180,7 +195,9 @@ public:
 
     void RebuildMap();
     void RebuildFog();
-    void SetShootBorders(bool enabled, int32_t dist);
+    void SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
+    void SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
+    void ClearFogOfWar(hstring fog_id);
     auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
@@ -296,6 +313,9 @@ private:
     void AddSpriteToChain(Field& field, MapSprite* mspr);
     void InvalidateSpriteChain(Field& field);
 
+    auto FindFogLayer(hstring fog_id) noexcept -> FogLayer*;
+    auto FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*;
+
     void PrepareFogToDraw();
 
     void UpdateTransparentEgg(TransparentEggSlot slot);
@@ -379,10 +399,7 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    FogOfWar _fogLook {FogOfWar::Kind::Look};
-    FogOfWar _fogShoot {FogOfWar::Kind::Shoot};
-    bool _shootBordersEnabled {};
-    int32_t _shootBordersDist {};
+    vector<FogLayer> _fogLayers {};
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};

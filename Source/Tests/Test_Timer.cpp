@@ -75,6 +75,31 @@ TEST_CASE("GameTimer")
         CHECK(timer.GetSynchronizedTime() >= sync_base);
     }
 
+    SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")
+    {
+        GameTimer timer {settings};
+        const synctime sync_base {123456};
+
+        timer.SetSynchronizedTime(sync_base);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        timer.FrameAdvance(false);
+
+        const auto current_time = timer.GetSynchronizedTime();
+        const synctime older_time {current_time.milliseconds() - 100};
+
+        timer.SetSynchronizedTimeMonotonic(older_time);
+        CHECK(timer.GetSynchronizedTime() == current_time);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        timer.FrameAdvance(false);
+        CHECK(timer.GetSynchronizedTime() == current_time);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(120));
+        timer.FrameAdvance(false);
+        CHECK(timer.GetSynchronizedTime() > current_time);
+    }
+
     SECTION("FramesPerSecondBecomesAvailableAfterOneSecondWindow")
     {
         GameTimer timer {settings};
