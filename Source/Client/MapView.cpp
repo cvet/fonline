@@ -3612,7 +3612,7 @@ void MapView::SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int
     input.Radius = radius;
     input.OverlayColor = overlay_color;
     input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceMode::Overlay : FogOfWar::TraceMode::None;
+    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
     input.CheckShootBlocks = check_shoot_blocks;
     auto* fog_layer = FindFogLayer(fog_id);
 
@@ -3645,7 +3645,7 @@ void MapView::SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t ra
     input.Radius = radius;
     input.OverlayColor = overlay_color;
     input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceMode::Overlay : FogOfWar::TraceMode::None;
+    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
     input.CheckShootBlocks = check_shoot_blocks;
     input.FogOrigin.Valid = true;
     input.FogOrigin.BaseHex = hex;

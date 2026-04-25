@@ -51,7 +51,7 @@ void FogOfWar::Clear()
     _lastRadius = {};
     _lastOverlayColor = {};
     _lastCenterColor = {};
-    _lastTraceMode = TraceMode::None;
+    _lastTraceMode = TraceModeType::None;
     _lastCheckShootBlocks = true;
     _points.clear();
     _startPoints.clear();
@@ -99,7 +99,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
         return;
     }
 
-    const auto is_traced_overlay = input.TraceMode == TraceMode::Overlay;
+    const auto is_traced_overlay = input.TraceMode == TraceModeType::Overlay;
     const auto dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
     if (dist <= 0) {
         return;

@@ -79,7 +79,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 3;
-        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
         input.OverlayColor = ucolor {255, 96, 0, 255};
         input.CenterColor = ucolor {0, 0, 0, 255};
         fog.Prepare(input);
@@ -95,7 +95,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 3;
-        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
         input.OverlayColor = ucolor {96, 224, 96, 255};
         fog.Prepare(input);
 
@@ -117,7 +117,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 3;
-        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
         input.OverlayColor = ucolor {255, 96, 176, 255};
         fog.Prepare(input);
 
@@ -252,7 +252,7 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         input.Distance = 1;
-        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
         input.OverlayColor = ucolor {255, 96, 0, 255};
         input.CenterColor = ucolor {0, 0, 0, 255};
         input.TraceBulletToBlock = [](mpos start, mpos, int32_t, bool) { return start; };
@@ -272,7 +272,7 @@ TEST_CASE("FogOfWar")
         auto input = MakeInput({10, 10}, nanotime {});
         input.FogOrigin.LookDistance = 6;
         input.Distance = 6;
-        input.TraceMode = FogOfWar::TraceMode::Overlay;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
         input.OverlayColor = ucolor {255, 96, 0, 255};
         input.CenterColor = ucolor {0, 0, 0, 255};
         input.TraceBulletToBlock = [map_size = input.MapSize](mpos start, mpos target, int32_t, bool) {

@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 class FogOfWar final
 {
 public:
-    enum class TraceMode
+    enum class TraceModeType
     {
         None,
         Overlay,
@@ -62,7 +62,7 @@ public:
         int32_t Radius {};
         ucolor OverlayColor {};
         ucolor CenterColor {};
-        TraceMode TraceMode {TraceMode::None};
+        TraceModeType TraceMode {};
         bool CheckShootBlocks {true};
         int32_t FogExtraLength {};
         int32_t FogTransitionDuration {};
@@ -111,7 +111,7 @@ private:
     int32_t _lastRadius {};
     ucolor _lastOverlayColor {};
     ucolor _lastCenterColor {};
-    TraceMode _lastTraceMode {TraceMode::None};
+    TraceModeType _lastTraceMode {};
     bool _lastCheckShootBlocks {true};
     nanotime _transitionTime {};
     vector<PrimitivePoint> _points {};
