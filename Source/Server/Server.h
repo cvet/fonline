@@ -130,6 +130,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterMoved, Critter* /*cr*/, mpos /*oldHex*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);

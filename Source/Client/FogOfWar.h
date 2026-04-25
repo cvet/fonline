@@ -42,10 +42,10 @@ FO_BEGIN_NAMESPACE
 class FogOfWar final
 {
 public:
-    enum class Kind
+    enum class TraceModeType
     {
-        Look,
-        Shoot,
+        None,
+        Overlay,
     };
 
     struct Origin
@@ -59,6 +59,11 @@ public:
     {
         bool Enabled {true};
         int32_t Distance {};
+        int32_t Radius {};
+        ucolor OverlayColor {};
+        ucolor CenterColor {};
+        TraceModeType TraceMode {};
+        bool CheckShootBlocks {true};
         int32_t FogExtraLength {};
         int32_t FogTransitionDuration {};
         int32_t MapHexWidth {};
@@ -69,10 +74,7 @@ public:
         function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
-    explicit FogOfWar(Kind kind) noexcept :
-        _kind {kind}
-    {
-    }
+    FogOfWar() = default;
     FogOfWar(const FogOfWar&) = delete;
     FogOfWar(FogOfWar&&) noexcept = default;
     auto operator=(const FogOfWar&) -> FogOfWar& = delete;
@@ -98,7 +100,6 @@ private:
     static auto LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor;
     static auto LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint;
 
-    Kind _kind;
     bool _rebuildFog {};
     bool _lastEnabled {true};
     bool _transitionActive {};
@@ -107,6 +108,11 @@ private:
     ipos32 _baseDrawOffset {};
     Origin _lastOrigin {};
     int32_t _lastDistance {};
+    int32_t _lastRadius {};
+    ucolor _lastOverlayColor {};
+    ucolor _lastCenterColor {};
+    TraceModeType _lastTraceMode {};
+    bool _lastCheckShootBlocks {true};
     nanotime _transitionTime {};
     vector<PrimitivePoint> _points {};
     vector<PrimitivePoint> _startPoints {};

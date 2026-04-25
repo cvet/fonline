@@ -1572,10 +1572,8 @@ void ClientEngine::Net_OnTimeSync()
 
     const auto time = _conn.InBuf->Read<synctime>();
 
-    if (time > GameTime.GetSynchronizedTime()) {
-        GameTime.SetSynchronizedTime(time);
-        SetSynchronizedTime(time);
-    }
+    GameTime.SetSynchronizedTimeMonotonic(time);
+    SetSynchronizedTime(GameTime.GetSynchronizedTime());
 }
 
 void ClientEngine::Net_OnLoadMap()
