@@ -1899,7 +1899,6 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     const auto type = _nameResolver->ResolveComplexType(tokens[1]);
     FO_RUNTIME_ASSERT(!type.IsMutable);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsRefType || (type.BaseType.RefType != nullptr && type.BaseType.RefType->FieldsRegistrator != nullptr));
     FO_RUNTIME_ASSERT(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto);
     FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
 
