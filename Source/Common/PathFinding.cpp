@@ -416,8 +416,14 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 bool failed = false;
 
                 while (true) {
-                    mdir dir = tracer.GetNextHex(next_hex);
-                    direct_steps.emplace_back(dir);
+                    const auto dir = tracer.GetNextHex(next_hex);
+
+                    if (!dir.has_value()) {
+                        failed = true;
+                        break;
+                    }
+
+                    direct_steps.emplace_back(dir.value());
 
                     if (next_hex == trace_hex2) {
                         break;
@@ -495,11 +501,8 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
             break;
         }
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            tracer.GetNextHex(next_hex);
-        }
-        else {
-            tracer.GetNextSquare(next_hex);
+        if (!tracer.GetNextHex(next_hex).has_value()) {
+            break;
         }
 
         if (input.CheckLastMovable && !last_passed_ok) {

@@ -652,11 +652,8 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
             break;
         }
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            tracer.GetNextHex(next_hex);
-        }
-        else {
-            tracer.GetNextSquare(next_hex);
+        if (!tracer.GetNextHex(next_hex).has_value()) {
+            break;
         }
 
         if (check_last_movable && !last_passed_ok) {

@@ -320,11 +320,8 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
     for (auto i = 0; i < dist; i++) {
         const auto prev_hex = cur_hex;
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            tracer.GetNextHex(cur_hex);
-        }
-        else {
-            tracer.GetNextSquare(cur_hex);
+        if (!tracer.GetNextHex(cur_hex).has_value()) {
+            break;
         }
 
         if (cur_hex == prev_hex) {
@@ -359,11 +356,8 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
     for (auto i = 0; i < dist; i++) {
         const auto prev_hex = cur_hex;
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            tracer.GetNextHex(cur_hex);
-        }
-        else {
-            tracer.GetNextSquare(cur_hex);
+        if (!tracer.GetNextHex(cur_hex).has_value()) {
+            break;
         }
 
         if (cur_hex == prev_hex) {

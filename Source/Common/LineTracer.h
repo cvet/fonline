@@ -50,8 +50,7 @@ public:
     auto operator=(LineTracer&&) noexcept -> LineTracer& = delete;
     ~LineTracer() = default;
 
-    auto GetNextHex(mpos& hex) const -> mdir;
-    void GetNextSquare(mpos& pos);
+    [[nodiscard]] auto GetNextHex(mpos& hex) -> optional<mdir>;
 
 private:
     void TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset);

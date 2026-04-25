@@ -186,40 +186,61 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
     _y = _yStart;
 }
 
-auto LineTracer::GetNextHex(mpos& hex) const -> mdir
+auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto left_hex = hex;
-    auto right_hex = hex;
-    // Todo: handle map borders
-    GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
-    GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
+    const auto cur_hex = hex;
 
-    const auto left_hex_f = fpos32(left_hex);
-    const auto right_hex_f = fpos32(right_hex);
-    const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
-    const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        auto left_hex = hex;
+        auto right_hex = hex;
 
-    // Left hand biased
-    if (dist_left <= dist_right) {
-        hex = left_hex;
-        return mdir(_dirLeft);
+        const auto left_changed = GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
+        const auto right_changed = GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
+        FO_RUNTIME_ASSERT(left_changed == (left_hex != cur_hex));
+        FO_RUNTIME_ASSERT(right_changed == (right_hex != cur_hex));
+
+        if (!left_changed && !right_changed) {
+            return std::nullopt;
+        }
+        if (!left_changed) {
+            hex = right_hex;
+            return mdir(_dirRight);
+        }
+        if (!right_changed) {
+            hex = left_hex;
+            return mdir(_dirLeft);
+        }
+
+        const auto left_hex_f = fpos32(left_hex);
+        const auto right_hex_f = fpos32(right_hex);
+        const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
+        const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+
+        // Left hand biased
+        if (dist_left <= dist_right) {
+            hex = left_hex;
+            return mdir(_dirLeft);
+        }
+        else {
+            hex = right_hex;
+            return mdir(_dirRight);
+        }
     }
     else {
-        hex = right_hex;
-        return mdir(_dirRight);
+        _x += _dx;
+        _y += _dy;
+
+        const auto next_hex = _mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)));
+
+        if (next_hex == cur_hex) {
+            return std::nullopt;
+        }
+
+        hex = next_hex;
+        return mdir(GeometryHelper::GetHexDir(cur_hex, next_hex));
     }
-}
-
-void LineTracer::GetNextSquare(mpos& pos)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _x += _dx;
-    _y += _dy;
-
-    pos = _mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)));
 }
 
 FO_END_NAMESPACE

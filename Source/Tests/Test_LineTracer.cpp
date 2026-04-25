@@ -54,6 +54,7 @@ TEST_CASE("LineTracer")
             const auto previous_distance = GeometryHelper::GetDistance(previous, target);
             const auto dir = tracer.GetNextHex(current);
 
+            REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(previous, current) == 1);
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
@@ -75,7 +76,8 @@ TEST_CASE("LineTracer")
 
         for (int32_t step = 0; step < distance; step++) {
             const auto previous_distance = GeometryHelper::GetDistance(current, target);
-            tracer.GetNextHex(current);
+            const auto dir = tracer.GetNextHex(current);
+            REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
         }
@@ -83,7 +85,20 @@ TEST_CASE("LineTracer")
         CHECK(current == target);
     }
 
-    SECTION("SquareTraceRemainsWithinBounds")
+    SECTION("HexTraceReturnsNulloptWhenNoBorderStepExists")
+    {
+        constexpr msize map_size {1, 1};
+        constexpr mpos start {0, 0};
+        LineTracer tracer {start, 0.0f, 1, map_size};
+
+        auto current = start;
+        const auto dir = tracer.GetNextHex(current);
+
+        CHECK(!dir.has_value());
+        CHECK(current == start);
+    }
+
+    SECTION("TraceRemainsWithinBoundsWhenContinuingPastTarget")
     {
         constexpr msize map_size {4, 4};
         constexpr mpos start {0, 0};
@@ -95,9 +110,15 @@ TEST_CASE("LineTracer")
 
         for (size_t i = 0; i < 8; i++) {
             const auto previous = pos;
-            tracer.GetNextSquare(pos);
+            const auto dir = tracer.GetNextHex(pos);
             CHECK(map_size.is_valid_pos(pos));
-            moved = moved || pos != previous;
+
+            if (dir.has_value()) {
+                moved = moved || pos != previous;
+            }
+            else {
+                CHECK(pos == previous);
+            }
         }
 
         CHECK(moved);

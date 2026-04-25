@@ -286,7 +286,9 @@ TEST_CASE("FogOfWar")
             LineTracer tracer(start, target, 0.0f, map_size);
 
             for (auto i = 0; i < block_dist; i++) {
-                tracer.GetNextHex(block_hex);
+                if (!tracer.GetNextHex(block_hex).has_value()) {
+                    break;
+                }
             }
 
             return block_hex;

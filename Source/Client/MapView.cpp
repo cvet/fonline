@@ -3452,12 +3452,16 @@ bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& di
     for (int32_t i = 0; i < some_big_path_len; i++) {
         const auto next_dir = tracer.GetNextHex(next_hex);
 
-        const auto result = PathFinding::CheckHexWithMultihex(next_hex, next_dir, multihex, _mapSize, [this](mpos h) { //
+        if (!next_dir.has_value()) {
+            break;
+        }
+
+        const auto result = PathFinding::CheckHexWithMultihex(next_hex, next_dir.value(), multihex, _mapSize, [this](mpos h) { //
             return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable;
         });
 
         if (result == HexBlockResult::Passable) {
-            dir_steps.emplace_back(next_dir);
+            dir_steps.emplace_back(next_dir.value());
         }
         else {
             break;
@@ -3482,11 +3486,8 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32
     LineTracer tracer(start_hex, target_hex, angle, _mapSize);
 
     for (int32_t i = 0; i < check_dist; i++) {
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            tracer.GetNextHex(next_hex);
-        }
-        else {
-            tracer.GetNextSquare(next_hex);
+        if (!tracer.GetNextHex(next_hex).has_value()) {
+            break;
         }
 
         if (_isShowTrack) {
