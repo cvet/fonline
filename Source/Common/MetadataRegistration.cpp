@@ -219,6 +219,13 @@ static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<v
         FO_RUNTIME_ASSERT(tokens.size() >= 3);
         FO_RUNTIME_ASSERT(tokens.size() % 2 == 1);
 
+        meta->RegisterRefType(tokens[0]);
+    }
+
+    for (const auto& tokens : engine_data) {
+        FO_RUNTIME_ASSERT(tokens.size() >= 3);
+        FO_RUNTIME_ASSERT(tokens.size() % 2 == 1);
+
         const auto& name = tokens[0];
         vector<pair<string_view, string_view>> layout;
         layout.reserve((tokens.size() - 1) / 2);
@@ -231,8 +238,6 @@ static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<v
             FO_RUNTIME_ASSERT_STR(!type.KeyType.has_value() || !type.KeyType->IsEntity, strex("Invalid RefType dict key type '{}' for field '{}' in '{}'", tokens[i + 1], tokens[i], name));
             layout.emplace_back(tokens[i], tokens[i + 1]);
         }
-
-        meta->RegisterRefType(name);
         meta->RegisterRefTypeLayout(name, layout);
     }
 }

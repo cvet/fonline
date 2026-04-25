@@ -271,7 +271,7 @@ namespace TestRefTypeEntityProps
         CHECK(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Note") != nullptr);
     }
 
-    SECTION("registers direct ref type dependencies after their dependency")
+    SECTION("registers ref types in declaration order")
     {
         rig.AddSourceFile("Scripts/TestNestedRefTypeProps.fos", R"(
 namespace TestNestedRefTypeProps
@@ -293,8 +293,8 @@ namespace TestNestedRefTypeProps
 
         REQUIRE(ref_type_it != tags.end());
         REQUIRE(ref_type_it->second.size() == 2);
-        CHECK(ref_type_it->second[0].front() == "Beta");
-        CHECK(ref_type_it->second[1].front() == "Alpha");
+        CHECK(ref_type_it->second[0].front() == "Alpha");
+        CHECK(ref_type_it->second[1].front() == "Beta");
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);

@@ -1411,7 +1411,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
 
             for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
                 const auto* prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-                const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+                const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
                 const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), handle_str).str();
 

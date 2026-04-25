@@ -83,6 +83,7 @@ private:
         unordered_set<string> OtherEntityTypes {};
         unordered_map<string, unordered_map<string, string>> ComponentScopes {};
         unordered_map<string, RefTypeState> RefTypes {};
+        vector<string> RefTypeRegistrationOrder {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};

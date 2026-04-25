@@ -805,6 +805,7 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
         ref_type.Target = string(target);
         ref_type.SourceFile = tag_desc.SourceFile;
         ref_type.LineNumber = tag_desc.LineNumber;
+        ctx.RefTypeRegistrationOrder.emplace_back(type_name);
 
         if (target == "Common" || target == ctx.Target) {
             ctx.Meta->RegisterRefType(type_name);
@@ -942,39 +943,9 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
     }
 
-    vector<string> ref_type_order;
-    ref_type_order.reserve(ctx.RefTypes.size());
+    FO_RUNTIME_ASSERT(ctx.RefTypeRegistrationOrder.size() == ctx.RefTypes.size());
 
-    for (const auto& ref_type_name : ctx.RefTypes | std::views::keys) {
-        ref_type_order.emplace_back(ref_type_name);
-    }
-
-    std::ranges::sort(ref_type_order);
-
-    const auto depends_on_ref_type = [&ctx](const RefTypeState& ref_type, string_view dependency_name) {
-        return std::ranges::any_of(ref_type.Fields, [&](const auto& field) {
-            const auto field_type = ctx.Meta->ResolveComplexType(field.second);
-            return field_type.BaseType.IsRefType && field_type.BaseType.Name == dependency_name;
-        });
-    };
-
-    for (size_t i = 0; i < ref_type_order.size(); i++) {
-        const auto& ref_type_name = ref_type_order[i];
-        const auto& ref_type = ctx.RefTypes.at(ref_type_name);
-        size_t dependency_pos = i;
-
-        for (size_t j = i + 1; j < ref_type_order.size(); j++) {
-            if (depends_on_ref_type(ref_type, ref_type_order[j])) {
-                dependency_pos = j;
-            }
-        }
-
-        if (dependency_pos != i) {
-            std::rotate(ref_type_order.begin() + i, ref_type_order.begin() + i + 1, ref_type_order.begin() + dependency_pos + 1);
-        }
-    }
-
-    for (const auto& ref_type_name : ref_type_order) {
+    for (const auto& ref_type_name : ctx.RefTypeRegistrationOrder) {
         auto& ref_type = ctx.RefTypes.at(ref_type_name);
 
         if (!is_active_ref_type(ref_type)) {
