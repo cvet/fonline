@@ -302,9 +302,7 @@ void Updater::Net_OnTimeSync()
 
     const auto time = _conn.InBuf->Read<synctime>();
 
-    if (time > _gameTime.GetSynchronizedTime()) {
-        _gameTime.SetSynchronizedTime(time);
-    }
+    _gameTime.SetSynchronizedTimeMonotonic(time);
 }
 
 void Updater::Net_OnUpdateFileData()

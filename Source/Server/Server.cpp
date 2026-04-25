@@ -1693,6 +1693,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         if (map != nullptr) {
             MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
             cr->Send_ViewMap();
+            cr->Send_TimeSync();
             return;
         }
     }
@@ -1758,6 +1759,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     OnCritterSendInitialInfo.Fire(cr);
 
     cr->Send_PlaceToGameComplete();
+    cr->Send_TimeSync();
 }
 
 void ServerEngine::Process_Handshake(ServerConnection* connection)
