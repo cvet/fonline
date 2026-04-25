@@ -402,7 +402,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
     }
     else if (base_type.IsHashedString) {
         string decoded_storage;
-        auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        const auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
         const auto hash = resolved_value.as_hash();
         AppendRawBytes(data, &hash, sizeof(hash));
     }
@@ -692,8 +692,7 @@ static auto GetRefTypeFieldsRegistrator(const BaseTypeDesc& base_type) -> const 
     return base_type.RefType->FieldsRegistrator.get();
 }
 
-template<typename Callback>
-static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, Callback&& callback)
+static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, const function<void(const Property*, const_span<uint8_t>)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -706,7 +705,7 @@ static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDes
         span<const uint8_t> field_raw_data {};
 
         if (pdata < pdata_end) {
-            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                 throw PropertySerializationException("Corrupted ref type property data", owner_name, field_prop->GetName());
             }
 
@@ -717,7 +716,7 @@ static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDes
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
                 throw PropertySerializationException("Wrong ref field raw size", owner_name, field_prop->GetName());
             }
-            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
+            if (numeric_cast<uint32_t>(pdata_end - pdata) < field_size) {
                 throw PropertySerializationException("Corrupted ref type property data", owner_name, field_prop->GetName());
             }
 
@@ -931,7 +930,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
             uint32_t arr_size;
 
             if (prop->IsArrayOfString() || base_type.IsRefType) {
-                if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                     throw PropertySerializationException("Corrupted array property data", prop->GetName());
                 }
 
@@ -946,7 +945,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
 
             for (uint32_t i = 0; i < arr_size; i++) {
                 if (base_type.IsRefType) {
-                    if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                         throw PropertySerializationException("Corrupted array property data", prop->GetName());
                     }
 
@@ -954,7 +953,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                     pdata += sizeof(uint32_t);
 
-                    if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                         throw PropertySerializationException("Corrupted array property data", prop->GetName());
                     }
 
@@ -1044,7 +1043,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     pdata += get_key_len(key_data);
                     string key_str = get_key_string(key_data);
 
-                    if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                         throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                     }
 
@@ -1057,7 +1056,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
 
                     for (uint32_t i = 0; i < arr_size; i++) {
                         if (base_type.IsRefType) {
-                            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                                 throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                             }
 
@@ -1065,7 +1064,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                             MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                             pdata += sizeof(uint32_t);
 
-                            if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                            if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                                 throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                             }
 
@@ -1089,7 +1088,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     string key_str = get_key_string(key_data);
 
                     if (base_type.IsRefType) {
-                        if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                             throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                         }
 
@@ -1097,7 +1096,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                         MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                         pdata += sizeof(uint32_t);
 
-                        if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                        if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                             throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                         }
 
@@ -1264,7 +1263,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
             uint32_t arr_size;
 
             if (prop->IsArrayOfString() || base_type.IsRefType) {
-                if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                     throw PropertySerializationException("Corrupted array property data", prop->GetName());
                 }
 
@@ -1284,7 +1283,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                 }
 
                 if (base_type.IsRefType) {
-                    if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                         throw PropertySerializationException("Corrupted array property data", prop->GetName());
                     }
 
@@ -1292,7 +1291,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                     MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                     pdata += sizeof(uint32_t);
 
-                    if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                         throw PropertySerializationException("Corrupted array property data", prop->GetName());
                     }
 
@@ -1352,7 +1351,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                 string arr_str;
                 arr_str.reserve(64);
 
-                if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                     throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                 }
 
@@ -1366,7 +1365,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                     }
 
                     if (base_type.IsRefType) {
-                        if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                             throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                         }
 
@@ -1374,7 +1373,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                         MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                         pdata += sizeof(uint32_t);
 
-                        if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                        if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                             throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                         }
 
@@ -1390,7 +1389,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
             }
             else {
                 if (base_type.IsRefType) {
-                    if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
                         throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                     }
 
@@ -1398,7 +1397,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                     MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
                     pdata += sizeof(uint32_t);
 
-                    if (static_cast<size_t>(pdata_end - pdata) < ref_data_size) {
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
                         throw PropertySerializationException("Corrupted dict property data", prop->GetName());
                     }
 
@@ -1429,7 +1428,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
-            auto resolved_value = hash_resolver.ToHashedString(value.AsString());
+            const auto resolved_value = hash_resolver.ToHashedString(value.AsString());
             hash = resolved_value.as_hash();
         }
         else {
@@ -1971,8 +1970,9 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
             if (prop->IsDictOfArray()) {
                 if (prop->IsBaseTypeRefType()) {
                     const auto decoded_arr = StringEscaping::DecodeString(value_token);
+
                     if (decoded_arr.empty()) {
-                        const uint32_t arr_count = 0;
+                        constexpr uint32_t arr_count = 0;
                         AppendRawBytes(data, &arr_count, sizeof(arr_count));
                     }
                     else {
