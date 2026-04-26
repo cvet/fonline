@@ -402,7 +402,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
     }
     else if (base_type.IsHashedString) {
         string decoded_storage;
-        auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        const auto resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
         const auto hash = resolved_value.as_hash();
         AppendRawBytes(data, &hash, sizeof(hash));
     }
@@ -662,6 +662,240 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
     }
 }
 
+static auto IsDefaultPropertyRawData(const Property* prop, span<const uint8_t> raw_data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (raw_data.empty()) {
+        return true;
+    }
+    if (!prop->IsPlainData()) {
+        return false;
+    }
+
+    for (const auto byte : raw_data) {
+        if (byte != 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static auto GetRefTypeFieldsRegistrator(const BaseTypeDesc& base_type) -> const PropertyRegistrator*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType != nullptr);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator != nullptr);
+    return base_type.RefType->FieldsRegistrator.get();
+}
+
+static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, const function<void(const Property*, const_span<uint8_t>)>& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+
+    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        span<const uint8_t> field_raw_data {};
+
+        if (pdata < pdata_end) {
+            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                throw PropertySerializationException("Corrupted ref type property data", owner_name, field_prop->GetName());
+            }
+
+            uint32_t field_size;
+            MemCopy(&field_size, pdata, sizeof(field_size));
+            pdata += sizeof(field_size);
+
+            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+                throw PropertySerializationException("Wrong ref field raw size", owner_name, field_prop->GetName());
+            }
+            if (numeric_cast<uint32_t>(pdata_end - pdata) < field_size) {
+                throw PropertySerializationException("Corrupted ref type property data", owner_name, field_prop->GetName());
+            }
+
+            field_raw_data = {pdata, field_size};
+            pdata += field_size;
+        }
+
+        callback(field_prop, field_raw_data);
+    }
+
+    if (pdata != pdata_end) {
+        throw PropertySerializationException("Corrupted ref type property data", owner_name);
+    }
+}
+
+static auto BuildRefTypePropertyData(string_view owner_name, const BaseTypeDesc& base_type, const Properties& field_props) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
+    vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
+    size_t last_non_default_field = 0;
+
+    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        const auto field_raw_data = field_props.GetRawData(field_prop);
+        const auto is_default = IsDefaultPropertyRawData(field_prop, field_raw_data);
+
+        field_raw_entries[i] = field_raw_data;
+        field_is_default[i] = is_default;
+
+        if (!is_default) {
+            last_non_default_field = i;
+        }
+    }
+
+    if (last_non_default_field == 0) {
+        return {};
+    }
+
+    size_t data_size = 0;
+
+    for (size_t i = 1; i <= last_non_default_field; i++) {
+        data_size += sizeof(uint32_t);
+
+        if (!field_is_default[i]) {
+            data_size += field_raw_entries[i].size();
+        }
+    }
+
+    vector<uint8_t> data(data_size);
+    auto* pdata = data.data();
+
+    for (size_t i = 1; i <= last_non_default_field; i++) {
+        const auto field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0U;
+        MemCopy(pdata, &field_size, sizeof(field_size));
+        pdata += sizeof(field_size);
+
+        if (field_size != 0) {
+            MemCopy(pdata, field_raw_entries[i].data(), field_size);
+            pdata += field_size;
+        }
+    }
+
+    FO_RUNTIME_ASSERT(pdata == data.data() + data.size());
+    return data;
+}
+
+static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AnyData::Dict dict;
+
+    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&dict, &hash_resolver, &name_resolver](const Property* field_prop, span<const uint8_t> field_raw_data) {
+        if (field_raw_data.empty()) {
+            return;
+        }
+
+        auto field_value = PropertiesSerializator::SavePropertyToValue(field_prop, field_raw_data, hash_resolver, name_resolver);
+        dict.Emplace(field_prop->GetNameWithoutComponent(), std::move(field_value));
+    });
+
+    return std::move(dict);
+}
+
+static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(owner_name);
+
+    string ref_str;
+    bool next_iteration = false;
+
+    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&ref_str, &next_iteration, &hash_resolver, &name_resolver](const Property* field_prop, span<const uint8_t> field_raw_data) {
+        if (field_raw_data.empty()) {
+            return;
+        }
+
+        if (next_iteration) {
+            ref_str.append(" ");
+        }
+        else {
+            next_iteration = true;
+        }
+
+        ref_str.append(field_prop->GetNameWithoutComponent());
+        ref_str.append(" ");
+
+        const auto field_text = PropertiesSerializator::SavePropertyToText(field_prop, field_raw_data, hash_resolver, name_resolver);
+        StringEscaping::AppendCodeString(ref_str, field_text);
+    });
+
+    return ref_str;
+}
+
+static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& base_type, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (value.Type() != AnyData::ValueType::Dict) {
+        throw PropertySerializationException("Wrong ref type value type", owner_name, value.Type());
+    }
+
+    const auto* fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    const auto& dict = value.AsDict();
+    Properties field_props(fields_registrator);
+
+    for (auto&& [field_name, field_value] : dict) {
+        const auto* field_prop = fields_registrator->FindProperty(field_name);
+
+        if (field_prop == nullptr) {
+            throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+        }
+
+        PropertiesSerializator::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
+    }
+
+    return BuildRefTypePropertyData(owner_name, base_type, field_props);
+}
+
+static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (text.empty()) {
+        return {};
+    }
+
+    const auto* fields_registrator = GetRefTypeFieldsRegistrator(base_type);
+    const auto fields_value = AnyData::ParseValue(string {text}, false, true, AnyData::ValueType::String);
+    const auto& fields_arr = fields_value.AsArray();
+
+    if (fields_arr.Size() % 2 != 0) {
+        throw PropertySerializationException("Wrong ref type text field count", owner_name, text);
+    }
+
+    Properties field_props(fields_registrator);
+    unordered_set<string> seen_fields;
+
+    for (size_t i = 0; i < fields_arr.Size(); i += 2) {
+        const auto& field_name = fields_arr[i].AsString();
+        const auto* field_prop = fields_registrator->FindProperty(field_name);
+
+        if (field_prop == nullptr) {
+            throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+        }
+        if (!seen_fields.emplace(field_name).second) {
+            throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
+        }
+
+        PropertiesSerializator::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
+    }
+
+    return BuildRefTypePropertyData(owner_name, base_type, field_props);
+}
+
 auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
@@ -679,6 +913,9 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
         FO_RUNTIME_ASSERT(pdata == pdata_end);
         return value;
     }
+    else if (base_type.IsRefType && !prop->IsArray() && !prop->IsDict()) {
+        return SaveRefTypeToValue(prop->GetName(), base_type, raw_data, hash_resolver, name_resolver);
+    }
     else if (prop->IsString()) {
         const auto* pstr = reinterpret_cast<const char*>(pdata);
         pdata += raw_data.size();
@@ -692,7 +929,11 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
         if (!raw_data.empty()) {
             uint32_t arr_size;
 
-            if (prop->IsArrayOfString()) {
+            if (prop->IsArrayOfString() || base_type.IsRefType) {
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                }
+
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
                 pdata += sizeof(uint32_t);
             }
@@ -703,8 +944,27 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
             arr.Reserve(arr_size);
 
             for (uint32_t i = 0; i < arr_size; i++) {
-                auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
-                arr.EmplaceBack(std::move(arr_entry));
+                if (base_type.IsRefType) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                    }
+
+                    uint32_t ref_data_size;
+                    MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                    pdata += sizeof(uint32_t);
+
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                        throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                    }
+
+                    auto arr_entry = SaveRefTypeToValue(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver);
+                    pdata += ref_data_size;
+                    arr.EmplaceBack(std::move(arr_entry));
+                }
+                else {
+                    auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
+                    arr.EmplaceBack(std::move(arr_entry));
+                }
             }
         }
 
@@ -783,6 +1043,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     pdata += get_key_len(key_data);
                     string key_str = get_key_string(key_data);
 
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                    }
+
                     uint32_t arr_size;
                     MemCopy(&arr_size, pdata, sizeof(arr_size));
                     pdata += sizeof(uint32_t);
@@ -791,8 +1055,27 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     arr.Reserve(arr_size);
 
                     for (uint32_t i = 0; i < arr_size; i++) {
-                        auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
-                        arr.EmplaceBack(std::move(arr_entry));
+                        if (base_type.IsRefType) {
+                            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                                throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                            }
+
+                            uint32_t ref_data_size;
+                            MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                            pdata += sizeof(uint32_t);
+
+                            if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                                throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                            }
+
+                            auto arr_entry = SaveRefTypeToValue(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver);
+                            pdata += ref_data_size;
+                            arr.EmplaceBack(std::move(arr_entry));
+                        }
+                        else {
+                            auto arr_entry = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
+                            arr.EmplaceBack(std::move(arr_entry));
+                        }
                     }
 
                     dict.Emplace(std::move(key_str), std::move(arr));
@@ -804,8 +1087,27 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     pdata += get_key_len(key_data);
                     string key_str = get_key_string(key_data);
 
-                    auto dict_value = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
-                    dict.Emplace(std::move(key_str), std::move(dict_value));
+                    if (base_type.IsRefType) {
+                        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                            throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                        }
+
+                        uint32_t ref_data_size;
+                        MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                        pdata += sizeof(uint32_t);
+
+                        if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                            throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                        }
+
+                        auto dict_value = SaveRefTypeToValue(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver);
+                        pdata += ref_data_size;
+                        dict.Emplace(std::move(key_str), std::move(dict_value));
+                    }
+                    else {
+                        auto dict_value = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
+                        dict.Emplace(std::move(key_str), std::move(dict_value));
+                    }
                 }
             }
         }
@@ -948,6 +1250,10 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
     else if (prop->IsPlainData()) {
         AppendBaseTypeToCodedString(result, base_type, hash_resolver, name_resolver, pdata);
     }
+    else if (base_type.IsRefType && !prop->IsArray() && !prop->IsDict()) {
+        StringEscaping::AppendCodeString(result, SaveRefTypeToText(prop->GetName(), base_type, raw_data, hash_resolver, name_resolver));
+        pdata = pdata_end;
+    }
     else if (prop->IsArray()) {
         string arr_str;
         arr_str.reserve(std::max<size_t>(raw_data.size() * 2, 64));
@@ -956,7 +1262,11 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
         if (!raw_data.empty()) {
             uint32_t arr_size;
 
-            if (prop->IsArrayOfString()) {
+            if (prop->IsArrayOfString() || base_type.IsRefType) {
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                }
+
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
                 pdata += sizeof(uint32_t);
             }
@@ -972,7 +1282,25 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                     next_iteration = true;
                 }
 
-                AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+                if (base_type.IsRefType) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                    }
+
+                    uint32_t ref_data_size;
+                    MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                    pdata += sizeof(uint32_t);
+
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                        throw PropertySerializationException("Corrupted array property data", prop->GetName());
+                    }
+
+                    StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver));
+                    pdata += ref_data_size;
+                }
+                else {
+                    AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+                }
             }
         }
 
@@ -1022,6 +1350,11 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
             if (prop->IsDictOfArray()) {
                 string arr_str;
                 arr_str.reserve(64);
+
+                if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                    throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                }
+
                 uint32_t arr_size;
                 MemCopy(&arr_size, pdata, sizeof(arr_size));
                 pdata += sizeof(arr_size);
@@ -1031,13 +1364,49 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
                         arr_str.append(" ");
                     }
 
-                    AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+                    if (base_type.IsRefType) {
+                        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                            throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                        }
+
+                        uint32_t ref_data_size;
+                        MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                        pdata += sizeof(uint32_t);
+
+                        if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                            throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                        }
+
+                        StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver));
+                        pdata += ref_data_size;
+                    }
+                    else {
+                        AppendBaseTypeToCodedString(arr_str, base_type, hash_resolver, name_resolver, pdata);
+                    }
                 }
 
                 StringEscaping::AppendCodeString(dict_str, arr_str);
             }
             else {
-                AppendBaseTypeToCodedString(dict_str, base_type, hash_resolver, name_resolver, pdata);
+                if (base_type.IsRefType) {
+                    if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                        throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                    }
+
+                    uint32_t ref_data_size;
+                    MemCopy(&ref_data_size, pdata, sizeof(ref_data_size));
+                    pdata += sizeof(uint32_t);
+
+                    if (numeric_cast<uint32_t>(pdata_end - pdata) < ref_data_size) {
+                        throw PropertySerializationException("Corrupted dict property data", prop->GetName());
+                    }
+
+                    StringEscaping::AppendCodeString(dict_str, SaveRefTypeToText(prop->GetName(), base_type, {pdata, ref_data_size}, hash_resolver, name_resolver));
+                    pdata += ref_data_size;
+                }
+                else {
+                    AppendBaseTypeToCodedString(dict_str, base_type, hash_resolver, name_resolver, pdata);
+                }
             }
         }
 
@@ -1059,7 +1428,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         auto& hash = *reinterpret_cast<hstring::hash_t*>(pdata);
 
         if (value.Type() == AnyData::ValueType::String) {
-            auto resolved_value = hash_resolver.ToHashedString(value.AsString());
+            const auto resolved_value = hash_resolver.ToHashedString(value.AsString());
             hash = resolved_value.as_hash();
         }
         else {
@@ -1230,6 +1599,10 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             set_data({primitive_data, base_type.Size});
         }
     }
+    else if (base_type.IsRefType && !prop->IsArray() && !prop->IsDict()) {
+        const auto data = LoadRefTypeFromValue(prop->GetName(), base_type, value, hash_resolver, name_resolver);
+        set_data(data);
+    }
     else if (prop->IsString()) {
         string str_buf;
         const auto& str = ConvertToString(value, str_buf);
@@ -1270,6 +1643,36 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += sizeof(uint32_t);
                 MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
+            }
+
+            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
+            set_data({data.get(), data_size});
+        }
+        else if (base_type.IsRefType) {
+            vector<vector<uint8_t>> ref_entries;
+            ref_entries.reserve(arr.Size());
+            size_t data_size = sizeof(uint32_t);
+
+            for (const auto& arr_entry : arr) {
+                auto ref_data = LoadRefTypeFromValue(prop->GetName(), base_type, arr_entry, hash_resolver, name_resolver);
+                data_size += sizeof(uint32_t) + ref_data.size();
+                ref_entries.emplace_back(std::move(ref_data));
+            }
+
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto* pdata = data.get();
+            *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(arr.Size());
+            pdata += sizeof(uint32_t);
+
+            for (const auto& ref_data : ref_entries) {
+                const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                MemCopy(pdata, &ref_data_size, sizeof(ref_data_size));
+                pdata += sizeof(uint32_t);
+
+                if (ref_data_size != 0) {
+                    MemCopy(pdata, ref_data.data(), ref_data.size());
+                    pdata += ref_data.size();
+                }
             }
 
             FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
@@ -1329,12 +1732,20 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                         data_size += sizeof(uint32_t) + ConvertToString(arr_entry, str_buf).length();
                     }
                 }
+                else if (base_type.IsRefType) {
+                    for (const auto& arr_entry : arr) {
+                        data_size += sizeof(uint32_t) + LoadRefTypeFromValue(prop->GetName(), base_type, arr_entry, hash_resolver, name_resolver).size();
+                    }
+                }
                 else {
                     data_size += arr.Size() * base_type.Size;
                 }
             }
             else if (prop->IsDictOfString()) {
                 data_size += sizeof(uint32_t) + ConvertToString(dict_value, str_buf).length();
+            }
+            else if (base_type.IsRefType) {
+                data_size += sizeof(uint32_t) + LoadRefTypeFromValue(prop->GetName(), base_type, dict_value, hash_resolver, name_resolver).size();
             }
             else {
                 data_size += base_type.Size;
@@ -1424,6 +1835,19 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                         pdata += str.length();
                     }
                 }
+                else if (base_type.IsRefType) {
+                    for (const auto& arr_entry : arr) {
+                        const auto ref_data = LoadRefTypeFromValue(prop->GetName(), base_type, arr_entry, hash_resolver, name_resolver);
+                        const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                        MemCopy(pdata, &ref_data_size, sizeof(ref_data_size));
+                        pdata += sizeof(uint32_t);
+
+                        if (ref_data_size != 0) {
+                            MemCopy(pdata, ref_data.data(), ref_data.size());
+                            pdata += ref_data.size();
+                        }
+                    }
+                }
                 else {
                     for (const auto& arr_entry : arr) {
                         ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, arr_entry, pdata);
@@ -1436,6 +1860,17 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += sizeof(uint32_t);
                 MemCopy(pdata, str.c_str(), str.length());
                 pdata += str.length();
+            }
+            else if (base_type.IsRefType) {
+                const auto ref_data = LoadRefTypeFromValue(prop->GetName(), base_type, dict_value, hash_resolver, name_resolver);
+                const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                MemCopy(pdata, &ref_data_size, sizeof(ref_data_size));
+                pdata += sizeof(uint32_t);
+
+                if (ref_data_size != 0) {
+                    MemCopy(pdata, ref_data.data(), ref_data.size());
+                    pdata += ref_data.size();
+                }
             }
             else {
                 ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, dict_value, pdata);
@@ -1489,8 +1924,38 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
             AppendBaseTypeFromText(data, prop, prop->GetBaseType(), text, hash_resolver, name_resolver);
         }
     }
+    else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
+        if (text.empty()) {
+            set_data({});
+            return;
+        }
+
+        data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), text, hash_resolver, name_resolver);
+    }
     else if (prop->IsArray()) {
-        data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
+        if (prop->IsBaseTypeRefType()) {
+            if (!text.empty()) {
+                const auto arr_value = AnyData::ParseValue(string {text}, false, true, AnyData::ValueType::String);
+                const auto& arr = arr_value.AsArray();
+                data.reserve(sizeof(uint32_t) + text.length() * 2);
+
+                const auto arr_count = numeric_cast<uint32_t>(arr.Size());
+                AppendRawBytes(data, &arr_count, sizeof(arr_count));
+
+                for (const auto& arr_entry : arr) {
+                    const auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hash_resolver, name_resolver);
+                    const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                    AppendRawBytes(data, &ref_data_size, sizeof(ref_data_size));
+
+                    if (ref_data_size != 0) {
+                        AppendRawBytes(data, ref_data.data(), ref_data.size());
+                    }
+                }
+            }
+        }
+        else {
+            data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
+        }
     }
     else if (prop->IsDict()) {
         const string source_text {text};
@@ -1503,27 +1968,65 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
             AppendBaseTypeFromText(data, prop, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
 
             if (prop->IsDictOfArray()) {
-                const auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
+                if (prop->IsBaseTypeRefType()) {
+                    const auto decoded_arr = StringEscaping::DecodeString(value_token);
 
-                if (prop->IsDictOfArrayOfString()) {
-                    const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32_t*>(arr_data.data());
-                    AppendRawBytes(data, &arr_count, sizeof(arr_count));
+                    if (decoded_arr.empty()) {
+                        constexpr uint32_t arr_count = 0;
+                        AppendRawBytes(data, &arr_count, sizeof(arr_count));
+                    }
+                    else {
+                        const auto arr_value = AnyData::ParseValue(decoded_arr, false, true, AnyData::ValueType::String);
+                        const auto& arr = arr_value.AsArray();
+                        const auto arr_count = numeric_cast<uint32_t>(arr.Size());
+                        AppendRawBytes(data, &arr_count, sizeof(arr_count));
 
-                    if (arr_data.size() > sizeof(uint32_t)) {
-                        AppendRawBytes(data, arr_data.data() + sizeof(uint32_t), arr_data.size() - sizeof(uint32_t));
+                        for (const auto& arr_entry : arr) {
+                            const auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hash_resolver, name_resolver);
+                            const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                            AppendRawBytes(data, &ref_data_size, sizeof(ref_data_size));
+
+                            if (ref_data_size != 0) {
+                                AppendRawBytes(data, ref_data.data(), ref_data.size());
+                            }
+                        }
                     }
                 }
                 else {
-                    const auto arr_count = numeric_cast<uint32_t>(prop->GetBaseSize() == 0 ? 0 : arr_data.size() / prop->GetBaseSize());
-                    AppendRawBytes(data, &arr_count, sizeof(arr_count));
+                    const auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
 
-                    if (!arr_data.empty()) {
-                        AppendRawBytes(data, arr_data.data(), arr_data.size());
+                    if (prop->IsDictOfArrayOfString()) {
+                        const auto arr_count = arr_data.empty() ? 0U : *reinterpret_cast<const uint32_t*>(arr_data.data());
+                        AppendRawBytes(data, &arr_count, sizeof(arr_count));
+
+                        if (arr_data.size() > sizeof(uint32_t)) {
+                            AppendRawBytes(data, arr_data.data() + sizeof(uint32_t), arr_data.size() - sizeof(uint32_t));
+                        }
+                    }
+                    else {
+                        const auto arr_count = numeric_cast<uint32_t>(prop->GetBaseSize() == 0 ? 0 : arr_data.size() / prop->GetBaseSize());
+                        AppendRawBytes(data, &arr_count, sizeof(arr_count));
+
+                        if (!arr_data.empty()) {
+                            AppendRawBytes(data, arr_data.data(), arr_data.size());
+                        }
                     }
                 }
             }
             else {
-                AppendBaseTypeFromText(data, prop, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
+                if (prop->IsBaseTypeRefType()) {
+                    const auto decoded_value = StringEscaping::DecodeString(value_token);
+                    const auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), decoded_value, hash_resolver, name_resolver);
+                    const auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
+                    AppendRawBytes(data, &ref_data_size, sizeof(ref_data_size));
+
+                    if (ref_data_size != 0) {
+                        AppendRawBytes(data, ref_data.data(), ref_data.size());
+                    }
+                }
+                else {
+                    AppendBaseTypeFromText(data, prop, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
+                }
             }
         }
     }

@@ -154,6 +154,15 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             const auto& hstr = *cast_from_void<const hstring*>(ptr);
             writer.Write<hstring::hash_t>(hstr.as_hash());
         }
+        else if (type.IsRefType) {
+            const auto ref_obj = ptr != nullptr ? *static_cast<void* const*>(const_cast<void*>(ptr)) : nullptr;
+            const auto raw_data = ConvertRefTypeScriptObjectToRawData(type, ref_obj);
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
+
+            if (!raw_data.empty()) {
+                writer.WritePtr(raw_data.data(), raw_data.size());
+            }
+        }
         else if (type.IsStruct) {
             for (const auto& field : type.StructLayout->Fields) {
                 write_simple(static_cast<const uint8_t*>(ptr) + field.Offset, field.Type);
@@ -232,7 +241,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32_t, string, hstring, vector<uint8_t>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<int32_t, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
     const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
@@ -252,6 +261,14 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             const auto hash = reader.Read<hstring::hash_t>();
             const auto hstr = engine->Hashes.ResolveHash(hash);
             return cast_to_void(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
+        }
+        else if (type.IsRefType) {
+            const uint32_t raw_size = reader.Read<uint32_t>();
+            const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
+
+            auto* ref_obj = CreateRefTypeScriptObjectFromRawData(type, {raw_data, raw_size});
+            auto&& ref_obj_ptr = std::get<refcount_ptr<DynamicRefTypeInstance>>(temp_data.emplace_back(refcount_ptr<DynamicRefTypeInstance>(refcount_ptr<DynamicRefTypeInstance>::adopt, cast_from_void<DynamicRefTypeInstance*>(ref_obj))));
+            return cast_to_void(ref_obj_ptr.get_pp());
         }
         else if (type.IsStruct) {
             auto& buf = std::get<vector<uint8_t>>(temp_data.emplace_back(vector<uint8_t>(type.Size, 0)));

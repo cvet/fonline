@@ -225,6 +225,45 @@ namespace
                 return type;
             };
 
+            auto make_route_snapshot = [this]() {
+                auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteSnapshotRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "int32[]", "Values"}));
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"}));
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"}));
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Note"}));
+
+                auto& ref_type = _ref_types["RouteSnapshot"];
+                ref_type.FieldsRegistrator = fields_registrator.get();
+                ref_type.IsDynamicLayout = true;
+                _ref_type_registrators.emplace("RouteSnapshot", std::move(fields_registrator));
+
+                BaseTypeDesc type;
+                type.Name = "RouteSnapshot";
+                type.IsRefType = true;
+                type.IsObject = true;
+                type.RefType = &_ref_types.at("RouteSnapshot");
+                return type;
+            };
+
+            auto make_route_envelope = [this]() {
+                auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteEnvelopeRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"}));
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"}));
+                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Title"}));
+
+                auto& ref_type = _ref_types["RouteEnvelope"];
+                ref_type.FieldsRegistrator = fields_registrator.get();
+                ref_type.IsDynamicLayout = true;
+                _ref_type_registrators.emplace("RouteEnvelope", std::move(fields_registrator));
+
+                BaseTypeDesc type;
+                type.Name = "RouteEnvelope";
+                type.IsRefType = true;
+                type.IsObject = true;
+                type.RefType = &_ref_types.at("RouteEnvelope");
+                return type;
+            };
+
             _types.emplace("int8", make_int8());
             _types.emplace("int16", make_int16());
             _types.emplace("int32", make_int32());
@@ -243,6 +282,8 @@ namespace
             _types.emplace("ProtoLocation", make_proto("ProtoLocation"));
             _types.emplace("Mode", make_mode());
             _types.emplace("Waypoint", make_waypoint());
+            _types.emplace("RouteSnapshot", make_route_snapshot());
+            _types.emplace("RouteEnvelope", make_route_envelope());
 
             _types.at("ProtoItem").HashedName = _proto_hashes.ToHashedString("ProtoItem");
             _types.at("ProtoCritter").HashedName = _proto_hashes.ToHashedString("ProtoCritter");
@@ -363,10 +404,12 @@ namespace
     private:
         unordered_map<string, BaseTypeDesc> _types {};
         unordered_map<string, StructLayoutDesc> _layouts {};
+        unordered_map<string, RefTypeDesc> _ref_types {};
         unordered_map<string, int32_t> _enum_values {};
         unordered_map<int32_t, string> _enum_names {};
         HashStorage _proto_hashes {};
         unique_ptr<PropertyRegistrator> _proto_registrator {};
+        unordered_map<string, unique_ptr<PropertyRegistrator>> _ref_type_registrators {};
         unordered_map<hstring::hash_t, unordered_map<hstring::hash_t, refcount_ptr<ProtoCustomEntity>>> _protos {};
         string _empty {};
     };
@@ -2582,6 +2625,294 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
     malformed_path.EmplaceBack(string {"10 1.0"});
     invalid_patrol_shape.Emplace("2", AnyData::Value {std::move(malformed_path)});
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, patrol_prop, AnyData::Value {std::move(invalid_patrol_shape)}, hashes, resolver));
+}
+
+TEST_CASE("PropertiesRefTypeConversions")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("RefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+
+    const auto snapshot_value = []() {
+        AnyData::Array values;
+        values.EmplaceBack(int64_t {1});
+        values.EmplaceBack(int64_t {2});
+        values.EmplaceBack(int64_t {3});
+
+        AnyData::Array tags;
+        tags.EmplaceBack(string {"alpha"});
+        tags.EmplaceBack(string {"beta"});
+
+        AnyData::Array anchor;
+        anchor.EmplaceBack(int64_t {10});
+        anchor.EmplaceBack(float64_t {1.5});
+        anchor.EmplaceBack(true);
+
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Values", AnyData::Value {std::move(values)});
+        snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
+        snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
+        snapshot.Emplace("Note", AnyData::Value {string {"smoke"}});
+        return AnyData::Value {std::move(snapshot)};
+    }();
+
+    Properties props(&registrator);
+    PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, snapshot_value, hashes, resolver);
+
+    CHECK(snapshot_prop->IsBaseTypeRefType());
+    CHECK_FALSE(snapshot_prop->IsPlainData());
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, snapshot_prop, hashes, resolver) == snapshot_value);
+
+    const auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("Snapshot"));
+    CHECK(text_data.at("Snapshot").find("Values") != string::npos);
+    CHECK(text_data.at("Snapshot").find("Tags") != string::npos);
+    CHECK(text_data.at("Snapshot").find("Anchor") != string::npos);
+    CHECK(text_data.at("Snapshot").find("Note") != string::npos);
+    CHECK(text_data.at("Snapshot").find("alpha") != string::npos);
+    CHECK(text_data.at("Snapshot").find("10 1.5 True") != string::npos);
+
+    Properties restored(&registrator);
+    restored.ApplyFromText(text_data);
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, snapshot_prop, hashes, resolver) == snapshot_value);
+    CHECK(restored.SaveToText(nullptr) == text_data);
+}
+
+TEST_CASE("PropertiesNestedRefTypeConversions")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("NestedRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* envelope_prop = registrator.RegisterProperty({"Common", "RouteEnvelope", "Envelope", "Mutable", "Persistent", "PublicSync"});
+
+    const auto make_snapshot = [](int32_t start_value, string_view tag, string_view note, bool anchor_flag) {
+        AnyData::Array values;
+        values.EmplaceBack(int64_t {start_value});
+        values.EmplaceBack(int64_t {start_value + 1});
+
+        AnyData::Array tags;
+        tags.EmplaceBack(string {tag});
+
+        AnyData::Array anchor;
+        anchor.EmplaceBack(int64_t {start_value * 10});
+        anchor.EmplaceBack(float64_t {static_cast<double>(start_value) + 0.5});
+        anchor.EmplaceBack(anchor_flag);
+
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Values", AnyData::Value {std::move(values)});
+        snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
+        snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
+        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        return AnyData::Value {std::move(snapshot)};
+    };
+
+    const auto envelope_value = [&]() {
+        AnyData::Dict backup;
+        backup.Emplace("Note", AnyData::Value {string {"tail"}});
+
+        AnyData::Dict envelope;
+        envelope.Emplace("Primary", make_snapshot(5, "alpha", "lead", true));
+        envelope.Emplace("Backup", AnyData::Value {std::move(backup)});
+        envelope.Emplace("Title", AnyData::Value {string {"nested"}});
+        return AnyData::Value {std::move(envelope)};
+    }();
+
+    Properties props(&registrator);
+    PropertiesSerializator::LoadPropertyFromValue(&props, envelope_prop, envelope_value, hashes, resolver);
+
+    CHECK(envelope_prop->IsBaseTypeRefType());
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, envelope_prop, hashes, resolver) == envelope_value);
+
+    const auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("Envelope"));
+    CHECK(text_data.at("Envelope").find("Primary") != string::npos);
+    CHECK(text_data.at("Envelope").find("Backup") != string::npos);
+    CHECK(text_data.at("Envelope").find("Title") != string::npos);
+
+    Properties restored(&registrator);
+    restored.ApplyFromText(text_data);
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, envelope_prop, hashes, resolver) == envelope_value);
+    CHECK(restored.SaveToText(nullptr) == text_data);
+}
+
+TEST_CASE("PropertiesRefTypeCollectionConversions")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("RefTypeCollectionEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+    const auto* snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+    const auto* snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
+
+    const auto make_snapshot = [](int32_t start_value, string_view tag, string_view note, bool anchor_flag) {
+        AnyData::Array values;
+        values.EmplaceBack(int64_t {start_value});
+        values.EmplaceBack(int64_t {start_value + 1});
+
+        AnyData::Array tags;
+        tags.EmplaceBack(string {tag});
+
+        AnyData::Array anchor;
+        anchor.EmplaceBack(int64_t {start_value * 10});
+        anchor.EmplaceBack(float64_t {static_cast<double>(start_value) + 0.5});
+        anchor.EmplaceBack(anchor_flag);
+
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Values", AnyData::Value {std::move(values)});
+        snapshot.Emplace("Tags", AnyData::Value {std::move(tags)});
+        snapshot.Emplace("Anchor", AnyData::Value {std::move(anchor)});
+        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        return AnyData::Value {std::move(snapshot)};
+    };
+
+    const auto make_sparse_snapshot = [](string_view note) {
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Note", AnyData::Value {string {note}});
+        return AnyData::Value {std::move(snapshot)};
+    };
+
+    AnyData::Array snapshots;
+    snapshots.EmplaceBack(make_snapshot(1, "alpha", "first", true));
+    snapshots.EmplaceBack(AnyData::Value {AnyData::Dict {}});
+    snapshots.EmplaceBack(make_sparse_snapshot("tail"));
+    const auto snapshots_value = AnyData::Value {std::move(snapshots)};
+
+    AnyData::Dict snapshots_by_name;
+    snapshots_by_name.Emplace("lead", make_snapshot(2, "beta", "named", false));
+    snapshots_by_name.Emplace("idle patrol", AnyData::Value {AnyData::Dict {}});
+    const auto snapshots_by_name_value = AnyData::Value {std::move(snapshots_by_name)};
+
+    AnyData::Array group_one;
+    group_one.EmplaceBack(make_snapshot(3, "gamma", "group-one", true));
+    group_one.EmplaceBack(make_sparse_snapshot("backup"));
+
+    AnyData::Array group_two;
+    group_two.EmplaceBack(AnyData::Value {AnyData::Dict {}});
+
+    AnyData::Dict snapshot_groups;
+    snapshot_groups.Emplace("1", AnyData::Value {std::move(group_one)});
+    snapshot_groups.Emplace("2", AnyData::Value {std::move(group_two)});
+    const auto snapshot_groups_value = AnyData::Value {std::move(snapshot_groups)};
+
+    Properties props(&registrator);
+    PropertiesSerializator::LoadPropertyFromValue(&props, snapshots_prop, snapshots_value, hashes, resolver);
+    PropertiesSerializator::LoadPropertyFromValue(&props, snapshots_by_name_prop, snapshots_by_name_value, hashes, resolver);
+    PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_groups_prop, snapshot_groups_value, hashes, resolver);
+
+    CHECK(snapshots_prop->IsBaseTypeRefType());
+    CHECK(snapshots_prop->IsArray());
+    CHECK(snapshots_by_name_prop->IsDict());
+    CHECK_FALSE(snapshots_by_name_prop->IsDictOfArray());
+    CHECK(snapshot_groups_prop->IsDictOfArray());
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, snapshots_prop, hashes, resolver) == snapshots_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, snapshots_by_name_prop, hashes, resolver) == snapshots_by_name_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, snapshot_groups_prop, hashes, resolver) == snapshot_groups_value);
+
+    const auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("Snapshots"));
+    REQUIRE(text_data.contains("SnapshotsByName"));
+    REQUIRE(text_data.contains("SnapshotGroups"));
+    CHECK(text_data.at("Snapshots").find("first") != string::npos);
+    CHECK(text_data.at("SnapshotsByName").find("idle patrol") != string::npos);
+    CHECK(text_data.at("SnapshotGroups").find("backup") != string::npos);
+
+    Properties restored(&registrator);
+    restored.ApplyFromText(text_data);
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, snapshots_prop, hashes, resolver) == snapshots_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, snapshots_by_name_prop, hashes, resolver) == snapshots_by_name_value);
+    CHECK(PropertiesSerializator::SavePropertyToValue(&restored, snapshot_groups_prop, hashes, resolver) == snapshot_groups_value);
+    CHECK(restored.SaveToText(nullptr) == text_data);
+}
+
+TEST_CASE("PropertiesRefTypeSerializationSkipsDefaultFields")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("SparseRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+
+    AnyData::Dict snapshot;
+    snapshot.Emplace("Note", AnyData::Value {string {"smoke"}});
+
+    Properties props(&registrator);
+    PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(snapshot)}, hashes, resolver);
+
+    const auto saved_value = PropertiesSerializator::SavePropertyToValue(&props, snapshot_prop, hashes, resolver);
+    REQUIRE(saved_value.Type() == AnyData::ValueType::Dict);
+    CHECK(saved_value.AsDict().Size() == 1);
+    CHECK(saved_value.AsDict().Contains("Note"));
+
+    const auto text = PropertiesSerializator::SavePropertyToText(&props, snapshot_prop, hashes, resolver);
+    CHECK(text.find("Note") != string::npos);
+    CHECK(text.find("smoke") != string::npos);
+    CHECK(text.find("Values") == string::npos);
+    CHECK(text.find("Tags") == string::npos);
+    CHECK(text.find("Anchor") == string::npos);
+}
+
+TEST_CASE("PropertiesSerializatorRejectsInvalidRefTypeShapes")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("InvalidRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    Properties props(&registrator);
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
+
+    AnyData::Dict invalid_unknown_field;
+    invalid_unknown_field.Emplace("Unknown", AnyData::Value {int64_t {1}});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(invalid_unknown_field)}, hashes, resolver));
+
+    AnyData::Dict invalid_anchor;
+    AnyData::Array short_anchor;
+    short_anchor.EmplaceBack(int64_t {10});
+    invalid_anchor.Emplace("Anchor", AnyData::Value {std::move(short_anchor)});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(invalid_anchor)}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, snapshot_prop, "Unknown 1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, snapshot_prop, "Note", hashes, resolver));
+}
+
+TEST_CASE("PropertiesSerializatorRejectsInvalidRefTypeCollectionShapes")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("InvalidRefTypeCollectionEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+    const auto* snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+    const auto* snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
+    Properties props(&registrator);
+
+    AnyData::Array invalid_snapshots;
+    invalid_snapshots.EmplaceBack(int64_t {1});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshots_prop, AnyData::Value {std::move(invalid_snapshots)}, hashes, resolver));
+
+    AnyData::Dict invalid_snapshots_by_name;
+    invalid_snapshots_by_name.Emplace("alpha", int64_t {1});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshots_by_name_prop, AnyData::Value {std::move(invalid_snapshots_by_name)}, hashes, resolver));
+
+    AnyData::Array invalid_group_entries;
+    invalid_group_entries.EmplaceBack(int64_t {5});
+
+    AnyData::Dict invalid_snapshot_groups;
+    invalid_snapshot_groups.Emplace("1", AnyData::Value {std::move(invalid_group_entries)});
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_groups_prop, AnyData::Value {std::move(invalid_snapshot_groups)}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, snapshots_prop, "1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, snapshots_by_name_prop, "alpha 1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, snapshot_groups_prop, "1 \"1\"", hashes, resolver));
 }
 
 TEST_CASE("PropertiesSerializatorRejectsInvalidTextStructShapes")

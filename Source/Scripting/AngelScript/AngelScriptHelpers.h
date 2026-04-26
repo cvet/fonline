@@ -106,6 +106,10 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
 auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyRawData;
 auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string;
 auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
+auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*;
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as_obj) -> vector<uint8_t>;
+auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint8_t> raw_data) -> void*;
+auto ConvertRefTypeScriptObjectToProperty(const Property* prop, void* as_obj) -> PropertyRawData;
 
 #ifdef AS_MAX_PORTABILITY
 

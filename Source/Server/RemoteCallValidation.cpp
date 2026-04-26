@@ -34,11 +34,13 @@
 #include "RemoteCallValidation.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
+#include "PropertiesSerializator.h"
 
 FO_BEGIN_NAMESPACE
 
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
+static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const uint8_t> raw_data);
 
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
@@ -182,6 +184,11 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
             throw RemoteCallValidationException("Unknown hashed string value", type.Name, hash);
         }
     }
+    else if (type.IsRefType) {
+        const uint32_t raw_size = reader.Read<uint32_t>();
+        const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
+        ValidateInboundRefTypeRawData(type, {raw_data, raw_size});
+    }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
             ValidateInboundSimpleRemoteCallData(field.Type, reader, meta);
@@ -189,6 +196,57 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     }
     else {
         throw RemoteCallValidationException("Unsupported remote call argument type", type.Name);
+    }
+}
+
+static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(type.IsRefType);
+    FO_RUNTIME_ASSERT(type.RefType);
+    FO_RUNTIME_ASSERT(type.RefType->FieldsRegistrator);
+
+    const auto* fields_registrator = type.RefType->FieldsRegistrator.get();
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+
+    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        span<const uint8_t> field_raw_data {};
+
+        if (pdata < pdata_end) {
+            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                throw RemoteCallValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
+            }
+
+            uint32_t field_size;
+            MemCopy(&field_size, pdata, sizeof(field_size));
+            pdata += sizeof(field_size);
+
+            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+                throw RemoteCallValidationException("Wrong ref field raw size", type.Name, field_prop->GetName(), field_size);
+            }
+            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
+                throw RemoteCallValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
+            }
+
+            field_raw_data = {pdata, field_size};
+            pdata += field_size;
+        }
+
+        if (!field_raw_data.empty()) {
+            try {
+                ignore_unused(PropertiesSerializator::SavePropertyToValue(field_prop, field_raw_data, *field_prop->GetRegistrator()->GetHashResolver(), *field_prop->GetRegistrator()->GetNameResolver()));
+            }
+            catch (const std::exception& ex) {
+                throw RemoteCallValidationException("Invalid ref type field payload", type.Name, field_prop->GetName(), ex.what());
+            }
+        }
+    }
+
+    if (pdata != pdata_end) {
+        throw RemoteCallValidationException("Corrupted ref type payload", type.Name);
     }
 }
 

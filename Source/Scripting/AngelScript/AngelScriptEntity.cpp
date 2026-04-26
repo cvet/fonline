@@ -932,8 +932,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     event_data.SubscriptionPtr = std::bit_cast<uintptr_t>(func);
     event_data.Priority = priority;
-    event_data.OneShot = false;
-    event_data.Deferred = false;
+    event_data.HasExplicitResult = func->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
 
     entity->SubscribeEvent(event.Name, std::move(event_data));
 }
@@ -980,12 +979,12 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     // May call on destroyed entity
     if (!entity->IsDestroyed() && entity->HasEventCallbacks(event.Name)) {
         ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
-            const bool result = entity->FireEvent(event.Name, call);
-            new (gen->GetAddressOfReturnLocation()) bool(result);
+            const auto result = entity->FireEvent(event.Name, call);
+            new (gen->GetAddressOfReturnLocation()) Entity::EventResult(result);
         });
     }
     else {
-        new (gen->GetAddressOfReturnLocation()) bool(true);
+        new (gen->GetAddressOfReturnLocation()) Entity::EventResult(Entity::EventResult::ContinueChain);
     }
 }
 
@@ -1194,7 +1193,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
@@ -1232,7 +1231,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
             const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto* handle_str = prop->IsArray() || prop->IsDict() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+            const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
                 const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
@@ -1302,7 +1301,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), strex("{}@ get_{}()", event_type_name, event.Name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_GetSelfForEvent), FO_SCRIPT_FUNC_THIS_CONV));
 
             if (!event.Exported) {
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("bool Fire({})", event_args_decl).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Fire), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(event_type_name.c_str(), strex("EventResult Fire({})", event_args_decl).c_str(), FO_SCRIPT_GENERIC(EntityEvent_Fire), FO_SCRIPT_GENERIC_CONV, cast_to_void(&event)));
             }
         }
     }

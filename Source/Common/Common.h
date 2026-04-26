@@ -410,6 +410,7 @@ static constexpr size_t MAX_CALL_ARGS = 16;
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
+class PropertyRegistrator;
 
 struct BaseTypeDesc
 {
@@ -509,6 +510,8 @@ struct StructLayoutDesc
 struct RefTypeDesc
 {
     vector<MethodDesc> Methods {};
+    raw_ptr<const PropertyRegistrator> FieldsRegistrator {};
+    bool IsDynamicLayout {};
 };
 
 struct RemoteCallDesc

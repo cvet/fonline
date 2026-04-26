@@ -1976,7 +1976,7 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
             if event_tag.target in allowed_targets and event_tag.entity == entity:
                 resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
                 body_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
-                        '.Args = {' + resolved_args + '}, .Exported = true, .Deferred = false });')
+                        '.Args = {' + resolved_args + '}, .Exported = true });')
 
         if not body_lines:
             continue

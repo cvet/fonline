@@ -36,6 +36,8 @@
 #include "EngineBase.h"
 #include "FileSystem.h"
 #include "Geometry.h"
+#include "Properties.h"
+#include "PropertiesSerializator.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -56,6 +58,166 @@ static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, strin
             throw ScriptSystemException(error);
         }
     }
+}
+
+DynamicRefTypeInstance::DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept :
+    _registrator {registrator},
+    _props {SafeAlloc::MakeUnique<Properties>(registrator)}
+{
+}
+
+DynamicRefTypeInstance::~DynamicRefTypeInstance() noexcept = default;
+
+void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    FO_RUNTIME_ASSERT(fields_registrator == _registrator);
+
+    _props = SafeAlloc::MakeUnique<Properties>(_registrator.get());
+
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+
+    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        span<const uint8_t> field_raw_data {};
+
+        if (pdata < pdata_end) {
+            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
+            }
+
+            uint32_t field_size;
+            MemCopy(&field_size, pdata, sizeof(field_size));
+            pdata += sizeof(field_size);
+
+            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+                throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
+            }
+            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
+            }
+
+            field_raw_data = {pdata, field_size};
+            pdata += field_size;
+        }
+
+        if (!field_raw_data.empty()) {
+            _props->SetRawData(field_prop, field_raw_data);
+        }
+    }
+
+    if (pdata != pdata_end) {
+        throw PropertySerializationException("Corrupted ref type property data", base_type.Name);
+    }
+
+    _cachedRawData.assign(raw_data.begin(), raw_data.end());
+    _cachedRawDataDirty = false;
+}
+
+auto DynamicRefTypeInstance::GetRawData(const Property* prop) const -> span<const uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_RUNTIME_ASSERT(prop->GetRegistrator() == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+    return _props->GetRawData(prop);
+}
+
+void DynamicRefTypeInstance::SetValue(const Property* prop, PropertyRawData& prop_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_RUNTIME_ASSERT(prop->GetRegistrator() == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+
+    _props->SetValue(prop, prop_data);
+    _cachedRawDataDirty = true;
+}
+
+auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const vector<uint8_t>&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    FO_RUNTIME_ASSERT(fields_registrator == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+
+    if (_cachedRawDataDirty) {
+        vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
+        vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
+        size_t last_non_default_field = 0;
+
+        for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+            const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            const auto field_raw_data = _props->GetRawData(field_prop);
+
+            bool is_default = field_raw_data.empty();
+
+            if (!is_default && field_prop->IsPlainData()) {
+                is_default = true;
+
+                for (const auto byte : field_raw_data) {
+                    if (byte != 0) {
+                        is_default = false;
+                        break;
+                    }
+                }
+            }
+
+            field_raw_entries[i] = field_raw_data;
+            field_is_default[i] = is_default;
+
+            if (!is_default) {
+                last_non_default_field = i;
+            }
+        }
+
+        if (last_non_default_field == 0) {
+            _cachedRawData.clear();
+        }
+        else {
+            size_t data_size = 0;
+
+            for (size_t i = 1; i <= last_non_default_field; i++) {
+                data_size += sizeof(uint32_t);
+
+                if (!field_is_default[i]) {
+                    data_size += field_raw_entries[i].size();
+                }
+            }
+
+            _cachedRawData.resize(data_size);
+            auto* pdata = _cachedRawData.data();
+
+            for (size_t i = 1; i <= last_non_default_field; i++) {
+                const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
+                MemCopy(pdata, &field_size, sizeof(field_size));
+                pdata += sizeof(field_size);
+
+                if (field_size != 0) {
+                    MemCopy(pdata, field_raw_entries[i].data(), field_size);
+                    pdata += field_size;
+                }
+            }
+
+            FO_RUNTIME_ASSERT(static_cast<size_t>(pdata - _cachedRawData.data()) == data_size);
+        }
+
+        _cachedRawDataDirty = false;
+    }
+
+    return _cachedRawData;
 }
 
 void ScriptSystem::MapScriptTypes(EngineMetadata* meta)

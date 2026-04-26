@@ -250,21 +250,21 @@ auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStat
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
+    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
+    return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
+    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::IsConnecting() const noexcept -> bool

@@ -375,6 +375,31 @@ void EngineMetadata::RegisterRefType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_RUNTIME_ASSERT(_refTypes.count(name) != 0);
+    FO_RUNTIME_ASSERT(!layout.empty());
+
+    auto& ref_type = _refTypes[string(name)];
+    FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
+    FO_RUNTIME_ASSERT(_dynamicRefTypeRegistrators.count(string(name)) == 0);
+
+    auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, Hashes, *this);
+
+    for (const auto& [field_name, field_type] : layout) {
+        ignore_unused(fields_registrator->RegisterProperty({"Common", field_type, field_name}));
+    }
+
+    ref_type.FieldsRegistrator = fields_registrator.get();
+    ref_type.IsDynamicLayout = true;
+    _dynamicRefTypeRegistrators.emplace(name, std::move(fields_registrator));
+}
+
 void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods)
 {
     FO_STACK_TRACE_ENTRY();
@@ -384,6 +409,8 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
 
     auto& ref_type = _refTypes[string(name)];
     FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
 
     ref_type.Methods = std::move(methods);
 }
@@ -397,6 +424,8 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
 
     auto& ref_type = _refTypes[string(name)];
     FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
 
     ref_type.Methods.emplace_back(std::move(method));
 }
@@ -624,7 +653,7 @@ void EngineMetadata::FinalizeRegistration()
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }));
-    FO_RUNTIME_ASSERT(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty(); }));
+    FO_RUNTIME_ASSERT(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrator == nullptr; }));
 
     _registrationFinalized = true;
 }
