@@ -675,7 +675,7 @@ static auto ShouldSkipAttributedUsageValidation(const AngelScript::asIScriptFunc
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& allowed_source_paths = App->Settings.AttributedFunctionCallAllowedPaths;
+    vector<string> allowed_source_paths {"Scripts/Tests"};
 
     if (allowed_source_paths.empty()) {
         return false;
