@@ -53,6 +53,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
+FIXED_SETTING(vector<string>, Script, AttributedFunctionCallAllowedPaths); // Script source paths where direct calls to attributed functions are allowed
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

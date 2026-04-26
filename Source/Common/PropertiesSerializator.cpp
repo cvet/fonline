@@ -732,7 +732,7 @@ static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDes
     }
 }
 
-static auto BuildRefTypePropertyData(string_view owner_name, const BaseTypeDesc& base_type, const Properties& field_props) -> vector<uint8_t>
+static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Properties& field_props) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -857,7 +857,7 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
         PropertiesSerializator::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
     }
 
-    return BuildRefTypePropertyData(owner_name, base_type, field_props);
+    return BuildRefTypePropertyData(base_type, field_props);
 }
 
 static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
@@ -893,7 +893,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         PropertiesSerializator::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
     }
 
-    return BuildRefTypePropertyData(owner_name, base_type, field_props);
+    return BuildRefTypePropertyData(base_type, field_props);
 }
 
 auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value

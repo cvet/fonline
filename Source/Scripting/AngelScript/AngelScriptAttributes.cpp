@@ -35,6 +35,8 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "Application.h"
+
 #include <angelscript.h>
 #include <preprocessor.h>
 
@@ -669,6 +671,68 @@ static auto FormatUsageErrorLocation(const ScriptBytecodeLocation& location, con
     return strex("{}({},{})", location.Section, location.Row, location.Column).str();
 }
 
+static auto ShouldSkipAttributedUsageValidation(const AngelScript::asIScriptFunction* caller, const AngelScript::asDWORD* instruction, const Preprocessor::LineNumberTranslator* lnt) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& allowed_source_paths = App->Settings.AttributedFunctionCallAllowedPaths;
+
+    if (allowed_source_paths.empty()) {
+        return false;
+    }
+
+    const auto location = ResolveInstructionLocation(caller, instruction);
+
+    if (!location.has_value()) {
+        return false;
+    }
+
+    string source_file;
+
+    if (lnt != nullptr) {
+        const auto resolved_source_file = Preprocessor::ResolveOriginalFile(numeric_cast<uint32_t>(location->Row), lnt);
+        source_file = {resolved_source_file.begin(), resolved_source_file.end()};
+    }
+    else {
+        source_file = location->Section;
+    }
+
+    auto normalized_source_file = strex(source_file).normalize_path_slashes().str();
+
+    while (!normalized_source_file.empty() && normalized_source_file.back() == '/') {
+        normalized_source_file.pop_back();
+    }
+
+    for (const auto& allowed_source_path : allowed_source_paths) {
+        auto normalized_allowed_source_path = strex(allowed_source_path).normalize_path_slashes().str();
+
+        while (!normalized_allowed_source_path.empty() && normalized_allowed_source_path.back() == '/') {
+            normalized_allowed_source_path.pop_back();
+        }
+
+        if (normalized_allowed_source_path.empty()) {
+            continue;
+        }
+
+        if (strex(normalized_source_file).starts_with(normalized_allowed_source_path) && (normalized_source_file.length() == normalized_allowed_source_path.length() || normalized_source_file[normalized_allowed_source_path.length()] == '/')) {
+            return true;
+        }
+
+        if (normalized_allowed_source_path.front() != '/' && normalized_allowed_source_path.find(':') == string::npos) {
+            const auto relative_path_segment = strex("/{}", normalized_allowed_source_path).str();
+
+            for (auto pos = normalized_source_file.find(relative_path_segment); pos != string::npos; pos = normalized_source_file.find(relative_path_segment, pos + 1)) {
+                const auto end_pos = pos + relative_path_segment.size();
+                if (end_pos == normalized_source_file.size() || normalized_source_file[end_pos] == '/') {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 static auto MakeAttributedUsageError(const AngelScript::asIScriptFunction* caller, const AngelScript::asIScriptFunction* callee, const AngelScript::asDWORD* instruction, const Preprocessor::LineNumberTranslator* lnt) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -1093,6 +1157,11 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
                 FO_RUNTIME_ASSERT(target);
 
                 if (const auto it = attributed_funcs_by_id.find(target->GetId()); it != attributed_funcs_by_id.end()) {
+                    if (ShouldSkipAttributedUsageValidation(caller, instruction, lnt)) {
+                        pos += instr_size;
+                        continue;
+                    }
+
                     if (!errors.empty()) {
                         errors.append("\n");
                     }
