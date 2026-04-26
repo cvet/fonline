@@ -150,10 +150,10 @@ void Player::Send_AddCritter(const Critter* cr)
     }
 
     out_buf->Write(cr->GetIsAttached());
-    out_buf->Write(numeric_cast<uint16_t>(cr->AttachedCritters.size()));
+    out_buf->Write(numeric_cast<uint16_t>(cr->GetAttachedCritters().size()));
 
-    if (!cr->AttachedCritters.empty()) {
-        for (const auto& attached_cr : cr->AttachedCritters) {
+    if (cr->HasAttachedCritters()) {
+        for (const auto& attached_cr : cr->GetAttachedCritters()) {
             out_buf->Write(attached_cr->GetId());
         }
     }
@@ -445,9 +445,12 @@ void Player::Send_ViewMap()
 
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
-    out_buf->Write(_controlledCr->ViewMapHex);
-    out_buf->Write(_controlledCr->ViewMapLocId);
-    out_buf->Write(_controlledCr->ViewMapLocEnt);
+    const auto* view_map = _controlledCr->GetViewMap();
+    FO_RUNTIME_ASSERT(view_map);
+
+    out_buf->Write(view_map->Hex);
+    out_buf->Write(view_map->LocId);
+    out_buf->Write(view_map->LocEnt);
 }
 
 void Player::Send_PlaceToGameComplete()
@@ -480,9 +483,9 @@ void Player::Send_Attachments(const Critter* from_cr)
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetIsAttached());
     out_buf->Write(from_cr->GetAttachMaster());
-    out_buf->Write(numeric_cast<uint16_t>(from_cr->AttachedCritters.size()));
+    out_buf->Write(numeric_cast<uint16_t>(from_cr->GetAttachedCritters().size()));
 
-    for (const auto& attached_cr : from_cr->AttachedCritters) {
+    for (const auto& attached_cr : from_cr->GetAttachedCritters()) {
         out_buf->Write(attached_cr->GetId());
     }
 }

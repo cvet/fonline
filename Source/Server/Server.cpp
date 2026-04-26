@@ -1568,8 +1568,8 @@ void ServerEngine::UnloadCritter(Critter* cr)
         cr->DetachFromCritter();
     }
 
-    if (!cr->AttachedCritters.empty()) {
-        for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+    if (cr->HasAttachedCritters()) {
+        for (auto* attached_cr : copy_hold_ref(cr->GetAttachedCritters())) {
             attached_cr->DetachFromCritter();
         }
     }
@@ -1686,16 +1686,18 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     cr->Send_TimeSync();
 
-    if (cr->ViewMapId) {
-        auto* map = EntityMngr.GetMap(cr->ViewMapId);
-        cr->ViewMapId = ident_t {};
+    if (const auto* view_map = cr->GetViewMap(); view_map != nullptr) {
+        auto* map = EntityMngr.GetMap(view_map->MapId);
 
         if (map != nullptr) {
-            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
+            MapMngr.ViewMap(cr, map, view_map->Look, view_map->Hex, view_map->Dir);
             cr->Send_ViewMap();
             cr->Send_TimeSync();
+            cr->ResetViewMap();
             return;
         }
+
+        cr->ResetViewMap();
     }
 
     const auto* map = EntityMngr.GetMap(cr->GetMapId());
@@ -2894,7 +2896,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         cr->SetDir(progress.Dir);
 
-        if (!cr->AttachedCritters.empty()) {
+        if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
 
             if (!validate_moving(cr_hex)) {

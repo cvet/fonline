@@ -96,7 +96,7 @@ FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
@@ -115,7 +115,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir dir)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
@@ -143,7 +143,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir di
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
     if (map == nullptr) {
@@ -156,7 +156,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
     if (map == nullptr) {
@@ -169,7 +169,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
     if (map == nullptr) {
@@ -187,7 +187,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
@@ -201,7 +201,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, readonly_vector<Critter*> group)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
 
@@ -217,7 +217,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, reado
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* globalCr)
 {
-    if (self->LockMapTransfers != 0) {
+    if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
     if (!self->GetMapId()) {
@@ -278,13 +278,7 @@ FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32_t look,
         look_ = self->GetLookDistance();
     }
 
-    self->ViewMapId = map->GetId();
-    self->ViewMapPid = map->GetProtoId();
-    self->ViewMapLook = numeric_cast<uint16_t>(look_);
-    self->ViewMapHex = hex;
-    self->ViewMapDir = dir;
-    self->ViewMapLocId = ident_t {};
-    self->ViewMapLocEnt = 0;
+    self->SetViewMap({.MapId = map->GetId(), .MapPid = map->GetProtoId(), .Look = numeric_cast<uint16_t>(look_), .Hex = hex, .Dir = dir});
     self->Send_LoadMap(map);
 }
 
@@ -804,7 +798,7 @@ FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
     if (cr->GetIsAttached()) {
         throw ScriptException("Can't attach to attached critter");
     }
-    if (!self->AttachedCritters.empty()) {
+    if (self->HasAttachedCritters()) {
         throw ScriptException("Can't attach with attachments");
     }
 
@@ -836,7 +830,7 @@ FO_SCRIPT_API void Server_Critter_DetachFromCritter(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 {
-    for (auto* cr : copy_hold_ref(self->AttachedCritters)) {
+    for (auto* cr : copy_hold_ref(self->GetAttachedCritters())) {
         cr->DetachFromCritter();
     }
 
@@ -846,7 +840,7 @@ FO_SCRIPT_API void Server_Critter_DetachAllCritters(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(Critter* self)
 {
-    return vec_transform(self->AttachedCritters, [](auto&& cr) -> Critter* { return cr.get(); });
+    return vec_transform(self->GetAttachedCritters(), [](auto&& cr) -> Critter* { return cr.get(); });
 }
 
 ///@ ExportMethod
