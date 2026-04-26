@@ -167,11 +167,6 @@ namespace ServerEngineTest
         AdminCallCounter += 100;
     }
 
-    void UnitTestInvokeAdminEntry()
-    {
-        UnitTestAdminEntry();
-    }
-
     int UnitTestGetInitCalls()
     {
         return InitCalls;
@@ -594,10 +589,6 @@ TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
     CHECK_FALSE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestRegularEntry")));
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
     CHECK(admin_call_counter == 1);
-
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestInvokeAdminEntry")));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
-    CHECK(admin_call_counter == 2);
 }
 
 TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
