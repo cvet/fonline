@@ -701,6 +701,8 @@ AppendList(FO_COMMON_SOURCE
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
 AppendList(FO_SERVER_BASE_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.h"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/CritterManager.cpp"
@@ -730,8 +732,6 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
-    "${FO_ENGINE_ROOT}/Source/Server/RemoteCallValidation.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/RemoteCallValidation.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.cpp"
@@ -978,7 +978,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_RemoteCallValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"

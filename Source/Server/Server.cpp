@@ -35,11 +35,11 @@
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
+#include "ClientDataValidation.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"
-#include "RemoteCallValidation.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -2412,54 +2412,44 @@ void ServerEngine::Process_Property(Player* player)
     }
 
     if (prop == nullptr) {
-        WriteLog("Process_Property: unknown property index {}, player '{}', type {}", property_index, player->GetName(), type);
-        return;
+        throw GenericException("Unknown property index", player->GetName(), type, property_index);
     }
     if (entity == nullptr) {
-        WriteLog("Process_Property: entity not found for property '{}', player '{}', type {}, cr_id {}, item_id {}", prop->GetName(), player->GetName(), type, cr_id, item_id);
-        return;
+        throw GenericException("Entity not found for property", player->GetName(), type, property_index, cr_id, item_id);
     }
 
     if (prop->IsDisabled()) {
-        WriteLog("Process_Property: property '{}' is disabled, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (prop->IsVirtual()) {
-        WriteLog("Process_Property: property '{}' is virtual, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        WriteLog("Process_Property: property '{}' is not public sync, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!is_public && !prop->IsSynced()) {
-        WriteLog("Process_Property: property '{}' is not synced, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        WriteLog("Process_Property: property '{}' is not modifiable by client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        WriteLog("Process_Property: property '{}' is public but not modifiable by any client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
-    if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
-        WriteLog("Process_Property: property '{}' data size mismatch (got {}, expected {}), player '{}', type {}, entity '{}'", prop->GetName(), data_size, prop->GetBaseSize(), player->GetName(), type, entity->GetName());
-        return;
+    try {
+        ValidateInboundPropertyData(prop, {static_cast<const uint8_t*>(prop_data.GetPtr()), prop_data.GetSize()}, *this);
     }
-    if (!prop->IsPlainData() && data_size != 0) {
-        WriteLog("Process_Property: property '{}' is complex but got non-zero data_size {}, player '{}', type {}, entity '{}'", prop->GetName(), data_size, player->GetName(), type, entity->GetName());
-        return;
+    catch (const ClientDataValidationException& ex) {
+        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetName(), type, entity->GetName());
+        throw;
     }
 
     {
         player->SetIgnoreSendEntityProperty(entity, prop);
         auto revert_send_ignore = scope_exit([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
 
-        // Todo: verify property data from client
         entity->SetValueFromData(prop, prop_data);
     }
 }

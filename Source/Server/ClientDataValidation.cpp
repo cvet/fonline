@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "RemoteCallValidation.h"
+#include "ClientDataValidation.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
 #include "PropertiesSerializator.h"
@@ -41,6 +41,7 @@ FO_BEGIN_NAMESPACE
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const uint8_t> raw_data);
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* data, size_t data_size, const EngineMetadata& meta);
 
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
@@ -55,8 +56,14 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
 
         reader.VerifyEnd();
     }
+    catch (const ClientDataValidationException&) {
+        throw;
+    }
     catch (const DataReadingException& ex) {
-        throw RemoteCallValidationException("Malformed remote call payload", inbound_call.Name, ex.what());
+        throw ClientDataValidationException("Malformed remote call payload", inbound_call.Name, ex.what());
+    }
+    catch (const std::exception& ex) {
+        throw ClientDataValidationException("Invalid remote call data", inbound_call.Name, ex.what());
     }
 }
 
@@ -71,7 +78,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         const int32_t arr_size = reader.Read<int32_t>();
 
         if (arr_size < 0) {
-            throw RemoteCallValidationException("Negative array size", type.BaseType.Name, arr_size);
+            throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
         }
 
         for (int32_t i = 0; i < arr_size; i++) {
@@ -82,7 +89,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         const int32_t dict_size = reader.Read<int32_t>();
 
         if (dict_size < 0) {
-            throw RemoteCallValidationException("Negative dict size", type.BaseType.Name, dict_size);
+            throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
 
         for (int32_t i = 0; i < dict_size; i++) {
@@ -94,7 +101,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
         const int32_t dict_size = reader.Read<int32_t>();
 
         if (dict_size < 0) {
-            throw RemoteCallValidationException("Negative dict size", type.BaseType.Name, dict_size);
+            throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
         }
 
         for (int32_t i = 0; i < dict_size; i++) {
@@ -103,7 +110,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
             const int32_t arr_size = reader.Read<int32_t>();
 
             if (arr_size < 0) {
-                throw RemoteCallValidationException("Negative array size", type.BaseType.Name, arr_size);
+                throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
             }
 
             for (int32_t j = 0; j < arr_size; j++) {
@@ -113,7 +120,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataRe
     }
     else {
         const int32_t type_kind = static_cast<int32_t>(type.Kind);
-        throw RemoteCallValidationException("Unsupported remote call container type", type_kind);
+        throw ClientDataValidationException("Unsupported remote call container type", type_kind);
     }
 }
 
@@ -125,7 +132,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         const uint8_t value = reader.Read<uint8_t>();
 
         if (value > 1) {
-            throw RemoteCallValidationException("Invalid bool value", type.Name, value);
+            throw ClientDataValidationException("Invalid bool value", type.Name, value);
         }
     }
     else if (type.IsInt) {
@@ -136,14 +143,14 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
             const float32_t value = reader.Read<float32_t>();
 
             if (!std::isfinite(value)) {
-                throw RemoteCallValidationException("Invalid float32 value", type.Name, value);
+                throw ClientDataValidationException("Invalid float32 value", type.Name, value);
             }
         }
         else if (type.IsDoubleFloat) {
             const float64_t value = reader.Read<float64_t>();
 
             if (!std::isfinite(value)) {
-                throw RemoteCallValidationException("Invalid float64 value", type.Name, value);
+                throw ClientDataValidationException("Invalid float64 value", type.Name, value);
             }
         }
         else {
@@ -157,21 +164,21 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         ignore_unused(hstr);
 
         if (failed) {
-            throw RemoteCallValidationException("Invalid enum value", type.Name, value);
+            throw ClientDataValidationException("Invalid enum value", type.Name, value);
         }
     }
     else if (type.IsString) {
         const int32_t str_len = reader.Read<int32_t>();
 
         if (str_len < 0) {
-            throw RemoteCallValidationException("Negative string length", type.Name, str_len);
+            throw ClientDataValidationException("Negative string length", type.Name, str_len);
         }
 
         const size_t str_size = numeric_cast<size_t>(str_len);
         const char* str = reader.ReadPtr<char>(str_size);
 
         if (!strvex(string_view {str, str_size}).is_valid_utf8()) {
-            throw RemoteCallValidationException("String is not valid UTF-8", type.Name);
+            throw ClientDataValidationException("String is not valid UTF-8", type.Name);
         }
     }
     else if (type.IsHashedString) {
@@ -181,7 +188,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         ignore_unused(hstr);
 
         if (failed) {
-            throw RemoteCallValidationException("Unknown hashed string value", type.Name, hash);
+            throw ClientDataValidationException("Unknown hashed string value", type.Name, hash);
         }
     }
     else if (type.IsRefType) {
@@ -195,7 +202,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else {
-        throw RemoteCallValidationException("Unsupported remote call argument type", type.Name);
+        throw ClientDataValidationException("Unsupported remote call argument type", type.Name);
     }
 }
 
@@ -217,7 +224,7 @@ static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const u
 
         if (pdata < pdata_end) {
             if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
-                throw RemoteCallValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
+                throw ClientDataValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
             }
 
             uint32_t field_size;
@@ -225,10 +232,10 @@ static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const u
             pdata += sizeof(field_size);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
-                throw RemoteCallValidationException("Wrong ref field raw size", type.Name, field_prop->GetName(), field_size);
+                throw ClientDataValidationException("Wrong ref field raw size", type.Name, field_prop->GetName(), field_size);
             }
             if (static_cast<size_t>(pdata_end - pdata) < field_size) {
-                throw RemoteCallValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
+                throw ClientDataValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
             }
 
             field_raw_data = {pdata, field_size};
@@ -240,13 +247,129 @@ static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const u
                 ignore_unused(PropertiesSerializator::SavePropertyToValue(field_prop, field_raw_data, *field_prop->GetRegistrator()->GetHashResolver(), *field_prop->GetRegistrator()->GetNameResolver()));
             }
             catch (const std::exception& ex) {
-                throw RemoteCallValidationException("Invalid ref type field payload", type.Name, field_prop->GetName(), ex.what());
+                throw ClientDataValidationException("Invalid ref type field payload", type.Name, field_prop->GetName(), ex.what());
             }
         }
     }
 
     if (pdata != pdata_end) {
-        throw RemoteCallValidationException("Corrupted ref type payload", type.Name);
+        throw ClientDataValidationException("Corrupted ref type payload", type.Name);
+    }
+}
+
+void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsPlainData()) {
+        if (data.size() != prop->GetBaseSize()) {
+            throw ClientDataValidationException("Property plain data size mismatch", prop->GetName(), data.size(), prop->GetBaseSize());
+        }
+
+        try {
+            ValidateInboundPlainData(prop->GetBaseType(), data.data(), data.size(), meta);
+        }
+        catch (const ClientDataValidationException&) {
+            throw;
+        }
+        catch (const std::exception& ex) {
+            throw ClientDataValidationException("Invalid property plain data", prop->GetName(), ex.what());
+        }
+    }
+    else {
+        // Empty payload means default value (empty string/array/dict/ref) — always valid
+        if (data.empty()) {
+            return;
+        }
+
+        try {
+            (void)PropertiesSerializator::SavePropertyToValue(prop, data, *prop->GetRegistrator()->GetHashResolver(), *prop->GetRegistrator()->GetNameResolver());
+        }
+        catch (const ClientDataValidationException&) {
+            throw;
+        }
+        catch (const std::exception& ex) {
+            throw ClientDataValidationException("Invalid property complex data", prop->GetName(), ex.what());
+        }
+    }
+}
+
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* data, size_t data_size, const EngineMetadata& meta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (data_size != type.Size) {
+        throw ClientDataValidationException("Plain data size mismatch", type.Name, data_size, type.Size);
+    }
+
+    if (type.IsBool) {
+        const uint8_t value = data[0];
+
+        if (value > 1) {
+            throw ClientDataValidationException("Invalid bool value", type.Name, value);
+        }
+    }
+    else if (type.IsFloat) {
+        if (type.IsSingleFloat) {
+            float32_t value;
+            MemCopy(&value, data, sizeof(value));
+
+            if (!std::isfinite(value)) {
+                throw ClientDataValidationException("Invalid float32 value", type.Name, value);
+            }
+        }
+        else if (type.IsDoubleFloat) {
+            float64_t value;
+            MemCopy(&value, data, sizeof(value));
+
+            if (!std::isfinite(value)) {
+                throw ClientDataValidationException("Invalid float64 value", type.Name, value);
+            }
+        }
+        else {
+            FO_UNREACHABLE_PLACE();
+        }
+    }
+    else if (type.IsEnum) {
+        int32_t value;
+        MemCopy(&value, data, sizeof(value));
+        bool failed = false;
+        const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
+        ignore_unused(hstr);
+
+        if (failed) {
+            throw ClientDataValidationException("Invalid enum value", type.Name, value);
+        }
+    }
+    else if (type.IsHashedString || type.IsFixedType || type.IsEntityProto) {
+        hstring::hash_t hash;
+        MemCopy(&hash, data, sizeof(hash));
+        bool failed = false;
+        const auto hstr = meta.Hashes.ResolveHash(hash, &failed);
+
+        if (failed) {
+            throw ClientDataValidationException("Unknown hashed value", type.Name, hash);
+        }
+
+        if ((type.IsFixedType || type.IsEntityProto) && hstr) {
+            const auto hname = meta.Hashes.ToHashedString(type.Name);
+            const auto* proto = meta.GetProtoEntity(hname, hstr);
+
+            if (proto == nullptr) {
+                throw ClientDataValidationException("Unknown proto for type", type.Name, hstr);
+            }
+        }
+    }
+    else if (type.IsStruct) {
+        for (const auto& field : type.StructLayout->Fields) {
+            ValidateInboundPlainData(field.Type, data + field.Offset, field.Type.Size, meta);
+        }
+    }
+    else if (type.IsInt) {
+        // Any int value is valid
+    }
+    else {
+        throw ClientDataValidationException("Unsupported plain data type", type.Name);
     }
 }
 
