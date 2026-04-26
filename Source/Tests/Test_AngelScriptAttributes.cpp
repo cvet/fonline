@@ -1078,6 +1078,66 @@ void StoreSetter()
     }
     )";
 
+    static constexpr string_view ServerRemoteCallDirectCallScript = R"(
+namespace RemoteCallTest
+{
+[[ServerRemoteCall]]
+void Activate(Player@+ player, int value)
+{
+}
+
+void CallDirect(Player@+ player)
+{
+    Activate(player, 42);
+}
+}
+)";
+
+    static constexpr string_view ClientRemoteCallDirectCallScript = R"(
+namespace RemoteCallTest
+{
+[[ClientRemoteCall]]
+void Activate(int value)
+{
+}
+
+void CallDirect()
+{
+    Activate(42);
+}
+}
+)";
+
+    static constexpr string_view ItemTriggerDirectCallScript = R"(
+namespace ItemTriggerTest
+{
+[[ItemTrigger]]
+void Triggered()
+{
+}
+
+void CallDirect()
+{
+    Triggered();
+}
+}
+)";
+
+    static constexpr string_view ItemStaticDirectCallScript = R"(
+namespace ItemStaticTest
+{
+[[ItemStatic]]
+void StaticCall()
+{
+}
+
+void CallDirect()
+{
+    StaticCall();
+}
+}
+)";
+
     static constexpr string_view AdminRemoteCallWrongSignatureScript = R"(
     [[AdminRemoteCall]]
     void Run(Player@+ player, int arg0, uint8 arg1)
@@ -1949,7 +2009,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(ValidateAttributedFunctionUsage(mod).empty());
     }
 
-    SECTION("AllowsDirectCallsToAdminRemoteCallFunctions")
+    SECTION("RejectsDirectCallsToAdminRemoteCallFunctions")
     {
         auto parsed = ParseScript("AttributesAdminRemoteCallDirectCall.fos", AdminRemoteCallDirectCallScript);
         REQUIRE(parsed.Errors.empty());
@@ -1964,7 +2024,96 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         REQUIRE(bind_error.empty());
 
         CHECK(ValidateAdminRemoteCallAttributes(mod).empty());
-        CHECK(ValidateAttributedFunctionUsage(mod).empty());
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void Run()") != string::npos);
+        CHECK(usage_error.find("void CallDirect()") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToServerRemoteCallFunctions")
+    {
+        auto parsed = ParseScript("RemoteCallServerDirectCall.fos", ServerRemoteCallDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyPlayerType(engine);
+
+        auto* mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void RemoteCallTest::Activate(Player@, int)") != string::npos);
+        CHECK(usage_error.find("void RemoteCallTest::CallDirect(Player@)") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToClientRemoteCallFunctions")
+    {
+        auto parsed = ParseScript("RemoteCallClientDirectCall.fos", ClientRemoteCallDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void RemoteCallTest::Activate(int)") != string::npos);
+        CHECK(usage_error.find("void RemoteCallTest::CallDirect()") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToItemTriggerFunctions")
+    {
+        auto parsed = ParseScript("ItemTriggerDirectCall.fos", ItemTriggerDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void ItemTriggerTest::Triggered()") != string::npos);
+        CHECK(usage_error.find("void ItemTriggerTest::CallDirect()") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
+    }
+
+    SECTION("RejectsDirectCallsToItemStaticFunctions")
+    {
+        auto parsed = ParseScript("ItemStaticDirectCall.fos", ItemStaticDirectCallScript);
+        REQUIRE(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        CHECK(!usage_error.empty());
+        CHECK(usage_error.find("void ItemStaticTest::StaticCall()") != string::npos);
+        CHECK(usage_error.find("void ItemStaticTest::CallDirect()") != string::npos);
+        CHECK(usage_error.find("cannot be called") != string::npos);
     }
 
     SECTION("RejectsUnsupportedAdminRemoteCallSignatures")

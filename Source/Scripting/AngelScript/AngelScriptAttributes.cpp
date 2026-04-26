@@ -1062,7 +1062,7 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
     const auto funcs = CollectModuleScriptFunctions(mod);
 
     for (const auto* func : funcs) {
-        if (GetFunctionAttributesUserData(func) == nullptr || HasFunctionAttribute(func, "ServerRemoteCall") || HasFunctionAttribute(func, "ClientRemoteCall") || HasFunctionAttribute(func, "AdminRemoteCall") || HasFunctionAttribute(func, "ItemTrigger") || HasFunctionAttribute(func, "ItemStatic")) {
+        if (GetFunctionAttributesUserData(func) == nullptr) {
             continue;
         }
 
