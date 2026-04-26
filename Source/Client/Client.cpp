@@ -430,6 +430,14 @@ void ClientEngine::ScreenQuake(int32_t noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (!_curMap) {
+        _quakeScreenOffsX = 0.0f;
+        _quakeScreenOffsY = 0.0f;
+        _quakeScreenOffsStep = 0.0f;
+        _quakeScreenOffsNextTime = {};
+        return;
+    }
+
     _quakeScreenOffsX = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsY = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
     _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32_t>() / 30.0f);
@@ -442,6 +450,14 @@ void ClientEngine::ScreenQuake(int32_t noise, timespan time)
 void ClientEngine::ProcessScreenEffectQuake()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_curMap) {
+        _quakeScreenOffsX = 0.0f;
+        _quakeScreenOffsY = 0.0f;
+        _quakeScreenOffsStep = 0.0f;
+        _quakeScreenOffsNextTime = {};
+        return;
+    }
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
         if (_quakeScreenOffsX < 0.0f) {
@@ -2307,6 +2323,20 @@ void ClientEngine::UnloadMap()
     FO_STACK_TRACE_ENTRY();
 
     OnMapUnload.Fire();
+
+    if (_curMap && (_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f)) {
+        _curMap->SetExtraScrollOffset({});
+    }
+
+    _quakeScreenOffsX = 0.0f;
+    _quakeScreenOffsY = 0.0f;
+    _quakeScreenOffsStep = 0.0f;
+    _quakeScreenOffsNextTime = {};
+
+    Settings.ScrollMouseRight = false;
+    Settings.ScrollMouseLeft = false;
+    Settings.ScrollMouseDown = false;
+    Settings.ScrollMouseUp = false;
 
     if (_curMap) {
         _curMap->DestroySelf();
