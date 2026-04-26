@@ -54,6 +54,7 @@ TEST_CASE("LineTracer")
             const auto previous_distance = GeometryHelper::GetDistance(previous, target);
             const auto dir = tracer.GetNextHex(current);
 
+            REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(previous, current) == 1);
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
@@ -75,7 +76,8 @@ TEST_CASE("LineTracer")
 
         for (int32_t step = 0; step < distance; step++) {
             const auto previous_distance = GeometryHelper::GetDistance(current, target);
-            tracer.GetNextHex(current);
+            const auto dir = tracer.GetNextHex(current);
+            REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
         }
@@ -83,7 +85,104 @@ TEST_CASE("LineTracer")
         CHECK(current == target);
     }
 
-    SECTION("SquareTraceRemainsWithinBounds")
+    SECTION("HexTraceReturnsNulloptWhenNoBorderStepExists")
+    {
+        constexpr msize map_size {1, 1};
+        constexpr mpos start {0, 0};
+        LineTracer tracer {start, 0.0f, 1, map_size};
+
+        auto current = start;
+        const auto dir = tracer.GetNextHex(current);
+
+        CHECK(!dir.has_value());
+        CHECK(current == start);
+    }
+
+    SECTION("DirectionTraceFollowsExpectedStraightSteps")
+    {
+        constexpr msize map_size {20, 20};
+        constexpr mpos start {10, 10};
+        constexpr int32_t expected_steps = 4;
+        const auto expected_dir = mdir(hdir::SouthEast);
+
+        auto target = start;
+        for (int32_t step = 0; step < expected_steps; step++) {
+            REQUIRE(GeometryHelper::MoveHexByDir(target, expected_dir, map_size));
+        }
+
+        const auto dir_angle = GeometryHelper::GetDirAngle(start, target);
+        LineTracer tracer {start, dir_angle, expected_steps, map_size};
+
+        auto current = start;
+        auto expected = start;
+
+        for (int32_t step = 0; step < expected_steps; step++) {
+            REQUIRE(GeometryHelper::MoveHexByDir(expected, expected_dir, map_size));
+
+            const auto dir = tracer.GetNextHex(current);
+
+            REQUIRE(dir.has_value());
+            CHECK(map_size.is_valid_pos(current));
+            CHECK(current == expected);
+        }
+
+        CHECK(current == target);
+    }
+
+    SECTION("TargetOffsetChangesFirstChosenStep")
+    {
+        constexpr msize map_size {20, 20};
+        constexpr mpos start {10, 10};
+        const auto east_dir = mdir(hdir::East);
+        const auto south_east_dir = mdir(hdir::SouthEast);
+
+        auto base_target = start;
+        auto offset_target = start;
+        REQUIRE(GeometryHelper::MoveHexByDir(base_target, east_dir, map_size));
+        REQUIRE(GeometryHelper::MoveHexByDir(offset_target, south_east_dir, map_size));
+
+        ipos16 target_offset {};
+
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            const auto delta_internal_x = numeric_cast<float32_t>(offset_target.x - base_target.x) * 3.0f;
+            const auto base_odd = numeric_cast<float32_t>(std::abs(base_target.x % 2));
+            const auto offset_odd = numeric_cast<float32_t>(std::abs(offset_target.x % 2));
+            const auto delta_internal_y = numeric_cast<float32_t>(offset_target.y - base_target.y) * SQRT3_X2_FLOAT - (offset_odd - base_odd) * SQRT3_FLOAT;
+
+            target_offset = {
+                numeric_cast<int16_t>(iround<int32_t>(delta_internal_x * numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH) / 4.0f)),
+                numeric_cast<int16_t>(iround<int32_t>(delta_internal_y * numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT) / SQRT3_X2_FLOAT)),
+            };
+        }
+        else {
+            target_offset = {
+                numeric_cast<int16_t>((offset_target.x - base_target.x) * GameSettings::MAP_HEX_WIDTH),
+                numeric_cast<int16_t>((offset_target.y - base_target.y) * GameSettings::MAP_HEX_HEIGHT),
+            };
+        }
+
+        LineTracer base_tracer {start, base_target, 0.0f, map_size};
+        LineTracer offset_tracer {start, base_target, 0.0f, map_size, {}, target_offset};
+        LineTracer reference_tracer {start, offset_target, 0.0f, map_size};
+
+        auto base_pos = start;
+        auto offset_pos = start;
+        auto reference_pos = start;
+
+        const auto base_step = base_tracer.GetNextHex(base_pos);
+        const auto offset_step = offset_tracer.GetNextHex(offset_pos);
+        const auto reference_step = reference_tracer.GetNextHex(reference_pos);
+
+        REQUIRE(base_step.has_value());
+        REQUIRE(offset_step.has_value());
+        REQUIRE(reference_step.has_value());
+        CHECK(map_size.is_valid_pos(base_pos));
+        CHECK(map_size.is_valid_pos(offset_pos));
+        CHECK(offset_pos == reference_pos);
+        CHECK(base_pos != offset_pos);
+    }
+
+    SECTION("TraceRemainsWithinBoundsWhenContinuingPastTarget")
     {
         constexpr msize map_size {4, 4};
         constexpr mpos start {0, 0};
@@ -95,9 +194,15 @@ TEST_CASE("LineTracer")
 
         for (size_t i = 0; i < 8; i++) {
             const auto previous = pos;
-            tracer.GetNextSquare(pos);
+            const auto dir = tracer.GetNextHex(pos);
             CHECK(map_size.is_valid_pos(pos));
-            moved = moved || pos != previous;
+
+            if (dir.has_value()) {
+                moved = moved || pos != previous;
+            }
+            else {
+                CHECK(pos == previous);
+            }
         }
 
         CHECK(moved);

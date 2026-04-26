@@ -35,46 +35,38 @@
 
 FO_BEGIN_NAMESPACE
 
-LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, msize map_size)
+LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, msize map_size, ipos16 start_offset, ipos16 target_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
     _mapSize = map_size;
 
-    TraceInit(start_hex, target_hex, dir_angle_offset);
+    TraceInit(start_hex, target_hex, dir_angle_offset, start_offset, target_offset);
 }
 
-LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize map_size)
+LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize map_size, ipos16 start_offset, ipos16 target_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(dist >= 0);
+
     _mapSize = map_size;
 
-    auto angle = 360.0f - dir_angle + 60.0f;
-    angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
+    const auto start_pos = GeometryHelper::GetHexPos(start_hex);
+    const auto start_pos_x = numeric_cast<float32_t>(start_pos.x + start_offset.x);
+    const auto start_pos_y = numeric_cast<float32_t>(start_pos.y + start_offset.y);
+    const auto angle_rad = (dir_angle - 90.0f) * DEG_TO_RAD_FLOAT;
+    const auto ray_dx = std::cos(angle_rad);
+    const auto ray_dy = std::sin(angle_rad) / GeometryHelper::GetYProj();
+    const auto pixel_dist = numeric_cast<float32_t>(std::max(GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_HEIGHT) * dist);
+    const auto target_pos = ipos32 {iround<int32_t>(start_pos_x + ray_dx * pixel_dist), iround<int32_t>(start_pos_y + ray_dy * pixel_dist)};
+    const auto raw_target_hex = GeometryHelper::GetHexPosCoord(target_pos);
+    const auto target_hex = mpos {numeric_cast<int16_t>(raw_target_hex.x), numeric_cast<int16_t>(raw_target_hex.y)};
 
-    auto dx = -std::cos(angle * DEG_TO_RAD_FLOAT);
-    auto dy = -std::sin(angle * DEG_TO_RAD_FLOAT);
-
-    if (std::abs(dx) > std::abs(dy)) {
-        dy /= std::abs(dx);
-        dx = dx > 0.0f ? 1.0f : -1.0f;
-    }
-    else {
-        dx /= std::abs(dy);
-        dy = dy > 0.0f ? 1.0f : -1.0f;
-    }
-
-    const auto sx = numeric_cast<float32_t>(start_hex.x) + 0.5f;
-    const auto sy = numeric_cast<float32_t>(start_hex.y) + 0.5f;
-    const auto tx = iround<int32_t>(std::floor(sx + dx * numeric_cast<float32_t>(dist)));
-    const auto ty = iround<int32_t>(std::floor(sy + dy * numeric_cast<float32_t>(dist)));
-    const auto target_hex = _mapSize.from_raw_pos(tx, ty);
-
-    TraceInit(start_hex, target_hex, 0.0f);
+    TraceInit(start_hex, target_hex, 0.0f, start_offset, target_offset);
 }
 
-void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset)
+void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -86,14 +78,25 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         constexpr auto bias = 0.02f;
 
+        // Convert pixel sub-hex offset to internal trace coordinates.
+        // Internal hex bounding box is 4 wide (vertex-to-vertex) and SQRT3_X2 tall (edge-to-edge),
+        // visual hex bounding box is MAP_HEX_WIDTH x MAP_HEX_HEIGHT.
+        constexpr auto offset_scale_x = 4.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
+        constexpr auto offset_scale_y = SQRT3_X2_FLOAT / numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT);
+
+        const auto so_x = numeric_cast<float32_t>(start_offset.x) * offset_scale_x;
+        const auto so_y = numeric_cast<float32_t>(start_offset.y) * offset_scale_y;
+        const auto to_x = numeric_cast<float32_t>(target_offset.x) * offset_scale_x;
+        const auto to_y = numeric_cast<float32_t>(target_offset.y) * offset_scale_y;
+
         const auto sx_odd = numeric_cast<float32_t>(std::abs(start_hex.x % 2));
         const auto tx_odd = numeric_cast<float32_t>(std::abs(target_hex.x % 2));
 
-        _xStart = sx * 3.0f + bias;
-        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + bias;
+        _xStart = sx * 3.0f + bias + so_x;
+        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + bias + so_y;
 
-        auto x_end = tx * 3.0f + bias;
-        auto y_end = ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + bias;
+        auto x_end = tx * 3.0f + bias + to_x;
+        auto y_end = ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + bias + to_y;
 
         if (!is_float_equal(dir_angle_offset, 0.0f)) {
             x_end -= _xStart;
@@ -110,8 +113,8 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         _dx = x_end - _xStart;
         _dy = y_end - _yStart;
 
-        const auto nx = (tx - sx) * 3.0f + bias;
-        const auto ny = (ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT + bias;
+        const auto nx = (tx - sx) * 3.0f + (to_x - so_x) + bias;
+        const auto ny = (ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT + (to_y - so_y) + bias;
         auto angle = 180.0f + std::atan2(ny, nx) * RAD_TO_DEG_FLOAT - dir_angle_offset;
         angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 
@@ -145,13 +148,22 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         }
     }
     else {
-        const auto nx = tx - sx;
-        const auto ny = ty - sy;
+        // Square geometry: internal hex size is 1x1, visual is MAP_HEX_WIDTH x MAP_HEX_HEIGHT.
+        constexpr auto offset_scale_x = 1.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
+        constexpr auto offset_scale_y = 1.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT);
+
+        const auto so_x = numeric_cast<float32_t>(start_offset.x) * offset_scale_x;
+        const auto so_y = numeric_cast<float32_t>(start_offset.y) * offset_scale_y;
+        const auto to_x = numeric_cast<float32_t>(target_offset.x) * offset_scale_x;
+        const auto to_y = numeric_cast<float32_t>(target_offset.y) * offset_scale_y;
+
+        const auto nx = (tx - sx) + (to_x - so_x);
+        const auto ny = (ty - sy) + (to_y - so_y);
         auto angle = std::atan2(ny, nx) * RAD_TO_DEG_FLOAT;
         angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 
-        _xStart = sx + 0.5f;
-        _yStart = sy + 0.5f;
+        _xStart = sx + 0.5f + so_x;
+        _yStart = sy + 0.5f + so_y;
 
         _dx = std::cos(angle * DEG_TO_RAD_FLOAT);
         _dy = std::sin(angle * DEG_TO_RAD_FLOAT);
@@ -174,39 +186,61 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
     _y = _yStart;
 }
 
-auto LineTracer::GetNextHex(mpos& hex) const -> mdir
+auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto left_hex = hex;
-    auto right_hex = hex;
-    GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
-    GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
+    const auto cur_hex = hex;
 
-    const auto left_hex_f = fpos32(left_hex);
-    const auto right_hex_f = fpos32(right_hex);
-    const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
-    const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        auto left_hex = hex;
+        auto right_hex = hex;
 
-    // Left hand biased
-    if (dist_left <= dist_right) {
-        hex = left_hex;
-        return mdir(_dirLeft);
+        const auto left_changed = GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
+        const auto right_changed = GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
+        FO_RUNTIME_ASSERT(left_changed == (left_hex != cur_hex));
+        FO_RUNTIME_ASSERT(right_changed == (right_hex != cur_hex));
+
+        if (!left_changed && !right_changed) {
+            return std::nullopt;
+        }
+        if (!left_changed) {
+            hex = right_hex;
+            return mdir(_dirRight);
+        }
+        if (!right_changed) {
+            hex = left_hex;
+            return mdir(_dirLeft);
+        }
+
+        const auto left_hex_f = fpos32(left_hex);
+        const auto right_hex_f = fpos32(right_hex);
+        const auto dist_left = std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x));
+        const auto dist_right = std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x));
+
+        // Left hand biased
+        if (dist_left <= dist_right) {
+            hex = left_hex;
+            return mdir(_dirLeft);
+        }
+        else {
+            hex = right_hex;
+            return mdir(_dirRight);
+        }
     }
     else {
-        hex = right_hex;
-        return mdir(_dirRight);
+        _x += _dx;
+        _y += _dy;
+
+        const auto next_hex = _mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)));
+
+        if (next_hex == cur_hex) {
+            return std::nullopt;
+        }
+
+        hex = next_hex;
+        return mdir(GeometryHelper::GetHexDir(cur_hex, next_hex));
     }
-}
-
-void LineTracer::GetNextSquare(mpos& pos)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _x += _dx;
-    _y += _dy;
-
-    pos = _mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)));
 }
 
 FO_END_NAMESPACE

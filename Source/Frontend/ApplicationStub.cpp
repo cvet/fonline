@@ -95,6 +95,7 @@ public:
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override { return false; }
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override { return _settings->MousePos; }
+    [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override { return {}; }
     [[nodiscard]] auto GetClipboardText() -> const string& override { return _clipboardTextStorage; }
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
     [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }

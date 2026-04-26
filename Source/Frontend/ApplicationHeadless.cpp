@@ -567,6 +567,13 @@ auto AppInput::GetMousePosition() const -> ipos32
     return {0, 0};
 }
 
+auto AppInput::GetGamepadState() const noexcept -> GamepadState
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {};
+}
+
 void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
 {
     FO_STACK_TRACE_ENTRY();

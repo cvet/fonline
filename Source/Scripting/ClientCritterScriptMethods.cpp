@@ -492,7 +492,7 @@ FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, int32_t dir, int32_t speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, mdir dir, int32_t speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -512,7 +512,7 @@ FO_SCRIPT_API void Client_Critter_StopMove(CritterView* self)
         throw ScriptException("Critter is not on map");
     }
 
-    self->GetEngine()->CritterMoveTo(hex_cr, -1, 0);
+    self->GetEngine()->CritterMoveTo(hex_cr, mdir {0}, 0);
 }
 
 ///@ ExportMethod
