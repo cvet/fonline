@@ -323,8 +323,8 @@ FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ClientEngine* client)
     return numeric_cast<uint32_t>(client->GetConnection().GetBytesReceived());
 }
 
-///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Game_GetChosen(ClientEngine* client)
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API CritterView* Client_Game_Chosen(ClientEngine* client)
 {
     return client->GetChosen();
 }
