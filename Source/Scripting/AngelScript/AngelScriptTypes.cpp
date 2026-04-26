@@ -988,6 +988,60 @@ static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) bool(obj == other);
 }
 
+static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(self != nullptr);
+    self->AddRef();
+}
+
+static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(self != nullptr);
+    self->Release();
+}
+
+static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* registrator = cast_from_void<const PropertyRegistrator*>(gen->GetAuxiliary());
+    FO_RUNTIME_ASSERT(registrator != nullptr);
+
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrator);
+    new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
+}
+
+static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
+    const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
+    FO_RUNTIME_ASSERT(self != nullptr);
+    FO_RUNTIME_ASSERT(prop != nullptr);
+
+    PropertyRawData prop_data;
+    prop_data.Pass(self->GetRawData(prop));
+    ConvertPropsToScriptObject(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
+}
+
+static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
+    const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
+    FO_RUNTIME_ASSERT(self != nullptr);
+    FO_RUNTIME_ASSERT(prop != nullptr);
+
+    auto prop_data = ConvertScriptToPropsObject(prop, gen->GetAddressOfArg(0));
+    self->SetValue(prop, prop_data);
+}
+
 template<typename T>
 static void Global_GetConstant(AngelScript::asIScriptGeneric* gen)
 {
@@ -1349,6 +1403,22 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
         const auto& ref_type = *type.RefType;
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_GENERIC(RefType_Equals), FO_SCRIPT_GENERIC_CONV));
+
+        if (ref_type.FieldsRegistrator) {
+            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_AddRef), FO_SCRIPT_FUNC_THIS_CONV));
+            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_Release), FO_SCRIPT_FUNC_THIS_CONV));
+            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(ref_type.FieldsRegistrator.get())));
+
+            for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
+                const auto* prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), handle_str).str();
+
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+            }
+        }
 
         for (const auto& method : ref_type.Methods) {
             if (method.Name == "__AddRef") {

@@ -65,8 +65,13 @@ using CritterProperty = ScriptEnum_uint16;
 using MapProperty = ScriptEnum_uint16;
 using LocationProperty = ScriptEnum_uint16;
 
+class ScriptSystem;
 class FileSystem;
+
 class Property;
+class PropertyRawData;
+class PropertyRegistrator;
+class Properties;
 
 class EngineMetadata;
 class BaseEngine;
@@ -75,7 +80,28 @@ class Entity;
 using AbstractItem = Entity;
 using ScriptSelfEntity = Entity;
 
-class ScriptSystem;
+class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
+{
+public:
+    explicit DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept;
+    DynamicRefTypeInstance(const DynamicRefTypeInstance&) = delete;
+    DynamicRefTypeInstance(DynamicRefTypeInstance&&) = delete;
+    auto operator=(const DynamicRefTypeInstance&) -> DynamicRefTypeInstance& = delete;
+    auto operator=(DynamicRefTypeInstance&&) -> DynamicRefTypeInstance& = delete;
+    ~DynamicRefTypeInstance() noexcept;
+
+    [[nodiscard]] auto GetRawData(const Property* prop) const -> span<const uint8_t>;
+    [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const vector<uint8_t>&;
+
+    void LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data);
+    void SetValue(const Property* prop, PropertyRawData& prop_data);
+
+private:
+    raw_ptr<const PropertyRegistrator> _registrator;
+    unique_ptr<Properties> _props {};
+    vector<uint8_t> _cachedRawData {};
+    bool _cachedRawDataDirty {};
+};
 
 template<typename T>
 using readonly_vector = const vector<T>&;

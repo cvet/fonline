@@ -108,6 +108,7 @@ public:
     void RegisterValueType(string_view name);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
+    void RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods);
     void RegisterRefTypeMethod(string_view name, MethodDesc&& method);
     void RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods);
@@ -143,6 +144,7 @@ private:
     unordered_map<string, raw_ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
     unordered_map<string, StructLayoutDesc> _structLayouts {};
     unordered_map<string, RefTypeDesc> _refTypes {};
+    unordered_map<string, unique_ptr<PropertyRegistrator>> _dynamicRefTypeRegistrators {};
     unordered_map<string, BaseTypeDesc> _baseTypes {};
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};

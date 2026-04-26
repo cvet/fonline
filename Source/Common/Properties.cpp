@@ -1937,7 +1937,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         if (type.BaseType.IsString) {
             prop->_isString = true;
         }
-        else {
+        else if (!type.BaseType.IsRefType) {
             prop->_isPlainData = true;
         }
     }
