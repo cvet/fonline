@@ -5791,7 +5791,6 @@ void MapperEngine::ParseCommand(string_view command)
 
         if (command_ext == "new") {
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-            pmap->AddRef(); // Todo: fix memleak
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
@@ -5904,7 +5903,6 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     }
 
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    pmap->AddRef(); // Todo: fix memleak
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
