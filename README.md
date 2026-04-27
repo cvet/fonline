@@ -117,7 +117,6 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [Asio](https://think-async.com/Asio/) - networking library
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
-* [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [GLM](https://github.com/g-truc/glm) - mathematics library for vectors, matrices and quaternions
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser

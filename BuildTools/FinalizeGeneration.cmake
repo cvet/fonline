@@ -195,22 +195,6 @@ AddStaticThirdPartyLibrary(AcmDecoder
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_ACM_DIR}")
 
-# GLEW
-if(FO_USE_GLEW)
-    SetValue(FO_GLEW_DIR "${FO_ENGINE_ROOT}/ThirdParty/GLEW")
-    SetValue(FO_GLEW_SOURCE
-        "${FO_GLEW_DIR}/GL/glew.c"
-        "${FO_GLEW_DIR}/GL/glew.h"
-        "${FO_GLEW_DIR}/GL/glxew.h"
-        "${FO_GLEW_DIR}/GL/wglew.h")
-    AddStaticThirdPartyLibrary(GLEW
-        SOURCE_LIST FO_GLEW_SOURCE
-        APPEND_TO FO_RENDER_LIBS
-        INCLUDE_DIRS "${FO_GLEW_DIR}")
-    AddCompileDefinitionsList(GLEW_STATIC)
-    TargetCompileDefinitions(GLEW PRIVATE "GLEW_STATIC")
-endif()
-
 # GLM
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")

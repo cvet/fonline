@@ -322,7 +322,6 @@ if(WIN32)
 	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
 
 	if(NOT FO_HEADLESS_ONLY)
-		SetValue(FO_USE_GLEW ON)
 		AppendList(FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
 		AppendList(FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
 	endif()
@@ -335,7 +334,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(NOT FO_HEADLESS_ONLY)
 		RequirePackage(X11 REQUIRED)
 		RequirePackage(OpenGL REQUIRED)
-		SetValue(FO_USE_GLEW ON)
 		AppendList(FO_RENDER_SYSTEM_LIBS "GL")
 	endif()
 
@@ -363,7 +361,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
 	if(NOT FO_HEADLESS_ONLY)
 		RequirePackage(OpenGL REQUIRED)
-		SetValue(FO_USE_GLEW ON)
 		AppendList(FO_RENDER_SYSTEM_LIBS ${OPENGL_LIBRARIES})
 	endif()
 
