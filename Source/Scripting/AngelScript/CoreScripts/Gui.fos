@@ -751,20 +751,30 @@ class Object
 
     bool IsHit(ipos pos)
     {
-        return Active && !_IsNotHittable && _Size.width > 0 && _Size.height > 0 && Math::IsCollision(pos, _AbsolutePos, _Size) && !_IsCropped(pos);
-    }
-
-    bool _IsCropped(ipos pos)
-    {
-        Object obj = Parent;
-        while (obj != null) {
-            Panel panel = cast<Panel>(obj);
-            if (panel != null && panel._CropContent && !Math::IsCollision(pos, obj._AbsolutePos, obj._Size)) {
-                return true;
-            }
-            obj = obj.Parent;
+        if (!_ActiveSelf || _IsNotHittable || _Size.width <= 0 || _Size.height <= 0) {
+            return false;
         }
-        return false;
+        if (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height) {
+            return false;
+        }
+
+        Object obj = _Parent;
+        while (obj != null) {
+            if (!obj._ActiveSelf) {
+                return false;
+            }
+
+            Panel panel = cast<Panel>(obj);
+            if (panel != null && panel._CropContent &&
+                (pos.x < obj._AbsolutePos.x || pos.x >= obj._AbsolutePos.x + obj._Size.width || pos.y < obj._AbsolutePos.y ||
+                 pos.y >= obj._AbsolutePos.y + obj._Size.height)) {
+                return false;
+            }
+
+            obj = obj._Parent;
+        }
+
+        return true;
     }
 
     void _GetWholeSizeRect(int[] rect)
