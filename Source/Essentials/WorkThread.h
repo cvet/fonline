@@ -41,14 +41,14 @@
 FO_BEGIN_NAMESPACE
 
 extern void set_this_thread_name(const string& name) noexcept;
-extern auto get_this_thread_name() noexcept -> const string&;
+extern auto get_this_thread_name() noexcept -> const std::string&;
 
 template<typename Func, typename... Args>
 [[nodiscard]] inline auto run_thread(string_view name, Func&& func, Args&&... args) -> std::thread
 {
     const auto& cur_thread_name = get_this_thread_name();
     const size_t ns_pos = cur_thread_name.rfind("::");
-    string qualified_name = ns_pos != string::npos ? cur_thread_name.substr(0, ns_pos + 2) + string(name) : string(name);
+    string qualified_name = ns_pos != string::npos ? string(cur_thread_name.substr(0, ns_pos + 2)) + string(name) : string(name);
 
     return std::thread(
         [qualified_name_ = std::move(qualified_name), func_ = std::decay_t<Func>(std::forward<Func>(func))](auto&&... inner_args) mutable {
