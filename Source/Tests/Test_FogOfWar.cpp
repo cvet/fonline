@@ -228,6 +228,31 @@ TEST_CASE("FogOfWar")
         CHECK(fog.GetPoints().front().PointPos.x == final_edge_x);
     }
 
+    SECTION("Interpolates center point attributes during transition")
+    {
+        FogOfWar fog;
+
+        auto input = MakeInput({10, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
+        input.CenterColor = ucolor {10, 20, 30, 40};
+        fog.Prepare(input);
+        input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
+        fog.Prepare(input);
+        REQUIRE(fog.GetPoints().size() > 2);
+        CHECK(fog.GetPoints()[2].PointColor == ucolor {10, 20, 30, 40});
+
+        input.CenterColor = ucolor {110, 120, 130, 140};
+        fog.Prepare(input);
+
+        input.FrameTime = nanotime {timespan {std::chrono::milliseconds {300}}};
+        fog.Prepare(input);
+        REQUIRE(fog.GetPoints().size() > 2);
+        CHECK(fog.GetPoints()[2].PointColor == ucolor {60, 70, 80, 90});
+
+        input.FrameTime = nanotime {timespan {std::chrono::milliseconds {400}}};
+        fog.Prepare(input);
+        CHECK(fog.GetPoints()[2].PointColor == ucolor {110, 120, 130, 140});
+    }
+
     SECTION("First appearance expands from origin")
     {
         FogOfWar fog;
@@ -298,6 +323,52 @@ TEST_CASE("FogOfWar")
         CHECK(!fog.GetPoints().empty());
         CHECK(fog.GetPoints()[0].PointColor.comp.r == numeric_cast<uint8_t>(160 + 3 * 95 / 7));
         CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8_t>((numeric_cast<int32_t>(fog.GetPoints()[0].PointColor.comp.r) * 96) / 255));
+    }
+
+    SECTION("Point offsets stay valid after move")
+    {
+        vector<FogOfWar> fogs;
+        fogs.reserve(1);
+
+        fogs.emplace_back();
+        fogs.front().SetDrawOffset({11, 22});
+        fogs.front().SetBaseDrawOffset({33, 44});
+        fogs.front().RequestRebuild();
+        fogs.front().Prepare(MakeInput({10, 10}, nanotime {}));
+
+        REQUIRE(!fogs.front().GetPoints().empty());
+
+        // Trigger reallocation that moves the existing element
+        fogs.emplace_back();
+
+        for (const auto& p : fogs.front().GetPoints()) {
+            REQUIRE(p.PointOffset != nullptr);
+            const auto offset = *p.PointOffset;
+            CHECK((offset == ipos32 {11, 22} || offset == ipos32 {33, 44}));
+        }
+
+        fogs.front().SetDrawOffset({77, 88});
+        fogs.front().SetBaseDrawOffset({99, 100});
+
+        bool draw_offset_seen = false;
+        bool base_draw_offset_seen = false;
+
+        for (const auto& p : fogs.front().GetPoints()) {
+            REQUIRE(p.PointOffset != nullptr);
+            const auto offset = *p.PointOffset;
+            if (offset == ipos32 {77, 88}) {
+                draw_offset_seen = true;
+            }
+            else if (offset == ipos32 {99, 100}) {
+                base_draw_offset_seen = true;
+            }
+            else {
+                FAIL("Point offset stale after fog move");
+            }
+        }
+
+        CHECK(draw_offset_seen);
+        CHECK(base_draw_offset_seen);
     }
 }
 

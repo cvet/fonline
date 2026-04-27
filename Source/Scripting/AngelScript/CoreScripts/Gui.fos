@@ -655,7 +655,7 @@ class Object
 
     void _Draw(bool callCallback)
     {
-        if (!Active) {
+        if (!_ActiveSelf) {
             return;
         }
 

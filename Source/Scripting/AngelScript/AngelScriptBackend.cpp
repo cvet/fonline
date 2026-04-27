@@ -193,7 +193,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     RegisterAngelScriptRemoteCalls(as_engine);
 
     if (_engine && _engine->Settings.DebuggerEnabled) {
-        if (_debuggerEndpointServer == nullptr) {
+        if (!_debuggerEndpointServer) {
             try {
                 _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
             }
