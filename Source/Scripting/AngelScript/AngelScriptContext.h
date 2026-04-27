@@ -89,7 +89,7 @@ public:
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
-    ~AngelScriptContextManager() = default;
+    ~AngelScriptContextManager();
 
     [[nodiscard]] auto IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool;
 

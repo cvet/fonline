@@ -334,7 +334,14 @@ TEST_CASE("FogOfWar")
         fogs.front().SetDrawOffset({11, 22});
         fogs.front().SetBaseDrawOffset({33, 44});
         fogs.front().RequestRebuild();
-        fogs.front().Prepare(MakeInput({10, 10}, nanotime {}));
+
+        auto input = MakeInput({10, 10}, nanotime {});
+        input.Distance = 1;
+        input.TraceMode = FogOfWar::TraceModeType::Overlay;
+        input.OverlayColor = ucolor {255, 96, 0, 255};
+        input.CenterColor = ucolor {0, 0, 0, 255};
+        input.TraceBulletToBlock = [](mpos start, mpos, int32_t, bool) { return start; };
+        fogs.front().Prepare(input);
 
         REQUIRE(!fogs.front().GetPoints().empty());
 

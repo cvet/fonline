@@ -108,6 +108,33 @@ AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngin
     FO_AS_VERIFY(as_engine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
 }
 
+AngelScriptContextManager::~AngelScriptContextManager()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto cleanup_context = [](AngelScript::asIScriptContext* ctx) {
+        safe_call([&] {
+            auto state = ctx->GetState();
+
+            if (state == AngelScript::asEXECUTION_ACTIVE || state == AngelScript::asEXECUTION_SUSPENDED) {
+                ctx->Abort();
+                state = ctx->GetState();
+            }
+
+            if (state != AngelScript::asEXECUTION_UNINITIALIZED) {
+                ctx->Unprepare();
+            }
+        });
+    };
+
+    for (const auto& ctx : _busyContexts) {
+        cleanup_context(ctx.get_no_const());
+    }
+    for (const auto& ctx : _freeContexts) {
+        cleanup_context(ctx.get_no_const());
+    }
+}
+
 void AngelScriptContextManager::CreateContext()
 {
     FO_STACK_TRACE_ENTRY();

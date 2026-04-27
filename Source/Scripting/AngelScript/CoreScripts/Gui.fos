@@ -3895,6 +3895,8 @@ void EngineCallback_Finish()
 {
     EngineCallback_InputLost();
 
+    HideAllScreens();
+
     DropMenu = null;
     CurConsole = null;
     DragAndDropHandlers.clear();
