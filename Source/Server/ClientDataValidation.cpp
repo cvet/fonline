@@ -34,14 +34,17 @@
 #include "ClientDataValidation.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
-#include "PropertiesSerializator.h"
+#include "Properties.h"
 
 FO_BEGIN_NAMESPACE
 
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
-static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const uint8_t> raw_data);
+static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta);
 static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* data, size_t data_size, const EngineMetadata& meta);
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const uint8_t*& pdata, const uint8_t* pdata_end, const EngineMetadata& meta);
+static void ValidateInboundArrayPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta);
+static void ValidateInboundDictPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta);
 
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
@@ -65,6 +68,51 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
     catch (const std::exception& ex) {
         throw ClientDataValidationException("Invalid remote call data", inbound_call.Name, ex.what());
     }
+}
+
+void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (prop->IsPlainData()) {
+        if (data.size() != prop->GetBaseSize()) {
+            throw ClientDataValidationException("Property plain data size mismatch", prop->GetName(), data.size(), prop->GetBaseSize());
+        }
+
+        ValidateInboundPlainData(prop->GetBaseType(), data.data(), data.size(), meta);
+        return;
+    }
+
+    // Empty payload means default value (empty string/array/dict/ref) — always valid
+    if (data.empty()) {
+        return;
+    }
+
+    const auto& base_type = prop->GetBaseType();
+
+    if (prop->IsString()) {
+        if (!strvex(string_view {reinterpret_cast<const char*>(data.data()), data.size()}).is_valid_utf8()) {
+            throw ClientDataValidationException("Property string is not valid UTF-8", prop->GetName());
+        }
+        return;
+    }
+
+    if (base_type.IsRefType && !prop->IsArray() && !prop->IsDict()) {
+        ValidateInboundRefTypeRawData(prop->GetName(), base_type, data, meta);
+        return;
+    }
+
+    if (prop->IsArray()) {
+        ValidateInboundArrayPropertyData(prop, data, meta);
+        return;
+    }
+
+    if (prop->IsDict()) {
+        ValidateInboundDictPropertyData(prop, data, meta);
+        return;
+    }
+
+    throw ClientDataValidationException("Unsupported property layout", prop->GetName());
 }
 
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta)
@@ -194,7 +242,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
         const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
-        ValidateInboundRefTypeRawData(type, {raw_data, raw_size});
+        ValidateInboundRefTypeRawData(type.Name, type, {raw_data, raw_size}, meta);
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
@@ -206,90 +254,168 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     }
 }
 
-static void ValidateInboundRefTypeRawData(const BaseTypeDesc& type, span<const uint8_t> raw_data)
+static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(type.IsRefType);
-    FO_RUNTIME_ASSERT(type.RefType);
-    FO_RUNTIME_ASSERT(type.RefType->FieldsRegistrator);
+    FO_RUNTIME_ASSERT(ref_type.IsRefType);
+    FO_RUNTIME_ASSERT(ref_type.RefType);
+    FO_RUNTIME_ASSERT(ref_type.RefType->FieldsRegistrator);
 
-    const auto* fields_registrator = type.RefType->FieldsRegistrator.get();
+    const auto* fields_registrator = ref_type.RefType->FieldsRegistrator.get();
     const auto* pdata = raw_data.data();
     const auto* pdata_end = raw_data.data() + raw_data.size();
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
         const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-        span<const uint8_t> field_raw_data {};
 
-        if (pdata < pdata_end) {
-            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
-                throw ClientDataValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
-            }
-
-            uint32_t field_size;
-            MemCopy(&field_size, pdata, sizeof(field_size));
-            pdata += sizeof(field_size);
-
-            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
-                throw ClientDataValidationException("Wrong ref field raw size", type.Name, field_prop->GetName(), field_size);
-            }
-            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
-                throw ClientDataValidationException("Corrupted ref type payload", type.Name, field_prop->GetName());
-            }
-
-            field_raw_data = {pdata, field_size};
-            pdata += field_size;
+        if (pdata >= pdata_end) {
+            // Remaining fields take their default values
+            continue;
         }
 
-        if (!field_raw_data.empty()) {
-            try {
-                ignore_unused(PropertiesSerializator::SavePropertyToValue(field_prop, field_raw_data, *field_prop->GetRegistrator()->GetHashResolver(), *field_prop->GetRegistrator()->GetNameResolver()));
-            }
-            catch (const std::exception& ex) {
-                throw ClientDataValidationException("Invalid ref type field payload", type.Name, field_prop->GetName(), ex.what());
-            }
+        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
         }
+
+        uint32_t field_size;
+        MemCopy(&field_size, pdata, sizeof(field_size));
+        pdata += sizeof(field_size);
+
+        if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+            throw ClientDataValidationException("Wrong ref field raw size", owner_name, field_prop->GetName(), field_size);
+        }
+        if (numeric_cast<size_t>(pdata_end - pdata) < field_size) {
+            throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
+        }
+
+        if (field_size > 0) {
+            ValidateInboundPropertyData(field_prop, {pdata, field_size}, meta);
+        }
+        pdata += field_size;
     }
 
     if (pdata != pdata_end) {
-        throw ClientDataValidationException("Corrupted ref type payload", type.Name);
+        throw ClientDataValidationException("Corrupted ref type payload", owner_name);
     }
 }
 
-void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const uint8_t*& pdata, const uint8_t* pdata_end, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (prop->IsPlainData()) {
-        if (data.size() != prop->GetBaseSize()) {
-            throw ClientDataValidationException("Property plain data size mismatch", prop->GetName(), data.size(), prop->GetBaseSize());
+    if (type.IsString) {
+        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
 
-        try {
-            ValidateInboundPlainData(prop->GetBaseType(), data.data(), data.size(), meta);
+        uint32_t str_len;
+        MemCopy(&str_len, pdata, sizeof(str_len));
+        pdata += sizeof(str_len);
+
+        if (numeric_cast<size_t>(pdata_end - pdata) < str_len) {
+            throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
-        catch (const ClientDataValidationException&) {
-            throw;
+        if (!strvex(string_view {reinterpret_cast<const char*>(pdata), str_len}).is_valid_utf8()) {
+            throw ClientDataValidationException("String in packed property data is not valid UTF-8", owner_name);
         }
-        catch (const std::exception& ex) {
-            throw ClientDataValidationException("Invalid property plain data", prop->GetName(), ex.what());
+
+        pdata += str_len;
+    }
+    else if (type.IsRefType) {
+        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
         }
+
+        uint32_t ref_size;
+        MemCopy(&ref_size, pdata, sizeof(ref_size));
+        pdata += sizeof(ref_size);
+
+        if (numeric_cast<size_t>(pdata_end - pdata) < ref_size) {
+            throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
+        }
+
+        ValidateInboundRefTypeRawData(owner_name, type, {pdata, ref_size}, meta);
+        pdata += ref_size;
     }
     else {
-        // Empty payload means default value (empty string/array/dict/ref) — always valid
-        if (data.empty()) {
-            return;
+        // Plain primitive or struct — fixed bytes equal to type.Size
+        if (type.Size == 0) {
+            throw ClientDataValidationException("Zero-sized value in packed property data", owner_name, type.Name);
+        }
+        if (numeric_cast<size_t>(pdata_end - pdata) < type.Size) {
+            throw ClientDataValidationException("Corrupted value in packed property data", owner_name, type.Name);
         }
 
-        try {
-            (void)PropertiesSerializator::SavePropertyToValue(prop, data, *prop->GetRegistrator()->GetHashResolver(), *prop->GetRegistrator()->GetNameResolver());
+        ValidateInboundPlainData(type, pdata, type.Size, meta);
+        pdata += type.Size;
+    }
+}
+
+static void ValidateInboundArrayPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& base_type = prop->GetBaseType();
+    const auto* pdata = data.data();
+    const auto* pdata_end = data.data() + data.size();
+
+    uint32_t arr_size;
+
+    if (prop->IsArrayOfString() || base_type.IsRefType) {
+        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            throw ClientDataValidationException("Corrupted array property data", prop->GetName());
         }
-        catch (const ClientDataValidationException&) {
-            throw;
+
+        MemCopy(&arr_size, pdata, sizeof(arr_size));
+        pdata += sizeof(arr_size);
+    }
+    else {
+        if (base_type.Size == 0 || data.size() % base_type.Size != 0) {
+            throw ClientDataValidationException("Array property data size not aligned to element size", prop->GetName(), data.size(), base_type.Size);
         }
-        catch (const std::exception& ex) {
-            throw ClientDataValidationException("Invalid property complex data", prop->GetName(), ex.what());
+
+        arr_size = numeric_cast<uint32_t>(data.size() / base_type.Size);
+    }
+
+    for (uint32_t i = 0; i < arr_size; i++) {
+        ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
+    }
+
+    if (pdata != pdata_end) {
+        throw ClientDataValidationException("Corrupted array property data", prop->GetName());
+    }
+}
+
+static void ValidateInboundDictPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& base_type = prop->GetBaseType();
+    const auto& dict_key_type_raw = prop->GetDictKeyType();
+    const auto& dict_key_type = dict_key_type_raw.IsSimpleStruct ? dict_key_type_raw.StructLayout->Fields.front().Type : dict_key_type_raw;
+
+    const auto* pdata = data.data();
+    const auto* pdata_end = data.data() + data.size();
+
+    while (pdata < pdata_end) {
+        ValidateInboundPackedValue(prop->GetName(), dict_key_type, pdata, pdata_end, meta);
+
+        if (prop->IsDictOfArray()) {
+            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                throw ClientDataValidationException("Corrupted dict-of-array property data", prop->GetName());
+            }
+
+            uint32_t arr_size;
+            MemCopy(&arr_size, pdata, sizeof(arr_size));
+            pdata += sizeof(arr_size);
+
+            for (uint32_t i = 0; i < arr_size; i++) {
+                ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
+            }
+        }
+        else {
+            ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
         }
     }
 }
