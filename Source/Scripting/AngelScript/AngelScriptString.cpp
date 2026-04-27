@@ -271,14 +271,18 @@ static auto AddStringBool(const string& str, bool b) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return str + (b ? "true" : "false");
+    string result = str;
+    result += b ? "true" : "false";
+    return result;
 }
 
 static auto AddBoolString(const string& str, bool b) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return (b ? "true" : "false") + str;
+    string result = b ? "true" : "false";
+    result += str;
+    return result;
 }
 
 static auto StringCmp(const string& str, const string& other) -> int32_t
