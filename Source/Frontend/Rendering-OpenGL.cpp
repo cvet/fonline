@@ -59,7 +59,7 @@
 FO_BEGIN_NAMESPACE
 
 #if !FO_OPENGL_ES
-#define FO_GL_FUNCTIONS(X); \
+#define FO_GL_FUNCTIONS(X) \
     X(glActiveTexture, PFNGLACTIVETEXTUREPROC); \
     X(glAttachShader, PFNGLATTACHSHADERPROC); \
     X(glBindBuffer, PFNGLBINDBUFFERPROC); \
@@ -158,7 +158,7 @@ static void LoadOpenGLFunctions() noexcept
 #endif
 
 #if FO_DEBUG
-#define GL_CTX(expr, ctx); \
+#define GL_CTX(expr, ctx) \
     do { \
         expr; \
         if ((ctx)->RenderDebug) { \
@@ -173,7 +173,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-#define ERR_CODE_CASE(err_code_variant); \
+#define ERR_CODE_CASE(err_code_variant) \
     case err_code_variant: \
         return #err_code_variant
 
@@ -375,12 +375,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         }
     }
 
-    const auto has_extension = [](const char* name) noexcept -> bool {
-        return SDL_GL_ExtensionSupported(name);
-    };
-    const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool {
-        return gl_major > major || (gl_major == major && gl_minor >= minor);
-    };
+    const auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
+    const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
 
     _ctx->OGL_version_2_0 = at_least(2, 0);
     _ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
