@@ -1,4 +1,4 @@
-/* $OpenBSD: ec.h,v 1.5 2024/04/10 15:01:31 beck Exp $ */
+/* $OpenBSD: ec.h,v 1.12 2025/03/09 15:42:19 tb Exp $ */
 /*
  * Copyright (c) 2023 Bob Beck <beck@openbsd.org>
  *
@@ -25,14 +25,8 @@
 #endif
 #include "crypto_namespace.h"
 
-LCRYPTO_USED(EC_GFp_simple_method);
-LCRYPTO_USED(EC_GFp_mont_method);
-LCRYPTO_USED(EC_GROUP_new);
 LCRYPTO_USED(EC_GROUP_free);
-LCRYPTO_USED(EC_GROUP_copy);
 LCRYPTO_USED(EC_GROUP_dup);
-LCRYPTO_USED(EC_GROUP_method_of);
-LCRYPTO_USED(EC_METHOD_get_field_type);
 LCRYPTO_USED(EC_GROUP_set_generator);
 LCRYPTO_USED(EC_GROUP_get0_generator);
 LCRYPTO_USED(EC_GROUP_get_order);
@@ -62,7 +56,6 @@ LCRYPTO_USED(EC_POINT_new);
 LCRYPTO_USED(EC_POINT_free);
 LCRYPTO_USED(EC_POINT_copy);
 LCRYPTO_USED(EC_POINT_dup);
-LCRYPTO_USED(EC_POINT_method_of);
 LCRYPTO_USED(EC_POINT_set_to_infinity);
 LCRYPTO_USED(EC_POINT_set_affine_coordinates);
 LCRYPTO_USED(EC_POINT_get_affine_coordinates);
@@ -80,11 +73,7 @@ LCRYPTO_USED(EC_POINT_is_at_infinity);
 LCRYPTO_USED(EC_POINT_is_on_curve);
 LCRYPTO_USED(EC_POINT_cmp);
 LCRYPTO_USED(EC_POINT_make_affine);
-LCRYPTO_USED(EC_POINTs_make_affine);
-LCRYPTO_USED(EC_POINTs_mul);
 LCRYPTO_USED(EC_POINT_mul);
-LCRYPTO_USED(EC_GROUP_precompute_mult);
-LCRYPTO_USED(EC_GROUP_have_precompute_mult);
 LCRYPTO_USED(EC_GROUP_get_basis_type);
 LCRYPTO_USED(d2i_ECPKParameters);
 LCRYPTO_USED(i2d_ECPKParameters);
@@ -165,8 +154,6 @@ LCRYPTO_UNUSED(EC_GROUP_clear_free);
 LCRYPTO_UNUSED(EC_GROUP_set_curve_GFp);
 LCRYPTO_UNUSED(EC_GROUP_get_curve_GFp);
 LCRYPTO_UNUSED(EC_POINT_clear_free);
-LCRYPTO_UNUSED(EC_POINT_set_Jprojective_coordinates_GFp);
-LCRYPTO_UNUSED(EC_POINT_get_Jprojective_coordinates_GFp);
 LCRYPTO_UNUSED(EC_POINT_set_affine_coordinates_GFp);
 LCRYPTO_UNUSED(EC_POINT_get_affine_coordinates_GFp);
 LCRYPTO_UNUSED(EC_POINT_set_compressed_coordinates_GFp);

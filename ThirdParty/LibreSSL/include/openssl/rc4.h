@@ -1,4 +1,4 @@
-/* $OpenBSD: rc4.h,v 1.15 2024/03/27 12:13:08 jsing Exp $ */
+/* $OpenBSD: rc4.h,v 1.17 2025/06/09 14:37:49 tb Exp $ */
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -59,13 +59,14 @@
 #ifndef HEADER_RC4_H
 #define HEADER_RC4_H
 
-#include <openssl/opensslconf.h> /* OPENSSL_NO_RC4, RC4_INT */
-
-#ifdef OPENSSL_NO_RC4
-#error RC4 is disabled.
-#endif
+#include <openssl/opensslconf.h> /* OPENSSL_NO_RC4 */
 
 #include <stddef.h>
+
+#ifndef RC4_INT
+/* XXX - typedef */
+#define RC4_INT unsigned int
+#endif
 
 #ifdef  __cplusplus
 extern "C" {

@@ -118,4 +118,12 @@
 
 #endif
 
+#ifdef _WIN32
+int libressl_fstat(int fd, struct stat *statbuf);
+
+#ifndef NO_REDEF_POSIX_FUNCTIONS
+#define fstat(fd, statbuf) libressl_fstat(fd, statbuf)
+#endif
+#endif
+
 #endif

@@ -1962,7 +1962,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginPopupModal([[maybe_unused]] ScriptImGui* se
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_BeginPopupContextItem([[maybe_unused]] ScriptImGui* self)
 {
-    return ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonDefault_);
+    return ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_None);
 }
 
 ///@ ExportMethod
@@ -1976,7 +1976,7 @@ FO_SCRIPT_API bool Common_ImGui_BeginPopupContextItem([[maybe_unused]] ScriptImG
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_BeginPopupContextWindow([[maybe_unused]] ScriptImGui* self)
 {
-    return ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_MouseButtonDefault_);
+    return ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_None);
 }
 
 ///@ ExportMethod
@@ -3380,6 +3380,7 @@ static_assert(static_cast<int>(ImGui_InputTextFlags::AutoSelectAll) == ImGuiInpu
 static_assert(static_cast<int>(ImGui_InputTextFlags::ParseEmptyRefVal) == ImGuiInputTextFlags_ParseEmptyRefVal);
 static_assert(static_cast<int>(ImGui_InputTextFlags::DisplayEmptyRefVal) == ImGuiInputTextFlags_DisplayEmptyRefVal);
 static_assert(static_cast<int>(ImGui_PopupFlags::None) == ImGuiPopupFlags_None);
+static_assert(static_cast<int>(ImGui_PopupFlags::MouseButtonLeft) == ImGuiPopupFlags_MouseButtonLeft);
 static_assert(static_cast<int>(ImGui_PopupFlags::MouseButtonRight) == ImGuiPopupFlags_MouseButtonRight);
 static_assert(static_cast<int>(ImGui_PopupFlags::MouseButtonMiddle) == ImGuiPopupFlags_MouseButtonMiddle);
 static_assert(static_cast<int>(ImGui_PopupFlags::NoReopen) == ImGuiPopupFlags_NoReopen);

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_ciph.c,v 1.149 2024/08/31 12:46:55 jsing Exp $ */
+/* $OpenBSD: ssl_ciph.c,v 1.151 2025/01/18 12:20:37 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -217,14 +217,6 @@ static const SSL_CIPHER cipher_aliases[] = {
 	{
 		.name = SSL_TXT_aRSA,
 		.algorithm_auth = SSL_aRSA,
-	},
-	{
-		.name = SSL_TXT_aDSS,
-		.algorithm_auth = SSL_aDSS,
-	},
-	{
-		.name = SSL_TXT_DSS,
-		.algorithm_auth = SSL_aDSS,
 	},
 	{
 		.name = SSL_TXT_aNULL,
@@ -1369,9 +1361,6 @@ SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	case SSL_aRSA:
 		au = "RSA";
 		break;
-	case SSL_aDSS:
-		au = "DSS";
-		break;
 	case SSL_aNULL:
 		au = "None";
 		break;
@@ -1546,8 +1535,6 @@ SSL_CIPHER_get_cipher_nid(const SSL_CIPHER *c)
 		return NID_camellia_256_cbc;
 	case SSL_CHACHA20POLY1305:
 		return NID_chacha20_poly1305;
-	case SSL_DES:
-		return NID_des_cbc;
 	case SSL_RC4:
 		return NID_rc4;
 	default:

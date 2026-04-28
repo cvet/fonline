@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_keypair.c,v 1.9 2024/03/26 06:24:52 joshua Exp $ */
+/* $OpenBSD: tls_keypair.c,v 1.12 2026/04/16 07:29:53 tb Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -14,6 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#include <limits.h>
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -144,13 +146,18 @@ tls_keypair_load_cert(struct tls_keypair *keypair, struct tls_error *error,
 	*cert = NULL;
 
 	if (keypair->cert_mem == NULL) {
-		tls_error_set(error, TLS_ERROR_UNKNOWN,
+		tls_error_setx(error, TLS_ERROR_UNKNOWN,
 		    "keypair has no certificate");
+		goto err;
+	}
+	if (keypair->cert_len > INT_MAX) {
+		tls_error_setx(error, TLS_ERROR_INVALID_ARGUMENT,
+		    "certificate too long");
 		goto err;
 	}
 	if ((cert_bio = BIO_new_mem_buf(keypair->cert_mem,
 	    keypair->cert_len)) == NULL) {
-		tls_error_set(error, TLS_ERROR_UNKNOWN,
+		tls_error_setx(error, TLS_ERROR_UNKNOWN,
 		    "failed to create certificate bio");
 		goto err;
 	}
@@ -158,7 +165,7 @@ tls_keypair_load_cert(struct tls_keypair *keypair, struct tls_error *error,
 	    NULL)) == NULL) {
 		if ((ssl_err = ERR_peek_error()) != 0)
 			errstr = ERR_error_string(ssl_err, NULL);
-		tls_error_set(error, TLS_ERROR_UNKNOWN,
+		tls_error_setx(error, TLS_ERROR_UNKNOWN,
 		    "failed to load certificate: %s", errstr);
 		goto err;
 	}

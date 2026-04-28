@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa_pmeth.c,v 1.20 2024/08/26 22:00:47 op Exp $ */
+/* $OpenBSD: dsa_pmeth.c,v 1.22 2025/05/10 05:54:38 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -63,12 +63,12 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
 #include "bn_local.h"
 #include "dsa_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 
 /* DSA pkey context structure */
@@ -205,7 +205,7 @@ pkey_dsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 
 	case EVP_PKEY_CTRL_MD:
 		/* ANSI X9.57 and NIST CSOR. */
-		switch (EVP_MD_type((const EVP_MD *)p2)) {
+		switch (EVP_MD_type(p2)) {
 		case NID_sha1:
 		case NID_dsa:
 		case NID_dsaWithSHA:

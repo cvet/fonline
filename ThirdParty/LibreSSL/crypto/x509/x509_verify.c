@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_verify.c,v 1.70 2024/06/07 06:21:40 tb Exp $ */
+/* $OpenBSD: x509_verify.c,v 1.75 2026/04/01 14:38:26 jsing Exp $ */
 /*
  * Copyright (c) 2020-2021 Bob Beck <beck@openbsd.org>
  *
@@ -154,6 +154,11 @@ x509_verify_chain_append(struct x509_verify_chain *chain, X509 *cert,
 {
 	int verify_err = X509_V_ERR_UNSPECIFIED;
 	size_t idx;
+
+	if (sk_X509_num(chain->certs) >= X509_VERIFY_MAX_CHAIN_CERTS) {
+		*error = X509_V_ERR_CERT_CHAIN_TOO_LONG;
+		return 0;
+	}
 
 	if (!x509_constraints_extract_names(chain->names, cert,
 	    sk_X509_num(chain->certs) == 0, &verify_err)) {
@@ -531,6 +536,7 @@ x509_verify_potential_parent(struct x509_verify_ctx *ctx, X509 *parent,
 	return X509_check_issued(parent, child) == X509_V_OK;
 }
 
+/* Matches x509_crl_verify_parent_signature() */
 static int
 x509_verify_parent_signature(X509 *parent, X509 *child, int *error)
 {
@@ -539,11 +545,14 @@ x509_verify_parent_signature(X509 *parent, X509 *child, int *error)
 	int ret = 0;
 
 	/* Use cached value if we have it */
-	if ((cached = x509_issuer_cache_find(parent->hash, child->hash)) >= 0)
+	if ((cached = x509_issuer_cache_find(parent->hash, child->hash)) >= 0) {
+		if (cached == 0)
+			*error = X509_V_ERR_CERT_SIGNATURE_FAILURE;
 		return cached;
+	}
 
 	/* Check signature. Did parent sign child? */
-	if ((pkey = X509_get_pubkey(parent)) == NULL) {
+	if ((pkey = X509_get0_pubkey(parent)) == NULL) {
 		*error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
 		return 0;
 	}
@@ -554,8 +563,6 @@ x509_verify_parent_signature(X509 *parent, X509 *child, int *error)
 
 	/* Add result to cache */
 	x509_issuer_cache_add(parent->hash, child->hash, ret);
-
-	EVP_PKEY_free(pkey);
 
 	return ret;
 }
@@ -661,11 +668,11 @@ x509_verify_build_chains(struct x509_verify_ctx *ctx, X509 *cert,
 	depth = sk_X509_num(current_chain->certs);
 	if (depth > 0)
 		depth--;
-
-	if (depth >= ctx->max_depth &&
-	    !x509_verify_cert_error(ctx, cert, depth,
-		X509_V_ERR_CERT_CHAIN_TOO_LONG, 0))
+	if (depth >= ctx->max_depth) {
+		(void)x509_verify_cert_error(ctx, cert, depth,
+		    X509_V_ERR_CERT_CHAIN_TOO_LONG, 0);
 		return;
+	}
 
 	count = ctx->chains_count;
 
@@ -971,8 +978,8 @@ x509_verify_ctx_new_from_xsc(X509_STORE_CTX *xsc)
 	    (ctx->intermediates = X509_chain_up_ref(xsc->untrusted)) == NULL)
 		goto err;
 
-	max_depth = X509_VERIFY_MAX_CHAIN_CERTS;
-	if (xsc->param->depth > 0 && xsc->param->depth < X509_VERIFY_MAX_CHAIN_CERTS)
+	max_depth = X509_VERIFY_MAX_CHAIN_CERTS - 1;
+	if (xsc->param->depth > 0 && xsc->param->depth < max_depth)
 		max_depth = xsc->param->depth;
 	if (!x509_verify_ctx_set_max_depth(ctx, max_depth))
 		goto err;
@@ -1001,7 +1008,7 @@ x509_verify_ctx_new(STACK_OF(X509) *roots)
 			goto err;
 	}
 
-	ctx->max_depth = X509_VERIFY_MAX_CHAIN_CERTS;
+	ctx->max_depth = X509_VERIFY_MAX_CHAIN_CERTS - 1;
 	ctx->max_chains = X509_VERIFY_MAX_CHAINS;
 	ctx->max_sigs = X509_VERIFY_MAX_SIGCHECKS;
 
@@ -1028,7 +1035,7 @@ x509_verify_ctx_free(struct x509_verify_ctx *ctx)
 int
 x509_verify_ctx_set_max_depth(struct x509_verify_ctx *ctx, size_t max)
 {
-	if (max < 1 || max > X509_VERIFY_MAX_CHAIN_CERTS)
+	if (max < 1 || max >= X509_VERIFY_MAX_CHAIN_CERTS)
 		return 0;
 	ctx->max_depth = max;
 	return 1;

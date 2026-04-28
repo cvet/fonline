@@ -231,6 +231,53 @@ def test_two_symbol_bits():
 
     return data, zz.compress_message(*messages)
 
+def test_literal_blocks():
+    """Test literal blocks of varying sizes"""
+
+    blocks = [b"", b"A", b"BB", b"CCC", b"D", b"", b"EE", b"FFFF"]
+    data = b"".join(blocks)
+
+    parts = []
+    for block in blocks:
+        parts += [[zz.Literal(block)], zz.Options(force_block_types=[0])]
+
+    buf = zz.compress_message(*parts)
+
+    return data, buf
+
+def test_literal_mixed_blocks():
+    """Test literal blocks of varying sizes"""
+
+    blocks = [
+        (b"", 0),
+        (b"", 1),
+        (b"", 0),
+        (b"", 2),
+        (b"", 0),
+        (b"A", 1),
+        (b"B", 0),
+        (b"", 0),
+        (b"C", 2),
+        (b"", 0),
+        (b"D", 1),
+        (b"", 1),
+        (b"E", 0),
+        (b"", 1),
+        (b"", 1),
+        (b"", 0),
+        (b"F", 1),
+        (b"", 0),
+    ]
+    data = b"".join(block for block, _ in blocks)
+
+    parts = []
+    for block, typ in blocks:
+        parts += [[zz.Literal(block)], zz.Options(force_block_types=[typ])]
+
+    buf = zz.compress_message(*parts)
+
+    return data, buf
+
 def test_fail_codelen_16_overflow():
     """Test oveflow of codelen symbol 16"""
     data = b"\xfd\xfe\xff"
@@ -238,7 +285,7 @@ def test_fail_codelen_16_overflow():
     buf = zz.deflate(data, opts)
     
     # Patch Litlen 254-256 repeat extra N to 4
-    buf.patch(0x66, 1, 2)
+    buf.patch(0x66, 2, 2)
 
     return data, buf
 
@@ -248,8 +295,8 @@ def test_fail_codelen_17_overflow():
     opts = zz.Options(force_block_types=[2])
     buf = zz.deflate(data, opts)
     
-    # Patch Litlen 254-256 zero extra N to 5
-    buf.patch(0x6c, 2, 3)
+    # Patch Litlen 254-256 zero extra N to 6
+    buf.patch(0x6c, 3, 3)
 
     return data, buf
 
@@ -259,8 +306,8 @@ def test_fail_codelen_18_overflow():
     opts = zz.Options(force_block_types=[2])
     buf = zz.deflate(data, opts)
     
-    # Patch Litlen 254-256 extra N to 13
-    buf.patch(0x6a, 2, 7)
+    # Patch Litlen 254-256 extra N to 14
+    buf.patch(0x6a, 3, 7)
 
     return data, buf
 
@@ -389,6 +436,18 @@ def test_fail_no_dist_codes():
 
     return data, buf
 
+def test_fail_single_symbol():
+    """Dynamic Huffman with only a single symbol, but using both codes in the message"""
+    data = b""
+    message = []
+    opts = zz.Options(force_block_types=[2])
+    buf = zz.compress_message(message, opts)
+
+    # Patch End-of-block to use the unused code
+    buf.patch(0x6b, 1, 1)
+
+    return data, buf
+
 def fmt_bytes(data, cols=20):
     lines = []
     for begin in range(0, len(data), cols):
@@ -416,6 +475,8 @@ test_cases = [
     test_long_codes,
     test_long_code_sequences,
     test_two_symbol_bits,
+    test_literal_blocks,
+    test_literal_mixed_blocks,
 ]
 
 good = True

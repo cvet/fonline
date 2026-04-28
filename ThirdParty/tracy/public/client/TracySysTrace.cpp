@@ -238,6 +238,10 @@ void WINAPI EventRecordCallbackVsync( PEVENT_RECORD record )
 #endif
 
     const auto& hdr = record->EventHeader;
+
+    // Check for Lost_Event (6a399ae0-4bc6-4de9-870b-3657f8947e7e)
+    if( hdr.ProviderId.Data1 == 0x6A399AE0 ) return;
+
     assert( hdr.ProviderId.Data1 == 0x802EC45A );
     assert( hdr.EventDescriptor.Id == 0x0011 );
 
@@ -527,25 +531,23 @@ void SysTraceGetExternalName( uint64_t thread, const char*& threadName, const ch
                 const auto phnd = OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid );
                 if( phnd != INVALID_HANDLE_VALUE )
                 {
-                    HMODULE modules[1024];
-                    DWORD needed;
-                    if( _EnumProcessModules( phnd, modules, 1024 * sizeof( HMODULE ), &needed ) != 0 )
+                    MEMORY_BASIC_INFORMATION vmeminfo;
+                    SIZE_T infosize = VirtualQueryEx( phnd, ptr, &vmeminfo, sizeof( vmeminfo ) );
+                    if( infosize == sizeof( vmeminfo ) )
                     {
-                        const auto sz = std::min( DWORD( needed / sizeof( HMODULE ) ), DWORD( 1024 ) );
-                        for( DWORD i=0; i<sz; i++ )
+                        if (vmeminfo.Type == MEM_IMAGE)
                         {
+                            // for MEM_IMAGE regions, vmeminfo.AllocationBase _is_ the HMODULE
+                            HMODULE mod = (HMODULE)vmeminfo.AllocationBase;
                             MODULEINFO info;
-                            if( _GetModuleInformation( phnd, modules[i], &info, sizeof( info ) ) != 0 )
+                            if( _GetModuleInformation( phnd, mod, &info, sizeof( info ) ) != 0 )
                             {
-                                if( (uint64_t)ptr >= (uint64_t)info.lpBaseOfDll && (uint64_t)ptr <= (uint64_t)info.lpBaseOfDll + (uint64_t)info.SizeOfImage )
+                                char buf2[1024];
+                                const auto modlen = _GetModuleBaseNameA( phnd, mod, buf2, 1024 );
+                                if( modlen != 0 )
                                 {
-                                    char buf2[1024];
-                                    const auto modlen = _GetModuleBaseNameA( phnd, modules[i], buf2, 1024 );
-                                    if( modlen != 0 )
-                                    {
-                                        threadName = CopyString( buf2, modlen );
-                                        threadSent = true;
-                                    }
+                                    threadName = CopyString( buf2, modlen );
+                                    threadSent = true;
                                 }
                             }
                         }
@@ -612,6 +614,7 @@ void SysTraceGetExternalName( uint64_t thread, const char*& threadName, const ch
 #    include <fcntl.h>
 #    include <inttypes.h>
 #    include <limits>
+#    include <mntent.h>
 #    include <poll.h>
 #    include <stdio.h>
 #    include <stdlib.h>
@@ -759,6 +762,42 @@ static const char* ReadFile( const char* path )
     return tmp;
 }
 
+static const char* ReadFile( const char* base, const char* path )
+{
+    const auto blen = strlen( base );
+    const auto plen = strlen( path );
+
+    auto tmp = (char*)tracy_malloc( blen + plen + 1 );
+    memcpy( tmp, base, blen );
+    memcpy( tmp + blen, path, plen );
+    tmp[blen+plen] = '\0';
+
+    auto res = ReadFile( tmp );
+    tracy_free( tmp );
+    return res;
+}
+
+static char* GetTraceFsPath()
+{
+    auto f = setmntent( "/proc/mounts", "r" );
+    if( !f ) return nullptr;
+
+    char* ret = nullptr;
+    while( auto ent = getmntent( f ) )
+    {
+        if( strcmp( ent->mnt_fsname, "tracefs" ) == 0 )
+        {
+            auto len = strlen( ent->mnt_dir );
+            ret = (char*)tracy_malloc( len + 1 );
+            memcpy( ret, ent->mnt_dir, len );
+            ret[len] = '\0';
+            break;
+        }
+    }
+    endmntent( f );
+    return ret;
+}
+
 bool SysTraceStart( int64_t& samplingPeriod )
 {
 #ifndef CLOCK_MONOTONIC_RAW
@@ -773,13 +812,19 @@ bool SysTraceStart( int64_t& samplingPeriod )
     TracyDebug( "perf_event_paranoid: %i\n", paranoidLevel );
 #endif
 
+    auto traceFsPath = GetTraceFsPath();
+    if( !traceFsPath ) return false;
+    TracyDebug( "tracefs path: %s\n", traceFsPath );
+
     int switchId = -1, wakingId = -1, vsyncId = -1;
-    const auto switchIdStr = ReadFile( "/sys/kernel/debug/tracing/events/sched/sched_switch/id" );
+    const auto switchIdStr = ReadFile( traceFsPath, "/events/sched/sched_switch/id" );
     if( switchIdStr ) switchId = atoi( switchIdStr );
-    const auto wakingIdStr = ReadFile( "/sys/kernel/debug/tracing/events/sched/sched_waking/id" );
+    const auto wakingIdStr = ReadFile( traceFsPath, "/events/sched/sched_waking/id" );
     if( wakingIdStr ) wakingId = atoi( wakingIdStr );
-    const auto vsyncIdStr = ReadFile( "/sys/kernel/debug/tracing/events/drm/drm_vblank_event/id" );
+    const auto vsyncIdStr = ReadFile( traceFsPath, "/events/drm/drm_vblank_event/id" );
     if( vsyncIdStr ) vsyncId = atoi( vsyncIdStr );
+
+    tracy_free( traceFsPath );
 
     TracyDebug( "sched_switch id: %i\n", switchId );
     TracyDebug( "sched_waking id: %i\n", wakingId );

@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_alt.c,v 1.17 2024/07/13 15:08:58 tb Exp $ */
+/* $OpenBSD: x509_alt.c,v 1.20 2025/05/10 05:54:39 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -60,9 +60,9 @@
 #include <string.h>
 
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "x509_internal.h"
 
 static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
@@ -782,7 +782,7 @@ do_dirname(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx)
 
 	if (!(nm = X509_NAME_new()))
 		return 0;
-	sk = X509V3_get_section(ctx, value);
+	sk = X509V3_get0_section(ctx, value);
 	if (!sk) {
 		X509V3error(X509V3_R_SECTION_NOT_FOUND);
 		ERR_asprintf_error_data("section=%s", value);
@@ -794,7 +794,6 @@ do_dirname(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx)
 	if (!ret)
 		X509_NAME_free(nm);
 	gen->d.dirn = nm;
-	X509V3_section_free(ctx, sk);
 
 	return ret;
 }

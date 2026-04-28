@@ -1,4 +1,4 @@
-/*	$OpenBSD: ectest.c,v 1.23 2024/02/29 20:04:43 tb Exp $	*/
+/*	$OpenBSD: ectest.c,v 1.36 2025/07/23 07:40:07 tb Exp $	*/
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -71,14 +71,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
-#include <openssl/obj_mac.h>
-#include <openssl/objects.h>
-#include <openssl/bn.h>
 #include <openssl/opensslconf.h>
 
 #define ABORT do { \
@@ -88,30 +85,24 @@
 	exit(1); \
 } while (0)
 
-#define TIMING_BASE_PT 0
-#define TIMING_RAND_PT 1
-#define TIMING_SIMUL 2
-
-int EC_POINT_get_Jprojective_coordinates_GFp(const EC_GROUP *group,
-    const EC_POINT *point, BIGNUM *x, BIGNUM *y, BIGNUM *z, BN_CTX *ctx);
-
 /* test multiplication with group order, long and negative scalars */
 static void
-group_order_tests(EC_GROUP *group)
+group_order_tests(EC_GROUP *group, BN_CTX *ctx)
 {
 	BIGNUM *n1, *n2, *order;
 	EC_POINT *P = EC_POINT_new(group);
 	EC_POINT *Q = EC_POINT_new(group);
-	BN_CTX *ctx;
 
-	if ((ctx = BN_CTX_new()) == NULL)
+	if (P == NULL || Q == NULL)
 		ABORT;
 
-	if ((n1 = BN_new()) == NULL)
+	BN_CTX_start(ctx);
+
+	if ((n1 = BN_CTX_get(ctx)) == NULL)
 		ABORT;
-	if ((n2 = BN_new()) == NULL)
+	if ((n2 = BN_CTX_get(ctx)) == NULL)
 		ABORT;
-	if ((order = BN_new()) == NULL)
+	if ((order = BN_CTX_get(ctx)) == NULL)
 		ABORT;
 	fprintf(stdout, "verify group order ...");
 	fflush(stdout);
@@ -123,16 +114,13 @@ group_order_tests(EC_GROUP *group)
 		ABORT;
 	fprintf(stdout, ".");
 	fflush(stdout);
-	if (!EC_GROUP_precompute_mult(group, ctx))
-		ABORT;
 	if (!EC_POINT_mul(group, Q, order, NULL, NULL, ctx))
 		ABORT;
 	if (!EC_POINT_is_at_infinity(group, Q))
 		ABORT;
 	fprintf(stdout, " ok\n");
 	fprintf(stdout, "long/negative scalar tests ... ");
-	/* XXX - switch back to BN_one() after next bump. */
-	if (!BN_set_word(n1, 1))
+	if (!BN_one(n1))
 		ABORT;
 	/* n1 = 1 - order */
 	if (!BN_sub(n1, n1, order))
@@ -158,10 +146,7 @@ group_order_tests(EC_GROUP *group)
 	fprintf(stdout, "ok\n");
 	EC_POINT_free(P);
 	EC_POINT_free(Q);
-	BN_free(n1);
-	BN_free(n2);
-	BN_free(order);
-	BN_CTX_free(ctx);
+	BN_CTX_end(ctx);
 }
 
 static void
@@ -194,20 +179,13 @@ prime_field_tests(void)
 	if (!BN_hex2bn(&b, "1"))
 		ABORT;
 
-	group = EC_GROUP_new(EC_GFp_mont_method()); /* applications should use EC_GROUP_new_curve_GFp
-	                                             * so that the library gets to choose the EC_METHOD */
-	if (!group)
-		ABORT;
-
-	if (!EC_GROUP_set_curve(group, p, a, b, ctx))
+	if ((group = EC_GROUP_new_curve_GFp(p, a, b, ctx)) == NULL)
 		ABORT;
 
 	{
 		EC_GROUP *tmp;
-		tmp = EC_GROUP_new(EC_GROUP_method_of(group));
-		if (!tmp)
-			ABORT;
-		if (!EC_GROUP_copy(tmp, group))
+
+		if ((tmp = EC_GROUP_dup(group)) == NULL)
 			ABORT;
 		EC_GROUP_free(group);
 		group = tmp;
@@ -266,18 +244,16 @@ prime_field_tests(void)
 	}
 
 	fprintf(stdout, "A cyclic subgroup:\n");
-	k = 100;
+	k = 0;
 	do {
-		if (k-- == 0)
-			ABORT;
-
+		fprintf(stderr, "     %d - ", k);
 		if (EC_POINT_is_at_infinity(group, P))
-			fprintf(stdout, "     point at infinity\n");
+			fprintf(stdout, "point at infinity\n");
 		else {
 			if (!EC_POINT_get_affine_coordinates(group, P, x, y, ctx))
 				ABORT;
 
-			fprintf(stdout, "     x = 0x");
+			fprintf(stdout, "x = 0x");
 			BN_print_fp(stdout, x);
 			fprintf(stdout, ", y = 0x");
 			BN_print_fp(stdout, y);
@@ -288,7 +264,14 @@ prime_field_tests(void)
 			ABORT;
 		if (!EC_POINT_add(group, P, P, Q, ctx))
 			ABORT;
+		if (k++ > 99)
+			ABORT;
 	} while (!EC_POINT_is_at_infinity(group, P));
+
+	if (k != 7) {
+		fprintf(stderr, "cycled in %d iterations, want 7\n", k);
+		ABORT;
+	}
 
 	if (!EC_POINT_add(group, P, Q, R, ctx))
 		ABORT;
@@ -303,9 +286,10 @@ prime_field_tests(void)
 	if (0 != EC_POINT_cmp(group, P, Q, ctx))
 		ABORT;
 	fprintf(stdout, "Generator as octet string, compressed form:\n     ");
-	for (i = 0; i < len; i++) fprintf(stdout, "%02X", buf[i]);
+	for (i = 0; i < len; i++)
+		fprintf(stdout, "%02X", buf[i]);
 
-		len = EC_POINT_point2oct(group, Q, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof buf, ctx);
+	len = EC_POINT_point2oct(group, Q, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof buf, ctx);
 	if (len == 0)
 		ABORT;
 	if (!EC_POINT_oct2point(group, P, buf, len, ctx))
@@ -313,9 +297,10 @@ prime_field_tests(void)
 	if (0 != EC_POINT_cmp(group, P, Q, ctx))
 		ABORT;
 	fprintf(stdout, "\nGenerator as octet string, uncompressed form:\n     ");
-	for (i = 0; i < len; i++) fprintf(stdout, "%02X", buf[i]);
+	for (i = 0; i < len; i++)
+		fprintf(stdout, "%02X", buf[i]);
 
-		len = EC_POINT_point2oct(group, Q, POINT_CONVERSION_HYBRID, buf, sizeof buf, ctx);
+	len = EC_POINT_point2oct(group, Q, POINT_CONVERSION_HYBRID, buf, sizeof buf, ctx);
 	if (len == 0)
 		ABORT;
 	if (!EC_POINT_oct2point(group, P, buf, len, ctx))
@@ -325,14 +310,12 @@ prime_field_tests(void)
 	fprintf(stdout, "\nGenerator as octet string, hybrid form:\n     ");
 	for (i = 0; i < len; i++) fprintf(stdout, "%02X", buf[i]);
 
-		if (!EC_POINT_get_Jprojective_coordinates_GFp(group, R, x, y, z, ctx))
-			ABORT;
-	fprintf(stdout, "\nA representation of the inverse of that generator in\nJacobian projective coordinates:\n     X = 0x");
+	if (!EC_POINT_get_affine_coordinates(group, R, x, y, ctx))
+		ABORT;
+	fprintf(stdout, "\nThe inverse of that generator:\n     X = 0x");
 	BN_print_fp(stdout, x);
 	fprintf(stdout, ", Y = 0x");
 	BN_print_fp(stdout, y);
-	fprintf(stdout, ", Z = 0x");
-	BN_print_fp(stdout, z);
 	fprintf(stdout, "\n");
 
 	if (!EC_POINT_invert(group, P, ctx))
@@ -386,13 +369,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_160 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_160 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_160, group))
-		ABORT;
-
 
 	/* Curve P-192 (FIPS PUB 186-2, App. 6) */
 
@@ -436,13 +416,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_192 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_192 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_192, group))
-		ABORT;
-
 
 	/* Curve P-224 (FIPS PUB 186-2, App. 6) */
 
@@ -486,13 +463,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_224 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_224 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_224, group))
-		ABORT;
-
 
 	/* Curve P-256 (FIPS PUB 186-2, App. 6) */
 
@@ -536,13 +510,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_256 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_256 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_256, group))
-		ABORT;
-
 
 	/* Curve P-384 (FIPS PUB 186-2, App. 6) */
 
@@ -586,13 +557,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_384 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_384 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_384, group))
-		ABORT;
-
 
 	/* Curve P-521 (FIPS PUB 186-2, App. 6) */
 
@@ -642,13 +610,10 @@ prime_field_tests(void)
 		ABORT;
 	fprintf(stdout, " ok\n");
 
-	group_order_tests(group);
+	group_order_tests(group, ctx);
 
-	if (!(P_521 = EC_GROUP_new(EC_GROUP_method_of(group))))
+	if ((P_521 = EC_GROUP_dup(group)) == NULL)
 		ABORT;
-	if (!EC_GROUP_copy(P_521, group))
-		ABORT;
-
 
 	/* more tests using the last curve */
 	fprintf(stdout, "infinity tests ...");
@@ -688,72 +653,12 @@ prime_field_tests(void)
 	BN_free(y);
 	BN_free(z);
 
-	if (P_160)
-		EC_GROUP_free(P_160);
-	if (P_192)
-		EC_GROUP_free(P_192);
-	if (P_224)
-		EC_GROUP_free(P_224);
-	if (P_256)
-		EC_GROUP_free(P_256);
-	if (P_384)
-		EC_GROUP_free(P_384);
-	if (P_521)
-		EC_GROUP_free(P_521);
-
-}
-
-static void
-internal_curve_test(void)
-{
-	EC_builtin_curve *curves = NULL;
-	size_t crv_len = 0, n = 0;
-	int    ok = 1;
-
-	crv_len = EC_get_builtin_curves(NULL, 0);
-
-	curves = reallocarray(NULL, sizeof(EC_builtin_curve),  crv_len);
-
-	if (curves == NULL)
-		return;
-
-	if (!EC_get_builtin_curves(curves, crv_len)) {
-		free(curves);
-		return;
-	}
-
-	fprintf(stdout, "testing internal curves: ");
-
-	for (n = 0; n < crv_len; n++) {
-		EC_GROUP *group = NULL;
-		int nid = curves[n].nid;
-		if ((group = EC_GROUP_new_by_curve_name(nid)) == NULL) {
-			ok = 0;
-			fprintf(stdout, "\nEC_GROUP_new_curve_name() failed with"
-			    " curve %s\n", OBJ_nid2sn(nid));
-			/* try next curve */
-			continue;
-		}
-		if (!EC_GROUP_check(group, NULL)) {
-			ok = 0;
-			fprintf(stdout, "\nEC_GROUP_check() failed with"
-			    " curve %s\n", OBJ_nid2sn(nid));
-			EC_GROUP_free(group);
-			/* try the next curve */
-			continue;
-		}
-		fprintf(stdout, ".");
-		fflush(stdout);
-		EC_GROUP_free(group);
-	}
-	if (ok)
-		fprintf(stdout, " ok\n\n");
-	else {
-		fprintf(stdout, " failed\n\n");
-		ABORT;
-	}
-	free(curves);
-	return;
+	EC_GROUP_free(P_160);
+	EC_GROUP_free(P_192);
+	EC_GROUP_free(P_224);
+	EC_GROUP_free(P_256);
+	EC_GROUP_free(P_384);
+	EC_GROUP_free(P_521);
 }
 
 int
@@ -762,9 +667,6 @@ main(int argc, char *argv[])
 	ERR_load_crypto_strings();
 
 	prime_field_tests();
-	puts("");
-	/* test the internal curves */
-	internal_curve_test();
 
 	CRYPTO_cleanup_all_ex_data();
 	ERR_free_strings();

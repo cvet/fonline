@@ -2,7 +2,7 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
   <!--unordered_dense::set-->
-  <Type Name="ankerl::unordered_dense::v4_5_0::detail::table&lt;*, void, *,*,*,*,*,0&gt;">
+  <Type Name="ankerl::unordered_dense::v4_8_1::detail::table&lt;*, void, *,*,*,*,*,0&gt;">
     <DisplayString>{{ size={m_values.size()} }}</DisplayString>
     <Expand>
       <CustomListItems Optional="true">
@@ -17,7 +17,7 @@
   </Type>
 
   <!--unordered_dense::segmented_set-->
-  <Type Name="ankerl::unordered_dense::v4_5_0::detail::table&lt;*, void, *,*,*,*,*,1&gt;">
+  <Type Name="ankerl::unordered_dense::v4_8_1::detail::table&lt;*, void, *,*,*,*,*,1&gt;">
     <DisplayString>{{ size={m_values.m_size}, blocks={m_values.m_blocks.size()}}}</DisplayString>
     <Expand>
       <CustomListItems Optional="true">
@@ -43,7 +43,7 @@
 
 
   <!--unordered_dense::map-->
-  <Type Name="ankerl::unordered_dense::v4_5_0::detail::table&lt;*,*,*,*,*,*,*,0&gt;">
+  <Type Name="ankerl::unordered_dense::v4_8_1::detail::table&lt;*,*,*,*,*,*,*,0&gt;">
     <DisplayString>{{ size={m_values.size()} }}</DisplayString>
     <Expand>
       <CustomListItems Optional="true">
@@ -58,7 +58,7 @@
   </Type>
 
   <!--unordered_dense::segmented_map-->
-  <Type Name="ankerl::unordered_dense::v4_5_0::detail::table&lt;*,*,*,*,*,*,*,1&gt;">
+  <Type Name="ankerl::unordered_dense::v4_8_1::detail::table&lt;*,*,*,*,*,*,*,1&gt;">
     <DisplayString>{{ size={m_values.m_size}, blocks={m_values.m_blocks.size()}}}</DisplayString>
     <Expand>
       <CustomListItems Optional="true">
@@ -82,7 +82,7 @@
     </Expand>
   </Type>
 
-  <Type Name="ankerl::unordered_dense::v4_5_0::segmented_vector&lt;*&gt;">
+  <Type Name="ankerl::unordered_dense::v4_8_1::segmented_vector&lt;*&gt;">
     <DisplayString>{{ size={m_size} }}</DisplayString>
     <Expand>
       <Item Name="m_blocks">m_blocks</Item>

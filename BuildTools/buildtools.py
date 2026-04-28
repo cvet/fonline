@@ -161,8 +161,8 @@ LINUX_PACKAGE_GROUPS = {
 		['clang', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
-		'6',
-		['libc++-dev', 'libc++abi-dev', 'libx11-dev', 'libxcursor-dev', 'libxrandr-dev', 'libxss-dev', 'libjack-dev', 'libpulse-dev', 'libasound-dev', 'freeglut3-dev', 'libssl-dev', 'libevent-dev', 'libxi-dev', 'libzstd-dev'],
+		'7',
+		['libc++-dev', 'libc++abi-dev', 'libx11-dev', 'libxcursor-dev', 'libxrandr-dev', 'libxss-dev', 'libxtst-dev', 'libjack-dev', 'libpulse-dev', 'libasound-dev', 'freeglut3-dev', 'libssl-dev', 'libevent-dev', 'libxi-dev', 'libzstd-dev'],
 	),
 	'web-packages': (
 		'2',
@@ -1040,9 +1040,10 @@ def resolve_feature_values(selected: Sequence[str], feature_map: Mapping[str, Se
 
 
 def prepare_linux_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
-	if has_feature(selected, 'packages', 'all'):
+	package_groups = resolve_feature_values(selected, LINUX_FEATURE_PACKAGE_GROUPS)
+	if has_feature(selected, 'packages', 'all') or package_groups:
 		install_linux_packages('common-packages', workspace, check_only)
-		for package_group in resolve_feature_values(selected, LINUX_FEATURE_PACKAGE_GROUPS):
+		for package_group in package_groups:
 			install_linux_packages(package_group, workspace, check_only)
 
 	parts = resolve_feature_values(selected, HOST_FEATURE_WORKSPACE_PARTS['linux'])
@@ -1583,8 +1584,8 @@ def create_parser() -> argparse.ArgumentParser:
 	build_parser.add_argument('target')
 	build_parser.add_argument('config', nargs='?', default='Release')
 
-	validate_parser = subparsers.add_parser('validate', help='configure and validate a scenario')
-	validate_parser.add_argument('name')
+	validate_parser = subparsers.add_parser('validate', help='configure and validate scenarios')
+	validate_parser.add_argument('names', nargs='+')
 
 	mono_parser = subparsers.add_parser('setup-mono', help='prepare mono runtime')
 	mono_parser.add_argument('os_name')
@@ -1641,7 +1642,8 @@ def main() -> None:
 		configure_build(args.platform, args.target, args.config, env)
 		return
 	if args.command == 'validate':
-		run_validation(args.name, env)
+		for name in args.names:
+			run_validation(name, env)
 		return
 	if args.command == 'setup-mono':
 		setup_mono(args.os_name, args.arch, args.config, env)

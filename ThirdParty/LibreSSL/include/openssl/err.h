@@ -1,4 +1,4 @@
-/* $OpenBSD: err.h,v 1.35 2024/08/31 10:09:15 tb Exp $ */
+/* $OpenBSD: err.h,v 1.38 2025/05/10 06:17:09 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -129,7 +129,7 @@
 extern "C" {
 #endif
 
-#ifndef OPENSSL_NO_ERR
+#ifndef OPENSSL_NO_FILENAMES
 #define ERR_PUT_error(a,b,c,d,e)	ERR_put_error(a,b,c,d,e)
 #else
 #define ERR_PUT_error(a,b,c,d,e)	ERR_put_error(a,b,c,NULL,0)
@@ -192,80 +192,9 @@ extern "C" {
 #define ERR_LIB_USER		128
 
 #ifndef LIBRESSL_INTERNAL
-#define SYSerr(f,r)  ERR_PUT_error(ERR_LIB_SYS,(f),(r),__FILE__,__LINE__)
-#define BNerr(f,r)   ERR_PUT_error(ERR_LIB_BN,(f),(r),__FILE__,__LINE__)
-#define RSAerr(f,r)  ERR_PUT_error(ERR_LIB_RSA,(f),(r),__FILE__,__LINE__)
-#define DHerr(f,r)   ERR_PUT_error(ERR_LIB_DH,(f),(r),__FILE__,__LINE__)
-#define EVPerr(f,r)  ERR_PUT_error(ERR_LIB_EVP,(f),(r),__FILE__,__LINE__)
-#define BUFerr(f,r)  ERR_PUT_error(ERR_LIB_BUF,(f),(r),__FILE__,__LINE__)
-#define OBJerr(f,r)  ERR_PUT_error(ERR_LIB_OBJ,(f),(r),__FILE__,__LINE__)
-#define PEMerr(f,r)  ERR_PUT_error(ERR_LIB_PEM,(f),(r),__FILE__,__LINE__)
-#define DSAerr(f,r)  ERR_PUT_error(ERR_LIB_DSA,(f),(r),__FILE__,__LINE__)
-#define X509err(f,r) ERR_PUT_error(ERR_LIB_X509,(f),(r),__FILE__,__LINE__)
-#define ASN1err(f,r) ERR_PUT_error(ERR_LIB_ASN1,(f),(r),__FILE__,__LINE__)
-#define CONFerr(f,r) ERR_PUT_error(ERR_LIB_CONF,(f),(r),__FILE__,__LINE__)
-#define CRYPTOerr(f,r) ERR_PUT_error(ERR_LIB_CRYPTO,(f),(r),__FILE__,__LINE__)
-#define ECerr(f,r)   ERR_PUT_error(ERR_LIB_EC,(f),(r),__FILE__,__LINE__)
-#define BIOerr(f,r)  ERR_PUT_error(ERR_LIB_BIO,(f),(r),__FILE__,__LINE__)
-#define PKCS7err(f,r) ERR_PUT_error(ERR_LIB_PKCS7,(f),(r),__FILE__,__LINE__)
-#define X509V3err(f,r) ERR_PUT_error(ERR_LIB_X509V3,(f),(r),__FILE__,__LINE__)
-#define PKCS12err(f,r) ERR_PUT_error(ERR_LIB_PKCS12,(f),(r),__FILE__,__LINE__)
-#define RANDerr(f,r) ERR_PUT_error(ERR_LIB_RAND,(f),(r),__FILE__,__LINE__)
-#define DSOerr(f,r) ERR_PUT_error(ERR_LIB_DSO,(f),(r),__FILE__,__LINE__)
-#define ENGINEerr(f,r) ERR_PUT_error(ERR_LIB_ENGINE,(f),(r),__FILE__,__LINE__)
-#define OCSPerr(f,r) ERR_PUT_error(ERR_LIB_OCSP,(f),(r),__FILE__,__LINE__)
-#define UIerr(f,r) ERR_PUT_error(ERR_LIB_UI,(f),(r),__FILE__,__LINE__)
-#define COMPerr(f,r) ERR_PUT_error(ERR_LIB_COMP,(f),(r),__FILE__,__LINE__)
-#define ECDSAerr(f,r)  ERR_PUT_error(ERR_LIB_ECDSA,(f),(r),__FILE__,__LINE__)
-#define ECDHerr(f,r)  ERR_PUT_error(ERR_LIB_ECDH,(f),(r),__FILE__,__LINE__)
-#define STOREerr(f,r) ERR_PUT_error(ERR_LIB_STORE,(f),(r),__FILE__,__LINE__)
-#define FIPSerr(f,r) ERR_PUT_error(ERR_LIB_FIPS,(f),(r),__FILE__,__LINE__)
-#define CMSerr(f,r) ERR_PUT_error(ERR_LIB_CMS,(f),(r),__FILE__,__LINE__)
-#define TSerr(f,r) ERR_PUT_error(ERR_LIB_TS,(f),(r),__FILE__,__LINE__)
-#define HMACerr(f,r) ERR_PUT_error(ERR_LIB_HMAC,(f),(r),__FILE__,__LINE__)
-#define JPAKEerr(f,r) ERR_PUT_error(ERR_LIB_JPAKE,(f),(r),__FILE__,__LINE__)
-#define GOSTerr(f,r) ERR_PUT_error(ERR_LIB_GOST,(f),(r),__FILE__,__LINE__)
-#define SSLerr(f,r)  ERR_PUT_error(ERR_LIB_SSL,(f),(r),__FILE__,__LINE__)
-#define CTerr(f, r) ERR_PUT_error(ERR_LIB_CT,(f),(r),__FILE__,__LINE__)
-#define KDFerr(f, r) ERR_PUT_error(ERR_LIB_KDF,(f),(r),__FILE__,__LINE__)
-#endif
-
-#ifdef LIBRESSL_INTERNAL
-#define SYSerror(r)  ERR_PUT_error(ERR_LIB_SYS,(0xfff),(r),__FILE__,__LINE__)
-#define BNerror(r)   ERR_PUT_error(ERR_LIB_BN,(0xfff),(r),__FILE__,__LINE__)
-#define RSAerror(r)  ERR_PUT_error(ERR_LIB_RSA,(0xfff),(r),__FILE__,__LINE__)
-#define DHerror(r)   ERR_PUT_error(ERR_LIB_DH,(0xfff),(r),__FILE__,__LINE__)
-#define EVPerror(r)  ERR_PUT_error(ERR_LIB_EVP,(0xfff),(r),__FILE__,__LINE__)
-#define BUFerror(r)  ERR_PUT_error(ERR_LIB_BUF,(0xfff),(r),__FILE__,__LINE__)
-#define OBJerror(r)  ERR_PUT_error(ERR_LIB_OBJ,(0xfff),(r),__FILE__,__LINE__)
-#define PEMerror(r)  ERR_PUT_error(ERR_LIB_PEM,(0xfff),(r),__FILE__,__LINE__)
-#define DSAerror(r)  ERR_PUT_error(ERR_LIB_DSA,(0xfff),(r),__FILE__,__LINE__)
-#define X509error(r) ERR_PUT_error(ERR_LIB_X509,(0xfff),(r),__FILE__,__LINE__)
-#define ASN1error(r) ERR_PUT_error(ERR_LIB_ASN1,(0xfff),(r),__FILE__,__LINE__)
-#define CONFerror(r) ERR_PUT_error(ERR_LIB_CONF,(0xfff),(r),__FILE__,__LINE__)
-#define CRYPTOerror(r) ERR_PUT_error(ERR_LIB_CRYPTO,(0xfff),(r),__FILE__,__LINE__)
-#define ECerror(r)   ERR_PUT_error(ERR_LIB_EC,(0xfff),(r),__FILE__,__LINE__)
-#define BIOerror(r)  ERR_PUT_error(ERR_LIB_BIO,(0xfff),(r),__FILE__,__LINE__)
-#define PKCS7error(r) ERR_PUT_error(ERR_LIB_PKCS7,(0xfff),(r),__FILE__,__LINE__)
-#define X509V3error(r) ERR_PUT_error(ERR_LIB_X509V3,(0xfff),(r),__FILE__,__LINE__)
-#define PKCS12error(r) ERR_PUT_error(ERR_LIB_PKCS12,(0xfff),(r),__FILE__,__LINE__)
-#define RANDerror(r) ERR_PUT_error(ERR_LIB_RAND,(0xfff),(r),__FILE__,__LINE__)
-#define DSOerror(r) ERR_PUT_error(ERR_LIB_DSO,(0xfff),(r),__FILE__,__LINE__)
-#define ENGINEerror(r) ERR_PUT_error(ERR_LIB_ENGINE,(0xfff),(r),__FILE__,__LINE__)
-#define OCSPerror(r) ERR_PUT_error(ERR_LIB_OCSP,(0xfff),(r),__FILE__,__LINE__)
-#define UIerror(r) ERR_PUT_error(ERR_LIB_UI,(0xfff),(r),__FILE__,__LINE__)
-#define COMPerror(r) ERR_PUT_error(ERR_LIB_COMP,(0xfff),(r),__FILE__,__LINE__)
-#define ECDSAerror(r)  ERR_PUT_error(ERR_LIB_ECDSA,(0xfff),(r),__FILE__,__LINE__)
-#define ECDHerror(r)  ERR_PUT_error(ERR_LIB_ECDH,(0xfff),(r),__FILE__,__LINE__)
-#define STOREerror(r) ERR_PUT_error(ERR_LIB_STORE,(0xfff),(r),__FILE__,__LINE__)
-#define FIPSerror(r) ERR_PUT_error(ERR_LIB_FIPS,(0xfff),(r),__FILE__,__LINE__)
-#define CMSerror(r) ERR_PUT_error(ERR_LIB_CMS,(0xfff),(r),__FILE__,__LINE__)
-#define TSerror(r) ERR_PUT_error(ERR_LIB_TS,(0xfff),(r),__FILE__,__LINE__)
-#define HMACerror(r) ERR_PUT_error(ERR_LIB_HMAC,(0xfff),(r),__FILE__,__LINE__)
-#define JPAKEerror(r) ERR_PUT_error(ERR_LIB_JPAKE,(0xfff),(r),__FILE__,__LINE__)
-#define GOSTerror(r) ERR_PUT_error(ERR_LIB_GOST,(0xfff),(r),__FILE__,__LINE__)
-#define CTerror(r) ERR_PUT_error(ERR_LIB_CT,(0xfff),(r),__FILE__,__LINE__)
-#define KDFerror(r) ERR_PUT_error(ERR_LIB_KDF,(0xfff),(r),__FILE__,__LINE__)
+#define PEMerr(f,r)	ERR_PUT_error(ERR_LIB_PEM,(f),(r),OPENSSL_FILE,OPENSSL_LINE)
+#define RSAerr(f,r)	ERR_PUT_error(ERR_LIB_RSA,(f),(r),OPENSSL_FILE,OPENSSL_LINE)
+#define SSLerr(f,r)	ERR_PUT_error(ERR_LIB_SSL,(f),(r),OPENSSL_FILE,OPENSSL_LINE)
 #endif
 
 #define ERR_PACK(l,f,r)		(((((unsigned long)l)&0xffL)<<24L)| \

@@ -1,4 +1,4 @@
-/* $OpenBSD: asn1.h,v 1.92 2024/04/10 14:55:12 beck Exp $ */
+/* $OpenBSD: asn1.h,v 1.95 2026/01/02 08:03:02 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -85,7 +85,6 @@ extern "C" {
 #define V_ASN1_PRIMITIVE_TAG		0x1f
 #define V_ASN1_PRIMATIVE_TAG		0x1f
 
-#define V_ASN1_APP_CHOOSE		-2	/* let the recipient choose */
 #define V_ASN1_OTHER			-3	/* used in ASN1_TYPE */
 #define V_ASN1_ANY			-4	/* used in ASN1 template code */
 
@@ -200,11 +199,9 @@ typedef struct ASN1_ENCODING_st {
 	int modified;		 /* set to 1 if 'enc' is invalid */
 } ASN1_ENCODING;
 
-/* Used with ASN1 LONG type: if a long is set to this it is omitted */
-#define ASN1_LONG_UNDEF	0x7fffffffL
-
-#define STABLE_FLAGS_MALLOC	0x01
+/* Used by security/xca */
 #define STABLE_NO_MASK		0x02
+
 #define DIRSTRING_TYPE	\
  (B_ASN1_PRINTABLESTRING|B_ASN1_T61STRING|B_ASN1_BMPSTRING|B_ASN1_UTF8STRING)
 #define PKCS9STRING_TYPE (DIRSTRING_TYPE|B_ASN1_IA5STRING)

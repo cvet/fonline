@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_mutl.c,v 1.38 2024/03/24 06:48:03 tb Exp $ */
+/* $OpenBSD: p12_mutl.c,v 1.40 2025/06/03 08:42:15 kenjiro Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -64,10 +64,10 @@
 
 #ifndef OPENSSL_NO_HMAC
 
-#include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/pkcs12.h>
 
+#include "err_local.h"
 #include "evp_local.h"
 #include "hmac_local.h"
 #include "pkcs12_local.h"
@@ -189,10 +189,10 @@ PKCS12_verify_mac(PKCS12 *p12, const char *pass, int passlen)
 		PKCS12error(PKCS12_R_MAC_GENERATION_ERROR);
 		return 0;
 	}
-	if ((maclen != (unsigned int)p12->mac->dinfo->digest->length) ||
-	    memcmp(mac, p12->mac->dinfo->digest->data, maclen))
+	if (maclen != (unsigned int)p12->mac->dinfo->digest->length)
 		return 0;
-	return 1;
+
+	return timingsafe_memcmp(mac, p12->mac->dinfo->digest->data, maclen) == 0;
 }
 LCRYPTO_ALIAS(PKCS12_verify_mac);
 

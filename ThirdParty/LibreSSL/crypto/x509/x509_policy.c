@@ -1,4 +1,4 @@
-/*	$OpenBSD: x509_policy.c,v 1.27 2024/03/02 11:20:36 tb Exp $ */
+/*	$OpenBSD: x509_policy.c,v 1.33 2025/08/10 06:36:45 beck Exp $ */
 /*
  * Copyright (c) 2022, Google Inc.
  *
@@ -17,22 +17,19 @@
 
 #include <string.h>
 
-#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "stack_local.h"
 #include "x509_internal.h"
 #include "x509_local.h"
 
-/* XXX move to proper place */
-#define X509_R_INVALID_POLICY_EXTENSION 201
-
 /*
- * This file computes the X.509 policy tree, as described in RFC 5280, section
- * 6.1. It differs in that:
+ * This file computes the X.509 policy tree, as described in RFC 5280,
+ * section 6.1 and RFC 9618. It differs in that:
  *
  *  (1) It does not track "qualifier_set". This is not needed as it is not
  *      output by this implementation.
@@ -398,7 +395,7 @@ process_certificate_policies(const X509 *x509, X509_POLICY_LEVEL *level,
 
 	/*
 	 * This does the same thing as RFC 5280, section 6.1.3, step (d),
-	 * though in a slighty different order. |level| currently contains
+	 * though in a slightly different order. |level| currently contains
 	 * "expected_policy_set" values of the previous level.
 	 * See |process_policy_mappings| for details.
 	 */
@@ -498,7 +495,7 @@ delete_if_mapped(X509_POLICY_NODE *node, void *data)
  * with P1 in |parent_policies|.
  *
  * This is equivalent to the |X509_POLICY_LEVEL| that would result if the next
- * certificats contained anyPolicy. |process_certificate_policies| will filter
+ * certificate contained anyPolicy. |process_certificate_policies| will filter
  * this result down to compute the actual level.
  */
 static X509_POLICY_LEVEL *

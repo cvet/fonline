@@ -1,4 +1,4 @@
-/* $OpenBSD: x_pubkey.c,v 1.37 2024/07/08 14:48:49 beck Exp $ */
+/* $OpenBSD: x_pubkey.c,v 1.40 2026/01/05 05:23:56 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -61,7 +61,6 @@
 #include <openssl/opensslconf.h>
 
 #include <openssl/asn1t.h>
-#include <openssl/err.h>
 #include <openssl/x509.h>
 
 #ifndef OPENSSL_NO_DSA
@@ -72,6 +71,7 @@
 #endif
 
 #include "asn1_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 #include "x509_local.h"
 
@@ -385,7 +385,7 @@ pkey_pubkey_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it,
 	return pubkey_ex_i2d(EVP_PKEY_NONE, pval, out, it);
 }
 
-const ASN1_EXTERN_FUNCS pkey_pubkey_asn1_ff = {
+static const ASN1_EXTERN_FUNCS pkey_pubkey_asn1_ff = {
 	.app_data = NULL,
 	.asn1_ex_new = pkey_pubkey_ex_new,
 	.asn1_ex_free = pkey_pubkey_ex_free,
@@ -395,7 +395,7 @@ const ASN1_EXTERN_FUNCS pkey_pubkey_asn1_ff = {
 	.asn1_ex_print = NULL,
 };
 
-const ASN1_ITEM EVP_PKEY_PUBKEY_it = {
+static const ASN1_ITEM EVP_PKEY_PUBKEY_it = {
 	.itype = ASN1_ITYPE_EXTERN,
 	.utype = 0,
 	.templates = NULL,
@@ -485,7 +485,7 @@ rsa_pubkey_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it,
 	return pubkey_ex_i2d(EVP_PKEY_RSA, pval, out, it);
 }
 
-const ASN1_EXTERN_FUNCS rsa_pubkey_asn1_ff = {
+static const ASN1_EXTERN_FUNCS rsa_pubkey_asn1_ff = {
 	.app_data = NULL,
 	.asn1_ex_new = rsa_pubkey_ex_new,
 	.asn1_ex_free = rsa_pubkey_ex_free,
@@ -495,7 +495,7 @@ const ASN1_EXTERN_FUNCS rsa_pubkey_asn1_ff = {
 	.asn1_ex_print = NULL,
 };
 
-const ASN1_ITEM RSA_PUBKEY_it = {
+static const ASN1_ITEM RSA_PUBKEY_it = {
 	.itype = ASN1_ITYPE_EXTERN,
 	.utype = 0,
 	.templates = NULL,
@@ -581,7 +581,7 @@ dsa_pubkey_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it,
 	return pubkey_ex_i2d(EVP_PKEY_DSA, pval, out, it);
 }
 
-const ASN1_EXTERN_FUNCS dsa_pubkey_asn1_ff = {
+static const ASN1_EXTERN_FUNCS dsa_pubkey_asn1_ff = {
 	.app_data = NULL,
 	.asn1_ex_new = dsa_pubkey_ex_new,
 	.asn1_ex_free = dsa_pubkey_ex_free,
@@ -591,7 +591,7 @@ const ASN1_EXTERN_FUNCS dsa_pubkey_asn1_ff = {
 	.asn1_ex_print = NULL,
 };
 
-const ASN1_ITEM DSA_PUBKEY_it = {
+static const ASN1_ITEM DSA_PUBKEY_it = {
 	.itype = ASN1_ITYPE_EXTERN,
 	.utype = 0,
 	.templates = NULL,
@@ -678,7 +678,7 @@ ec_pubkey_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it,
 	return pubkey_ex_i2d(EVP_PKEY_EC, pval, out, it);
 }
 
-const ASN1_EXTERN_FUNCS ec_pubkey_asn1_ff = {
+static const ASN1_EXTERN_FUNCS ec_pubkey_asn1_ff = {
 	.app_data = NULL,
 	.asn1_ex_new = ec_pubkey_ex_new,
 	.asn1_ex_free = ec_pubkey_ex_free,
@@ -688,7 +688,7 @@ const ASN1_EXTERN_FUNCS ec_pubkey_asn1_ff = {
 	.asn1_ex_print = NULL,
 };
 
-const ASN1_ITEM EC_PUBKEY_it = {
+static const ASN1_ITEM EC_PUBKEY_it = {
 	.itype = ASN1_ITYPE_EXTERN,
 	.utype = 0,
 	.templates = NULL,
