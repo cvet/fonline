@@ -54,7 +54,7 @@ struct AngelScriptThreadCleanupHelper
     }
 };
 
-static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
+[[maybe_unused]] static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
 
 struct AngelScriptAllocator
 {
