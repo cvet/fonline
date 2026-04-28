@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_conf.c,v 1.27 2024/08/31 10:04:50 tb Exp $ */
+/* $OpenBSD: x509_conf.c,v 1.31 2025/06/02 12:18:21 jsg Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -62,11 +62,11 @@
 #include <string.h>
 
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
 #include "conf_local.h"
+#include "err_local.h"
 #include "x509_local.h"
 
 static int v3_check_critical(const char **value);
@@ -242,8 +242,9 @@ v3_check_critical(const char **value)
 	if ((strlen(p) < 9) || strncmp(p, "critical,", 9))
 		return 0;
 	p += 9;
-	while (isspace((unsigned char)*p)) p++;
-		*value = p;
+	while (isspace((unsigned char)*p))
+		p++;
+	*value = p;
 	return 1;
 }
 
@@ -405,19 +406,13 @@ X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
 LCRYPTO_ALIAS(X509V3_EXT_REQ_add_nconf);
 
 STACK_OF(CONF_VALUE) *
-X509V3_get_section(X509V3_CTX *ctx, const char *section)
+X509V3_get0_section(X509V3_CTX *ctx, const char *section)
 {
 	if (ctx->db == NULL) {
 		X509V3error(X509V3_R_OPERATION_NOT_DEFINED);
 		return NULL;
 	}
 	return NCONF_get_section(ctx->db, section);
-}
-
-void
-X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section)
-{
-	return;
 }
 
 void

@@ -1,4 +1,4 @@
-/* $OpenBSD: dh_lib.c,v 1.45 2024/03/27 01:26:30 tb Exp $ */
+/* $OpenBSD: dh_lib.c,v 1.47 2025/05/10 05:54:38 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -63,9 +63,9 @@
 
 #include <openssl/bn.h>
 #include <openssl/dh.h>
-#include <openssl/err.h>
 
 #include "dh_local.h"
+#include "err_local.h"
 
 static const DH_METHOD *default_DH_method = NULL;
 
@@ -154,11 +154,8 @@ DH_free(DH *dh)
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DH, dh, &dh->ex_data);
 
 	BN_free(dh->p);
-	BN_free(dh->g);
 	BN_free(dh->q);
-	BN_free(dh->j);
-	free(dh->seed);
-	BN_free(dh->counter);
+	BN_free(dh->g);
 	BN_free(dh->pub_key);
 	BN_free(dh->priv_key);
 	free(dh);

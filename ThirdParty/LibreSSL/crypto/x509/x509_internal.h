@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_internal.h,v 1.28 2024/05/19 07:12:50 jsg Exp $ */
+/* $OpenBSD: x509_internal.h,v 1.29 2026/04/13 17:04:23 beck Exp $ */
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -115,6 +115,8 @@ void x509_constraints_names_free(struct x509_constraints_names *names);
 int x509_constraints_valid_host(CBS *cbs, int permit_ip);
 int x509_constraints_valid_sandns(CBS *cbs);
 int x509_constraints_domain(char *domain, size_t dlen, char *constraint,
+    size_t len);
+int x509_constraints_sandns(char *domain, size_t dlen, char *constraint,
     size_t len);
 int x509_constraints_parse_mailbox(CBS *candidate,
     struct x509_constraints_name *name);

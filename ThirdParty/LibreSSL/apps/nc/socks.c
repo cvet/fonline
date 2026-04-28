@@ -1,4 +1,4 @@
-/*	$OpenBSD: socks.c,v 1.31 2022/06/08 20:20:26 djm Exp $	*/
+/*	$OpenBSD: socks.c,v 1.34 2025/05/22 06:40:26 djm Exp $	*/
 
 /*
  * Copyright (c) 1999 Niklas Hallqvist.  All rights reserved.
@@ -293,19 +293,33 @@ socks_connect(const char *host, const char *port,
 		default:
 			errx(1, "connection failed, unsupported address type");
 		}
-	} else if (socksv == 4) {
-		/* This will exit on lookup failure */
-		decode_addrport(host, port, (struct sockaddr *)&addr,
-		    sizeof(addr), 1, 0);
+	} else if (socksv == 4 || socksv == 44) {
+		if (socksv == 4) {
+			/* This will exit on lookup failure */
+			decode_addrport(host, port, (struct sockaddr *)&addr,
+			    sizeof(addr), 1, 0);
+		}
 
 		/* Version 4 */
 		buf[0] = SOCKS_V4;
 		buf[1] = SOCKS_CONNECT;	/* connect */
 		memcpy(buf + 2, &in4->sin_port, sizeof in4->sin_port);
-		memcpy(buf + 4, &in4->sin_addr, sizeof in4->sin_addr);
+		if (socksv == 4) {
+			memcpy(buf + 4, &in4->sin_addr, sizeof in4->sin_addr);
+		} else {
+			/* SOCKS4A uses addr of 0.0.0.x, and hostname later */
+			buf[4] = buf[5] = buf[6] = 0;
+			buf[7] = 1;
+		}
 		buf[8] = 0;	/* empty username */
 		wlen = 9;
-
+		if (socksv == 44) {
+			/* SOCKS4A has nul-terminated hostname after user */
+			if (strlcpy(buf + 9, host,
+			    sizeof(buf) - 9) >= sizeof(buf) - 9)
+				errx(1, "hostname too big");
+			wlen = 9 + strlen(host) + 1;
+		}
 		cnt = atomicio(vwrite, proxyfd, buf, wlen);
 		if (cnt != wlen)
 			err(1, "write failed (%zu/%zu)", cnt, wlen);
@@ -373,16 +387,16 @@ socks_connect(const char *host, const char *port,
 		/* Read status reply */
 		proxy_read_line(proxyfd, buf, sizeof(buf));
 		if (proxyuser != NULL &&
-		    (strncmp(buf, "HTTP/1.0 407 ", 12) == 0 ||
-		    strncmp(buf, "HTTP/1.1 407 ", 12) == 0)) {
+		    (strncmp(buf, "HTTP/1.0 407 ", 13) == 0 ||
+		    strncmp(buf, "HTTP/1.1 407 ", 13) == 0)) {
 			if (authretry > 1) {
 				fprintf(stderr, "Proxy authentication "
 				    "failed\n");
 			}
 			close(proxyfd);
 			goto again;
-		} else if (strncmp(buf, "HTTP/1.0 200 ", 12) != 0 &&
-		    strncmp(buf, "HTTP/1.1 200 ", 12) != 0)
+		} else if (strncmp(buf, "HTTP/1.0 200 ", 13) != 0 &&
+		    strncmp(buf, "HTTP/1.1 200 ", 13) != 0)
 			errx(1, "Proxy error: \"%s\"", buf);
 
 		/* Headers continue until we hit an empty line */

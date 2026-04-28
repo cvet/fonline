@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.25)
 
 option(NO_FILESELECTOR "Disable the file selector" OFF)
 option(GTK_FILESELECTOR "Use the GTK file selector on Linux instead of the xdg-portal one" OFF)
@@ -6,6 +6,7 @@ option(LEGACY "Instead of Wayland, use the legacy X11 backend on Linux" OFF)
 option(NO_ISA_EXTENSIONS "Disable ISA extensions (don't pass -march=native or -mcpu=native to the compiler)" OFF)
 option(NO_STATISTICS "Disable calculation of statistics" OFF)
 option(SELF_PROFILE "Enable self-profiling" OFF)
+option(SANITIZE "Sanitizer parameters" OFF)
 
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/version.cmake)
 
@@ -22,19 +23,51 @@ if(SELF_PROFILE)
     add_compile_options(-g -O3 -fno-omit-frame-pointer)
 endif()
 
+if(SANITIZE)
+    add_compile_options(-fsanitize=${SANITIZE} -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=${SANITIZE} -fno-omit-frame-pointer)
+endif()
+
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/config.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/vendor.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/server.cmake)
+
+include(ExternalProject)
+ExternalProject_Add(embed
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/helpers
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+)
+
+add_custom_command(
+    OUTPUT data
+    COMMAND ${CMAKE_COMMAND} -E make_directory data
+)
+
+function(Embed LIST NAME FILE)
+    add_custom_command(
+        OUTPUT data/${NAME}.cpp data/${NAME}.hpp
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/embed ${NAME} ${CMAKE_CURRENT_LIST_DIR}/${FILE} data/${NAME}
+        DEPENDS data embed ${CMAKE_CURRENT_LIST_DIR}/${FILE}
+    )
+    list(APPEND ${LIST} data/${NAME}.cpp)
+    return(PROPAGATE ${LIST})
+endfunction()
 
 set(SERVER_FILES
     TracyAchievementData.cpp
     TracyAchievements.cpp
     TracyBadVersion.cpp
     TracyColor.cpp
+    TracyConfig.cpp
+    TracyEmbed.cpp
     TracyEventDebug.cpp
     TracyFileselector.cpp
     TracyFilesystem.cpp
     TracyImGui.cpp
+    TracyManualData.cpp
+    TracyMarkdown.cpp
     TracyMicroArchitecture.cpp
     TracyMouse.cpp
     TracyProtoHistory.cpp
@@ -65,6 +98,7 @@ set(SERVER_FILES
     TracyView_FrameTree.cpp
     TracyView_GpuTimeline.cpp
     TracyView_Locks.cpp
+    TracyView_Manual.cpp
     TracyView_Memory.cpp
     TracyView_Messages.cpp
     TracyView_Navigation.cpp
@@ -83,6 +117,16 @@ set(SERVER_FILES
     TracyWeb.cpp
 )
 
+if(NOT EMSCRIPTEN)
+    list(APPEND SERVER_FILES
+        TracyLlm.cpp
+        TracyLlmApi.cpp
+        TracyLlmChat.cpp
+        TracyLlmEmbeddings.cpp
+        TracyLlmTools.cpp
+    )
+endif()
+
 list(TRANSFORM SERVER_FILES PREPEND "src/profiler/")
 
 set(PROFILER_FILES
@@ -100,6 +144,16 @@ set(PROFILER_FILES
     src/winmain.cpp
     src/winmainArchDiscovery.cpp
 )
+
+Embed(PROFILER_FILES SystemPrompt src/llm/system.prompt.md)
+Embed(PROFILER_FILES SystemReminder src/llm/system.reminder.md)
+Embed(PROFILER_FILES FontFixed src/font/FiraCode-Retina.ttf)
+Embed(PROFILER_FILES FontIcons src/font/Font\ Awesome\ 6\ Free-Solid-900.otf)
+Embed(PROFILER_FILES FontNormal src/font/Roboto-Regular.ttf)
+Embed(PROFILER_FILES FontBold src/font/Roboto-Bold.ttf)
+Embed(PROFILER_FILES FontItalic src/font/Roboto-Italic.ttf)
+Embed(PROFILER_FILES FontBoldItalic src/font/Roboto-BoldItalic.ttf)
+Embed(PROFILER_FILES Manual ../manual/tracy.md)
 
 set(INCLUDES "${CMAKE_CURRENT_BINARY_DIR}")
 set(LIBS "")
@@ -185,7 +239,29 @@ else()
 endif()
 
 find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE TracyServer TracyImGui Threads::Threads)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    TracyServer
+    TracyImGui
+    Threads::Threads
+    nlohmann_json::nlohmann_json
+    md4c
+)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${tidy_SOURCE_DIR}/include
+)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${md4c_SOURCE_DIR}/src
+)
+
+if(NOT EMSCRIPTEN)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        TracyLibcurl
+        base64
+        tidy-static
+        TracyPugixml
+        usearch
+    )
+endif()
 
 if(NOT DEFINED GIT_REV)
     set(GIT_REV "HEAD")

@@ -1,4 +1,4 @@
-/* $OpenBSD: cfb128.c,v 1.7 2023/07/08 14:56:54 beck Exp $ */
+/* $OpenBSD: cfb128.c,v 1.10 2025/04/23 10:09:08 jsing Exp $ */
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
  *
@@ -49,15 +49,11 @@
  *
  */
 
-#include <openssl/crypto.h>
-#include "modes_local.h"
 #include <string.h>
 
-#ifndef MODES_DEBUG
-# ifndef NDEBUG
-#  define NDEBUG
-# endif
-#endif
+#include <openssl/crypto.h>
+
+#include "modes_local.h"
 
 /* The input and output encrypted as though 128bit cfb mode is being
  * used.  The extra state information to record how much of the
@@ -75,7 +71,6 @@ CRYPTO_cfb128_encrypt(const unsigned char *in, unsigned char *out,
 	n = *num;
 
 	if (enc) {
-#if !defined(OPENSSL_SMALL_FOOTPRINT)
 		if (16 % sizeof(size_t) == 0)
 			do {	/* always true actually */
 				while (n && len) {
@@ -111,7 +106,6 @@ CRYPTO_cfb128_encrypt(const unsigned char *in, unsigned char *out,
 				return;
 			} while (0);
 	/* the rest would be commonly eliminated by x86* compiler */
-#endif
 		while (l < len) {
 			if (n == 0) {
 				(*block)(ivec, ivec, key);
@@ -122,7 +116,6 @@ CRYPTO_cfb128_encrypt(const unsigned char *in, unsigned char *out,
 		}
 		*num = n;
 	} else {
-#if !defined(OPENSSL_SMALL_FOOTPRINT)
 		if (16 % sizeof(size_t) == 0)
 			do {	/* always true actually */
 				while (n && len) {
@@ -163,7 +156,6 @@ CRYPTO_cfb128_encrypt(const unsigned char *in, unsigned char *out,
 				return;
 			} while (0);
 	/* the rest would be commonly eliminated by x86* compiler */
-#endif
 		while (l < len) {
 			unsigned char c;
 			if (n == 0) {

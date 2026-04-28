@@ -1,4 +1,4 @@
-/* $OpenBSD: tls1.h,v 1.59 2024/03/02 11:46:55 tb Exp $ */
+/* $OpenBSD: tls1.h,v 1.61 2025/04/18 07:34:01 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -197,7 +197,7 @@ extern "C" {
 /* Codes 110-114 from RFC 3546. */
 #define TLS1_AD_UNSUPPORTED_EXTENSION		110
 #define TLS1_AD_CERTIFICATE_UNOBTAINABLE	111
-#define TLS1_AD_UNRECOGNIZED_NAME	 	112
+#define TLS1_AD_UNRECOGNIZED_NAME		112
 #define TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE	113
 #define TLS1_AD_BAD_CERTIFICATE_HASH_VALUE	114
 /* Code 115 from RFC 4279. */
@@ -455,7 +455,7 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS1_CK_DH_RSA_WITH_SEED_SHA                    0x03000098
 #define TLS1_CK_DHE_DSS_WITH_SEED_SHA                   0x03000099
 #define TLS1_CK_DHE_RSA_WITH_SEED_SHA                   0x0300009A
-#define TLS1_CK_ADH_WITH_SEED_SHA                	0x0300009B
+#define TLS1_CK_ADH_WITH_SEED_SHA			0x0300009B
 
 /* TLS v1.2 GCM ciphersuites from RFC 5288. */
 #define TLS1_CK_RSA_WITH_AES_128_GCM_SHA256		0x0300009C
@@ -747,8 +747,6 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS_MD_CLIENT_FINISH_CONST_SIZE		15
 #define TLS_MD_SERVER_FINISH_CONST		"server finished"
 #define TLS_MD_SERVER_FINISH_CONST_SIZE		15
-#define TLS_MD_SERVER_WRITE_KEY_CONST		"server write key"
-#define TLS_MD_SERVER_WRITE_KEY_CONST_SIZE	16
 #define TLS_MD_KEY_EXPANSION_CONST		"key expansion"
 #define TLS_MD_KEY_EXPANSION_CONST_SIZE		13
 #define TLS_MD_CLIENT_WRITE_KEY_CONST		"client write key"

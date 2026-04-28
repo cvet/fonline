@@ -1,4 +1,4 @@
-/* $OpenBSD: x509name.c,v 1.35 2023/05/29 11:54:50 beck Exp $ */
+/* $OpenBSD: x509name.c,v 1.39 2025/12/21 10:02:05 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,13 +60,13 @@
 #include <string.h>
 
 #include <openssl/asn1.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
 #include "bytestring.h"
+#include "err_local.h"
 #include "x509_local.h"
 
 int
@@ -404,25 +404,19 @@ int
 X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
     const unsigned char *bytes, int len)
 {
-	int i;
-
-	if ((ne == NULL) || ((bytes == NULL) && (len != 0)))
-		return (0);
-	if ((type > 0) && (type & MBSTRING_FLAG))
+	if (ne == NULL || (bytes == NULL && len != 0))
+		return 0;
+	if (type > 0 && (type & MBSTRING_FLAG) != 0)
 		return ASN1_STRING_set_by_NID(&ne->value, bytes, len, type,
 		    OBJ_obj2nid(ne->object)) ? 1 : 0;
 	if (len < 0)
 		len = strlen((const char *)bytes);
-	i = ASN1_STRING_set(ne->value, bytes, len);
-	if (!i)
-		return (0);
-	if (type != V_ASN1_UNDEF) {
-		if (type == V_ASN1_APP_CHOOSE)
-			ne->value->type = ASN1_PRINTABLE_type(bytes, len);
-		else
-			ne->value->type = type;
-	}
-	return (1);
+	if (!ASN1_STRING_set(ne->value, bytes, len))
+		return 0;
+	if (type != V_ASN1_UNDEF)
+		ne->value->type = type;
+
+	return 1;
 }
 LCRYPTO_ALIAS(X509_NAME_ENTRY_set_data);
 

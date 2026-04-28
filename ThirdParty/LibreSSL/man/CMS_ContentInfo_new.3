@@ -1,4 +1,4 @@
-.\" $OpenBSD: CMS_ContentInfo_new.3,v 1.4 2024/01/22 14:00:13 tb Exp $
+.\" $OpenBSD: CMS_ContentInfo_new.3,v 1.7 2025/12/20 11:51:28 tb Exp $
 .\" Copyright (c) 2019 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 22 2024 $
+.Dd $Mdocdate: December 20 2025 $
 .Dt CMS_CONTENTINFO_NEW 3
 .Os
 .Sh NAME
@@ -24,6 +24,7 @@
 .Nm CMS_ReceiptRequest_free
 .Nd Cryptographic Message Syntax data structures
 .Sh SYNOPSIS
+.Lb libcrypto
 .In openssl/cms.h
 .Ft CMS_ContentInfo *
 .Fn CMS_ContentInfo_new void
@@ -131,5 +132,5 @@ and
 first appeared in OpenSSL 0.9.8h and
 .Fn CMS_ContentInfo_print_ctx
 in OpenSSL 1.0.0.
-This functions have been available since
+This function has been available since
 .Ox 6.7 .

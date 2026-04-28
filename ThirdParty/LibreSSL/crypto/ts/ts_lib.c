@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_lib.c,v 1.14 2023/07/07 07:25:21 beck Exp $ */
+/* $OpenBSD: ts_lib.c,v 1.16 2025/12/05 14:19:27 tb Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -74,20 +74,25 @@
 int
 TS_ASN1_INTEGER_print_bio(BIO *bio, const ASN1_INTEGER *num)
 {
-	BIGNUM num_bn;
-	int result = 0;
-	char *hex;
+	BIGNUM *bn = NULL;
+	char *hex = NULL;
+	int ret = 0;
 
-	BN_init(&num_bn);
-	ASN1_INTEGER_to_BN(num, &num_bn);
-	if ((hex = BN_bn2hex(&num_bn))) {
-		result = BIO_write(bio, "0x", 2) > 0;
-		result = result && BIO_write(bio, hex, strlen(hex)) > 0;
-		free(hex);
-	}
-	BN_free(&num_bn);
+	/* XXX - OpenSSL decided to return -1 here for some stupid reason. */
+	if ((bn = ASN1_INTEGER_to_BN(num, NULL)) == NULL)
+		goto err;
+	if ((hex = BN_bn2hex(bn)) == NULL)
+		goto err;
+	if (BIO_printf(bio, "0x%s", hex) <= 0)
+		goto err;
 
-	return result;
+	ret = 1;
+
+ err:
+	BN_free(bn);
+	free(hex);
+
+	return ret;
 }
 LCRYPTO_ALIAS(TS_ASN1_INTEGER_print_bio);
 
@@ -150,7 +155,7 @@ TS_MSG_IMPRINT_print_bio(BIO *bio, TS_MSG_IMPRINT *a)
 
 	BIO_printf(bio, "Message data:\n");
 	msg = TS_MSG_IMPRINT_get_msg(a);
-	BIO_dump_indent(bio, (const char *)ASN1_STRING_data(msg),
+	BIO_dump_indent(bio, (const char *)ASN1_STRING_get0_data(msg),
 	    ASN1_STRING_length(msg), 4);
 
 	return 1;

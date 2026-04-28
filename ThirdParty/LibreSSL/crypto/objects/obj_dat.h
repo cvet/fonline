@@ -62,9 +62,9 @@
  * [including the GNU Public Licence.]
  */
 
-#define NUM_NID 1056
-#define NUM_SN 1049
-#define NUM_LN 1049
+#define NUM_NID 1057
+#define NUM_SN 1050
+#define NUM_LN 1050
 #define NUM_OBJ 977
 
 static const unsigned char lvalues[6968]={
@@ -2762,6 +2762,7 @@ static const ASN1_OBJECT nid_objs[NUM_NID]={
 {"id-ct-rpkiSignedPrefixList","id-ct-rpkiSignedPrefixList",
 	NID_id_ct_rpkiSignedPrefixList,11,&(lvalues[6956]),0},
 {"TLS1-PRF","tls1-prf",NID_tls1_prf,0,NULL,0},
+{"X25519MLKEM768","X25519MLKEM768",NID_X25519MLKEM768,0,NULL,0},
 };
 
 static const unsigned int sn_objs[NUM_SN]={
@@ -2985,6 +2986,7 @@ static const unsigned int sn_objs[NUM_SN]={
 458,	/* "UID" */
  0,	/* "UNDEF" */
 950,	/* "X25519" */
+1056,	/* "X25519MLKEM768" */
 951,	/* "X448" */
 11,	/* "X500" */
 378,	/* "X500algorithms" */
@@ -3962,6 +3964,7 @@ static const unsigned int ln_objs[NUM_LN]={
 133,	/* "Time Stamping" */
 375,	/* "Trust Root" */
 950,	/* "X25519" */
+1056,	/* "X25519MLKEM768" */
 951,	/* "X448" */
 12,	/* "X509" */
 402,	/* "X509v3 AC Targeting" */

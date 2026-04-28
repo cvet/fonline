@@ -1,4 +1,4 @@
-/* $OpenBSD: ca.c,v 1.60 2024/07/08 05:56:17 tb Exp $ */
+/* $OpenBSD: ca.c,v 1.64 2025/12/21 07:14:47 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -69,6 +69,7 @@
 
 #include "apps.h"
 
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/conf.h>
@@ -104,7 +105,6 @@
 #define ENV_POLICY      	"policy"
 #define ENV_EXTENSIONS      	"x509_extensions"
 #define ENV_CRLEXT      	"crl_extensions"
-#define ENV_MSIE_HACK		"msie_hack"
 #define ENV_NAMEOPT		"name_opt"
 #define ENV_CERTOPT		"cert_opt"
 #define ENV_EXTCOPY		"copy_extensions"
@@ -148,7 +148,6 @@ static int do_revoke(X509 *x509, CA_DB *db, int ext, char *extval);
 static int get_certificate_status(const char *serial, CA_DB *db);
 static int do_updatedb(CA_DB *db);
 static int check_time_format(const char *str);
-static char *bin2hex(unsigned char *, size_t);
 char *make_revocation_str(int rev_type, char *rev_arg);
 int make_revoked(X509_REVOKED *rev, const char *str);
 int old_entry_print(BIO *bp, ASN1_OBJECT *obj, ASN1_STRING *str);
@@ -182,7 +181,6 @@ static struct {
 	int keyform;
 	char *md;
 	int multirdn;
-	int msie_hack;
 	int notext;
 	char *outdir;
 	char *outfile;
@@ -450,11 +448,6 @@ static const struct option ca_options[] = {
 		.desc = "Message digest to use",
 		.type = OPTION_ARG,
 		.opt.arg = &cfg.md,
-	},
-	{
-		.name = "msie_hack",
-		.type = OPTION_FLAG,
-		.opt.flag = &cfg.msie_hack,
 	},
 	{
 		.name = "multivalue-rdn",
@@ -828,11 +821,6 @@ ca_main(int argc, char **argv)
 		ERR_clear_error();
 	if ((f != NULL) && ((*f == 'y') || (*f == 'Y')))
 		cfg.preserve = 1;
-	f = NCONF_get_string(conf, BASE_SECTION, ENV_MSIE_HACK);
-	if (f == NULL)
-		ERR_clear_error();
-	if ((f != NULL) && ((*f == 'y') || (*f == 'Y')))
-		cfg.msie_hack = 1;
 
 	f = NCONF_get_string(conf, cfg.section, ENV_NAMEOPT);
 
@@ -1254,22 +1242,30 @@ ca_main(int argc, char **argv)
 		if (cfg.verbose)
 			BIO_printf(bio_err, "writing new certificates\n");
 		for (i = 0; i < sk_X509_num(cert_sk); i++) {
-			ASN1_INTEGER *serialNumber;
-			int k;
+			BIGNUM *bn;
 			char *serialstr;
-			unsigned char *data;
 			char pempath[PATH_MAX];
+			int k;
 
 			x = sk_X509_value(cert_sk, i);
 
-			serialNumber = X509_get_serialNumber(x);
-			j = ASN1_STRING_length(serialNumber);
-			data = ASN1_STRING_data(serialNumber);
+			if ((bn = ASN1_INTEGER_to_BN(X509_get_serialNumber(x),
+			    NULL)) == NULL)
+				goto err;
 
-			if (j > 0)
-				serialstr = bin2hex(data, j);
-			else
+			if (BN_is_zero(bn)) {
+				/* For consistency, BN_bn2hex(0) is 0, not 00. */
 				serialstr = strdup("00");
+			} else {
+				/*
+				 * Historical behavior is to ignore the sign
+				 * that shouldn't be there anyway.
+				 */
+				BN_set_negative(bn, 0);
+				serialstr = BN_bn2hex(bn);
+			}
+			BN_free(bn);
+
 			if (serialstr != NULL) {
 				k = snprintf(pempath, sizeof(pempath),
 				    "%s/%s.pem", cfg.outdir, serialstr);
@@ -1657,6 +1653,54 @@ certify_cert(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
 }
 
 static int
+is_printablestring_octet(const uint8_t u8)
+{
+	/*
+	 * X.680, 41.4, Table 10 lists the allowed characters in this order.
+	 */
+
+	if (u8 >= 'A' && u8 <= 'Z')
+		return 1;
+	if (u8 >= 'a' && u8 <= 'z')
+		return 1;
+	if (u8 >= '0' && u8 <= '9')
+		return 1;
+
+	return u8 == ' ' || u8 == '\'' || u8 == '(' || u8 == ')' || u8 == '+' ||
+	    u8 == ',' || u8 == '-' || u8 == '.' || u8 == '/' || u8 == ':' ||
+	    u8 == '=' || u8 == '?';
+}
+
+/*
+ * Allows the high bit to be set only for UTF8, BMP and T61 strings, and
+ * checks that a PrintableString only contains the specified characters.
+ */
+static int
+validate_octets(const ASN1_STRING *astr)
+{
+	const uint8_t *buf = ASN1_STRING_get0_data(astr);
+	int type = ASN1_STRING_type(astr);
+	int i;
+
+	if (type == V_ASN1_BMPSTRING || type == V_ASN1_UTF8STRING ||
+	    type == V_ASN1_T61STRING)
+		return 1;
+
+	for (i = 0; i < ASN1_STRING_length(astr); i++) {
+		if (is_printablestring_octet(buf[i]))
+			continue;
+
+		if (type == V_ASN1_PRINTABLESTRING)
+			return 0;
+
+		if ((buf[i] & 0x80) != 0)
+			return 0;
+	}
+
+	return 1;
+}
+
+static int
 do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
     STACK_OF(OPENSSL_STRING) *sigopts, STACK_OF(CONF_VALUE) *policy,
     CA_DB *db, BIGNUM *serial, char *subj, unsigned long chtype, int multirdn,
@@ -1674,7 +1718,7 @@ do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
 	X509_NAME_ENTRY *ne;
 	X509_NAME_ENTRY *tne, *push;
 	EVP_PKEY *pktmp;
-	int ok = -1, i, j, last, nid;
+	int ok = -1, i, j, last;
 	const char *p;
 	CONF_VALUE *cv;
 	OPENSSL_STRING row[DB_NUMBER];
@@ -1716,45 +1760,23 @@ do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
 		if (obj == NULL)
 			goto err;
 
-		if (cfg.msie_hack) {
-			/* assume all type should be strings */
-			nid = OBJ_obj2nid(X509_NAME_ENTRY_get_object(ne));
-			if (nid == NID_undef)
-				goto err;
-
-			if (str->type == V_ASN1_UNIVERSALSTRING)
-				ASN1_UNIVERSALSTRING_to_string(str);
-
-			if ((str->type == V_ASN1_IA5STRING) &&
-			    (nid != NID_pkcs9_emailAddress))
-				str->type = V_ASN1_T61STRING;
-
-			if ((nid == NID_pkcs9_emailAddress) &&
-			    (str->type == V_ASN1_PRINTABLESTRING))
-				str->type = V_ASN1_IA5STRING;
-		}
 		/* If no EMAIL is wanted in the subject */
 		if ((OBJ_obj2nid(obj) == NID_pkcs9_emailAddress) && (!email_dn))
 			continue;
 
 		/* check some things */
 		if ((OBJ_obj2nid(obj) == NID_pkcs9_emailAddress) &&
-		    (str->type != V_ASN1_IA5STRING)) {
+		    (ASN1_STRING_type(str) != V_ASN1_IA5STRING)) {
 			BIO_printf(bio_err,
 			    "\nemailAddress type needs to be of type IA5STRING\n");
 			goto err;
 		}
-		if ((str->type != V_ASN1_BMPSTRING) &&
-		    (str->type != V_ASN1_UTF8STRING)) {
-			j = ASN1_PRINTABLE_type(str->data, str->length);
-			if (((j == V_ASN1_T61STRING) &&
-			    (str->type != V_ASN1_T61STRING)) ||
-			    ((j == V_ASN1_IA5STRING) &&
-			    (str->type == V_ASN1_PRINTABLESTRING))) {
-				BIO_printf(bio_err,
-				    "\nThe string contains characters that are illegal for the ASN.1 type\n");
-				goto err;
-			}
+
+		if (!validate_octets(str)) {
+			BIO_printf(bio_err,
+			    "\nThe string contains characters that are illegal "
+			    "for the ASN.1 type\n");
+			goto err;
 		}
 		if (default_op)
 			old_entry_print(bio_err, obj, str);
@@ -1852,9 +1874,9 @@ do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
 					BIO_printf(bio_err,
 					    "The %s field needed to be the same in the\nCA certificate (%s) and the request (%s)\n",
 					    cv->name, ((str2 == NULL) ?
-					    "NULL" : (char *) str2->data),
+					    "NULL" : (const char *) ASN1_STRING_get0_data(str2)),
 					    ((str == NULL) ?
-					    "NULL" : (char *) str->data));
+					    "NULL" : (const char *) ASN1_STRING_get0_data(str)));
 					goto err;
 				}
 			} else {
@@ -2175,7 +2197,8 @@ do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
 
 	if ((tm = X509_get_notAfter(ret)) == NULL)
 		goto err;
-	row[DB_exp_date] = strndup(tm->data, tm->length);
+	row[DB_exp_date] = strndup(ASN1_STRING_get0_data(tm),
+	    ASN1_STRING_length(tm));
 	if (row[DB_type] == NULL || row[DB_exp_date] == NULL) {
 		BIO_printf(bio_err, "Memory allocation failure\n");
 		goto err;
@@ -2302,7 +2325,8 @@ do_revoke(X509 *x509, CA_DB *db, int type, char *value)
 
 		if ((tm = X509_get_notAfter(x509)) == NULL)
 			goto err;
-		row[DB_exp_date] = strndup(tm->data, tm->length);
+		row[DB_exp_date] = strndup(ASN1_STRING_get0_data(tm),
+		    ASN1_STRING_length(tm));
 		if (row[DB_type] == NULL || row[DB_exp_date] == NULL) {
 			BIO_printf(bio_err, "Memory allocation failure\n");
 			goto err;
@@ -2465,7 +2489,7 @@ do_updatedb(CA_DB *db)
 		cnt = -1;
 		goto err;
 	}
-	a_tm_s = strndup(a_tm->data, a_tm->length);
+	a_tm_s = strndup(ASN1_STRING_get0_data(a_tm), ASN1_STRING_length(a_tm));
 	if (a_tm_s == NULL) {
 		cnt = -1;
 		goto err;
@@ -2601,7 +2625,7 @@ make_revocation_str(int rev_type, char *rev_arg)
 	if (revtm == NULL)
 		return NULL;
 
-	if (asprintf(&str, "%s%s%s%s%s", revtm->data,
+	if (asprintf(&str, "%s%s%s%s%s", ASN1_STRING_get0_data(revtm),
 	    reason ? "," : "", reason ? reason : "",
 	    other ? "," : "", other ? other : "") == -1)
 		str = NULL;
@@ -2674,7 +2698,8 @@ make_revoked(X509_REVOKED *rev, const char *str)
 int
 old_entry_print(BIO *bp, ASN1_OBJECT *obj, ASN1_STRING *str)
 {
-	char buf[25], *pbuf, *p;
+	const char *p;
+	char buf[25], *pbuf;
 	int j;
 
 	j = i2a_ASN1_OBJECT(bp, obj);
@@ -2685,19 +2710,19 @@ old_entry_print(BIO *bp, ASN1_OBJECT *obj, ASN1_STRING *str)
 	*(pbuf++) = '\0';
 	BIO_puts(bp, buf);
 
-	if (str->type == V_ASN1_PRINTABLESTRING)
+	if (ASN1_STRING_type(str) == V_ASN1_PRINTABLESTRING)
 		BIO_printf(bp, "PRINTABLE:'");
-	else if (str->type == V_ASN1_T61STRING)
+	else if (ASN1_STRING_type(str) == V_ASN1_T61STRING)
 		BIO_printf(bp, "T61STRING:'");
-	else if (str->type == V_ASN1_IA5STRING)
+	else if (ASN1_STRING_type(str) == V_ASN1_IA5STRING)
 		BIO_printf(bp, "IA5STRING:'");
-	else if (str->type == V_ASN1_UNIVERSALSTRING)
+	else if (ASN1_STRING_type(str) == V_ASN1_UNIVERSALSTRING)
 		BIO_printf(bp, "UNIVERSALSTRING:'");
 	else
-		BIO_printf(bp, "ASN.1 %2d:'", str->type);
+		BIO_printf(bp, "ASN.1 %2d:'", ASN1_STRING_type(str));
 
-	p = (char *) str->data;
-	for (j = str->length; j > 0; j--) {
+	p = (const char *) ASN1_STRING_get0_data(str);
+	for (j = ASN1_STRING_length(str); j > 0; j--) {
 		if ((*p >= ' ') && (*p <= '~'))
 			BIO_printf(bp, "%c", *p);
 		else if (*p & 0x80)
@@ -2815,22 +2840,5 @@ unpack_revinfo(ASN1_TIME **prevtm, int *preason, ASN1_OBJECT **phold,
 	if (pinvtm == NULL)
 		ASN1_GENERALIZEDTIME_free(comp_time);
 
-	return ret;
-}
-
-static char *
-bin2hex(unsigned char *data, size_t len)
-{
-	char *ret = NULL;
-	char hex[] = "0123456789ABCDEF";
-	int i;
-
-	if ((ret = malloc(len * 2 + 1)) != NULL) {
-		for (i = 0; i < len; i++) {
-			ret[i * 2 + 0] = hex[data[i] >> 4];
-			ret[i * 2 + 1] = hex[data[i] & 0x0F];
-		}
-		ret[len * 2] = '\0';
-	}
 	return ret;
 }

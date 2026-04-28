@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_lu.c,v 1.66 2024/08/31 10:19:17 tb Exp $ */
+/* $OpenBSD: x509_lu.c,v 1.68 2025/05/10 05:54:39 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -59,12 +59,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "x509_local.h"
+
+static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 
 static X509_LOOKUP *
 X509_LOOKUP_new(const X509_LOOKUP_METHOD *method)
@@ -404,7 +406,7 @@ X509_STORE_add_crl(X509_STORE *store, X509_CRL *x)
 }
 LCRYPTO_ALIAS(X509_STORE_add_crl);
 
-int
+static int
 X509_OBJECT_up_ref_count(X509_OBJECT *a)
 {
 	switch (a->type) {
@@ -415,7 +417,6 @@ X509_OBJECT_up_ref_count(X509_OBJECT *a)
 	}
 	return 1;
 }
-LCRYPTO_ALIAS(X509_OBJECT_up_ref_count);
 
 X509_LOOKUP_TYPE
 X509_OBJECT_get_type(const X509_OBJECT *a)

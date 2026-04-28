@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_lib.c,v 1.93 2024/04/16 13:07:14 jsing Exp $ */
+/* $OpenBSD: bn_lib.c,v 1.95 2025/12/15 12:09:46 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -63,10 +63,9 @@
 
 #include <openssl/opensslconf.h>
 
-#include <openssl/err.h>
-
 #include "bn_local.h"
 #include "bn_internal.h"
+#include "err_local.h"
 
 BIGNUM *
 BN_new(void)
@@ -350,7 +349,7 @@ BN_ULONG
 BN_get_word(const BIGNUM *a)
 {
 	if (a->top > 1)
-		return BN_MASK2;
+		return (BN_ULONG)-1;
 	else if (a->top == 1)
 		return a->d[0];
 	/* a->top == 0 */

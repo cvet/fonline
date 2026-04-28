@@ -1,4 +1,4 @@
-/* $OpenBSD: keypairtest.c,v 1.7 2024/03/20 10:38:05 jsing Exp $ */
+/* $OpenBSD: keypairtest.c,v 1.8 2026/04/15 20:13:07 tb Exp $ */
 /*
  * Copyright (c) 2018 Joel Sing <jsing@openbsd.org>
  *
@@ -88,7 +88,7 @@ do_keypair_tests(void)
 	const uint8_t *cert, *key, *ocsp_staple;
 	X509 *x509_cert = NULL;
 	struct tls_keypair *kp;
-	struct tls_error err;
+	struct tls_error err = { 0 };
 	int failed = 1;
 
 	load_file(cert_file, &cert, &cert_len);

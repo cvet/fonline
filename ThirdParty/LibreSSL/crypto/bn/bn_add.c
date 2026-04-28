@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_add.c,v 1.26 2023/07/08 12:21:58 beck Exp $ */
+/* $OpenBSD: bn_add.c,v 1.29 2025/05/25 04:53:05 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,44 +60,10 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include <openssl/err.h>
-
 #include "bn_arch.h"
 #include "bn_local.h"
 #include "bn_internal.h"
-
-/*
- * bn_add_words() computes (carry:r[i]) = a[i] + b[i] + carry, where a and b
- * are both arrays of words. Any carry resulting from the addition is returned.
- */
-#ifndef HAVE_BN_ADD_WORDS
-BN_ULONG
-bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b, int n)
-{
-	BN_ULONG carry = 0;
-
-	assert(n >= 0);
-	if (n <= 0)
-		return 0;
-
-	while (n & ~3) {
-		bn_qwaddqw(a[3], a[2], a[1], a[0], b[3], b[2], b[1], b[0],
-		    carry, &carry, &r[3], &r[2], &r[1], &r[0]);
-		a += 4;
-		b += 4;
-		r += 4;
-		n -= 4;
-	}
-	while (n) {
-		bn_addw_addw(a[0], b[0], carry, &carry, &r[0]);
-		a++;
-		b++;
-		r++;
-		n--;
-	}
-	return carry;
-}
-#endif
+#include "err_local.h"
 
 /*
  * bn_add() computes (carry:r[i]) = a[i] + b[i] + carry, where a and b are both
@@ -147,40 +113,6 @@ bn_add(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len, const BN_ULONG *b,
 #endif
 
 /*
- * bn_sub_words() computes (borrow:r[i]) = a[i] - b[i] - borrow, where a and b
- * are both arrays of words. Any borrow resulting from the subtraction is
- * returned.
- */
-#ifndef HAVE_BN_SUB_WORDS
-BN_ULONG
-bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b, int n)
-{
-	BN_ULONG borrow = 0;
-
-	assert(n >= 0);
-	if (n <= 0)
-		return 0;
-
-	while (n & ~3) {
-		bn_qwsubqw(a[3], a[2], a[1], a[0], b[3], b[2], b[1], b[0],
-		    borrow, &borrow, &r[3], &r[2], &r[1], &r[0]);
-		a += 4;
-		b += 4;
-		r += 4;
-		n -= 4;
-	}
-	while (n) {
-		bn_subw_subw(a[0], b[0], borrow, &borrow, &r[0]);
-		a++;
-		b++;
-		r++;
-		n--;
-	}
-	return borrow;
-}
-#endif
-
-/*
  * bn_sub() computes (borrow:r[i]) = a[i] - b[i] - borrow, where a and b are both
  * arrays of words (r may be the same as a or b). The length of a and b may
  * differ, while r must be at least max(a_len, b_len) in length. Any borrow
@@ -208,7 +140,7 @@ bn_sub(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len, const BN_ULONG *b,
 	/* XXX - consider doing four at a time to match bn_sub_words. */
 	while (diff_len < 0) {
 		/* Compute r[0] = 0 - b[0] - borrow. */
-		bn_subw(0 - b[0], borrow, &borrow, &r[0]);
+		bn_subw_subw(0, b[0], borrow, &borrow, &r[0]);
 		diff_len++;
 		b++;
 		r++;
@@ -217,7 +149,7 @@ bn_sub(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len, const BN_ULONG *b,
 	/* XXX - consider doing four at a time to match bn_sub_words. */
 	while (diff_len > 0) {
 		/* Compute r[0] = a[0] - 0 - borrow. */
-		bn_subw(a[0], borrow, &borrow, &r[0]);
+		bn_subw_subw(a[0], 0, borrow, &borrow, &r[0]);
 		diff_len--;
 		a++;
 		r++;

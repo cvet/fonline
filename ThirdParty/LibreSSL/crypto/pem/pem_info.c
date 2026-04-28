@@ -1,4 +1,4 @@
-/* $OpenBSD: pem_info.c,v 1.27 2023/07/07 13:40:44 beck Exp $ */
+/* $OpenBSD: pem_info.c,v 1.33 2025/07/16 15:59:26 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,43 +57,81 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/opensslconf.h>
 
-#include <openssl/buffer.h>
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
+#include <openssl/dsa.h>
+#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#ifndef OPENSSL_NO_DSA
-#include <openssl/dsa.h>
-#endif
-#ifndef OPENSSL_NO_RSA
-#include <openssl/rsa.h>
-#endif
-
+#include "err_local.h"
 #include "evp_local.h"
 
-STACK_OF(X509_INFO) *
-PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb,
-    void *u)
+X509_PKEY *
+X509_PKEY_new(void)
 {
-	BIO *b;
-	STACK_OF(X509_INFO) *ret;
+	X509_PKEY *x_pkey;
 
-	if ((b = BIO_new(BIO_s_file())) == NULL) {
-		PEMerror(ERR_R_BUF_LIB);
-		return (0);
+	if ((x_pkey = calloc(1, sizeof(*x_pkey))) == NULL) {
+		ASN1error(ERR_R_MALLOC_FAILURE);
+		return NULL;
 	}
-	BIO_set_fp(b, fp, BIO_NOCLOSE);
-	ret = PEM_X509_INFO_read_bio(b, sk, cb, u);
-	BIO_free(b);
-	return (ret);
+
+	return x_pkey;
 }
-LCRYPTO_ALIAS(PEM_X509_INFO_read);
+
+void
+X509_PKEY_free(X509_PKEY *x_pkey)
+{
+	if (x_pkey == NULL)
+		return;
+
+	EVP_PKEY_free(x_pkey->dec_pkey);
+	free(x_pkey);
+}
+
+X509_INFO *
+X509_INFO_new(void)
+{
+	X509_INFO *ret;
+
+	if ((ret = calloc(1, sizeof(X509_INFO))) == NULL) {
+		ASN1error(ERR_R_MALLOC_FAILURE);
+		return NULL;
+	}
+	ret->references = 1;
+
+	return ret;
+}
+LCRYPTO_ALIAS(X509_INFO_new);
+
+void
+X509_INFO_free(X509_INFO *x)
+{
+	if (x == NULL)
+		return;
+
+	if (CRYPTO_add(&x->references, -1, CRYPTO_LOCK_X509_INFO) > 0)
+		return;
+
+	X509_free(x->x509);
+	X509_CRL_free(x->crl);
+	X509_PKEY_free(x->x_pkey);
+	free(x->enc_data);
+
+	free(x);
+}
+LCRYPTO_ALIAS(X509_INFO_free);
 
 STACK_OF(X509_INFO) *
 PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb,
@@ -290,98 +328,3 @@ err:
 	return ret;
 }
 LCRYPTO_ALIAS(PEM_X509_INFO_read_bio);
-
-
-/* A TJH addition */
-int
-PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
-    unsigned char *kstr, int klen, pem_password_cb *cb, void *u)
-{
-	EVP_CIPHER_CTX ctx;
-	int i, ret = 0;
-	unsigned char *data = NULL;
-	const char *objstr = NULL;
-	char buf[PEM_BUFSIZE];
-	unsigned char *iv = NULL;
-
-	if (enc != NULL) {
-		objstr = OBJ_nid2sn(EVP_CIPHER_nid(enc));
-		if (objstr == NULL) {
-			PEMerror(PEM_R_UNSUPPORTED_CIPHER);
-			goto err;
-		}
-	}
-
-	/* now for the fun part ... if we have a private key then
-	 * we have to be able to handle a not-yet-decrypted key
-	 * being written out correctly ... if it is decrypted or
-	 * it is non-encrypted then we use the base code
-	 */
-	if (xi->x_pkey != NULL) {
-		if ((xi->enc_data != NULL) && (xi->enc_len > 0) ) {
-			if (enc == NULL) {
-				PEMerror(PEM_R_CIPHER_IS_NULL);
-				goto err;
-			}
-
-			/* copy from weirdo names into more normal things */
-			iv = xi->enc_cipher.iv;
-			data = (unsigned char *)xi->enc_data;
-			i = xi->enc_len;
-
-			/* we take the encryption data from the
-			 * internal stuff rather than what the
-			 * user has passed us ... as we have to
-			 * match exactly for some strange reason
-			 */
-			objstr = OBJ_nid2sn(
-			    EVP_CIPHER_nid(xi->enc_cipher.cipher));
-			if (objstr == NULL) {
-				PEMerror(PEM_R_UNSUPPORTED_CIPHER);
-				goto err;
-			}
-
-			/* create the right magic header stuff */
-			if (strlen(objstr) + 23 + 2 * enc->iv_len + 13 >
-			    sizeof buf) {
-				PEMerror(ASN1_R_BUFFER_TOO_SMALL);
-				goto err;
-			}
-			buf[0] = '\0';
-			PEM_proc_type(buf, PEM_TYPE_ENCRYPTED);
-			PEM_dek_info(buf, objstr, enc->iv_len, (char *)iv);
-
-			/* use the normal code to write things out */
-			i = PEM_write_bio(bp, PEM_STRING_RSA, buf, data, i);
-			if (i <= 0)
-				goto err;
-		} else {
-			/* Add DSA/DH */
-#ifndef OPENSSL_NO_RSA
-			/* normal optionally encrypted stuff */
-			if (PEM_write_bio_RSAPrivateKey(bp,
-			    xi->x_pkey->dec_pkey->pkey.rsa,
-			    enc, kstr, klen, cb, u) <= 0)
-				goto err;
-#endif
-		}
-	}
-
-	/* if we have a certificate then write it out now */
-	if ((xi->x509 != NULL) && (PEM_write_bio_X509(bp, xi->x509) <= 0))
-		goto err;
-
-	/* we are ignoring anything else that is loaded into the X509_INFO
-	 * structure for the moment ... as I don't need it so I'm not
-	 * coding it here and Eric can do it when this makes it into the
-	 * base library --tjh
-	 */
-
-	ret = 1;
-
-err:
-	explicit_bzero((char *)&ctx, sizeof(ctx));
-	explicit_bzero(buf, PEM_BUFSIZE);
-	return (ret);
-}
-LCRYPTO_ALIAS(PEM_X509_INFO_write_bio);
