@@ -70,6 +70,15 @@ void Player::SetControlledCritter(Critter* cr)
     _controlledCr = cr;
 }
 
+void Player::DetachCritter()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_controlledCr) {
+        _controlledCr->DetachPlayer();
+    }
+}
+
 void Player::SwapConnection(Player* other) noexcept
 {
     FO_STACK_TRACE_ENTRY();

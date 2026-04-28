@@ -1023,10 +1023,7 @@ void ServerEngine::ProcessPlayer(Player* player)
 
         OnPlayerLogout.Fire(player);
 
-        if (auto* cr = player->GetControlledCritter(); cr != nullptr) {
-            cr->DetachPlayer();
-        }
-
+        player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         return;
@@ -1925,6 +1922,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
             safe_call([&] { DbStorage.Delete(PlayersCollectionName, player->GetId()); });
         }
         if (registered_player) {
+            safe_call([&] { player->DetachCritter(); });
             safe_call([&] { player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(player); });
         }
@@ -1945,6 +1943,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
     if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
+        player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
@@ -1975,6 +1974,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (registered_player) {
+            safe_call([&] { unlogined_player->DetachCritter(); });
             safe_call([&] { unlogined_player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(unlogined_player); });
         }
@@ -2006,6 +2006,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         player->Send_LoginSuccess();
 
         if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
+            player->DetachCritter();
             player->MarkAsDestroyed();
             EntityMngr.UnregisterPlayer(player);
             registered_player = false;

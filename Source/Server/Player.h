@@ -68,6 +68,7 @@ public:
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);
+    void DetachCritter();
     void SwapConnection(Player* other) noexcept;
     void SetIgnoreSendEntityProperty(const Entity* entity, const Property* prop) noexcept;
 
