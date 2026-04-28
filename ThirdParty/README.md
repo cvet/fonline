@@ -1,7 +1,7 @@
 # FOnline Engine : Third-party packages
 
 * AcmDecoder by Abel - ACM sound format reader
-* AngelScript - [Rev. 2356](https://github.com/anjo76/angelscript)
+* AngelScript - [2.39.0 WIP 15.03.26](https://github.com/anjo76/angelscript)
 * Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.14.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
@@ -31,5 +31,5 @@
 * android-ndk [android-ndk-r29](https://developer.android.com/ndk)
 * android-sdk [11076708](https://developer.android.com/tools)
 * dotnet-runtime [v9.0.0](https://github.com/dotnet/runtime)
-* emscripten [4.0.6](https://github.com/emscripten-core/emscripten)
+* emscripten [5.0.6](https://github.com/emscripten-core/emscripten)
 * iOS-sdk [18.0](https://developer.apple.com/ios)
