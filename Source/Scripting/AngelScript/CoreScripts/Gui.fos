@@ -280,7 +280,7 @@ class Object
 {
     bool get_Active() final
     {
-        return _ActiveSelf && (_Parent != null ? _Parent.Active : true);
+        return _Active;
     }
     bool get_ActiveSelf() final
     {
@@ -372,6 +372,7 @@ class Object
     }
 
     bool _ActiveSelf;
+    bool _Active;
     string _Name;
     ipos _BasePos;
     isize _BaseSize;
@@ -529,6 +530,7 @@ class Object
         if (parent != null) {
             parent._Children.insertLast(this);
         }
+        _RefreshActive();
 
         _Construct();
         OnConstruct();
@@ -553,6 +555,7 @@ class Object
 
     void _Init()
     {
+        _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
         for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Init();
         }
@@ -611,6 +614,7 @@ class Object
         _Remove();
 
         _ActiveSelf = false;
+        _RefreshActive();
     }
 
     void _Remove()
@@ -1167,6 +1171,7 @@ class Object
     {
         if (_ActiveSelf != active) {
             _ActiveSelf = active;
+            _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
             _ActiveChanged();
         }
     }
@@ -1175,7 +1180,20 @@ class Object
     {
         OnActiveChanged();
         for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._Active = _Children[i]._ActiveSelf && _Active;
             _Children[i]._ActiveChanged();
+        }
+    }
+
+    void _RefreshActive()
+    {
+        bool newActive = _ActiveSelf && (_Parent == null || _Parent._Active);
+        if (_Active == newActive) {
+            return;
+        }
+        _Active = newActive;
+        for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._RefreshActive();
         }
     }
 
@@ -2301,6 +2319,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = true;
+        _RefreshActive();
 
         // Set default cursor
         _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
@@ -2313,6 +2332,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = false;
+        _RefreshActive();
 
         // Base behaviour
         Panel::_Hide();
@@ -2542,6 +2562,7 @@ class Grid : Panel
 
         // Create new intsances
         cellPrototype._ActiveSelf = true;
+        cellPrototype._RefreshActive();
         Object[] cellInstances = {};
 
         for (int i = 0; i < _GridSize; i++) {
@@ -2554,6 +2575,7 @@ class Grid : Panel
         }
 
         cellPrototype._ActiveSelf = false;
+        cellPrototype._RefreshActive();
 
         // Callbacks
         for (int i = 0; i < cellInstances.length(); i++) {
@@ -2661,6 +2683,7 @@ class Grid : Panel
 
             if (cellPrototype != null) {
                 cellPrototype._ActiveSelf = false;
+                cellPrototype._RefreshActive();
             }
         }
     }
@@ -3889,6 +3912,7 @@ void CleanupObjectGraph(Object obj)
     obj._Parent = null;
     obj._Children.clear();
     obj._ActiveSelf = false;
+    obj._Active = false;
 }
 
 void EngineCallback_Finish()
