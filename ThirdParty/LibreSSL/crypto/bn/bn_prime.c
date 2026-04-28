@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_prime.c,v 1.34 2023/07/20 06:26:27 tb Exp $ */
+/* $OpenBSD: bn_prime.c,v 1.37 2025/11/08 16:27:33 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -109,12 +109,12 @@
  *
  */
 
-#include <stdio.h>
-#include <time.h>
+#include <stddef.h>
 
-#include <openssl/err.h>
+#include <openssl/bn.h>
 
 #include "bn_local.h"
+#include "err_local.h"
 
 /* The quick sieve algorithm approach to weeding out primes is
  * Philip Zimmermann's, as implemented in PGP.  I have had a read of
@@ -339,7 +339,7 @@ probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add, const BIGNUM *rem,
 loop:
 	for (i = 1; i < NUMPRIMES; i++) {
 		/* check that rnd is a prime */
-		BN_LONG mod = BN_mod_word(rnd, primes[i]);
+		BN_ULONG mod = BN_mod_word(rnd, primes[i]);
 		if (mod == (BN_ULONG)-1)
 			goto err;
 		if (mod <= 1) {

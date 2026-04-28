@@ -1,4 +1,4 @@
-/*	$OpenBSD: p_legacy.c,v 1.6 2024/04/09 13:52:41 beck Exp $ */
+/*	$OpenBSD: p_legacy.c,v 1.12 2026/01/30 13:57:13 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -57,12 +57,12 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <openssl/evp.h>
-#include <openssl/err.h>
-
 #include <openssl/rsa.h>
 
+#include "err_local.h"
 #include "evp_local.h"
 
 int
@@ -98,17 +98,20 @@ EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
     const unsigned char *ek, int ekl, const unsigned char *iv, EVP_PKEY *priv)
 {
 	unsigned char *key = NULL;
-	int i, size = 0, ret = 0;
+	int i, size = 0;
+	int ret = 0;
 
-	if (type) {
-		if (!EVP_CIPHER_CTX_reset(ctx))
-			return 0;
+	if (type != NULL) {
 		if (!EVP_DecryptInit_ex(ctx, type, NULL, NULL, NULL))
-			return 0;
+			goto err;
 	}
 
-	if (!priv)
-		return 1;
+	/*
+	 * Per manpage: "It is possible to call EVP_OpenInit() twice in
+	 * the same way as EVP_DecryptInit(3)."
+	 */
+	if (priv == NULL)
+		goto done;
 
 	if (priv->type != EVP_PKEY_RSA) {
 		EVPerror(EVP_R_PUBLIC_KEY_NOT_RSA);
@@ -131,11 +134,13 @@ EVP_OpenInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
 	if (!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv))
 		goto err;
 
+ done:
 	ret = 1;
 
-err:
+ err:
 	freezero(key, size);
-	return (ret);
+
+	return ret;
 }
 LCRYPTO_ALIAS(EVP_OpenInit);
 
@@ -157,33 +162,47 @@ EVP_SealInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type, unsigned char **ek,
 {
 	unsigned char key[EVP_MAX_KEY_LENGTH];
 	int i, iv_len;
+	int ret = 0;
 
-	if (type) {
-		if (!EVP_CIPHER_CTX_reset(ctx))
-			return 0;
+	if (type != NULL) {
 		if (!EVP_EncryptInit_ex(ctx, type, NULL, NULL, NULL))
-			return 0;
+			goto err;
 	}
-	if ((npubk <= 0) || !pubk)
-		return 1;
+
+	/*
+	 * Per manpage: "it is possible to call EVP_SealInit() twice in the
+	 * same way as EVP_EncryptInit(3)." The return 1 indicates success.
+	 */
+	if (npubk <= 0 || pubk == NULL) {
+		npubk = 1;
+		goto done;
+	}
+
 	if (EVP_CIPHER_CTX_rand_key(ctx, key) <= 0)
-		return 0;
+		goto err;
 	/* XXX - upper bound? */
 	if ((iv_len = EVP_CIPHER_CTX_iv_length(ctx)) < 0)
-		return 0;
+		goto err;
 	if (iv_len > 0)
 		arc4random_buf(iv, iv_len);
 
 	if (!EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv))
-		return 0;
+		goto err;
 
 	for (i = 0; i < npubk; i++) {
 		ekl[i] = EVP_PKEY_encrypt_old(ek[i], key,
 		    EVP_CIPHER_CTX_key_length(ctx), pubk[i]);
 		if (ekl[i] <= 0)
-			return (-1);
+			goto err;
 	}
-	return (npubk);
+
+ done:
+	ret = npubk;
+
+ err:
+	explicit_bzero(key, sizeof(key));
+
+	return ret;
 }
 LCRYPTO_ALIAS(EVP_SealInit);
 

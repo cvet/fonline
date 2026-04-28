@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_server.c,v 1.109 2024/07/22 14:47:15 jsing Exp $ */
+/* $OpenBSD: tls13_server.c,v 1.112 2025/12/04 21:03:42 beck Exp $ */
 /*
  * Copyright (c) 2019, 2020 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
@@ -327,7 +327,7 @@ tls13_client_hello_recv(struct tls13_ctx *ctx, CBS *cbs)
 }
 
 static int
-tls13_server_hello_build(struct tls13_ctx *ctx, CBB *cbb, int hrr)
+tls13_server_hello_build(struct tls13_ctx *ctx, CBB *cbb)
 {
 	uint16_t tlsext_msg_type = SSL_TLSEXT_MSG_SH;
 	const uint8_t *server_random;
@@ -338,7 +338,7 @@ tls13_server_hello_build(struct tls13_ctx *ctx, CBB *cbb, int hrr)
 	cipher = SSL_CIPHER_get_value(ctx->hs->cipher);
 	server_random = s->s3->server_random;
 
-	if (hrr) {
+	if (ctx->hs->tls13.hrr) {
 		server_random = tls13_hello_retry_request_hash;
 		tlsext_msg_type = SSL_TLSEXT_MSG_HRR;
 	}
@@ -437,8 +437,6 @@ tls13_server_engage_record_protection(struct tls13_ctx *ctx)
 int
 tls13_server_hello_retry_request_send(struct tls13_ctx *ctx, CBB *cbb)
 {
-	int nid;
-
 	ctx->hs->tls13.hrr = 1;
 
 	if (!tls13_synthetic_handshake_message(ctx))
@@ -446,12 +444,10 @@ tls13_server_hello_retry_request_send(struct tls13_ctx *ctx, CBB *cbb)
 
 	if (ctx->hs->key_share != NULL)
 		return 0;
-	if (!tls1_get_supported_group(ctx->ssl, &nid))
-		return 0;
-	if (!tls1_ec_nid2group_id(nid, &ctx->hs->tls13.server_group))
+	if (ctx->hs->tls13.server_group == 0)
 		return 0;
 
-	if (!tls13_server_hello_build(ctx, cbb, 1))
+	if (!tls13_server_hello_build(ctx, cbb))
 		return 0;
 
 	return 1;
@@ -506,14 +502,12 @@ tls13_server_hello_send(struct tls13_ctx *ctx, CBB *cbb)
 {
 	if (ctx->hs->key_share == NULL)
 		return 0;
-	if (!tls_key_share_generate(ctx->hs->key_share))
+	if (!tls_key_share_server_generate(ctx->hs->key_share))
 		return 0;
 	if (!tls13_servername_process(ctx))
 		return 0;
 
-	ctx->hs->tls13.server_group = 0;
-
-	if (!tls13_server_hello_build(ctx, cbb, 0))
+	if (!tls13_server_hello_build(ctx, cbb))
 		return 0;
 
 	return 1;

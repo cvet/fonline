@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_sqr.c,v 1.36 2023/07/08 12:21:58 beck Exp $ */
+/* $OpenBSD: bn_sqr.c,v 1.42 2025/09/07 05:21:29 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -64,8 +64,6 @@
 #include "bn_local.h"
 #include "bn_internal.h"
 
-int bn_sqr(BIGNUM *r, const BIGNUM *a, int max, BN_CTX *ctx);
-
 /*
  * bn_sqr_comba4() computes r[] = a[] * a[] using Comba multiplication
  * (https://everything2.com/title/Comba+multiplication), where a is a
@@ -93,6 +91,51 @@ bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a)
 	bn_mul2_mulw_addtw(a[3], a[2], 0, c2, c1, &c2, &c1, &r[5]);
 
 	bn_mulw_addtw(a[3], a[3], 0, c2, c1, &c2, &r[7], &r[6]);
+}
+#endif
+
+/*
+ * bn_sqr_comba6() computes r[] = a[] * a[] using Comba multiplication
+ * (https://everything2.com/title/Comba+multiplication), where a is an
+ * six word array, producing an 12 word array result.
+ */
+#ifndef HAVE_BN_SQR_COMBA6
+void
+bn_sqr_comba6(BN_ULONG *r, const BN_ULONG *a)
+{
+	BN_ULONG c2, c1, c0;
+
+	bn_mulw_addtw(a[0], a[0], 0, 0, 0, &c2, &c1, &r[0]);
+
+	bn_mul2_mulw_addtw(a[1], a[0], 0, c2, c1, &c2, &c1, &r[1]);
+
+	bn_mulw_addtw(a[1], a[1], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[2], a[0], c2, c1, c0, &c2, &c1, &r[2]);
+
+	bn_mul2_mulw_addtw(a[3], a[0], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[2], a[1], c2, c1, c0, &c2, &c1, &r[3]);
+
+	bn_mulw_addtw(a[2], a[2], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[3], a[1], c2, c1, c0, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[4], a[0], c2, c1, c0, &c2, &c1, &r[4]);
+
+	bn_mul2_mulw_addtw(a[5], a[0], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[4], a[1], c2, c1, c0, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[3], a[2], c2, c1, c0, &c2, &c1, &r[5]);
+
+	bn_mulw_addtw(a[3], a[3], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[4], a[2], c2, c1, c0, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[5], a[1], c2, c1, c0, &c2, &c1, &r[6]);
+
+	bn_mul2_mulw_addtw(a[5], a[2], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[4], a[3], c2, c1, c0, &c2, &c1, &r[7]);
+
+	bn_mulw_addtw(a[4], a[4], 0, c2, c1, &c2, &c1, &c0);
+	bn_mul2_mulw_addtw(a[5], a[3], c2, c1, c0, &c2, &c1, &r[8]);
+
+	bn_mul2_mulw_addtw(a[5], a[4], 0, c2, c1, &c2, &c1, &r[9]);
+
+	bn_mulw_addtw(a[5], a[5], 0, c2, c1, &c2, &r[11], &r[10]);
 }
 #endif
 
@@ -160,7 +203,7 @@ bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a)
 }
 #endif
 
-#ifndef HAVE_BN_SQR
+#ifndef HAVE_BN_SQR_WORDS
 /*
  * bn_sqr_add_words() computes (r[i*2+1]:r[i*2]) = (r[i*2+1]:r[i*2]) + a[i] * a[i].
  */
@@ -197,12 +240,16 @@ bn_sqr_add_words(BN_ULONG *r, const BN_ULONG *a, int n)
 	}
 }
 
-static void
-bn_sqr_normal(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len)
+/*
+ * bn_sqr_words() computes r[] = a[] * a[].
+ */
+void
+bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int a_len)
 {
 	const BN_ULONG *ap;
 	BN_ULONG *rp;
 	BN_ULONG w;
+	int r_len;
 	int n;
 
 	if (a_len <= 0)
@@ -213,13 +260,14 @@ bn_sqr_normal(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len)
 	ap++;
 
 	rp = r;
+	r_len = a_len * 2;
 	rp[0] = rp[r_len - 1] = 0;
 	rp++;
 
 	/* Compute initial product - r[n:1] = a[n:1] * a[0] */
 	n = a_len - 1;
 	if (n > 0) {
-		rp[n] = bn_mul_words(rp, ap, n, w);
+		rp[n] = bn_mulw_words(rp, ap, n, w);
 	}
 	rp += 2;
 	n--;
@@ -229,7 +277,7 @@ bn_sqr_normal(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len)
 		w = ap[0];
 		ap++;
 
-		rp[n] = bn_mul_add_words(rp, ap, n, w);
+		rp[n] = bn_mulw_add_words(rp, ap, n, w);
 		rp += 2;
 		n--;
 	}
@@ -240,20 +288,20 @@ bn_sqr_normal(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len)
 	/* Add squares. */
 	bn_sqr_add_words(r, a, a_len);
 }
+#endif
 
 /*
  * bn_sqr() computes a * a, storing the result in r. The caller must ensure that
  * r is not the same BIGNUM as a and that r has been expanded to rn = a->top * 2
  * words.
  */
-int
-bn_sqr(BIGNUM *r, const BIGNUM *a, int r_len, BN_CTX *ctx)
+static int
+bn_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 {
-	bn_sqr_normal(r->d, r_len, a->d, a->top);
+	bn_sqr_words(r->d, a->d, a->top);
 
 	return 1;
 }
-#endif
 
 int
 BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
@@ -281,10 +329,12 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 
 	if (a->top == 4) {
 		bn_sqr_comba4(rr->d, a->d);
+	} else if (a->top == 6) {
+		bn_sqr_comba6(rr->d, a->d);
 	} else if (a->top == 8) {
 		bn_sqr_comba8(rr->d, a->d);
 	} else {
-		if (!bn_sqr(rr, a, r_len, ctx))
+		if (!bn_sqr(rr, a, ctx))
 			goto err;
 	}
 

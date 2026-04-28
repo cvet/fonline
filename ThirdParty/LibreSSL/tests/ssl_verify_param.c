@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssl_verify_param.c,v 1.1 2023/05/24 08:54:59 tb Exp $ */
+/*	$OpenBSD: ssl_verify_param.c,v 1.3 2025/10/24 11:43:34 tb Exp $ */
 
 /*
  * Copyright (c) 2023 Theo Buehler <tb@openbsd.org>
@@ -20,9 +20,8 @@
 #include <stdio.h>
 
 #include <openssl/ssl.h>
+#include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
-
-unsigned int X509_VERIFY_PARAM_get_hostflags(X509_VERIFY_PARAM *param);
 
 static int
 ssl_verify_param_flags_inherited(void)

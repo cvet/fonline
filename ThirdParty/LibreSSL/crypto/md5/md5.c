@@ -1,4 +1,4 @@
-/* $OpenBSD: md5.c,v 1.23 2024/06/01 07:36:16 tb Exp $ */
+/* $OpenBSD: md5.c,v 1.26 2026/01/17 14:53:09 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -70,12 +70,11 @@
 /* Ensure that MD5_LONG and uint32_t are equivalent size. */
 CTASSERT(sizeof(MD5_LONG) == sizeof(uint32_t));
 
-#ifdef MD5_ASM
-void md5_block_asm_data_order(MD5_CTX *c, const void *p, size_t num);
-#define md5_block_data_order md5_block_asm_data_order
+#ifdef HAVE_MD5_BLOCK_DATA_ORDER
+void md5_block_data_order(MD5_CTX *c, const void *p, size_t num);
 #endif
 
-#ifndef MD5_ASM
+#ifndef HAVE_MD5_BLOCK_DATA_ORDER
 static inline uint32_t
 md5_F(uint32_t x, uint32_t y, uint32_t z)
 {
@@ -278,19 +277,13 @@ MD5_Update(MD5_CTX *c, const void *data_, size_t len)
 {
 	const unsigned char *data = data_;
 	unsigned char *p;
-	MD5_LONG l;
 	size_t n;
 
 	if (len == 0)
 		return 1;
 
-	l = (c->Nl + (((MD5_LONG)len) << 3))&0xffffffffUL;
-	/* 95-05-24 eay Fixed a bug with the overflow handling, thanks to
-	 * Wei Dai <weidai@eskimo.com> for pointing it out. */
-	if (l < c->Nl) /* overflow */
-		c->Nh++;
-	c->Nh+=(MD5_LONG)(len>>29);	/* might cause compiler warning on 16-bit */
-	c->Nl = l;
+	/* Update message bit counter. */
+	crypto_add_u32dw_u64(&c->Nh, &c->Nl, (uint64_t)len << 3);
 
 	n = c->num;
 	if (n != 0) {

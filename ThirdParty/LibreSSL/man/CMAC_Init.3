@@ -1,4 +1,4 @@
-.\" $OpenBSD: CMAC_Init.3,v 1.6 2024/03/02 09:30:21 tb Exp $
+.\" $OpenBSD: CMAC_Init.3,v 1.10 2025/06/08 22:40:29 schwarze Exp $
 .\"
 .\" Copyright (c) 2020 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: March 2 2024 $
+.Dd $Mdocdate: June 8 2025 $
 .Dt CMAC_INIT 3
 .Os
 .Sh NAME
@@ -28,6 +28,7 @@
 .Nm CMAC_CTX_free
 .Nd Cipher-based message authentication code
 .Sh SYNOPSIS
+.Lb libcrypto
 .In openssl/cmac.h
 .Ft CMAC_CTX *
 .Fn CMAC_CTX_new void
@@ -51,6 +52,11 @@
 .Fa "unsigned char *out_mac"
 .Fa "size_t *out_len"
 .Fc
+.Ft int
+.Fo CMAC_CTX_copy
+.Fa "CMAC_CTX *out_ctx"
+.Fa "CMAC_CTX *in_ctx"
+.Fc
 .Ft EVP_CIPHER_CTX *
 .Fn CMAC_CTX_get0_cipher_ctx "CMAC_CTX *ctx"
 .Ft void
@@ -64,13 +70,11 @@ arbitrary block cipher using a symmetric key.
 The present manual page describes low-level functions implementing CMAC.
 Instead of using these functions directly,
 application programs normally call
-.Xr EVP_PKEY_CTX_new_id 3
-with an argument of
-.Dv EVP_PKEY_CMAC
+.Xr EVP_PKEY_new_CMAC_key 3
 and then pass the resulting
-.Vt EVP_MD_CTX
+.Vt EVP_PKEY
 object to
-.Xr EVP_DigestInit_ex 3 .
+.Xr EVP_DigestSignInit 3 .
 .Pp
 The CMAC API is object-oriented.
 Calculating a message authentication code requires a
@@ -100,7 +104,7 @@ for use by
 Functions to obtain suitable
 .Vt EVP_CIPHER
 objects are listed in the CIPHER LISTING section of the
-.Xr EVP_Cipher 3
+.Xr EVP_EncryptInit 3
 manual page.
 Unless
 .Fa key
@@ -244,14 +248,14 @@ The CMAC code itself does not use the
 framework, so in general, the reasons for failure cannot be found out with
 .Xr ERR_get_error 3 .
 However, since the
-.Xr EVP_Cipher 3
+.Xr EVP_EncryptInit 3
 functions are used internally, entries may still get pushed onto
 the error stack in some cases of failure.
 .Sh SEE ALSO
 .Xr EVP_aes_128_cbc 3 ,
-.Xr EVP_Cipher 3 ,
-.Xr EVP_DigestInit 3 ,
-.Xr EVP_PKEY_CTX_new_id 3 ,
+.Xr EVP_DigestSignInit 3 ,
+.Xr EVP_EncryptInit 3 ,
+.Xr EVP_PKEY_new_CMAC_key 3 ,
 .Xr HMAC 3
 .Sh STANDARDS
 .Rs

@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa_local.h,v 1.4 2024/05/11 06:43:50 tb Exp $ */
+/* $OpenBSD: dsa_local.h,v 1.6 2025/11/26 10:19:57 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 2007 The OpenSSL Project.  All rights reserved.
  *
@@ -53,6 +53,9 @@
  *
  */
 
+#ifndef HEADER_DSA_LOCAL_H
+#define HEADER_DSA_LOCAL_H
+
 #include <openssl/dsa.h>
 
 __BEGIN_HIDDEN_DECLS
@@ -75,9 +78,6 @@ struct dsa_method {
 } /* DSA_METHOD */;
 
 struct dsa_st {
-	/* This first variable is used to pick up errors where
-	 * a DSA is passed instead of of a EVP_PKEY */
-	int pad;
 	long version;
 	BIGNUM *p;
 	BIGNUM *q;	/* == 20 */
@@ -105,3 +105,5 @@ int dsa_builtin_paramgen(DSA *ret, size_t bits, size_t qbits,
 int dsa_check_key(const DSA *dsa);
 
 __END_HIDDEN_DECLS
+
+#endif /* HEADER_DSA_LOCAL_H */

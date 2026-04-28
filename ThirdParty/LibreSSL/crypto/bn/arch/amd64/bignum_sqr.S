@@ -1,3 +1,5 @@
+// $OpenBSD: bignum_sqr.S,v 1.7 2025/08/11 14:13:56 jsing Exp $
+//
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
@@ -16,8 +18,7 @@
 // Square z := x^2
 // Input x[n]; output z[k]
 //
-//    extern void bignum_sqr
-//     (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
+//    extern void bignum_sqr(uint64_t k, uint64_t *z, uint64_t n, const uint64_t *x);
 //
 // Does the "z := x^2" operation where x is n digits and result z is k.
 // Truncates the result in general unless k >= 2 * n
@@ -62,7 +63,7 @@
 #define llshort ebp
 
 S2N_BN_SYMBOL(bignum_sqr):
-	_CET_ENDBR
+        _CET_ENDBR
 
 #if WINDOWS_ABI
         push    rdi
@@ -86,7 +87,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 // If p = 0 the result is trivial and nothing needs doing
 
         test    p, p
-        jz      end
+        jz      bignum_sqr_end
 
 // initialize (hh,ll) = 0
 
@@ -97,7 +98,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 
         xor     k, k
 
-outerloop:
+bignum_sqr_outerloop:
 
 // First let bot = MAX 0 (k + 1 - n) and top = MIN (k + 1) n
 // We want to accumulate all x[i] * x[k - i] for bot <= i < top
@@ -122,7 +123,7 @@ outerloop:
 // If htop <= bot then main doubled part of the sum is empty
 
         cmp     i, htop
-        jnc     nosumming
+        jnc     bignum_sqr_nosumming
 
 // Use a moving pointer for [y] = x[k-i] for the cofactor
 
@@ -132,7 +133,7 @@ outerloop:
 
 // Do the main part of the sum x[i] * x[k - i] for 2 * i < k
 
-innerloop:
+bignum_sqr_innerloop:
         mov     a, [x+8*i]
         mul     QWORD PTR [y]
         add     l, a
@@ -141,7 +142,7 @@ innerloop:
         sub     y, 8
         inc     i
         cmp     i, htop
-        jc      innerloop
+        jc      bignum_sqr_innerloop
 
 // Now double it
 
@@ -151,11 +152,11 @@ innerloop:
 
 // If k is even (which means 2 * i = k) and i < n add the extra x[i]^2 term
 
-nosumming:
+bignum_sqr_nosumming:
         test    k, 1
-        jnz     innerend
+        jnz     bignum_sqr_innerend
         cmp     i, n
-        jnc     innerend
+        jnc     bignum_sqr_innerend
 
         mov     a, [x+8*i]
         mul     a
@@ -165,7 +166,7 @@ nosumming:
 
 // Now add the local sum into the global sum, store and shift
 
-innerend:
+bignum_sqr_innerend:
         add     l, ll
         mov     [z+8*k], l
         adc     h, hh
@@ -175,11 +176,11 @@ innerend:
 
         inc     k
         cmp     k, p
-        jc      outerloop
+        jc      bignum_sqr_outerloop
 
 // Restore registers and return
 
-end:
+bignum_sqr_end:
         pop     r15
         pop     r14
         pop     r13

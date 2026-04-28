@@ -1,4 +1,4 @@
-/* $OpenBSD: x_crl.c,v 1.45 2024/07/08 14:48:49 beck Exp $ */
+/* $OpenBSD: x_crl.c,v 1.52 2026/04/07 12:52:19 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -61,15 +61,13 @@
 #include <openssl/opensslconf.h>
 
 #include <openssl/asn1t.h>
-#include <openssl/err.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
 #include "asn1_local.h"
+#include "err_local.h"
 #include "x509_local.h"
 
-static int X509_REVOKED_cmp(const X509_REVOKED * const *a,
-    const X509_REVOKED * const *b);
 static void setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp);
 
 static const ASN1_TEMPLATE X509_REVOKED_seq_tt[] = {
@@ -101,12 +99,19 @@ const ASN1_ITEM X509_REVOKED_it = {
 };
 LCRYPTO_ALIAS(X509_REVOKED_it);
 
-/* The X509_CRL_INFO structure needs a bit of customisation.
- * Since we cache the original encoding the signature wont be affected by
+static int
+X509_REVOKED_cmp(const X509_REVOKED * const *a, const X509_REVOKED * const *b)
+{
+	return ASN1_INTEGER_cmp((*a)->serialNumber, (*b)->serialNumber);
+}
+
+/*
+ * The X509_CRL_INFO structure needs a bit of customisation.
+ * Since we cache the original encoding, the signature won't be affected by
  * reordering of the revoked field.
  */
 static int
-crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
+crl_info_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
 {
 	X509_CRL_INFO *a = (X509_CRL_INFO *)*pval;
 
@@ -126,7 +131,7 @@ crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
 
 static const ASN1_AUX X509_CRL_INFO_aux = {
 	.flags = ASN1_AFLG_ENCODING,
-	.asn1_cb = crl_inf_cb,
+	.asn1_cb = crl_info_cb,
 	.enc_offset = offsetof(X509_CRL_INFO, enc),
 };
 static const ASN1_TEMPLATE X509_CRL_INFO_seq_tt[] = {
@@ -277,6 +282,11 @@ crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
 		break;
 
 	case ASN1_OP_D2I_POST:
+		/*
+		 * XXX - This sets EXFLAG_INVALID but there's no code checking
+		 * it. The verifier treats CRLs with EXFLAG_INVALID as valid.
+		 * Also fix all the missing and incomplete error checks here.
+		 */
 		X509_CRL_digest(crl, X509_CRL_HASH_EVP, crl->hash, NULL);
 		crl->idp = X509_CRL_get_ext_d2i(crl,
 		    NID_issuing_distribution_point, NULL, NULL);
@@ -327,10 +337,8 @@ crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it, void *exarg)
 		break;
 
 	case ASN1_OP_FREE_POST:
-		if (crl->akid)
-			AUTHORITY_KEYID_free(crl->akid);
-		if (crl->idp)
-			ISSUING_DIST_POINT_free(crl->idp);
+		AUTHORITY_KEYID_free(crl->akid);
+		ISSUING_DIST_POINT_free(crl->idp);
 		ASN1_INTEGER_free(crl->crl_number);
 		ASN1_INTEGER_free(crl->base_crl_number);
 		sk_GENERAL_NAMES_pop_free(crl->issuers, GENERAL_NAMES_free);
@@ -518,12 +526,6 @@ X509_CRL_dup(X509_CRL *x)
 }
 LCRYPTO_ALIAS(X509_CRL_dup);
 
-static int
-X509_REVOKED_cmp(const X509_REVOKED * const *a, const X509_REVOKED * const *b)
-{
-	return(ASN1_INTEGER_cmp((*a)->serialNumber, (*b)->serialNumber));
-}
-
 int
 X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev)
 {
@@ -544,6 +546,12 @@ LCRYPTO_ALIAS(X509_CRL_add0_revoked);
 int
 X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey)
 {
+	/*
+	 * The CertificateList's signature AlgorithmIdentifier must match
+	 * the one inside the TBSCertList, see RFC 5280, 5.1.1.2, 5.1.2.2.
+	 */
+	if (X509_ALGOR_cmp(crl->sig_alg, crl->crl->sig_alg) != 0)
+		return 0;
 	return ASN1_item_verify(&X509_CRL_INFO_it, crl->sig_alg, crl->signature,
 	    crl->crl, pkey);
 }

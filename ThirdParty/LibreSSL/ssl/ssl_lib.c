@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.330 2024/09/22 14:59:48 tb Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.333 2025/06/09 10:14:38 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1298,7 +1298,7 @@ SSL_shutdown(SSL *s)
 		return (-1);
 	}
 
-	if (s != NULL && !SSL_in_init(s))
+	if (!SSL_in_init(s))
 		return (s->method->ssl_shutdown(s));
 
 	return (1);
@@ -1308,6 +1308,11 @@ LSSL_ALIAS(SSL_shutdown);
 int
 SSL_renegotiate(SSL *s)
 {
+	if ((s->options & SSL_OP_NO_RENEGOTIATION) != 0) {
+		SSLerror(s, SSL_R_NO_RENEGOTIATION);
+		return 0;
+	}
+
 	if (s->renegotiate == 0)
 		s->renegotiate = 1;
 
@@ -1320,6 +1325,11 @@ LSSL_ALIAS(SSL_renegotiate);
 int
 SSL_renegotiate_abbreviated(SSL *s)
 {
+	if ((s->options & SSL_OP_NO_RENEGOTIATION) != 0) {
+		SSLerror(s, SSL_R_NO_RENEGOTIATION);
+		return 0;
+	}
+
 	if (s->renegotiate == 0)
 		s->renegotiate = 1;
 
@@ -2998,8 +3008,9 @@ SSL_dup(SSL *s)
 
 	/* Dup the client_CA list */
 	if (s->client_CA != NULL) {
-		if ((sk = sk_X509_NAME_dup(s->client_CA)) == NULL) goto err;
-			ret->client_CA = sk;
+		if ((sk = sk_X509_NAME_dup(s->client_CA)) == NULL)
+			goto err;
+		ret->client_CA = sk;
 		for (i = 0; i < sk_X509_NAME_num(sk); i++) {
 			xn = sk_X509_NAME_value(sk, i);
 			if (sk_X509_NAME_set(sk, i,

@@ -4641,3 +4641,6 @@
 #define LN_auth_null		"auth-null"
 #define NID_auth_null		966
 
+#define SN_X25519MLKEM768		"X25519MLKEM768"
+#define NID_X25519MLKEM768		1056
+

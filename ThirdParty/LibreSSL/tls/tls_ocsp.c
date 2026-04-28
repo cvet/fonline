@@ -1,4 +1,4 @@
-/*	$OpenBSD: tls_ocsp.c,v 1.26 2024/03/26 06:24:52 joshua Exp $ */
+/*	$OpenBSD: tls_ocsp.c,v 1.29 2026/04/16 07:35:25 tb Exp $ */
 /*
  * Copyright (c) 2015 Marko Kreen <markokr@gmail.com>
  * Copyright (c) 2016 Bob Beck <beck@openbsd.org>
@@ -85,7 +85,7 @@ tls_ocsp_fill_info(struct tls *ctx, int response_status, int cert_status,
 	ctx->ocsp->ocsp_result = NULL;
 
 	if ((info = calloc(1, sizeof (struct tls_ocsp_result))) == NULL) {
-		tls_set_error(ctx, TLS_ERROR_OUT_OF_MEMORY, "out of memory");
+		tls_set_errorx(ctx, TLS_ERROR_OUT_OF_MEMORY, "out of memory");
 		return -1;
 	}
 	info->response_status = response_status;
@@ -102,19 +102,19 @@ tls_ocsp_fill_info(struct tls *ctx, int response_status, int cert_status,
 	info->revocation_time = info->this_update = info->next_update = -1;
 	if (revtime != NULL &&
 	    tls_ocsp_asn1_parse_time(ctx, revtime, &info->revocation_time) != 0) {
-		tls_set_error(ctx, TLS_ERROR_UNKNOWN,
+		tls_set_errorx(ctx, TLS_ERROR_UNKNOWN,
 		    "unable to parse revocation time in OCSP reply");
 		goto err;
 	}
 	if (thisupd != NULL &&
 	    tls_ocsp_asn1_parse_time(ctx, thisupd, &info->this_update) != 0) {
-		tls_set_error(ctx, TLS_ERROR_UNKNOWN,
+		tls_set_errorx(ctx, TLS_ERROR_UNKNOWN,
 		    "unable to parse this update time in OCSP reply");
 		goto err;
 	}
 	if (nextupd != NULL &&
 	    tls_ocsp_asn1_parse_time(ctx, nextupd, &info->next_update) != 0) {
-		tls_set_error(ctx, TLS_ERROR_UNKNOWN,
+		tls_set_errorx(ctx, TLS_ERROR_UNKNOWN,
 		    "unable to parse next update time in OCSP reply");
 		goto err;
 	}
@@ -130,7 +130,7 @@ static OCSP_CERTID *
 tls_ocsp_get_certid(X509 *main_cert, STACK_OF(X509) *extra_certs,
     SSL_CTX *ssl_ctx)
 {
-	X509_NAME *issuer_name;
+	const X509_NAME *issuer_name;
 	X509 *issuer;
 	X509_STORE_CTX *storectx = NULL;
 	X509_OBJECT *obj = NULL;
@@ -141,7 +141,8 @@ tls_ocsp_get_certid(X509 *main_cert, STACK_OF(X509) *extra_certs,
 		goto out;
 
 	if (extra_certs != NULL) {
-		issuer = X509_find_by_subject(extra_certs, issuer_name);
+		issuer = X509_find_by_subject(extra_certs,
+		    (X509_NAME *)issuer_name);
 		if (issuer != NULL) {
 			cid = OCSP_cert_to_id(NULL, main_cert, issuer);
 			goto out;
@@ -155,7 +156,7 @@ tls_ocsp_get_certid(X509 *main_cert, STACK_OF(X509) *extra_certs,
 	if (X509_STORE_CTX_init(storectx, store, main_cert, extra_certs) != 1)
 		goto out;
 	if ((obj = X509_STORE_CTX_get_obj_by_subject(storectx, X509_LU_X509,
-	    issuer_name)) == NULL)
+	    (X509_NAME *)issuer_name)) == NULL)
 		goto out;
 
 	cid = OCSP_cert_to_id(NULL, main_cert, X509_OBJECT_get0_X509(obj));
@@ -304,7 +305,7 @@ tls_ocsp_process_response_internal(struct tls *ctx, const unsigned char *respons
 	if (resp == NULL) {
 		tls_ocsp_free(ctx->ocsp);
 		ctx->ocsp = NULL;
-		tls_set_error(ctx, TLS_ERROR_UNKNOWN,
+		tls_set_errorx(ctx, TLS_ERROR_UNKNOWN,
 		    "unable to parse OCSP response");
 		return -1;
 	}

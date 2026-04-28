@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_constraints.c,v 1.32 2023/09/29 15:53:59 beck Exp $ */
+/* $OpenBSD: x509_constraints.c,v 1.33 2026/04/13 17:04:23 beck Exp $ */
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -578,11 +578,30 @@ x509_constraints_sandns(char *sandns, size_t dlen, char *constraint, size_t len)
 	if (len == 0)
 		return 1; /* an empty constraint matches everything */
 
-	/* match the end of the domain */
 	if (dlen < len)
 		return 0;
-	suffix = sandns + (dlen - len);
-	return (strncasecmp(suffix, constraint, len) == 0);
+
+	if (dlen == len)
+		return (strncasecmp(sandns, constraint, len) == 0);
+
+	/* Support a constraint with a leading "." */
+	if (constraint[0] == '.') {
+		constraint++;
+		len--;
+	}
+
+	/*
+	 * Otherwise we must have at least one extra component
+	 * to match, so there must be more than just a leading .
+	 */
+	if (dlen - len > 1) {
+		suffix = sandns + (dlen - len);
+		if (suffix[-1] != '.')
+			return 0;
+		return (strncasecmp(suffix, constraint, len) == 0);
+	}
+
+	return 0;
 }
 
 /*

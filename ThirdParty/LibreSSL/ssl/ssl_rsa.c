@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_rsa.c,v 1.51 2023/12/30 06:25:56 tb Exp $ */
+/* $OpenBSD: ssl_rsa.c,v 1.53 2025/08/14 15:55:54 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

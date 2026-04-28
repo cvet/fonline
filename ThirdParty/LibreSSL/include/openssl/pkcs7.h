@@ -1,4 +1,4 @@
-/* $OpenBSD: pkcs7.h,v 1.21 2023/04/25 18:04:03 tb Exp $ */
+/* $OpenBSD: pkcs7.h,v 1.25 2025/12/20 07:22:43 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -94,7 +94,7 @@ typedef struct pkcs7_issuer_and_serial_st {
 } PKCS7_ISSUER_AND_SERIAL;
 
 typedef struct pkcs7_signer_info_st {
-	ASN1_INTEGER 			*version;	/* version 1 */
+	ASN1_INTEGER			*version;	/* version 1 */
 	PKCS7_ISSUER_AND_SERIAL		*issuer_and_serial;
 	X509_ALGOR			*digest_alg;
 	STACK_OF(X509_ATTRIBUTE)	*auth_attr;	/* [ 0 ] */
@@ -157,7 +157,7 @@ typedef struct pkcs7_signedandenveloped_st {
 typedef struct pkcs7_digest_st {
 	ASN1_INTEGER			*version;	/* version 0 */
 	X509_ALGOR			*md;		/* md used */
-	struct pkcs7_st 		*contents;
+	struct pkcs7_st			*contents;
 	ASN1_OCTET_STRING		*digest;
 } PKCS7_DIGEST;
 
@@ -228,8 +228,6 @@ DECLARE_PKCS12_STACK_OF(PKCS7)
 #define PKCS7_type_is_encrypted(a) \
 		(OBJ_obj2nid((a)->type) == NID_pkcs7_encrypted)
 
-#define PKCS7_type_is_digest(a)   (OBJ_obj2nid((a)->type) == NID_pkcs7_digest)
-
 #define PKCS7_set_detached(p,v) \
 		PKCS7_ctrl(p,PKCS7_OP_SET_DETACHED_SIGNATURE,v,NULL)
 #define PKCS7_get_detached(p) \
@@ -255,6 +253,7 @@ DECLARE_PKCS12_STACK_OF(PKCS7)
 #define PKCS7_NOCRL		0x2000
 #define PKCS7_PARTIAL		0x4000
 #define PKCS7_REUSE_DIGEST	0x8000
+#define PKCS7_NO_DUAL_CONTENT	0x10000
 
 /* Flags: for compatibility with older code */
 
@@ -376,7 +375,7 @@ PKCS7_ISSUER_AND_SERIAL *PKCS7_get_issuer_and_serial(PKCS7 *p7, int idx);
 ASN1_OCTET_STRING *PKCS7_digest_from_attributes(STACK_OF(X509_ATTRIBUTE) *sk);
 int PKCS7_add_signed_attribute(PKCS7_SIGNER_INFO *p7si, int nid, int type,
     void *data);
-int PKCS7_add_attribute (PKCS7_SIGNER_INFO *p7si, int nid, int atrtype,
+int PKCS7_add_attribute(PKCS7_SIGNER_INFO *p7si, int nid, int atrtype,
     void *value);
 ASN1_TYPE *PKCS7_get_attribute(PKCS7_SIGNER_INFO *si, int nid);
 ASN1_TYPE *PKCS7_get_signed_attribute(PKCS7_SIGNER_INFO *si, int nid);

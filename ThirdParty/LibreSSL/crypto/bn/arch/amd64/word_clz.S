@@ -1,3 +1,5 @@
+// $OpenBSD: word_clz.S,v 1.7 2025/08/11 14:13:56 jsing Exp $
+//
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
@@ -16,7 +18,7 @@
 // Count leading zero bits in a single word
 // Input a; output function return
 //
-//    extern uint64_t word_clz (uint64_t a);
+//    extern uint64_t word_clz(uint64_t a);
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
 // Microsoft x64 ABI:   RCX = a, returns RAX
@@ -30,7 +32,7 @@
         .text
 
 S2N_BN_SYMBOL(word_clz):
-	_CET_ENDBR
+        _CET_ENDBR
 
 #if WINDOWS_ABI
         push    rdi

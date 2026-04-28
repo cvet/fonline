@@ -337,13 +337,13 @@ L$enc_compact_done:
 	xorl	12(%r15),%edx
 	retq
 
-.globl	_aes_encrypt_internal
+.globl	_aes_encrypt_generic
 
 .p2align	4
 .globl	_asm_AES_encrypt
 .private_extern	_asm_AES_encrypt
 _asm_AES_encrypt:
-_aes_encrypt_internal:
+_aes_encrypt_generic:
 _CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
@@ -788,13 +788,13 @@ L$dec_compact_done:
 	xorl	12(%r15),%edx
 	retq
 
-.globl	_aes_decrypt_internal
+.globl	_aes_decrypt_generic
 
 .p2align	4
 .globl	_asm_AES_decrypt
 .private_extern	_asm_AES_decrypt
 _asm_AES_decrypt:
-_aes_decrypt_internal:
+_aes_decrypt_generic:
 _CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
@@ -858,10 +858,10 @@ L$dec_prologue:
 L$dec_epilogue:
 	retq
 
-.globl	_aes_set_encrypt_key_internal
+.globl	_aes_set_encrypt_key_generic
 
 .p2align	4
-_aes_set_encrypt_key_internal:
+_aes_set_encrypt_key_generic:
 _CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
@@ -1125,10 +1125,10 @@ L$badpointer:
 L$exit:
 	retq
 
-.globl	_aes_set_decrypt_key_internal
+.globl	_aes_set_decrypt_key_generic
 
 .p2align	4
-_aes_set_decrypt_key_internal:
+_aes_set_decrypt_key_generic:
 _CET_ENDBR
 	pushq	%rbx
 	pushq	%rbp
@@ -1313,7 +1313,7 @@ L$abort:
 L$dec_key_epilogue:
 	retq
 
-.globl	_aes_cbc_encrypt_internal
+.globl	_aes_cbc_encrypt_generic
 
 .p2align	4
 
@@ -1321,7 +1321,7 @@ L$dec_key_epilogue:
 .globl	_asm_AES_cbc_encrypt
 .private_extern	_asm_AES_cbc_encrypt
 _asm_AES_cbc_encrypt:
-_aes_cbc_encrypt_internal:
+_aes_cbc_encrypt_generic:
 _CET_ENDBR
 	cmpq	$0,%rdx
 	je	L$cbc_epilogue

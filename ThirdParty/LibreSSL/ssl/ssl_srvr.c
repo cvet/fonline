@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_srvr.c,v 1.165 2024/07/22 14:47:15 jsing Exp $ */
+/* $OpenBSD: ssl_srvr.c,v 1.168 2026/04/03 12:58:19 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -234,6 +234,13 @@ ssl3_accept(SSL *s)
 			    &s->s3->hs.our_min_tls_version,
 			    &s->s3->hs.our_max_tls_version)) {
 				SSLerror(s, SSL_R_NO_PROTOCOLS_AVAILABLE);
+				ret = -1;
+				goto end;
+			}
+
+			/* Ensure that we cannot negotiate TLSv1.1 or lower. */
+			if (s->s3->hs.our_min_tls_version < TLS1_2_VERSION) {
+				SSLerror(s, ERR_R_INTERNAL_ERROR);
 				ret = -1;
 				goto end;
 			}
@@ -1058,7 +1065,7 @@ ssl3_get_client_hello(SSL *s)
 	}
 
 	if (!s->hit && s->tls_session_secret_cb != NULL) {
-		SSL_CIPHER *pref_cipher = NULL;
+		const SSL_CIPHER *pref_cipher = NULL;
 		int master_key_length = sizeof(s->session->master_key);
 
 		if (!s->tls_session_secret_cb(s,
@@ -1357,7 +1364,7 @@ ssl3_send_server_kex_dhe(SSL *s, CBB *cbb)
 			goto err;
 	}
 
-	if (!tls_key_share_generate(s->s3->hs.key_share))
+	if (!tls_key_share_server_generate(s->s3->hs.key_share))
 		goto err;
 
 	if (!tls_key_share_params(s->s3->hs.key_share, cbb))
@@ -1393,7 +1400,7 @@ ssl3_send_server_kex_ecdhe(SSL *s, CBB *cbb)
 	if ((s->s3->hs.key_share = tls_key_share_new_nid(nid)) == NULL)
 		goto err;
 
-	if (!tls_key_share_generate(s->s3->hs.key_share))
+	if (!tls_key_share_server_generate(s->s3->hs.key_share))
 		goto err;
 
 	/*
@@ -1744,7 +1751,7 @@ ssl3_get_client_kex_dhe(SSL *s, CBS *cbs)
 		goto err;
 	}
 
-	if (!tls_key_share_peer_public(s->s3->hs.key_share, cbs,
+	if (!tls_key_share_server_peer_public(s->s3->hs.key_share, cbs,
 	    &decode_error, &invalid_key)) {
 		if (decode_error) {
 			SSLerror(s, SSL_R_BAD_PACKET_LENGTH);
@@ -1792,7 +1799,7 @@ ssl3_get_client_kex_ecdhe(SSL *s, CBS *cbs)
 		ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
 		goto err;
 	}
-	if (!tls_key_share_peer_public(s->s3->hs.key_share, &public,
+	if (!tls_key_share_server_peer_public(s->s3->hs.key_share, &public,
 	    &decode_error, NULL)) {
 		if (decode_error) {
 			SSLerror(s, SSL_R_BAD_PACKET_LENGTH);

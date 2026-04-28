@@ -1,4 +1,4 @@
-/* $OpenBSD: pk7_attr.c,v 1.15 2024/02/19 15:37:44 tb Exp $ */
+/* $OpenBSD: pk7_attr.c,v 1.22 2025/07/31 02:24:21 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2001.
  */
@@ -59,23 +59,48 @@
 #include <stdio.h>
 
 #include <openssl/asn1.h>
-#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/pkcs7.h>
 #include <openssl/x509.h>
 
+#include "asn1_local.h"
+#include "err_local.h"
+#include "x509_local.h"
+
 int
 PKCS7_add_attrib_smimecap(PKCS7_SIGNER_INFO *si, STACK_OF(X509_ALGOR) *cap)
 {
-	ASN1_STRING *seq;
-	if (!(seq = ASN1_STRING_new())) {
-		PKCS7error(ERR_R_MALLOC_FAILURE);
-		return 0;
+	ASN1_STRING *seq = NULL;
+	unsigned char *data = NULL;
+	int len = 0;
+	int ret = 0;
+
+	if ((len = i2d_X509_ALGORS(cap, &data)) <= 0) {
+		len = 0;
+		goto err;
 	}
-	seq->length = ASN1_item_i2d((ASN1_VALUE *)cap, &seq->data,
-	    &X509_ALGORS_it);
-	return PKCS7_add_signed_attribute(si, NID_SMIMECapabilities,
-	    V_ASN1_SEQUENCE, seq);
+
+	if ((seq = ASN1_STRING_new()) == NULL) {
+		PKCS7error(ERR_R_MALLOC_FAILURE);
+		goto err;
+	}
+
+	ASN1_STRING_set0(seq, data, len);
+	data = NULL;
+	len = 0;
+
+	if (!PKCS7_add_signed_attribute(si, NID_SMIMECapabilities,
+	    V_ASN1_SEQUENCE, seq))
+		goto err;
+	seq = NULL;
+
+	ret = 1;
+
+ err:
+	ASN1_STRING_free(seq);
+	freezero(data, len);
+
+	return ret;
 }
 LCRYPTO_ALIAS(PKCS7_add_attrib_smimecap);
 
@@ -84,51 +109,60 @@ PKCS7_get_smimecap(PKCS7_SIGNER_INFO *si)
 {
 	ASN1_TYPE *cap;
 	const unsigned char *p;
+	int len;
 
-	cap = PKCS7_get_signed_attribute(si, NID_SMIMECapabilities);
-	if (!cap || (cap->type != V_ASN1_SEQUENCE))
+	if ((cap = PKCS7_get_signed_attribute(si, NID_SMIMECapabilities)) == NULL)
 		return NULL;
+	if (cap->type != V_ASN1_SEQUENCE)
+		return NULL;
+
 	p = cap->value.sequence->data;
-	return (STACK_OF(X509_ALGOR) *)
-	ASN1_item_d2i(NULL, &p, cap->value.sequence->length,
-	    &X509_ALGORS_it);
+	len = cap->value.sequence->length;
+
+	return d2i_X509_ALGORS(NULL, &p, len);
 }
 LCRYPTO_ALIAS(PKCS7_get_smimecap);
 
-/* Basic smime-capabilities OID and optional integer arg */
+/*
+ * Add AlgorithmIdentifier OID of type |nid| to the SMIMECapability attribute
+ * set |sk| (see RFC 3851, section 2.5.2). If keysize > 0, the OID has an
+ * integer parameter of value |keysize|, otherwise parameters are omitted.
+ *
+ * See also CMS_add_simple_smimecap().
+ */
 int
-PKCS7_simple_smimecap(STACK_OF(X509_ALGOR) *sk, int nid, int arg)
+PKCS7_simple_smimecap(STACK_OF(X509_ALGOR) *sk, int nid, int keysize)
 {
-	X509_ALGOR *alg;
+	X509_ALGOR *alg = NULL;
+	ASN1_INTEGER *parameter = NULL;
+	int parameter_type = V_ASN1_UNDEF;
+	int ret = 0;
 
-	if (!(alg = X509_ALGOR_new())) {
-		PKCS7error(ERR_R_MALLOC_FAILURE);
-		return 0;
+	if (keysize > 0) {
+		if ((parameter = ASN1_INTEGER_new()) == NULL)
+			goto err;
+		if (!ASN1_INTEGER_set(parameter, keysize))
+			goto err;
+		parameter_type = V_ASN1_INTEGER;
 	}
-	ASN1_OBJECT_free(alg->algorithm);
-	alg->algorithm = OBJ_nid2obj(nid);
-	if (arg > 0) {
-		ASN1_INTEGER *nbit;
 
-		if (!(alg->parameter = ASN1_TYPE_new()))
-			goto err;
-		if (!(nbit = ASN1_INTEGER_new()))
-			goto err;
-		if (!ASN1_INTEGER_set(nbit, arg)) {
-			ASN1_INTEGER_free(nbit);
-			goto err;
-		}
-		alg->parameter->value.integer = nbit;
-		alg->parameter->type = V_ASN1_INTEGER;
-	}
-	if (sk_X509_ALGOR_push(sk, alg) == 0)
+	if ((alg = X509_ALGOR_new()) == NULL)
 		goto err;
-	return 1;
+	if (!X509_ALGOR_set0_by_nid(alg, nid, parameter_type, parameter))
+		goto err;
+	parameter = NULL;
 
-err:
-	PKCS7error(ERR_R_MALLOC_FAILURE);
+	if (sk_X509_ALGOR_push(sk, alg) <= 0)
+		goto err;
+	alg = NULL;
+
+	ret = 1;
+
+ err:
 	X509_ALGOR_free(alg);
-	return 0;
+	ASN1_INTEGER_free(parameter);
+
+	return ret;
 }
 LCRYPTO_ALIAS(PKCS7_simple_smimecap);
 
@@ -147,30 +181,54 @@ LCRYPTO_ALIAS(PKCS7_add_attrib_content_type);
 int
 PKCS7_add0_attrib_signing_time(PKCS7_SIGNER_INFO *si, ASN1_TIME *t)
 {
-	if (!t && !(t = X509_gmtime_adj(NULL, 0))) {
+	ASN1_TIME *tm;
+	int ret = 0;
+
+	if ((tm = t) == NULL)
+		tm = X509_gmtime_adj(NULL, 0);
+	if (tm == NULL) {
 		PKCS7error(ERR_R_MALLOC_FAILURE);
-		return 0;
+		goto err;
 	}
-	return PKCS7_add_signed_attribute(si, NID_pkcs9_signingTime,
-	    V_ASN1_UTCTIME, t);
+
+	/* RFC 5652, section 11.3 - UTCTime for the years 1950-2049. */
+	if (ASN1_time_parse(tm->data, tm->length, NULL, tm->type) == -1)
+		goto err;
+	if (!PKCS7_add_signed_attribute(si, NID_pkcs9_signingTime, tm->type, tm))
+		goto err;
+	tm = NULL;
+
+	ret = 1;
+
+ err:
+	if (tm != t)
+		ASN1_TIME_free(tm);
+
+	return ret;
 }
 LCRYPTO_ALIAS(PKCS7_add0_attrib_signing_time);
 
 int
 PKCS7_add1_attrib_digest(PKCS7_SIGNER_INFO *si, const unsigned char *md,
-    int mdlen)
+    int md_len)
 {
 	ASN1_OCTET_STRING *os;
+	int ret = 0;
 
-	os = ASN1_OCTET_STRING_new();
-	if (!os)
-		return 0;
-	if (!ASN1_STRING_set(os, md, mdlen) ||
-	    !PKCS7_add_signed_attribute(si, NID_pkcs9_messageDigest,
-	    V_ASN1_OCTET_STRING, os)) {
-		ASN1_OCTET_STRING_free(os);
-		return 0;
-	}
-	return 1;
+	if ((os = ASN1_OCTET_STRING_new()) == NULL)
+		goto err;
+	if (!ASN1_STRING_set(os, md, md_len))
+		goto err;
+	if (!PKCS7_add_signed_attribute(si, NID_pkcs9_messageDigest,
+	    V_ASN1_OCTET_STRING, os))
+		goto err;
+	os = NULL;
+
+	ret = 1;
+
+ err:
+	ASN1_OCTET_STRING_free(os);
+
+	return ret;
 }
 LCRYPTO_ALIAS(PKCS7_add1_attrib_digest);
