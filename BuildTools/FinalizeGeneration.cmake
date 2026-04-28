@@ -51,8 +51,8 @@ SetBoolCacheValues(
     SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY})
 AddSubdirectory("${FO_SDL_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_SDL_DIR}/include")
-AppendList(FO_RENDER_LIBS SDL3-static SDL_uclibc)
-DisableLibWarnings(SDL3-static SDL_uclibc)
+AppendList(FO_RENDER_LIBS SDL3-static)
+DisableLibWarnings(SDL3-static)
 
 # Tracy profiler
 StatusMessage("+ Tracy")
