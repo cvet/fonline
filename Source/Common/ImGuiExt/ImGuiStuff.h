@@ -336,8 +336,9 @@ enum class ImGui_InputTextFlags : uint32_t
 enum class ImGui_PopupFlags : uint32_t
 {
     None = 0, // ImGuiPopupFlags_None
-    MouseButtonRight = 1, // ImGuiPopupFlags_MouseButtonRight
-    MouseButtonMiddle = 2, // ImGuiPopupFlags_MouseButtonMiddle
+    MouseButtonLeft = 4, // ImGuiPopupFlags_MouseButtonLeft
+    MouseButtonRight = 8, // ImGuiPopupFlags_MouseButtonRight
+    MouseButtonMiddle = 12, // ImGuiPopupFlags_MouseButtonMiddle
     NoReopen = 32, // ImGuiPopupFlags_NoReopen
     NoOpenOverExistingPopup = 128, // ImGuiPopupFlags_NoOpenOverExistingPopup
     NoOpenOverItems = 256, // ImGuiPopupFlags_NoOpenOverItems
@@ -402,10 +403,10 @@ enum class ImGui_ColorEditFlags : uint32_t
     NoSidePreview = 256, // ImGuiColorEditFlags_NoSidePreview
     NoDragDrop = 512, // ImGuiColorEditFlags_NoDragDrop
     NoBorder = 1024, // ImGuiColorEditFlags_NoBorder
-    AlphaOpaque = 2048, // ImGuiColorEditFlags_AlphaOpaque
-    AlphaNoBg = 4096, // ImGuiColorEditFlags_AlphaNoBg
-    AlphaPreviewHalf = 8192, // ImGuiColorEditFlags_AlphaPreviewHalf
-    AlphaBar = 65536, // ImGuiColorEditFlags_AlphaBar
+    AlphaOpaque = 4096, // ImGuiColorEditFlags_AlphaOpaque
+    AlphaNoBg = 8192, // ImGuiColorEditFlags_AlphaNoBg
+    AlphaPreviewHalf = 16384, // ImGuiColorEditFlags_AlphaPreviewHalf
+    AlphaBar = 262144, // ImGuiColorEditFlags_AlphaBar
     HDR = 524288, // ImGuiColorEditFlags_HDR
     DisplayRGB = 1048576, // ImGuiColorEditFlags_DisplayRGB
     DisplayHSV = 2097152, // ImGuiColorEditFlags_DisplayHSV
@@ -480,9 +481,9 @@ enum class ImGui_StyleVar : int32_t
     ScrollbarRounding = 19, // ImGuiStyleVar_ScrollbarRounding
     GrabMinSize = 21, // ImGuiStyleVar_GrabMinSize
     GrabRounding = 22, // ImGuiStyleVar_GrabRounding
-    TabRounding = 24, // ImGuiStyleVar_TabRounding
-    ButtonTextAlign = 34, // ImGuiStyleVar_ButtonTextAlign
-    SelectableTextAlign = 35, // ImGuiStyleVar_SelectableTextAlign
+    TabRounding = 25, // ImGuiStyleVar_TabRounding
+    ButtonTextAlign = 35, // ImGuiStyleVar_ButtonTextAlign
+    SelectableTextAlign = 36, // ImGuiStyleVar_SelectableTextAlign
 };
 
 FO_END_NAMESPACE
