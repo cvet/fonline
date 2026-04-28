@@ -3,7 +3,7 @@
 * AcmDecoder by Abel - ACM sound format reader
 * AngelScript - [Rev. 2356](https://github.com/anjo76/angelscript)
 * Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
-* Catch2 - [Catch2-3.10.0](https://github.com/catchorg/Catch2)
+* Catch2 - [Catch2-3.14.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net)
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
