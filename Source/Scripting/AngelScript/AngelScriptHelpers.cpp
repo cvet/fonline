@@ -1152,11 +1152,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         MemCopy(buf, &hkey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
-                        buf += prop->GetDictKeyTypeSize();
-                    }
                     else {
                         MemCopy(buf, key, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
@@ -1278,11 +1273,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         MemCopy(buf, &hkey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
-                        buf += prop->GetDictKeyTypeSize();
-                    }
                     else {
                         MemCopy(buf, key, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
@@ -1390,10 +1380,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = cast_from_void<const hstring*>(key)->as_hash();
                         MemCopy(buf, &hkey, key_element_size);
-                    }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, key_element_size);
                     }
                     else {
                         MemCopy(buf, key, key_element_size);
@@ -1504,15 +1490,21 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
     }
 
     if (const auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
-        const auto enum_value = *cast_from_void<const int32_t*>(ptr);
+        int32_t enum_value = 0;
 
         if (meta->IsValidBaseType(type_name)) {
+            const auto& enum_type = meta->GetBaseType(type_name);
+            enum_value = ReadEnumValueAsInt32(ptr, enum_type);
+
             bool failed = false;
             const string& enum_value_name = meta->ResolveEnumValueName(type_name, enum_value, &failed);
 
             if (!failed) {
                 return strex("{}: {}", type_name, enum_value_name);
             }
+        }
+        else {
+            enum_value = *cast_from_void<const int32_t*>(ptr);
         }
 
         for (AngelScript::asUINT i = 0; i < enum_value_count; i++) {
@@ -1546,6 +1538,86 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
     }
 
     return hash_resolver.ToHashedString(func_name);
+}
+
+auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(ptr);
+    FO_RUNTIME_ASSERT(enum_type.IsEnum);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+
+    if (enum_type.EnumUnderlyingType->IsSignedInt) {
+        switch (enum_type.Size) {
+        case sizeof(int8_t):
+            return *cast_from_void<const int8_t*>(ptr);
+        case sizeof(int16_t):
+            return *cast_from_void<const int16_t*>(ptr);
+        case sizeof(int32_t):
+            return *cast_from_void<const int32_t*>(ptr);
+        default:
+            break;
+        }
+    }
+    else {
+        switch (enum_type.Size) {
+        case sizeof(uint8_t):
+            return *cast_from_void<const uint8_t*>(ptr);
+        case sizeof(uint16_t):
+            return *cast_from_void<const uint16_t*>(ptr);
+        case sizeof(uint32_t):
+            return static_cast<int32_t>(*cast_from_void<const uint32_t*>(ptr));
+        default:
+            break;
+        }
+    }
+
+    throw GenericException("Unsupported enum underlying size", enum_type.Name, enum_type.Size);
+}
+
+void WriteEnumValueFromInt32(void* ptr, const BaseTypeDesc& enum_type, int32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(ptr);
+    FO_RUNTIME_ASSERT(enum_type.IsEnum);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+
+    if (enum_type.EnumUnderlyingType->IsSignedInt) {
+        switch (enum_type.Size) {
+        case sizeof(int8_t):
+            *cast_from_void<int8_t*>(ptr) = numeric_cast<int8_t>(value);
+            return;
+        case sizeof(int16_t):
+            *cast_from_void<int16_t*>(ptr) = numeric_cast<int16_t>(value);
+            return;
+        case sizeof(int32_t):
+            *cast_from_void<int32_t*>(ptr) = value;
+            return;
+        default:
+            break;
+        }
+    }
+    else {
+        switch (enum_type.Size) {
+        case sizeof(uint8_t):
+            *cast_from_void<uint8_t*>(ptr) = numeric_cast<uint8_t>(value);
+            return;
+        case sizeof(uint16_t):
+            *cast_from_void<uint16_t*>(ptr) = numeric_cast<uint16_t>(value);
+            return;
+        case sizeof(uint32_t):
+            *cast_from_void<uint32_t*>(ptr) = static_cast<uint32_t>(value);
+            return;
+        default:
+            break;
+        }
+    }
+
+    throw GenericException("Unsupported enum underlying size", enum_type.Name, enum_type.Size);
 }
 
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*
