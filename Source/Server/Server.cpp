@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void InitServerEngine(ServerEngine*);
+extern void ServerInitHook(ServerEngine*);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -419,7 +419,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             // Scripting
             WriteLog("Init script modules");
 
-            InitServerEngine(this);
+            ServerInitHook(this);
 
             InitModules();
 
@@ -1055,7 +1055,7 @@ void ServerEngine::ProcessPlayer(Player* player)
 
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
+            Process_Command(*in_buf, [player](LogType, string_view s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:
@@ -1145,12 +1145,16 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     out_buf->Push(data);
 }
 
-void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player)
+void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed, Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetLogCallback("Process_Command", logcb);
+    SetLogCallback("Process_Command", logcb_typed);
     auto remove_log_callback = scope_exit([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
+
+    // Local untyped helper so the existing command-output sites stay readable; all command
+    // responses are user-facing info, not warnings/errors.
+    const auto logcb = [&logcb_typed](string_view s) { logcb_typed(LogType::Info, s); };
 
     const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
@@ -1391,7 +1395,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", [this](string_view str) FO_DEFERRED { LogToClients(str); });
+            SetLogCallback("LogToClients", [this](LogType, string_view str) FO_DEFERRED { LogToClients(str); });
         }
     } break;
     default:

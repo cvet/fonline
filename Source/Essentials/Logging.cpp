@@ -124,7 +124,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
             for (const auto& func : Logging->LogFunctions | std::views::values) {
-                func(result);
+                func(type, result);
             }
         }
 
