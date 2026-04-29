@@ -66,7 +66,7 @@ void SetLogCallback(string_view key, LogFunc callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(Logging->Locker);
+    std::scoped_lock locker {Logging->Locker};
 
     if (!key.empty()) {
         std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
@@ -84,7 +84,7 @@ void LogDisableTags()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(Logging->Locker);
+    std::scoped_lock locker {Logging->Locker};
 
     Logging->TagsDisabled = true;
 }
@@ -94,7 +94,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        std::scoped_lock locker(Logging->Locker);
+        std::scoped_lock locker {Logging->Locker};
 
         // Make message
         string result;
