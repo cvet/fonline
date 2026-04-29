@@ -64,7 +64,7 @@ struct BaseLoggingData
     std::atomic_bool AsyncEnabled {};
     std::mutex AsyncQueueMutex {};
     std::condition_variable AsyncSignal {};
-    deque<string> AsyncQueue {};
+    std::deque<std::string> AsyncQueue {};
     bool AsyncFinish {};
     std::thread AsyncWorker {};
 };
@@ -75,7 +75,7 @@ extern void LogToFile(string_view path)
     bool open_failed = false;
 
     {
-        std::scoped_lock locker(BaseLogging->LogLocker);
+        std::scoped_lock locker {BaseLogging->LogLocker};
 
         if (BaseLogging->LogFileHandle.is_open()) {
             BaseLogging->LogFileHandle.close();
@@ -110,7 +110,7 @@ extern void WriteBaseLog(string_view message) noexcept
             bool enqueued = false;
 
             {
-                std::scoped_lock queue_lock(BaseLogging->AsyncQueueMutex);
+                std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
                 if (BaseLogging->AsyncEnabled.load(std::memory_order_relaxed)) {
                     BaseLogging->AsyncQueue.emplace_back(message);
@@ -138,7 +138,8 @@ static void StartAsyncWorker()
     }
 
     {
-        std::scoped_lock queue_lock(BaseLogging->AsyncQueueMutex);
+        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+
         BaseLogging->AsyncFinish = false;
         BaseLogging->AsyncEnabled.store(true, std::memory_order_release);
     }
@@ -154,7 +155,7 @@ static void StopAsyncWorker() noexcept
     }
 
     {
-        std::scoped_lock queue_lock(BaseLogging->AsyncQueueMutex);
+        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
         BaseLogging->AsyncFinish = true;
@@ -173,13 +174,14 @@ static void StopAsyncWorker() noexcept
 static void AsyncWorkerLoop() noexcept
 {
     try {
-        deque<string> drained;
+        std::deque<std::string> drained;
 
         while (true) {
             {
-                std::unique_lock queue_lock(BaseLogging->AsyncQueueMutex);
+                std::unique_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
                 BaseLogging->AsyncSignal.wait(queue_lock, [] { return BaseLogging->AsyncFinish || !BaseLogging->AsyncQueue.empty(); });
+
                 drained.swap(BaseLogging->AsyncQueue);
 
                 if (drained.empty() && BaseLogging->AsyncFinish) {
@@ -202,7 +204,7 @@ static void AsyncWorkerLoop() noexcept
 static void WriteSync(string_view message) noexcept
 {
     try {
-        std::scoped_lock locker(BaseLogging->LogLocker);
+        std::scoped_lock locker {BaseLogging->LogLocker};
 
         if (BaseLogging->LogFileHandle) {
             BaseLogging->LogFileHandle << message;
@@ -223,7 +225,7 @@ static void FlushLogAtExit()
         StopAsyncWorker();
 
         if (BaseLogging->LogLocker.try_lock()) {
-            std::scoped_lock locker(std::adopt_lock, BaseLogging->LogLocker);
+            std::scoped_lock locker {std::adopt_lock, BaseLogging->LogLocker};
 
             if (BaseLogging->LogFileHandle) {
                 BaseLogging->LogFileHandle.close();
