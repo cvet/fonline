@@ -373,6 +373,8 @@ class Object
 
     bool _ActiveSelf;
     bool _Active;
+    bool _HasOnDraw;
+    bool _NeedDraw;
     string _Name;
     ipos _BasePos;
     isize _BaseSize;
@@ -535,6 +537,8 @@ class Object
         _Construct();
         OnConstruct();
 
+        _RefreshNeedDraw();
+
         Screen screen = Screen;
         if (screen != null && screen._IsRegistered) {
             _Init();
@@ -606,6 +610,7 @@ class Object
 
     void Remove()
     {
+        Object oldParent = _Parent;
         if (_Parent != null) {
             _Parent._Children.removeAt(_Parent._Children.findByRef(this));
             _Parent = null;
@@ -615,6 +620,10 @@ class Object
 
         _ActiveSelf = false;
         _RefreshActive();
+
+        if (oldParent != null) {
+            oldParent._RefreshNeedDraw();
+        }
     }
 
     void _Remove()
@@ -654,12 +663,14 @@ class Object
         }
 
         // Common draw callback
-        OnDraw();
+        if (_HasOnDraw) {
+            OnDraw();
+        }
     }
 
     void _Draw(bool callCallback)
     {
-        if (!_ActiveSelf) {
+        if (!_ActiveSelf || !_NeedDraw) {
             return;
         }
 
@@ -670,13 +681,41 @@ class Object
         // _Children
         for (int i = 0; i < _Children.length(); i++) {
             Object child = _Children[i];
-            if (child._ActiveSelf && !child._IsDragged) {
+            if (child._ActiveSelf && child._NeedDraw && !child._IsDragged) {
                 child._Draw(true);
             }
         }
 
         if (callCallback) {
             OnPostDraw();
+        }
+    }
+
+    bool _HasSelfDraw()
+    {
+        return _HasOnDraw;
+    }
+
+    void _RefreshNeedDraw()
+    {
+        bool need = _HasSelfDraw();
+        if (!need) {
+            for (int i = 0; i < _Children.length(); i++) {
+                if (_Children[i]._NeedDraw) {
+                    need = true;
+                    break;
+                }
+            }
+        }
+
+        if (_NeedDraw == need) {
+            return;
+        }
+
+        _NeedDraw = need;
+
+        if (_Parent != null) {
+            _Parent._RefreshNeedDraw();
         }
     }
 
@@ -1379,6 +1418,10 @@ class Panel : Object
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         _RefreshSmoothScroll();
 
         bool crop = _CropContent;
@@ -1404,6 +1447,11 @@ class Panel : Object
         if (crop) {
             Game.PopDrawScissor();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null;
     }
 
     void _DrawImage(Sprite::Sprite image)
@@ -1450,6 +1498,8 @@ class Panel : Object
         if (curImage != null && (imageLayout == SpriteLayout::None || _BaseSize == isize())) {
             SetSize(curImage.Size);
         }
+
+        _RefreshNeedDraw();
     }
 
     void _MousePressedUnder(MouseButton button) override
@@ -1777,6 +1827,10 @@ class Text : Object
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1793,6 +1847,11 @@ class Text : Object
         if (callCallback) {
             OnPostDraw();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return true;
     }
 
     void SetText(string text, int font, int flags)
@@ -1897,6 +1956,10 @@ class TextInput : Text
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -2081,6 +2144,10 @@ class Button : Panel
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -2116,6 +2183,11 @@ class Button : Panel
         if (callCallback) {
             OnPostDraw();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null;
     }
 
     void MouseClick(MouseButton button)
@@ -2778,6 +2850,10 @@ class MessageBox : Text
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (!_InvertMessages) {
             _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END(_ScrollLines);
         }
@@ -3200,6 +3276,10 @@ class Console : TextInput
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
