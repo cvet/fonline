@@ -770,6 +770,11 @@ class Object
 
     Object FindHit(ipos pos)
     {
+        // Inactive subtrees can never produce a hit (IsHit walks ancestors and bails on inactive)
+        if (!_ActiveSelf) {
+            return null;
+        }
+
         // Check children
         for (int i = _Children.length() - 1; i >= 0; i--) {
             Object obj = _Children[i].FindHit(pos);
@@ -1414,6 +1419,32 @@ class Panel : Object
             return true;
         }
         return false;
+    }
+
+    Object FindHit(ipos pos) override
+    {
+        if (!_ActiveSelf) {
+            return null;
+        }
+
+        // Cropping panel outside its rect cannot contain any hittable descendant
+        if (_CropContent &&
+            (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height)) {
+            return null;
+        }
+
+        for (int i = _Children.length() - 1; i >= 0; i--) {
+            Object obj = _Children[i].FindHit(pos);
+            if (obj != null) {
+                return obj;
+            }
+        }
+
+        if (IsHit(pos)) {
+            return this;
+        }
+
+        return null;
     }
 
     void _Draw(bool callCallback) override
