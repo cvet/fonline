@@ -1326,6 +1326,11 @@ class Object
     {
         _DeferredMousePressed = enabled;
     }
+
+    void SetHasOnDraw(bool enabled)
+    {
+        _HasOnDraw = enabled;
+    }
 };
 
 const int PanelScrollAnimationDurationMs = 120;
