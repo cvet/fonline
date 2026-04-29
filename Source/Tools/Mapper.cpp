@@ -545,7 +545,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(this, Resources);
+    InitAngelScriptScripting(this, Settings, Resources);
 #endif
 
     _curLang = TextPack {Hashes};
