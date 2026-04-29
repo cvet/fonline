@@ -252,7 +252,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
         }
     }
     else if (type.IsEnum) {
-        new (gen->GetAddressOfReturnLocation()) int32_t(numeric_cast<int32_t>(strvex(value).to_int64()));
+        WriteEnumValueFromInt32(gen->GetAddressOfReturnLocation(), type, numeric_cast<int32_t>(strvex(value).to_int64()));
     }
     else if (type.IsPrimitive) {
         if (type.IsBool) {
@@ -317,7 +317,7 @@ static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
         }
     }
     else if (type.IsEnum) {
-        value = strex("{}", *cast_from_void<const int32_t*>(new_value));
+        value = strex("{}", ReadEnumValueAsInt32(new_value, type));
     }
     else if (type.IsPrimitive) {
         if (type.IsBool) {
