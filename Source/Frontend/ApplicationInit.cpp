@@ -82,6 +82,11 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     auto settings = LoadSettings(argc, argv);
     WriteLog("Version: {}", settings.GameVersion);
 
+    // Switch logging to a dedicated worker thread once the user setting is known
+    if (settings.AsyncLogWrite) {
+        SetAsyncLogWriting(true);
+    }
+
     // Prebake resources
     if (!IsPackaged() && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {
         WriteLog("Prebake resources");
