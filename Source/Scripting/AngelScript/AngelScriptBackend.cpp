@@ -175,8 +175,8 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2));
 
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, false));
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_engine->Settings.DebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_engine->Settings.DebuggerEnabled));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
