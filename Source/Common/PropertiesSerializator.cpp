@@ -115,11 +115,11 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             }
             else {
                 // Todo: maybe need some optional warning for unknown/wrong properties
-                // WriteLog("Skip unknown property {}", key);
+                // WriteLog(LogType::Warning, "Skip unknown property {}", key);
             }
         }
         catch (const std::exception& ex) {
-            WriteLog("Unable to load property {}", doc_key);
+            WriteLog(LogType::Warning, "Unable to load property {}", doc_key);
             ReportExceptionAndContinue(ex);
             is_error = true;
         }

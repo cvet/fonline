@@ -136,10 +136,10 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
     }
 
     if (_port != 0) {
-        WriteLog("TCP socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
     }
     else {
-        WriteLog("TCP socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, error.message());
     }
 }
 
@@ -318,7 +318,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     }
     else {
         if (error != asio::error::operation_aborted) {
-            WriteLog("Accept error: {}", error.message());
+            WriteLog(LogType::Warning, "Accept error: {}", error.message());
         }
     }
 }

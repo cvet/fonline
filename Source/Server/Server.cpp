@@ -120,7 +120,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 });
             }
             else {
-                WriteLog("Can't write health file '{}'", health_file_name);
+                WriteLog(LogType::Warning, "Can't write health file '{}'", health_file_name);
             }
         }
 
@@ -542,7 +542,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                     ProcessUnloginedPlayer(player.get());
                 }
                 catch (const UnknownMessageException&) {
-                    WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
+                    WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
                     connection->HardDisconnect();
                 }
                 catch (const NetBufferException& ex) {
@@ -834,7 +834,7 @@ void ServerEngine::DrawGui(string_view server_name)
 
                 if (!Lock(max_wait_time)) {
                     ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
-                    WriteLog("Server hanged (no response more than {})", max_wait_time);
+                    WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
                     ImGui::End();
                     return;
                 }
@@ -1858,7 +1858,7 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
     in_buf.Unlock();
 
     if (file_index >= _updateFilesData.size()) {
-        WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
+        WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->HardDisconnect();
         return;
     }
@@ -1876,7 +1876,7 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     FO_NON_CONST_METHOD_HINT();
 
     if (connection->UpdateFileIndex == -1) {
-        WriteLog("Wrong update call, client host '{}'", connection->GetHost());
+        WriteLog(LogType::Warning, "Wrong update call, client host '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
