@@ -37,6 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
+constexpr size_t AsyncQueueDropLimit = 100000;
+
 static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
@@ -65,6 +67,7 @@ struct BaseLoggingData
     std::mutex AsyncQueueMutex {};
     std::condition_variable AsyncSignal {};
     std::deque<std::string> AsyncQueue {};
+    size_t AsyncDroppedCount {};
     bool AsyncFinish {};
     std::thread AsyncWorker {};
 };
@@ -108,18 +111,28 @@ extern void WriteBaseLog(string_view message) noexcept
     try {
         if (BaseLogging->AsyncEnabled.load(std::memory_order_acquire)) {
             bool enqueued = false;
+            bool dropped = false;
 
             {
                 std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
                 if (BaseLogging->AsyncEnabled.load(std::memory_order_relaxed)) {
-                    BaseLogging->AsyncQueue.emplace_back(message);
-                    enqueued = true;
+                    if (BaseLogging->AsyncQueue.size() >= AsyncQueueDropLimit) {
+                        BaseLogging->AsyncDroppedCount++;
+                        dropped = true;
+                    }
+                    else {
+                        BaseLogging->AsyncQueue.emplace_back(message);
+                        enqueued = true;
+                    }
                 }
             }
 
             if (enqueued) {
                 BaseLogging->AsyncSignal.notify_one();
+            }
+
+            if (enqueued || dropped) {
                 return;
             }
         }
@@ -175,16 +188,19 @@ static void AsyncWorkerLoop() noexcept
 {
     try {
         std::deque<std::string> drained;
+        size_t drained_drop_count = 0;
 
         while (true) {
             {
                 std::unique_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
-                BaseLogging->AsyncSignal.wait(queue_lock, [] { return BaseLogging->AsyncFinish || !BaseLogging->AsyncQueue.empty(); });
+                BaseLogging->AsyncSignal.wait(queue_lock, [] { return BaseLogging->AsyncFinish || !BaseLogging->AsyncQueue.empty() || BaseLogging->AsyncDroppedCount != 0; });
 
                 drained.swap(BaseLogging->AsyncQueue);
+                drained_drop_count = BaseLogging->AsyncDroppedCount;
+                BaseLogging->AsyncDroppedCount = 0;
 
-                if (drained.empty() && BaseLogging->AsyncFinish) {
+                if (drained.empty() && drained_drop_count == 0 && BaseLogging->AsyncFinish) {
                     return;
                 }
             }
@@ -193,7 +209,17 @@ static void AsyncWorkerLoop() noexcept
                 WriteSync(msg);
             }
 
+            if (drained_drop_count != 0) {
+                std::string drop_notice = "Dropped ";
+                drop_notice += std::to_string(drained_drop_count);
+                drop_notice += " log messages due to high volume (queue limit ";
+                drop_notice += std::to_string(AsyncQueueDropLimit);
+                drop_notice += ")\n";
+                WriteSync(drop_notice);
+            }
+
             drained.clear();
+            drained_drop_count = 0;
         }
     }
     catch (...) {
