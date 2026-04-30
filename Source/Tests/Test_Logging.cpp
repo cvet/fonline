@@ -104,7 +104,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("sv", [&](string_view message) { captured.emplace_back(message); });
+        SetLogCallback("sv", [&](LogType, string_view message) { captured.emplace_back(message); });
 
         const string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
         WriteLog(string_view {raw});
@@ -119,7 +119,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("type", [&](string_view message) { captured.emplace_back(message); });
+        SetLogCallback("type", [&](LogType, string_view message) { captured.emplace_back(message); });
 
         WriteLog(LogType::Info, "info-line");
         WriteLog(LogType::InfoSection, "section-line");
@@ -142,11 +142,11 @@ TEST_CASE("Logging")
         string last_first;
         string last_second;
 
-        SetLogCallback("first", [&](string_view message) {
+        SetLogCallback("first", [&](LogType, string_view message) {
             first_count++;
             last_first = string(message);
         });
-        SetLogCallback("second", [&](string_view message) {
+        SetLogCallback("second", [&](LogType, string_view message) {
             second_count++;
             last_second = string(message);
         });
@@ -173,7 +173,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("tag", [&](string_view message) { captured.emplace_back(message); });
+        SetLogCallback("tag", [&](LogType, string_view message) { captured.emplace_back(message); });
         WriteLog("tagged");
 
         REQUIRE(captured.size() == 1);
