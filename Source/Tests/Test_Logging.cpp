@@ -44,7 +44,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("capture", [&](string_view message) { captured.emplace_back(message); });
+        SetLogCallback("capture", [&](LogType, string_view message) { captured.emplace_back(message); });
         WriteLog("Hello {}", 42);
 
         REQUIRE(captured.size() == 1);
@@ -59,8 +59,8 @@ TEST_CASE("Logging")
         int32_t first_count = 0;
         int32_t second_count = 0;
 
-        SetLogCallback("replace", [&](string_view) { first_count++; });
-        SetLogCallback("replace", [&](string_view) { second_count++; });
+        SetLogCallback("replace", [&](LogType, string_view) { first_count++; });
+        SetLogCallback("replace", [&](LogType, string_view) { second_count++; });
         WriteLog(LogType::Warning, "Replacement {}", 1);
 
         CHECK(first_count == 0);
@@ -73,7 +73,7 @@ TEST_CASE("Logging")
     {
         int32_t callback_count = 0;
 
-        SetLogCallback("clear-me", [&](string_view) { callback_count++; });
+        SetLogCallback("clear-me", [&](LogType, string_view) { callback_count++; });
         SetLogCallback("", {});
         WriteLogMessage(LogType::Error, "should not hit callback");
 
@@ -84,7 +84,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("reentrant", [&](string_view message) {
+        SetLogCallback("reentrant", [&](LogType, string_view message) {
             captured.emplace_back(message);
 
             if (captured.size() == 1) {

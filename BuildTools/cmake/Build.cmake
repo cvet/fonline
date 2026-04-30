@@ -148,34 +148,40 @@ macro(SetOptionValues)
 	endwhile()
 endmacro()
 
-macro(SetStringCacheValues)
+# Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:
+# values matching CMake's boolean spellings (ON/OFF/TRUE/FALSE/YES/NO/1/0,
+# case-insensitive) become CACHE BOOL, everything else CACHE STRING. Empty string
+# is treated as STRING (so OPENSSL_INCLUDE_DIR="" stays a path setting).
+macro(SetCacheValues)
 	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
 	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
 
 	if(NOT optionArgsRemainder EQUAL 0)
-		AbortMessage("SetStringCacheValues expects pairs of arguments")
+		AbortMessage("SetCacheValues expects pairs of arguments")
 	endif()
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
-		set(${optionName} "${optionValue}" CACHE STRING "Forced by FOnline" FORCE)
+		string(TOUPPER "${optionValue}" _setCacheValueUpper)
+
+		if(_setCacheValueUpper STREQUAL "ON" OR
+			_setCacheValueUpper STREQUAL "OFF" OR
+			_setCacheValueUpper STREQUAL "TRUE" OR
+			_setCacheValueUpper STREQUAL "FALSE" OR
+			_setCacheValueUpper STREQUAL "YES" OR
+			_setCacheValueUpper STREQUAL "NO" OR
+			_setCacheValueUpper STREQUAL "1" OR
+			_setCacheValueUpper STREQUAL "0")
+			set(${optionName} ${optionValue} CACHE BOOL "Forced by FOnline" FORCE)
+		else()
+			set(${optionName} "${optionValue}" CACHE STRING "Forced by FOnline" FORCE)
+		endif()
+
+		set(${optionName} "${optionValue}")
 	endwhile()
-endmacro()
 
-macro(SetBoolCacheValues)
-	set(optionArgs "${ARGN}")
-	ListLength(optionArgs optionArgsCount)
-	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
-
-	if(NOT optionArgsRemainder EQUAL 0)
-		AbortMessage("SetBoolCacheValues expects pairs of arguments")
-	endif()
-
-	while(optionArgs)
-		ListPopFront(optionArgs optionName optionValue)
-		set(${optionName} ${optionValue} CACHE BOOL "Forced by FOnline" FORCE)
-	endwhile()
+	unset(_setCacheValueUpper)
 endmacro()
 
 macro(AddConfiguration name parent)

@@ -39,8 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-using LogFunc = function<void(string_view)>;
-
 enum class LogType : uint8_t
 {
     Info,
@@ -48,6 +46,8 @@ enum class LogType : uint8_t
     Warning,
     Error,
 };
+
+using LogFunc = function<void(LogType, string_view)>;
 
 // Write formatted text
 extern void WriteLogMessage(LogType type, string_view message) noexcept;

@@ -66,7 +66,7 @@ int main(int argc, char** argv) // Handled by SDL
         std::mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](string_view str) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](LogType, string_view str) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};
 
             auto lines = strex(str).split('\n');

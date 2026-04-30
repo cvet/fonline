@@ -42,6 +42,8 @@ FO_BEGIN_NAMESPACE
 
 unique_ptr<Application> App {};
 
+extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
+
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void SetupLogging(bool disable_log_tags);
 static auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings;
@@ -86,6 +88,9 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     if (settings.AsyncLogWrite) {
         SetAsyncLogWriting(true);
     }
+
+    // Project-side early init (before App frontend, after settings + exception/log callbacks)
+    ApplicationInitHook(flags, settings);
 
     // Prebake resources
     if (!IsPackaged() && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {

@@ -46,7 +46,7 @@ endif()
 # SDL
 StatusMessage("+ SDL")
 SetValue(FO_SDL_DIR "${FO_ENGINE_ROOT}/ThirdParty/SDL")
-SetBoolCacheValues(
+SetCacheValues(
     SDL_TEST_LIBRARY OFF
     SDL_UNIX_CONSOLE_BUILD ${FO_HEADLESS_ONLY})
 AddSubdirectory("${FO_SDL_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
@@ -61,7 +61,7 @@ AddCompileDefinitionsList(
     $<${expr_TracyEnabled}:TRACY_ENABLE>
     $<${expr_TracyOnDemand}:TRACY_ON_DEMAND>
     FO_TRACY=${expr_TracyEnabled})
-SetBoolCacheValues(TRACY_STATIC ON)
+SetCacheValues(TRACY_STATIC ON)
 AddSubdirectory("${FO_TRACY_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_TRACY_DIR}/public")
 AppendList(FO_ESSENTIALS_LIBS TracyClient)
@@ -70,7 +70,7 @@ DisableLibWarnings(TracyClient)
 # Zlib
 StatusMessage("+ Zlib")
 SetValue(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
-SetBoolCacheValues(ZLIB_BUILD_EXAMPLES OFF)
+SetCacheValues(ZLIB_BUILD_EXAMPLES OFF)
 AddSubdirectory("${FO_ZLIB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
 SetValue(FO_ZLIB_CONTRIB_SOURCE
@@ -82,18 +82,18 @@ AddStaticThirdPartyLibrary(zlibcontrib
     SOURCE_LIST FO_ZLIB_CONTRIB_SOURCE)
 AppendList(FO_ESSENTIALS_LIBS zlibstatic zlibcontrib)
 DisableLibWarnings(zlibstatic zlibcontrib)
-SetStringCacheValues(
+SetCacheValues(
     ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}"
     ZLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}"
     ZLIB_LIBRARY "zlibstatic")
-SetBoolCacheValues(ZLIB_USE_STATIC_LIBS ON)
+SetCacheValues(ZLIB_USE_STATIC_LIBS ON)
 AddLibrary(ZLIB::ZLIB ALIAS zlibstatic)
 
 # LibPNG
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ LibPNG")
     SetValue(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/libpng")
-    SetBoolCacheValues(
+    SetCacheValues(
         PNG_SHARED OFF
         PNG_STATIC ON
         PNG_FRAMEWORK OFF
@@ -103,7 +103,7 @@ if(FO_BUILD_BAKER_LIB)
         PNG_HARDWARE_OPTIMIZATIONS ON
         PNG_BUILD_ZLIB OFF
         ld-version-script OFF)
-    SetStringCacheValues(AWK IGNORE)
+    SetCacheValues(AWK IGNORE)
     AddSubdirectory("${FO_PNG_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     SetTargetsFolder("ThirdParty/Dummy" png_genfiles)
     AddIncludeDirectories("${FO_PNG_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
@@ -241,7 +241,7 @@ AddIncludeDirectories("${FO_JSON_DIR}")
 if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ LibreSSL")
     SetValue(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
-    SetBoolCacheValues(
+    SetCacheValues(
         LIBRESSL_SKIP_INSTALL ON
         LIBRESSL_APPS OFF
         LIBRESSL_TESTS OFF
@@ -254,8 +254,8 @@ if(FO_BUILD_SERVER_LIB)
         "${FO_LIBRESSL_DIR}/include"
         "${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto"
         "${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
-    SetBoolCacheValues(LIBRESSL_FOUND ON)
-    SetStringCacheValues(
+    SetCacheValues(LIBRESSL_FOUND ON)
+    SetCacheValues(
         LIBRESSL_LIBRARIES "ssl;crypto;tls"
         LIBRESSL_INCLUDE_DIRS ""
         LIBRESSL_LIBRARY_DIRS "")
@@ -289,14 +289,14 @@ if(FO_BUILD_SERVER_LIB)
     StatusMessage("+ Bson")
     SetValue(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
-    SetStringCacheValues(
+    SetCacheValues(
         ENABLE_STATIC BUILD_ONLY
         ENABLE_TESTS OFF
         ENABLE_SSL OFF
         ENABLE_SASL OFF
         ENABLE_ZLIB SYSTEM
         ENABLE_CLIENT_SIDE_ENCRYPTION OFF)
-    SetBoolCacheValues(
+    SetCacheValues(
         ENABLE_SHARED OFF
         ENABLE_SRV OFF
         ENABLE_UNINSTALL OFF
@@ -305,10 +305,10 @@ if(FO_BUILD_SERVER_LIB)
 
     if(NOT FO_DISABLE_MONGO)
         StatusMessage("+ MongoDB")
-        SetStringCacheValues(ENABLE_MONGOC ON)
+        SetCacheValues(ENABLE_MONGOC ON)
         AddCompileDefinitionsList(FO_HAVE_MONGO=1)
     else()
-        SetStringCacheValues(ENABLE_MONGOC OFF)
+        SetCacheValues(ENABLE_MONGOC OFF)
         AddCompileDefinitionsList(FO_HAVE_MONGO=0)
     endif()
 
@@ -410,7 +410,7 @@ endif()
 # Spark
 StatusMessage("+ Spark")
 SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
-SetBoolCacheValues(SPARK_STATIC_BUILD ON)
+SetCacheValues(SPARK_STATIC_BUILD ON)
 AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
@@ -421,7 +421,7 @@ DisableLibWarnings(SPARK_Core PugiXML)
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ glslang")
     SetValue(FO_GLSLANG_DIR "${FO_ENGINE_ROOT}/ThirdParty/glslang")
-    SetBoolCacheValues(
+    SetCacheValues(
         GLSLANG_TESTS OFF
         GLSLANG_ENABLE_INSTALL OFF
         BUILD_EXTERNAL OFF
@@ -440,7 +440,7 @@ if(FO_BUILD_BAKER_LIB)
         ALLOW_EXTERNAL_SPIRV_TOOLS OFF)
 
     if(FO_WEB)
-        SetBoolCacheValues(
+        SetCacheValues(
             ENABLE_GLSLANG_WEB ON
             ENABLE_GLSLANG_WEB_DEVEL ON
             ENABLE_EMSCRIPTEN_SINGLE_FILE ON
@@ -466,7 +466,7 @@ if(FO_BUILD_BAKER_LIB)
 
     StatusMessage("+ SPIRV-Cross")
     SetValue(FO_SPIRV_CROSS_DIR "${FO_ENGINE_ROOT}/ThirdParty/SPIRV-Cross")
-    SetBoolCacheValues(
+    SetCacheValues(
         SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS OFF
         SPIRV_CROSS_STATIC ON
         SPIRV_CROSS_SHARED OFF
@@ -502,8 +502,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
 
     # AngelScript core
     SetValue(FO_ANGELSCRIPT_SDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/AngelScript/sdk")
-    SetStringCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
-    SetBoolCacheValues(AS_DISABLE_INSTALL ON)
+    SetCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
+    SetCacheValues(AS_DISABLE_INSTALL ON)
     AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
