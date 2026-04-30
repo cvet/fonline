@@ -100,6 +100,91 @@ TEST_CASE("Logging")
         SetLogCallback("reentrant", {});
     }
 
+    SECTION("StringViewOverloadDeliversRawText")
+    {
+        vector<string> captured;
+
+        SetLogCallback("sv", [&](string_view message) { captured.emplace_back(message); });
+
+        const string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
+        WriteLog(string_view {raw});
+
+        REQUIRE(captured.size() == 1);
+        CHECK(captured.front().find("raw {} payload") != string::npos);
+
+        SetLogCallback("sv", {});
+    }
+
+    SECTION("LogTypePreservesMessageContent")
+    {
+        vector<string> captured;
+
+        SetLogCallback("type", [&](string_view message) { captured.emplace_back(message); });
+
+        WriteLog(LogType::Info, "info-line");
+        WriteLog(LogType::InfoSection, "section-line");
+        WriteLog(LogType::Warning, "warning-line");
+        WriteLog(LogType::Error, "error-line");
+
+        REQUIRE(captured.size() == 4);
+        CHECK(captured[0].find("info-line") != string::npos);
+        CHECK(captured[1].find("section-line") != string::npos);
+        CHECK(captured[2].find("warning-line") != string::npos);
+        CHECK(captured[3].find("error-line") != string::npos);
+
+        SetLogCallback("type", {});
+    }
+
+    SECTION("MultipleCallbacksFireForEachMessage")
+    {
+        int32_t first_count = 0;
+        int32_t second_count = 0;
+        string last_first;
+        string last_second;
+
+        SetLogCallback("first", [&](string_view message) {
+            first_count++;
+            last_first = string(message);
+        });
+        SetLogCallback("second", [&](string_view message) {
+            second_count++;
+            last_second = string(message);
+        });
+
+        WriteLog("broadcast {}", 7);
+
+        CHECK(first_count == 1);
+        CHECK(second_count == 1);
+        CHECK(last_first.find("broadcast 7") != string::npos);
+        CHECK(last_second.find("broadcast 7") != string::npos);
+
+        // Removing one key must leave the other intact.
+        SetLogCallback("first", {});
+        WriteLog("only second");
+
+        CHECK(first_count == 1);
+        CHECK(second_count == 2);
+        CHECK(last_second.find("only second") != string::npos);
+
+        SetLogCallback("second", {});
+    }
+
+    SECTION("MessageHasTimestampPrefix")
+    {
+        vector<string> captured;
+
+        SetLogCallback("tag", [&](string_view message) { captured.emplace_back(message); });
+        WriteLog("tagged");
+
+        REQUIRE(captured.size() == 1);
+        // Default tagging adds [DD/MM/YY] [HH:MM:SS] before the message body.
+        CHECK(captured.front().starts_with('['));
+        CHECK(captured.front().find("] [") != string::npos);
+        CHECK(captured.front().find("tagged") != string::npos);
+
+        SetLogCallback("tag", {});
+    }
+
     SetLogCallback("", {});
 }
 

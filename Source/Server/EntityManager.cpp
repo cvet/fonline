@@ -243,7 +243,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
     if (!loc_pid) {
-        WriteLog("Location {} invalid document", loc_id);
+        WriteLog(LogType::Warning, "Location {} invalid document", loc_id);
         is_error = true;
         return nullptr;
     }
@@ -251,7 +251,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
     const auto* loc_proto = _engine->GetProtoLocation(loc_pid);
 
     if (loc_proto == nullptr) {
-        WriteLog("Location {} proto {} not found", loc_id, loc_pid);
+        WriteLog(LogType::Warning, "Location {} proto {} not found", loc_id, loc_pid);
         is_error = true;
         return nullptr;
     }
@@ -259,7 +259,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), loc_id, loc_proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
-        WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
+        WriteLog(LogType::Warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return nullptr;
     }
@@ -269,7 +269,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         loc->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed to register location {} {}", loc_pid, loc_id);
+        WriteLog(LogType::Warning, "Failed to register location {} {}", loc_pid, loc_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
@@ -309,7 +309,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
         LoadInnerEntities(loc.get(), is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore location content {} {}", loc_pid, loc_id);
+        WriteLog(LogType::Warning, "Failed during restore location content {} {}", loc_pid, loc_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -324,7 +324,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
     if (!map_pid) {
-        WriteLog("Map {} invalid document", map_pid);
+        WriteLog(LogType::Warning, "Map {} invalid document", map_pid);
         is_error = true;
         return nullptr;
     }
@@ -332,7 +332,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     const auto* map_proto = _engine->GetProtoMap(map_pid);
 
     if (map_proto == nullptr) {
-        WriteLog("Map {} proto {} not found", map_id, map_pid);
+        WriteLog(LogType::Warning, "Map {} proto {} not found", map_id, map_pid);
         is_error = true;
         return nullptr;
     }
@@ -341,7 +341,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     auto map = SafeAlloc::MakeRefCounted<Map>(_engine.get(), map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
-        WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
+        WriteLog(LogType::Warning, "Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return nullptr;
     }
@@ -351,7 +351,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         map->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed to register map {} {}", map_pid, map_id);
+        WriteLog(LogType::Warning, "Failed to register map {} {}", map_pid, map_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
@@ -416,7 +416,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
         LoadInnerEntities(map.get(), is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore map content {} {}", map_pid, map_id);
+        WriteLog(LogType::Warning, "Failed during restore map content {} {}", map_pid, map_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -431,7 +431,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
     if (!cr_pid) {
-        WriteLog("Critter {} invalid document", cr_id);
+        WriteLog(LogType::Warning, "Critter {} invalid document", cr_id);
         is_error = true;
         return nullptr;
     }
@@ -439,7 +439,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
     const auto* proto = _engine->GetProtoCritter(cr_pid);
 
     if (proto == nullptr) {
-        WriteLog("Critter {} proto {} not found", cr_id, cr_pid);
+        WriteLog(LogType::Warning, "Critter {} proto {} not found", cr_id, cr_pid);
         is_error = true;
         return nullptr;
     }
@@ -447,7 +447,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), cr_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
-        WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
+        WriteLog(LogType::Warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return nullptr;
     }
@@ -458,7 +458,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         cr->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed to register critter {} {}", cr_pid, cr_id);
+        WriteLog(LogType::Warning, "Failed to register critter {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
@@ -492,7 +492,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
         LoadInnerEntities(cr.get(), is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore critter content {} {}", cr_pid, cr_id);
+        WriteLog(LogType::Warning, "Failed during restore critter content {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -507,7 +507,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
     auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
     if (!item_pid) {
-        WriteLog("Item {} invalid document", item_id);
+        WriteLog(LogType::Warning, "Item {} invalid document", item_id);
         is_error = true;
         return nullptr;
     }
@@ -515,7 +515,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
     const auto* proto = _engine->GetProtoItem(item_pid);
 
     if (proto == nullptr) {
-        WriteLog("Item {} proto {} not found", item_id, item_pid);
+        WriteLog(LogType::Warning, "Item {} proto {} not found", item_id, item_pid);
         is_error = true;
         return nullptr;
     }
@@ -523,7 +523,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), item_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
-        WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
+        WriteLog(LogType::Warning, "Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return nullptr;
     }
@@ -534,7 +534,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         item->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed to register item {} {}", item_pid, item_id);
+        WriteLog(LogType::Warning, "Failed to register item {} {}", item_pid, item_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
@@ -573,7 +573,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
         LoadInnerEntities(item.get(), is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore item content {} {}", item_pid, item_id);
+        WriteLog(LogType::Warning, "Failed during restore item content {} {}", item_pid, item_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -593,7 +593,7 @@ void EntityManager::LoadInnerEntities(Entity* holder, bool& is_error) noexcept
         }
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore inner entities for {}", holder->GetTypeName());
+        WriteLog(LogType::Warning, "Failed during restore inner entities for {}", holder->GetTypeName());
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -652,7 +652,7 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
         }
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during restore inner entities for {}", holder->GetTypeName());
+        WriteLog(LogType::Warning, "Failed during restore inner entities for {}", holder->GetTypeName());
         ReportExceptionAndContinue(ex);
         is_error = true;
     }
@@ -668,14 +668,14 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
         if (doc.Empty()) {
-            WriteLog("{} document {} not found", collection_name, id);
+            WriteLog(LogType::Warning, "{} document {} not found", collection_name, id);
             is_error = true;
             return {};
         }
 
         if (!doc.Contains("_Proto")) {
             if (expect_proto) {
-                WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
+                WriteLog(LogType::Warning, "{} '_Proto' section not found in entity {}", collection_name, id);
                 is_error = true;
             }
 
@@ -685,7 +685,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         const auto& proto_value = doc["_Proto"];
 
         if (proto_value.Type() != AnyData::ValueType::String) {
-            WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
+            WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
             is_error = true;
             return {};
         }
@@ -693,7 +693,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         const auto& proto_name = proto_value.AsString();
 
         if (proto_name.empty()) {
-            WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
+            WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
             is_error = true;
             return {};
         }
@@ -707,7 +707,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         return {std::move(doc), proto_id};
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during load document {} {}", collection_name, id);
+        WriteLog(LogType::Warning, "Failed during load document {} {}", collection_name, id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return {};
@@ -1279,7 +1279,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         FO_RUNTIME_ASSERT(id.underlying_value() != 0);
 
         if (!_engine->IsValidEntityType(type_name)) {
-            WriteLog("Custom entity {} type {} not valid", id, type_name);
+            WriteLog(LogType::Warning, "Custom entity {} type {} not valid", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1290,7 +1290,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {
-            WriteLog("Custom entity {} with type {} invalid document", id, type_name);
+            WriteLog(LogType::Warning, "Custom entity {} with type {} invalid document", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1307,7 +1307,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             }
 
             if (proto == nullptr) {
-                WriteLog("Proto {} for custom entity {} with type {} not found", pid, id, type_name);
+                WriteLog(LogType::Warning, "Proto {} for custom entity {} with type {} not found", pid, id, type_name);
                 is_error = true;
                 return nullptr;
             }
@@ -1324,7 +1324,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         }
 
         if (!PropertiesSerializator::LoadFromDocument(&entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
-            WriteLog("Failed to load properties for custom entity {} with type {}", id, type_name);
+            WriteLog(LogType::Warning, "Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1334,7 +1334,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         return entity.get();
     }
     catch (const std::exception& ex) {
-        WriteLog("Failed during load custom entity {}", id);
+        WriteLog(LogType::Warning, "Failed during load custom entity {}", id);
         ReportExceptionAndContinue(ex);
         is_error = true;
         return nullptr;
