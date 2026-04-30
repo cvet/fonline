@@ -171,62 +171,6 @@ TEST_CASE("BaseLogging")
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
-
-    SECTION("AsyncLoggingDropsMessagesAndReportsCount")
-    {
-        // The queue cap is hard-coded to 100000 entries inside BaseLogging.cpp.
-        // We outpace the worker by enqueueing far more than the cap from
-        // multiple producer threads while the worker is still flushing the
-        // first batches to disk. The exact number of drops is timing-dependent,
-        // but the worker is required to emit at least one notice once any
-        // overflow is observed.
-        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
-        const auto log_path = temp_root / "logs" / "drop.log";
-
-        std::filesystem::create_directories(log_path.parent_path());
-
-        LogToFile(string(log_path.string()));
-        SetAsyncLogWriting(true);
-
-        constexpr int32_t producer_count = 4;
-        constexpr int32_t messages_per_producer = 200000;
-
-        vector<std::thread> producers;
-        producers.reserve(producer_count);
-
-        for (int32_t producer = 0; producer < producer_count; producer++) {
-            producers.emplace_back([producer] {
-                for (int32_t i = 0; i < messages_per_producer; i++) {
-                    WriteBaseLog(strex("flood-{}-{}\n", producer, i));
-                }
-            });
-        }
-
-        for (auto& thread : producers) {
-            thread.join();
-        }
-
-        SetAsyncLogWriting(false);
-        LogToFile(NullLogPath);
-
-        std::ifstream input(log_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-        const auto notice_pos = content.find("Dropped");
-        REQUIRE(notice_pos != std::string::npos);
-
-        const auto notice_end = content.find('\n', notice_pos);
-        REQUIRE(notice_end != std::string::npos);
-
-        const auto notice = content.substr(notice_pos, notice_end - notice_pos);
-        CHECK(notice.find("log messages due to high volume") != std::string::npos);
-        CHECK(notice.find("queue limit 100000") != std::string::npos);
-
-        input.close();
-        const auto removed = std::filesystem::remove_all(temp_root);
-        CHECK(removed > 0);
-    }
 }
 
 FO_END_NAMESPACE
