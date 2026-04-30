@@ -151,8 +151,7 @@ endmacro()
 # Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:
 # values matching CMake's boolean spellings (ON/OFF/TRUE/FALSE/YES/NO/1/0,
 # case-insensitive) become CACHE BOOL, everything else CACHE STRING. Empty string
-# is treated as STRING (so OPENSSL_INCLUDE_DIR="" stays a path setting). Useful for
-# forcing third-party subproject options before add_subdirectory().
+# is treated as STRING (so OPENSSL_INCLUDE_DIR="" stays a path setting).
 macro(SetCacheValues)
 	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
@@ -178,6 +177,8 @@ macro(SetCacheValues)
 		else()
 			set(${optionName} "${optionValue}" CACHE STRING "Forced by FOnline" FORCE)
 		endif()
+
+		set(${optionName} "${optionValue}")
 	endwhile()
 
 	unset(_setCacheValueUpper)
