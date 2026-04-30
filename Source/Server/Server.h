@@ -252,9 +252,33 @@ private:
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
+    auto InitHealthFileJob() -> std::optional<timespan>;
+    auto HealthFileJob() -> std::optional<timespan>;
+    auto HealthFileWriteJob(const string& health_info) -> std::optional<timespan>;
+    auto WriteHealthFile(string_view text) -> bool;
+    auto InitScriptSystemJob() -> std::optional<timespan>;
+    auto InitNetworkingJob() -> std::optional<timespan>;
+    auto InitStorageJob() -> std::optional<timespan>;
+    auto InitMetadataJob() -> std::optional<timespan>;
+    auto InitLanguageJob() -> std::optional<timespan>;
+    auto InitMapsJob() -> std::optional<timespan>;
+    auto InitClientPacksJob() -> std::optional<timespan>;
+    auto InitGameLogicJob() -> std::optional<timespan>;
+    auto InitDoneJob() -> std::optional<timespan>;
+    auto SyncPointJob() -> std::optional<timespan>;
+    auto FrameTimeJob() -> std::optional<timespan>;
+    auto ScriptSystemJob() -> std::optional<timespan>;
+    auto UnloginedPlayersJob() -> std::optional<timespan>;
+    auto PlayersJob() -> std::optional<timespan>;
+    auto CrittersJob() -> std::optional<timespan>;
+    auto TimeEventsJob() -> std::optional<timespan>;
+    auto LogDispatchJob() -> std::optional<timespan>;
+    auto LoopJob() -> std::optional<timespan>;
+
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
+    string _healthFileName {};
 
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};

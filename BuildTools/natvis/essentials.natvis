@@ -36,38 +36,45 @@
     </Expand>
   </Type>
 
-  <Type Name="fo::SourceLocationData">
-    <DisplayString Condition="function != 0 &amp;&amp; file != 0">{function,s} @ {file,s}:{line}</DisplayString>
-    <DisplayString Condition="function != 0">{function,s}:{line}</DisplayString>
-    <DisplayString Condition="name != 0">{name,s}</DisplayString>
-    <DisplayString>(unknown)</DisplayString>
+  <Type Name="fo::StackTraceFrame">
+    <DisplayString Condition="Type == fo::StackTraceFrame::FrameType::Script">[Script] {Function,s} @ {File,s}:{Line}</DisplayString>
+    <DisplayString>[Native] {Function,s} @ {File,s}:{Line}</DisplayString>
     <Expand>
-      <Item Name="Function" Condition="function != 0">function,s</Item>
-      <Item Name="File" Condition="file != 0">file,s</Item>
-      <Item Name="Line">line</Item>
-      <Item Name="Name" Condition="name != 0">name,s</Item>
+      <Item Name="Type">Type</Item>
+      <Item Name="Function">Function</Item>
+      <Item Name="File">File</Item>
+      <Item Name="Line">Line</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ScriptStackTraceLayer">
+    <DisplayString>{ScriptFrames._Mypair._Myval2._Mylast - ScriptFrames._Mypair._Myval2._Myfirst} script frames + {BirthNativeFrameCount} birth native frames</DisplayString>
+    <Expand>
+      <Item Name="[script frames]">ScriptFrames</Item>
+      <Item Name="[birth native count]">BirthNativeFrameCount</Item>
     </Expand>
   </Type>
 
   <Type Name="fo::StackTraceData">
-    <DisplayString Condition="CallsCount == 0">empty stack</DisplayString>
-    <DisplayString Condition="CallsCount == 1">1 frame</DisplayString>
-    <DisplayString>{CallsCount} frames</DisplayString>
+    <DisplayString Condition="NativeFrameCount == 0 &amp;&amp; ScriptLayers._Ptr == 0">empty stack</DisplayString>
+    <DisplayString>{NativeFrameCount} native frames + script layers</DisplayString>
     <Expand>
-      <Item Name="[count]" ExcludeView="simple">CallsCount</Item>
-      <CustomListItems MaxItemsPerView="64" Condition="CallsCount != 0">
-        <Variable Name="count" InitialValue="CallsCount > 64 ? 64 : CallsCount" />
-        <Variable Name="idx" InitialValue="count" />
+      <Item Name="[native count]" ExcludeView="simple">NativeFrameCount</Item>
+      <Synthetic Name="[script layers]" ExcludeView="simple" Condition="ScriptLayers._Ptr != 0">
+        <DisplayString>script layers available</DisplayString>
+        <Expand>
+          <ExpandedItem>*ScriptLayers._Ptr</ExpandedItem>
+        </Expand>
+      </Synthetic>
+      <CustomListItems MaxItemsPerView="64" Condition="NativeFrameCount != 0">
+        <Variable Name="count" InitialValue="NativeFrameCount > 64 ? 64 : NativeFrameCount" />
+        <Variable Name="idx" InitialValue="0" />
         <Loop>
-          <Break Condition="idx == 0" />
-          <Item Name="[{count - idx}] {CallTree[idx - 1]-&gt;function,s}" Condition="CallTree[idx - 1] != 0">*CallTree[idx - 1]</Item>
-          <Item Name="[{count - idx}]" Condition="CallTree[idx - 1] == 0">CallTree[idx - 1]</Item>
-          <Exec>idx = idx - 1</Exec>
+          <Break Condition="idx == count" />
+          <Item Name="[Native {idx}]">NativeFrames[idx]</Item>
+          <Exec>idx = idx + 1</Exec>
         </Loop>
       </CustomListItems>
-      <Synthetic Name="Truncated" Condition="CallsCount &gt; 64">
-        <DisplayString>true</DisplayString>
-      </Synthetic>
     </Expand>
   </Type>
 

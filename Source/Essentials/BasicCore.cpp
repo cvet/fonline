@@ -61,6 +61,7 @@ void ExitApp(bool success) noexcept
 
 extern auto IsRunInDebugger() noexcept -> bool
 {
+    return false;
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
 
