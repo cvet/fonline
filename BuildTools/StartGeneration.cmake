@@ -41,14 +41,14 @@ DeclareBoolOptions(
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
 	StatusMessage("Verbose build mode")
-	SetBoolCacheValues(CMAKE_VERBOSE_MAKEFILE ON)
+	SetCacheValues(CMAKE_VERBOSE_MAKEFILE ON)
 else()
-	SetBoolCacheValues(CMAKE_VERBOSE_MAKEFILE OFF)
+	SetCacheValues(CMAKE_VERBOSE_MAKEFILE OFF)
 endif()
 
 # Global options
 SetValue(CMAKE_POLICY_VERSION_MINIMUM 3.22)
-SetBoolCacheValues(
+SetCacheValues(
 	CMAKE_EXPORT_COMPILE_COMMANDS ON
 	BUILD_SHARED_LIBS OFF
 	BUILD_TESTING OFF
