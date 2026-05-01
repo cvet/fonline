@@ -5,62 +5,62 @@ cmake_minimum_required(VERSION 3.22)
 # Add or override behaviour via AddStageHook(ThirdParty Pre|Post <macro-name>).
 
 # ---------------------------------------------------------------------------
-# Windows: install the find_package() interceptor before any AddSubdirectory()
-# call so third-party CMakeLists cannot reach into the host system.
+# Install the find_package() interceptor before any AddSubdirectory() call so
+# third-party CMakeLists cannot reach into the host system unannounced.
 # Project-side handlers (e.g. OpenSSL → bundled LibreSSL) must already be
 # registered by now via RegisterFindPackageHandler() — typically right
 # before AddThirdPartyLibraries() in the consuming project's CMakeLists.txt.
+#
+# Active on every platform. Adding a new third-party tree may require
+# registering further handlers if it brings in unexpected probes.
 # ---------------------------------------------------------------------------
-if(FO_WINDOWS)
-	# Baseline build-tool / system-meta packages we always accept from the
-	# host: pthreads/Win32-thread metadata, the Python interpreter used by
-	# the codegen step, optional Perl probes from third-party trees, and
-	# pkg-config probes that legitimately fall through on non-pkg systems.
-	RegisterFindPackageHandler(Threads   PassThroughFindPackage)
-	RegisterFindPackageHandler(Python3   PassThroughFindPackage)
-	RegisterFindPackageHandler(Perl      PassThroughFindPackage)
-	RegisterFindPackageHandler(PkgConfig PassThroughFindPackage)
-	RegisterFindPackageHandler(Git       PassThroughFindPackage)
-	# Bundled-by-the-library Find modules (e.g. mongo-c-driver ships its
-	# own FindUtf8Proc.cmake to drive its in-tree utf8proc copy). Let
-	# CMake's standard find_package() pick those up via CMAKE_MODULE_PATH.
-	RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 
-	# Optional probes from bundled trees that we do not bundle and do not
-	# want to satisfy from the host. They must be reported as not-found
-	# (the consumers handle the absence gracefully).
-	RegisterFindPackageHandler(LibUSB              NotFoundFindPackage)
-	RegisterFindPackageHandler(SdlAndroidPlatform  NotFoundFindPackage)
-	RegisterFindPackageHandler(Java                NotFoundFindPackage)
-	RegisterFindPackageHandler(SPIRV-Tools-opt     NotFoundFindPackage)
-	RegisterFindPackageHandler(rocprofiler-sdk     NotFoundFindPackage)
-	# Optional curl SSL/auth/HTTP-feature backends we don't ship.
-	RegisterFindPackageHandler(MbedTLS             NotFoundFindPackage)
-	RegisterFindPackageHandler(WolfSSL             NotFoundFindPackage)
-	RegisterFindPackageHandler(GnuTLS              NotFoundFindPackage)
-	RegisterFindPackageHandler(Nettle              NotFoundFindPackage)
-	RegisterFindPackageHandler(Rustls              NotFoundFindPackage)
-	RegisterFindPackageHandler(Cares               NotFoundFindPackage)
-	RegisterFindPackageHandler(Brotli              NotFoundFindPackage)
-	RegisterFindPackageHandler(Zstd                NotFoundFindPackage)
-	RegisterFindPackageHandler(NGHTTP2             NotFoundFindPackage)
-	RegisterFindPackageHandler(NGHTTP3             NotFoundFindPackage)
-	RegisterFindPackageHandler(NGTCP2              NotFoundFindPackage)
-	RegisterFindPackageHandler(Quiche              NotFoundFindPackage)
-	RegisterFindPackageHandler(LDAP                NotFoundFindPackage)
-	RegisterFindPackageHandler(Libidn2             NotFoundFindPackage)
-	RegisterFindPackageHandler(Libpsl              NotFoundFindPackage)
-	RegisterFindPackageHandler(Libssh2             NotFoundFindPackage)
-	RegisterFindPackageHandler(Libssh              NotFoundFindPackage)
+# Baseline build-tool / system-meta packages we always accept from the host:
+# pthreads/Win32-thread metadata, the Python interpreter used by the codegen
+# step, optional Perl probes from third-party trees, pkg-config probes that
+# legitimately fall through on non-pkg systems, Git for version detection.
+RegisterFindPackageHandler(Threads   PassThroughFindPackage)
+RegisterFindPackageHandler(Python3   PassThroughFindPackage)
+RegisterFindPackageHandler(Perl      PassThroughFindPackage)
+RegisterFindPackageHandler(PkgConfig PassThroughFindPackage)
+RegisterFindPackageHandler(Git       PassThroughFindPackage)
+# Bundled-by-the-library Find modules (e.g. mongo-c-driver ships its own
+# FindUtf8Proc.cmake to drive its in-tree utf8proc copy). Let CMake's
+# standard find_package() pick those up via CMAKE_MODULE_PATH.
+RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 
-	macro(find_package _fo_pkg_name)
-		if(DEFINED _FO_FIND_PKG_HANDLER_${_fo_pkg_name})
-			cmake_language(CALL "${_FO_FIND_PKG_HANDLER_${_fo_pkg_name}}" "${_fo_pkg_name}" ${ARGN})
-		else()
-			AbortMessage("find_package(${_fo_pkg_name}) blocked: no handler registered. On Windows every find_package() must route through the project registry — call RegisterFindPackageHandler(${_fo_pkg_name} <macro>) before any third-party AddSubdirectory().")
-		endif()
-	endmacro()
+# Host runtime libs we deliberately use through SDL3 and engine code.
+if(FO_LINUX)
+	# X11 for display, OpenGL for rendering, ALSA for audio backend.
+	RegisterFindPackageHandler(X11    PassThroughFindPackage)
+	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
+	RegisterFindPackageHandler(ALSA   PassThroughFindPackage)
 endif()
+if(FO_MAC)
+	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
+	# but SDL3 in ThirdParty re-probes from inside the interceptor scope).
+	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
+endif()
+
+# Optional probes from engine-bundled third-party trees that we do not bundle
+# and do not want to satisfy from the host. They must be reported as not-found
+# (the consumers handle the absence gracefully).
+# SDL3 probes:
+RegisterFindPackageHandler(LibUSB              NotFoundFindPackage)
+RegisterFindPackageHandler(SdlAndroidPlatform  NotFoundFindPackage)
+RegisterFindPackageHandler(Java                NotFoundFindPackage)
+# glslang probe:
+RegisterFindPackageHandler(SPIRV-Tools-opt     NotFoundFindPackage)
+# tracy probe:
+RegisterFindPackageHandler(rocprofiler-sdk     NotFoundFindPackage)
+
+macro(find_package _fo_pkg_name)
+	if(DEFINED _FO_FIND_PKG_HANDLER_${_fo_pkg_name})
+		cmake_language(CALL "${_FO_FIND_PKG_HANDLER_${_fo_pkg_name}}" "${_fo_pkg_name}" ${ARGN})
+	else()
+		AbortMessage("find_package(${_fo_pkg_name}) blocked: no handler registered. Every find_package() must route through the project registry — call RegisterFindPackageHandler(${_fo_pkg_name} <macro>) before any third-party AddSubdirectory().")
+	endif()
+endmacro()
 
 # Third-party libs
 StatusMessage("Third-party libs:")
@@ -140,9 +140,9 @@ set_target_properties(ZLIB::ZLIB PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${FO_ZLIB_INCLUDE_DIR_ABS};${FO_ZLIB_BINARY_DIR_ABS}")
 
 # Capture absolute paths now — the handler macro is expanded at the
-# find_package() call site (e.g. inside libpng/sentry/curl), where
-# CMAKE_CURRENT_SOURCE_DIR / FO_ZLIB_DIR would resolve to the consumer
-# subdirectory.
+# find_package() call site (e.g. inside libpng or downstream consumers),
+# where CMAKE_CURRENT_SOURCE_DIR / FO_ZLIB_DIR would resolve to the
+# consumer subdirectory.
 macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_FOUND TRUE)
     set(ZLIB_LIBRARY zlibstatic)
@@ -303,7 +303,7 @@ SetValue(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
 AddIncludeDirectories("${FO_JSON_DIR}")
 
 # LibreSSL
-if(FO_BUILD_SERVER_LIB)
+if(FO_BUILD_OPENSSL_LIB)
     StatusMessage("+ LibreSSL")
     SetValue(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
     SetCacheValues(
@@ -360,6 +360,11 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_SSL OFF
         ENABLE_SASL OFF
         ENABLE_ZLIB SYSTEM
+        # We don't ship snappy or zstd, so disable both. Otherwise mongo-c-driver
+        # falls back to pkg_check_modules() and silently links against the host
+        # libraries on Linux build agents.
+        ENABLE_SNAPPY OFF
+        ENABLE_ZSTD OFF
         ENABLE_CLIENT_SIDE_ENCRYPTION OFF)
     SetCacheValues(
         ENABLE_SHARED OFF
@@ -383,7 +388,7 @@ if(FO_BUILD_SERVER_LIB)
     endif()
 
     AddIncludeDirectories(
-        "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson"
+        "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libbson/src")
     TargetCompileDefinitions(bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
     AddCompileDefinitionsList(BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN)
@@ -392,7 +397,7 @@ if(FO_BUILD_SERVER_LIB)
 
     if(ENABLE_MONGOC)
         AddIncludeDirectories(
-            "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc"
+            "${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src"
             "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
         TargetCompileDefinitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
         AppendList(FO_SERVER_LIBS mongoc_static)

@@ -66,7 +66,7 @@ endmacro()
 # Built-in handler: report the package as missing without reaching the host
 # system. If the consumer marked it REQUIRED, abort configure with a clear
 # diagnostic. Use for optional probes that we deliberately don't ship
-# (SDL's LibUSB, curl's NGHTTP2, ...).
+# (e.g. SDL's LibUSB, glslang's SPIRV-Tools-opt, ...).
 macro(NotFoundFindPackage _fo_nf_pkg)
 	list(FIND ARGN "REQUIRED" _fo_nf_required_idx)
 	if(NOT _fo_nf_required_idx EQUAL -1)
