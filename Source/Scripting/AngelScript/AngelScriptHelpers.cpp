@@ -46,6 +46,13 @@
 
 FO_BEGIN_NAMESPACE
 
+constexpr AngelScript::asPWORD AS_TYPE_INFO_CACHE_USER_DATA = 1100;
+
+struct ScriptTypeInfoCache
+{
+    unordered_map<string, AngelScript::asITypeInfo*> Map {};
+};
+
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -342,15 +349,44 @@ auto NormalizeScriptPropertyDecl(string_view decl) -> string
     return fixed_decl;
 }
 
+static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    delete cast_from_void<ScriptTypeInfoCache*>(engine->GetUserData(AS_TYPE_INFO_CACHE_USER_DATA));
+    engine->SetUserData(nullptr, AS_TYPE_INFO_CACHE_USER_DATA);
+}
+
+static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const char* type) -> AngelScript::asITypeInfo*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* cache = cast_from_void<ScriptTypeInfoCache*>(as_engine->GetUserData(AS_TYPE_INFO_CACHE_USER_DATA));
+
+    if (cache == nullptr) {
+        cache = new ScriptTypeInfoCache();
+        as_engine->SetUserData(cast_to_void(cache), AS_TYPE_INFO_CACHE_USER_DATA);
+        as_engine->SetEngineUserDataCleanupCallback(CleanupTypeInfoCache, AS_TYPE_INFO_CACHE_USER_DATA);
+    }
+
+    if (const auto it = cache->Map.find(type); it != cache->Map.end()) {
+        return it->second;
+    }
+
+    const auto type_id = as_engine->GetTypeIdByDecl(type);
+    FO_RUNTIME_ASSERT(type_id);
+    auto* info = as_engine->GetTypeInfoById(type_id);
+    FO_RUNTIME_ASSERT(info);
+    cache->Map.emplace(type, info);
+    return info;
+}
+
 auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(as_engine);
-    const auto type_id = as_engine->GetTypeIdByDecl(type);
-    FO_RUNTIME_ASSERT(type_id);
-    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(as_type_info);
+    auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_array = ScriptArray::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_array);
     return as_array;
@@ -361,10 +397,7 @@ auto CreateScriptDict(AngelScript::asIScriptEngine* as_engine, const char* type)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(as_engine);
-    const auto type_id = as_engine->GetTypeIdByDecl(type);
-    FO_RUNTIME_ASSERT(type_id);
-    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(as_type_info);
+    auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_dict = ScriptDict::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_dict);
     return as_dict;

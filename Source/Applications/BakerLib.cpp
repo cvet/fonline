@@ -36,11 +36,20 @@
 #include "Baker.h"
 #include "Logging.h"
 
+#if FO_TRACY
+#include <client/TracyProfiler.hpp>
+#include <tracy/Tracy.hpp>
+#endif
+
 FO_USING_NAMESPACE();
 
 FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+#if FO_TRACY
+    tracy::GetProfiler().RequestShutdown();
+#endif
 
     CreateGlobalData();
     LogToFile(strex("{}_BakerLib.log", FO_DEV_NAME));

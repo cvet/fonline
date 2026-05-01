@@ -3219,12 +3219,20 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<pair<ItemHexView*, const MapSprite*>> pix_item;
-    vector<pair<ItemHexView*, const MapSprite*>> pix_item_egg;
-
     const auto pos = ScreenToMapPos(screen_pos);
 
+    pair<ItemHexView*, const MapSprite*> best {};
+    pair<ItemHexView*, const MapSprite*> best_egg {};
+    int32_t best_sort = std::numeric_limits<int32_t>::min();
+    int32_t best_egg_sort = std::numeric_limits<int32_t>::min();
+
     const auto process_sprite = [&](ItemHexView* item, const MapSprite* mspr) {
+        const int32_t sort_value = mspr->GetSortValue();
+
+        if (sort_value <= best_sort && sort_value <= best_egg_sort) {
+            return;
+        }
+
         const irect32 rect = mspr->GetDrawRect();
         irect32 check_rect = rect;
         check_rect.x -= extra_range;
@@ -3233,6 +3241,12 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
         check_rect.height += extra_range * 2;
 
         if (pos.x < check_rect.x || pos.x > check_rect.x + check_rect.width || pos.y < check_rect.y || pos.y > check_rect.y + check_rect.height) {
+            return;
+        }
+
+        const bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr->GetHex(), mspr->GetEggAppearence());
+
+        if (potentially_egg ? sort_value <= best_egg_sort : sort_value <= best_sort) {
             return;
         }
 
@@ -3245,11 +3259,13 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
             }
         }
 
-        if (_engine->SprMngr.IsEggTransp(pos, mspr->GetHex(), mspr->GetEggAppearence())) {
-            pix_item_egg.emplace_back(item, mspr);
+        if (potentially_egg) {
+            best_egg_sort = sort_value;
+            best_egg = {item, mspr};
         }
         else {
-            pix_item.emplace_back(item, mspr);
+            best_sort = sort_value;
+            best = {item, mspr};
         }
     };
 
@@ -3284,28 +3300,28 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
         }
     }
 
-    if (pix_item.empty()) {
-        if (pix_item_egg.empty()) {
-            return {};
-        }
-
-        std::ranges::stable_sort(pix_item_egg, [](auto&& i1, auto&& i2) -> bool { return i1.second->GetSortValue() > i2.second->GetSortValue(); });
-        item_egg = true;
-        return pix_item_egg.front();
-    }
-    else {
-        std::ranges::stable_sort(pix_item, [](auto&& i1, auto&& i2) -> bool { return i1.second->GetSortValue() > i2.second->GetSortValue(); });
+    if (best.first != nullptr) {
         item_egg = false;
-        return pix_item.front();
+        return best;
     }
+
+    if (best_egg.first != nullptr) {
+        item_egg = true;
+        return best_egg;
+    }
+
+    return {};
 }
 
 auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<CritterHexView*, const MapSprite*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<CritterHexView*> critters;
     const auto pos = ScreenToMapPos(screen_pos);
+
+    CritterHexView* best = nullptr;
+    const MapSprite* best_mspr = nullptr;
+    int32_t best_sort = std::numeric_limits<int32_t>::min();
 
     for (auto& cr : _critters) {
         if (!cr->IsMapSpriteVisible() || cr->IsFinishing()) {
@@ -3316,33 +3332,39 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
         }
 
         const auto* mspr = cr->GetMapSprite();
+        const int32_t sort_value = mspr->GetSortValue();
+
+        if (sort_value <= best_sort) {
+            continue;
+        }
+
         const auto view_rect = mspr->GetViewRect();
         const auto l = view_rect.x - extra_range;
         const auto t = view_rect.y - extra_range;
         const auto r = view_rect.x + view_rect.width + extra_range;
         const auto b = view_rect.y + view_rect.height + extra_range;
 
-        if (pos.x >= l && pos.x <= r && pos.y >= t && pos.y <= b) {
-            if (check_transparent) {
-                const auto draw_rect = mspr->GetDrawRect();
+        if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
+            continue;
+        }
 
-                if (_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - draw_rect.x, pos.y - draw_rect.y})) {
-                    critters.emplace_back(cr.get());
-                }
-            }
-            else {
-                critters.emplace_back(cr.get());
+        if (check_transparent) {
+            const auto draw_rect = mspr->GetDrawRect();
+
+            if (!_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - draw_rect.x, pos.y - draw_rect.y})) {
+                continue;
             }
         }
+
+        best_sort = sort_value;
+        best = cr.get();
+        best_mspr = mspr;
     }
 
-    if (critters.empty()) {
+    if (best == nullptr) {
         return {};
     }
-    if (critters.size() > 1) {
-        std::ranges::stable_sort(critters, [](auto&& cr1, auto&& cr2) -> bool { return cr1->GetMapSprite()->GetSortValue() > cr2->GetMapSprite()->GetSortValue(); });
-    }
-    return pair(critters.front(), critters.front()->GetMapSprite());
+    return {best, best_mspr};
 }
 
 auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<ClientEntity*, const MapSprite*>

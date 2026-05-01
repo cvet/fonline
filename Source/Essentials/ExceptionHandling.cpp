@@ -45,6 +45,9 @@
 #endif
 #endif
 #include "backward.hpp"
+#define HAS_NATIVE_TRACE 1
+#else
+#define HAS_NATIVE_TRACE 0
 #endif
 
 #include "WinApiUndef-Include.h"
@@ -55,7 +58,7 @@ struct ExceptHandlingData
 {
     ExceptHandlingData()
     {
-#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if HAS_NATIVE_TRACE
         if (!IsRunInDebugger()) {
             [[maybe_unused]] static backward::SignalHandling sh;
             assert(sh.loaded());
@@ -170,7 +173,7 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
         string traceback;
 
         if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->stack_trace()));
+            traceback = InsertCatchedMark(string(FormatStackTrace(base_engine_ex->stack_trace())));
         }
         else {
             traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
@@ -198,7 +201,7 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
         string traceback;
 
         if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(FormatStackTrace(base_engine_ex->stack_trace()));
+            traceback = InsertCatchedMark(string(FormatStackTrace(base_engine_ex->stack_trace())));
         }
         else {
             traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
@@ -257,89 +260,6 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
     catch (const VerifyFailedException& ex) {
         ReportExceptionAndContinue(ex);
     }
-}
-
-extern auto GetRealStackTrace() -> string
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (IsRunInDebugger()) {
-        return "Stack trace disabled (debugger detected)";
-    }
-
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-    backward::TraceResolver resolver;
-    backward::StackTrace st;
-    st.load_here(42);
-    st.skip_n_firsts(2);
-
-    ostringstream ss;
-
-    ss << "Stack trace (most recent call first):\n";
-
-    for (size_t i = 0; i < st.size(); ++i) {
-        backward::ResolvedTrace trace = resolver.resolve(st[i]);
-
-        auto obj_func = string(trace.object_function);
-
-        if (obj_func.length() > 100) {
-            obj_func.resize(97);
-            obj_func.append("...");
-        }
-
-        string file_name = strex(trace.source.filename).extract_file_name();
-
-        if (!file_name.empty()) {
-            file_name.append(" ");
-        }
-
-        file_name += strex("{}", trace.source.line);
-
-        ss << "- " << obj_func << " (" << file_name << ")\n";
-    }
-
-    string st_str = ss.str();
-
-    if (!st_str.empty() && st_str.back() == '\n') {
-        st_str.pop_back();
-    }
-
-    return string(st_str);
-#else
-
-    return "Stack trace not supported";
-#endif
-}
-
-extern auto FormatStackTrace(const StackTraceData& st) -> string
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if !FO_NO_MANUAL_STACK_TRACE
-    ostringstream ss;
-
-    ss << "Stack trace (most recent call first):\n";
-
-    for (size_t i = std::min(st.CallsCount, STACK_TRACE_MAX_SIZE); i > 0; i--) {
-        const auto& entry = st.CallTree[i - 1];
-        ss << "- " << entry->function << " (" << strex(entry->file).extract_file_name().strv() << " line " << entry->line << ")\n";
-    }
-
-    if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
-        ss << "- ...and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
-    }
-
-    string st_str = ss.str();
-
-    if (!st_str.empty() && st_str.back() == '\n') {
-        st_str.pop_back();
-    }
-
-    return string(st_str);
-
-#else
-    return string();
-#endif
 }
 
 FO_END_NAMESPACE
