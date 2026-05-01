@@ -515,7 +515,7 @@ static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
 
     const auto* meta = GetEngineMetadata(gen->GetEngine());
     const auto& enum_name = *cast_from_void<const string*>(gen->GetAuxiliary());
-    const auto enum_value = *cast_from_void<const int32_t*>(gen->GetAddressOfArg(0));
+    const auto enum_value = ReadEnumValueAsInt32(gen->GetAddressOfArg(0), meta->GetBaseType(enum_name));
     auto* self = cast_from_void<any_t*>(gen->GetObject());
 
     new (self) any_t(Any_MakeEnumValue(meta, enum_name, enum_value));
@@ -559,7 +559,7 @@ static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
     const auto* self = cast_from_void<any_t*>(gen->GetObject());
     const auto enum_value = Any_ResolveEnumValue(*self, meta, enum_name);
 
-    new (gen->GetAddressOfReturnLocation()) int32_t(enum_value);
+    WriteEnumValueFromInt32(gen->GetAddressOfReturnLocation(), meta->GetBaseType(enum_name), enum_value);
 }
 
 template<typename T>

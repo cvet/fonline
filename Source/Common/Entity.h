@@ -246,6 +246,12 @@ private:
 class EntityEvent
 {
 public:
+    EntityEvent() = delete;
+    EntityEvent(const EntityEvent&) = delete;
+    EntityEvent(EntityEvent&&) noexcept = delete;
+    auto operator=(const EntityEvent&) = delete;
+    auto operator=(EntityEvent&&) noexcept = delete;
+
     void Subscribe(Entity::EventCallbackData&& callback);
     void Unsubscribe(uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAll() noexcept;
@@ -268,6 +274,10 @@ public:
         EntityEvent(entity, Name.c_str())
     {
     }
+    EntityEventWrapper(const EntityEventWrapper&) = delete;
+    EntityEventWrapper(EntityEventWrapper&&) noexcept = delete;
+    auto operator=(const EntityEventWrapper&) = delete;
+    auto operator=(EntityEventWrapper&&) noexcept = delete;
 
     auto Fire(Args... args) noexcept -> Entity::EventResult
     {

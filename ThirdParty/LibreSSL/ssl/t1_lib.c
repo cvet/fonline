@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_lib.c,v 1.198 2023/11/18 10:51:09 tb Exp $ */
+/* $OpenBSD: t1_lib.c,v 1.207 2025/12/04 21:16:17 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -128,9 +128,9 @@ int
 tls1_new(SSL *s)
 {
 	if (!ssl3_new(s))
-		return (0);
+		return 0;
 	s->method->ssl_clear(s);
-	return (1);
+	return 1;
 }
 
 void
@@ -151,6 +151,7 @@ tls1_clear(SSL *s)
 }
 
 struct supported_group {
+	uint16_t group_id;
 	int nid;
 	int bits;
 };
@@ -160,120 +161,154 @@ struct supported_group {
  * https://www.iana.org/assignments/tls-parameters/#tls-parameters-8
  */
 static const struct supported_group nid_list[] = {
-	[1] = {
+	{
+		.group_id = 1,
 		.nid = NID_sect163k1,
 		.bits = 80,
 	},
-	[2] = {
+	{
+		.group_id = 2,
 		.nid = NID_sect163r1,
 		.bits = 80,
 	},
-	[3] = {
+	{
+		.group_id = 3,
 		.nid = NID_sect163r2,
 		.bits = 80,
 	},
-	[4] = {
+	{
+		.group_id = 4,
 		.nid = NID_sect193r1,
 		.bits = 80,
 	},
-	[5] = {
+	{
+		.group_id = 5,
 		.nid = NID_sect193r2,
 		.bits = 80,
 	},
-	[6] = {
+	{
+		.group_id = 6,
 		.nid = NID_sect233k1,
 		.bits = 112,
 	},
-	[7] = {
+	{
+		.group_id = 7,
 		.nid = NID_sect233r1,
 		.bits = 112,
 	},
-	[8] = {
+	{
+		.group_id = 8,
 		.nid = NID_sect239k1,
 		.bits = 112,
 	},
-	[9] = {
+	{
+		.group_id = 9,
 		.nid = NID_sect283k1,
 		.bits = 128,
 	},
-	[10] = {
+	{
+		.group_id = 10,
 		.nid = NID_sect283r1,
 		.bits = 128,
 	},
-	[11] = {
+	{
+		.group_id = 11,
 		.nid = NID_sect409k1,
 		.bits = 192,
 	},
-	[12] = {
+	{
+		.group_id = 12,
 		.nid = NID_sect409r1,
 		.bits = 192,
 	},
-	[13] = {
+	{
+		.group_id = 13,
 		.nid = NID_sect571k1,
 		.bits = 256,
 	},
-	[14] = {
+	{
+		.group_id = 14,
 		.nid = NID_sect571r1,
 		.bits = 256,
 	},
-	[15] = {
+	{
+		.group_id = 15,
 		.nid = NID_secp160k1,
 		.bits = 80,
 	},
-	[16] = {
+	{
+		.group_id = 16,
 		.nid = NID_secp160r1,
 		.bits = 80,
 	},
-	[17] = {
+	{
+		.group_id = 17,
 		.nid = NID_secp160r2,
 		.bits = 80,
 	},
-	[18] = {
+	{
+		.group_id = 18,
 		.nid = NID_secp192k1,
 		.bits = 80,
 	},
-	[19] = {
+	{
+		.group_id = 19,
 		.nid = NID_X9_62_prime192v1,	/* aka secp192r1 */
 		.bits = 80,
 	},
-	[20] = {
+	{
+		.group_id = 20,
 		.nid = NID_secp224k1,
 		.bits = 112,
 	},
-	[21] = {
+	{
+		.group_id = 21,
 		.nid = NID_secp224r1,
 		.bits = 112,
 	},
-	[22] = {
+	{
+		.group_id = 22,
 		.nid = NID_secp256k1,
 		.bits = 128,
 	},
-	[23] = {
+	{
+		.group_id = 23,
 		.nid = NID_X9_62_prime256v1,	/* aka secp256r1 */
 		.bits = 128,
 	},
-	[24] = {
+	{
+		.group_id = 24,
 		.nid = NID_secp384r1,
 		.bits = 192,
 	},
-	[25] = {
+	{
+		.group_id = 25,
 		.nid = NID_secp521r1,
 		.bits = 256,
 	},
-	[26] = {
+	{
+		.group_id = 26,
 		.nid = NID_brainpoolP256r1,
 		.bits = 128,
 	},
-	[27] = {
+	{
+		.group_id = 27,
 		.nid = NID_brainpoolP384r1,
 		.bits = 192,
 	},
-	[28] = {
+	{
+		.group_id = 28,
 		.nid = NID_brainpoolP512r1,
 		.bits = 256,
 	},
-	[29] = {
+	{
+		.group_id = 29,
 		.nid = NID_X25519,
+		.bits = 128,
+	},
+	{
+		.group_id = 4588,
+		.nid = NID_X25519MLKEM768,
 		.bits = 128,
 	},
 };
@@ -292,41 +327,21 @@ static const uint8_t ecformats_default[] = {
 	TLSEXT_ECPOINTFORMAT_uncompressed,
 };
 
-#if 0
-static const uint16_t ecgroups_list[] = {
+static const uint16_t ecgroups_tls12_client_default[] = {
 	29,			/* X25519 (29) */
-	14,			/* sect571r1 (14) */
-	13,			/* sect571k1 (13) */
-	25,			/* secp521r1 (25) */
-	28,			/* brainpoolP512r1 (28) */
-	11,			/* sect409k1 (11) */
-	12,			/* sect409r1 (12) */
-	27,			/* brainpoolP384r1 (27) */
-	24,			/* secp384r1 (24) */
-	9,			/* sect283k1 (9) */
-	10,			/* sect283r1 (10) */
-	26,			/* brainpoolP256r1 (26) */
-	22,			/* secp256k1 (22) */
 	23,			/* secp256r1 (23) */
-	8,			/* sect239k1 (8) */
-	6,			/* sect233k1 (6) */
-	7,			/* sect233r1 (7) */
-	20,			/* secp224k1 (20) */
-	21,			/* secp224r1 (21) */
-	4,			/* sect193r1 (4) */
-	5,			/* sect193r2 (5) */
-	18,			/* secp192k1 (18) */
-	19,			/* secp192r1 (19) */
-	1,			/* sect163k1 (1) */
-	2,			/* sect163r1 (2) */
-	3,			/* sect163r2 (3) */
-	15,			/* secp160k1 (15) */
-	16,			/* secp160r1 (16) */
-	17,			/* secp160r2 (17) */
+	24,			/* secp384r1 (24) */
+	25,			/* secp521r1 (25) */
 };
-#endif
+
+static const uint16_t ecgroups_tls12_server_default[] = {
+	29,			/* X25519 (29) */
+	23,			/* secp256r1 (23) */
+	24,			/* secp384r1 (24) */
+};
 
 static const uint16_t ecgroups_client_default[] = {
+	4588,			/* X25519MLKEM768 (4588) */
 	29,			/* X25519 (29) */
 	23,			/* secp256r1 (23) */
 	24,			/* secp384r1 (24) */
@@ -334,23 +349,47 @@ static const uint16_t ecgroups_client_default[] = {
 };
 
 static const uint16_t ecgroups_server_default[] = {
+	4588,			/* X25519MLKEM768 (4588) */
 	29,			/* X25519 (29) */
 	23,			/* secp256r1 (23) */
 	24,			/* secp384r1 (24) */
 };
 
+static const struct supported_group *
+tls1_supported_group_by_id(uint16_t group_id)
+{
+	int i;
+
+	for (i = 0; i < NID_LIST_LEN; i++) {
+		if (group_id == nid_list[i].group_id)
+			return &nid_list[i];
+	}
+
+	return NULL;
+}
+
+static const struct supported_group *
+tls1_supported_group_by_nid(int nid)
+{
+	int i;
+
+	for (i = 0; i < NID_LIST_LEN; i++) {
+		if (nid == nid_list[i].nid)
+			return &nid_list[i];
+	}
+
+	return NULL;
+}
+
 int
 tls1_ec_group_id2nid(uint16_t group_id, int *out_nid)
 {
-	int nid;
+	const struct supported_group *sg;
 
-	if (group_id >= NID_LIST_LEN)
+	if ((sg = tls1_supported_group_by_id(group_id)) == NULL)
 		return 0;
 
-	if ((nid = nid_list[group_id].nid) == 0)
-		return 0;
-
-	*out_nid = nid;
+	*out_nid = sg->nid;
 
 	return 1;
 }
@@ -358,15 +397,12 @@ tls1_ec_group_id2nid(uint16_t group_id, int *out_nid)
 int
 tls1_ec_group_id2bits(uint16_t group_id, int *out_bits)
 {
-	int bits;
+	const struct supported_group *sg;
 
-	if (group_id >= NID_LIST_LEN)
+	if ((sg = tls1_supported_group_by_id(group_id)) == NULL)
 		return 0;
 
-	if ((bits = nid_list[group_id].bits) == 0)
-		return 0;
-
-	*out_bits = bits;
+	*out_bits = sg->bits;
 
 	return 1;
 }
@@ -374,19 +410,14 @@ tls1_ec_group_id2bits(uint16_t group_id, int *out_bits)
 int
 tls1_ec_nid2group_id(int nid, uint16_t *out_group_id)
 {
-	uint16_t group_id;
+	const struct supported_group *sg;
 
-	if (nid == 0)
+	if ((sg = tls1_supported_group_by_nid(nid)) == NULL)
 		return 0;
 
-	for (group_id = 0; group_id < NID_LIST_LEN; group_id++) {
-		if (nid_list[group_id].nid == nid) {
-			*out_group_id = group_id;
-			return 1;
-		}
-	}
+	*out_group_id = sg->group_id;
 
-	return 0;
+	return 1;
 }
 
 /*
@@ -433,11 +464,21 @@ tls1_get_group_list(const SSL *s, int client_groups, const uint16_t **pgroups,
 		return;
 
 	if (!s->server) {
-		*pgroups = ecgroups_client_default;
-		*pgroupslen = sizeof(ecgroups_client_default) / 2;
+		if (s->s3->hs.our_max_tls_version >= TLS1_3_VERSION) {
+			*pgroups = ecgroups_client_default;
+			*pgroupslen = sizeof(ecgroups_client_default) / 2;
+		} else {
+			*pgroups = ecgroups_tls12_client_default;
+			*pgroupslen = sizeof(ecgroups_tls12_client_default) / 2;
+		}
 	} else {
-		*pgroups = ecgroups_server_default;
-		*pgroupslen = sizeof(ecgroups_server_default) / 2;
+		if (s->s3->hs.our_max_tls_version >= TLS1_3_VERSION) {
+			*pgroups = ecgroups_server_default;
+			*pgroupslen = sizeof(ecgroups_server_default) / 2;
+		} else {
+			*pgroups = ecgroups_tls12_server_default;
+			*pgroupslen = sizeof(ecgroups_tls12_server_default) / 2;
+		}
 	}
 }
 
@@ -628,46 +669,31 @@ tls1_check_group(SSL *s, uint16_t group_id)
 static int
 tls1_set_ec_id(uint16_t *group_id, uint8_t *comp_id, EC_KEY *ec)
 {
-	const EC_GROUP *grp;
-	const EC_METHOD *meth;
-	int prime_field;
+	const EC_GROUP *group;
 	int nid;
 
-	if (ec == NULL)
-		return (0);
-
-	/* Determine whether the group is defined over a prime field. */
-	if ((grp = EC_KEY_get0_group(ec)) == NULL)
-		return (0);
-	if ((meth = EC_GROUP_method_of(grp)) == NULL)
-		return (0);
-	prime_field = (EC_METHOD_get_field_type(meth) == NID_X9_62_prime_field);
+	if ((group = EC_KEY_get0_group(ec)) == NULL)
+		return 0;
 
 	/* Determine group ID. */
-	nid = EC_GROUP_get_curve_name(grp);
-	/* If we have an ID set it, otherwise set arbitrary explicit group. */
+	nid = EC_GROUP_get_curve_name(group);
 	if (!tls1_ec_nid2group_id(nid, group_id))
-		*group_id = prime_field ? 0xff01 : 0xff02;
-
-	if (comp_id == NULL)
-		return (1);
+		return 0;
 
 	/* Specify the compression identifier. */
 	if (EC_KEY_get0_public_key(ec) == NULL)
-		return (0);
+		return 0;
 	*comp_id = TLSEXT_ECPOINTFORMAT_uncompressed;
 	if (EC_KEY_get_conv_form(ec) == POINT_CONVERSION_COMPRESSED) {
-		*comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2;
-		if (prime_field)
-			*comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime;
+		*comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime;
 	}
 
-	return (1);
+	return 1;
 }
 
 /* Check that an EC key is compatible with extensions. */
 static int
-tls1_check_ec_key(SSL *s, const uint16_t *group_id, const uint8_t *comp_id)
+tls1_check_ec_key(SSL *s, const uint16_t group_id, const uint8_t comp_id)
 {
 	size_t groupslen, formatslen, i;
 	const uint16_t *groups;
@@ -678,29 +704,29 @@ tls1_check_ec_key(SSL *s, const uint16_t *group_id, const uint8_t *comp_id)
 	 * is supported (see RFC4492).
 	 */
 	tls1_get_formatlist(s, 1, &formats, &formatslen);
-	if (comp_id != NULL && formats != NULL) {
+	if (formats != NULL) {
 		for (i = 0; i < formatslen; i++) {
-			if (formats[i] == *comp_id)
+			if (formats[i] == comp_id)
 				break;
 		}
 		if (i == formatslen)
-			return (0);
+			return 0;
 	}
 
 	/*
 	 * Check group list if present, otherwise everything is supported.
 	 */
 	tls1_get_group_list(s, 1, &groups, &groupslen);
-	if (group_id != NULL && groups != NULL) {
+	if (groups != NULL) {
 		for (i = 0; i < groupslen; i++) {
-			if (groups[i] == *group_id)
+			if (groups[i] == group_id)
 				break;
 		}
 		if (i == groupslen)
-			return (0);
+			return 0;
 	}
 
-	return (1);
+	return 1;
 }
 
 /* Check EC server key is compatible with client extensions. */
@@ -714,15 +740,15 @@ tls1_check_ec_server_key(SSL *s)
 	EVP_PKEY *pkey;
 
 	if (cpk->x509 == NULL || cpk->privatekey == NULL)
-		return (0);
+		return 0;
 	if ((pkey = X509_get0_pubkey(cpk->x509)) == NULL)
-		return (0);
+		return 0;
 	if ((eckey = EVP_PKEY_get0_EC_KEY(pkey)) == NULL)
-		return (0);
+		return 0;
 	if (!tls1_set_ec_id(&group_id, &comp_id, eckey))
-		return (0);
+		return 0;
 
-	return tls1_check_ec_key(s, &group_id, &comp_id);
+	return tls1_check_ec_key(s, group_id, comp_id);
 }
 
 int

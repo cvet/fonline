@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_ameth.c,v 1.69 2024/08/29 16:58:19 tb Exp $ */
+/* $OpenBSD: ec_ameth.c,v 1.74 2025/05/10 05:54:38 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -56,18 +56,24 @@
  *
  */
 
-#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
 
 #include <openssl/opensslconf.h>
 
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cms.h>
 #include <openssl/ec.h>
-#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pkcs7.h>
+#include <openssl/objects.h>
 #include <openssl/x509.h>
 
 #include "asn1_local.h"
-#include "ec_local.h"
+#include "bn_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 #include "x509_local.h"
 
@@ -98,7 +104,7 @@ eckey_get_curve_name(const EC_KEY *eckey, int *nid)
 		ECerror(EC_R_MISSING_PARAMETERS);
 		return 0;
 	}
-	if (EC_GROUP_get_asn1_flag(group) != 0)
+	if ((EC_GROUP_get_asn1_flag(group) & OPENSSL_EC_NAMED_CURVE) != 0)
 		*nid = EC_GROUP_get_curve_name(group);
 
 	return 1;
@@ -304,7 +310,7 @@ eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b)
 	return -2;
 }
 
-static int
+int
 eckey_compute_pubkey(EC_KEY *eckey)
 {
 	const BIGNUM *priv_key;
@@ -322,7 +328,6 @@ eckey_compute_pubkey(EC_KEY *eckey)
 		goto err;
 	if (!EC_KEY_set_public_key(eckey, pub_key))
 		goto err;
-	pub_key = NULL;
 
 	ret = 1;
 

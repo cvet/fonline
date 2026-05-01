@@ -149,10 +149,34 @@
 #define ZoneTransientN( varname, name, active ) tracy::ScopedZone varname( TracyLine, TracyFile, strlen( TracyFile ), TracyFunction, strlen( TracyFunction ), name, strlen( name ), TRACY_CALLSTACK, active )
 #define ZoneTransientNC( varname, name, color, active ) tracy::ScopedZone varname( TracyLine, TracyFile, strlen( TracyFile ), TracyFunction, strlen( TracyFunction ), name, strlen( name ), color, TRACY_CALLSTACK, active )
 
-#define ZoneScoped ZoneNamed( ___tracy_scoped_zone, true )
-#define ZoneScopedN( name ) ZoneNamedN( ___tracy_scoped_zone, name, true )
-#define ZoneScopedC( color ) ZoneNamedC( ___tracy_scoped_zone, color, true )
-#define ZoneScopedNC( name, color ) ZoneNamedNC( ___tracy_scoped_zone, name, color, true )
+#if defined(TRACY_ALLOW_SHADOW_WARNING)
+    #define SuppressVarShadowWarning(Expr) Expr
+#elif defined(__clang__)
+    #define SuppressVarShadowWarning(Expr) \
+        _Pragma("clang diagnostic push") \
+        _Pragma("clang diagnostic ignored \"-Wshadow\"") \
+        Expr; \
+        _Pragma("clang diagnostic pop")
+#elif defined(__GNUC__)
+    #define SuppressVarShadowWarning(Expr) \
+        _Pragma("GCC diagnostic push") \
+        _Pragma("GCC diagnostic ignored \"-Wshadow\"") \
+        Expr; \
+        _Pragma("GCC diagnostic pop")
+#elif defined(_MSC_VER) 
+    #define SuppressVarShadowWarning(Expr) \
+        _Pragma("warning(push)") \
+        _Pragma("warning(disable : 4456)") \
+        Expr; \
+        _Pragma("warning(pop)")
+#else
+    #define SuppressVarShadowWarning(Expr) Expr
+#endif
+
+#define ZoneScoped SuppressVarShadowWarning( ZoneNamed( ___tracy_scoped_zone, true ) )
+#define ZoneScopedN( name ) SuppressVarShadowWarning( ZoneNamedN( ___tracy_scoped_zone, name, true ) )
+#define ZoneScopedC( color ) SuppressVarShadowWarning( ZoneNamedC( ___tracy_scoped_zone, color, true ) )
+#define ZoneScopedNC( name, color ) SuppressVarShadowWarning( ZoneNamedNC( ___tracy_scoped_zone, name, color, true ) )
 
 #define ZoneText( txt, size ) ___tracy_scoped_zone.Text( txt, size )
 #define ZoneTextV( varname, txt, size ) varname.Text( txt, size )
@@ -182,7 +206,7 @@
 #define TracySharedLockableN( type, varname, desc ) tracy::SharedLockable<type> varname { [] () -> const tracy::SourceLocationData* { static constexpr tracy::SourceLocationData srcloc { nullptr, desc, TracyFile, TracyLine, 0 }; return &srcloc; }() }
 #define LockableBase( type ) tracy::Lockable<type>
 #define SharedLockableBase( type ) tracy::SharedLockable<type>
-#define LockMark( varname ) static constexpr tracy::SourceLocationData __tracy_lock_location_##__LINE__ { nullptr, TracyFunction,  TracyFile, (uint32_t)TracyLine, 0 }; varname.Mark( &__tracy_lock_location_##__LINE__ )
+#define LockMark( varname ) static constexpr tracy::SourceLocationData TracyConcat(__tracy_lock_location_,TracyLine) { nullptr, TracyFunction,  TracyFile, (uint32_t)TracyLine, 0 }; varname.Mark( &TracyConcat(__tracy_lock_location_,TracyLine) )
 #define LockableName( varname, txt, size ) varname.CustomName( txt, size )
 
 #define TracyPlot( name, val ) tracy::Profiler::PlotData( name, val )

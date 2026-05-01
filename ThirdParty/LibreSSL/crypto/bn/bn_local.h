@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_local.h,v 1.43 2024/04/16 13:07:14 jsing Exp $ */
+/* $OpenBSD: bn_local.h,v 1.62 2026/01/23 08:29:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -116,6 +116,20 @@
 
 #include <openssl/bn.h>
 
+#if BN_BYTES == 8
+#define BN_MASK2	UINT64_C(0xffffffffffffffff)
+#define BN_MASK2l	UINT64_C(0xffffffff)
+#define BN_MASK2h	UINT64_C(0xffffffff00000000)
+#define BN_BITS		128
+#define BN_BITS4	32
+#else
+#define BN_MASK2	UINT32_C(0xffffffff)
+#define BN_MASK2l	UINT32_C(0xffff)
+#define BN_MASK2h	UINT32_C(0xffff0000)
+#define BN_BITS		64
+#define BN_BITS4	16
+#endif
+
 __BEGIN_HIDDEN_DECLS
 
 struct bignum_st {
@@ -138,16 +152,7 @@ struct bn_mont_ctx_st {
 	int flags;
 };
 
-/* Used for reciprocal division/mod functions
- * It cannot be shared between threads
- */
-typedef struct bn_recp_ctx_st {
-	BIGNUM N;	/* the divisor */
-	BIGNUM Nr;	/* the reciprocal */
-	int num_bits;
-	int shift;
-	int flags;
-} BN_RECP_CTX;
+typedef struct bn_recp_ctx_st BN_RECP_CTX;
 
 /* Used for slow "generation" functions. */
 struct bn_gencb_st {
@@ -248,12 +253,16 @@ BN_ULONG bn_add(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len,
 BN_ULONG bn_sub(BN_ULONG *r, int r_len, const BN_ULONG *a, int a_len,
     const BN_ULONG *b, int b_len);
 
-void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b, int nb);
-void bn_mul_comba4(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
-void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
+void bn_mul_comba4(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b);
+void bn_mul_comba6(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b);
+void bn_mul_comba8(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b);
+void bn_mul_words(BN_ULONG *r, const BN_ULONG *a, int a_len, const BN_ULONG *b,
+    int b_len);
 
 void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a);
+void bn_sqr_comba6(BN_ULONG *r, const BN_ULONG *a);
 void bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a);
+void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int a_len);
 
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     const BN_ULONG *np, const BN_ULONG *n0, int num);
@@ -263,13 +272,8 @@ int bn_expand_bits(BIGNUM *a, size_t bits);
 int bn_expand_bytes(BIGNUM *a, size_t bytes);
 int bn_wexpand(BIGNUM *a, int words);
 
-BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-    int num);
-BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-    int num);
-BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
-BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
-void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
+BN_ULONG bn_mulw_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
+BN_ULONG bn_mulw_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d);
 void bn_div_rem_words(BN_ULONG h, BN_ULONG l, BN_ULONG d, BN_ULONG *out_q,
     BN_ULONG *out_r);
@@ -280,18 +284,18 @@ int bn_rand_interval(BIGNUM *rnd, BN_ULONG lower_word, const BIGNUM *upper_exc);
 
 void	BN_init(BIGNUM *);
 
-int	BN_reciprocal(BIGNUM *r, const BIGNUM *m, int len, BN_CTX *ctx);
+BN_MONT_CTX *BN_MONT_CTX_create(const BIGNUM *bn, BN_CTX *ctx);
 
-void	BN_RECP_CTX_init(BN_RECP_CTX *recp);
-BN_RECP_CTX *BN_RECP_CTX_new(void);
-void	BN_RECP_CTX_free(BN_RECP_CTX *recp);
-int	BN_RECP_CTX_set(BN_RECP_CTX *recp, const BIGNUM *rdiv, BN_CTX *ctx);
+BN_RECP_CTX *BN_RECP_CTX_create(const BIGNUM *N);
+void BN_RECP_CTX_free(BN_RECP_CTX *recp);
+int	BN_div_reciprocal(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m,
+    BN_RECP_CTX *recp, BN_CTX *ctx);
 int	BN_mod_mul_reciprocal(BIGNUM *r, const BIGNUM *x, const BIGNUM *y,
     BN_RECP_CTX *recp, BN_CTX *ctx);
-int	BN_mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
+int	BN_mod_sqr_reciprocal(BIGNUM *r, const BIGNUM *x, BN_RECP_CTX *recp,
+    BN_CTX *ctx);
+int	BN_mod_exp_reciprocal(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     const BIGNUM *m, BN_CTX *ctx);
-int	BN_div_recp(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m,
-    BN_RECP_CTX *recp, BN_CTX *ctx);
 
 /* Explicitly const time / non-const time versions for internal use */
 int BN_mod_exp_ct(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
@@ -339,6 +343,12 @@ int bn_printf(BIO *bio, const BIGNUM *bn, int indent, const char *fmt, ...)
 
 int bn_bn2hex_nosign(const BIGNUM *bn, char **out, size_t *out_len);
 int bn_bn2hex_nibbles(const BIGNUM *bn, char **out, size_t *out_len);
+
+BIGNUM *BN_get_rfc7919_prime_2048(BIGNUM *bn);
+BIGNUM *BN_get_rfc7919_prime_3072(BIGNUM *bn);
+BIGNUM *BN_get_rfc7919_prime_4096(BIGNUM *bn);
+BIGNUM *BN_get_rfc7919_prime_6144(BIGNUM *bn);
+BIGNUM *BN_get_rfc7919_prime_8192(BIGNUM *bn);
 
 __END_HIDDEN_DECLS
 #endif /* !HEADER_BN_LOCAL_H */

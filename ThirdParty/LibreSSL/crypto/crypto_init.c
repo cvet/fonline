@@ -1,4 +1,4 @@
-/*	$OpenBSD: crypto_init.c,v 1.21 2024/04/10 14:51:02 beck Exp $ */
+/*	$OpenBSD: crypto_init.c,v 1.26 2025/06/11 07:41:12 tb Exp $ */
 /*
  * Copyright (c) 2018 Bob Beck <beck@openbsd.org>
  *
@@ -22,12 +22,12 @@
 
 #include <openssl/asn1.h>
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/x509v3.h>
 
-#include "cryptlib.h"
+#include "crypto_internal.h"
+#include "err_local.h"
 #include "x509_issuer_cache.h"
 
 int OpenSSL_config(const char *);
@@ -37,6 +37,30 @@ static pthread_once_t crypto_init_once = PTHREAD_ONCE_INIT;
 static pthread_t crypto_init_thread;
 static int crypto_init_cleaned_up;
 
+void openssl_init_crypto_constructor(void)  __attribute__((constructor));
+
+#ifndef HAVE_CRYPTO_CPU_CAPS_INIT
+void
+crypto_cpu_caps_init(void)
+{
+}
+#endif
+
+/*
+ * This function is invoked as a constructor when the library is loaded. The
+ * code run from here must not allocate memory or trigger signals. The only
+ * safe code is to read data and update global variables.
+ */
+void
+openssl_init_crypto_constructor(void)
+{
+	crypto_cpu_caps_init();
+}
+
+/*
+ * This is used by various configure scripts to check availability of libcrypto,
+ * so we need to keep it.
+ */
 void
 OPENSSL_init(void)
 {
@@ -48,7 +72,6 @@ OPENSSL_init_crypto_internal(void)
 {
 	crypto_init_thread = pthread_self();
 
-	OPENSSL_cpuid_setup();
 	ERR_load_crypto_strings();
 }
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_sign.c,v 1.36 2023/07/08 12:26:45 beck Exp $ */
+/* $OpenBSD: rsa_sign.c,v 1.38 2025/05/10 05:54:38 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,12 +60,12 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #include "asn1_local.h"
+#include "err_local.h"
 #include "rsa_local.h"
 #include "x509_local.h"
 
@@ -130,7 +130,7 @@ RSA_sign(int type, const unsigned char *m, unsigned int m_len,
 	unsigned char *tmps = NULL;
 	int encrypt_len, encoded_len = 0, ret = 0;
 
-	if ((rsa->flags & RSA_FLAG_SIGN_VER) && rsa->meth->rsa_sign != NULL)
+	if (rsa->meth->rsa_sign != NULL)
 		return rsa->meth->rsa_sign(type, m, m_len, sigret, siglen, rsa);
 
 	/* Compute the encoded digest. */
@@ -271,7 +271,7 @@ int
 RSA_verify(int dtype, const unsigned char *m, unsigned int m_len,
     const unsigned char *sigbuf, unsigned int siglen, RSA *rsa)
 {
-	if ((rsa->flags & RSA_FLAG_SIGN_VER) && rsa->meth->rsa_verify)
+	if (rsa->meth->rsa_verify != NULL)
 		return rsa->meth->rsa_verify(dtype, m, m_len, sigbuf, siglen,
 		    rsa);
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: crypto_internal.h,v 1.12 2024/09/06 09:57:32 tb Exp $ */
+/*	$OpenBSD: crypto_internal.h,v 1.16 2025/07/22 09:18:02 jsing Exp $ */
 /*
  * Copyright (c) 2023 Joel Sing <jsing@openbsd.org>
  *
@@ -15,6 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <openssl/opensslfeatures.h>
+
 #include <endian.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -27,6 +29,74 @@
 
 #define CTASSERT(x) \
     extern char _ctassert[(x) ? 1 : -1] __attribute__((__unused__))
+
+/*
+ * Constant time functions for size_t.
+ */
+#ifndef HAVE_CRYPTO_CT_NE_ZERO
+static inline int
+crypto_ct_ne_zero(size_t v)
+{
+	return (v | ~(v - 1)) >> ((sizeof(v) * 8) - 1);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_NE_ZERO_MASK
+static inline size_t
+crypto_ct_ne_zero_mask(size_t v)
+{
+	return 0 - crypto_ct_ne_zero(v);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_EQ_ZERO
+static inline int
+crypto_ct_eq_zero(size_t v)
+{
+	return 1 - crypto_ct_ne_zero(v);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_EQ_ZERO_MASK_U8
+static inline size_t
+crypto_ct_eq_zero_mask(size_t v)
+{
+	return 0 - crypto_ct_eq_zero(v);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_LT
+static inline int
+crypto_ct_lt(size_t a, size_t b)
+{
+	return (((a - b) | (b & ~a)) & (b | ~a)) >>
+	    (sizeof(size_t) * 8 - 1);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_LT_MASK
+static inline size_t
+crypto_ct_lt_mask(size_t a, size_t b)
+{
+	return 0 - crypto_ct_lt(a, b);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_GT
+static inline int
+crypto_ct_gt(size_t a, size_t b)
+{
+	return crypto_ct_lt(b, a);
+}
+#endif
+
+#ifndef HAVE_CRYPTO_CT_GT_MASK
+static inline size_t
+crypto_ct_gt_mask(size_t a, size_t b)
+{
+	return 0 - crypto_ct_gt(a, b);
+}
+#endif
 
 /*
  * Constant time operations for uint8_t.
@@ -188,6 +258,16 @@ crypto_store_htole32(uint8_t *dst, uint32_t v)
 }
 #endif
 
+#ifndef HAVE_CRYPTO_ADD_U32DW_U64
+static inline void
+crypto_add_u32dw_u64(uint32_t *h, uint32_t *l, uint64_t v)
+{
+	v += ((uint64_t)*h << 32) | *l;
+	*h = v >> 32;
+	*l = v;
+}
+#endif
+
 #ifndef HAVE_CRYPTO_ROL_U32
 static inline uint32_t
 crypto_rol_u32(uint32_t v, size_t shift)
@@ -220,6 +300,6 @@ crypto_ror_u64(uint64_t v, size_t shift)
 }
 #endif
 
-uint64_t crypto_cpu_caps_ia32(void);
+void crypto_cpu_caps_init(void);
 
 #endif

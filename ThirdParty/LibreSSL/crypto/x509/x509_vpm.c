@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_vpm.c,v 1.45 2024/03/29 04:50:11 tb Exp $ */
+/* $OpenBSD: x509_vpm.c,v 1.58 2025/10/24 11:33:38 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2004.
  */
@@ -61,12 +61,12 @@
 
 #include <openssl/buffer.h>
 #include <openssl/crypto.h>
-#include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "x509_local.h"
 
 /* X509_VERIFY_PARAM functions */
@@ -113,7 +113,7 @@ sk_OPENSSL_STRING_deep_copy(const STACK_OF(OPENSSL_STRING) *sk)
 }
 
 static int
-x509_param_set_hosts_internal(X509_VERIFY_PARAM *vpm, int mode,
+x509_param_set_hosts_internal(X509_VERIFY_PARAM *param, int mode,
     const char *name, size_t namelen)
 {
 	char *copy;
@@ -126,9 +126,9 @@ x509_param_set_hosts_internal(X509_VERIFY_PARAM *vpm, int mode,
 	if (name && memchr(name, '\0', namelen))
 		return 0;
 
-	if (mode == SET_HOST && vpm->hosts) {
-		sk_OPENSSL_STRING_pop_free(vpm->hosts, str_free);
-		vpm->hosts = NULL;
+	if (mode == SET_HOST && param->hosts) {
+		sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
+		param->hosts = NULL;
 	}
 	if (name == NULL || namelen == 0)
 		return 1;
@@ -136,17 +136,17 @@ x509_param_set_hosts_internal(X509_VERIFY_PARAM *vpm, int mode,
 	if (copy == NULL)
 		return 0;
 
-	if (vpm->hosts == NULL &&
-	    (vpm->hosts = sk_OPENSSL_STRING_new_null()) == NULL) {
+	if (param->hosts == NULL &&
+	   (param->hosts = sk_OPENSSL_STRING_new_null()) == NULL) {
 		free(copy);
 		return 0;
 	}
 
-	if (!sk_OPENSSL_STRING_push(vpm->hosts, copy)) {
+	if (!sk_OPENSSL_STRING_push(param->hosts, copy)) {
 		free(copy);
-		if (sk_OPENSSL_STRING_num(vpm->hosts) == 0) {
-			sk_OPENSSL_STRING_free(vpm->hosts);
-			vpm->hosts = NULL;
+		if (sk_OPENSSL_STRING_num(param->hosts) == 0) {
+			sk_OPENSSL_STRING_free(param->hosts);
+			param->hosts = NULL;
 		}
 		return 0;
 	}
@@ -543,12 +543,12 @@ X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_add1_host);
 
-/* Public API in OpenSSL - nothing seems to use this. */
 unsigned int
-X509_VERIFY_PARAM_get_hostflags(X509_VERIFY_PARAM *param)
+X509_VERIFY_PARAM_get_hostflags(const X509_VERIFY_PARAM *param)
 {
 	return param->hostflags;
 }
+LCRYPTO_ALIAS(X509_VERIFY_PARAM_get_hostflags);
 
 void
 X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param, unsigned int flags)
@@ -654,6 +654,8 @@ static const X509_VERIFY_PARAM default_table[] = {
 	}
 };
 
+#define N_DEFAULT_VERIFY_PARAMS (sizeof(default_table) / sizeof(default_table[0]))
+
 static STACK_OF(X509_VERIFY_PARAM) *param_table = NULL;
 
 static int
@@ -667,34 +669,31 @@ int
 X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param)
 {
 	X509_VERIFY_PARAM *ptmp;
-	if (!param_table) {
-		param_table = sk_X509_VERIFY_PARAM_new(param_cmp);
-		if (!param_table)
-			return 0;
-	} else {
-		size_t idx;
+	int idx;
 
-		if ((idx = sk_X509_VERIFY_PARAM_find(param_table, param))
-		    != -1) {
-			ptmp = sk_X509_VERIFY_PARAM_value(param_table,
-			    idx);
-			X509_VERIFY_PARAM_free(ptmp);
-			(void)sk_X509_VERIFY_PARAM_delete(param_table,
-			    idx);
-		}
-	}
-	if (!sk_X509_VERIFY_PARAM_push(param_table, param))
+	if (param_table == NULL)
+		param_table = sk_X509_VERIFY_PARAM_new(param_cmp);
+	if (param_table == NULL)
 		return 0;
-	return 1;
+
+	if ((idx = sk_X509_VERIFY_PARAM_find(param_table, param)) != -1) {
+		ptmp = sk_X509_VERIFY_PARAM_value(param_table, idx);
+		X509_VERIFY_PARAM_free(ptmp);
+		(void)sk_X509_VERIFY_PARAM_delete(param_table, idx);
+	}
+
+	return sk_X509_VERIFY_PARAM_push(param_table, param) > 0;
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_add0_table);
 
 int
 X509_VERIFY_PARAM_get_count(void)
 {
-	int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-	if (param_table)
+	int num = N_DEFAULT_VERIFY_PARAMS;
+
+	if (param_table != NULL)
 		num += sk_X509_VERIFY_PARAM_num(param_table);
+
 	return num;
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_get_count);
@@ -702,9 +701,14 @@ LCRYPTO_ALIAS(X509_VERIFY_PARAM_get_count);
 const X509_VERIFY_PARAM *
 X509_VERIFY_PARAM_get0(int id)
 {
-	int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
+	int num = N_DEFAULT_VERIFY_PARAMS;
+
+	if (id < 0)
+		return NULL;
+
 	if (id < num)
-		return default_table + id;
+		return &default_table[id];
+
 	return sk_X509_VERIFY_PARAM_value(param_table, id - num);
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_get0);
@@ -712,22 +716,20 @@ LCRYPTO_ALIAS(X509_VERIFY_PARAM_get0);
 const X509_VERIFY_PARAM *
 X509_VERIFY_PARAM_lookup(const char *name)
 {
-	X509_VERIFY_PARAM pm;
-	unsigned int i, limit;
+	X509_VERIFY_PARAM param;
+	size_t i;
+	int idx;
 
-	pm.name = (char *)name;
-	if (param_table) {
-		size_t idx;
-		if ((idx = sk_X509_VERIFY_PARAM_find(param_table, &pm)) != -1)
-			return sk_X509_VERIFY_PARAM_value(param_table, idx);
-	}
+	memset(&param, 0, sizeof(param));
+	param.name = (char *)name;
+	if ((idx = sk_X509_VERIFY_PARAM_find(param_table, &param)) != -1)
+		return sk_X509_VERIFY_PARAM_value(param_table, idx);
 
-	limit = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-	for (i = 0; i < limit; i++) {
-		if (strcmp(default_table[i].name, name) == 0) {
+	for (i = 0; i < N_DEFAULT_VERIFY_PARAMS; i++) {
+		if (strcmp(default_table[i].name, name) == 0)
 			return &default_table[i];
-		}
 	}
+
 	return NULL;
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_lookup);
@@ -735,9 +737,7 @@ LCRYPTO_ALIAS(X509_VERIFY_PARAM_lookup);
 void
 X509_VERIFY_PARAM_table_cleanup(void)
 {
-	if (param_table)
-		sk_X509_VERIFY_PARAM_pop_free(param_table,
-		    X509_VERIFY_PARAM_free);
+	sk_X509_VERIFY_PARAM_pop_free(param_table, X509_VERIFY_PARAM_free);
 	param_table = NULL;
 }
 LCRYPTO_ALIAS(X509_VERIFY_PARAM_table_cleanup);

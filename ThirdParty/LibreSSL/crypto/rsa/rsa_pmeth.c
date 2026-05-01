@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_pmeth.c,v 1.41 2024/08/26 22:01:28 op Exp $ */
+/* $OpenBSD: rsa_pmeth.c,v 1.46 2026/04/07 13:16:41 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -65,13 +65,13 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
 #include "bn_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 #include "rsa_local.h"
 
@@ -97,7 +97,7 @@ typedef struct {
 	unsigned char *tbuf;
 	/* OAEP label */
 	unsigned char *oaep_label;
-	size_t oaep_labellen;
+	size_t oaep_label_len;
 } RSA_PKEY_CTX;
 
 /* True if PSS parameters are restricted */
@@ -150,10 +150,10 @@ pkey_rsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 	dctx->mgf1md = sctx->mgf1md;
 	if (sctx->oaep_label != NULL) {
 		free(dctx->oaep_label);
-		if ((dctx->oaep_label = calloc(1, sctx->oaep_labellen)) == NULL)
+		if ((dctx->oaep_label = calloc(1, sctx->oaep_label_len)) == NULL)
 			return 0;
-		memcpy(dctx->oaep_label, sctx->oaep_label, sctx->oaep_labellen);
-		dctx->oaep_labellen = sctx->oaep_labellen;
+		memcpy(dctx->oaep_label, sctx->oaep_label, sctx->oaep_label_len);
+		dctx->oaep_label_len = sctx->oaep_label_len;
 	}
 
 	return 1;
@@ -357,7 +357,7 @@ pkey_rsa_encrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
 		if (!setup_tbuf(rctx, ctx))
 			return -1;
 		if (!RSA_padding_add_PKCS1_OAEP_mgf1(rctx->tbuf, klen,
-		    in, inlen, rctx->oaep_label, rctx->oaep_labellen,
+		    in, inlen, rctx->oaep_label, rctx->oaep_label_len,
 		    rctx->md, rctx->mgf1md))
 			return -1;
 		ret = RSA_public_encrypt(klen, rctx->tbuf, out,
@@ -387,7 +387,7 @@ pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
 		if (ret <= 0)
 			return ret;
 		ret = RSA_padding_check_PKCS1_OAEP_mgf1(out, ret, rctx->tbuf,
-		    ret, ret, rctx->oaep_label, rctx->oaep_labellen, rctx->md,
+		    ret, ret, rctx->oaep_label, rctx->oaep_label_len, rctx->md,
 		    rctx->mgf1md);
 	} else {
 		ret = RSA_private_decrypt(inlen, in, out, ctx->pkey->pkey.rsa,
@@ -583,13 +583,13 @@ pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 			RSAerror(RSA_R_INVALID_PADDING_MODE);
 			return -2;
 		}
-		free(rctx->oaep_label);
+		freezero(rctx->oaep_label, rctx->oaep_label_len);
 		if (p2 != NULL && p1 > 0) {
 			rctx->oaep_label = p2;
-			rctx->oaep_labellen = p1;
+			rctx->oaep_label_len = p1;
 		} else {
 			rctx->oaep_label = NULL;
-			rctx->oaep_labellen = 0;
+			rctx->oaep_label_len = 0;
 		}
 		return 1;
 
@@ -599,7 +599,7 @@ pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2)
 			return -2;
 		}
 		*(unsigned char **)p2 = rctx->oaep_label;
-		return rctx->oaep_labellen;
+		return rctx->oaep_label_len;
 
 	case EVP_PKEY_CTRL_DIGESTINIT:
 	case EVP_PKEY_CTRL_PKCS7_SIGN:
@@ -637,19 +637,17 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 		RSAerror(RSA_R_VALUE_MISSING);
 		return 0;
 	}
-	if (!strcmp(type, "rsa_padding_mode")) {
+	if (strcmp(type, "rsa_padding_mode") == 0) {
 		int pm;
-		if (!strcmp(value, "pkcs1"))
+		if (strcmp(value, "pkcs1") == 0)
 			pm = RSA_PKCS1_PADDING;
-		else if (!strcmp(value, "none"))
+		else if (strcmp(value, "none") == 0)
 			pm = RSA_NO_PADDING;
-		else if (!strcmp(value, "oeap"))
+		else if (strcmp(value, "oaep") == 0 || strcmp(value, "oeap") == 0)
 			pm = RSA_PKCS1_OAEP_PADDING;
-		else if (!strcmp(value, "oaep"))
-			pm = RSA_PKCS1_OAEP_PADDING;
-		else if (!strcmp(value, "x931"))
+		else if (strcmp(value, "x931") == 0)
 			pm = RSA_X931_PADDING;
-		else if (!strcmp(value, "pss"))
+		else if (strcmp(value, "pss") == 0)
 			pm = RSA_PKCS1_PSS_PADDING;
 		else {
 			RSAerror(RSA_R_UNKNOWN_PADDING_TYPE);
@@ -661,14 +659,19 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 	if (strcmp(type, "rsa_pss_saltlen") == 0) {
 		int saltlen;
 
-		if (!strcmp(value, "digest"))
+		if (strcmp(value, "digest") == 0)
 			saltlen = RSA_PSS_SALTLEN_DIGEST;
-		else if (!strcmp(value, "max"))
+		else if (strcmp(value, "max") == 0)
 			saltlen = RSA_PSS_SALTLEN_MAX;
-		else if (!strcmp(value, "auto"))
+		else if (strcmp(value, "auto") == 0)
 			saltlen = RSA_PSS_SALTLEN_AUTO;
 		else {
-			saltlen = strtonum(value, 0, INT_MAX, &errstr);
+			/*
+			 * Accept the special values -1, -2, -3 since that's
+			 * what atoi() historically did. Lower values are later
+			 * rejected in EVP_PKEY_CTRL_RSA_PSS_SALTLEN anyway.
+			 */
+			saltlen = strtonum(value, -3, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				RSAerror(RSA_R_INVALID_PSS_SALTLEN);
 				return -2;
@@ -718,7 +721,12 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 		if (strcmp(type, "rsa_pss_keygen_saltlen") == 0) {
 			int saltlen;
 
-			saltlen = strtonum(value, 0, INT_MAX, &errstr);
+			/*
+			 * Accept the special values -1, -2, -3 since that's
+			 * what atoi() historically did. Lower values are later
+			 * rejected in EVP_PKEY_CTRL_RSA_PSS_SALTLEN anyway.
+			 */
+			saltlen = strtonum(value, -3, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				RSAerror(RSA_R_INVALID_PSS_SALTLEN);
 				return -2;

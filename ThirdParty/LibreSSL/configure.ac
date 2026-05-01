@@ -1,3 +1,4 @@
+#
 # Copyright (c) 2014-2015 Brent Cook
 #
 # Permission to use, copy, modify, and distribute this software for any
@@ -31,10 +32,6 @@ AM_PROG_CC_C_O
 LT_INIT([pic-only])
 
 CHECK_OS_OPTIONS
-
-if test "$HOST_OS" = "unsupported"; then
-	AC_MSG_ERROR([unsupported platform: $host_os])
-fi
 
 CHECK_C_HARDENING_OPTIONS
 
@@ -90,16 +87,17 @@ AS_CASE([$host_cpu],
 )
 AM_CONDITIONAL([HOST_CPU_IS_INTEL], [test "x$HOSTARCH" = "xintel"])
 
-AM_CONDITIONAL([HOST_AARCH64],   [test "$host_cpu" = "aarch64"])
-AM_CONDITIONAL([HOST_ARM],       [test "$host_cpu" = "arm"])
-AM_CONDITIONAL([HOST_I386],      [test "$host_cpu" = "i386"])
-AM_CONDITIONAL([HOST_MIPS],      [test "$host_cpu" = "mips"])
-AM_CONDITIONAL([HOST_MIPS64],    [test "$host_cpu" = "mips64"])
-AM_CONDITIONAL([HOST_POWERPC],   [test "$host_cpu" = "powerpc"])
-AM_CONDITIONAL([HOST_POWERPC64], [test "$host_cpu" = "ppc64"])
-AM_CONDITIONAL([HOST_RISCV64],   [test "$host_cpu" = "riscv64"])
-AM_CONDITIONAL([HOST_SPARC64],   [test "$host_cpu" = "sparc64"])
-AM_CONDITIONAL([HOST_X86_64],    [test "$host_cpu" = "x86_64"])
+AM_CONDITIONAL([HOST_AARCH64],      [test "$host_cpu" = "aarch64"])
+AM_CONDITIONAL([HOST_ARM],          [test "$host_cpu" = "arm"])
+AM_CONDITIONAL([HOST_I386],         [test "$host_cpu" = "i386"])
+AM_CONDITIONAL([HOST_LOONGARCH64],  [test "$host_cpu" = "loongarch64"])
+AM_CONDITIONAL([HOST_MIPS],         [test "$host_cpu" = "mips"])
+AM_CONDITIONAL([HOST_MIPS64],       [test "$host_cpu" = "mips64"])
+AM_CONDITIONAL([HOST_POWERPC],      [test "$host_cpu" = "powerpc"])
+AM_CONDITIONAL([HOST_POWERPC64],    [test "$host_cpu" = "ppc64"])
+AM_CONDITIONAL([HOST_RISCV64],      [test "$host_cpu" = "riscv64"])
+AM_CONDITIONAL([HOST_SPARC64],      [test "$host_cpu" = "sparc64"])
+AM_CONDITIONAL([HOST_X86_64],       [test "$host_cpu" = "x86_64"])
 
 AC_MSG_CHECKING([if .gnu.warning accepts long strings])
 AC_LINK_IFELSE([AC_LANG_SOURCE([[
@@ -117,8 +115,8 @@ AC_ARG_ENABLE([asm], AS_HELP_STRING([--disable-asm], [Disable assembly]))
 AM_CONDITIONAL([OPENSSL_NO_ASM], [test "x$enable_asm" = "xno"])
 
 # Conditionally enable assembly by default
-AM_CONDITIONAL([HOST_ASM_ELF_ARM],
-    [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "arm" -a "x$enable_asm" != "xno"])
+AM_CONDITIONAL([HOST_ASM_ELF_AARCH64],
+    [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "aarch64" -a "x$enable_asm" != "xno"])
 AM_CONDITIONAL([HOST_ASM_ELF_MIPS],
     [test "x$HOST_ABI" = "xelf" -a "$host_cpu" = "mips" -a "x$enable_asm" != "xno"])
 AM_CONDITIONAL([HOST_ASM_ELF_MIPS64],
@@ -163,3 +161,7 @@ AM_CONDITIONAL([ENABLE_LIBTLS_ONLY], [test "x$enable_libtls_only" = xyes])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 
 AC_OUTPUT
+
+if test "$HOST_OS" = "unsupported"; then
+       AC_MSG_WARN([unsupported platform: $host_os])
+fi

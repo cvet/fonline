@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void InitClientEngine(ClientEngine*);
+extern void ClientInitHook(ClientEngine*);
 
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
@@ -87,14 +87,14 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(this, Resources);
+    InitAngelScriptScripting(this, Settings, Resources);
 #endif
 
     _curLang = TextPack {Hashes};
     _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Modules initialization
-    InitClientEngine(this);
+    ClientInitHook(this);
 
     InitModules();
 

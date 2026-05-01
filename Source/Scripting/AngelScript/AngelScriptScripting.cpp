@@ -54,7 +54,7 @@ struct AngelScriptThreadCleanupHelper
     }
 };
 
-static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
+[[maybe_unused]] static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
 
 struct AngelScriptAllocator
 {
@@ -89,13 +89,13 @@ static void PrepareAngelScriptRuntime()
     });
 }
 
-void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources)
+void InitAngelScriptScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>();
+    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings);
     auto* pas_backend = as_backend.get();
 
     if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
@@ -107,13 +107,13 @@ void InitAngelScriptScripting(EngineMetadata* meta, const FileSystem& resources)
     pas_backend->BindRequiredStuff();
 }
 
-auto CompileAngelScript(EngineMetadata* meta, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
+auto CompileAngelScript(EngineMetadata* meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>();
+    auto as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings);
     auto* pas_backend = as_backend.get();
 
     if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {

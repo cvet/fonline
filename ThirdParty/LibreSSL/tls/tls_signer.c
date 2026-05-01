@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_signer.c,v 1.13 2024/06/11 16:35:24 op Exp $ */
+/* $OpenBSD: tls_signer.c,v 1.15 2026/04/16 07:35:25 tb Exp $ */
 /*
  * Copyright (c) 2021 Eric Faurot <eric@openbsd.org>
  *
@@ -99,6 +99,11 @@ tls_signer_add_keypair_mem(struct tls_signer *signer, const uint8_t *cert,
 	char *hash = NULL;
 
 	/* Compute certificate hash */
+	if (cert_len > INT_MAX) {
+		tls_error_setx(&signer->error, TLS_ERROR_INVALID_ARGUMENT,
+		    "certificate too long");
+		goto err;
+	}
 	if ((bio = BIO_new_mem_buf(cert, cert_len)) == NULL) {
 		tls_error_setx(&signer->error, TLS_ERROR_UNKNOWN,
 		    "failed to create certificate bio");
@@ -124,6 +129,11 @@ tls_signer_add_keypair_mem(struct tls_signer *signer, const uint8_t *cert,
 	bio = NULL;
 
 	/* Read private key */
+	if (key_len > INT_MAX) {
+		tls_error_setx(&signer->error, TLS_ERROR_INVALID_ARGUMENT,
+		    "private key too long");
+		goto err;
+	}
 	if ((bio = BIO_new_mem_buf(key, key_len)) == NULL) {
 		tls_error_setx(&signer->error, TLS_ERROR_UNKNOWN,
 		    "failed to create key bio");
@@ -137,7 +147,7 @@ tls_signer_add_keypair_mem(struct tls_signer *signer, const uint8_t *cert,
 	}
 
 	if ((skey = calloc(1, sizeof(*skey))) == NULL) {
-		tls_error_set(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
+		tls_error_setx(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
 		    "out of memory");
 		goto err;
 	}
@@ -223,7 +233,7 @@ tls_sign_rsa(struct tls_signer *signer, struct tls_signer_key *skey,
 		return (-1);
 	}
 	if ((signature = calloc(1, rsa_size)) == NULL) {
-		tls_error_set(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
+		tls_error_setx(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
 		    "out of memory");
 		return (-1);
 	}
@@ -271,7 +281,7 @@ tls_sign_ecdsa(struct tls_signer *signer, struct tls_signer_key *skey,
 		return (-1);
 	}
 	if ((signature = calloc(1, signature_len)) == NULL) {
-		tls_error_set(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
+		tls_error_setx(&signer->error, TLS_ERROR_OUT_OF_MEMORY,
 		    "out of memory");
 		return (-1);
 	}

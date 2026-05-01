@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_kiss.c,v 1.27 2023/02/16 08:38:17 tb Exp $ */
+/* $OpenBSD: p12_kiss.c,v 1.30 2026/01/27 14:14:20 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -58,9 +58,9 @@
 
 #include <stdio.h>
 
-#include <openssl/err.h>
 #include <openssl/pkcs12.h>
 
+#include "err_local.h"
 #include "pkcs12_local.h"
 
 /* Simplified PKCS#12 routines */
@@ -77,7 +77,7 @@ static int parse_bag( PKCS12_SAFEBAG *bag, const char *pass, int passlen,
 /* Parse and decrypt a PKCS#12 structure returning user key, user cert
  * and other (CA) certs. Note either ca should be NULL, *ca should be NULL,
  * or it should point to a valid STACK structure. pkey and cert can be
- * passed unitialised.
+ * passed uninitialised.
  */
 
 int
@@ -231,11 +231,17 @@ parse_bag(PKCS12_SAFEBAG *bag, const char *pass, int passlen, EVP_PKEY **pkey,
 	ASN1_BMPSTRING *fname = NULL;
 	ASN1_OCTET_STRING *lkid = NULL;
 
-	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_friendlyName)))
+	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_friendlyName))) {
+		if (attrib->type != V_ASN1_BMPSTRING)
+			return 0;
 		fname = attrib->value.bmpstring;
+	}
 
-	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_localKeyID)))
+	if ((attrib = PKCS12_SAFEBAG_get0_attr(bag, NID_localKeyID))) {
+		if (attrib->type != V_ASN1_OCTET_STRING)
+			return 0;
 		lkid = attrib->value.octet_string;
+	}
 
 	switch (OBJ_obj2nid(bag->type)) {
 	case NID_keyBag:

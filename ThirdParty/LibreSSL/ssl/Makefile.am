@@ -1,3 +1,18 @@
+#
+# Copyright (c) 2014 Brent Cook
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 include $(top_srcdir)/Makefile.am.common
 
 -include $(abs_top_builddir)/crypto/libcrypto_la_objects.mk
@@ -26,7 +41,7 @@ EXTRA_libssl_la_DEPENDENCIES = libssl_la_objects.mk
 
 libssl_la_objects.mk: Makefile
 	@echo "libssl_la_objects= $(libssl_la_OBJECTS)" \
-	  | sed 's/  */ $$\(abs_top_builddir\)\/ssl\//g' \
+	  | sed 's/  */ $$\(top_builddir\)\/ssl\//g' \
 	  > libssl_la_objects.mk
 
 .PHONY: remove_bs_objects
@@ -70,7 +85,6 @@ libssl_la_SOURCES += ssl_init.c
 libssl_la_SOURCES += ssl_kex.c
 libssl_la_SOURCES += ssl_lib.c
 libssl_la_SOURCES += ssl_methods.c
-libssl_la_SOURCES += ssl_packet.c
 libssl_la_SOURCES += ssl_pkt.c
 libssl_la_SOURCES += ssl_rsa.c
 libssl_la_SOURCES += ssl_seclevel.c
@@ -131,9 +145,15 @@ libssl_la_CPPFLAGS += -I$(top_srcdir)/crypto/arch/i386/
 endif
 noinst_HEADERS += $(top_srcdir)/crypto/arch/i386/crypto_arch.h
 
-# XXX - do we still need this?
-if HOST_MIPS
+if HOST_LOONGARCH64
+libssl_la_CPPFLAGS += -I$(top_srcdir)/crypto/arch/loongarch64/
 endif
+noinst_HEADERS += $(top_srcdir)/crypto/arch/loongarch64/crypto_arch.h
+
+if HOST_MIPS
+libssl_la_CPPFLAGS += -I$(top_srcdir)/crypto/arch/mips/
+endif
+noinst_HEADERS += $(top_srcdir)/crypto/arch/mips/crypto_arch.h
 
 if HOST_MIPS64
 libssl_la_CPPFLAGS += -I$(top_srcdir)/crypto/arch/mips64/

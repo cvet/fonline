@@ -206,7 +206,42 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsEnum) {
-        const int32_t value = reader.Read<int32_t>();
+        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
+        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+
+        int32_t value = 0;
+
+        if (type.EnumUnderlyingType->IsSignedInt) {
+            switch (type.Size) {
+            case sizeof(int8_t):
+                value = reader.Read<int8_t>();
+                break;
+            case sizeof(int16_t):
+                value = reader.Read<int16_t>();
+                break;
+            case sizeof(int32_t):
+                value = reader.Read<int32_t>();
+                break;
+            default:
+                throw ClientDataValidationException("Unsupported enum underlying size", type.Name, type.Size);
+            }
+        }
+        else {
+            switch (type.Size) {
+            case sizeof(uint8_t):
+                value = reader.Read<uint8_t>();
+                break;
+            case sizeof(uint16_t):
+                value = reader.Read<uint16_t>();
+                break;
+            case sizeof(uint32_t):
+                value = static_cast<int32_t>(reader.Read<uint32_t>());
+                break;
+            default:
+                throw ClientDataValidationException("Unsupported enum underlying size", type.Name, type.Size);
+            }
+        }
+
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
         ignore_unused(hstr);

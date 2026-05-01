@@ -1,7 +1,7 @@
 Because this project is maintained both in the OpenBSD tree using CVS and in
 Git, it can be confusing following all of the changes.
 
-Most of the libssl and libcrypto source code is is here in OpenBSD CVS:
+Most of the libssl and libcrypto source code is here in OpenBSD CVS:
 
 	https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/lib/libssl/
 
@@ -27,6 +27,270 @@ history is also available from Git.
 	https://github.com/libressl/portable
 
 LibreSSL Portable Release Notes:
+
+4.4.0 - In Development
+
+4.3.1 - Development Release
+
+	* Portable Changes
+	  - Add missing <limits.h> to fix build on some OS.
+
+4.3.0 - Development Release
+
+	* Internal improvements
+	  - Remove the unused sequence number from X509_REVOKED.
+	  - Replace a call to atoi() with strtonum() in nc(1) and replace a
+	    misleading use of ntohs() with htons().
+	  - openssl(1) speed now uses HMAC-SHA256 for its hmac benchmark.
+	  - Reimplemented only use of ASN1_PRINTABLE_type() in openssl(1) ca.
+	    The API will be removed in an upcoming release.
+	  - Add curve NID to EC_POINT objects so the library has a clue on which
+	    curve a given EC_POINT is supposed to live.
+	  - Use curve NID to check for compatibility between group and points
+	    in various EC API. This isn't 100% failsafe but good enough for sane
+	    uses.
+	  - Require SSE in order to use gcm_{gmult,ghash}_4bit_mmx().
+	    On rare i386 machines suporting MMX but not SSE this could result
+	    in an illegal instruction.
+	  - Cleaned up asn1t.h to make it somewhat readable and more robust by
+	    using C99 initializers in particular.
+	  - Further assembly macro improvements for -portable.
+	  - Add fast path for well-known DH primes in DH_check() (including
+	    those from RFC 7919). Some projects still fiddle with this in 2025.
+	  - Rewrite ec_point_cmp() for readability and robustness.
+	  - Improve EVP_{Open,Seal}Init() internals. This is legacy API that
+	    cannot be removed since one scripting language still exposes it.
+	  - ASN1_BIT_STRING_set_bit() now trims trailing zero bits itself rather
+	    than relying on i2c_ASN1_BIT_STRING() to do that when encoding.
+	  - Fix and add workarounds to libtls to improve const correctness and
+	    to avoid warnings when compiling with OpenSSL 4.
+	  - Prefix EC_KEY methods with ec_key_ to avoid problems in some static
+	    links.
+	  - Remove mac_packet, a leftover from accepting SSLv2 ClientHellos.
+	  - Remove ssl_server_legacy_first_packet().
+	  - In addition to what was done in LibreSSL 4.0 for the version
+	    handling, disable TLSv1.1 and lower also on the method level.
+	  - Remove workaround for SSL 3.0/TLS 1.0 CBC vulnerability.
+	  - Refactor ocsp_find_signer_sk() to avoid neglecting the ASN.1's
+	    semantics by direct reaching into deeply nested OCSP structures.
+	* Compatibility changes
+	  - Expose X509_VERIFY_PARAM_set_hostflags() as a public symbol.
+	  - Provide SSL_SESSION_dup().
+	  - BIGNUMs now use the C99 types uint64_t/uint32_t for the word width.
+	    Fixes long-standing issues with 32-bit longs on 64-bit Windows.
+	  - Many unused BN_* macros with incomprehensible names were removed:
+	    BN_LONG, BN_BITS{,4}, BN_MASK2{,l,h,h1}, BN_TBIT, BN_DEC_CONV,
+	    BN_{DEC,HEX}_FMT{1,2}, ...
+	  - openssl(1) cms no longer accepts the unsupported -compress and
+	    -uncompress switches.
+	  - Added PKCS7_NO_DUAL_CONTENT flag/behavior. This is incorrect legacy
+	    behavior but some language bindings decided to rely on it in 2025.
+	  - Remove STABLE_FLAGS_MALLOC but keep STABLE_NO_MASK because there is
+	    still one user...
+	  - Fix ASN1_ADB_END macro to have compatible signature with OpenSSL.
+	    The adb_cb() argument is currently ignored.
+	  - Unexport ASN1_LONG_UNDEF.
+	* New features
+	  - Support for MLKEM768_X25519 keyshare in TLS.
+	    https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/
+	  - Added ML-KEM benchmarks to openssl(1) speed.
+	  - Added support for starttls protocol sieve.
+	  - Add support for RSASSA-PSS with pubkey OID RSASSA-PSS to libssl.
+	* Bug fixes
+	  - Ensure the group selected by a TLSv1.3 server for a
+	    HelloRetryRequest is not one for which the client has
+	    already sent a key share.
+	  - Plug memory leak in CMS_EncryptedData_encrypt().
+	  - Plug possible memory leak and double free in nref_nos().
+	  - Removed always zero test results for some no longer available
+	    legacy primitives in openssl(1) speed.
+	  - List SHA-3 digests in openssl(1) help output.
+	  - Fix encoding of bit strings with trailing zeroes on which
+	    ASN1_STRING_FLAG_BITS_LEFT is not set.
+	  - Add missing NULL pointer check to PKCS12_item_decrypt_d2i().
+	  - Avoid type confusion leading to 1-byte read at address 0x00-0xff
+	    in PKCS#12 parsing.
+	  - Fix type confusion in timestamp response parsing for v2 signing
+	    certs.
+	  - Fix EVP_SealInit() to return 0 on error, not -1.
+	  - Replace incorrect strncmp() with strcmp() in CRL distribution point
+	    config parsing.
+	  - openssl x509 -text writes its output to the file specified by -out
+	    like all other openssl(1) subcommands.
+	  - Stop Delta CRL processing in the verifier if the cRLNumber is
+	    missing. This is flagged on deserialization, but nothing checks
+	    that flag. This can lead to a NULL dereference if the verification
+	    has enabled Delta CRL checking by setting X509_V_FLAG_USE_DELTAS. 
+	  - Fix NULL dereference that can be triggered with malformed OAEP
+	    parameter encoding for CMS decryption.
+	  - Add missing length checks before BIO_new_mem_buf() in libtls.
+	  - Improve libtls error reporting consistency, avoid reporting
+	    unrelated errnos.
+	  - Fix SAN dNSName constraints: instead of substring matching,
+	    match exactly and allow zero or more components in front of
+	    the candidate.
+	* Reliability fix
+	  - Fix off-by-one error in the X.509 verifier depth checking. This can
+	    lead to a 4-byte overwrite on heap allocated memory for clients
+	    talking to a malicious server or for servers that have client
+	    certificate verification enabled. In addition, the maximum depth
+	    must be set to the maximum allowed value of 32.
+	    Thanks to Calif.io in collaboration with Claude and Anthropic
+	    Research, for reporting the issue.
+	* Testing and proactive security
+	  - Port Wycheproof tests to testvectors_v1 and improve coverage
+	    and correctness. Add tests for ML-KEM in particular.
+
+4.2.0 - Stable release
+
+	* Portable changes
+	  - Added explicit OpenBSD/ISC license to build system / scripts.
+	  - Fixed compilation on more CPU targets by removing architecture-specific
+	    definitions from header files.
+	  - Fixed builds in deep paths by using relative paths for linking.
+	  - Fixed Windows builds with Clang and CMake.
+	  - Fixed Windows error handling accepting connections with nc.
+	  - Fixed 32-bit ARM builds on Darwin.
+	* Internal improvements
+	  - Cleaned up code implementing block cipher modes of operation.
+	    Includes untangling a horrible #ifdef mess and removing a few
+	    instances of undefined behavior.
+	  - Removed assembly implementations of AES using bit slicing (BS-AES)
+	    and vector permutation (VP-AES).
+	  - Removed OPENSSL_SMALL_FOOTPRINT and OPENSSL_FIPSAPI.
+	  - Implemented constant time EC field element operations to allow
+	    elliptic curve operations without bignum arithmetic.
+	  - Implemented an EC method using homogeneous projective coordinates.
+	    This will allow exception-free elliptic curve arithmetic in
+	    constant time in future releases.
+	  - Started cleaning up the openssl speed implementation.
+	  - The last SIGILL-based CPU capability detection was removed.
+	    Instead, capabilities are now detected using a constructor on
+	    library load, which improves the incomplete coverage by calls
+	    to OPENSSL_init_crypto() on various entry points.
+	  - Rework and simplify AES handling in EVP. In particular, AES-NI
+	    is now handled in the AES internal code and no longer requires
+	    the use of EVP.
+	  - Added a public API for ML-KEM. This is not yet documented in a
+	    manpage and may not be in its final form. This will be used to
+	    support X25519MLKEM768 in libssl.
+	* Compatibility changes
+	  - Removed the -msie_hack option from the openssl(1) ca subcommand.
+	  - Removed parameters of the 239-bit prime curves from X9.62, H.5.2:
+	    prime239v1, prime239v2, prime239v3.
+	  - Increased default MAC salt length used by PKCS12_set_mac(3) to 16 
+	    per recommendation of NIST SP 800-132.
+	  - Encrypted PKCS#8 key files now use a default password-based key
+	    derivation function that is acceptable in the present millenium.
+	  - const corrected EVP_PKEY_get{0,1}_{DH,DSA,EC_KEY,RSA}().
+	  - X509_CRL_verify() now checks that the AlgorithmIdentifiers in the
+	    signature and the tbsCertList are identical.
+	  - Of the old *err() only PEMerr(), RSAerr(), and SSLerr() remain.
+	  - Removed BIO_s_log(), X509_PKEY_{new,free}(), PEM_X509_INFO_read()
+	    and PEM_X509_INFO_write_bio().
+	  - Re-expose the ASN.1 Boolean template items.
+	  - opensslconf.h is now machine-independent.
+	* New features
+	  - Allow specifying ALPN in nc(1) via -Talpn="http/1.1,http:/1.0".
+	* Bug fixes
+	  - Avoid pointer arithmetic on NULL for memory BIOs.
+	  - Fix leaks and use-after-frees in PKCS7 attribute handling.
+	  - Ensure p and q in RSA private key have a minimum distance of
+	    2^(bits/2 - 100) as specified in NIST SP 800-56B Revision 2.
+	* Security fixes
+	  - Fix out-of-bounds read and write, memory leaks and incorrect
+	    error check for CMS enveloped data.
+	* Documentation
+	  - Rewrote most of the EC documentation from scratch to be at least
+	    somewhat accurate and intelligible.
+	  - Updated documentation for SMIME_{read,write}* to match reality.
+	* Testing and proactive security
+	  - Added a testing framework that will help deduplicating lots of
+	    ad-hoc code in the regression tests.
+	  - Converted the Wycheproof testing framework to use testvectors_v1.
+	    This in combination with a few new tests significantly increases
+	    regress coverage.
+
+4.1.0 - Stable release
+
+	* Portable changes
+	  - Added initial experimental support for loongarch64.
+	  - Fixed compilation for mips32 and reenable CI.
+	  - Fixed CMake builds on FreeBSD.
+	  - Fixed the --prefix option for cmake --install.
+	  - Fixed tests for MinGW due to missing sh(1).
+	* Internal improvements
+	  - Cleaned up the error implementation.
+	  - Many bug fixes and simplifications in the EC ASN.1 code.
+	  - Corrected DER encoding for EC keys and parameters.
+	  - Polished EC_POINT_{oct2point,point2oct}() internals.
+	  - Rewrote the wNAF code for fast ECDSA verification.
+	  - Improved the code setting compressed coordinates for EC points.
+	  - Reworked CPU capabilities detection for amd64 and aarch64.
+	  - New SHA-1, SHA-256 and SHA-512 assembly implementations for amd64.
+	    These make use of the SHA-NI instruction if it is available and
+	    replace the perl-generated assembly optimized for museum pieces.
+	    These are not yet enabled in libressl-portable.
+	  - New SHA-256 and SHA-512 assembly implementations for aarch64
+	    making use of the ARM Cryptographic Extension (CE). Not yet
+	    enabled in libressl-portable.
+	  - New simplified, readable MD5 implementation for amd64.
+	  - Rewrote BN_bn2binpad() and its lebin siblings.
+	  - The BIGNUMs in EC_GROUP and EC_POINT are now heap allocated.
+	  - Rewrote TS_ASN1_INTEGER_print_bio().
+	  - Improved bit counter handling in MD5.
+	  - Simplified and cleaned up the BN_RECP_CTX internals.
+	  - Improved SM4 to match other symmetric ciphers more closely.
+	  - Rewrote X509_NAME_oneline() and X509_NAME_print() using CBS/CBB.
+	  - CRLs are now cached in the issuer cache like certificates.
+	  - Replaced combinations of BN_MONT_CTX_new/set with an internal
+	    BN_MONT_CTX_create().
+	  - Replaced BN_bn2hex() reimplementation in openssl(1) ca with
+	    a proper API call.
+	  - Fixed integer overflows due to signed shift in obj_dat.c.
+	  - Improved some X509_VERIFY_PARAM internals and avoid an out of
+	    bounds read from public API.
+	  - Imported ML-KEM 768 and 1024 from BoringSSL (not yet public API).
+	* Compatibility changes
+	  - Added an OPENSSL_INIT_NO_ATEXIT flag for OPENSSL_init_crypto().
+	    It has no effect since LibreSSL doesn't call atexit().
+	  - Elliptic curve parameters are only accepted if they encode a
+	    built-in curve.
+	  - EC_METHOD is no longer public and the API exposing it has been
+	    removed. This includes EC_GROUP_new(), EC_GFp_mont_method(),
+	    EC_GROUP_method_of() and EC_METHOD_get_field_type().
+	  - The precomputation stubs for EC_GROUP were removed.
+	  - The API setting Jacobian projective coordinates for a point was
+	    removed as were EC_POINTs_{mul,make_affine}().
+	  - All elliptic curves over fields with less than 224 bits and a
+	    few more were removed from the built-in curves. This includes
+	    all WTLS curves and P-192.
+	  - It is no longer necessary to set RSA_FLAG_SIGN_VER to use the
+	    sign and verify handlers set with RSA_meth_set_{sign,verify}.
+	  - Removed the -C option to generate "C code" from the openssl(1)
+	    dh, dhparam, dsaparam, ecparam, and x509 subcommands.
+	  - Removed #error in headers when OPENSSL_NO_* is defined.
+	  - CRYPTO_set_mem_functions() now matches OpenSSL 1.1 and
+	    CRYPTO_set_mem_ex_functions() was removed.
+	  - The tls_session_secret_cb_fn type now matches OpenSSL 1.1.
+	  - Unexport X509_NAME_print() and X509_OBJECT_up_ref_count().
+	  - const corrected UI_OpenSSL() and BN_MONT_CTX_copy().
+	  - Support OPENSSL_NO_FILENAMES.
+	  - Support SSL_OP_NO_RENEGOTIATION and SSL_OP_ALLOW_CLIENT_RENEGOTIATION.
+	  - Export PKCS12_key_gen_uni() again.
+	* New features
+	  - libtls has a new tls_peer_cert_common_name() API call to retrieve
+	    the peer's common name without having to inspect the PEM.
+	* Bug fixes
+	  - Plugged a leak in eckey_compute_pubkey().
+	  - Again allow the magic values -1, -2 and -3 for the salt length
+	    of an RSA-PSS key in the EVP_PKEY_CTX_ctrl_str() interface.
+	  - Fixed a few memory leaks in legacy code.
+	* Documentation
+	  - The remaining undocumented public EVP API is now documented.
+	  - Reorganization of existing documentation for clarity and accuracy.
+	* Testing and proactive security
+	  - Improved regress coverage of the EC code.
 
 4.0.0 - Stable release
 
@@ -158,6 +422,19 @@ LibreSSL Portable Release Notes:
 	    ssl_sigalg_select().
 	  - Made fatal alerts fatal in QUIC.
 
+3.9.2 - Stable release
+
+	* Bugfixes
+	  - OpenBSD 7.5 errata 003. A missing bounds check could lead to a crash
+	    due to dereferencing a zero-sized allocation.
+
+3.9.1 - Stable release
+
+	* Portable changes
+	  - Updated tests with expiring certificates
+	  - CET-related build fixes for Windows and macOS targets
+	  - update libtls linker script to include libssl and libcrypto again
+
 3.9.0 - Development release
 
 	* Portable changes
@@ -234,6 +511,13 @@ LibreSSL Portable Release Notes:
 	  - Fixed the new X.509 verifier to find trust anchors in the trusted
 	    stack.
 	  - Made in-place decryption work for EVP_chacha20_poly1305().
+
+3.8.4 - Stable release
+
+	* Portable changes
+	  - Updated tests with expiring certificates
+	  - CET-related build fixes for Windows and macOS targets
+	  - update libtls linker script to include libssl and libcrypto again
 
 3.8.3 - Stable release
 

@@ -1,4 +1,4 @@
-.\" $OpenBSD: EVP_PKEY_CTX_ctrl.3,v 1.23 2023/09/13 13:32:01 schwarze Exp $
+.\" $OpenBSD: EVP_PKEY_CTX_ctrl.3,v 1.30 2025/06/08 22:40:29 schwarze Exp $
 .\" full merge up to: OpenSSL 99d63d46 Oct 26 13:56:48 2016 -0400
 .\" selective merge up to: OpenSSL 24a535ea Sep 22 13:14:20 2020 +0100
 .\" Parts were split out into RSA_pkey_ctx_ctrl(3).
@@ -6,7 +6,7 @@
 .\" This file is a derived work.
 .\" The changes are covered by the following Copyright and license:
 .\"
-.\" Copyright (c) 2019, 2023 Ingo Schwarze <schwarze@openbsd.org>
+.\" Copyright (c) 2019, 2023, 2024 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -69,7 +69,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: September 13 2023 $
+.Dd $Mdocdate: June 8 2025 $
 .Dt EVP_PKEY_CTX_CTRL 3
 .Os
 .Sh NAME
@@ -97,6 +97,7 @@
 .Nm EVP_PKEY_CTX_get1_id_len
 .Nd algorithm specific control operations
 .Sh SYNOPSIS
+.Lb libcrypto
 .In openssl/evp.h
 .Ft int
 .Fo EVP_PKEY_CTX_ctrl
@@ -371,7 +372,7 @@ The
 macro sets the key derivation function message digest to
 .Fa md
 for ECDH key derivation.
-Note that X9.63 specifies that this digest should be SHA1,
+Note that X9.63 specifies that this digest should be SHA-1,
 but OpenSSL tolerates other digests.
 .Pp
 The
@@ -410,6 +411,92 @@ macro gets the user key material for
 The return value is the user key material length.
 The resulting pointer is owned by the library and should not be
 freed by the caller.
+.Ss CMAC parameters
+Application programs normally implement CMAC as described in
+.Xr EVP_PKEY_new_CMAC_key 3
+and do not need the control commands documented here.
+.Pp
+Alternatively, the call to
+.Xr EVP_PKEY_new_CMAC_key 3
+can be replaced as follows,
+leaving the rest of the example code given there unchanged:
+.Pp
+.Bl -enum -width 2n -compact
+.It
+Create an empty
+.Vt EVP_PKEY_CTX
+object by passing the
+.Dv EVP_PKEY_CMAC
+constant to
+.Xr EVP_PKEY_CTX_new_id 3 .
+.It
+Initialize it with
+.Xr EVP_PKEY_keygen_init 3 .
+.It
+Select the block cipher by calling
+.Fn EVP_PKEY_CTX_ctrl
+with an
+.Fa optype
+of
+.Dv EVP_PKEY_OP_KEYGEN ,
+a
+.Fa cmd
+of
+.Dv EVP_PKEY_CTRL_CIPHER ,
+and
+.Fa p2
+pointing to an
+.Vt EVP_CIPHER
+object, which can be obtained from the functions in the CIPHER LISTING in
+.Xr EVP_EncryptInit 3 .
+The
+.Fa p1
+argument is ignored; passing 0 is recommended.
+.It
+Call
+.Fn EVP_PKEY_CTX_ctrl
+again with an
+.Fa optype
+of
+.Dv EVP_PKEY_OP_KEYGEN ,
+a
+.Fa cmd
+of
+.Dv EVP_PKEY_CTRL_SET_MAC_KEY ,
+.Fa p2
+pointing to the symmetric key, and
+.Fa p1
+specifying the length of the symmetric key in bytes.
+.It
+Extract the desired
+.Vt EVP_PKEY
+object using
+.Xr EVP_PKEY_keygen 3 ,
+making sure the
+.Fa ppkey
+argument points to a storage location containing a
+.Dv NULL
+pointer.
+.It
+Proceed with
+.Xr EVP_MD_CTX_new 3 ,
+.Xr EVP_DigestSignInit 3 ,
+and
+.Xr EVP_DigestSign 3
+as usual.
+.El
+.Ss HMAC parameters
+Application programs normally implement HMAC as described in
+.Xr EVP_PKEY_new_raw_private_key 3 .
+While it is possible to instead use
+.Dv EVP_PKEY_CTRL_SET_MAC_KEY
+directly, similar to the above description for CMAC,
+that is strongly discouraged.
+It's essentially what the deprecated function
+.Xr EVP_PKEY_new_mac_key 3
+does internally, and compared to the direct approach with
+.Xr EVP_PKEY_new_raw_private_key 3 ,
+it requires a lot of cumbersome and unnecessary work.
 .Ss Other parameters
 The
 .Fn EVP_PKEY_CTX_set1_id ,
@@ -453,7 +540,6 @@ supported by the public key algorithm.
 .Xr EVP_PKEY_encrypt 3 ,
 .Xr EVP_PKEY_get_default_digest_nid 3 ,
 .Xr EVP_PKEY_keygen 3 ,
-.Xr EVP_PKEY_meth_set_ctrl 3 ,
 .Xr EVP_PKEY_sign 3 ,
 .Xr EVP_PKEY_verify 3 ,
 .Xr EVP_PKEY_verify_recover 3 ,

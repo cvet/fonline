@@ -83,8 +83,8 @@ public:
     [[nodiscard]] auto GetPoints() const noexcept -> const vector<PrimitivePoint>& { return _points; }
 
     void RequestRebuild() noexcept { _rebuildFog = true; }
-    void SetDrawOffset(ipos32 offset) noexcept { _drawOffset = offset; }
-    void SetBaseDrawOffset(ipos32 offset) noexcept { _baseDrawOffset = offset; }
+    void SetDrawOffset(ipos32 offset) noexcept { *_drawOffset = offset; }
+    void SetBaseDrawOffset(ipos32 offset) noexcept { *_baseDrawOffset = offset; }
     void Prepare(const Input& input);
     void Clear();
 
@@ -104,8 +104,8 @@ private:
     bool _lastEnabled {true};
     bool _transitionActive {};
     bool _collapsingToOff {};
-    ipos32 _drawOffset {};
-    ipos32 _baseDrawOffset {};
+    unique_ptr<ipos32> _drawOffset {SafeAlloc::MakeUnique<ipos32>()};
+    unique_ptr<ipos32> _baseDrawOffset {SafeAlloc::MakeUnique<ipos32>()};
     Origin _lastOrigin {};
     int32_t _lastDistance {};
     int32_t _lastRadius {};

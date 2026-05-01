@@ -142,8 +142,9 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             });
         }
         else if (type.IsEnum) {
-            const int32_t enum_value = *cast_from_void<const int32_t*>(ptr);
-            writer.Write<int32_t>(enum_value);
+            FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
+            FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+            writer.WritePtr(static_cast<const uint8_t*>(ptr), type.Size);
         }
         else if (type.IsString) {
             const auto& str = *cast_from_void<const string*>(ptr);
@@ -249,7 +250,9 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return reader.ReadPtr<void>(type.Size);
         }
         else if (type.IsEnum) {
-            return reader.ReadPtr<void>(sizeof(int32_t));
+            FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
+            FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+            return reader.ReadPtr<void>(type.Size);
         }
         else if (type.IsString) {
             const auto str_len = reader.Read<int32_t>();

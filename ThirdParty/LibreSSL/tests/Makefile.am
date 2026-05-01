@@ -1,3 +1,18 @@
+#
+# Copyright (c) 2015 Brent Cook
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 include $(top_srcdir)/Makefile.am.common
 
 -include $(abs_top_builddir)/crypto/libcrypto_la_objects.mk
@@ -10,11 +25,16 @@ AM_CPPFLAGS += -I $(top_srcdir)/crypto/
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/asn1
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/bio
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/bn
+AM_CPPFLAGS += -I $(top_srcdir)/crypto/bytestring
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/curve25519
+AM_CPPFLAGS += -I $(top_srcdir)/crypto/ec
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/evp
+AM_CPPFLAGS += -I $(top_srcdir)/crypto/mlkem
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/modes
+AM_CPPFLAGS += -I $(top_srcdir)/crypto/sha
 AM_CPPFLAGS += -I $(top_srcdir)/crypto/x509
 AM_CPPFLAGS += -I $(top_srcdir)/ssl
+AM_CPPFLAGS += -I $(top_srcdir)/tests
 AM_CPPFLAGS += -I $(top_srcdir)/apps/openssl
 AM_CPPFLAGS += -I $(top_srcdir)/apps/openssl/compat
 AM_CPPFLAGS += -D_PATH_SSL_CA_FILE=\"$(top_srcdir)/cert.pem\"
@@ -32,8 +52,12 @@ if HOST_I386
 AM_CPPFLAGS += -I$(top_srcdir)/crypto/arch/i386/
 endif
 
-# XXX - do we still need this?
+if HOST_LOONGARCH64
+AM_CPPFLAGS += -I$(top_srcdir)/crypto/arch/loongarch64/
+endif
+
 if HOST_MIPS
+AM_CPPFLAGS += -I$(top_srcdir)/crypto/arch/mips/
 endif
 
 if HOST_MIPS64
@@ -77,6 +101,13 @@ XFAIL_TESTS =
 check_PROGRAMS =
 EXTRA_DIST = CMakeLists.txt
 DISTCLEANFILES = pidwraptest.txt
+
+# XXX - should probably be in their own static lib
+TEST_HELPER_SRC = test.c test_util.c
+noinst_HEADERS = test.h
+EXTRA_DIST += $(TEST_HELPER_SRC)
+# Needed by test helper on MSVC
+EXTRA_DIST += compat/mkstemp.c
 
 # aeadtest
 TESTS += aeadtest.sh
@@ -234,6 +265,11 @@ TESTS += bn_convert
 check_PROGRAMS += bn_convert
 bn_convert_SOURCES = bn_convert.c
 
+# bn_ffdh
+TESTS += bn_ffdh
+check_PROGRAMS += bn_ffdh
+bn_ffdh_SOURCES = bn_ffdh.c
+
 # bn_gcd
 TESTS += bn_gcd
 check_PROGRAMS += bn_gcd
@@ -330,7 +366,7 @@ chachatest_SOURCES = chachatest.c
 TESTS += cipher_list
 check_PROGRAMS += cipher_list
 cipher_list_SOURCES = cipher_list.c
-noinst_HEADERS = tests.h
+noinst_HEADERS += tests.h
 
 # cipherstest
 TESTS += cipherstest
@@ -429,6 +465,11 @@ ectest_SOURCES = ectest.c
 TESTS += ed25519test
 check_PROGRAMS += ed25519test
 ed25519test_SOURCES = ed25519test.c
+
+# err_test
+TESTS += err_test
+check_PROGRAMS += err_test
+err_test_SOURCES = err_test.c
 
 # evp_ecx_test
 TESTS += evp_ecx_test
@@ -535,7 +576,36 @@ lhash_test_SOURCES = lhash_test.c
 # md_test
 TESTS += md_test
 check_PROGRAMS += md_test
-md_test_SOURCES = md_test.c
+md_test_SOURCES = md_test.c $(TEST_HELPER_SRC)
+
+noinst_HEADERS += mlkem_tests_util.h
+noinst_HEADERS += parse_test_file.h
+
+# mlkem_tests
+TESTS += mlkem_tests.sh
+check_PROGRAMS += mlkem_tests
+mlkem_tests_SOURCES = mlkem_tests.c parse_test_file.c
+EXTRA_DIST += mlkem_tests.sh mlkem_tests.bat
+EXTRA_DIST += mlkem768_decap_tests.txt
+EXTRA_DIST += mlkem768_encap_tests.txt
+EXTRA_DIST += mlkem768_keygen_tests.txt
+EXTRA_DIST += mlkem768_nist_decap_tests.txt
+EXTRA_DIST += mlkem768_nist_keygen_tests.txt
+EXTRA_DIST += mlkem1024_decap_tests.txt
+EXTRA_DIST += mlkem1024_encap_tests.txt
+EXTRA_DIST += mlkem1024_keygen_tests.txt
+EXTRA_DIST += mlkem1024_nist_decap_tests.txt
+EXTRA_DIST += mlkem1024_nist_keygen_tests.txt
+
+# mlkem_iteration_tests
+TESTS += mlkem_iteration_tests
+check_PROGRAMS += mlkem_iteration_tests
+mlkem_iteration_tests_SOURCES = mlkem_iteration_tests.c mlkem_tests_util.c
+
+# mlkem_unittest
+TESTS += mlkem_unittest
+check_PROGRAMS += mlkem_unittest
+mlkem_unittest_SOURCES = mlkem_unittest.c mlkem_tests_util.c
 
 # objectstest
 TESTS += objectstest
@@ -614,11 +684,9 @@ EXTRA_DIST += policy_root2.pem
 EXTRA_DIST += policy_root_cross_inhibit_mapping.pem
 
 # pq_test
-TESTS += pq_test.sh
+TESTS += pq_test
 check_PROGRAMS += pq_test
 pq_test_SOURCES = pq_test.c
-EXTRA_DIST += pq_test.sh pq_test.bat
-EXTRA_DIST += pq_expected.txt
 
 # quictest
 TESTS += quictest.sh
@@ -651,6 +719,12 @@ TESTS += record_layer_test
 check_PROGRAMS += record_layer_test
 record_layer_test_SOURCES = record_layer_test.c
 
+# renegotiation_test
+TESTS += renegotiation_test.sh
+check_PROGRAMS += renegotiation_test
+renegotiation_test_SOURCES = renegotiation_test.c
+EXTRA_DIST += renegotiation_test.sh renegotiation_test.bat
+
 # rfc3779
 TESTS += rfc3779
 rfc3779_CPPFLAGS = $(AM_CPPFLAGS)
@@ -673,6 +747,11 @@ TESTS += rmd_test
 check_PROGRAMS += rmd_test
 rmd_test_SOURCES = rmd_test.c
 
+# rsa_method_test
+TESTS += rsa_method_test
+check_PROGRAMS += rsa_method_test
+rsa_method_test_SOURCES = rsa_method_test.c
+
 # rsa_padding_test
 TESTS += rsa_padding_test
 check_PROGRAMS += rsa_padding_test
@@ -694,7 +773,7 @@ EXTRA_DIST += servertest.sh servertest.bat
 # sha_test
 TESTS += sha_test
 check_PROGRAMS += sha_test
-sha_test_SOURCES = sha_test.c
+sha_test_SOURCES = sha_test.c $(TEST_HELPER_SRC)
 
 # shutdowntest
 TESTS += shutdowntest.sh
@@ -861,10 +940,10 @@ TESTS += x509_info
 check_PROGRAMS += x509_info
 x509_info_SOURCES = x509_info.c
 
-# x509name
-TESTS += x509name
-check_PROGRAMS += x509name
-x509name_SOURCES = x509name.c
+# x509_name_test
+TESTS += x509_name_test
+check_PROGRAMS += x509_name_test
+x509_name_test_SOURCES = x509_name_test.c
 
 # x509req_ext
 TESTS += x509req_ext

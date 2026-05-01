@@ -49,6 +49,7 @@
 #include "AngelScriptRemoteCalls.h"
 #include "AngelScriptString.h"
 #include "AngelScriptTypes.h"
+#include "Settings.h"
 
 #include <angelscript.h>
 #include <json.hpp>
@@ -84,7 +85,8 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* func)
     delete func_desc;
 }
 
-AngelScriptBackend::AngelScriptBackend()
+AngelScriptBackend::AngelScriptBackend(const ScriptSettings& settings) :
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -175,8 +177,8 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2));
 
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, false));
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_settings->DebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_settings->DebuggerEnabled));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
@@ -192,8 +194,8 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
 
-    if (_engine && _engine->Settings.DebuggerEnabled) {
-        if (_debuggerEndpointServer == nullptr) {
+    if (_engine && _settings->DebuggerEnabled) {
+        if (!_debuggerEndpointServer) {
             try {
                 _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
             }
@@ -666,7 +668,7 @@ void AngelScriptBackend::BindRequiredStuff()
             }
         });
 
-        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(engine->Settings.OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
+        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(_settings->OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer != nullptr) {
                 nlohmann::json body;
                 body["reason"] = reason;

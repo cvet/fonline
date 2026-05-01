@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_decr.c,v 1.26 2024/03/02 10:15:16 tb Exp $ */
+/* $OpenBSD: p12_decr.c,v 1.28 2026/01/27 14:03:01 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -59,9 +59,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/err.h>
 #include <openssl/pkcs12.h>
 
+#include "err_local.h"
 #include "evp_local.h"
 
 /* Encrypt/Decrypt a buffer based on password and algor, result in a
@@ -129,6 +129,11 @@ PKCS12_item_decrypt_d2i(const X509_ALGOR *algor, const ASN1_ITEM *it,
 	const unsigned char *p;
 	void *ret;
 	int outlen;
+
+	if (oct == NULL) {
+		PKCS12error(ERR_R_PASSED_NULL_PARAMETER);
+		return NULL;
+	}
 
 	if (!PKCS12_pbe_crypt(algor, pass, passlen, oct->data, oct->length,
 	    &out, &outlen, 0)) {

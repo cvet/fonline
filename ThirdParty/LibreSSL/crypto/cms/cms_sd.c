@@ -1,4 +1,4 @@
-/* $OpenBSD: cms_sd.c,v 1.33 2024/04/20 10:11:55 tb Exp $ */
+/* $OpenBSD: cms_sd.c,v 1.36 2025/07/31 02:24:21 tb Exp $ */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
@@ -57,7 +57,6 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/cms.h>
 #include <openssl/objects.h>
@@ -66,6 +65,7 @@
 
 #include "asn1_local.h"
 #include "cms_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 #include "x509_local.h"
 
@@ -484,35 +484,6 @@ CMS_add1_signer(CMS_ContentInfo *cms, X509 *signer, EVP_PKEY *pk,
 }
 LCRYPTO_ALIAS(CMS_add1_signer);
 
-static int
-cms_add1_signingTime(CMS_SignerInfo *si, ASN1_TIME *t)
-{
-	ASN1_TIME *tt;
-	int r = 0;
-
-	if (t)
-		tt = t;
-	else
-		tt = X509_gmtime_adj(NULL, 0);
-
-	if (!tt)
-		goto merr;
-
-	if (CMS_signed_add1_attr_by_NID(si, NID_pkcs9_signingTime,
-			                        tt->type, tt, -1) <= 0)
-		goto merr;
-
-	r = 1;
-
- merr:
-	if (!t)
-		ASN1_TIME_free(tt);
-	if (!r)
-		CMSerror(ERR_R_MALLOC_FAILURE);
-
-	return r;
-}
-
 EVP_PKEY_CTX *
 CMS_SignerInfo_get0_pkey_ctx(CMS_SignerInfo *si)
 {
@@ -778,6 +749,7 @@ cms_SignedData_final(CMS_ContentInfo *cms, BIO *chain)
 int
 CMS_SignerInfo_sign(CMS_SignerInfo *si)
 {
+	ASN1_TIME *at = NULL;
 	const EVP_MD *md;
 	unsigned char *buf = NULL, *sig = NULL;
 	int buf_len = 0;
@@ -788,7 +760,12 @@ CMS_SignerInfo_sign(CMS_SignerInfo *si)
 		goto err;
 
 	if (CMS_signed_get_attr_by_NID(si, NID_pkcs9_signingTime, -1) < 0) {
-		if (!cms_add1_signingTime(si, NULL))
+		if ((at = X509_gmtime_adj(NULL, 0)) == NULL) {
+			CMSerror(ERR_R_MALLOC_FAILURE);
+			goto err;
+		}
+		if (!CMS_signed_add1_attr_by_NID(si, NID_pkcs9_signingTime,
+		    at->type, at, -1))
 			goto err;
 	}
 
@@ -828,6 +805,7 @@ CMS_SignerInfo_sign(CMS_SignerInfo *si)
 	ret = 1;
 
  err:
+	ASN1_TIME_free(at);
 	(void)EVP_MD_CTX_reset(si->mctx);
 	freezero(buf, buf_len);
 	freezero(sig, sig_len);
@@ -1012,6 +990,8 @@ LCRYPTO_ALIAS(CMS_add_smimecap);
  * Add AlgorithmIdentifier OID of type |nid| to the SMIMECapability attribute
  * set |*out_algs| (see RFC 3851, section 2.5.2). If keysize > 0, the OID has
  * an integer parameter of value |keysize|, otherwise parameters are omitted.
+ *
+ * See also PKCS7_simple_smimecap().
  */
 int
 CMS_add_simple_smimecap(STACK_OF(X509_ALGOR) **out_algs, int nid, int keysize)

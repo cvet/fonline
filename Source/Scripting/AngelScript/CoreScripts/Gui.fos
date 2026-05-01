@@ -280,7 +280,7 @@ class Object
 {
     bool get_Active() final
     {
-        return _ActiveSelf && (_Parent != null ? _Parent.Active : true);
+        return _Active;
     }
     bool get_ActiveSelf() final
     {
@@ -372,6 +372,9 @@ class Object
     }
 
     bool _ActiveSelf;
+    bool _Active;
+    bool _HasOnDraw;
+    bool _NeedDraw;
     string _Name;
     ipos _BasePos;
     isize _BaseSize;
@@ -529,9 +532,12 @@ class Object
         if (parent != null) {
             parent._Children.insertLast(this);
         }
+        _RefreshActive();
 
         _Construct();
         OnConstruct();
+
+        _RefreshNeedDraw();
 
         Screen screen = Screen;
         if (screen != null && screen._IsRegistered) {
@@ -553,6 +559,7 @@ class Object
 
     void _Init()
     {
+        _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
         for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Init();
         }
@@ -603,6 +610,7 @@ class Object
 
     void Remove()
     {
+        Object oldParent = _Parent;
         if (_Parent != null) {
             _Parent._Children.removeAt(_Parent._Children.findByRef(this));
             _Parent = null;
@@ -611,6 +619,11 @@ class Object
         _Remove();
 
         _ActiveSelf = false;
+        _RefreshActive();
+
+        if (oldParent != null) {
+            oldParent._RefreshNeedDraw();
+        }
     }
 
     void _Remove()
@@ -650,12 +663,14 @@ class Object
         }
 
         // Common draw callback
-        OnDraw();
+        if (_HasOnDraw) {
+            OnDraw();
+        }
     }
 
     void _Draw(bool callCallback)
     {
-        if (!Active) {
+        if (!_ActiveSelf || !_NeedDraw) {
             return;
         }
 
@@ -664,15 +679,44 @@ class Object
         }
 
         // _Children
-        for (int i = 0; i < _Children.length(); i++) {
+        int childCount = _Children.length();
+        for (int i = 0; i < childCount; i++) {
             Object child = _Children[i];
-            if (child._ActiveSelf && !child._IsDragged) {
+            if (child._ActiveSelf && child._NeedDraw && !child._IsDragged) {
                 child._Draw(true);
             }
         }
 
         if (callCallback) {
             OnPostDraw();
+        }
+    }
+
+    bool _HasSelfDraw()
+    {
+        return _HasOnDraw;
+    }
+
+    void _RefreshNeedDraw()
+    {
+        bool need = _HasSelfDraw();
+        if (!need) {
+            for (int i = 0; i < _Children.length(); i++) {
+                if (_Children[i]._NeedDraw) {
+                    need = true;
+                    break;
+                }
+            }
+        }
+
+        if (_NeedDraw == need) {
+            return;
+        }
+
+        _NeedDraw = need;
+
+        if (_Parent != null) {
+            _Parent._RefreshNeedDraw();
         }
     }
 
@@ -727,6 +771,11 @@ class Object
 
     Object FindHit(ipos pos)
     {
+        // Inactive subtrees can never produce a hit (IsHit walks ancestors and bails on inactive)
+        if (!_ActiveSelf) {
+            return null;
+        }
+
         // Check children
         for (int i = _Children.length() - 1; i >= 0; i--) {
             Object obj = _Children[i].FindHit(pos);
@@ -735,8 +784,7 @@ class Object
             }
         }
 
-        // Check own
-        if (IsHit(pos)) {
+        if (_IsHitSelf(pos)) {
             return this;
         }
 
@@ -751,20 +799,38 @@ class Object
 
     bool IsHit(ipos pos)
     {
-        return Active && !_IsNotHittable && _Size.width > 0 && _Size.height > 0 && Math::IsCollision(pos, _AbsolutePos, _Size) && !_IsCropped(pos);
+        if (!_IsHitSelf(pos)) {
+            return false;
+        }
+
+        Object obj = _Parent;
+        while (obj != null) {
+            if (!obj._ActiveSelf) {
+                return false;
+            }
+
+            Panel panel = cast<Panel>(obj);
+            if (panel != null && panel._CropContent &&
+                (pos.x < obj._AbsolutePos.x || pos.x >= obj._AbsolutePos.x + obj._Size.width || pos.y < obj._AbsolutePos.y ||
+                 pos.y >= obj._AbsolutePos.y + obj._Size.height)) {
+                return false;
+            }
+
+            obj = obj._Parent;
+        }
+
+        return true;
     }
 
-    bool _IsCropped(ipos pos)
+    bool _IsHitSelf(ipos pos)
     {
-        Object obj = Parent;
-        while (obj != null) {
-            Panel panel = cast<Panel>(obj);
-            if (panel != null && panel._CropContent && !Math::IsCollision(pos, obj._AbsolutePos, obj._Size)) {
-                return true;
-            }
-            obj = obj.Parent;
+        if (!_ActiveSelf || _IsNotHittable || _Size.width <= 0 || _Size.height <= 0) {
+            return false;
         }
-        return false;
+        if (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height) {
+            return false;
+        }
+        return true;
     }
 
     void _GetWholeSizeRect(int[] rect)
@@ -1029,9 +1095,10 @@ class Object
 
     Object _Find(const string& name, bool deepFind, int& skip)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 if (skip <= 0) {
                     return child;
                 }
@@ -1058,9 +1125,10 @@ class Object
 
     void _Count(const string& name, bool deepCount, int& result)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 result++;
             }
             if (deepCount) {
@@ -1157,6 +1225,7 @@ class Object
     {
         if (_ActiveSelf != active) {
             _ActiveSelf = active;
+            _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
             _ActiveChanged();
         }
     }
@@ -1165,7 +1234,20 @@ class Object
     {
         OnActiveChanged();
         for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._Active = _Children[i]._ActiveSelf && _Active;
             _Children[i]._ActiveChanged();
+        }
+    }
+
+    void _RefreshActive()
+    {
+        bool newActive = _ActiveSelf && (_Parent == null || _Parent._Active);
+        if (_Active == newActive) {
+            return;
+        }
+        _Active = newActive;
+        for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._RefreshActive();
         }
     }
 
@@ -1254,6 +1336,11 @@ class Object
     {
         _DeferredMousePressed = enabled;
     }
+
+    void SetHasOnDraw(bool enabled)
+    {
+        _HasOnDraw = enabled;
+    }
 };
 
 const int PanelScrollAnimationDurationMs = 120;
@@ -1338,19 +1425,49 @@ class Panel : Object
         _HorizontalScrollTween.SnapTo(_HorizontalScroll);
     }
 
-    bool IsHit(ipos pos) override
+    bool _IsHitSelf(ipos pos) override
     {
-        if (Object::IsHit(pos)) {
-            if (_CheckTransparentOnHit && _BackgroundImage != null) {
-                return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
-            }
-            return true;
+        if (!Object::_IsHitSelf(pos)) {
+            return false;
         }
-        return false;
+        if (_CheckTransparentOnHit && _BackgroundImage != null) {
+            return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
+        }
+        return true;
+    }
+
+    Object FindHit(ipos pos) override
+    {
+        if (!_ActiveSelf) {
+            return null;
+        }
+
+        // Cropping panel outside its rect cannot contain any hittable descendant
+        if (_CropContent &&
+            (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height)) {
+            return null;
+        }
+
+        for (int i = _Children.length() - 1; i >= 0; i--) {
+            Object obj = _Children[i].FindHit(pos);
+            if (obj != null) {
+                return obj;
+            }
+        }
+
+        if (_IsHitSelf(pos)) {
+            return this;
+        }
+
+        return null;
     }
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         _RefreshSmoothScroll();
 
         bool crop = _CropContent;
@@ -1376,6 +1493,11 @@ class Panel : Object
         if (crop) {
             Game.PopDrawScissor();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null;
     }
 
     void _DrawImage(Sprite::Sprite image)
@@ -1422,6 +1544,8 @@ class Panel : Object
         if (curImage != null && (imageLayout == SpriteLayout::None || _BaseSize == isize())) {
             SetSize(curImage.Size);
         }
+
+        _RefreshNeedDraw();
     }
 
     void _MousePressedUnder(MouseButton button) override
@@ -1749,6 +1873,10 @@ class Text : Object
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1765,6 +1893,11 @@ class Text : Object
         if (callCallback) {
             OnPostDraw();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return true;
     }
 
     void SetText(string text, int font, int flags)
@@ -1869,6 +2002,10 @@ class TextInput : Text
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -2053,6 +2190,10 @@ class Button : Panel
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -2088,6 +2229,11 @@ class Button : Panel
         if (callCallback) {
             OnPostDraw();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null;
     }
 
     void MouseClick(MouseButton button)
@@ -2291,6 +2437,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = true;
+        _RefreshActive();
 
         // Set default cursor
         _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
@@ -2303,6 +2450,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = false;
+        _RefreshActive();
 
         // Base behaviour
         Panel::_Hide();
@@ -2532,6 +2680,7 @@ class Grid : Panel
 
         // Create new intsances
         cellPrototype._ActiveSelf = true;
+        cellPrototype._RefreshActive();
         Object[] cellInstances = {};
 
         for (int i = 0; i < _GridSize; i++) {
@@ -2544,6 +2693,7 @@ class Grid : Panel
         }
 
         cellPrototype._ActiveSelf = false;
+        cellPrototype._RefreshActive();
 
         // Callbacks
         for (int i = 0; i < cellInstances.length(); i++) {
@@ -2651,6 +2801,7 @@ class Grid : Panel
 
             if (cellPrototype != null) {
                 cellPrototype._ActiveSelf = false;
+                cellPrototype._RefreshActive();
             }
         }
     }
@@ -2745,6 +2896,10 @@ class MessageBox : Text
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (!_InvertMessages) {
             _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END(_ScrollLines);
         }
@@ -3167,6 +3322,10 @@ class Console : TextInput
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -3879,11 +4038,14 @@ void CleanupObjectGraph(Object obj)
     obj._Parent = null;
     obj._Children.clear();
     obj._ActiveSelf = false;
+    obj._Active = false;
 }
 
 void EngineCallback_Finish()
 {
     EngineCallback_InputLost();
+
+    HideAllScreens();
 
     DropMenu = null;
     CurConsole = null;

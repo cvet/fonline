@@ -288,7 +288,7 @@ static int get_usage(uint8_t *report_descriptor, size_t size,
 	return -1; /* failure */
 }
 
-#if defined(__FreeBSD__) && __FreeBSD__ < 10
+#if defined(__FreeBSD__) && __FreeBSD__ < 10 && !defined(libusb_get_string_descriptor)
 /* The libusb version included in FreeBSD < 10 doesn't have this function. In
    mainline libusb, it's inlined in libusb.h. This function will bear a striking
    resemblance to that one, because there's about one way to code it.
@@ -671,6 +671,8 @@ static void fill_device_info_usage(struct hid_device_info *cur_dev, libusb_devic
 
 	cur_dev->usage_page = page;
 	cur_dev->usage = usage;
+
+	free(hid_report_descriptor);
 }
 
 #ifdef INVASIVE_GET_USAGE
@@ -851,6 +853,7 @@ static int is_xbox360(unsigned short vendor_id, const struct libusb_interface_de
 		0x24c6, /* PowerA */
 		0x2c22, /* Qanba */
 		0x2dc8, /* 8BitDo */
+		0x37d7, /* Flydigi */
 		0x9886, /* ASTRO Gaming */
 	};
 
@@ -884,9 +887,13 @@ static int is_xboxone(unsigned short vendor_id, const struct libusb_interface_de
 		0x1532, /* Razer Wildcat */
 		0x20d6, /* PowerA */
 		0x24c6, /* PowerA */
+		0x294b, /* Snakebyte */
 		0x2dc8, /* 8BitDo */
 		0x2e24, /* Hyperkin */
+		0x2e95, /* SCUF */
+		0x3285, /* Nacon */
 		0x3537, /* GameSir */
+		0x366c, /* ByoWave */
 	};
 
 	if (intf_desc->bInterfaceNumber == 0 &&
@@ -976,7 +983,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 
 #ifdef HIDAPI_IGNORE_DEVICE
 		/* See if there are any devices we should skip in enumeration */
-		if (HIDAPI_IGNORE_DEVICE(HID_API_BUS_USB, dev_vid, dev_pid, 0, 0)) {
+		if (HIDAPI_IGNORE_DEVICE(HID_API_BUS_USB, dev_vid, dev_pid, 0, 0, true)) {
 			continue;
 		}
 #endif
@@ -1261,6 +1268,7 @@ static void init_xbox360(libusb_device_handle *device_handle, unsigned short idV
 
 	if ((idVendor == 0x05ac && idProduct == 0x055b) /* Gamesir-G3w */ ||
 	    (idVendor == 0x20d6 && idProduct == 0x4010) /* PowerA Battle Dragon Advanced Wireless Controller */ ||
+	    (idVendor == 0x20d6 && idProduct == 0x4025) /* PowerA OPS v1 Wireless Controller */ ||
 	    idVendor == 0x0f0d /* Hori Xbox controllers */) {
 		unsigned char data[20];
 

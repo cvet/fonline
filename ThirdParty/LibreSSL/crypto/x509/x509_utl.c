@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_utl.c,v 1.22 2024/08/31 18:38:46 tb Exp $ */
+/* $OpenBSD: x509_utl.c,v 1.28 2026/01/12 22:08:34 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -64,12 +64,17 @@
 #include <openssl/asn1.h>
 #include <openssl/bn.h>
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/x509v3.h>
 
-#include "conf_local.h"
-
 #include "bytestring.h"
+#include "conf_local.h"
+#include "err_local.h"
+
+/*
+ * Match reference identifiers starting with "." to any sub-domain. This
+ * flag is set implicitly when the subject reference identity is a DNS name.
+ */
+#define _X509_CHECK_FLAG_DOT_SUBDOMAINS 0x8000
 
 static char *bn_to_string(const BIGNUM *bn);
 static char *strip_spaces(char *name);
@@ -142,8 +147,6 @@ X509V3_add_value_uchar(const char *name, const unsigned char *value,
 {
 	return X509V3_add_value(name, (const char *)value, extlist);
 }
-
-/* Free function for STACK_OF(CONF_VALUE) */
 
 void
 X509V3_conf_free(CONF_VALUE *conf)
@@ -349,8 +352,6 @@ X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint)
 #define HDR_NAME	1
 #define HDR_VALUE	2
 
-/*#define DEBUG*/
-
 STACK_OF(CONF_VALUE) *
 X509V3_parse_list(const char *line)
 {
@@ -391,7 +392,8 @@ X509V3_parse_list(const char *line)
 					X509V3error(X509V3_R_INVALID_NULL_NAME);
 					goto err;
 				}
-				X509V3_add_value(ntmp, NULL, &values);
+				if (!X509V3_add_value(ntmp, NULL, &values))
+					goto err;
 			}
 			break;
 
@@ -404,7 +406,8 @@ X509V3_parse_list(const char *line)
 					X509V3error(X509V3_R_INVALID_NULL_VALUE);
 					goto err;
 				}
-				X509V3_add_value(ntmp, vtmp, &values);
+				if (!X509V3_add_value(ntmp, vtmp, &values))
+					goto err;
 				ntmp = NULL;
 				q = p + 1;
 			}
@@ -418,14 +421,16 @@ X509V3_parse_list(const char *line)
 			X509V3error(X509V3_R_INVALID_NULL_VALUE);
 			goto err;
 		}
-		X509V3_add_value(ntmp, vtmp, &values);
+		if (!X509V3_add_value(ntmp, vtmp, &values))
+			goto err;
 	} else {
 		ntmp = strip_spaces(q);
 		if (!ntmp) {
 			X509V3error(X509V3_R_INVALID_NULL_NAME);
 			goto err;
 		}
-		X509V3_add_value(ntmp, NULL, &values);
+		if (!X509V3_add_value(ntmp, NULL, &values))
+			goto err;
 	}
 	free(linebuf);
 	return values;
@@ -434,7 +439,6 @@ X509V3_parse_list(const char *line)
 	free(linebuf);
 	sk_CONF_VALUE_pop_free(values, X509V3_conf_free);
 	return NULL;
-
 }
 LCRYPTO_ALIAS(X509V3_parse_list);
 

@@ -20,6 +20,7 @@
 \usepackage[euler]{textgreek}
 \usepackage{nameref}
 \usepackage{diagbox}
+\usepackage{csquotes}
 
 \usepackage[hmarginratio=1:1,top=32mm,columnsep=20pt]{geometry} % Document margins
 \geometry{a4paper,textwidth=6.5in,hmarginratio=1:1,
@@ -1396,7 +1397,7 @@ void Function()
 }
 \end{lstlisting}
 
-This doesn't stop some compilers from dispensing \emph{fashion advice} about variable shadowing (as both \texttt{ZoneScoped} calls create a variable with the same name, with the inner scope one shadowing the one in the outer scope). If you want to avoid these warnings, you will also need to use the \texttt{ZoneNamed} macros.
+This doesn't stop some compilers from dispensing \emph{fashion advice} about variable shadowing (as both \texttt{ZoneScoped} calls create a variable with the same name, with the inner scope one shadowing the one in the outer scope). By default the produced warnings are suppressed when using clang, gcc or MSVC. This behavior can be opted out of by defining \texttt{TRACY\_ALLOW\_SHADOW\_WARNING}. An alternative approach avoids variable name shadowing by manually defining zone names with \texttt{ZoneNamed}. Using this approach requires using the V variants of zone macros like \texttt{ZoneTextV}.
 
 \subsubsection{Exiting program from within a zone}
 
@@ -1640,7 +1641,7 @@ To enable calibrated context, replace the macro \texttt{TracyVkContext} with \te
 
 \subparagraph{Using Vulkan 1.2 features}
 
-Vulkan 1.2 and \texttt{VK\_EXT\_host\_query\_reset} provide mechanics to reset the query pool without the need of a command buffer. By using \texttt{TracyVkContextHostCalibrated} you can make use of this feature. It only requires a function pointer to \texttt{vkResetQueryPool} in addition to the ones required for \texttt{TracyVkContextCalibrated} instead of the VkQueue and VkCommandBuffer handles.
+Vulkan 1.2 and \texttt{VK\_EXT\_host\_query\_reset} provide mechanics to reset the query pool without the need of a command buffer. By using \texttt{TracyVkContextHostCalibrated} and \texttt{TracyVkCollectHost}, you can make use of this feature. It only requires a function pointer to \texttt{vkResetQueryPool} in addition to the ones required for \texttt{TracyVkContextCalibrated} instead of the VkQueue and VkCommandBuffer handles.
 
 However, using this feature requires the physical device to have calibrated device and host time domains. In addition to \texttt{VK\_TIME\_DOMAIN\_DEVICE\_EXT}, \texttt{vkGetPhysicalDeviceCalibrateableTimeDomainsEXT} will have to additionally return either \texttt{VK\_TIME\_DOMAIN\_CLOCK\_MONOTONIC\_RAW\_EXT} or \texttt{VK\_TIME\_DOMAIN\_QUERY\_PERFORMANCE\_COUNTER\_EXT} for Unix and Windows, respectively. If this is not the case, you will need to use \texttt{TracyVkContextCalibrated} or \texttt{TracyVkContext} macro instead.
 
@@ -1688,7 +1689,7 @@ OpenCL support is achieved by including the \texttt{public/tracy/TracyOpenCL.hpp
 
 To mark an OpenCL zone one must make sure that a valid OpenCL \texttt{cl\_event} object is available. The event will be the object that Tracy will use to query profiling information from the OpenCL driver. For this to work, you must create all OpenCL queues with the \texttt{CL\_QUEUE\_PROFILING\_ENABLE} property.
 
-OpenCL zones can be created with the \texttt{TracyCLZone(ctx, name)} where \texttt{name} will usually be a descriptive name for the operation represented by the \texttt{cl\_event}. Within the scope of the zone, you must call \texttt{TracyCLSetEvent(event)} for the event to be registered in Tracy.
+OpenCL zones can be created with the \texttt{TracyCLZone(ctx, name)} where \texttt{name} will usually be a descriptive name for the operation represented by the \texttt{cl\_event}. Within the scope of the zone, you must call \texttt{TracyCLZoneSetEvent(event)} for the event to be registered in Tracy.
 
 Similar to Vulkan and OpenGL, you also need to periodically collect the OpenCL events using the \texttt{TracyCLCollect(ctx)} macro. An excellent place to perform this operation is after a \texttt{clFinish} since this will ensure that any previously queued OpenCL commands will have finished by this point.
 
@@ -1705,6 +1706,35 @@ To begin instrumentation of all CUDA API calls, use the \texttt{TracyCUDAStartPr
 Unlike other GPU backends in Tracy, there is no need to call \texttt{TracyCUDACollect(ctx)} periodically, since a background collector thread is enabled by default. This behavior can be disabled by defining \texttt{TRACY\_CUDA\_ENABLE\_COLLECTOR\_THREAD} as \texttt{0} prior to including \texttt{TracyCUDA.hpp}.
 
 To stop profiling, call the \texttt{TracyCUDAStopProfiling(ctx)} macro.
+
+\subsubsection{ROCm}
+
+On Linux, if rocprofiler-sdk is installed, tracy can automatically trace GPU dispatches and collect
+performance counter values. If CMake can't find rocprofiler-sdk, you can set the CMake variable
+\texttt{rocprofiler-sdk\_DIR} to point it at the correct module directory. Use the
+\texttt{TRACY\_ROCPROF\_COUNTERS} environment variable with the desired counters separated by commas
+to control what values are collected. The results will appear for each dispatch in the tool tip and
+zone detail window. Results are summed across dimensions. You can get a list of the counters
+available for your hardware with this command:
+\begin{lstlisting}[language=sh]
+rocprofv3 -L
+\end{lstlisting}
+
+\subparagraph{Troubleshooting}
+\begin{itemize}
+\item If you are taking very long captures, you may see drift between the GPU and
+  CPU timelines. This may be mitigated by setting the CMake variable
+  \texttt{TRACY\_ROCPROF\_CALIBRATION}, which will refresh the time synchronization about every
+  second.
+\item The timeline drift may also be affected by network time synchronization, in which case the
+  drift will be reduced by disabling that, with the advantage that there is no application performance
+  cost.
+\item On some GPUs, you will need to change the the performance level to see non-zero results from
+  some counters. Use this command:
+\begin{lstlisting}[language=sh]
+sudo amd-smi set -g 0 -l stable_std
+\end{lstlisting}
+\end{itemize}
 
 \subsubsection{Multiple zones in one scope}
 
@@ -2210,6 +2240,15 @@ CPU and GPU timestamps may be periodically resynchronized via the \texttt{\_\_\_
 
 To see how you should use this API, you should look at the reference implementation contained in API-specific C++ headers provided by Tracy. For example, to see how to write your instrumentation of OpenGL, you should closely follow the contents of the \texttt{TracyOpenGL.hpp} implementation.
 
+
+\begin{bclogo}[
+	noborder=true,
+	couleur=black!5,
+	logo=\bcbombe
+	]{Important}
+A common mistake is to skip the zone "\texttt{isActive}" check. When using \texttt{TRACY\_ON\_DEMAND}, you need to read the value of \texttt{TracyCIsConnected} once, and check the same value for both \newline \texttt{\_\_\_tracy\_emit\_gpu\_zone\_begin\_alloc} and \texttt{\_\_\_tracy\_emit\_gpu\_zone\_end}. Tracy may otherwise receive a zone end without a zone begin.
+\end{bclogo}
+
 \subsubsection{Fibers}
 
 Fibers are available in the C API through the \texttt{TracyCFiberEnter} and \texttt{TracyCFiberLeave} macros. To use them, you should observe the requirements listed in section~\ref{fibers}.
@@ -2362,37 +2401,30 @@ Please not the use of ids as way to cope with the need for unique pointers for c
 
 \subsubsection{Building the Python package}
 
-To build the Python package, you will need to use the CMake build system to compile the Tracy-Client.
-The CMake option \texttt{-D TRACY\_CLIENT\_PYTHON=ON} is used to enable the generation of the Python bindings in conjunction with a mandatory creation of a shared Tracy-Client library via one of the CMake options \texttt{-D BUILD\_SHARED\_LIBS=ON} or \texttt{-D DEFAULT\_STATIC=OFF}.
-
-The following other variables are available in addition:
-
-\begin{itemize}
-\item \texttt{EXTERNAL\_PYBIND11} --- Can be used to disable the download of pybind11 when Tracy is embedded in another CMake project that already uses pybind11.
-\item \texttt{TRACY\_CLIENT\_PYTHON\_TARGET} --- Optional directory to copy Tracy Python bindings to when Tracy is embedded in another CMake project.
-\item \texttt{BUFFER\_SIZE} --- The size of the global pointer buffer (defaults to 128) for naming Tracy profiling entities like frame marks, plots, and memory locations.
-\item \texttt{NAME\_LENGTH} --- The maximum length (defaults to 128) of a name stored in the global pointer buffer.
-\end{itemize}
-
-Be aware that the memory allocated by this buffer is global and is not freed, see section~\ref{uniquepointers}.
-
-See below for example steps to build the Python bindings using CMake:
-
-\begin{lstlisting}
-mkdir build
-cd build
-cmake -DTRACY_STATIC=OFF -DTRACY_CLIENT_PYTHON=ON ../
-make -j$(nproc)
-\end{lstlisting}
-
-Once this has finished building the Python package can be built as follows:
+To build the Python package, run the following commands:
 
 \begin{lstlisting}
 cd ../python
-python3 setup.py bdist_wheel
+pip wheel .
 \end{lstlisting}
 
-The created package will be in the folder \texttt{python/dist}.
+This will create a wheel package in the \texttt{python} folder.
+Please note that this requires CMake and a C++ compiler installed on the system, as the Tracy-Client library is built in the background.
+
+You can pass additional CMake options to the package build to configure the Tracy-Client library:
+\begin{lstlisting}
+pip wheel . --config-settings cmake.define.TRACY_ENABLE=OFF
+\end{lstlisting}
+
+The following additional CMake options are available when building the Python package:
+
+\begin{itemize}
+\item \texttt{BUFFER\_SIZE} --- The size of the global pointer buffer (defaults to 128) for naming Tracy profiling entities like frame marks, plots, and memory locations.
+\item \texttt{NAME\_LENGTH} --- The maximum length (defaults to 128) of a name stored in the global pointer buffer.
+\item \texttt{EXTERNAL\_PYBIND11} --- Can be used to disable the download of pybind11 when Tracy is embedded in another CMake project that already uses pybind11.
+\end{itemize}
+
+Be aware that the memory allocated by this buffer is global and is not freed, see section~\ref{uniquepointers}.
 
 \subsection{Fortran API}
 \label{fortranapi}
@@ -2679,9 +2711,13 @@ You may disable context switch data capture by adding the \texttt{TRACY\_NO\_CON
 
 Tracy may discover CPU topology data to provide further information about program performance characteristics. It is handy when combined with context switch information (section~\ref{contextswitches}).
 
-In essence, the topology information gives you context about what any given \emph{logical CPU} really is and how it relates to other logical CPUs. The topology hierarchy consists of packages, cores, and threads.
+In essence, the topology information gives you context about what any given \emph{logical CPU} really is and how it relates to other logical CPUs. The topology hierarchy consists of packages, dies, cores, and threads.
 
-Packages contain cores and shared resources, such as memory controller, L3 cache, etc. A store-bought CPU is an example of a package. While you may think that multi-package configurations would be a domain of servers, they are actually quite common in the mobile devices world, with many platforms using the \emph{big.LITTLE} arrangement of two packages in one silicon chip.
+Packages contain cores and shared resources, such as a memory controller or L3 cache. They also include a common connector to access peripheral hardware and receive power. An example of a package is a store-bought CPU.
+
+Historically, a CPU would contain all its cores, controllers, and caches in a single piece of semiconductor called a die. More advanced CPU designs that have recently appeared may split the available cores across two or more dies. An additional die may be invisible to the user and facilitate communication between the cores. This is an important detail to consider when profiling because the latency of core interactions will differ between cores that are physically close together on a single die versus cores that need to communicate through die interconnects.
+
+While you may think that multi-package configurations would be a domain of servers, they are actually quite common in the mobile devices world, with many platforms using the \emph{big.LITTLE} arrangement of two packages in one silicon chip.
 
 Cores contain at least one thread and shared resources: execution units, L1 and L2 cache, etc.
 
@@ -2707,6 +2743,8 @@ This feature requires privilege elevation on Windows, but not on Linux. However,
 By default, sampling is performed at 8 kHz frequency on Windows (the maximum possible value). On Linux and Android, it is performed at 10 kHz\footnote{The maximum sampling frequency is limited by the \texttt{kernel.perf\_event\_max\_sample\_rate} sysctl parameter.}. You can change this value by providing the sampling frequency (in Hz) through the \texttt{TRACY\_SAMPLING\_HZ} macro.
 
 Call stack sampling may be disabled by using the \texttt{TRACY\_NO\_SAMPLING} define.
+
+When enabled, by default, sampling starts at the beginning of the application and ends with it. You can instead have programmatic (manual) control over when sampling should begin and end by defining \texttt{TRACY\_SAMPLING\_PROFILER\_MANUAL\_START} when compiling \texttt{TracyClient.cpp}. Use \texttt{tracy::BeginSamplingProfiling()} and \texttt{tracy::EndSamplingProfiling()} to control it. There are C interfaces for it as well: \texttt{TracyCBeginSamplingProfiling()} and \texttt{TracyCEndSamplingProfiling()}.
 
 \begin{bclogo}[
 noborder=true,
@@ -2852,23 +2890,22 @@ You can capture a trace using a command line utility contained in the \texttt{ca
 If no client is running at the given address, the server will wait until it can make a connection. During the capture, the utility will display the following information:
 
 \begin{verbatim}
-% ./capture -a 127.0.0.1 -o trace
+% ./tracy-capture -a 127.0.0.1 -o trace
 Connecting to 127.0.0.1:8086...
-Queue delay: 5 ns
 Timer resolution: 3 ns
    1.33 Mbps / 40.4% = 3.29 Mbps | Net: 64.42 MB | Mem: 283.03 MB | Time: 10.6 s
 \end{verbatim}
 
-The \emph{queue delay} and \emph{timer resolution} parameters are calibration results of timers used by the client. The following line is a status bar, which displays: network connection speed, connection compression ratio, and the resulting uncompressed data rate; the total amount of data transferred over the network; memory usage of the capture utility; time extent of the captured data.
+The \emph{timer resolution} parameter shows the calibration results of timers used by the client. The following line is a status bar, which displays: network connection speed, connection compression ratio, and the resulting uncompressed data rate; the total amount of data transferred over the network; memory usage of the capture utility; time extent of the captured data.
 
 You can disconnect from the client and save the captured trace by pressing \keys{\ctrl + C}. If you prefer to disconnect after a fixed time, use the \texttt{-s seconds} parameter.
 
 \subsection{Interactive profiling}
 \label{interactiveprofiling}
 
-If you want to look at the profile data in real-time (or load a saved trace file), you can use the data analysis utility contained in the \texttt{profiler} directory. After starting the application, you will be greeted with a welcome dialog (figure~\ref{welcomedialog}), presenting a bunch of useful links (\faBook{}~\emph{User manual}, \faGlobeAmericas{}~\emph{Web}, \faComment~\emph{Join chat} and \faHeart{}~\emph{Sponsor}). The \faGlobeAmericas{}~\emph{Web} button opens a drop-down list with links to the profiler's \emph{\faHome{}~Home page} and a bunch of \emph{\faVideo{}~Feature videos}.
+If you want to look at the profile data in real-time (or load a saved trace file), you can use the data analysis utility \texttt{tracy-profiler} contained in the \texttt{profiler} directory. After starting the application, you will be greeted with a welcome dialog (figure~\ref{welcomedialog}), presenting a bunch of useful links (\faBook{}~\emph{User manual}, \faGlobeAmericas{}~\emph{Web}, \faComment~\emph{Join chat} and \faHeart{}~\emph{Sponsor}). The \faGlobeAmericas{}~\emph{Web} button opens a drop-down list with links to the profiler's \emph{\faHome{}~Home page} and a bunch of \emph{\faVideo{}~Feature videos}.
 
-The \emph{\faWrench{}~Wrench} button opens the about dialog, which also contains a number of global settings you may want to tweak.
+The \emph{\faWrench{}~Wrench} button opens the about dialog, which also contains a number of global settings you may want to tweak (section~\ref{aboutwindow}).
 
 The client \emph{address entry} field and the \faWifi{}~\emph{Connect} button are used to connect to a running client\footnote{Note that a custom port may be provided here, for example by entering '127.0.0.1:1234'.}. You can use the connection history button~\faCaretDown{} to display a list of commonly used targets, from which you can quickly select an address. You can remove entries from this list by hovering the \faMousePointer{}~mouse cursor over an entry and pressing the \keys{\del} button on the keyboard.
 
@@ -2904,6 +2941,28 @@ The \emph{discovered clients} list is only displayed if clients are broadcasting
 Both connecting to a client and opening a saved trace will present you with the main profiler view, which you can use to analyze the data (see section~\ref{analyzingdata}).
 
 Once connected to a client \keys{\ctrl + \shift + \Alt + R} can be used to quickly discard any captured data and reconnect to a client at the same address.
+
+\subsubsection{About window}
+\label{aboutwindow}
+
+The About window displays the profiler version and the Git SHA identifier of the build, as well as some additional information.
+
+You can also adjust some settings that affect global profiler behavior in this window. These settings are accessible by expanding the \emph{\faToolbox{}~Global settings} node. The following options are available:
+
+\begin{itemize}
+\item \emph{Threaded rendering} -- This controls whether the profiler UI uses multithreaded rendering. Since the profiler needs to quickly navigate large amounts of data, it spends a lot of time waiting for memory accesses to be resolved. Multithreading enables multiple simultaneous memory reads, which significantly reduces the impact of memory access latency. However, this may result in higher CPU usage, which could interfere with the application you are profiling.
+\item \emph{Reduce render rate when focus is lost} -- This throttles the profiler window refresh rate to 20 FPS when the window does not have focus.
+\item \emph{Target FPS} -- Sets the default \emph{target FPS} value for the \emph{Frame time graph}. See sections~\ref{frametimegraph} and~\ref{options} for more information. Not related to the profiler window refresh rate.
+\item \emph{Zone colors} -- Sets the default zone coloring preset used in new traces. See section~\ref{options} for more information.
+\item \emph{Zone name shortening} -- Sets the default zone name shortening behavior used in new traces. See section~\ref{options} for more information.
+\item \emph{Scroll multipliers} -- Allows you to fine-tune the sensitivity of the horizontal and vertical scroll in the timeline. The default values ($1.0$) are an attempt at the best possible settings, but differences in hardware manufacturers, platform implementations, and user expectations may require adjustments.
+\item \emph{Memory limit} -- When enabled, profiler will stop recording data when memory usage exceeds the specified percentage of the total system memory. This mechanism does not measure the current system memory usage or limits. The upper value is not capped, as you may use swap. See section~\ref{memoryusage} for more information.
+\item \emph{Enable achievements} -- Enables achievements system, accessed through the~\faStar{}~icon in the bottom right corner of the profiler window. It is essentially a gamified tutorial system designed to teach new users how to use the profiler.
+\item \emph{Save UI scale} -- Determines whether the UI scale set by the user should be saved between sessions. This setting is not related to DPI scaling.
+\item \emph{Enable Tracy Assist} -- Controls whether the automated assistant features (based on large language models) are available through the Profiler UI. See section~\ref{tracyassist} for more details.
+\end{itemize}
+
+
 
 \subsubsection{Connection information pop-up}
 \label{connectionpopup}
@@ -2946,6 +3005,7 @@ Tracy network bandwidth requirements depend on the amount of data collection the
 The maximum attainable connection speed is determined by the ability of the client to provide data and the ability of the server to process the received data. In an extreme conditions test performed on an i7~8700K, the maximum transfer rate peaked at 950~Mbps. In each second, the profiler could process 27~million zones and consume 1~GB of RAM.
 
 \subsection{Memory usage}
+\label{memoryusage}
 
 The captured data is stored in RAM and only written to the disk when the capture finishes. This can result in memory exhaustion when you capture massive amounts of profile data or even in typical usage situations when the capture is performed over a long time. Therefore, the recommended usage pattern is to perform moderate instrumentation of the client code and limit capture time to the strict necessity.
 
@@ -2960,7 +3020,7 @@ Each new release of Tracy changes the internal format of trace files. While ther
 To use it, you will need to provide the input file and the output file. The program will print a short summary when it finishes, with information about trace file versions, their respective sizes and the output trace file compression ratio:
 
 \begin{verbatim}
-% ./update old.tracy new.tracy
+% ./tracy-update old.tracy new.tracy
 old.tracy (0.3.0) {916.4 MB} -> new.tracy (0.4.0) {349.4 MB, 31.53%}  9.7 s, 38.13% change
 \end{verbatim}
 
@@ -3181,19 +3241,20 @@ The main profiler window is split into three sections, as seen in figure~\ref{ma
 
 \begin{figure}[h]
 \centering\begin{tikzpicture}
-\draw (0, 0) rectangle (16.1, -5.5);
-\draw[pattern=crosshatch dots] (0, 0) rectangle+(16.1, 0.3);
+\draw (0, 0) rectangle (16.2, -5.5);
+\draw[pattern=crosshatch dots] (0, 0) rectangle+(16.2, 0.3);
 \draw[rounded corners=5pt] (0.1, -0.1) rectangle+(0.5, -0.5) node [midway] {\faPowerOff};
 \draw[rounded corners=5pt] (0.7, -0.1) rectangle+(0.5, -0.5) node [midway] {\faCog{}};
 \draw[rounded corners=5pt] (1.3, -0.1) rectangle+(2.2, -0.5) node [midway] {\faTags{} Messages};
-\draw[rounded corners=5pt] (3.6, -0.1) rectangle+(1.5, -0.5) node [midway] {\faSearch{} Find};
-\draw[rounded corners=5pt] (5.2, -0.1) rectangle+(2, -0.5) node [midway] {\faSortAmountUp{} Statistics};
-\draw[rounded corners=5pt] (7.3, -0.1) rectangle+(1.6, -0.5) node [midway] {\faFire{} Flame};
-\draw[rounded corners=5pt] (9.0, -0.1) rectangle+(2.2, -0.5) node [midway] {\faMemory{} Memory};
-\draw[rounded corners=5pt] (11.3, -0.1) rectangle+(2.1, -0.5) node [midway] {\faBalanceScale{} Compare};
-\draw[rounded corners=5pt] (13.5, -0.1) rectangle+(1.3, -0.5) node [midway] {\faFingerprint{} Info};
-\draw[rounded corners=5pt] (14.9, -0.1) rectangle+(0.5, -0.5) node [midway] {\faTools{}};
-\draw[rounded corners=5pt] (15.5, -0.1) rectangle+(0.5, -0.5) node [midway] {\faSearchPlus{}};
+\draw[rounded corners=5pt] (3.6, -0.1) rectangle+(1.3, -0.5) node [midway] {\faSearch{} Find};
+\draw[rounded corners=5pt] (5.0, -0.1) rectangle+(2, -0.5) node [midway] {\faSortAmountUp{} Statistics};
+\draw[rounded corners=5pt] (7.1, -0.1) rectangle+(1.5, -0.5) node [midway] {\faFire{} Flame};
+\draw[rounded corners=5pt] (8.7, -0.1) rectangle+(2.1, -0.5) node [midway] {\faMemory{} Memory};
+\draw[rounded corners=5pt] (10.9, -0.1) rectangle+(2.1, -0.5) node [midway] {\faBalanceScale{} Compare};
+\draw[rounded corners=5pt] (13.1, -0.1) rectangle+(1.2, -0.5) node [midway] {\faFingerprint{} Info};
+\draw[rounded corners=5pt] (14.4, -0.1) rectangle+(0.5, -0.5) node [midway] {\faTools{}};
+\draw[rounded corners=5pt] (15.0, -0.1) rectangle+(0.5, -0.5) node [midway] {\faSearchPlus{}};
+\draw[rounded corners=5pt] (15.6, -0.1) rectangle+(0.5, -0.5) node [midway] {\faRobot{}};
 \draw[rounded corners=5pt] (0.1, -0.7) rectangle+(0.4, -0.5) node [midway] {\faCaretLeft};
 \draw (0.6, -0.7) node[anchor=north west] {Frames: 364};
 \draw[rounded corners=5pt] (2.8, -0.7) rectangle+(0.4, -0.5) node [midway] {\faCaretRight};
@@ -3201,8 +3262,8 @@ The main profiler window is split into three sections, as seen in figure~\ref{ma
 \draw (4, -0.65) node[anchor=north west] {\faEye~52.7 ms \hspace{5pt} \faDatabase~6.06 s \hspace{5pt} \faMemory~195.2 MB};
 \draw[dashed] (10.1, -0.75) rectangle+(3.2, -0.4) node[midway] {Notification area};
 
-\draw (0.1, -1.3) rectangle+(15.9, -1) node [midway] {Frame time graph};
-\draw (0.1, -2.4) rectangle+(15.9, -3) node [midway] {Timeline view};
+\draw (0.1, -1.3) rectangle+(16.0, -1) node [midway] {Frame time graph};
+\draw (0.1, -2.4) rectangle+(16.0, -3) node [midway] {Timeline view};
 \end{tikzpicture}
 \caption{Main profiler window. Note that this manual has split the top line of buttons into two rows.}
 \label{mainwindow}
@@ -3236,11 +3297,12 @@ The control menu (top row of buttons) provides access to various profiler featur
 \item \emph{\faHourglassHalf{}~Wait stacks} -- If sampling was performed, an option to display wait stacks may be available. See chapter~\ref{waitstacks} for more details.
 \end{itemize}
 \item \emph{\faSearchPlus{}~Display scale} -- Enables run-time resizing of the displayed content. This may be useful in environments with potentially reduced visibility, e.g. during a presentation. Note that this setting is independent to the UI scaling coming from the system DPI settings. The scale will be preserved across multiple profiler sessions if the \emph{Save UI scale} option is selected in global settings.
+\item \emph{\faRobot{}~Tracy Assist} -- Shows the automated assistant chat window (section~\ref{tracyassist}). Only available if enabled in global settings (section~\ref{aboutwindow}).
 \end{itemize}
 
 The frame information block\footnote{Visible only if frame instrumentation was included in the capture.} consists of four elements: the current frame set name along with the number of captured frames (click on it with the \LMB{}~left mouse button to go to a specified frame), the two navigational buttons \faCaretLeft{} and \faCaretRight{}, which allow you to focus the timeline view on the previous or next frame, and the frame set selection button \faCaretDown{}, which is used to switch to another frame set\footnote{See section~\ref{framesets} for another way to change the active frame set.}. For more information about marking frames, see section~\ref{markingframes}.
 
-The following three items show the \emph{\faEye{}~view time range}, the \emph{\faDatabase{}~time span} of the whole capture (clicking on it with the \MMB{} middle mouse button will set the view range to the entire capture), and the \emph{\faMemory{}~memory usage} of the profiler.
+The following three items show the \emph{\faEye{}~view time range}, the \emph{\faDatabase{}~time span} of the whole capture (clicking on it with the \MMB{}~middle mouse button will set the view range to the entire capture), and the \emph{\faMemory{}~memory usage} of the profiler.
 
 \paragraph{Notification area}
 
@@ -3412,7 +3474,7 @@ In figure~\ref{framesetsfig} we can see the fully described frames~312 and 347. 
 
 You can also see frame separators are projected down to the rest of the timeline view. Note that only the separators for the currently selected frame set are displayed. You can make a frame set active by clicking the \LMB{}~left mouse button on a frame set row you want to select (also see section~\ref{controlmenu}).
 
-Clicking the \MMB{} middle mouse button on a frame will zoom the view to the extent of the frame.
+Clicking the \MMB{}~middle mouse button on a frame will zoom the view to the extent of the frame.
 
 If a frame has an associated frame image (see chapter~\ref{frameimages}), you can hold the \keys{\ctrl} key and click the \LMB{}~left mouse button on the frame to open the frame image playback window (see chapter~\ref{playback}) and set the playback to the selected frame.
 
@@ -3458,6 +3520,14 @@ You will find the zones with locks and their associated threads on this combined
 
 \draw(7.5, -0.5) rectangle+(6.5, -0.5) node[midway] {Render};
 
+
+\draw[densely dotted,ultra thick,,color=lightgray] (0.11, -0.25) -- (0.11, -1.75);
+\draw(0.11, -0.25) node[circle,draw,fill,color=lightgray,inner sep=0pt,minimum size=3.5] {};
+\draw(0.11, -0.75) node[circle,draw,fill,color=lightgray,inner sep=0pt,minimum size=3.5] {};
+\draw(0.11, -1.25) node[circle,draw,fill,color=lightgray,inner sep=0pt,minimum size=3.5] {};
+\draw(0.11, -1.75) node[circle,draw,fill,color=lightgray,inner sep=0pt,minimum size=3.5] {};
+
+
 \draw(0, -2.5) node[anchor=north west] {Physics lock};
 \draw[pattern=crosshatch dots] (3.1, -2.5) rectangle+(2.5, -0.5);
 
@@ -3496,6 +3566,8 @@ Labels accompanied by the \faCaretDown{}~symbol can be collapsed out of the view
 \begin{itemize}
 \item \emph{\faEyeSlash{}~Hide} -- Hides the label along with the content associated to it. To make the label visible again, you must find it in the options menu (section~\ref{options}).
 \end{itemize}
+
+Under the \faCaretDown{}~symbol are a series of points that allow to limit the depth of the zones displayed. Hover the~\faMousePointer{}~mouse pointer over a circle to display a line visualizing the cutting point, then click the \MMB{}~middle mouse button to apply or remove a zone depth limit.
 
 \subparagraph{Zones}
 
@@ -3634,17 +3706,17 @@ The numerical data values (figure~\ref{plot}) are plotted right below the zones 
 \label{plot}
 \end{figure}
 
-When memory profiling (section~\ref{memoryprofiling}) is enabled, Tracy will automatically generate a \emph{\faMemory{}~Memory usage} plot, which has extended capabilities. For example, hovering over a data point (memory allocation event) will visually display the allocation duration. Clicking the \LMB{} left mouse button on the data point will open the memory allocation information window, which will show the duration of the allocation as long as the window is open.
+When memory profiling (section~\ref{memoryprofiling}) is enabled, Tracy will automatically generate a \emph{\faMemory{}~Memory usage} plot, which has extended capabilities. For example, hovering over a data point (memory allocation event) will visually display the allocation duration. Clicking the \LMB{}~left mouse button on the data point will open the memory allocation information window, which will show the duration of the allocation as long as the window is open.
 
 Another plot that Tracy automatically provides is the \emph{\faTachometer*{}~CPU usage} plot, which represents the total system CPU usage percentage (it is not limited to the profiled application).
 
 \subsubsection{Navigating the view}
 
-Hovering the \faMousePointer{} mouse pointer over the timeline view will display a vertical line that you can use to line up events in multiple threads visually. Dragging the \LMB{} left mouse button will display the time measurement of the selected region.
+Hovering the \faMousePointer{} mouse pointer over the timeline view will display a vertical line that you can use to line up events in multiple threads visually. Dragging the \LMB{}~left mouse button will display the time measurement of the selected region.
 
-The timeline view may be scrolled both vertically and horizontally by dragging the \RMB{} right mouse button. Note that only the zones, locks, and plots scroll vertically, while the time scale and frame sets always stay on the top.
+The timeline view may be scrolled both vertically and horizontally by dragging the \RMB{}~right mouse button. Note that only the zones, locks, and plots scroll vertically, while the time scale and frame sets always stay on the top.
 
-You can zoom in and out the timeline view by using the \Scroll{}~mouse wheel. Pressing the \keys{\ctrl} key will make zooming more precise while pressing the \keys{\shift} key will make it faster. You can select a range to which you want to zoom in by dragging the \MMB{} middle mouse button. Dragging the \MMB{} middle mouse button while the \keys{\ctrl} key is pressed will zoom out.
+You can zoom in and out the timeline view by using the \Scroll{}~mouse wheel. Pressing the \keys{\ctrl} key will make zooming more precise while pressing the \keys{\shift} key will make it faster. You can select a range to which you want to zoom in by dragging the \MMB{}~middle mouse button. Dragging the \MMB{}~middle mouse button while the \keys{\ctrl} key is pressed will zoom out.
 
 It is also possible to navigate the timeline using the keyboard. The \keys{A} and \keys{D} keys scroll the view to the left and right, respectively. The \keys{W} and \keys{S} keys change the zoom level.
 
@@ -3742,10 +3814,15 @@ Function names in the remaining places across the UI will be normalized unless t
 
 Disabling the display of some events is especially recommended when the profiler performance drops below acceptable levels for interactive usage.
 
+It is possible to store defaults for the settings marked with a \emph{*} to the global Tracy configuration file.
+This can be done using the \emph{Save current options as defaults} button at the bottom of the window, or by manually editing this configuration file (for which the path is indicated in the tooltip).
+Next time you use Tracy, these stored default options will be used instead.
+For now, restoring the defaults can be done by deleting the configuration file.
+
 \subsection{Messages window}
 \label{messages}
 
-In this window, you can see all the messages that were sent by the client application, as described in section~\ref{messagelog}. The window is split into four columns: \emph{time}, \emph{thread}, \emph{message} and \emph{call stack}. Hovering the \faMousePointer{}~mouse cursor over a message will highlight it on the timeline view. Clicking the \LMB{} left mouse button on a message will center the timeline view on the selected message.
+In this window, you can see all the messages that were sent by the client application, as described in section~\ref{messagelog}. The window is split into four columns: \emph{time}, \emph{thread}, \emph{message} and \emph{call stack}. Hovering the \faMousePointer{}~mouse cursor over a message will highlight it on the timeline view. Clicking the \LMB{}~left mouse button on a message will center the timeline view on the selected message.
 
 The \emph{call stack} column is filled only if a call stack capture was requested, as described in section~\ref{collectingcallstacks}. A single entry consists of the \emph{\faAlignJustify{}~Show} button, which opens the call stack information window (chapter~\ref{callstackwindow}) and of abbreviated information about the call path.
 
@@ -3775,7 +3852,7 @@ Here you will find a multi-column display of captured zones, which contains: the
 
 In the \emph{~Timing} menu, the \emph{~With children} selection displays inclusive measurements, that is, containing execution time of zone's children. The \emph{~Self only} selection switches the measurement to exclusive, displaying just the time spent in the zone, subtracting the child calls. Finally, the \emph{~Non-reentrant} selection shows inclusive time but counts only the first appearance of a given zone on a thread's stack.
 
-Clicking the \LMB{} left mouse button on a zone will open the individual zone statistics view in the find zone window (section~\ref{findzone}).
+Clicking the \LMB{}~left mouse button on a zone will open the individual zone statistics view in the find zone window (section~\ref{findzone}).
 
 You can filter the displayed list of zones by matching the zone name to the expression in the \emph{\faFilter{}~Filter zones} entry field. Refer to section~\ref{messages} for a more detailed description of the expression syntax.
 
@@ -3833,7 +3910,7 @@ Tracy gives you the ability to display an execution time histogram of all occurr
 
 You start by entering a search query, which will be matched against known zone names (see section~\ref{markingzones} for information on the grouping of zone names). If the search found some results, you will be presented with a list of zones in the \emph{matched source locations} drop-down. The selected zone's graph is displayed on the \emph{histogram} drop-down, and also the matching zones are highlighted on the timeline view.
 
-Clicking the \RMB{} right mouse button on the source file location will open the source file view window (if applicable, see section~\ref{sourceview}). If symbol data is available Tracy will try to match the instrumented zone name to a captured symbol. If this succeeds and there are no duplicate matches, the source file view will be accompanied by the disassembly of the code. Since this matching is not exact, in rare cases you may get the wrong data here. To just display the source code, press and hold the \keys{\ctrl} key while clicking the \RMB{} right mouse button.
+Clicking the \RMB{}~right mouse button on the source file location will open the source file view window (if applicable, see section~\ref{sourceview}). If symbol data is available Tracy will try to match the instrumented zone name to a captured symbol. If this succeeds and there are no duplicate matches, the source file view will be accompanied by the disassembly of the code. Since this matching is not exact, in rare cases you may get the wrong data here. To just display the source code, press and hold the \keys{\ctrl} key while clicking the \RMB{}~right mouse button.
 
 An example histogram is presented in figure~\ref{findzonehistogram}. Here you can see that the majority of zone calls (by count) are clustered in the 300~\si{\nano\second} group, closely followed by the 10~\si{\micro\second} cluster. There are some outliers at the 1~and~10~\si{\milli\second} marks, which can be ignored on most occasions, as these are single occurrences.
 
@@ -3889,7 +3966,7 @@ Various data statistics about displayed data accompany the histogram, for exampl
 \item \emph{Minimum values in bin} -- Excludes display of bins that do not hold enough values at both ends of the time range. Increasing this parameter will eliminate outliers, allowing us to concentrate on the interesting part of the graph.
 \end{itemize}
 
-You can drag the \LMB{} left mouse button over the histogram to select a time range that you want to look at closely. This will display the data in the histogram info section, and it will also filter zones shown in the \emph{found zones} section. This is quite useful if you actually want to look at the outliers, i.e.,\ where did they originate from, what the program was doing at the moment, etc\footnote{More often than not you will find out, that the application was just starting, or access to a cold file was required and there's not much you can do to optimize that particular case.}. You can reset the selection range by pressing the \RMB{} right mouse button on the histogram.
+You can drag the \LMB{}~left mouse button over the histogram to select a time range that you want to look at closely. This will display the data in the histogram info section, and it will also filter zones shown in the \emph{found zones} section. This is quite useful if you actually want to look at the outliers, i.e.,\ where did they originate from, what the program was doing at the moment, etc\footnote{More often than not you will find out, that the application was just starting, or access to a cold file was required and there's not much you can do to optimize that particular case.}. You can reset the selection range by pressing the \RMB{}~right mouse button on the histogram.
 
 The \emph{found zones} section displays the individual zones grouped according to the following criteria:
 
@@ -3902,9 +3979,9 @@ The \emph{found zones} section displays the individual zones grouped according t
 \item \emph{No grouping} -- Disables zone grouping. It may be useful when you want to see zones in order as they appear.
 \end{itemize}
 
-You may sort each group according to the \emph{order} in which it appeared, the call \emph{count}, the total \emph{time} spent in the group, or the \emph{mean time per call}. Expanding the group view will display individual occurrences of the zone, which can be sorted by application's time, execution time, or zone's name. Clicking the \LMB{} left mouse button on a zone will open the zone information window (section~\ref{zoneinfo}). Clicking the \MMB{} middle mouse button on a zone will zoom the timeline view to the zone's extent.
+You may sort each group according to the \emph{order} in which it appeared, the call \emph{count}, the total \emph{time} spent in the group, or the \emph{mean time per call}. Expanding the group view will display individual occurrences of the zone, which can be sorted by application's time, execution time, or zone's name. Clicking the \LMB{}~left mouse button on a zone will open the zone information window (section~\ref{zoneinfo}). Clicking the \MMB{}~middle mouse button on a zone will zoom the timeline view to the zone's extent.
 
-Clicking the \LMB{} left mouse button on the group name will highlight the group time data on the histogram (figure~\ref{findzonehistogramgroup}). This function provides a quick insight into the impact of the originating thread or input data on the zone performance. Clicking on the \emph{\faBackspace~Clear} button will reset the group selection. If the grouping mode is set to \emph{Parent} option, clicking the \MMB{}~middle mouse button on the parent zone group will switch the find zone view to display the selected zone.
+Clicking the \LMB{}~left mouse button on the group name will highlight the group time data on the histogram (figure~\ref{findzonehistogramgroup}). This function provides a quick insight into the impact of the originating thread or input data on the zone performance. Clicking on the \emph{\faBackspace~Clear} button will reset the group selection. If the grouping mode is set to \emph{Parent} option, clicking the \MMB{}~middle mouse button on the parent zone group will switch the find zone view to display the selected zone.
 
 \begin{figure}[h]
 \centering\begin{tikzpicture}
@@ -4119,7 +4196,7 @@ You can view the data gathered by profiling memory usage (section~\ref{memorypro
 
 The top row contains statistics, such as \emph{total allocations} count, number of \emph{active allocations}, current \emph{memory usage} and process \emph{memory span}\footnote{Memory span describes the address space consumed by the program. It is calculated as a difference between the maximum and minimum observed in-use memory address.}.
 
-The lists of captured memory allocations are displayed in a common multi-column format through the profiler. The first column specifies the memory address of an allocation or an address and an offset if the address is not at the start of the allocation. Clicking the \LMB{} left mouse button on an address will open the memory allocation information window\footnote{While the allocation information window is opened, the address will be highlighted on the list.} (see section~\ref{memallocinfo}). Clicking the \MMB{}~middle mouse button on an address will zoom the timeline view to memory allocation's range. The next column contains the allocation size.
+The lists of captured memory allocations are displayed in a common multi-column format through the profiler. The first column specifies the memory address of an allocation or an address and an offset if the address is not at the start of the allocation. Clicking the \LMB{}~left mouse button on an address will open the memory allocation information window\footnote{While the allocation information window is opened, the address will be highlighted on the list.} (see section~\ref{memallocinfo}). Clicking the \MMB{}~middle mouse button on an address will zoom the timeline view to memory allocation's range. The next column contains the allocation size.
 
 The allocation's timing data is contained in two columns: \emph{appeared at} and \emph{duration}. Clicking the \LMB{}~left mouse button on the first one will center the timeline view at the beginning of allocation, and likewise, clicking on the second one will center the timeline view at the end of allocation. Note that allocations that have not yet been freed will have their duration displayed in green color.
 
@@ -4256,6 +4333,8 @@ In some cases, it may not be possible to decode stack frame addresses correctly.
 If the displayed call stack is a sampled call stack (chapter~\ref{sampling}), an additional button will be available, \emph{\faDoorOpen{}~Global entry statistics}. Clicking it will open the sample entry stacks window (chapter~\ref{sampleparents}) for the current call stack.
 
 Clicking on the \emph{\faClipboard{}~Copy to clipboard} button will copy call stack to the clipboard.
+
+Clicking on the \emph{\faRobot{}~Tracy Assist} button will attach the call stack to the automated assistant chat window (see section~\ref{tracyassist}). The assistant will then be able to reference the call stack to answer your questions. Alternatively, you can click on the button with the \RMB{}~right mouse button to display a list of predefined questions about the call stack for you to choose from.
 
 \subsubsection{Reading call stacks}
 \label{readingcallstacks}
@@ -4484,7 +4563,7 @@ Statistical data about all processes running on the system during the capture is
 
 Each running program has an assigned process identifier (PID), which is displayed in the first column. The profiler will also display a list of thread identifiers (TIDs) if a program entry is expanded.
 
-The \emph{running time} column shows how much processor time was used by a process or thread. The percentage may be over 100\%, as it is scaled to trace length, and multiple threads belonging to a single program may be executing simultaneously. The \emph{running regions} column displays how many times a given entry was in the \emph{running} state, and the \emph{CPU migrations} shows how many times an entry was moved from one CPU core to another when the system scheduler suspended an entry.
+The \emph{running time} column shows how much processor time was used by a process or thread. The percentage may be over 100\%, as it is scaled to trace length, and multiple threads belonging to a single program may be executing simultaneously. The \emph{slices} column displays how many times a given entry was in the \emph{running} state, and the \emph{core jumps} shows how many times an entry was moved from one CPU core to another when the system scheduler suspended an entry.
 
 The profiled program is highlighted using green color. Furthermore, the yellow highlight indicates threads known to the profiler (that is, which sent events due to instrumentation).
 
@@ -4537,10 +4616,218 @@ This window displays information about time range limits (section~\ref{timerange
 
 Note that ranges displayed in the window have color hints that match the color of the striped regions on the timeline.
 
+\subsection{Tracy Assist}
+\label{tracyassist}
+
+With Tracy Profiler, you can use GenAI features to get help using the profiler or analyzing the code you're profiling.
+
+The automated assistant can search the user manual to answer your questions about the profiler. It can also read the source code when you ask about program performance or algorithms. It has the capacity for access to Wikipedia, the ability to search the web, and the capability to access web pages in response to general questions.
+
+This feature can be completely disabled in the \emph{Global settings}, as described in section~\ref{aboutwindow}.
+
+\begin{bclogo}[
+noborder=true,
+couleur=black!5,
+logo=\bcattention
+]{Caution}
+Remember that the responses you receive from the automated assistant are the result of complex yet limited algorithms. While the answers may be convincing and in most cases reliable, you should always verify their accuracy.
+\end{bclogo}
+
+\begin{bclogo}[
+noborder=true,
+couleur=black!5,
+logo=\bcquestion
+]{How do I enter my OpenAI API key?}
+You do not. Tracy is not a money funnel for Silicon Valley tech bros to get rich.
+
+The only way to access the assistant is to run everything locally on your system. This ensures that everything you do stays private and that you won't be subject to forced changes in features or terms and conditions. You should own the tools you work with instead of renting them from someone else.
+\end{bclogo}
+
+\subsubsection{Service provider}
+
+To get started, you will need to install an LLM\footnote{Large Language Model.} provider on your system. Any service that's compatible with the standard API should work, but some may work better than others. The LLM field is advancing quickly, with new models frequently being released that often require specific support from provider services to deliver the best experience.
+
+The ideal LLM provider should be a system service that loads and unloads models on demand and swaps between them as needed. It should provide a service to a variety of user-facing applications running on the system. The ideal provider should also implement a time-to-live mechanism that unloads models after a period of inactivity to make resources available to other programs. The user should be able to use the ideal provider to find and download models that they can run on their hardware.
+
+There are no ideal LLM providers, but here are some options:
+
+\begin{itemize}
+\item \emph{LM Studio} (\url{https://lmstudio.ai/}) -- It is the easiest to use and install on all platforms. It may be a bit overwhelming at first due to the number of options it offers. Some people may question the licensing. Its features lag behind. Manual configuration of each model is required.
+\item \emph{llama.cpp} (\url{https://github.com/ggml-org/llama.cpp}) -- Recommended for advanced users. It is rapidly advancing with new features and model support. Most other providers use it to do the actual work, and they typically use an outdated release. It requires a lot of manual setup and command line usage. It does not hold your hand.
+\item \emph{llama-swap} (\url{https://github.com/mostlygeek/llama-swap}) -- Wrapper for llama.cpp that allows model selection. Recommended to augment the above.
+\item \emph{Ollama} (\url{https://ollama.com/}) -- It lacks some features required by Tracy. Very limited configuration is only available via the system service's environment variables. Some practices are questionable. It will not use full capabilities of the available hardware. Not recommended.
+\end{itemize}
+
+\begin{bclogo}[
+noborder=true,
+couleur=black!5,
+logo=\bclampe
+]{Example llama-swap configuration file}
+Here's an example configuration for llama-swap that will provide two swappable chat models, and an vector embeddings model that will not be unloaded:
+
+\begin{lstlisting}
+macros:
+  "llama": >
+    /usr/bin/llama-server
+    --port ${PORT}
+    --flash-attn
+    -ngl 999
+models:
+  "gemma3:12b":
+    cmd: |
+      ${llama}
+      --model /home/user/models/gemma-3-12B-it-QAT-Q4_0.gguf
+      --ctx-size 65536
+    ttl: 300
+  "qwen3:14b":
+    cmd: |
+      ${llama}
+      --model /home/user/models/Qwen3-14B-Q4_K_M.gguf
+      --ctx-size 32768
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+    ttl: 300
+  "embed-nomic-text-v1.5":
+    cmd: |
+      ${llama}
+      --model /home/user/models/nomic-embed-text-v1.5.Q8_0.gguf
+      -c 8192
+      -b 8192
+      -ub 4096
+      -np 2
+      --embeddings
+    ttl: 300
+groups:
+  embeddings:
+    swap: false
+    exclusive: false
+    members:
+      - embed-nomic-text-v1.5
+\end{lstlisting}
+\end{bclogo}
+
+\subsubsection{Model selection}
+
+Once you have installed the service provider, you will need to download the model files for the chat functionality. The exact process depends on the provider you chose. LM Studio, for example, has a built-in downloader with an easy-to-use UI. For llama.cpp, you can follow their documentation or download the model file via your web browser.
+
+Tracy will not issue commands to download any model on its own.
+
+\paragraph{Model family}
+
+There are many factors to take into consideration when choosing a model to use. First, you should determine which model family you want to use:
+
+\begin{itemize}
+\item \emph{Gemma 3} (\url{https://blog.google/technology/developers/gemma-3/}) is a well rounded model that can converse in multiple languages. 
+\item \emph{Qwen3} (\url{https://qwenlm.github.io/blog/qwen3/}) has a more technical feeling to it, it likes to write bullet point lists.
+\item \emph{Mistral Small} (\url{https://mistral.ai/news/mistral-small-3-1}) may also be considered. Despite the name, it is not small.
+\end{itemize}
+
+This list is not exhaustive; it's only a starting point. These base models are often briefly fine-tuned to perform better at a specific task while retaining the model's general characteristics, hence the term \emph{model family}. It is recommended that you start with a base model and only explore the fine-tuned models later, if at all.
+
+When looking for a model you may encounter models that are "reasoning". These are generally not worth the additional time and resources they need.
+
+\paragraph{Model size}
+
+The next thing to consider when selecting a model is its size, which is typically measured in billions of parameters (weights) and written as 4B, for example. A model's size determines how much memory, computation, and time are required to run it. Generally, the larger the model, the "smarter" its responses will be.
+
+Models with 4B parameters are too "dumb" to operate in Tracy and will produce nonsense results. The 8B models are barely capable, so their use is not recommended. Models such as Gemma 3 12B and Qwen3 14B should work reasonably well. However, if your hardware can handle it, you should look for even larger models.
+
+Then there are models that are "Mixture of Experts". For instance, a model may have 30B total parameters, but only 3B are active when generating a response. While these models can generate responses faster, they still require the full set of parameters to be loaded into memory. Their results are also inferior to those of "dense" models of a similar size that use all their parameters.
+
+\paragraph{Model quantization}
+
+Running a model with full 32-bit floating-point weights is not feasible due to memory requirements. Instead, the model parameters are quantized, for which 4 bits is typically the sweet spot. In general, the lower the parameter precision, the more "dumbed down" the model becomes. However, the loss of model coherence due to quantization is less than the benefit of being able to run a larger model.
+
+There are different ways of doing quantization that give the same bit size. It's best to follow the recommendations provided by LM Studio, for example.
+
+Some models consider quantization during training, resulting in a more effective model. Gemma 3 refers to this as QAT (Quantization-Aware Training).
+
+\paragraph{Multimodality}
+
+Some models can recognize vision or audio. This is achieved by loading an additional model alongside the language model, which increases memory requirements. Since Tracy does not require these capabilities, it's best to either avoid multimodal models or configure the LLM provider appropriately.
+
+\paragraph{Context size}
+
+The model size only indicates the minimum memory requirement. For the model to operate properly, you also need to set the context size, which determines how much information from the conversation the model can "remember". This size is measured in tokens, and a very rough approximation is that each token is a combination of three or four letters.
+
+Each token present in the context window requires a fairly large amount of memory, and that quickly adds up to gigabytes. The KV cache used for context can be quantized, just like model parameters. In this case, the recommended size per weight is 8 bits.
+
+The minimum required context size for Tracy to run the assistant is 8K, but don't expect things to run smoothly. Using 16K provides more room to operate, but it's still tight. If you have the resources, it's recommended to use 32K or even 64K.
+
+\paragraph{Hardware resources}
+
+Ideally, you want to keep both the model and the context cache in your GPU's VRAM. This will provide the fastest possible speed. However, this won't be possible in many configurations.
+
+LLM providers solve this problem by storing part of the model on the GPU and running the rest on the CPU. The more that can be run on the GPU, the faster it goes.
+
+Determining how much of the model can be run on the GPU usually requires some experimentation. Other programs running on the system may affect or be affected by this setting. Generally, GPU offload capability is measured by the number of neural network layers.
+
+\paragraph{In practice}
+
+So, which model should you run and what hardware you need to be able to do so? Let's take look at some example systems.
+
+\begin{itemize}
+\item On a Dell XPS 13" laptop with an i7-1185G7 CPU and integrated GPU, you will struggle to run even the most basic 4B model. Forget about it.
+\item With 16 GB of RAM and a weak 4 GB Nvidia GPU, you can run Gemma 3 12B (8K context, 8/48 layers offloaded) or Qwen3 14B (16K context, 11/40 layers offloaded) on a Ryzen laptop. A moderate amount of patience will be necessary.
+\item An 8 GB Nvidia GPU can reach usable speeds when running Gemma 3 12B (16K context, 28/48 layers offloaded) or Qwen3 14B (16K context, 30/40 layers offloaded).
+\item If you have a 4090 class GPU with 24 GB of VRAM, llama.cpp can run Gemma 3 27B with a 64K context.
+\end{itemize}
+
+\subsubsection{Embeddings model}
+
+To access the full functionality of the automated assistant, you will also need a second language model. While the previous section focused on the model used for conversation, we also need a model that enables searching the user manual.
+
+This kind of model performs \emph{vector embeddings}, which transform text content or a search query into a set of concepts that match the text's meaning. These semantic vectors can then be compared to each other without needing to precisely match keywords. For instance, if a user searches for efficient text search methods, the results will include text about vector embedding models.
+
+Embedding models can be downloaded just like conversation models. The text-nomic-embed v1.5 model is recommended, as it is known to work well. Using other models may result in catastrophic degradation of search results.\footnote{There are many reasons why:
+\begin{enumerate}
+\item Some models just won't work as advertised. For example, the BGE-M3 model doesn't work at all with the Tracy user manual.
+\item Embedding models usually require a prefix that describes the task at hand.
+\item It is better to support one model that is known to work as intended than to support many models that work poorly.
+\end{enumerate}
+}
+
+LM Studio and Ollama properly label the model's capabilities. This is not the case with the llama.cpp/llama-swap setup. To make it work, your embedding model's name must contain the word \texttt{embed}.
+
+\subsubsection{Usage}
+
+The automated assistant can be accessed via the various \emph{\faRobot{}~Tracy Assist} buttons in the UI. The button in the control menu (section~\ref{controlmenu}) gives quick access to the chat. Buttons in other profiler windows open the chat window and add context related to the program you are profiling.
+
+The chat window is divided into three sections:
+
+\begin{enumerate}
+\item The control section at the top.
+\item The chat contents take up most of the window.
+\item The entry box is at the bottom.
+\end{enumerate}
+
+The control section allows you to clear the chat contents, reconnect to the LLM provider and open the settings panel consisting of:
+
+\begin{itemize}
+\item \emph{API} -- Enter the endpoint URL of the LLM provider here. A drop-down list is provided as a convenient way to select the default configuration of various providers. Note that the drop-down list is only used to fill in the endpoint URL. While Tracy does adapt to different ways each provider behaves, the feature detection is performed based on the endpoint conversation, not the drop-down selection.
+\item \emph{Model} -- Here you can select one of the models you have configured in the LLM provider for chat.
+\item \emph{Embeddings} -- Select the vector embeddings model.
+\item \emph{Temperature} -- Allows changing default model temperature setting.
+\item \emph{Internet access} -- Determines whether the model can access network resources such as Wikipedia queries, web searches, and web page retrievals.
+\item \emph{External services} -- Allows optional configuration of network access.
+\begin{itemize}
+\item \emph{User agent} -- Allows changing the user agent parameter in web queries.
+\item \emph{Google Search Engine} and \emph{API Key} -- Enables use of Google search. If this is not set, searches will fall back to DuckDuckGo, which is very rate limited.
+\end{itemize}
+\end{itemize}
+
+The \emph{\faBook{}~Learn manual} button is used to build the search index for the user manual. This process only takes a short amount of time, and the results are cached until either the embeddings model changes or the manual is updated.
+
+The horizontal meter directly below shows how much of the context size has been used. Tracy uses various techniques to manage context size, such as limiting the amount of data provided to the model or removing older data. However, the context will eventually be fully utilized during an extended conversation, resulting in a significant degradation of the quality of model responses.
+
+The chat section contains the conversation with the automated assistant. Each assistant reply includes a hidden "thinking" section in which various tool calls are made and the response is prepared.
+
+Clicking on the~\emph{\faUser{}~User} role icon removes the chat content up to the selected question. Similarly, clicking on the~\emph{\faRobot{}~Assistant} role icon removes the conversation content up to this point and generates another response from the assistant.
+
 \section{Exporting zone statistics to CSV}
 \label{csvexport}
 
-You can use a command-line utility in the \texttt{csvexport} directory to export primary zone statistics from a saved trace into a CSV format.
+You can use the command-line utility \texttt{tracy-csvexport} from the \texttt{csvexport} directory to export primary zone statistics from a saved trace into a CSV format.
 The tool requires a single .tracy file as an argument and prints the result into the standard output (stdout), from where you can redirect it into a file or use it as an input into another tool.
 By default, the utility will list all zones with the following columns:
 
@@ -4574,23 +4861,23 @@ You can customize the output with the following command line options:
 Tracy can import data generated by other profilers. This external data cannot be directly loaded but must be converted first.
 Currently, there's support for the following formats:
 \begin{itemize}
-  \item chrome:tracing data through the \texttt{import-chrome} utility. The trace files
+  \item chrome:tracing data through the \texttt{tracy-import-chrome} utility. The trace files
     typically have a \texttt{.json} or \texttt{.json.zst} extension.
     To use this tool to process a file named \texttt{mytracefile.json}, assuming it's compiled, run:
     \begin{lstlisting}[language=sh]
-    $ import-chrome mytracefile.json mytracefile.tracy
-    $ tracy mytracefile.tracy
+    $ tracy-import-chrome mytracefile.json mytracefile.tracy
+    $ tracy-profiler mytracefile.tracy
     \end{lstlisting}
   \item Fuchsia's tracing format\footnote{\url{https://fuchsia.dev/fuchsia-src/reference/tracing/trace-format}}
-    data through the \texttt{import-fuchsia} utility.
+    data through the \texttt{tracy-import-fuchsia} utility.
     This format has many commonalities with the chrome:tracing format, but it uses a
     compact and efficient binary encoding that can help lower tracing overhead.
     The file extension is \texttt{.fxt} or \texttt{.fxt.zst}.
 
     To this this tool, assuming it's compiled, run:
     \begin{lstlisting}[language=sh]
-    $ import-fuchsia mytracefile.fxt mytracefile.tracy
-    $ tracy mytracefile.tracy
+    $ tracy-import-fuchsia mytracefile.fxt mytracefile.tracy
+    $ tracy-profiler mytracefile.tracy
     \end{lstlisting}
 \end{itemize}
 
@@ -4608,8 +4895,8 @@ noborder=true,
 couleur=black!5,
 logo=\bclampe
 ]{Source locations}
-Chrome tracing format doesn't document a way to provide source location data.
-  The \texttt{import-chrome} and \texttt{import-fuchsia} utilities will however recognize a custom \texttt{loc} tag in the root of zone begin events. You should be formatting this data in the usual \texttt{filename:line} style, for example: \texttt{hello.c:42}. Providing the line number (including a colon) is optional but highly recommended.
+Chrome tracing format doesn't provide a well-defined way to provide source location data.
+  The \texttt{tracy-import-chrome} and \texttt{tracy-import-fuchsia} utilities will however recognize a custom \texttt{loc} tag in the root of zone begin events. You should be formatting this data in the usual \texttt{filename:line} style, for example: \texttt{hello.c:42}. Providing the line number (including a colon) is optional but highly recommended.
 \end{bclogo}
 
 \begin{bclogo}[
@@ -4642,6 +4929,12 @@ Trace files saved on disk are immutable and can't be changed. Still, it may be d
 This external data is stored in the \texttt{user/[letter]/[program]/[week]/[epoch]} directory, relative to the configuration's root directory. The \texttt{program} part is the name of the profiled application (for example \texttt{program.exe}). The \texttt{letter} part is the first letter of the profiled application's name. The \texttt{week} part is a count of weeks since the Unix epoch, and the \texttt{epoch} part is a count of seconds since the Unix epoch. This rather unusual convention prevents the creation of directories with hundreds of entries.
 
 The profiler never prunes user settings.
+
+\subsection{Cache files}
+
+Some of the profiler's features may want to store cache files on your disk. You can always get rid of these data files because they're only used to speed up some long operations that may precalculate data once and then reuse it.
+
+On Windows cache is stored in the \texttt{\%LOCALAPPDATA\%/tracy} directory. All other platforms use the \texttt{\$XDG\_CACHE\_HOME/tracy} directory, or \texttt{\$HOME/.cache/tracy} if the \texttt{XDG\_CACHE\_HOME} environment variable is not set.
 
 \newpage
 \appendix

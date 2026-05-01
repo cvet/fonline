@@ -115,6 +115,35 @@ namespace ScriptBuiltins
         return "" + v;
     }
 
+    string BoolToString(bool v)
+    {
+        return "" + v;
+    }
+
+    string StringAddBool(string prefix, bool v)
+    {
+        return prefix + v;
+    }
+
+    string BoolAddString(bool v, string suffix)
+    {
+        return v + suffix;
+    }
+
+    string AssignBoolToString(bool v)
+    {
+        string result;
+        result = v;
+        return result;
+    }
+
+    string AddAssignBoolToString(bool v)
+    {
+        string result = "flag=";
+        result += v;
+        return result;
+    }
+
     string StringConcat(string a, string b)
     {
         return a + b;
@@ -741,6 +770,50 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         REQUIRE(func_int);
         REQUIRE(func_int.Call(42));
         CHECK(func_int.GetResult() == "42");
+    }
+
+    // BoolToString
+    {
+        auto func = server->FindFunc<string, bool>(fn("ScriptBuiltins::BoolToString"));
+        REQUIRE(func);
+        REQUIRE(func.Call(true));
+        CHECK(func.GetResult() == "true");
+        REQUIRE(func.Call(false));
+        CHECK(func.GetResult() == "false");
+    }
+
+    // StringAddBool / BoolAddString
+    {
+        auto func_add = server->FindFunc<string, string, bool>(fn("ScriptBuiltins::StringAddBool"));
+        REQUIRE(func_add);
+        REQUIRE(func_add.Call(string {"enabled="}, true));
+        CHECK(func_add.GetResult() == "enabled=true");
+        REQUIRE(func_add.Call(string {"enabled="}, false));
+        CHECK(func_add.GetResult() == "enabled=false");
+
+        auto func_add_r = server->FindFunc<string, bool, string>(fn("ScriptBuiltins::BoolAddString"));
+        REQUIRE(func_add_r);
+        REQUIRE(func_add_r.Call(true, string {" flag"}));
+        CHECK(func_add_r.GetResult() == "true flag");
+        REQUIRE(func_add_r.Call(false, string {" flag"}));
+        CHECK(func_add_r.GetResult() == "false flag");
+    }
+
+    // AssignBoolToString / AddAssignBoolToString
+    {
+        auto func_assign = server->FindFunc<string, bool>(fn("ScriptBuiltins::AssignBoolToString"));
+        REQUIRE(func_assign);
+        REQUIRE(func_assign.Call(true));
+        CHECK(func_assign.GetResult() == "true");
+        REQUIRE(func_assign.Call(false));
+        CHECK(func_assign.GetResult() == "false");
+
+        auto func_add_assign = server->FindFunc<string, bool>(fn("ScriptBuiltins::AddAssignBoolToString"));
+        REQUIRE(func_add_assign);
+        REQUIRE(func_add_assign.Call(true));
+        CHECK(func_add_assign.GetResult() == "flag=true");
+        REQUIRE(func_add_assign.Call(false));
+        CHECK(func_add_assign.GetResult() == "flag=false");
     }
 
     // StringConcat

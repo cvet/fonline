@@ -1,4 +1,4 @@
-.\" $OpenBSD: EVP_EncryptInit.3,v 1.52 2024/07/21 08:36:43 tb Exp $
+.\" $OpenBSD: EVP_EncryptInit.3,v 1.57 2025/06/08 22:40:29 schwarze Exp $
 .\" full merge up to: OpenSSL 5211e094 Nov 11 14:39:11 2014 -0800
 .\"   EVP_bf_cbc.pod EVP_cast5_cbc.pod EVP_idea_cbc.pod EVP_rc2_cbc.pod
 .\"   7c6d372a Nov 20 13:20:01 2018 +0000
@@ -69,7 +69,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: July 21 2024 $
+.Dd $Mdocdate: June 8 2025 $
 .Dt EVP_ENCRYPTINIT 3
 .Os
 .Sh NAME
@@ -103,13 +103,6 @@
 .Nm EVP_idea_cfb64 ,
 .Nm EVP_idea_cfb ,
 .Nm EVP_idea_ofb ,
-.Nm EVP_rc2_cbc ,
-.Nm EVP_rc2_ecb ,
-.Nm EVP_rc2_cfb64 ,
-.Nm EVP_rc2_cfb ,
-.Nm EVP_rc2_ofb ,
-.Nm EVP_rc2_40_cbc ,
-.Nm EVP_rc2_64_cbc ,
 .Nm EVP_bf_cbc ,
 .Nm EVP_bf_ecb ,
 .Nm EVP_bf_cfb64 ,
@@ -122,6 +115,7 @@
 .Nm EVP_cast5_ofb
 .Nd EVP cipher routines
 .Sh SYNOPSIS
+.Lb libcrypto
 .In openssl/evp.h
 .Ft EVP_CIPHER_CTX *
 .Fn EVP_CIPHER_CTX_new void
@@ -553,7 +547,6 @@ returns an
 .Vt EVP_CIPHER
 structure.
 .Sh CIPHER LISTING
-All algorithms have a fixed key length unless otherwise stated.
 .Bl -tag -width Ds
 .It Fn EVP_enc_null
 Null cipher: does nothing.
@@ -564,36 +557,12 @@ Null cipher: does nothing.
 .Fn EVP_idea_ofb
 .Xc
 IDEA encryption algorithm in CBC, ECB, CFB and OFB modes respectively.
+IDEA is a block cipher operating on 64 bit blocks using a 128 bit
+.Fa key .
 .Fn EVP_idea_cfb
 is an alias for
 .Fn EVP_idea_cfb64 ,
 implemented as a macro.
-.It Xo
-.Fn EVP_rc2_cbc ,
-.Fn EVP_rc2_ecb ,
-.Fn EVP_rc2_cfb64 ,
-.Fn EVP_rc2_ofb
-.Xc
-RC2 encryption algorithm in CBC, ECB, CFB and OFB modes respectively.
-This is a variable key length cipher with an additional parameter called
-"effective key bits" or "effective key length".
-By default both are set to 128 bits.
-.Fn EVP_rc2_cfb
-is an alias for
-.Fn EVP_rc2_cfb64 ,
-implemented as a macro.
-.It Xo
-.Fn EVP_rc2_40_cbc ,
-.Fn EVP_rc2_64_cbc
-.Xc
-RC2 algorithm in CBC mode with a default key length and effective key
-length of 40 and 64 bits.
-These are obsolete and new code should use
-.Fn EVP_rc2_cbc ,
-.Xr EVP_CIPHER_CTX_set_key_length 3 ,
-and
-.Xr EVP_CIPHER_CTX_ctrl 3
-to set the key length and effective key length.
 .It Xo
 .Fn EVP_bf_cbc ,
 .Fn EVP_bf_ecb ,
@@ -602,7 +571,10 @@ to set the key length and effective key length.
 .Xc
 Blowfish encryption algorithm in CBC, ECB, CFB and OFB modes
 respectively.
-This is a variable key length cipher.
+Blowfish is a block cipher operating on 64 bit blocks using a variable
+.Fa key
+length.
+The default key length is 128 bits.
 .Fn EVP_bf_cfb
 is an alias for
 .Fn EVP_bf_cfb64 ,
@@ -613,120 +585,30 @@ implemented as a macro.
 .Fn EVP_cast5_cfb64 ,
 .Fn EVP_cast5_ofb
 .Xc
-CAST encryption algorithm in CBC, ECB, CFB and OFB modes respectively.
-This is a variable key length cipher.
+CAST-128 encryption algorithm in CBC, ECB, CFB and OFB modes respectively.
+CAST-128 is a block cipher operating on 64 bit blocks using a variable
+.Fa key
+length.
+The default and maximum key length is 128 bits.
 .Fn EVP_cast5_cfb
 is an alias for
 .Fn EVP_cast5_cfb64 ,
 implemented as a macro.
 .El
 .Pp
-See also
-.Xr EVP_aes_128_cbc 3 ,
-.Xr EVP_camellia_128_cbc 3 ,
-.Xr EVP_des_cbc 3 ,
-.Xr EVP_rc4 3 ,
-and
-.Xr EVP_sm4_cbc 3 .
-.Ss GCM mode
-For GCM mode ciphers, the behaviour of the EVP interface
-is subtly altered and several additional ctrl operations are
-supported.
+Some algorithms are documented in separate manual pages:
 .Pp
-To specify any additional authenticated data (AAD), a call to
-.Fn EVP_CipherUpdate ,
-.Fn EVP_EncryptUpdate ,
-or
-.Fn EVP_DecryptUpdate
-should be made with the output parameter
-.Fa out
-set to
-.Dv NULL .
-.Pp
-When decrypting, the return value of
-.Fn EVP_DecryptFinal ,
-.Fn EVP_DecryptFinal_ex ,
-.Fn EVP_CipherFinal ,
-or
-.Fn EVP_CipherFinal_ex
-indicates if the operation was successful.
-If it does not indicate success, the authentication operation has
-failed and any output data MUST NOT be used as it is corrupted.
-.Pp
-The following ctrls are supported in GCM mode:
-.Bl -tag -width Ds
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_GCM_SET_IVLEN ivlen NULL
-Sets the IV length: this call can only be made before specifying an IV.
-If not called, a default IV length is used.
-For GCM AES the default is 12, i.e. 96 bits.
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_GCM_GET_TAG taglen tag
-Writes
-.Fa taglen
-bytes of the tag value to the buffer indicated by
-.Fa tag .
-This call can only be made when encrypting data and after all data has
-been processed, e.g. after an
-.Fn EVP_EncryptFinal
-or
-.Fn EVP_EncryptFinal_ex
-call.
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_GCM_SET_TAG taglen tag
-Sets the expected tag to
-.Fa taglen
-bytes from
-.Fa tag .
-This call is only legal when decrypting data and must be made before
-any data is processed, e.g. before any
-.Fa EVP_DecryptUpdate
-call.
-.El
-.Ss CCM mode
-The behaviour of CCM mode ciphers is similar to GCM mode, but with
-a few additional requirements and different ctrl values.
-.Pp
-Like GCM mode any additional authenticated data (AAD) is passed
-by calling
-.Fn EVP_CipherUpdate ,
-.Fn EVP_EncryptUpdate ,
-or
-.Fn EVP_DecryptUpdate
-with the output parameter
-.Fa out
-set to
-.Dv NULL .
-Additionally, the total
-plaintext or ciphertext length MUST be passed to
-.Fn EVP_CipherUpdate ,
-.Fn EVP_EncryptUpdate ,
-or
-.Fn EVP_DecryptUpdate
-with the output and input
-parameters
-.Pq Fa in No and Fa out
-set to
-.Dv NULL
-and the length passed in the
-.Fa in_len
-parameter.
-.Pp
-The following ctrls are supported in CCM mode:
-.Bl -tag -width Ds
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_CCM_SET_TAG taglen tag
-This call is made to set the expected CCM tag value when decrypting or
-the length of the tag (with the
-.Fa tag
-parameter set to
-.Dv NULL )
-when encrypting.
-The tag length is often referred to as M.
-If not set, a default value is used (12 for AES).
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_CCM_SET_L ivlen NULL
-Sets the CCM L value.
-If not set, a default is used (8 for AES).
-.It Fn EVP_CIPHER_CTX_ctrl ctx EVP_CTRL_CCM_SET_IVLEN ivlen NULL
-Sets the CCM nonce (IV) length: this call can only be made before
-specifying a nonce value.
-The nonce length is given by 15 - L so it is 7 by default for AES.
+.Bl -column "EVP_camellia_128_cbc(3)" "block size" -compact
+.It manual page               Ta block size Ta Fa key No size Pq in bits
+.It Xr EVP_aes_128_cbc 3      Ta 128        Ta 128, 192, 256
+.It Xr EVP_aes_128_ccm 3      Ta 128        Ta 128, 192, 256
+.It Xr EVP_aes_128_gcm 3      Ta 128        Ta 128, 192, 256
+.It Xr EVP_camellia_128_cbc 3 Ta 128        Ta 128, 192, 256
+.It Xr EVP_chacha20 3         Ta stream     Ta 256
+.It Xr EVP_des_cbc 3          Ta 64         Ta 64
+.It Xr EVP_rc2_cbc 3          Ta 64         Ta variable, default 128
+.It Xr EVP_rc4 3              Ta stream     Ta variable, default 128
+.It Xr EVP_sm4_cbc 3          Ta 128        Ta 128
 .El
 .Sh EXAMPLES
 Encrypt a string using blowfish:
@@ -842,6 +724,8 @@ do_crypt(FILE *in_fileptr, FILE *out_fileptr, int do_encrypt)
 .Xr evp 3 ,
 .Xr EVP_AEAD_CTX_init 3 ,
 .Xr EVP_aes_128_cbc 3 ,
+.Xr EVP_aes_128_ccm 3 ,
+.Xr EVP_aes_128_gcm 3 ,
 .Xr EVP_camellia_128_cbc 3 ,
 .Xr EVP_chacha20 3 ,
 .Xr EVP_CIPHER_CTX_ctrl 3 ,
@@ -851,6 +735,7 @@ do_crypt(FILE *in_fileptr, FILE *out_fileptr, int do_encrypt)
 .Xr EVP_CIPHER_nid 3 ,
 .Xr EVP_des_cbc 3 ,
 .Xr EVP_OpenInit 3 ,
+.Xr EVP_rc2_cbc 3 ,
 .Xr EVP_rc4 3 ,
 .Xr EVP_SealInit 3 ,
 .Xr EVP_sm4_cbc 3
@@ -871,12 +756,6 @@ do_crypt(FILE *in_fileptr, FILE *out_fileptr, int do_encrypt)
 and
 .Fn EVP_idea_ofb
 first appeared in SSLeay 0.5.1.
-.Fn EVP_rc2_cbc ,
-.Fn EVP_rc2_ecb ,
-.Fn EVP_rc2_cfb ,
-and
-.Fn EVP_rc2_ofb
-first appeared in SSLeay 0.5.2.
 .Fn EVP_bf_cbc ,
 .Fn EVP_bf_ecb ,
 .Fn EVP_bf_cfb ,
@@ -893,12 +772,6 @@ first appeared in SSLeay 0.8.1.
 All these functions have been available since
 .Ox 2.4 .
 .Pp
-.Fn EVP_rc2_40_cbc
-and
-.Fn EVP_rc2_64_cbc
-first appeared in SSLeay 0.9.1 and have been available since
-.Ox 2.6 .
-.Pp
 .Fn EVP_EncryptInit_ex ,
 .Fn EVP_EncryptFinal_ex ,
 .Fn EVP_DecryptInit_ex ,
@@ -911,9 +784,8 @@ first appeared in OpenSSL 0.9.7 and have been available since
 .Pp
 .Fn EVP_bf_cfb64 ,
 .Fn EVP_cast5_cfb64 ,
-.Fn EVP_idea_cfb64 ,
 and
-.Fn EVP_rc2_cfb64
+.Fn EVP_idea_cfb64
 first appeared in OpenSSL 0.9.7e and have been available since
 .Ox 3.8 .
 .Pp

@@ -1,4 +1,4 @@
-/* $OpenBSD: bn.h,v 1.78 2024/04/10 14:58:06 beck Exp $ */
+/* $OpenBSD: bn.h,v 1.85 2025/12/05 17:25:55 tb Exp $ */
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -125,6 +125,8 @@
 #ifndef HEADER_BN_H
 #define HEADER_BN_H
 
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -138,59 +140,17 @@
 extern "C" {
 #endif
 
-/* This next option uses the C libraries (2 word)/(1 word) function.
- * If it is not defined, I use my C version (which is slower).
- * The reason for this flag is that when the particular C compiler
- * library routine is used, and the library is linked with a different
- * compiler, the library is missing.  This mostly happens when the
- * library is built with gcc and then linked using normal cc.  This would
- * be a common occurrence because gcc normally produces code that is
- * 2 times faster than system compilers for the big number stuff.
- * For machines with only one compiler (or shared libraries), this should
- * be on.  Again this in only really a problem on machines
- * using "long long's", are 32bit, and are not using my assembler code. */
-/* #define BN_DIV2W */
-
-#ifdef _LP64
+#if defined(_LP64) || defined(_WIN64)
 #undef	BN_LLONG
-#define BN_ULONG	unsigned long
-#define BN_LONG		long
-#define BN_BITS		128
+#define BN_ULONG	uint64_t
 #define BN_BYTES	8
 #define BN_BITS2	64
-#define BN_BITS4	32
-#define BN_MASK2	(0xffffffffffffffffL)
-#define BN_MASK2l	(0xffffffffL)
-#define BN_MASK2h	(0xffffffff00000000L)
-#define BN_MASK2h1	(0xffffffff80000000L)
-#define BN_TBIT		(0x8000000000000000L)
-#define BN_DEC_CONV	(10000000000000000000UL)
-#define BN_DEC_FMT1	"%lu"
-#define BN_DEC_FMT2	"%019lu"
-#define BN_DEC_NUM	19
-#define BN_HEX_FMT1	"%lX"
-#define BN_HEX_FMT2	"%016lX"
 #else
-#define BN_ULLONG	unsigned long long
+#define BN_ULLONG	uint64_t
 #define	BN_LLONG
-#define BN_ULONG	unsigned int
-#define BN_LONG		int
-#define BN_BITS		64
+#define BN_ULONG	uint32_t
 #define BN_BYTES	4
 #define BN_BITS2	32
-#define BN_BITS4	16
-#define BN_MASK		(0xffffffffffffffffLL)
-#define BN_MASK2	(0xffffffffL)
-#define BN_MASK2l	(0xffff)
-#define BN_MASK2h1	(0xffff8000L)
-#define BN_MASK2h	(0xffff0000L)
-#define BN_TBIT		(0x80000000L)
-#define BN_DEC_CONV	(1000000000L)
-#define BN_DEC_FMT1	"%u"
-#define BN_DEC_FMT2	"%09u"
-#define BN_DEC_NUM	9
-#define BN_HEX_FMT1	"%X"
-#define BN_HEX_FMT2	"%08X"
 #endif
 
 #define BN_FLG_MALLOCED		0x01
@@ -401,8 +361,8 @@ int	BN_set_bit(BIGNUM *a, int n);
 int	BN_clear_bit(BIGNUM *a, int n);
 char *	BN_bn2hex(const BIGNUM *a);
 char *	BN_bn2dec(const BIGNUM *a);
-int 	BN_hex2bn(BIGNUM **a, const char *str);
-int 	BN_dec2bn(BIGNUM **a, const char *str);
+int	BN_hex2bn(BIGNUM **a, const char *str);
+int	BN_dec2bn(BIGNUM **a, const char *str);
 int	BN_asc2bn(BIGNUM **a, const char *str);
 int	BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 int	BN_kronecker(const BIGNUM *a,const BIGNUM *b,BN_CTX *ctx); /* returns -2 for error */
@@ -421,7 +381,7 @@ int	BN_is_prime_ex(const BIGNUM *p, int nchecks, BN_CTX *ctx, BN_GENCB *cb);
 int	BN_is_prime_fasttest_ex(const BIGNUM *p, int nchecks, BN_CTX *ctx,
     int do_trial_division, BN_GENCB *cb);
 
-BN_MONT_CTX *BN_MONT_CTX_new(void );
+BN_MONT_CTX *BN_MONT_CTX_new(void);
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     BN_MONT_CTX *mont, BN_CTX *ctx);
 int BN_to_montgomery(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
@@ -430,7 +390,7 @@ int BN_from_montgomery(BIGNUM *r, const BIGNUM *a,
     BN_MONT_CTX *mont, BN_CTX *ctx);
 void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx);
-BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, BN_MONT_CTX *from);
+BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, const BN_MONT_CTX *from);
 BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, int lock,
     const BIGNUM *mod, BN_CTX *ctx);
 

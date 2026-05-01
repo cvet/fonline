@@ -1,4 +1,4 @@
-/* $OpenBSD: asn_mime.c,v 1.34 2024/03/29 04:35:42 tb Exp $ */
+/* $OpenBSD: asn_mime.c,v 1.37 2025/06/02 12:18:21 jsg Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -59,10 +59,10 @@
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
-#include <openssl/err.h>
 #include <openssl/x509.h>
 
 #include "asn1_local.h"
+#include "err_local.h"
 #include "evp_local.h"
 
 /* Generalised MIME like utilities for streaming ASN1. Although many
@@ -379,7 +379,8 @@ asn1_output_data(BIO *out, BIO *data, ASN1_VALUE *val, int flags,
 	ASN1_STREAM_ARG sarg;
 	int rv = 1;
 
-	/* If data is not deteched or resigning then the output BIO is
+	/*
+	 * If data is not detached or resigning then the output BIO is
 	 * already set up to finalise when it is written through.
 	 */
 	if (!(flags & SMIME_DETACHED) || (flags & PKCS7_REUSE_DIGEST)) {
@@ -506,8 +507,9 @@ SMIME_read_ASN1(BIO *bio, BIO **bcont, const ASN1_ITEM *it)
 			*bcont = sk_BIO_value(parts, 0);
 			BIO_free(asnin);
 			sk_BIO_free(parts);
-		} else sk_BIO_pop_free(parts, BIO_vfree);
-			return val;
+		} else
+			sk_BIO_pop_free(parts, BIO_vfree);
+		return val;
 	}
 
 	/* OK, if not multipart/signed try opaque signature */

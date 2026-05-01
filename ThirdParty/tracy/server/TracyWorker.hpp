@@ -277,6 +277,8 @@ private:
 
     struct DataBlock
     {
+        std::atomic<bool> mainThreadWantsLock = false;
+        std::condition_variable lockCv;
         std::mutex lock;
         StringDiscovery<FrameData*> frames;
         FrameData* framesBase;
@@ -465,7 +467,6 @@ public:
     uint64_t GetCaptureTime() const { return m_captureTime; }
     uint64_t GetExecutableTime() const { return m_executableTime; }
     const std::string& GetHostInfo() const { return m_hostInfo; }
-    int64_t GetDelay() const { return m_delay; }
     int64_t GetResolution() const { return m_resolution; }
     uint64_t GetPid() const { return m_pid; };
     CpuArchitecture GetCpuArch() const { return m_data.cpuArch; }
@@ -473,6 +474,31 @@ public:
     const char* GetCpuManufacturer() const { return m_data.cpuManufacturer; }
 
     std::mutex& GetDataLock() { return m_data.lock; }
+
+    // This guard helps prevent main thread starvation by coordinating lock acquisition between
+    // the main thread and worker threads. It uses an atomic flag (mainThreadWantsLock) to signal
+    // the main thread's intent to acquire the lock, and a condition variable to notify workers when
+    // the main thread is done. This prioritization reduces contention and ensures the main thread
+    // can acquire the lock promptly, especially during critical phases like initialization.
+    struct MainThreadDataLockGuard
+    {
+        MainThreadDataLockGuard( DataBlock& m_data )
+            : m_data( m_data )
+        {
+            m_data.mainThreadWantsLock = true;
+            m_data.lock.lock();
+        }
+        ~MainThreadDataLockGuard()
+        {
+            m_data.mainThreadWantsLock = false;
+            m_data.lock.unlock();
+            m_data.lockCv.notify_one();
+        }
+    private:
+        DataBlock& m_data;
+    };
+    MainThreadDataLockGuard ObtainLockForMainThread() { return { m_data }; }
+
     size_t GetFrameCount( const FrameData& fd ) const { return fd.frames.size(); }
     size_t GetFullFrameCount( const FrameData& fd ) const;
     bool AreFramesUsed() const;
@@ -493,7 +519,7 @@ public:
     uint64_t GetCallstackParentPayloadCount() const { return m_data.parentCallstackPayload.size(); }
     uint64_t GetCallstackParentFrameCount() const { return m_callstackParentNextIdx; }
 #endif
-    uint64_t GetCallstackFrameCount() const { return m_data.callstackFrameMap.size(); }
+    uint64_t GetCallstackFrameCount() const { return m_data.callstackFrameMap.size() - m_pendingCallstackFrames; }
     uint64_t GetCallstackSampleCount() const { return m_data.samplesCnt; }
     uint64_t GetSymbolsCount() const { return m_data.symbolMap.size(); }
     uint64_t GetSymbolCodeCount() const { return m_data.symbolCode.size(); }
@@ -689,6 +715,7 @@ private:
     void QueryTerminate();
     void QuerySourceFile( const char* fn, const char* image );
     void QueryDataTransfer( const void* ptr, size_t size );
+    void QueryCallstackFrame( uint64_t addr );
 
     tracy_force_inline bool DispatchProcess( const QueueItem& ev, const char*& ptr );
     tracy_force_inline bool Process( const QueueItem& ev );
@@ -741,6 +768,8 @@ private:
     tracy_force_inline void ProcessGpuCalibration( const QueueGpuCalibration& ev );
     tracy_force_inline void ProcessGpuTimeSync( const QueueGpuTimeSync& ev );
     tracy_force_inline void ProcessGpuContextName( const QueueGpuContextName& ev );
+    tracy_force_inline void ProcessGpuAnnotationName( const QueueGpuAnnotationName& ev );
+    tracy_force_inline void ProcessGpuZoneAnnotation( const QueueGpuZoneAnnotation& ev );
     tracy_force_inline MemEvent* ProcessMemAlloc( const QueueMemAlloc& ev );
     tracy_force_inline MemEvent* ProcessMemAllocNamed( const QueueMemAlloc& ev );
     tracy_force_inline MemEvent* ProcessMemFree( const QueueMemFree& ev );
@@ -935,8 +964,8 @@ private:
 
     tracy_force_inline int64_t ReadTimeline( FileRead& f, ZoneEvent* zone, int64_t refTime, int32_t& childIdx );
     tracy_force_inline int64_t ReadTimelineHaveSize( FileRead& f, ZoneEvent* zone, int64_t refTime, int32_t& childIdx, uint32_t sz );
-    tracy_force_inline void ReadTimeline( FileRead& f, GpuEvent* zone, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx );
-    tracy_force_inline void ReadTimelineHaveSize( FileRead& f, GpuEvent* zone, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx, uint64_t sz );
+    tracy_force_inline void ReadTimeline( FileRead& f, GpuEvent* zone, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx, bool hasQueryId );
+    tracy_force_inline void ReadTimelineHaveSize( FileRead& f, GpuEvent* zone, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx, uint64_t sz, bool hasQueryId );
 
 #ifndef TRACY_NO_STATISTICS
     tracy_force_inline void ReconstructZoneStatistics( uint8_t* countMap, ZoneEvent& zone, uint16_t thread );
@@ -956,7 +985,7 @@ private:
     void UpdateMbps( int64_t td );
 
     int64_t ReadTimeline( FileRead& f, Vector<short_ptr<ZoneEvent>>& vec, uint32_t size, int64_t refTime, int32_t& childIdx );
-    void ReadTimeline( FileRead& f, Vector<short_ptr<GpuEvent>>& vec, uint64_t size, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx );
+    void ReadTimeline( FileRead& f, Vector<short_ptr<GpuEvent>>& vec, uint64_t size, int64_t& refTime, int64_t& refGpuTime, int32_t& childIdx, bool hasQueryId );
 
     tracy_force_inline void WriteTimeline( FileWrite& f, const Vector<short_ptr<ZoneEvent>>& vec, int64_t& refTime );
     tracy_force_inline void WriteTimeline( FileWrite& f, const Vector<short_ptr<GpuEvent>>& vec, int64_t& refTime, int64_t& refGpuTime );
@@ -982,7 +1011,6 @@ private:
     std::atomic<bool> m_backgroundDone { true };
     std::thread m_threadBackground;
 
-    int64_t m_delay;
     int64_t m_resolution;
     double m_timerMul;
     std::string m_captureName;
@@ -1021,14 +1049,14 @@ private:
     StringLocation m_pendingSingleString = {};
     StringLocation m_pendingSecondString = {};
 
-    uint32_t m_pendingStrings;
-    uint32_t m_pendingThreads;
-    uint32_t m_pendingFibers;
-    uint32_t m_pendingExternalNames;
-    uint32_t m_pendingSourceLocation;
-    uint32_t m_pendingCallstackFrames;
-    uint8_t m_pendingCallstackSubframes;
-    uint32_t m_pendingSymbolCode;
+    uint32_t m_pendingStrings = 0;
+    uint32_t m_pendingThreads = 0;
+    uint32_t m_pendingFibers = 0;
+    uint32_t m_pendingExternalNames = 0;
+    uint32_t m_pendingSourceLocation = 0;
+    uint32_t m_pendingCallstackFrames = 0;
+    uint8_t m_pendingCallstackSubframes = 0;
+    uint32_t m_pendingSymbolCode = 0;
 
     CallstackFrameData* m_callstackFrameStaging;
     uint64_t m_callstackFrameStagingPtr;

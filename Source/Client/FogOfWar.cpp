@@ -122,7 +122,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     const auto traced_color = ucolor {numeric_cast<uint8_t>(overlay_color.comp.r * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.g * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.b * 120 / 255), center_alpha};
     const auto default_center_color = is_traced_overlay ? traced_color : ucolor {0, 0, 0, center_alpha};
     const auto center_color = has_custom_center_color ? input.CenterColor : default_center_color;
-    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = &_drawOffset};
+    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset.get()};
 
     auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
     size_t points_added = 0;
@@ -160,7 +160,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
             const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
             const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
-            const auto* edge_offset = target_dist < dist ? &_baseDrawOffset : &_drawOffset;
+            const auto* edge_offset = target_dist < dist ? _baseDrawOffset.get() : _drawOffset.get();
 
             if (is_traced_overlay) {
                 const auto max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
@@ -172,7 +172,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
                 const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
                 const auto color = ucolor {color_r, color_g, color_b, 255};
-                const auto* overlay_offset = result_overlay_dist < max_overlay_dist ? &_baseDrawOffset : &_drawOffset;
+                const auto* overlay_offset = result_overlay_dist < max_overlay_dist ? _baseDrawOffset.get() : _drawOffset.get();
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
             }
@@ -320,7 +320,7 @@ auto FogOfWar::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
     for (auto& p : collapsed) {
         p.PointPos = center.PointPos;
         p.PointColor = center.PointColor;
-        p.PointOffset = &_drawOffset;
+        p.PointOffset = _drawOffset.get();
     }
 
     return collapsed;
@@ -377,11 +377,9 @@ void FogOfWar::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
         return;
     }
 
-    // Triangle strip: edge, edge, center repeating (center at every i % 3 == 2).
-    // Resample edge and center points independently so that changing point counts
-    // (e.g. from different LookDistance) never mix edge and center positions.
-
-    const auto center_point = GetCollapsePoint(!to_points.empty() ? to_points : from_points);
+    const auto from_center = GetCollapsePoint(from_points);
+    const auto to_center = GetCollapsePoint(to_points);
+    const auto fallback_center = !to_points.empty() ? to_center : from_center;
 
     const auto from_edge_count = from_points.size() - from_points.size() / 3;
     const auto to_edge_count = to_points.size() - to_points.size() / 3;
@@ -393,11 +391,11 @@ void FogOfWar::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
 
     for (size_t i = 0; i < result_count; i++) {
         if (i % 3 == 2) {
-            result_points[i] = center_point;
+            result_points[i] = LerpFogPoint(from_center, to_center, t);
         }
         else {
-            const auto from_edge = SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, center_point);
-            const auto to_edge = SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, center_point);
+            const auto from_edge = SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, fallback_center);
+            const auto to_edge = SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, fallback_center);
             result_points[i] = LerpFogPoint(from_edge, to_edge, t);
             edge_idx++;
         }

@@ -784,7 +784,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             const auto payload = msg_json.contains("payload") ? msg_json["payload"] : nlohmann::json::object();
 
             int32_t start_frame = 0;
-            int32_t levels = numeric_cast<int32_t>(STACK_TRACE_MAX_SIZE);
+            int32_t levels = numeric_cast<int32_t>(STACK_TRACE_MAX_NATIVE_FRAMES);
 
             if (payload.contains("startFrame") && payload["startFrame"].is_number_integer()) {
                 start_frame = std::max(0, payload["startFrame"].get<int32_t>());
@@ -810,7 +810,17 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 stopped_function = _lastStoppedFunction;
             }
 
-            const int32_t raw_frames = numeric_cast<int32_t>(std::min(frames.CallsCount, STACK_TRACE_MAX_SIZE + 1));
+            const auto resolved_frames = ResolveStackTrace(frames);
+            vector<StackTraceFrame> script_frames;
+            script_frames.reserve(resolved_frames.size());
+
+            for (const auto& fr : resolved_frames) {
+                if (fr.Type == StackTraceFrame::FrameType::Script) {
+                    script_frames.push_back(fr);
+                }
+            }
+
+            const int32_t raw_frames = numeric_cast<int32_t>(script_frames.size());
             const int32_t total_frames = raw_frames + (has_stopped_location ? 1 : 0);
             const int32_t from = std::min(start_frame, total_frames);
             const int32_t to = std::min(total_frames, from + levels);
@@ -831,18 +841,18 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 }
 
                 const int32_t logical_raw_index = has_stopped_location ? (i - 1) : i;
-                const int32_t entry_index = raw_frames - 1 - logical_raw_index;
-                const auto* entry = entry_index >= 0 ? frames.CallTree[numeric_cast<size_t>(entry_index)] : nullptr;
 
-                if (entry == nullptr) {
+                if (logical_raw_index < 0 || logical_raw_index >= numeric_cast<int32_t>(script_frames.size())) {
                     continue;
                 }
 
+                const auto& entry = script_frames[numeric_cast<size_t>(logical_raw_index)];
+
                 nlohmann::json frame;
                 frame["id"] = i + 1;
-                frame["name"] = entry->function != nullptr ? string {entry->function} : string {"frame"};
-                frame["source"] = entry->file != nullptr ? string {entry->file} : string {};
-                frame["line"] = entry->line > 0 ? numeric_cast<uint32_t>(entry->line - 1) : 0u;
+                frame["name"] = !entry.Function.empty() ? entry.Function : std::string {"frame"};
+                frame["source"] = entry.File;
+                frame["line"] = entry.Line > 0 ? entry.Line - 1 : 0u;
                 body["stackFrames"].push_back(std::move(frame));
             }
 

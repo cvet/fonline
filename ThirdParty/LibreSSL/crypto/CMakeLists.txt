@@ -1,212 +1,210 @@
+#
+# Copyright (c) 2014 Brent Cook
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 add_definitions(-DLIBRESSL_CRYPTO_INTERNAL)
 
-if(HOST_ASM_ELF_ARMV4)
+if(HOST_ASM_ELF_AARCH64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} sha/sha1_aarch64.c sha/sha256_aarch64.c sha/sha512_aarch64.c)
+
 	set(
-		ASM_ARMV4_ELF_SRC
-		aes/aes-elf-armv4.S
-		bn/mont-elf-armv4.S
-		sha/sha1-elf-armv4.S
-		sha/sha512-elf-armv4.S
-		sha/sha256-elf-armv4.S
-		modes/ghash-elf-armv4.S
-		armv4cpuid.S
-		armcap.c
+		ASM_AARCH64_ELF_SRC
+		sha/sha1_aarch64_ce.S
+		sha/sha256_aarch64_ce.S
+		sha/sha256_aarch64_ce.S
 	)
-	add_definitions(-DAES_ASM)
-	add_definitions(-DOPENSSL_BN_ASM_MONT)
-	add_definitions(-DGHASH_ASM)
-	add_definitions(-DSHA1_ASM)
-	add_definitions(-DSHA256_ASM)
-	add_definitions(-DSHA512_ASM)
-	add_definitions(-DOPENSSL_CPUID_OBJ)
-	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_ARMV4_ELF_SRC})
+	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_AARCH64_ELF_SRC})
 endif()
 
 if(HOST_ASM_ELF_X86_64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} aes/aes_amd64.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} bn/arch/amd64/bn_arch.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} modes/gcm128_amd64.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} sha/sha1_amd64.c sha/sha256_amd64.c sha/sha512_amd64.c)
+
 	set(
 		ASM_X86_64_ELF_SRC
 		aes/aes-elf-x86_64.S
-		aes/bsaes-elf-x86_64.S
-		aes/vpaes-elf-x86_64.S
 		aes/aesni-elf-x86_64.S
 		bn/modexp512-elf-x86_64.S
 		bn/mont-elf-x86_64.S
 		bn/mont5-elf-x86_64.S
-		md5/md5-elf-x86_64.S
 		modes/ghash-elf-x86_64.S
 		rc4/rc4-elf-x86_64.S
-		sha/sha1-elf-x86_64.S
-		sha/sha256-elf-x86_64.S
-		sha/sha512-elf-x86_64.S
-		cpuid-elf-x86_64.S
 
 		bn/arch/amd64/bignum_add.S
 		bn/arch/amd64/bignum_cmadd.S
 		bn/arch/amd64/bignum_cmul.S
+		bn/arch/amd64/bignum_modadd.S
+		bn/arch/amd64/bignum_modsub.S
 		bn/arch/amd64/bignum_mul.S
+		bn/arch/amd64/bignum_mul_4_8.S
 		bn/arch/amd64/bignum_mul_4_8_alt.S
+		bn/arch/amd64/bignum_mul_6_12.S
+		bn/arch/amd64/bignum_mul_6_12_alt.S
+		bn/arch/amd64/bignum_mul_8_16.S
 		bn/arch/amd64/bignum_mul_8_16_alt.S
 		bn/arch/amd64/bignum_sqr.S
+		bn/arch/amd64/bignum_sqr_4_8.S
 		bn/arch/amd64/bignum_sqr_4_8_alt.S
+		bn/arch/amd64/bignum_sqr_6_12.S
+		bn/arch/amd64/bignum_sqr_6_12_alt.S
+		bn/arch/amd64/bignum_sqr_8_16.S
 		bn/arch/amd64/bignum_sqr_8_16_alt.S
 		bn/arch/amd64/bignum_sub.S
 		bn/arch/amd64/word_clz.S
-		bn/arch/amd64/bn_arch.c
+
+		sha/sha1_amd64_shani.S
+		sha/sha1_amd64_generic.S
+		sha/sha256_amd64_generic.S
+		sha/sha256_amd64_shani.S
+		sha/sha512_amd64_generic.S
 	)
-	add_definitions(-DAES_ASM)
-	add_definitions(-DBSAES_ASM)
-	add_definitions(-DVPAES_ASM)
-	add_definitions(-DOPENSSL_IA32_SSE2)
+	add_definitions(-DLIBRESSL_USE_AES_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_BN_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_GCM_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_RC4_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_SHA_ASSEMBLY)
 	add_definitions(-DOPENSSL_BN_ASM_MONT)
 	add_definitions(-DOPENSSL_BN_ASM_MONT5)
-	add_definitions(-DMD5_ASM)
-	add_definitions(-DGHASH_ASM)
-	add_definitions(-DRSA_ASM)
-	add_definitions(-DSHA1_ASM)
-	add_definitions(-DSHA256_ASM)
-	add_definitions(-DSHA512_ASM)
-	add_definitions(-DWHIRLPOOL_ASM)
-	add_definitions(-DOPENSSL_CPUID_OBJ)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_X86_64_ELF_SRC})
 endif()
 
 if(HOST_ASM_MACOSX_X86_64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} aes/aes_amd64.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} bn/arch/amd64/bn_arch.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} modes/gcm128_amd64.c)
+
 	set(
 		ASM_X86_64_MACOSX_SRC
 		aes/aes-macosx-x86_64.S
-		aes/bsaes-macosx-x86_64.S
-		aes/vpaes-macosx-x86_64.S
 		aes/aesni-macosx-x86_64.S
 		bn/modexp512-macosx-x86_64.S
 		bn/mont-macosx-x86_64.S
 		bn/mont5-macosx-x86_64.S
-		md5/md5-macosx-x86_64.S
 		modes/ghash-macosx-x86_64.S
 		rc4/rc4-macosx-x86_64.S
-		sha/sha1-macosx-x86_64.S
-		sha/sha256-macosx-x86_64.S
-		sha/sha512-macosx-x86_64.S
-		cpuid-macosx-x86_64.S
 
 		bn/arch/amd64/bignum_add.S
 		bn/arch/amd64/bignum_cmadd.S
 		bn/arch/amd64/bignum_cmul.S
+		bn/arch/amd64/bignum_modadd.S
+		bn/arch/amd64/bignum_modsub.S
 		bn/arch/amd64/bignum_mul.S
+		bn/arch/amd64/bignum_mul_4_8.S
 		bn/arch/amd64/bignum_mul_4_8_alt.S
+		bn/arch/amd64/bignum_mul_6_12.S
+		bn/arch/amd64/bignum_mul_6_12_alt.S
+		bn/arch/amd64/bignum_mul_8_16.S
 		bn/arch/amd64/bignum_mul_8_16_alt.S
 		bn/arch/amd64/bignum_sqr.S
+		bn/arch/amd64/bignum_sqr_4_8.S
 		bn/arch/amd64/bignum_sqr_4_8_alt.S
+		bn/arch/amd64/bignum_sqr_6_12.S
+		bn/arch/amd64/bignum_sqr_6_12_alt.S
+		bn/arch/amd64/bignum_sqr_8_16.S
 		bn/arch/amd64/bignum_sqr_8_16_alt.S
 		bn/arch/amd64/bignum_sub.S
 		bn/arch/amd64/word_clz.S
-		bn/arch/amd64/bn_arch.c
 	)
-	add_definitions(-DAES_ASM)
-	add_definitions(-DBSAES_ASM)
-	add_definitions(-DVPAES_ASM)
-	add_definitions(-DOPENSSL_IA32_SSE2)
+	add_definitions(-DLIBRESSL_USE_AES_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_BN_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_GCM_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_RC4_ASSEMBLY)
 	add_definitions(-DOPENSSL_BN_ASM_MONT)
 	add_definitions(-DOPENSSL_BN_ASM_MONT5)
-	add_definitions(-DMD5_ASM)
-	add_definitions(-DGHASH_ASM)
-	add_definitions(-DRSA_ASM)
-	add_definitions(-DSHA1_ASM)
-	add_definitions(-DSHA256_ASM)
-	add_definitions(-DSHA512_ASM)
-	add_definitions(-DWHIRLPOOL_ASM)
-	add_definitions(-DOPENSSL_CPUID_OBJ)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_X86_64_MACOSX_SRC})
 	set_property(SOURCE ${ASM_X86_64_MACOSX_SRC} PROPERTY XCODE_EXPLICIT_FILE_TYPE "sourcecode.asm")
 endif()
 
 if(HOST_ASM_MASM_X86_64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} aes/aes_amd64.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} modes/gcm128_amd64.c)
+
 	set(
 		ASM_X86_64_MASM_SRC
 		aes/aes-masm-x86_64.S
-		aes/bsaes-masm-x86_64.S
-		aes/vpaes-masm-x86_64.S
 		aes/aesni-masm-x86_64.S
 		#bn/modexp512-masm-x86_64.S
 		#bn/mont-masm-x86_64.S
 		#bn/mont5-masm-x86_64.S
-		md5/md5-masm-x86_64.S
 		modes/ghash-masm-x86_64.S
 		rc4/rc4-masm-x86_64.S
-		sha/sha1-masm-x86_64.S
-		sha/sha256-masm-x86_64.S
-		sha/sha512-masm-x86_64.S
-		cpuid-masm-x86_64.S
 	)
 	add_definitions(-Dendbr64=)
-	add_definitions(-DAES_ASM)
-	add_definitions(-DBSAES_ASM)
-	add_definitions(-DVPAES_ASM)
-	add_definitions(-DOPENSSL_IA32_SSE2)
+	add_definitions(-DLIBRESSL_USE_AES_ASSEMBLY)
+	#add_definitions(-DLIBRESSL_USE_BN_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_GCM_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_RC4_ASSEMBLY)
 	#add_definitions(-DOPENSSL_BN_ASM_MONT)
 	#add_definitions(-DOPENSSL_BN_ASM_MONT5)
-	add_definitions(-DMD5_ASM)
-	add_definitions(-DGHASH_ASM)
-	add_definitions(-DRSA_ASM)
-	add_definitions(-DSHA1_ASM)
-	add_definitions(-DSHA256_ASM)
-	add_definitions(-DSHA512_ASM)
-	add_definitions(-DWHIRLPOOL_ASM)
-	add_definitions(-DOPENSSL_CPUID_OBJ)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_X86_64_MASM_SRC})
 	set_property(SOURCE ${ASM_X86_64_MASM_SRC} PROPERTY LANGUAGE ASM_MASM)
 endif()
 
 if(HOST_ASM_MINGW64_X86_64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} aes/aes_amd64.c)
+	set(CRYPTO_SRC ${CRYPTO_SRC} modes/gcm128_amd64.c)
+
 	set(
 		ASM_X86_64_MINGW64_SRC
 		aes/aes-mingw64-x86_64.S
-		aes/bsaes-mingw64-x86_64.S
-		aes/vpaes-mingw64-x86_64.S
 		aes/aesni-mingw64-x86_64.S
 		#bn/modexp512-mingw64-x86_64.S
 		#bn/mont-mingw64-x86_64.S
 		#bn/mont5-mingw64-x86_64.S
-		md5/md5-mingw64-x86_64.S
 		modes/ghash-mingw64-x86_64.S
 		rc4/rc4-mingw64-x86_64.S
-		sha/sha1-mingw64-x86_64.S
-		sha/sha256-mingw64-x86_64.S
-		sha/sha512-mingw64-x86_64.S
-		cpuid-mingw64-x86_64.S
 	)
 	add_definitions(-Dendbr32=endbr64)
-	add_definitions(-DAES_ASM)
-	add_definitions(-DBSAES_ASM)
-	add_definitions(-DVPAES_ASM)
-	add_definitions(-DOPENSSL_IA32_SSE2)
+	add_definitions(-DLIBRESSL_USE_AES_ASSEMBLY)
+	#add_definitions(-DLIBRESSL_USE_BN_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_GCM_ASSEMBLY)
+	add_definitions(-DLIBRESSL_USE_RC4_ASSEMBLY)
 	#add_definitions(-DOPENSSL_BN_ASM_MONT)
 	#add_definitions(-DOPENSSL_BN_ASM_MONT5)
-	add_definitions(-DMD5_ASM)
-	add_definitions(-DGHASH_ASM)
-	add_definitions(-DRSA_ASM)
-	add_definitions(-DSHA1_ASM)
-	add_definitions(-DSHA256_ASM)
-	add_definitions(-DSHA512_ASM)
-	add_definitions(-DWHIRLPOOL_ASM)
-	add_definitions(-DOPENSSL_CPUID_OBJ)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_X86_64_MINGW64_SRC})
+endif()
+
+if(HOST_AARCH64)
+	if(APPLE)
+		set(CRYPTO_SRC ${CRYPTO_SRC} arch/aarch64/crypto_cpu_caps_darwin.c)
+	elseif(LINUX)
+		set(CRYPTO_SRC ${CRYPTO_SRC} arch/aarch64/crypto_cpu_caps_linux.c)
+	elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+		set(CRYPTO_SRC ${CRYPTO_SRC} arch/aarch64/crypto_cpu_caps.c)
+	elseif(WIN32)
+		set(CRYPTO_SRC ${CRYPTO_SRC} arch/aarch64/crypto_cpu_caps_windows.c)
+	else()
+		set(CRYPTO_SRC ${CRYPTO_SRC} arch/aarch64/crypto_cpu_caps_none.c)
+	endif()
+elseif(HOST_X86_64)
+	set(CRYPTO_SRC ${CRYPTO_SRC} arch/amd64/crypto_cpu_caps.c)
+elseif(HOST_I386)
+	set(CRYPTO_SRC ${CRYPTO_SRC} arch/i386/crypto_cpu_caps.c)
 endif()
 
 set(
 	CRYPTO_SRC
 	${CRYPTO_SRC}
-	cpt_err.c
-	cryptlib.c
+	crypto_err.c
 	crypto_ex_data.c
 	crypto_init.c
-	cversion.c
-	malloc-wrapper.c
-	mem_clr.c
-	mem_dbg.c
-	o_fips.c
+	crypto_legacy.c
+	crypto_memory.c
 	aes/aes.c
 	aes/aes_core.c
-	aes/aes_ige.c
 	asn1/a_bitstr.c
 	asn1/a_enum.c
 	asn1/a_int.c
@@ -256,10 +254,8 @@ set(
 	asn1/x_bignum.c
 	asn1/x_crl.c
 	asn1/x_exten.c
-	asn1/x_info.c
 	asn1/x_long.c
 	asn1/x_name.c
-	asn1/x_pkey.c
 	asn1/x_pubkey.c
 	asn1/x_req.c
 	asn1/x_sig.c
@@ -288,6 +284,7 @@ set(
 	bio/bss_null.c
 	bio/bss_sock.c
 	bn/bn_add.c
+	bn/bn_add_sub.c
 	bn/bn_bpsw.c
 	bn/bn_const.c
 	bn/bn_convert.c
@@ -301,6 +298,7 @@ set(
 	bn/bn_lib.c
 	bn/bn_mod.c
 	bn/bn_mod_sqrt.c
+	bn/bn_mod_words.c
 	bn/bn_mont.c
 	bn/bn_mul.c
 	bn/bn_prime.c
@@ -340,7 +338,6 @@ set(
 	conf/conf_def.c
 	conf/conf_err.c
 	conf/conf_lib.c
-	conf/conf_mall.c
 	conf/conf_mod.c
 	conf/conf_sap.c
 	ct/ct_b64.c
@@ -380,21 +377,17 @@ set(
 	dsa/dsa_prn.c
 	ec/ec_ameth.c
 	ec/ec_asn1.c
-	ec/ec_check.c
+	ec/ec_convert.c
 	ec/ec_curve.c
-	ec/ec_cvt.c
 	ec/ec_err.c
+	ec/ec_field.c
 	ec/ec_key.c
-	ec/ec_kmeth.c
 	ec/ec_lib.c
 	ec/ec_mult.c
-	ec/ec_oct.c
 	ec/ec_pmeth.c
-	ec/ec_print.c
 	ec/eck_prn.c
-	ec/ecp_mont.c
-	ec/ecp_oct.c
-	ec/ecp_smpl.c
+	ec/ecp_hp_methods.c
+	ec/ecp_methods.c
 	ec/ecx_methods.c
 	ecdh/ecdh.c
 	ecdsa/ecdsa.c
@@ -455,6 +448,9 @@ set(
 	lhash/lhash.c
 	md4/md4.c
 	md5/md5.c
+	mlkem/mlkem.c
+	mlkem/mlkem_internal.c
+	mlkem/mlkem_key.c
 	modes/cbc128.c
 	modes/ccm128.c
 	modes/cfb128.c
@@ -512,11 +508,7 @@ set(
 	rand/rand_err.c
 	rand/rand_lib.c
 	rand/randfile.c
-	rc2/rc2_cbc.c
-	rc2/rc2_ecb.c
-	rc2/rc2_skey.c
-	rc2/rc2cfb64.c
-	rc2/rc2ofb64.c
+	rc2/rc2.c
 	rc4/rc4.c
 	ripemd/ripemd.c
 	rsa/rsa_ameth.c
@@ -618,17 +610,17 @@ set(
 
 set(COMPAT_SRC empty.c)
 
+set(CRYPTO_UNEXPORT ${CRYPTO_UNEXPORT} BIO_s_log)
+
 if(UNIX)
 	set(CRYPTO_SRC ${CRYPTO_SRC} crypto_lock.c)
 	set(CRYPTO_SRC ${CRYPTO_SRC} bio/b_posix.c)
-	set(CRYPTO_SRC ${CRYPTO_SRC} bio/bss_log.c)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ui/ui_openssl.c)
 endif()
 
 if(WIN32)
 	set(CRYPTO_SRC ${CRYPTO_SRC} compat/crypto_lock_win.c)
 	set(CRYPTO_SRC ${CRYPTO_SRC} bio/b_win.c)
-	set(CRYPTO_UNEXPORT ${CRYPTO_UNEXPORT} BIO_s_log)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ui/ui_openssl_win.c)
 endif()
 
@@ -642,6 +634,18 @@ endif()
 
 if(NOT HAVE_FREEZERO)
 	set(COMPAT_SRC ${COMPAT_SRC} compat/freezero.c)
+endif()
+
+if(NOT HAVE_FTRUNCATE)
+	set(COMPAT_SRC ${COMPAT_SRC} compat/ftruncate.c)
+endif()
+
+if(NOT HAVE_GETDELIM)
+	set(COMPAT_SRC ${COMPAT_SRC} compat/getdelim.c)
+endif()
+
+if(NOT HAVE_GETLINE)
+	set(COMPAT_SRC ${COMPAT_SRC} compat/getline.c)
 endif()
 
 if(NOT HAVE_GETOPT)
@@ -776,6 +780,7 @@ add_library(crypto_obj OBJECT ${CRYPTO_SRC})
 target_include_directories(crypto_obj
 	PRIVATE
 		.
+		aes
 		asn1
 		bio
 		bn
@@ -792,6 +797,7 @@ target_include_directories(crypto_obj
 		hidden
 		hmac
 		lhash
+		mlkem
 		modes
 		ocsp
 		pkcs12
@@ -813,11 +819,14 @@ elseif(HOST_ARM)
 elseif(HOST_I386)
 	target_include_directories(crypto_obj PRIVATE arch/i386/)
 	target_include_directories(crypto_obj PRIVATE bn/arch/i386/)
+elseif(HOST_LOONGARCH64)
+	target_include_directories(crypto_obj PRIVATE arch/loongarch64)
+	target_include_directories(crypto_obj PRIVATE bn/arch/loongarch64)
 elseif(HOST_MIPS64)
 	target_include_directories(crypto_obj PRIVATE arch/mips64)
 	target_include_directories(crypto_obj PRIVATE bn/arch/mips64)
 elseif(HOST_MIPS)
-	# XXX - can this go away? the directory doesn't exist...
+	target_include_directories(crypto_obj PRIVATE arch/mips)
 	target_include_directories(crypto_obj PRIVATE bn/arch/mips)
 elseif(HOST_POWERPC)
 	target_include_directories(crypto_obj PRIVATE arch/powerpc)
@@ -834,6 +843,17 @@ elseif(HOST_SPARC64)
 elseif(HOST_X86_64)
 	target_include_directories(crypto_obj PRIVATE arch/amd64)
 	target_include_directories(crypto_obj PRIVATE bn/arch/amd64)
+endif()
+
+if(MSVC)
+	# "C4701" - Potentially uninitialized local variable 'name' used
+	set_source_files_properties(bn/bn_convert.c pem/pem_lib.c PROPERTIES
+		COMPILE_OPTIONS /wd4701
+	)
+	# "C4702" - unreachable code
+	set_source_files_properties(pkcs7/pk7_doit.c PROPERTIES
+		COMPILE_OPTIONS /wd4702
+	)
 endif()
 
 add_library(crypto $<TARGET_OBJECTS:crypto_obj> $<TARGET_OBJECTS:compat_obj> empty.c)
@@ -889,4 +909,3 @@ if(BUILD_SHARED_LIBS)
 	add_library(crypto-static STATIC $<TARGET_OBJECTS:crypto_obj>)
 	target_link_libraries(crypto-static ${PLATFORM_LIBS})
 endif()
-

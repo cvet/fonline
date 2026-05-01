@@ -1,4 +1,4 @@
-/*	$OpenBSD: crypto_namespace.h,v 1.4 2024/07/11 21:31:52 miod Exp $	*/
+/*	$OpenBSD: crypto_namespace.h,v 1.5 2025/08/18 16:00:05 tb Exp $	*/
 /*
  * Copyright (c) 2016 Philip Guenther <guenther@openbsd.org>
  *
@@ -24,12 +24,6 @@
  * external calls use the latter name.
  */
 
-#ifdef _MSC_VER
-# define LCRYPTO_UNUSED(x)
-# define LCRYPTO_USED(x)
-# define LCRYPTO_ALIAS1(pre, x)
-# define LCRYPTO_ALIAS(x)
-#else
 #ifdef LIBRESSL_NAMESPACE
 #ifdef LIBRESSL_CRYPTO_NAMESPACE
 #  define LCRYPTO_UNUSED(x)	__attribute__((deprecated))		\
@@ -51,8 +45,11 @@
 # define LCRYPTO_UNUSED(x)
 # define LCRYPTO_USED(x)
 # define LCRYPTO_ALIAS1(pre,x)
+#ifdef _MSC_VER
+# define LCRYPTO_ALIAS(x)
+#else
 # define LCRYPTO_ALIAS(x)	asm("")
-#endif
 #endif /* _MSC_VER */
+#endif
 
 #endif	/* _LIBCRYPTO_CRYPTO_NAMESPACE_H_ */

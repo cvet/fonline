@@ -46,6 +46,13 @@
 
 FO_BEGIN_NAMESPACE
 
+constexpr AngelScript::asPWORD AS_TYPE_INFO_CACHE_USER_DATA = 1100;
+
+struct ScriptTypeInfoCache
+{
+    unordered_map<string, AngelScript::asITypeInfo*> Map {};
+};
+
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -342,15 +349,44 @@ auto NormalizeScriptPropertyDecl(string_view decl) -> string
     return fixed_decl;
 }
 
+static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    delete cast_from_void<ScriptTypeInfoCache*>(engine->GetUserData(AS_TYPE_INFO_CACHE_USER_DATA));
+    engine->SetUserData(nullptr, AS_TYPE_INFO_CACHE_USER_DATA);
+}
+
+static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const char* type) -> AngelScript::asITypeInfo*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* cache = cast_from_void<ScriptTypeInfoCache*>(as_engine->GetUserData(AS_TYPE_INFO_CACHE_USER_DATA));
+
+    if (cache == nullptr) {
+        cache = new ScriptTypeInfoCache();
+        as_engine->SetUserData(cast_to_void(cache), AS_TYPE_INFO_CACHE_USER_DATA);
+        as_engine->SetEngineUserDataCleanupCallback(CleanupTypeInfoCache, AS_TYPE_INFO_CACHE_USER_DATA);
+    }
+
+    if (const auto it = cache->Map.find(type); it != cache->Map.end()) {
+        return it->second;
+    }
+
+    const auto type_id = as_engine->GetTypeIdByDecl(type);
+    FO_RUNTIME_ASSERT(type_id);
+    auto* info = as_engine->GetTypeInfoById(type_id);
+    FO_RUNTIME_ASSERT(info);
+    cache->Map.emplace(type, info);
+    return info;
+}
+
 auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(as_engine);
-    const auto type_id = as_engine->GetTypeIdByDecl(type);
-    FO_RUNTIME_ASSERT(type_id);
-    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(as_type_info);
+    auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_array = ScriptArray::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_array);
     return as_array;
@@ -361,10 +397,7 @@ auto CreateScriptDict(AngelScript::asIScriptEngine* as_engine, const char* type)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(as_engine);
-    const auto type_id = as_engine->GetTypeIdByDecl(type);
-    FO_RUNTIME_ASSERT(type_id);
-    auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(as_type_info);
+    auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_dict = ScriptDict::Create(as_type_info);
     FO_RUNTIME_ASSERT(as_dict);
     return as_dict;
@@ -1152,11 +1185,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         MemCopy(buf, &hkey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
-                        buf += prop->GetDictKeyTypeSize();
-                    }
                     else {
                         MemCopy(buf, key, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
@@ -1278,11 +1306,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                         MemCopy(buf, &hkey, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
                     }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, prop->GetDictKeyTypeSize());
-                        buf += prop->GetDictKeyTypeSize();
-                    }
                     else {
                         MemCopy(buf, key, prop->GetDictKeyTypeSize());
                         buf += prop->GetDictKeyTypeSize();
@@ -1390,10 +1413,6 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = cast_from_void<const hstring*>(key)->as_hash();
                         MemCopy(buf, &hkey, key_element_size);
-                    }
-                    else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = *cast_from_void<const int32_t*>(key);
-                        MemCopy(buf, &ekey, key_element_size);
                     }
                     else {
                         MemCopy(buf, key, key_element_size);
@@ -1504,15 +1523,21 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
     }
 
     if (const auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
-        const auto enum_value = *cast_from_void<const int32_t*>(ptr);
+        int32_t enum_value = 0;
 
         if (meta->IsValidBaseType(type_name)) {
+            const auto& enum_type = meta->GetBaseType(type_name);
+            enum_value = ReadEnumValueAsInt32(ptr, enum_type);
+
             bool failed = false;
             const string& enum_value_name = meta->ResolveEnumValueName(type_name, enum_value, &failed);
 
             if (!failed) {
                 return strex("{}: {}", type_name, enum_value_name);
             }
+        }
+        else {
+            enum_value = *cast_from_void<const int32_t*>(ptr);
         }
 
         for (AngelScript::asUINT i = 0; i < enum_value_count; i++) {
@@ -1546,6 +1571,86 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
     }
 
     return hash_resolver.ToHashedString(func_name);
+}
+
+auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(ptr);
+    FO_RUNTIME_ASSERT(enum_type.IsEnum);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+
+    if (enum_type.EnumUnderlyingType->IsSignedInt) {
+        switch (enum_type.Size) {
+        case sizeof(int8_t):
+            return *cast_from_void<const int8_t*>(ptr);
+        case sizeof(int16_t):
+            return *cast_from_void<const int16_t*>(ptr);
+        case sizeof(int32_t):
+            return *cast_from_void<const int32_t*>(ptr);
+        default:
+            break;
+        }
+    }
+    else {
+        switch (enum_type.Size) {
+        case sizeof(uint8_t):
+            return *cast_from_void<const uint8_t*>(ptr);
+        case sizeof(uint16_t):
+            return *cast_from_void<const uint16_t*>(ptr);
+        case sizeof(uint32_t):
+            return static_cast<int32_t>(*cast_from_void<const uint32_t*>(ptr));
+        default:
+            break;
+        }
+    }
+
+    throw GenericException("Unsupported enum underlying size", enum_type.Name, enum_type.Size);
+}
+
+void WriteEnumValueFromInt32(void* ptr, const BaseTypeDesc& enum_type, int32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(ptr);
+    FO_RUNTIME_ASSERT(enum_type.IsEnum);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
+    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+
+    if (enum_type.EnumUnderlyingType->IsSignedInt) {
+        switch (enum_type.Size) {
+        case sizeof(int8_t):
+            *cast_from_void<int8_t*>(ptr) = numeric_cast<int8_t>(value);
+            return;
+        case sizeof(int16_t):
+            *cast_from_void<int16_t*>(ptr) = numeric_cast<int16_t>(value);
+            return;
+        case sizeof(int32_t):
+            *cast_from_void<int32_t*>(ptr) = value;
+            return;
+        default:
+            break;
+        }
+    }
+    else {
+        switch (enum_type.Size) {
+        case sizeof(uint8_t):
+            *cast_from_void<uint8_t*>(ptr) = numeric_cast<uint8_t>(value);
+            return;
+        case sizeof(uint16_t):
+            *cast_from_void<uint16_t*>(ptr) = numeric_cast<uint16_t>(value);
+            return;
+        case sizeof(uint32_t):
+            *cast_from_void<uint32_t*>(ptr) = static_cast<uint32_t>(value);
+            return;
+        default:
+            break;
+        }
+    }
+
+    throw GenericException("Unsupported enum underlying size", enum_type.Name, enum_type.Size);
 }
 
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*

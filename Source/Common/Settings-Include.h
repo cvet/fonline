@@ -48,18 +48,19 @@ FIXED_SETTING(string, Common, GitCommit); // Git commit hash (if present)
 FIXED_SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
+FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script overrun, 0 to disable
+FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
+FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Network, ServerPort, 4000); // Server port number
-FIXED_SETTING(bool, Network, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Network, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
 FIXED_SETTING(int32_t, Network, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(bool, Network, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32_t, Network, UpdateFileSendSize, 1000000); // Update file send size
@@ -223,7 +224,7 @@ FIXED_SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in mil
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakingSettings, virtual BaseSettings);
+SETTING_GROUP(BakingSettings, virtual BaseSettings, virtual ScriptSettings);
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist

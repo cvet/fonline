@@ -1,4 +1,4 @@
-/* $OpenBSD: cms_lib.c,v 1.25 2024/03/30 01:53:05 joshua Exp $ */
+/* $OpenBSD: cms_lib.c,v 1.27 2025/05/10 05:54:38 tb Exp $ */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
@@ -52,15 +52,18 @@
  * ====================================================================
  */
 
-#include <openssl/asn1t.h>
-#include <openssl/x509v3.h>
-#include <openssl/err.h>
-#include <openssl/pem.h>
-#include <openssl/bio.h>
+#include <stddef.h>
+
 #include <openssl/asn1.h>
+#include <openssl/bio.h>
 #include <openssl/cms.h>
+#include <openssl/evp.h>
+#include <openssl/objects.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "cms_local.h"
+#include "err_local.h"
 #include "x509_local.h"
 
 CMS_ContentInfo *

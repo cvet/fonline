@@ -137,9 +137,7 @@ static auto AssignUInt64ToString(string& str, uint64_t i) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    str = stream.str();
+    str = strex("{}", i);
     return str;
 }
 
@@ -147,9 +145,7 @@ static string& AddAssignUInt64ToString(string& str, uint64_t i)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    str += stream.str();
+    str += strex("{}", i);
     return str;
 }
 
@@ -157,27 +153,21 @@ static auto AddStringUInt64(const string& str, uint64_t i) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    return str + stream.str();
+    return str + strex("{}", i).str();
 }
 
 static auto AddInt64String(const string& str, int64_t i) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    return stream.str() + str;
+    return strex("{}", i).str() + str;
 }
 
 static auto AssignInt64ToString(string& str, int64_t i) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    str = stream.str();
+    str = strex("{}", i);
     return str;
 }
 
@@ -185,9 +175,7 @@ static auto AddAssignInt64ToString(string& str, int64_t i) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    str += stream.str();
+    str += strex("{}", i);
     return str;
 }
 
@@ -195,27 +183,21 @@ static auto AddStringInt64(const string& str, int64_t i) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    return str + stream.str();
+    return str + strex("{}", i).str();
 }
 
 static auto AddUInt64String(const string& str, uint64_t i) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << i;
-    return stream.str() + str;
+    return strex("{}", i).str() + str;
 }
 
 static auto AssignDoubleToString(string& str, float64_t f) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    str = stream.str();
+    str = strex("{}", f);
     return str;
 }
 
@@ -223,17 +205,13 @@ static auto AddAssignDoubleToString(string& str, float64_t f) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    str += stream.str();
+    str += strex("{}", f);
     return str;
 }
 
 static auto AssignFloatToString(string& str, float32_t f) -> string&
 {
-    ostringstream stream;
-    stream << f;
-    str = stream.str();
+    str = strex("{}", f);
     return str;
 }
 
@@ -241,9 +219,7 @@ static auto AddAssignFloatToString(string& str, float32_t f) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    str += stream.str();
+    str += strex("{}", f);
     return str;
 }
 
@@ -251,9 +227,7 @@ static auto AssignBoolToString(string& str, bool b) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << (b ? "true" : "false");
-    str = stream.str();
+    str = b ? "true" : "false";
     return str;
 }
 
@@ -261,9 +235,7 @@ static auto AddAssignBoolToString(string& str, bool b) -> string&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << (b ? "true" : "false");
-    str += stream.str();
+    str += b ? "true" : "false";
     return str;
 }
 
@@ -271,54 +243,46 @@ static auto AddStringDouble(const string& str, float64_t f) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    return str + stream.str();
+    return str + strex("{}", f).str();
 }
 
 static auto AddDoubleString(const string& str, float64_t f) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    return stream.str() + str;
+    return strex("{}", f).str() + str;
 }
 
 static auto AddStringFloat(const string& str, float32_t f) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    return str + stream.str();
+    return str + strex("{}", f).str();
 }
 
 static auto AddFloatString(const string& str, float32_t f) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << f;
-    return stream.str() + str;
+    return strex("{}", f).str() + str;
 }
 
 static auto AddStringBool(const string& str, bool b) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << (b ? "true" : "false");
-    return str + stream.str();
+    string result = str;
+    result += b ? "true" : "false";
+    return result;
 }
 
 static auto AddBoolString(const string& str, bool b) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ostringstream stream;
-    stream << (b ? "true" : "false");
-    return stream.str() + str;
+    string result = b ? "true" : "false";
+    result += str;
+    return result;
 }
 
 static auto StringCmp(const string& str, const string& other) -> int32_t

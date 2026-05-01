@@ -48,8 +48,6 @@ extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
 [[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int32_t line) noexcept;
 extern void ReportVerifyFailed(string_view message, const char* file, int32_t line) noexcept;
-extern auto GetRealStackTrace() -> string;
-extern auto FormatStackTrace(const StackTraceData& st) -> string;
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 

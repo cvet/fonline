@@ -1,4 +1,4 @@
-.\" $OpenBSD: ASN1_item_sign.3,v 1.2 2021/12/18 17:47:44 schwarze Exp $
+.\" $OpenBSD: ASN1_item_sign.3,v 1.4 2025/06/08 22:40:29 schwarze Exp $
 .\"
 .\" Copyright (c) 2021 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 18 2021 $
+.Dd $Mdocdate: June 8 2025 $
 .Dt ASN1_ITEM_SIGN 3
 .Os
 .Sh NAME
@@ -22,6 +22,7 @@
 .Nm ASN1_item_sign_ctx
 .Nd DER-encode and sign an ASN.1 value
 .Sh SYNOPSIS
+.Lb libcrypto
 .In openssl/x509.h
 .Ft int
 .Fo ASN1_item_sign
@@ -91,12 +92,6 @@ Unless
 is
 .Dv NULL ,
 the same data is copied into it.
-.\" The following is not yet supported by LibreSSL
-.\" because we do not provide EVP_PKEY_asn1_set_item(3).
-.\" except that user-defined key types set up with
-.\" .Xr EVP_PKEY_asn1_new 3
-.\" may optionally provide information about a second algorithm in
-.\" .Fa algor2 .
 .Sh RETURN VALUES
 These functions return the length of the signature in bytes
 or 0 if memory allocation, encoding, or signing fails.
@@ -113,8 +108,6 @@ is not fully initialized.
 .Xr EVP_Digest 3 ,
 .Xr EVP_DigestSign 3 ,
 .Xr EVP_MD_CTX_new 3 ,
-.\" We do not provide EVP_PKEY_asn1_set_item(3).
-.\" .Xr EVP_PKEY_asn1_new 3 ,
 .Xr EVP_PKEY_new 3 ,
 .Xr OBJ_find_sigid_by_algs 3 ,
 .Xr X509_ALGOR_new 3

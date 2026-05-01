@@ -358,6 +358,10 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
 
             if (ret_obj != nullptr) {
                 as_engine->ReleaseScriptObject(ret_obj, as_ret_type);
+
+                if (is_ref_type) {
+                    *static_cast<void**>(call.RetData) = nullptr;
+                }
             }
         }
 

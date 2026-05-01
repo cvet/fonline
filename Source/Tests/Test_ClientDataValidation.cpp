@@ -88,6 +88,10 @@ TEST_CASE("ClientDataValidation")
     EngineMetadata meta {[] { }};
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEnumGroup("TestEnum", "int32", {{"None", 0}, {"Value", 1}});
+    meta.RegisterEnumGroup("TestEnumU16", "uint16", {{"None", 0}, {"Value", 1}, {"Top", 65535}});
+    meta.RegisterEnumGroup("TestEnumU8", "uint8", {{"None", 0}, {"Value", 1}, {"Top", 255}});
+    meta.RegisterEnumGroup("TestEnumI16", "int16", {{"NegMax", -32768}, {"None", 0}, {"Value", 1}, {"PosMax", 32767}});
+    meta.RegisterEnumGroup("TestEnumI8", "int8", {{"NegMax", -128}, {"None", 0}, {"Value", 1}, {"PosMax", 127}});
     meta.RegisterValueType("TestStruct");
     meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}});
     meta.RegisterRefType("TestRefType");
@@ -160,6 +164,49 @@ TEST_CASE("ClientDataValidation")
         DataWriter writer(data);
 
         writer.Write<int32_t>(77);
+
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+    }
+
+    SECTION("Accepts enum payloads sized to underlying type")
+    {
+        const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
+        const BaseTypeDesc& enum_u8 = meta.GetBaseType("TestEnumU8");
+        const BaseTypeDesc& enum_i16 = meta.GetBaseType("TestEnumI16");
+        const BaseTypeDesc& enum_i8 = meta.GetBaseType("TestEnumI8");
+
+        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16, "u16"), MakeSimpleArg(enum_u8, "u8"), MakeSimpleArg(enum_i16, "i16"), MakeSimpleArg(enum_i8, "i8")});
+        vector<uint8_t> data;
+        DataWriter writer(data);
+
+        writer.Write<uint16_t>(uint16_t {65535});
+        writer.Write<uint8_t>(uint8_t {255});
+        writer.Write<int16_t>(int16_t {-32768});
+        writer.Write<int8_t>(int8_t {-128});
+
+        CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
+    }
+
+    SECTION("Rejects invalid uint16 enum value at underlying size")
+    {
+        const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
+        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
+        vector<uint8_t> data;
+        DataWriter writer(data);
+
+        writer.Write<uint16_t>(uint16_t {7777});
+
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+    }
+
+    SECTION("Rejects truncated uint16 enum payload")
+    {
+        const BaseTypeDesc& enum_u16 = meta.GetBaseType("TestEnumU16");
+        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_u16)});
+        vector<uint8_t> data;
+        DataWriter writer(data);
+
+        writer.Write<uint8_t>(uint8_t {0});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
