@@ -86,7 +86,7 @@ int main(int argc, char** argv) // Handled by SDL
         std::mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](LogType, string_view str) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](LogType type, string_view str) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
@@ -96,7 +96,7 @@ int main(int argc, char** argv) // Handled by SDL
                 log_buffer.pop_front();
             }
 
-            if (str.find("Exception") != string_view::npos) {
+            if (type == LogType::Error) {
                 exception_count++;
             }
         });
@@ -361,19 +361,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextWindowSize(ImVec2(default_w, default_h), cond);
 
                         if (ImGui::Begin(label.c_str(), nullptr, CASCADE_FLAGS)) {
-                            const auto img_origin = ImGui::GetCursorScreenPos();
-                            const auto img_size = ImGui::GetContentRegionAvail();
-
-                            draw_texture(child, img_size);
-
-                            if (img_size.x > 0.0f && img_size.y > 0.0f) {
-                                child->SetDisplayRect({
-                                    iround<int32_t>(img_origin.x),
-                                    iround<int32_t>(img_origin.y),
-                                    std::max(1, iround<int32_t>(img_size.x)),
-                                    std::max(1, iround<int32_t>(img_size.y)),
-                                });
-                            }
+                            draw_texture(child, ImGui::GetContentRegionAvail());
                         }
 
                         ImGui::End();
@@ -497,7 +485,6 @@ int main(int argc, char** argv) // Handled by SDL
                                 server->DrawGui();
                             }
                             catch (const std::exception& ex) {
-                                exception_count++;
                                 ReportExceptionAndContinue(ex);
                             }
                             catch (...) {
@@ -604,6 +591,30 @@ int main(int argc, char** argv) // Handled by SDL
                     layout_button("Single", WindowLayoutMode::SingleTab);
                     layout_button("Tile", WindowLayoutMode::Tile);
                     layout_button("Cascade", WindowLayoutMode::Cascade);
+
+                    ImGui::Dummy(ImVec2(16.0f, 0.0f));
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Spawn Client")) {
+                        start_client();
+                    }
+
+                    ImGui::SameLine();
+
+                    if (exception_count != 0) {
+                        ImGui::Dummy(ImVec2(16.0f, 0.0f));
+                        ImGui::SameLine();
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.15f, 0.15f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+
+                        if (ImGui::Button(strex("Exceptions: {}", exception_count).c_str())) {
+                            App->SetActiveWindow(&App->MainWindow);
+                        }
+
+                        ImGui::PopStyleColor(4);
+                    }
                 }
 
                 ImGui::End();
