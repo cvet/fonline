@@ -408,8 +408,6 @@ private:
     bool _released {};
 };
 
-using bundled_scope_exit = scope_exit<function<void()>>;
-
 template<std::invocable T>
 class [[nodiscard]] scope_success
 {
@@ -641,10 +639,7 @@ FO_BEGIN_NAMESPACE
     struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
-        auto operator()(const type& v) const noexcept \
-        { \
-            return FO_NAMESPACE hashing_ex::hash(__VA_ARGS__); \
-        } \
+        auto operator()(const type& v) const noexcept { return FO_NAMESPACE hashing_ex::hash(__VA_ARGS__); } \
     }; \
     FO_BEGIN_NAMESPACE
 
@@ -654,10 +649,7 @@ FO_BEGIN_NAMESPACE
     struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
-        auto operator()(const type& v) const noexcept \
-        { \
-            return __VA_ARGS__; \
-        } \
+        auto operator()(const type& v) const noexcept { return __VA_ARGS__; } \
     }; \
     FO_BEGIN_NAMESPACE
 
