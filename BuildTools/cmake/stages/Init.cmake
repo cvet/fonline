@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 
+# === Stage: Init ===
+# Establishes baseline configuration: project options, target platform,
+# compiler/link flags, configurations, output directories, build hash.
+# Add or override behaviour via AddStageHook(Init Pre|Post <macro-name>).
+
+
 StatusMessage("Start project generation")
 
 # Options

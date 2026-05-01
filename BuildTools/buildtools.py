@@ -1300,7 +1300,7 @@ def make_platform_configure_cmd(
 		if platform_name == 'mac':
 			return make_xcode_configure_cmd(cmake_bin, *configure_args, to_cmake_path(source_path))
 		toolchain_settings = make_ios_toolchain_settings(env)
-		ios_toolchain = resolve_buildtools_cmake_path(env, 'ios.toolchain.cmake')
+		ios_toolchain = resolve_buildtools_path(env, 'cmake', 'toolchains', 'ios.toolchain.cmake')
 		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(ios_toolchain)}', *toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name.startswith('win'):
 		return make_windows_configure_cmd(platform_name, *configure_args, to_cmake_path(source_path))

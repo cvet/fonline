@@ -591,3 +591,35 @@ macro(AddSharedApplication target sourceFile)
 		set_target_properties(${target} PROPERTIES PREFIX "")
 	endif()
 endmacro()
+
+# Copy a runtime file (DLL, .so, .dylib, ...) next to the target's output
+# binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
+# the file does not exist, or the target has not been declared — so callers
+# can wire it up unconditionally for optional dependencies (Steamworks SDK,
+# Mono runtime, plugin DLLs, ...).
+function(CopyRuntimeToTarget targetName runtimePath)
+	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
+		return()
+	endif()
+
+	GetFilenameComponent(runtimeFileName "${runtimePath}" NAME)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtimePath}" "$<TARGET_FILE_DIR:${targetName}>"
+		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
+endfunction()
+
+# Wire one CMake target's output binary to be copied next to another's output
+# binary as a POST_BUILD step, and ensure the producer is built first. Useful
+# for shared libraries / plugins that must sit next to a host executable
+# (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
+# to the editor, ...). Silently does nothing if either target is missing.
+function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
+	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
+		return()
+	endif()
+
+	add_dependencies(${consumerTarget} ${producerTarget})
+	AddCustomCommand(TARGET ${consumerTarget} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${producerTarget}>" "$<TARGET_FILE_DIR:${consumerTarget}>"
+		COMMENT "Copy ${producerTarget} runtime for ${consumerTarget}")
+endfunction()
