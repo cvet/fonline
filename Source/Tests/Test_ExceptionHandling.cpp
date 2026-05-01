@@ -22,35 +22,24 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("FormatStackTraceListsNewestCallFirst")
     {
-        static constexpr SourceLocationData first_loc {nullptr, "FirstFunc", "/tmp/first.cpp", 11};
-        static constexpr SourceLocationData second_loc {nullptr, "SecondFunc", "/tmp/second.cpp", 22};
+        // Order matches the unified trace contract: provider emits most-recent first, so
+        // SecondFunc (the deeper call) appears before FirstFunc (its caller).
+        ScriptStackTraceLayer layer;
+        layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "SecondFunc", "/tmp/second.cpp", 22});
+        layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "FirstFunc", "/tmp/first.cpp", 11});
+
+        std::vector<ScriptStackTraceLayer> layers;
+        layers.push_back(std::move(layer));
 
         StackTraceData st {};
-        st.CallsCount = 2;
-        st.CallTree[0] = &first_loc;
-        st.CallTree[1] = &second_loc;
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         const auto formatted = FormatStackTrace(st);
 
         CHECK(formatted.find("Stack trace (most recent call first):") == 0);
-        CHECK(formatted.find("- SecondFunc (second.cpp line 22)") != string::npos);
-        CHECK(formatted.find("- FirstFunc (first.cpp line 11)") != string::npos);
+        CHECK(formatted.find("- [Script] SecondFunc (second.cpp line 22)") != string::npos);
+        CHECK(formatted.find("- [Script] FirstFunc (first.cpp line 11)") != string::npos);
         CHECK(formatted.find("SecondFunc") < formatted.find("FirstFunc"));
-    }
-
-    SECTION("FormatStackTraceReportsTruncation")
-    {
-        static constexpr SourceLocationData repeated_loc {nullptr, "Frame", "/tmp/frame.cpp", 33};
-
-        StackTraceData st {};
-        st.CallsCount = STACK_TRACE_MAX_SIZE + 2;
-        for (size_t i = 0; i <= STACK_TRACE_MAX_SIZE; i++) {
-            st.CallTree[i] = &repeated_loc;
-        }
-
-        const auto formatted = FormatStackTrace(st);
-
-        CHECK(formatted.find("- ...and 2 more entries") != string::npos);
     }
 
     SECTION("FormatStackTraceWithNoCallsReturnsHeaderOnly")

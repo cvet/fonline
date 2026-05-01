@@ -126,7 +126,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     server_engine.MapScriptTypes(&server_engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(&server_engine, *_context->BakedFiles);
+    InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
 #endif
 
     // Bake maps

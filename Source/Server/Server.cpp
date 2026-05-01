@@ -142,7 +142,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-        InitAngelScriptScripting(this, Resources);
+        InitAngelScriptScripting(this, Settings, Resources);
 #endif
 
         return std::nullopt;

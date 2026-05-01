@@ -87,7 +87,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(this, Resources);
+    InitAngelScriptScripting(this, Settings, Resources);
 #endif
 
     _curLang = TextPack {Hashes};

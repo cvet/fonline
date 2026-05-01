@@ -221,7 +221,17 @@ namespace BakerTests
         FileSystem _fileSystem {};
     };
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto GetTestSettings() -> GlobalSettings&
+    {
+        // GlobalSettings holds member references back to *this (Common, Network, ...), so it can't
+        // be safely moved out of a lambda. Construct in place and initialize once via call_once.
+        static GlobalSettings instance(true);
+        static std::once_flag once;
+        std::call_once(once, [] { instance.ApplyDefaultSettings(); });
+        return instance;
+    }
+
+    inline auto CompileInlineScripts(EngineMetadata* meta, const ScriptSettings& settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -236,7 +246,12 @@ namespace BakerTests
             files.emplace_back(source_files.ReadFile(path));
         }
 
-        return CompileAngelScript(meta, files, std::move(message_callback));
+        return CompileAngelScript(meta, settings, files, std::move(message_callback));
+    }
+
+    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    {
+        return CompileInlineScripts(meta, GetTestSettings(), pack_name, script_files, std::move(message_callback));
     }
 
     class TestRig final

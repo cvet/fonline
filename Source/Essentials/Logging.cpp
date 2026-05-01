@@ -129,7 +129,9 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             }
         }
 
-        Platform::InfoLog(result);
+        if constexpr (FO_DEBUG) {
+            Platform::InfoLog(result);
+        }
 
 #if FO_TRACY
         TracyMessage(result.c_str(), result.length());

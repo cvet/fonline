@@ -353,7 +353,7 @@ void DataBaseImpl::InitializeOpLogs()
             }
         }
 
-        return std::move(handle);
+        return handle;
     };
 
     _pendingChangesLog = open_log_file(_settings->OpLogPath, "pending database changes file");
@@ -1163,7 +1163,6 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         }
 
         const auto command = line.substr(0, first_space);
-        string_view record_id {};
         string_view other {};
         bool has_other = false;
 
@@ -1171,15 +1170,12 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
             if (second_space + 1 >= line.size()) {
                 return false;
             }
-
-            record_id = line.substr(second_space + 1);
         }
         else {
             if (third_space == second_space + 1 || third_space + 1 >= line.size()) {
                 return false;
             }
 
-            record_id = line.substr(second_space + 1, third_space - second_space - 1);
             other = line.substr(third_space + 1);
             has_other = true;
         }
@@ -1661,7 +1657,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
         return ident_t {id_value};
     }
 
-    const auto decoded_value = DecodeDbStringKey(key_str, escaping);
+    auto decoded_value = DecodeDbStringKey(key_str, escaping);
 
     if (decoded_value.empty()) {
         throw DataBaseException("Invalid database string key value", key_str);
@@ -1722,7 +1718,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
         return string(value);
     }
 
-    const auto decoded_value = DecodeDbStringKey(value, escaping);
+    auto decoded_value = DecodeDbStringKey(value, escaping);
 
     if (!strvex(decoded_value).is_valid_utf8()) {
         throw DataBaseException("Invalid database string key utf8", value);
