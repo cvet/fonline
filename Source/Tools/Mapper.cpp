@@ -771,10 +771,10 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (const bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings.FullscreenMouseScroll) || (!is_fullscreen && Settings.WindowedMouseScroll)) {
-        Settings.ScrollMouseRight = Settings.MousePos.x >= Settings.ScreenWidth - 1;
-        Settings.ScrollMouseLeft = Settings.MousePos.x <= 0;
-        Settings.ScrollMouseDown = Settings.MousePos.y >= Settings.ScreenHeight - 1;
-        Settings.ScrollMouseUp = Settings.MousePos.y <= 0;
+        Settings.ScrollMouseRight = MousePos.x >= Settings.ScreenWidth - 1;
+        Settings.ScrollMouseLeft = MousePos.x <= 0;
+        Settings.ScrollMouseDown = MousePos.y >= Settings.ScreenHeight - 1;
+        Settings.ScrollMouseUp = MousePos.y <= 0;
     }
 
     if (!SprMngr.IsWindowFocused()) {
@@ -2646,7 +2646,7 @@ void MapperEngine::DrawMapWindowImGui()
     }
 
     mpos hex;
-    _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
+    _curMap->GetHexAtScreen(MousePos, hex, nullptr);
     const int32_t day_time = GetGlobalDayTime();
     const auto map_name = string(_curMap->GetName());
     const auto rotate_selected_critters = [&] {
@@ -3573,18 +3573,18 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
         return true;
     }
 
-    if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex1, nullptr)) {
+    if (!_curMap->GetHexAtScreen(MousePos, SelectHex1, nullptr)) {
         return true;
     }
 
     SelectHex2 = SelectHex1;
-    SelectPos = Settings.MousePos;
+    SelectPos = MousePos;
 
     if (CurMode == CUR_MODE_PLACE_OBJECT) {
         return true;
     }
 
-    const auto entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
+    const auto entity = _curMap->GetEntityAtScreen(MousePos, 0, true);
     const auto clicked_entity = entity.first;
     const auto clicked_selected = clicked_entity != nullptr && SelectedEntitiesSet.contains(clicked_entity);
 
@@ -3628,7 +3628,7 @@ void MapperEngine::HandleLeftMouseUp()
     FO_STACK_TRACE_ENTRY();
 
     if (CurMode == CUR_MODE_PLACE_OBJECT) {
-        if (_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+        if (_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (IsItemMode() && ActiveItemProtos != nullptr && !ActiveItemProtos->empty()) {
                 CreateItem((*ActiveItemProtos)[GetActiveProtoIndex()]->GetProtoId(), SelectHex2, nullptr);
             }
@@ -3651,7 +3651,7 @@ void MapperEngine::HandleLeftMouseUp()
     }
 
     if (MouseHoldMode == INT_SELECT) {
-        if (_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+        if (_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (SelectHex1 != SelectHex2) {
                 _curMap->ClearHexTrack();
 
@@ -3717,7 +3717,7 @@ void MapperEngine::HandleLeftMouseUp()
                 _curMap->DefferedRefreshItems();
             }
             else {
-                const auto entity = _curMap->GetEntityAtScreen(Settings.MousePos, 0, true);
+                const auto entity = _curMap->GetEntityAtScreen(MousePos, 0, true);
 
                 if (auto* item = dynamic_cast<ItemHexView*>(entity.first); item != nullptr) {
                     if (!item->GetIsTile()) {
@@ -3751,7 +3751,7 @@ void MapperEngine::HandleSelectionMouseDrag()
 
     _curMap->ClearHexTrack();
 
-    if (!_curMap->GetHexAtScreen(Settings.MousePos, SelectHex2, nullptr)) {
+    if (!_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
         if (!SelectHex2.is_zero()) {
             _curMap->RebuildMap();
             SelectHex2 = {};
@@ -3787,8 +3787,8 @@ void MapperEngine::HandleSelectionMouseDrag()
     else if (MouseHoldMode == INT_MOVE_SELECTION) {
         auto offs_hx = numeric_cast<int32_t>(SelectHex2.x) - numeric_cast<int32_t>(SelectHex1.x);
         auto offs_hy = numeric_cast<int32_t>(SelectHex2.y) - numeric_cast<int32_t>(SelectHex1.y);
-        auto offs_x = Settings.MousePos.x - SelectPos.x;
-        auto offs_y = Settings.MousePos.y - SelectPos.y;
+        auto offs_x = MousePos.x - SelectPos.x;
+        auto offs_y = MousePos.y - SelectPos.y;
 
         if (SelectMove(!App->Input.IsShiftDown(), offs_hx, offs_hy, offs_x, offs_y)) {
             SelectHex1 = _curMap->GetSize().from_raw_pos(SelectHex1.x + offs_hx, SelectHex1.y + offs_hy);
@@ -5308,7 +5308,7 @@ void MapperEngine::CurDraw()
 
         mpos hex;
 
-        if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
+        if (!_curMap->GetHexAtScreen(MousePos, hex, nullptr)) {
             return;
         }
 
@@ -5354,7 +5354,7 @@ void MapperEngine::CurDraw()
 
         mpos hex;
 
-        if (!_curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr)) {
+        if (!_curMap->GetHexAtScreen(MousePos, hex, nullptr)) {
             return;
         }
 
@@ -5511,14 +5511,14 @@ auto MapperEngine::IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    return Settings.MousePos.x >= rect.x + ax && Settings.MousePos.y >= rect.y + ay && Settings.MousePos.x < rect.x + rect.width + ax && Settings.MousePos.y < rect.y + rect.height + ay;
+    return MousePos.x >= rect.x + ax && MousePos.y >= rect.y + ay && MousePos.x < rect.x + rect.width + ax && MousePos.y < rect.y + rect.height + ay;
 }
 
 auto MapperEngine::IsCurInRect(const irect32& rect) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return Settings.MousePos.x >= rect.x && Settings.MousePos.y >= rect.y && Settings.MousePos.x < rect.x + rect.width && Settings.MousePos.y < rect.y + rect.height;
+    return MousePos.x >= rect.x && MousePos.y >= rect.y && MousePos.x < rect.x + rect.width && MousePos.y < rect.y + rect.height;
 }
 
 auto MapperEngine::IsCurInInterface() const -> bool
@@ -5540,7 +5540,7 @@ auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
         return false;
     }
 
-    return _curMap->GetHexAtScreen(Settings.MousePos, hex, nullptr);
+    return _curMap->GetHexAtScreen(MousePos, hex, nullptr);
 }
 
 void MapperEngine::DrawConsoleImGui()

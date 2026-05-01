@@ -381,8 +381,6 @@ private:
 template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
-    static_assert(std::is_nothrow_invocable_v<T>);
-
 public:
     explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
@@ -407,6 +405,8 @@ private:
     T _callback;
     bool _released {};
 };
+
+using bundled_scope_exit = scope_exit<function<void()>>;
 
 template<std::invocable T>
 class [[nodiscard]] scope_success

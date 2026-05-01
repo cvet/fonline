@@ -314,7 +314,6 @@ SETTING_GROUP(InputSettings, virtual BaseSettings);
 VARIABLE_SETTING(bool, Input, DisableGamepad, false); // If true, gamepad support is disabled
 VARIABLE_SETTING(int32_t, Input, DoubleClickTime, 500); // Double-click time in milliseconds
 VARIABLE_SETTING(int32_t, Input, ConsoleHistorySize, 100); // Console history size
-VARIABLE_SETTING(ipos32, Input, MousePos); // Mouse position (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -344,6 +343,8 @@ FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
 FIXED_SETTING(bool, Server, AutoStartClientOnServer, false); // If true, server automatically spawns an embedded client on startup
+VARIABLE_SETTING(int32_t, Server, ServerWidth, 800); // Server window width in pixels (test bench host before any client is spawned)
+VARIABLE_SETTING(int32_t, Server, ServerHeight, 600); // Server window height in pixels (test bench host before any client is spawned)
 FIXED_SETTING(bool, Server, CollapseLogOnStart, false); // If true, log is collapsed on start
 FIXED_SETTING(int32_t, Server, MaxServerLogLines, 1000); // Maximum server log lines in UI
 FIXED_SETTING(int32_t, Server, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)

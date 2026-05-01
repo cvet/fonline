@@ -90,7 +90,7 @@ public:
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
-    void DrawGui(string_view server_name);
+    void DrawGui();
 
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;

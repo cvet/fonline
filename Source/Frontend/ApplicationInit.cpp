@@ -99,9 +99,6 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 
     // Set up clipboard events for web
     WebRelated::SetupClipboard();
-
-    // Init mouse pos
-    App->Settings.MousePos = App->Input.GetMousePosition();
 }
 
 static void SetupExceptionCallback(bool show_message_on_exception)
