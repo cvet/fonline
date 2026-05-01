@@ -815,10 +815,6 @@ void ServerEngine::DrawGui()
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto default_buf_size = 1000000; // ~1mb
-    string buf;
-    buf.reserve(default_buf_size);
-
     if (!_started) {
         if (!_startingError) {
             ImGui::TextUnformatted("Server is starting...");

@@ -1355,10 +1355,6 @@ void Application::BeginFrame()
     const bool imgui_capture_mouse = io.WantCaptureMouse;
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
-    // When the active tab is a virtual window, mouse events that land *inside* its display rect
-    // must reach the client even if ImGui is "capturing" the mouse — otherwise cascade-mode panels
-    // (which are full ImGui windows with title bars and therefore don't carry NoInputs) swallow
-    // every motion/click and the client sees a frozen cursor.
     const auto host_pos_inside_active_virtual = [&](ipos32 host_pos) -> bool {
         auto* aw = _activeWindow.get();
 
@@ -1370,6 +1366,19 @@ void Application::BeginFrame()
         return r.width > 0 && r.height > 0 && //
             host_pos.x >= r.x && host_pos.x < r.x + r.width && //
             host_pos.y >= r.y && host_pos.y < r.y + r.height;
+    };
+
+    const auto switch_active_to_hovered_child = [&](ipos32 host_pos) {
+        for (auto& child : _childWindows) {
+            const auto& r = child->_displayRect;
+
+            if (r.width > 0 && r.height > 0 && host_pos.x >= r.x && host_pos.x < r.x + r.width && host_pos.y >= r.y && host_pos.y < r.y + r.height) {
+                if (_activeWindow.get() != child.get()) {
+                    _activeWindow = child.get();
+                }
+                break;
+            }
+        }
     };
 
     if (!_ctx->NextFrameEventsQueue->empty()) {
@@ -1391,22 +1400,7 @@ void Application::BeginFrame()
             const auto y_ratio = numeric_cast<float32_t>(Settings.ScreenHeight) / numeric_cast<float32_t>(vp.height);
             const auto host_delta = ipos32 {iround<int32_t>(sdl_event.motion.xrel * x_ratio), iround<int32_t>(sdl_event.motion.yrel * y_ratio)};
 
-            // In Tile/Cascade modes the image-host sub-windows carry NoInputs so ImGui hover never
-            // fires on them — auto-switch _activeWindow to whichever virtual window currently owns
-            // the cell the mouse is hovering over, so subsequent clicks/events route to it instead
-            // of staying on the previously-active sibling.
-            for (auto& child : _childWindows) {
-                const auto& r = child->_displayRect;
-
-                if (r.width > 0 && r.height > 0 && //
-                    screen_pos.x >= r.x && screen_pos.x < r.x + r.width && //
-                    screen_pos.y >= r.y && screen_pos.y < r.y + r.height) {
-                    if (_activeWindow.get_no_const() != child.get()) {
-                        _activeWindow = child.get();
-                    }
-                    break;
-                }
-            }
+            switch_active_to_hovered_child(screen_pos);
 
             // Mouse events are pushed to the active client; remap host (ImGui display) coords into
             // the active virtual window's local screen coords so the client sees positions inside its own viewport.
@@ -1428,6 +1422,8 @@ void Application::BeginFrame()
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             const auto button_screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(sdl_event.button.x), iround<int32_t>(sdl_event.button.y)});
+            switch_active_to_hovered_child(button_screen_pos);
+
             const bool button_to_client = !imgui_capture_mouse || host_pos_inside_active_virtual(button_screen_pos);
 
             if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
@@ -1637,6 +1633,7 @@ void Application::BeginFrame()
             ev.Delta = iround<int32_t>(sdl_event.wheel.y);
 
             const auto wheel_screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(sdl_event.wheel.mouse_x), iround<int32_t>(sdl_event.wheel.mouse_y)});
+            switch_active_to_hovered_child(wheel_screen_pos);
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(wheel_screen_pos)) {
                 _ctx->EventsQueue->emplace_back(ev);
@@ -1813,10 +1810,8 @@ void Application::BeginFrame()
             int32_t height = 0;
             SDL_GetWindowSizeInPixels(resized_window, &width, &height);
 
-            // The host's logical screen size tracks the OS window's pixel size 1:1 — otherwise the
-            // renderer letterboxes Settings into the OS window and ImGui ends up stretched. Track the
-            // resize on Settings so the projection at backbuffer covers the whole window without scaling.
             const bool is_main = (resized_window == static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
+
             if (is_main && (Settings.ScreenWidth != width || Settings.ScreenHeight != height)) {
                 Settings.ScreenWidth = width;
                 Settings.ScreenHeight = height;

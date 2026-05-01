@@ -331,16 +331,19 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextWindowSize(ImVec2(default_w, default_h), cond);
 
                         if (ImGui::Begin(label.c_str(), nullptr, CASCADE_FLAGS)) {
-                            draw_texture(child, ImGui::GetContentRegionAvail());
+                            const auto img_origin = ImGui::GetCursorScreenPos();
+                            const auto img_size = ImGui::GetContentRegionAvail();
 
-                            const auto img_min = ImGui::GetItemRectMin();
-                            const auto img_max = ImGui::GetItemRectMax();
-                            child->SetDisplayRect({
-                                iround<int32_t>(img_min.x),
-                                iround<int32_t>(img_min.y),
-                                std::max(1, iround<int32_t>(img_max.x - img_min.x)),
-                                std::max(1, iround<int32_t>(img_max.y - img_min.y)),
-                            });
+                            draw_texture(child, img_size);
+
+                            if (img_size.x > 0.0f && img_size.y > 0.0f) {
+                                child->SetDisplayRect({
+                                    iround<int32_t>(img_origin.x),
+                                    iround<int32_t>(img_origin.y),
+                                    std::max(1, iround<int32_t>(img_size.x)),
+                                    std::max(1, iround<int32_t>(img_size.y)),
+                                });
+                            }
                         }
 
                         ImGui::End();
