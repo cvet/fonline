@@ -648,7 +648,7 @@ void DataBaseImpl::WaitCommitChanges()
     std::unique_lock locker {_stateLocker};
 
     if (!_commitThreadActive) {
-        throw DataBaseException("Commit thread is not active");
+        return;
     }
 
     while (!_pendingCommitOperations.empty()) {
