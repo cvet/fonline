@@ -303,6 +303,10 @@ SetValue(FO_JSON_DIR "${FO_ENGINE_ROOT}/ThirdParty/Json")
 AddIncludeDirectories("${FO_JSON_DIR}")
 
 # LibreSSL
+if(FO_BUILD_SERVER_LIB AND NOT FO_DISABLE_ASIO AND NOT FO_DISABLE_WEB_SOCKETS AND NOT FO_ANDROID)
+    SetValue(FO_BUILD_OPENSSL_LIB ON)
+endif()
+
 if(FO_BUILD_OPENSSL_LIB)
     StatusMessage("+ LibreSSL")
     SetValue(FO_LIBRESSL_DIR "${FO_ENGINE_ROOT}/ThirdParty/LibreSSL")
