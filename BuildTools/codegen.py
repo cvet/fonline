@@ -1321,7 +1321,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['InitServerEngine', 'InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
+            assert name in ['ApplicationInitHook', 'ServerInitHook', 'ClientInitHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
                             'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
@@ -1627,12 +1627,16 @@ def generate_generic_code() -> None:
     global_lines = []
     
     global_lines.append('// Engine hooks')
-    if not is_engine_hook_enabled('InitServerEngine'):
+    if not is_engine_hook_enabled('ApplicationInitHook'):
+        global_lines.append('enum class AppInitFlags : uint8_t;')
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void ApplicationInitHook(AppInitFlags, GlobalSettings&) { /* Stub */ }')
+    if not is_engine_hook_enabled('ServerInitHook'):
         global_lines.append('class ServerEngine;')
-        global_lines.append('void InitServerEngine(ServerEngine*) { /* Stub */ }')
-    if not is_engine_hook_enabled('InitClientEngine'):
+        global_lines.append('void ServerInitHook(ServerEngine*) { /* Stub */ }')
+    if not is_engine_hook_enabled('ClientInitHook'):
         global_lines.append('class ClientEngine;')
-        global_lines.append('void InitClientEngine(ClientEngine*) { /* Stub */ }')
+        global_lines.append('void ClientInitHook(ClientEngine*) { /* Stub */ }')
     if not is_engine_hook_enabled('ConfigSectionParseHook'):
         global_lines.append('bool ConfigSectionParseHook(string_view, string_view, string&, map<string, string>&) {  /* Stub */ return false; }')
     if not is_engine_hook_enabled('ConfigEntryParseHook'):

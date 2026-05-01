@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 
+# === Stage: Init ===
+# Establishes baseline configuration: project options, target platform,
+# compiler/link flags, configurations, output directories, build hash.
+# Add or override behaviour via AddStageHook(Init Pre|Post <macro-name>).
+
+
 StatusMessage("Start project generation")
 
 # Options
@@ -41,14 +47,14 @@ DeclareBoolOptions(
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
 	StatusMessage("Verbose build mode")
-	SetBoolCacheValues(CMAKE_VERBOSE_MAKEFILE ON)
+	SetCacheValues(CMAKE_VERBOSE_MAKEFILE ON)
 else()
-	SetBoolCacheValues(CMAKE_VERBOSE_MAKEFILE OFF)
+	SetCacheValues(CMAKE_VERBOSE_MAKEFILE OFF)
 endif()
 
 # Global options
 SetValue(CMAKE_POLICY_VERSION_MINIMUM 3.22)
-SetBoolCacheValues(
+SetCacheValues(
 	CMAKE_EXPORT_COMPILE_COMMANDS ON
 	BUILD_SHARED_LIBS OFF
 	BUILD_TESTING OFF

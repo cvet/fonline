@@ -40,6 +40,36 @@ macro(StringToUpper input outputVar)
 	string(TOUPPER "${input}" ${outputVar})
 endmacro()
 
+# Reads the environment variable with the given name, parses it as a boolean and
+# stores the result in a CMake variable of the same name. Accepted truthy spellings:
+# 1 / ON / TRUE / YES; falsy: 0 / OFF / FALSE / NO (case-insensitive). Empty value
+# falls back to defaultValue; any other value aborts the configure step via
+# AbortMessage. Useful for opt-in feature gates driven by CI env vars.
+macro(ParseBoolEnv name defaultValue)
+	set(${name} ${defaultValue})
+	set(_parseBoolEnvRaw "$ENV{${name}}")
+	string(TOUPPER "${_parseBoolEnvRaw}" _parseBoolEnvNormalized)
+
+	if(NOT "${_parseBoolEnvNormalized}" STREQUAL "")
+		if(_parseBoolEnvNormalized STREQUAL "1" OR
+			_parseBoolEnvNormalized STREQUAL "ON" OR
+			_parseBoolEnvNormalized STREQUAL "TRUE" OR
+			_parseBoolEnvNormalized STREQUAL "YES")
+			set(${name} ON)
+		elseif(_parseBoolEnvNormalized STREQUAL "0" OR
+			_parseBoolEnvNormalized STREQUAL "OFF" OR
+			_parseBoolEnvNormalized STREQUAL "FALSE" OR
+			_parseBoolEnvNormalized STREQUAL "NO")
+			set(${name} OFF)
+		else()
+			AbortMessage("Invalid ${name} value '${_parseBoolEnvRaw}'. Use 1/0, ON/OFF, TRUE/FALSE, or YES/NO")
+		endif()
+	endif()
+
+	unset(_parseBoolEnvRaw)
+	unset(_parseBoolEnvNormalized)
+endmacro()
+
 macro(StringRegexMatch regex outputVar input)
 	string(REGEX MATCH "${regex}" ${outputVar} "${input}")
 endmacro()

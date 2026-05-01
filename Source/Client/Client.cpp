@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void InitClientEngine(ClientEngine*);
+extern void ClientInitHook(ClientEngine*);
 
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
@@ -94,7 +94,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Modules initialization
-    InitClientEngine(this);
+    ClientInitHook(this);
 
     InitModules();
 

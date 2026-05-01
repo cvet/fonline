@@ -148,34 +148,40 @@ macro(SetOptionValues)
 	endwhile()
 endmacro()
 
-macro(SetStringCacheValues)
+# Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:
+# values matching CMake's boolean spellings (ON/OFF/TRUE/FALSE/YES/NO/1/0,
+# case-insensitive) become CACHE BOOL, everything else CACHE STRING. Empty string
+# is treated as STRING (so OPENSSL_INCLUDE_DIR="" stays a path setting).
+macro(SetCacheValues)
 	set(optionArgs "${ARGN}")
 	ListLength(optionArgs optionArgsCount)
 	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
 
 	if(NOT optionArgsRemainder EQUAL 0)
-		AbortMessage("SetStringCacheValues expects pairs of arguments")
+		AbortMessage("SetCacheValues expects pairs of arguments")
 	endif()
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
-		set(${optionName} "${optionValue}" CACHE STRING "Forced by FOnline" FORCE)
+		string(TOUPPER "${optionValue}" _setCacheValueUpper)
+
+		if(_setCacheValueUpper STREQUAL "ON" OR
+			_setCacheValueUpper STREQUAL "OFF" OR
+			_setCacheValueUpper STREQUAL "TRUE" OR
+			_setCacheValueUpper STREQUAL "FALSE" OR
+			_setCacheValueUpper STREQUAL "YES" OR
+			_setCacheValueUpper STREQUAL "NO" OR
+			_setCacheValueUpper STREQUAL "1" OR
+			_setCacheValueUpper STREQUAL "0")
+			set(${optionName} ${optionValue} CACHE BOOL "Forced by FOnline" FORCE)
+		else()
+			set(${optionName} "${optionValue}" CACHE STRING "Forced by FOnline" FORCE)
+		endif()
+
+		set(${optionName} "${optionValue}")
 	endwhile()
-endmacro()
 
-macro(SetBoolCacheValues)
-	set(optionArgs "${ARGN}")
-	ListLength(optionArgs optionArgsCount)
-	MathExpr(optionArgsRemainder "${optionArgsCount} % 2")
-
-	if(NOT optionArgsRemainder EQUAL 0)
-		AbortMessage("SetBoolCacheValues expects pairs of arguments")
-	endif()
-
-	while(optionArgs)
-		ListPopFront(optionArgs optionName optionValue)
-		set(${optionName} ${optionValue} CACHE BOOL "Forced by FOnline" FORCE)
-	endwhile()
+	unset(_setCacheValueUpper)
 endmacro()
 
 macro(AddConfiguration name parent)
@@ -585,3 +591,35 @@ macro(AddSharedApplication target sourceFile)
 		set_target_properties(${target} PROPERTIES PREFIX "")
 	endif()
 endmacro()
+
+# Copy a runtime file (DLL, .so, .dylib, ...) next to the target's output
+# binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
+# the file does not exist, or the target has not been declared — so callers
+# can wire it up unconditionally for optional dependencies (Steamworks SDK,
+# Mono runtime, plugin DLLs, ...).
+function(CopyRuntimeToTarget targetName runtimePath)
+	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
+		return()
+	endif()
+
+	GetFilenameComponent(runtimeFileName "${runtimePath}" NAME)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtimePath}" "$<TARGET_FILE_DIR:${targetName}>"
+		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
+endfunction()
+
+# Wire one CMake target's output binary to be copied next to another's output
+# binary as a POST_BUILD step, and ensure the producer is built first. Useful
+# for shared libraries / plugins that must sit next to a host executable
+# (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
+# to the editor, ...). Silently does nothing if either target is missing.
+function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
+	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
+		return()
+	endif()
+
+	add_dependencies(${consumerTarget} ${producerTarget})
+	AddCustomCommand(TARGET ${consumerTarget} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${producerTarget}>" "$<TARGET_FILE_DIR:${consumerTarget}>"
+		COMMENT "Copy ${producerTarget} runtime for ${consumerTarget}")
+endfunction()

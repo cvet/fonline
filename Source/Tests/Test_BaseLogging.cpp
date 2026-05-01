@@ -37,18 +37,19 @@
 
 FO_BEGIN_NAMESPACE
 
+static const auto NullLogPath =
+#if FO_WINDOWS
+    string_view {"NUL"};
+#else
+    string_view {"/dev/null"};
+#endif
+
 TEST_CASE("BaseLogging")
 {
     SECTION("LogToFileWritesMessages")
     {
         const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
         const auto log_path = temp_root / "logs" / "base.log";
-        const auto null_log_path =
-#if FO_WINDOWS
-            string_view {"NUL"};
-#else
-            string_view {"/dev/null"};
-#endif
 
         std::filesystem::create_directories(log_path.parent_path());
 
@@ -63,8 +64,110 @@ TEST_CASE("BaseLogging")
         CHECK(content == "alpha\nbeta");
 
         input.close();
-        LogToFile(null_log_path);
+        LogToFile(NullLogPath);
 
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("LogToFileTruncatesPreviousContent")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "trunc.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        LogToFile(string(log_path.string()));
+        WriteBaseLog("first round content\n");
+
+        // Reopen the same file. Truncation should drop the previous payload.
+        LogToFile(string(log_path.string()));
+        WriteBaseLog("second\n");
+
+        LogToFile(NullLogPath);
+
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
+
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        CHECK(content == "second\n");
+
+        input.close();
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("AsyncLoggingDeliversAllMessagesInOrder")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "async.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        LogToFile(string(log_path.string()));
+        SetAsyncLogWriting(true);
+
+        constexpr int32_t message_count = 256;
+
+        for (int32_t i = 0; i < message_count; i++) {
+            WriteBaseLog(strex("async-line-{}\n", i));
+        }
+
+        // Disabling async joins the worker, draining whatever is still queued.
+        SetAsyncLogWriting(false);
+        LogToFile(NullLogPath);
+
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
+
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        for (int32_t i = 0; i < message_count; i++) {
+            const auto needle = strex("async-line-{}\n", i);
+            CHECK(content.find(string_view {needle}) != std::string::npos);
+        }
+        CHECK(content.find("Dropped") == std::string::npos);
+
+        input.close();
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("AsyncLoggingCanBeToggled")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "toggle.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        LogToFile(string(log_path.string()));
+
+        // Sync path
+        WriteBaseLog("sync-before\n");
+
+        SetAsyncLogWriting(true);
+        WriteBaseLog("async-payload\n");
+        SetAsyncLogWriting(false);
+
+        // Re-enable to make sure the worker can be restarted cleanly.
+        SetAsyncLogWriting(true);
+        WriteBaseLog("async-second-round\n");
+        SetAsyncLogWriting(false);
+
+        // Sync path again
+        WriteBaseLog("sync-after\n");
+
+        LogToFile(NullLogPath);
+
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
+
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        CHECK(content.find("sync-before\n") != std::string::npos);
+        CHECK(content.find("async-payload\n") != std::string::npos);
+        CHECK(content.find("async-second-round\n") != std::string::npos);
+        CHECK(content.find("sync-after\n") != std::string::npos);
+
+        input.close();
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }
