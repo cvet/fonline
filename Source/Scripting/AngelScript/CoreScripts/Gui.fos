@@ -679,7 +679,8 @@ class Object
         }
 
         // _Children
-        for (int i = 0; i < _Children.length(); i++) {
+        int childCount = _Children.length();
+        for (int i = 0; i < childCount; i++) {
             Object child = _Children[i];
             if (child._ActiveSelf && child._NeedDraw && !child._IsDragged) {
                 child._Draw(true);
@@ -1094,9 +1095,10 @@ class Object
 
     Object _Find(const string& name, bool deepFind, int& skip)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 if (skip <= 0) {
                     return child;
                 }
@@ -1123,9 +1125,10 @@ class Object
 
     void _Count(const string& name, bool deepCount, int& result)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 result++;
             }
             if (deepCount) {
