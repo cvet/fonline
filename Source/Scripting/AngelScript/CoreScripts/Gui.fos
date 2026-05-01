@@ -783,8 +783,7 @@ class Object
             }
         }
 
-        // Check own
-        if (IsHit(pos)) {
+        if (_IsHitSelf(pos)) {
             return this;
         }
 
@@ -799,10 +798,7 @@ class Object
 
     bool IsHit(ipos pos)
     {
-        if (!_ActiveSelf || _IsNotHittable || _Size.width <= 0 || _Size.height <= 0) {
-            return false;
-        }
-        if (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height) {
+        if (!_IsHitSelf(pos)) {
             return false;
         }
 
@@ -822,6 +818,17 @@ class Object
             obj = obj._Parent;
         }
 
+        return true;
+    }
+
+    bool _IsHitSelf(ipos pos)
+    {
+        if (!_ActiveSelf || _IsNotHittable || _Size.width <= 0 || _Size.height <= 0) {
+            return false;
+        }
+        if (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height) {
+            return false;
+        }
         return true;
     }
 
@@ -1415,15 +1422,15 @@ class Panel : Object
         _HorizontalScrollTween.SnapTo(_HorizontalScroll);
     }
 
-    bool IsHit(ipos pos) override
+    bool _IsHitSelf(ipos pos) override
     {
-        if (Object::IsHit(pos)) {
-            if (_CheckTransparentOnHit && _BackgroundImage != null) {
-                return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
-            }
-            return true;
+        if (!Object::_IsHitSelf(pos)) {
+            return false;
         }
-        return false;
+        if (_CheckTransparentOnHit && _BackgroundImage != null) {
+            return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
+        }
+        return true;
     }
 
     Object FindHit(ipos pos) override
@@ -1445,7 +1452,7 @@ class Panel : Object
             }
         }
 
-        if (IsHit(pos)) {
+        if (_IsHitSelf(pos)) {
             return this;
         }
 
