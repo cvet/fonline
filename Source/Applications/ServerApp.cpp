@@ -66,6 +66,8 @@ int main(int argc, char** argv) // Handled by SDL
         InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
 
         App->MainWindow.SetTitle("Server");
+
+        const auto configured_client_size = isize32 {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
         App->MainWindow.SetSize({App->Settings.ServerWidth, App->Settings.ServerHeight});
 
         refcount_ptr<ServerEngine> server;
@@ -108,7 +110,7 @@ int main(int argc, char** argv) // Handled by SDL
         const auto start_client = [&] {
             try {
                 const auto title = strex("Client {}", clients.size() + 1).str();
-                const auto client_size = isize32 {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
+                const auto client_size = configured_client_size;
 
                 if (!os_size_saved) {
                     os_size_before_first_child = App->MainWindow.GetSize();
@@ -257,7 +259,7 @@ int main(int argc, char** argv) // Handled by SDL
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
-                auto pop_styles = bundled_scope_exit {[]() noexcept { safe_call([] { ImGui::PopStyleVar(2); }); }};
+                auto pop_styles = scope_exit([]() noexcept { safe_call([] { ImGui::PopStyleVar(2); }); });
 
                 const auto draw_texture = [](AppWindow* w, ImVec2 region) {
                     auto* tex = w->GetRenderTexture();
