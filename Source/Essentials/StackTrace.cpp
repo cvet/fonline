@@ -226,7 +226,7 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 
             if (is_unresolved_name(frame.Function)) {
                 char hex_buf[32];
-                (void)std::snprintf(hex_buf, sizeof(hex_buf), "0x%p", addr);
+                (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
                 frame.Function = hex_buf;
             }
 

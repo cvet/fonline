@@ -53,6 +53,12 @@ FO_BEGIN_NAMESPACE
 static auto BuildScriptFrameForContext(AngelScript::asIScriptContext* ctx, uint32_t stack_level) noexcept -> optional<StackTraceFrame>;
 static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
 
+struct AngelScriptStackTraceInstaller
+{
+    AngelScriptStackTraceInstaller() noexcept { SetScriptStackTraceProvider(&CollectScriptStackLayers); }
+};
+FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
+
 static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param);
 static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
 
@@ -113,15 +119,11 @@ AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngin
 
     int32_t as_result = 0;
     FO_AS_VERIFY(as_engine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
-
-    SetScriptStackTraceProvider(&CollectScriptStackLayers);
 }
 
 AngelScriptContextManager::~AngelScriptContextManager()
 {
     FO_STACK_TRACE_ENTRY();
-
-    SetScriptStackTraceProvider({});
 
     const auto cleanup_context = [](AngelScript::asIScriptContext* ctx) {
         safe_call([&] {
