@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,13 +41,8 @@ static bool EMSCRIPTENAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buf
     const int framelen = SDL_AUDIO_FRAMESIZE(device->spec);
     MAIN_THREAD_EM_ASM({
         /* Convert incoming buf pointer to a HEAPF32 offset. */
-        #ifdef __wasm64__
-        var buf = $0 / 4;
-        #else
-        var buf = $0 >>> 2;
-        #endif
-
         var SDL3 = Module['SDL3'];
+        var buf = SDL3.CPtrToHeap32Index($0);
         var numChannels = SDL3.audio_playback.currentPlaybackBuffer['numberOfChannels'];
         for (var c = 0; c < numChannels; ++c) {
             var channelData = SDL3.audio_playback.currentPlaybackBuffer['getChannelData'](c);
@@ -56,7 +51,7 @@ static bool EMSCRIPTENAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buf
             }
 
             for (var j = 0; j < $1; ++j) {
-                channelData[j] = HEAPF32[buf + (j*numChannels + c)];
+                channelData[j] = HEAPF32[buf + (j * numChannels + c)];
             }
         }
     }, buffer, buffer_size / framelen);
@@ -104,9 +99,6 @@ static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
     MAIN_THREAD_EM_ASM({
         var SDL3 = Module['SDL3'];
         if ($0) {
-            if (SDL3.audio_recording === undefined) { // (FOnline Patch)
-                SDL3.audio_recording = {};
-            }
             if (SDL3.audio_recording.silenceTimer !== undefined) {
                 clearInterval(SDL3.audio_recording.silenceTimer);
             }
@@ -125,9 +117,6 @@ static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
             }
             SDL3.audio_recording = undefined;
         } else {
-            if (SDL3.audio_playback === undefined) { // (FOnline Patch)
-                SDL3.audio_playback = {};
-            }
             if (SDL3.audio_playback.scriptProcessorNode != undefined) {
                 SDL3.audio_playback.scriptProcessorNode.disconnect();
             }
@@ -157,13 +146,11 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
 
     // create context
     const bool result = MAIN_THREAD_EM_ASM_INT({
-        if (typeof(Module['SDL3']) === 'undefined') {
-            Module['SDL3'] = {};
-        }
         var SDL3 = Module['SDL3'];
-        if (!$0) {
+        if (typeof(SDL3.audio_playback) === 'undefined') {
             SDL3.audio_playback = {};
-        } else {
+        }
+        if (typeof(SDL3.audio_recording) === 'undefined') {
             SDL3.audio_recording = {};
         }
 
@@ -180,7 +167,7 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
             }
         }
         return (SDL3.audioContext !== undefined);
-    }, device->recording);
+    });
 
     if (!result) {
         return SDL_SetError("Web Audio API is not available!");
@@ -227,9 +214,6 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
 
         MAIN_THREAD_EM_ASM({
             var SDL3 = Module['SDL3'];
-            if (SDL3.audio_recording === undefined) { // (FOnline Patch)
-                SDL3.audio_recording = {};
-            }
             var have_microphone = function(stream) {
                 //console.log('SDL audio recording: we have a microphone! Replacing silence callback.');
                 if (SDL3.audio_recording.silenceTimer !== undefined) {
@@ -274,9 +258,6 @@ static bool EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
         // setup a ScriptProcessorNode
         MAIN_THREAD_EM_ASM({
             var SDL3 = Module['SDL3'];
-            if (SDL3.audio_playback === undefined) { // (FOnline Patch)
-                SDL3.audio_playback = {};
-            }
             SDL3.audio_playback.scriptProcessorNode = SDL3.audioContext['createScriptProcessor']($1, 0, $0);
             SDL3.audio_playback.scriptProcessorNode['onaudioprocess'] = function (e) {
                 if ((SDL3 === undefined) || (SDL3.audio_playback === undefined)) { return; }

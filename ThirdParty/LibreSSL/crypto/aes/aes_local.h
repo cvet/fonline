@@ -1,4 +1,4 @@
-/* $OpenBSD: aes_local.h,v 1.3 2024/03/27 11:15:44 jsing Exp $ */
+/* $OpenBSD: aes_local.h,v 1.11 2025/07/22 09:29:31 jsing Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2002 The OpenSSL Project.  All rights reserved.
  *
@@ -54,26 +54,35 @@
 
 #include <openssl/opensslconf.h>
 
-#ifdef OPENSSL_NO_AES
-#error AES is disabled.
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 __BEGIN_HIDDEN_DECLS
 
-typedef unsigned int u32;
-typedef unsigned short u16;
-typedef unsigned char u8;
-
-#define MAXKC   (256/32)
-#define MAXKB   (256/8)
-#define MAXNR   14
-
 /* This controls loop-unrolling in aes_core.c */
 #undef FULL_UNROLL
+
+void aes_encrypt_block128(const unsigned char *in, unsigned char *out,
+   const void *key);
+
+void aes_ctr32_encrypt_ctr128f(const unsigned char *in, unsigned char *out,
+    size_t blocks, const void *key, const unsigned char ivec[AES_BLOCK_SIZE]);
+
+void aes_ccm64_encrypt_ccm128f(const unsigned char *in, unsigned char *out,
+    size_t blocks, const void *key, const unsigned char ivec[16],
+    unsigned char cmac[16]);
+
+void aes_ccm64_decrypt_ccm128f(const unsigned char *in, unsigned char *out,
+    size_t blocks, const void *key, const unsigned char ivec[16],
+    unsigned char cmac[16]);
+
+void aes_ecb_encrypt_internal(const unsigned char *in, unsigned char *out,
+    size_t len, const AES_KEY *key, int encrypt);
+
+void aes_xts_encrypt_internal(const char unsigned *in, char unsigned *out,
+    size_t len, const AES_KEY *key1, const AES_KEY *key2,
+    const unsigned char iv[16], int encrypt);
 
 __END_HIDDEN_DECLS
 

@@ -48,6 +48,7 @@ FIXED_SETTING(string, Common, GitCommit); // Git commit hash (if present)
 FIXED_SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
+FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

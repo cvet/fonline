@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_crld.c,v 1.7 2024/07/13 15:08:58 tb Exp $ */
+/* $OpenBSD: x509_crld.c,v 1.11 2026/02/07 17:12:47 bcook Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -62,9 +62,9 @@
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "x509_local.h"
 
 static void *v2i_crld(const X509V3_EXT_METHOD *method,
@@ -125,7 +125,7 @@ gnames_from_sectname(X509V3_CTX *ctx, char *sect)
 	STACK_OF(GENERAL_NAME) *gens;
 
 	if (*sect == '@')
-		gnsect = X509V3_get_section(ctx, sect + 1);
+		gnsect = X509V3_get0_section(ctx, sect + 1);
 	else
 		gnsect = X509V3_parse_list(sect);
 	if (!gnsect) {
@@ -133,9 +133,7 @@ gnames_from_sectname(X509V3_CTX *ctx, char *sect)
 		return NULL;
 	}
 	gens = v2i_GENERAL_NAMES(NULL, ctx, gnsect);
-	if (*sect == '@')
-		X509V3_section_free(ctx, gnsect);
-	else
+	if (*sect != '@')
 		sk_CONF_VALUE_pop_free(gnsect, X509V3_conf_free);
 	return gens;
 }
@@ -146,7 +144,7 @@ set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx, CONF_VALUE *cnf)
 	STACK_OF(GENERAL_NAME) *fnm = NULL;
 	STACK_OF(X509_NAME_ENTRY) *rnm = NULL;
 
-	if (!strncmp(cnf->name, "fullname", 9)) {
+	if (!strcmp(cnf->name, "fullname")) {
 		fnm = gnames_from_sectname(ctx, cnf->value);
 		if (!fnm)
 			goto err;
@@ -157,14 +155,13 @@ set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx, CONF_VALUE *cnf)
 		nm = X509_NAME_new();
 		if (!nm)
 			return -1;
-		dnsect = X509V3_get_section(ctx, cnf->value);
+		dnsect = X509V3_get0_section(ctx, cnf->value);
 		if (!dnsect) {
 			X509V3error(X509V3_R_SECTION_NOT_FOUND);
 			X509_NAME_free(nm);
 			return -1;
 		}
 		ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
-		X509V3_section_free(ctx, dnsect);
 		rnm = nm->entries;
 		nm->entries = NULL;
 		X509_NAME_free(nm);
@@ -333,11 +330,10 @@ v2i_crld(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 		cnf = sk_CONF_VALUE_value(nval, i);
 		if (!cnf->value) {
 			STACK_OF(CONF_VALUE) *dpsect;
-			dpsect = X509V3_get_section(ctx, cnf->name);
+			dpsect = X509V3_get0_section(ctx, cnf->name);
 			if (!dpsect)
 				goto err;
 			point = crldp_from_section(ctx, dpsect);
-			X509V3_section_free(ctx, dpsect);
 			if (!point)
 				goto err;
 			if (!sk_DIST_POINT_push(crld, point)) {

@@ -1,4 +1,4 @@
-/* $OpenBSD: p5_pbev2.c,v 1.35 2024/03/26 07:03:10 tb Exp $ */
+/* $OpenBSD: p5_pbev2.c,v 1.38 2025/05/24 02:57:14 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999-2004.
  */
@@ -61,11 +61,17 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
-#include <openssl/err.h>
 #include <openssl/x509.h>
 
+#include "err_local.h"
 #include "evp_local.h"
 #include "x509_local.h"
+
+/*
+ * RFC 8018, sections 6.2 and 4 specify at least 64 bits for PBES2, apparently
+ * FIPS will require at least 128 bits in the future, OpenSSL does that.
+ */
+#define PKCS5_PBE2_SALT_LEN	16
 
 /* PKCS#5 v2.0 password based encryption structures */
 
@@ -187,7 +193,7 @@ PKCS5_pbe2_set(const EVP_CIPHER *cipher, int iter, unsigned char *salt,
     int saltlen)
 {
 	X509_ALGOR *scheme = NULL, *kalg = NULL, *ret = NULL;
-	int prf_nid = NID_hmacWithSHA1;
+	int prf_nid = NID_hmacWithSHA256;
 	int alg_nid, keylen;
 	EVP_CIPHER_CTX ctx;
 	unsigned char iv[EVP_MAX_IV_LENGTH];
@@ -292,7 +298,7 @@ PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen, int prf_nid,
 	kdf->salt->type = V_ASN1_OCTET_STRING;
 
 	if (!saltlen)
-		saltlen = PKCS5_SALT_LEN;
+		saltlen = PKCS5_PBE2_SALT_LEN;
 	if (!(osalt->data = malloc (saltlen)))
 		goto merr;
 

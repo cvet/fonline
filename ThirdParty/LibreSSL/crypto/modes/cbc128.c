@@ -1,4 +1,4 @@
-/* $OpenBSD: cbc128.c,v 1.8 2023/07/08 14:56:54 beck Exp $ */
+/* $OpenBSD: cbc128.c,v 1.11 2025/04/23 10:09:08 jsing Exp $ */
 /* ====================================================================
  * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
  *
@@ -49,15 +49,11 @@
  *
  */
 
-#include <openssl/crypto.h>
-#include "modes_local.h"
 #include <string.h>
 
-#ifndef MODES_DEBUG
-# ifndef NDEBUG
-#  define NDEBUG
-# endif
-#endif
+#include <openssl/crypto.h>
+
+#include "modes_local.h"
 
 #undef STRICT_ALIGNMENT
 #ifdef __STRICT_ALIGNMENT
@@ -74,7 +70,6 @@ CRYPTO_cbc128_encrypt(const unsigned char *in, unsigned char *out,
 	size_t n;
 	const unsigned char *iv = ivec;
 
-#if !defined(OPENSSL_SMALL_FOOTPRINT)
 	if (STRICT_ALIGNMENT &&
 	    ((size_t)in|(size_t)out|(size_t)ivec) % sizeof(size_t) != 0) {
 		while (len >= 16) {
@@ -98,7 +93,6 @@ CRYPTO_cbc128_encrypt(const unsigned char *in, unsigned char *out,
 			out += 16;
 		}
 	}
-#endif
 	while (len) {
 		for (n = 0; n < 16 && n < len; ++n)
 			out[n] = in[n] ^ iv[n];
@@ -127,7 +121,6 @@ CRYPTO_cbc128_decrypt(const unsigned char *in, unsigned char *out,
 		unsigned char c[16];
 	} tmp;
 
-#if !defined(OPENSSL_SMALL_FOOTPRINT)
 	if (in != out) {
 		const unsigned char *iv = ivec;
 
@@ -192,7 +185,6 @@ CRYPTO_cbc128_decrypt(const unsigned char *in, unsigned char *out,
 			}
 		}
 	}
-#endif
 	while (len) {
 		unsigned char c;
 		(*block)(in, tmp.c, key);

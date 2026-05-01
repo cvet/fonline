@@ -16,6 +16,8 @@
 
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
+//  2026-01-19: DirectX11: Added 'SamplerNearest' in ImGui_ImplDX11_RenderState. Renamed 'SamplerDefault' to 'SamplerLinear'. 
+//  2025-09-18: Call platform_io.ClearRendererHandlers() on shutdown.
 //  2025-06-11: DirectX10: Added support for ImGuiBackendFlags_RendererHasTextures, for dynamic font atlas.
 //  2025-05-07: DirectX10: Honor draw_data->FramebufferScale to allow for custom backends and experiment using it (consistently with other renderer backends, even though in normal condition it is not set under Windows).
 //  2025-01-06: DirectX10: Expose selected render state in ImGui_ImplDX10_RenderState, which you can access in 'void* platform_io.Renderer_RenderState' during draw callbacks.
@@ -74,6 +76,7 @@ struct ImGui_ImplDX10_Data
     ID3D10Buffer*               pVertexConstantBuffer;
     ID3D10PixelShader*          pPixelShader;
     ID3D10SamplerState*         pTexSamplerLinear;
+    ID3D10SamplerState*         pTexSamplerNearest;
     ID3D10RasterizerState*      pRasterizerState;
     ID3D10BlendState*           pBlendState;
     ID3D10DepthStencilState*    pDepthStencilState;
@@ -257,7 +260,8 @@ void ImGui_ImplDX10_RenderDrawData(ImDrawData* draw_data)
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
     ImGui_ImplDX10_RenderState render_state;
     render_state.Device = bd->pd3dDevice;
-    render_state.SamplerDefault = bd->pTexSamplerLinear;
+    render_state.SamplerLinear = bd->pTexSamplerLinear;
+    render_state.SamplerNearest = bd->pTexSamplerNearest;
     render_state.VertexConstantBuffer = bd->pVertexConstantBuffer;
     platform_io.Renderer_RenderState = &render_state;
 
@@ -324,18 +328,18 @@ void ImGui_ImplDX10_RenderDrawData(ImDrawData* draw_data)
 
 static void ImGui_ImplDX10_DestroyTexture(ImTextureData* tex)
 {
-    ImGui_ImplDX10_Texture* backend_tex = (ImGui_ImplDX10_Texture*)tex->BackendUserData;
-    if (backend_tex == nullptr)
-        return;
-    IM_ASSERT(backend_tex->pTextureView == (ID3D10ShaderResourceView*)(intptr_t)tex->TexID);
-    backend_tex->pTexture->Release();
-    backend_tex->pTextureView->Release();
-    IM_DELETE(backend_tex);
+    if (ImGui_ImplDX10_Texture* backend_tex = (ImGui_ImplDX10_Texture*)tex->BackendUserData)
+    {
+        IM_ASSERT(backend_tex->pTextureView == (ID3D10ShaderResourceView*)(intptr_t)tex->TexID);
+        backend_tex->pTextureView->Release();
+        backend_tex->pTexture->Release();
+        IM_DELETE(backend_tex);
 
-    // Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
-    tex->SetTexID(ImTextureID_Invalid);
+        // Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
+        tex->SetTexID(ImTextureID_Invalid);
+        tex->BackendUserData = nullptr;
+    }
     tex->SetStatus(ImTextureStatus_Destroyed);
-    tex->BackendUserData = nullptr;
 }
 
 void ImGui_ImplDX10_UpdateTexture(ImTextureData* tex)
@@ -564,6 +568,8 @@ bool    ImGui_ImplDX10_CreateDeviceObjects()
         desc.MinLOD = 0.f;
         desc.MaxLOD = 0.f;
         bd->pd3dDevice->CreateSamplerState(&desc, &bd->pTexSamplerLinear);
+        desc.Filter = D3D10_FILTER_MIN_MAG_MIP_POINT;
+        bd->pd3dDevice->CreateSamplerState(&desc, &bd->pTexSamplerNearest);
     }
 
     return true;
@@ -580,6 +586,7 @@ void    ImGui_ImplDX10_InvalidateDeviceObjects()
         if (tex->RefCount == 1)
             ImGui_ImplDX10_DestroyTexture(tex);
     if (bd->pTexSamplerLinear)      { bd->pTexSamplerLinear->Release(); bd->pTexSamplerLinear = nullptr; }
+    if (bd->pTexSamplerNearest)     { bd->pTexSamplerNearest->Release(); bd->pTexSamplerNearest = nullptr; }
     if (bd->pIB)                    { bd->pIB->Release(); bd->pIB = nullptr; }
     if (bd->pVB)                    { bd->pVB->Release(); bd->pVB = nullptr; }
     if (bd->pBlendState)            { bd->pBlendState->Release(); bd->pBlendState = nullptr; }
@@ -630,13 +637,16 @@ void ImGui_ImplDX10_Shutdown()
     ImGui_ImplDX10_Data* bd = ImGui_ImplDX10_GetBackendData();
     IM_ASSERT(bd != nullptr && "No renderer backend to shutdown, or already shutdown?");
     ImGuiIO& io = ImGui::GetIO();
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
     ImGui_ImplDX10_InvalidateDeviceObjects();
     if (bd->pFactory) { bd->pFactory->Release(); }
     if (bd->pd3dDevice) { bd->pd3dDevice->Release(); }
+
     io.BackendRendererName = nullptr;
     io.BackendRendererUserData = nullptr;
     io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures);
+    platform_io.ClearRendererHandlers();
     IM_DELETE(bd);
 }
 

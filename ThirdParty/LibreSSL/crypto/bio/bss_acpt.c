@@ -1,4 +1,4 @@
-/* $OpenBSD: bss_acpt.c,v 1.31 2023/07/05 21:23:37 beck Exp $ */
+/* $OpenBSD: bss_acpt.c,v 1.33 2025/06/02 12:18:21 jsg Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -65,9 +65,9 @@
 
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
-#include <openssl/err.h>
 
 #include "bio_local.h"
+#include "err_local.h"
 
 #define SOCKET_PROTOCOL IPPROTO_TCP
 
@@ -261,11 +261,12 @@ again:
 		if (c->bio_chain != NULL) {
 			if ((dbio = BIO_dup_chain(c->bio_chain)) == NULL)
 				goto err;
-			if (!BIO_push(dbio, bio)) goto err;
-				bio = dbio;
+			if (!BIO_push(dbio, bio))
+				goto err;
+			bio = dbio;
 		}
-		if (BIO_push(b, bio)
-			== NULL) goto err;
+		if (BIO_push(b, bio) == NULL)
+			goto err;
 
 		c->state = ACPT_S_OK;
 		return (1);

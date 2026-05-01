@@ -12,6 +12,7 @@ imgui*.ini
 examples/*/Debug/*
 examples/*/Release/*
 examples/*/x64/*
+examples/*.tmp
 
 ## Visual Studio artifacts
 .vs
@@ -46,6 +47,9 @@ examples/example_glfw_opengl3/web/*
 examples/example_glfw_wgpu/web/*
 examples/example_glfw_wgpu/external/*
 examples/example_sdl2_opengl3/web/*
+examples/example_sdl2_wgpu/web/*
+examples/example_sdl3_opengl3/web/*
+examples/example_sdl3_wgpu/web/*
 
 ## JetBrains IDE artifacts
 .idea

@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_rsp_verify.c,v 1.30 2023/07/07 07:25:21 beck Exp $ */
+/* $OpenBSD: ts_rsp_verify.c,v 1.33 2026/01/27 14:18:32 tb Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -59,11 +59,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/pkcs7.h>
 #include <openssl/ts.h>
 
+#include "err_local.h"
 #include "evp_local.h"
 #include "ts_local.h"
 #include "x509_local.h"
@@ -364,6 +364,8 @@ ESS_get_signing_cert_v2(PKCS7_SIGNER_INFO *si)
 
 	attr = PKCS7_get_signed_attribute(si, NID_id_smime_aa_signingCertificateV2);
 	if (attr == NULL)
+		return NULL;
+	if (attr->type != V_ASN1_SEQUENCE)
 		return NULL;
 	p = attr->value.sequence->data;
 	return d2i_ESS_SIGNING_CERT_V2(NULL, &p, attr->value.sequence->length);
@@ -667,7 +669,7 @@ TS_get_status_text(STACK_OF(ASN1_UTF8STRING) *text)
 		ASN1_UTF8STRING *current = sk_ASN1_UTF8STRING_value(text, i);
 		if (i > 0)
 			strlcat(result, "/", length);
-		strlcat(result, (const char *)ASN1_STRING_data(current), length);
+		strlcat(result, (const char *)ASN1_STRING_get0_data(current), length);
 	}
 	return result;
 }
@@ -771,7 +773,7 @@ TS_check_imprints(X509_ALGOR *algor_a, unsigned char *imprint_a, unsigned len_a,
 
 	/* Compare octet strings. */
 	ret = len_a == (unsigned) ASN1_STRING_length(b->hashed_msg) &&
-	    memcmp(imprint_a, ASN1_STRING_data(b->hashed_msg), len_a) == 0;
+	    memcmp(imprint_a, ASN1_STRING_get0_data(b->hashed_msg), len_a) == 0;
 
 err:
 	if (!ret)

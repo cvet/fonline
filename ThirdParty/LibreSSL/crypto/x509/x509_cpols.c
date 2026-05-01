@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_cpols.c,v 1.13 2024/07/13 15:08:58 tb Exp $ */
+/* $OpenBSD: x509_cpols.c,v 1.20 2025/11/28 06:03:40 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -62,9 +62,9 @@
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/conf.h>
-#include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "err_local.h"
 #include "x509_local.h"
 
 /* Certificate policies extension support: this one is a bit complex... */
@@ -461,14 +461,13 @@ r2i_certpol(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *value)
 			continue;
 		} else if (*pstr == '@') {
 			STACK_OF(CONF_VALUE) *polsect;
-			polsect = X509V3_get_section(ctx, pstr + 1);
+			polsect = X509V3_get0_section(ctx, pstr + 1);
 			if (!polsect) {
 				X509V3error(X509V3_R_INVALID_SECTION);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
 			pol = policy_section(ctx, polsect, ia5org);
-			X509V3_section_free(ctx, polsect);
 			if (!pol)
 				goto err;
 		} else {
@@ -489,7 +488,7 @@ r2i_certpol(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *value)
 	sk_CONF_VALUE_pop_free(vals, X509V3_conf_free);
 	return pols;
 
-err:
+ err:
 	sk_CONF_VALUE_pop_free(vals, X509V3_conf_free);
 	sk_POLICYINFO_pop_free(pols, POLICYINFO_free);
 	return NULL;
@@ -544,14 +543,13 @@ policy_section(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *polstrs, int ia5org)
 				X509V3_conf_err(cnf);
 				goto err;
 			}
-			unot = X509V3_get_section(ctx, cnf->value + 1);
+			unot = X509V3_get0_section(ctx, cnf->value + 1);
 			if (unot == NULL) {
 				X509V3error(X509V3_R_INVALID_SECTION);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
 			qual = notice_section(ctx, unot, ia5org);
-			X509V3_section_free(ctx, unot);
 			if (qual == NULL)
 				goto err;
 
@@ -575,10 +573,10 @@ policy_section(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *polstrs, int ia5org)
 
 	return pol;
 
-merr:
+ merr:
 	X509V3error(ERR_R_MALLOC_FAILURE);
 
-err:
+ err:
 	POLICYQUALINFO_free(nqual);
 	POLICYINFO_free(pol);
 	return NULL;
@@ -661,10 +659,10 @@ notice_section(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *unot, int ia5org)
 
 	return qual;
 
-merr:
+ merr:
 	X509V3error(ERR_R_MALLOC_FAILURE);
 
-err:
+ err:
 	POLICYQUALINFO_free(qual);
 	return NULL;
 }
@@ -678,21 +676,18 @@ nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos)
 
 	for (i = 0; i < sk_CONF_VALUE_num(nos); i++) {
 		cnf = sk_CONF_VALUE_value(nos, i);
-		if (!(aint = s2i_ASN1_INTEGER(NULL, cnf->name))) {
+		if ((aint = s2i_ASN1_INTEGER(NULL, cnf->name)) == NULL) {
 			X509V3error(X509V3_R_INVALID_NUMBER);
-			goto err;
+			return 0;
 		}
-		if (!sk_ASN1_INTEGER_push(nnums, aint))
-			goto merr;
+		if (sk_ASN1_INTEGER_push(nnums, aint) <= 0) {
+			X509V3error(ERR_R_MALLOC_FAILURE);
+			ASN1_INTEGER_free(aint);
+			return 0;
+		}
 	}
+
 	return 1;
-
-merr:
-	X509V3error(ERR_R_MALLOC_FAILURE);
-
-err:
-	sk_ASN1_INTEGER_pop_free(nnums, ASN1_STRING_free);
-	return 0;
 }
 
 static int

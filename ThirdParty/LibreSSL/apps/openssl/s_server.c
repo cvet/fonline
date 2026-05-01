@@ -1,4 +1,4 @@
-/* $OpenBSD: s_server.c,v 1.59 2023/12/29 12:15:49 tb Exp $ */
+/* $OpenBSD: s_server.c,v 1.61 2025/01/02 13:10:03 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -173,9 +173,6 @@
 #endif
 
 #include <openssl/rsa.h>
-
-#include "s_apps.h"
-#include "timeouts.h"
 
 static void s_server_init(void);
 static void sv_usage(void);

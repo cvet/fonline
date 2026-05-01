@@ -29,6 +29,7 @@
 
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
+//  2025-09-18: Call platform_io.ClearPlatformHandlers() on shutdown.
 //  2025-06-27: Added ImGuiMouseCursor_Wait and ImGuiMouseCursor_Progress mouse cursor support.
 //  2025-06-12: ImGui_ImplOSX_HandleEvent() only process event for window containing our view. (#8644)
 //  2025-03-21: Fill gamepad inputs and set ImGuiBackendFlags_HasGamepad regardless of ImGuiConfigFlags_NavEnableGamepad being set.
@@ -147,9 +148,11 @@ static bool ImGui_ImplOSX_HandleEvent(NSEvent* event, NSView* view);
     NSWindow* window = view.window;
     if (!window)
         return;
-    NSRect contentRect = [window contentRectForFrameRect:window.frame];
-    NSRect rect = NSMakeRect(_posX, contentRect.size.height - _posY, 0, 0);
-    _imeRect = [window convertRectToScreen:rect];
+    {
+        NSRect contentRect = [window contentRectForFrameRect:window.frame];
+        NSRect rect = NSMakeRect(_posX, contentRect.size.height - _posY, 0, 0);
+        _imeRect = [window convertRectToScreen:rect];
+    }
 }
 
 - (void)viewDidMoveToWindow
@@ -514,9 +517,12 @@ void ImGui_ImplOSX_Shutdown()
     ImGui_ImplOSX_DestroyBackendData();
 
     ImGuiIO& io = ImGui::GetIO();
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+
     io.BackendPlatformName = nullptr;
     io.BackendPlatformUserData = nullptr;
     io.BackendFlags &= ~(ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasGamepad);
+    platform_io.ClearPlatformHandlers();
 }
 
 static void ImGui_ImplOSX_UpdateMouseCursor()
@@ -625,9 +631,9 @@ void ImGui_ImplOSX_NewFrame(NSView* view)
     // Setup display size
     if (view)
     {
-        const float dpi = (float)[view.window backingScaleFactor];
+        const float fb_scale = (float)[view.window backingScaleFactor];
         io.DisplaySize = ImVec2((float)view.bounds.size.width, (float)view.bounds.size.height);
-        io.DisplayFramebufferScale = ImVec2(dpi, dpi);
+        io.DisplayFramebufferScale = ImVec2(fb_scale, fb_scale);
     }
 
     // Setup time step

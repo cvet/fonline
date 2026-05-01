@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_vfy.c,v 1.24 2024/07/12 18:15:10 beck Exp $ */
+/* $OpenBSD: ocsp_vfy.c,v 1.26 2026/04/07 13:02:50 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -57,15 +57,15 @@
  */
 
 #include <openssl/ocsp.h>
-#include <openssl/err.h>
 #include <string.h>
 
+#include "err_local.h"
 #include "ocsp_local.h"
 #include "x509_local.h"
 
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
     STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags);
-static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
+static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, const OCSP_BASICRESP *id);
 static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain,
     unsigned long flags);
 static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret);
@@ -198,14 +198,13 @@ ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
     X509_STORE *st, unsigned long flags)
 {
 	X509 *signer;
-	OCSP_RESPID *rid = bs->tbsResponseData->responderId;
 
-	if ((signer = ocsp_find_signer_sk(certs, rid))) {
+	if ((signer = ocsp_find_signer_sk(certs, bs))) {
 		*psigner = signer;
 		return 2;
 	}
 	if (!(flags & OCSP_NOINTERN) &&
-	    (signer = ocsp_find_signer_sk(bs->certs, rid))) {
+	    (signer = ocsp_find_signer_sk(bs->certs, bs))) {
 		*psigner = signer;
 		return 1;
 	}
@@ -216,22 +215,28 @@ ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 }
 
 static X509 *
-ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
+ocsp_find_signer_sk(STACK_OF(X509) *certs, const OCSP_BASICRESP *bs)
 {
-	int i;
-	unsigned char tmphash[SHA_DIGEST_LENGTH], *keyhash;
+	const ASN1_OCTET_STRING *byKey = NULL;
+	const X509_NAME *byName = NULL;
+	const unsigned char *keyhash;
+	unsigned char tmphash[SHA_DIGEST_LENGTH];
 	X509 *x;
+	int i;
+
+	if (!OCSP_resp_get0_id(bs, &byKey, &byName))
+		return NULL;
 
 	/* Easy if lookup by name */
-	if (id->type == V_OCSP_RESPID_NAME)
-		return X509_find_by_subject(certs, id->value.byName);
+	if (byName != NULL)
+		return X509_find_by_subject(certs, (X509_NAME *)byName);
 
 	/* Lookup by key hash */
 
 	/* If key hash isn't SHA1 length then forget it */
-	if (id->value.byKey->length != SHA_DIGEST_LENGTH)
+	if (ASN1_STRING_length(byKey) != SHA_DIGEST_LENGTH)
 		return NULL;
-	keyhash = id->value.byKey->data;
+	keyhash = ASN1_STRING_get0_data(byKey);
 	/* Calculate hash of each key and compare */
 	for (i = 0; i < sk_X509_num(certs); i++) {
 		x = sk_X509_value(certs, i);

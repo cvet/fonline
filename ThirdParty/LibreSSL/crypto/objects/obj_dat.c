@@ -1,4 +1,4 @@
-/* $OpenBSD: obj_dat.c,v 1.91 2024/07/14 14:32:45 jsing Exp $ */
+/* $OpenBSD: obj_dat.c,v 1.95 2025/05/10 05:54:38 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -66,11 +66,11 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/objects.h>
 
 #include "asn1_local.h"
+#include "err_local.h"
 
 /* obj_dat.h is generated from objects.h by obj_dat.pl */
 #include "obj_dat.h"
@@ -100,7 +100,7 @@ added_obj_hash(const ADDED_OBJ *ca)
 	a = ca->obj;
 	switch (ca->type) {
 	case ADDED_DATA:
-		ret = a->length << 20L;
+		ret = (unsigned long)a->length << 20L;
 		p = (unsigned char *)a->data;
 		for (i = 0; i < a->length; i++)
 			ret ^= p[i] << ((i * 3) % 24);
@@ -118,8 +118,8 @@ added_obj_hash(const ADDED_OBJ *ca)
 		return 0;
 	}
 	ret &= 0x3fffffffL;
-	ret |= ca->type << 30L;
-	return (ret);
+	ret |= (unsigned long)ca->type << 30L;
+	return ret;
 }
 static IMPLEMENT_LHASH_HASH_FN(added_obj, ADDED_OBJ)
 
@@ -205,7 +205,7 @@ OBJ_new_nid(int num)
 
 	i = new_nid;
 	new_nid += num;
-	return (i);
+	return i;
 }
 LCRYPTO_ALIAS(OBJ_new_nid);
 
@@ -249,7 +249,7 @@ OBJ_add_object(const ASN1_OBJECT *obj)
 	    ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
 	    ASN1_OBJECT_FLAG_DYNAMIC_DATA);
 
-	return (o->nid);
+	return o->nid;
 
  err2:
 	OBJerror(ERR_R_MALLOC_FAILURE);
@@ -257,7 +257,7 @@ OBJ_add_object(const ASN1_OBJECT *obj)
 	for (i = ADDED_DATA; i <= ADDED_NID; i++)
 		free(ao[i]);
 	ASN1_OBJECT_free(o);
-	return (NID_undef);
+	return NID_undef;
 }
 
 ASN1_OBJECT *
@@ -488,10 +488,10 @@ OBJ_create_objects(BIO *in)
 		s = o = NULL;
 		i = BIO_gets(in, buf, 512);
 		if (i <= 0)
-			return (num);
+			return num;
 		buf[i - 1] = '\0';
 		if (!isalnum((unsigned char)buf[0]))
-			return (num);
+			return num;
 		o = s=buf;
 		while (isdigit((unsigned char)*s) || (*s == '.'))
 			s++;
@@ -518,9 +518,9 @@ OBJ_create_objects(BIO *in)
 		} else
 			s = NULL;
 		if ((o == NULL) || (*o == '\0'))
-			return (num);
+			return num;
 		if (!OBJ_create(o, s, l))
-			return (num);
+			return num;
 		num++;
 	}
 	/* return(num); */

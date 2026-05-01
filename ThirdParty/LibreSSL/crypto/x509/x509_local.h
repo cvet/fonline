@@ -1,4 +1,4 @@
-/*	$OpenBSD: x509_local.h,v 1.32 2024/08/31 10:46:40 tb Exp $ */
+/*	$OpenBSD: x509_local.h,v 1.39 2025/10/10 11:31:13 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2013.
  */
@@ -60,6 +60,8 @@
 #define HEADER_X509_LOCAL_H
 
 #include <openssl/x509v3.h>
+
+#include "bytestring.h"
 
 __BEGIN_HIDDEN_DECLS
 
@@ -182,9 +184,7 @@ struct x509_st {
 	X509_CINF *cert_info;
 	X509_ALGOR *sig_alg;
 	ASN1_BIT_STRING *signature;
-	int valid;
 	int references;
-	char *name;
 	CRYPTO_EX_DATA ex_data;
 	/* These contain copies of various extension values */
 	long ex_pathlen;
@@ -199,7 +199,7 @@ struct x509_st {
 	NAME_CONSTRAINTS *nc;
 #ifndef OPENSSL_NO_RFC3779
 	STACK_OF(IPAddressFamily) *rfc3779_addr;
-	struct ASIdentifiers_st *rfc3779_asid;
+	ASIdentifiers *rfc3779_asid;
 #endif
 	unsigned char hash[X509_CERT_HASH_LEN];
 	X509_CERT_AUX *aux;
@@ -213,7 +213,6 @@ struct x509_revoked_st {
 	STACK_OF(GENERAL_NAME) *issuer;
 	/* Revocation reason */
 	int reason;
-	int sequence; /* load sequence */
 };
 
 struct X509_crl_info_st {
@@ -439,6 +438,8 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(STACK_OF(X509_ATTRIBUTE) **x,
 void *X509at_get0_data_by_OBJ(STACK_OF(X509_ATTRIBUTE) *x,
     const ASN1_OBJECT *obj, int lastpos, int type);
 
+int X509_NAME_ENTRY_add_cbb(CBB *cbb, const X509_NAME_ENTRY *ne);
+
 int X509V3_add_value(const char *name, const char *value,
     STACK_OF(CONF_VALUE) **extlist);
 int X509V3_add_value_uchar(const char *name, const unsigned char *value,
@@ -451,8 +452,7 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
 int X509V3_get_value_bool(const CONF_VALUE *value, int *asn1_bool);
 int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint);
 
-STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section);
-void X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section);
+STACK_OF(CONF_VALUE) *X509V3_get0_section(X509V3_CTX *ctx, const char *section);
 
 const X509V3_EXT_METHOD *x509v3_ext_method_authority_key_identifier(void);
 const X509V3_EXT_METHOD *x509v3_ext_method_basic_constraints(void);

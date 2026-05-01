@@ -1,4 +1,4 @@
-/* $OpenBSD: openssl.c,v 1.37 2024/07/08 05:59:10 tb Exp $ */
+/* $OpenBSD: openssl.c,v 1.41 2026/01/02 00:14:24 kenjiro Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -127,9 +127,6 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
-#include "progs.h"
-#include "s_apps.h"
-
 #define FUNC_TYPE_GENERAL       1
 #define FUNC_TYPE_MD            2
 #define FUNC_TYPE_CIPHER        3
@@ -234,12 +231,13 @@ FUNCTION functions[] = {
 #ifndef OPENSSL_NO_SHA512
 	{ FUNC_TYPE_MD, "sha512", dgst_main },
 #endif
+	{ FUNC_TYPE_MD, "sha3-224", dgst_main },
+	{ FUNC_TYPE_MD, "sha3-256", dgst_main },
+	{ FUNC_TYPE_MD, "sha3-384", dgst_main },
+	{ FUNC_TYPE_MD, "sha3-512", dgst_main },
 #ifndef OPENSSL_NO_SM3
 	{ FUNC_TYPE_MD, "sm3", dgst_main },
 	{ FUNC_TYPE_MD, "sm3WithRSAEncryption", dgst_main },
-#endif
-#ifndef OPENSSL_NO_WHIRLPOOL
-	{ FUNC_TYPE_MD, "whirlpool", dgst_main },
 #endif
 
 	/* Ciphers. */

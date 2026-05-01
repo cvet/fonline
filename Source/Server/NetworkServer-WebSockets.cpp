@@ -170,10 +170,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog("WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
     }
     else {
-        WriteLog("WebSocket socket {} failed for {}: {}", operation, _host, error.message());
+        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, error.message());
     }
 }
 
@@ -248,7 +248,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog("WebSocket send failed to {}:{}: {}", _host, _port, error.message());
+            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, error.message());
             Disconnect();
         }
     }
@@ -355,7 +355,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     const auto remote_endpoint = connection->get_remote_endpoint();
     const auto error_message = ec.message();
 
-    WriteLog("WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
+    WriteLog(LogType::Warning, "WebSocket handshake failed from {} error '{}' ({})", string_view(remote_endpoint), string_view(error_message), ec.value());
 }
 
 template<bool Secured>

@@ -67,6 +67,13 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+#ifndef LIBRESSL_INTERNAL
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+#endif
+
 typedef struct CMS_ContentInfo_st CMS_ContentInfo;
 typedef struct CMS_SignerInfo_st CMS_SignerInfo;
 typedef struct CMS_CertificateChoices CMS_CertificateChoices;

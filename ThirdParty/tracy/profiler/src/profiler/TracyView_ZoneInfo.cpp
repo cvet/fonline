@@ -6,6 +6,7 @@
 #include "TracyMouse.hpp"
 #include "TracyView.hpp"
 #include "tracy_pdqsort.h"
+#include "../Fonts.hpp"
 
 namespace tracy
 {
@@ -380,7 +381,7 @@ void View::DrawZoneInfoWindow()
         const auto tid = threadData->id;
         if( m_worker.HasZoneExtra( ev ) && m_worker.GetZoneExtra( ev ).name.Active() )
         {
-            ImGui::PushFont( m_bigFont );
+            ImGui::PushFont( g_fonts.normal, FontBig );
             TextFocused( "Zone name:", m_worker.GetString( m_worker.GetZoneExtra( ev ).name ) );
             ImGui::PopFont();
             if( srcloc.name.active )
@@ -408,32 +409,27 @@ void View::DrawZoneInfoWindow()
         }
         else if( srcloc.name.active )
         {
-            ImGui::PushFont( m_bigFont );
-            TextFocused( "Zone name:", m_worker.GetString( srcloc.name ) );
+            ImGui::PushFont( g_fonts.normal, FontBig );
+            TextFocusedClipboard( "Zone name:", m_worker.GetString( srcloc.name ), m_worker.GetString( srcloc.name ), 1, g_fonts.normal, FontNormal );
             ImGui::PopFont();
-            ImGui::SameLine();
-            if( ClipboardButton( 1 ) ) ImGui::SetClipboardText( m_worker.GetString( srcloc.name ) );
-            TextFocused( "Function:", m_worker.GetString( srcloc.function ) );
-            ImGui::SameLine();
-            if( ClipboardButton( 2 ) ) ImGui::SetClipboardText( m_worker.GetString( srcloc.function ) );
+            TextFocusedClipboard( "Function:", m_worker.GetString( srcloc.function ), m_worker.GetString( srcloc.function ), 2 );
         }
         else
         {
-            ImGui::PushFont( m_bigFont );
-            TextFocused( "Function:", m_worker.GetString( srcloc.function ) );
+            ImGui::PushFont( g_fonts.normal, FontBig );
+            TextFocusedClipboard( "Function:", m_worker.GetString( srcloc.function ), m_worker.GetString( srcloc.function ), 1, g_fonts.normal, FontNormal );
             ImGui::PopFont();
-            ImGui::SameLine();
-            if( ClipboardButton( 1 ) ) ImGui::SetClipboardText( m_worker.GetString( srcloc.function ) );
         }
         SmallColorBox( GetSrcLocColor( m_worker.GetSourceLocation( ev.SrcLoc() ), 0 ) );
         ImGui::SameLine();
-        TextDisabledUnformatted( "Location:" );
-        ImGui::SameLine();
-        ImGui::TextUnformatted( LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ) );
-        ImGui::SameLine();
-        if( ClipboardButton( 3 ) )
+        TextFocusedClipboard( "Location:", LocationToString( fileName, srcloc.line ), LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ), 3 );
+        if( ImGui::IsItemHovered() )
         {
-            ImGui::SetClipboardText( LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ) );
+            DrawSourceTooltip( fileName, srcloc.line );
+            if( ImGui::IsItemClicked( ImGuiMouseButton_Right ) && SourceFileValid( fileName, m_worker.GetCaptureTime(), *this, m_worker ) )
+            {
+                ViewSourceCheckKeyMod( fileName, srcloc.line, m_worker.GetString( srcloc.function ) );
+            }
         }
         SmallColorBox( GetThreadColor( tid, 0 ) );
         ImGui::SameLine();
@@ -1512,24 +1508,12 @@ void View::DrawGpuInfoWindow()
         ImGui::Separator();
 
         const auto tid = GetZoneThread( ev );
-        ImGui::PushFont( m_bigFont );
-        TextFocused( "Zone name:", m_worker.GetString( srcloc.name ) );
+        ImGui::PushFont( g_fonts.normal, FontBig );
+        TextFocusedClipboard( "Zone name:", m_worker.GetString( srcloc.name ), m_worker.GetString( srcloc.name ), 1, g_fonts.normal, FontNormal );
+        ImGui::SameLine();
         ImGui::PopFont();
-        ImGui::SameLine();
-        if( ClipboardButton( 1 ) ) ImGui::SetClipboardText( m_worker.GetString( srcloc.name ) );
-        TextFocused( "Function:", m_worker.GetString( srcloc.function ) );
-        ImGui::SameLine();
-        if( ClipboardButton( 2 ) ) ImGui::SetClipboardText( m_worker.GetString( srcloc.function ) );
-        SmallColorBox( GetZoneColor( ev ) );
-        ImGui::SameLine();
-        TextDisabledUnformatted( "Location:" );
-        ImGui::SameLine();
-        ImGui::TextUnformatted( LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ) );
-        ImGui::SameLine();
-        if( ClipboardButton( 3 ) )
-        {
-            ImGui::SetClipboardText( LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ) );
-        }
+        TextFocusedClipboard( "Function:", m_worker.GetString( srcloc.function ), m_worker.GetString( srcloc.function ), 2 );
+        TextFocusedClipboard( "Location:", LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ), LocationToString( m_worker.GetString( srcloc.file ), srcloc.line ), 3 );
         SmallColorBox( GetThreadColor( tid, 0 ) );
         ImGui::SameLine();
         TextFocused( "Thread:", m_worker.GetThreadName( tid ) );
@@ -1577,6 +1561,21 @@ void View::DrawGpuInfoWindow()
             }
             const auto drift = GpuDrift( ctx );
             TextFocused( "Delay to execution:", TimeToString( AdjustGpuTime( ev.GpuStart(), begin, drift ) - ev.CpuStart() ) );
+
+            if( ctx->notes.contains( ev.query_id ) )
+            {
+                for( auto& p : ctx->notes.at( ev.query_id ) )
+                {
+                    if( ctx->noteNames.count( p.first ) )
+                    {
+                        TextFocused( m_worker.GetString( ctx->noteNames.at( p.first ) ), RealToString( p.second ) );
+                    }
+                    else
+                    {
+                        TextFocused( RealToString( p.first ), RealToString( p.second ) );
+                    }
+                }
+            }
         }
 
         ImGui::Separator();
@@ -2044,6 +2043,21 @@ void View::ZoneTooltip( const GpuEvent& ev )
         }
         const auto drift = GpuDrift( ctx );
         TextFocused( "Delay to execution:", TimeToString( AdjustGpuTime( ev.GpuStart(), begin, drift ) - ev.CpuStart() ) );
+
+        if( ctx->notes.contains( ev.query_id ) )
+        {
+            for( auto& p : ctx->notes.at( ev.query_id ) )
+            {
+                if( ctx->noteNames.count( p.first ) )
+                {
+                    TextFocused( m_worker.GetString( ctx->noteNames.at( p.first ) ), RealToString( p.second ) );
+                }
+                else
+                {
+                    TextFocused( RealToString( p.first ), RealToString( p.second ) );
+                }
+            }
+        }
     }
 
     ImGui::EndTooltip();

@@ -1,3 +1,5 @@
+// $OpenBSD: bignum_sqr_8_16_alt.S,v 1.7 2025/08/11 14:13:56 jsing Exp $
+//
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
@@ -16,7 +18,8 @@
 // Square, z := x^2
 // Input x[8]; output z[16]
 //
-//    extern void bignum_sqr_8_16_alt (uint64_t z[static 16], uint64_t x[static 8]);
+//    extern void bignum_sqr_8_16_alt(uint64_t z[static 16],
+//                                    const uint64_t x[static 8]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
@@ -103,7 +106,7 @@
         adc     c, 0
 
 S2N_BN_SYMBOL(bignum_sqr_8_16_alt):
-	_CET_ENDBR
+        _CET_ENDBR
 
 #if WINDOWS_ABI
         push    rdi

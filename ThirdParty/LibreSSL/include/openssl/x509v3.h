@@ -1,4 +1,4 @@
-/* $OpenBSD: x509v3.h,v 1.35 2024/08/31 10:23:13 tb Exp $ */
+/* $OpenBSD: x509v3.h,v 1.41 2026/04/06 08:24:57 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -134,11 +134,11 @@ typedef struct v3_ext_method X509V3_EXT_METHOD;
 
 DECLARE_STACK_OF(X509V3_EXT_METHOD)
 
-/* ext_flags values */
-#define X509V3_EXT_DYNAMIC	0x1
-#define X509V3_EXT_CTX_DEP	0x2
+/* XXX - can this be made internal? */
 #define X509V3_EXT_MULTILINE	0x4
 
+/* XXX - remove it anyway? */
+/* Guess who uses this... Yes, of course, it's xca. */
 typedef BIT_STRING_BITNAME ENUMERATED_NAMES;
 
 typedef struct BASIC_CONSTRAINTS_st {
@@ -341,24 +341,6 @@ struct ISSUING_DIST_POINT_st {
 #define X509V3_set_ctx_test(ctx) \
 			X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, CTX_TEST)
 #define X509V3_set_ctx_nodb(ctx) (ctx)->db = NULL;
-
-#define EXT_BITSTRING(nid, table) { nid, 0, &ASN1_BIT_STRING_it, \
-			0,0,0,0, \
-			0,0, \
-			(X509V3_EXT_I2V)i2v_ASN1_BIT_STRING, \
-			(X509V3_EXT_V2I)v2i_ASN1_BIT_STRING, \
-			NULL, NULL, \
-			table}
-
-#define EXT_IA5STRING(nid) { nid, 0, &ASN1_IA5STRING_it, \
-			0,0,0,0, \
-			(X509V3_EXT_I2S)i2s_ASN1_IA5STRING, \
-			(X509V3_EXT_S2I)s2i_ASN1_IA5STRING, \
-			0,0,0,0, \
-			NULL}
-
-#define EXT_END { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
 
 /* X509_PURPOSE stuff */
 
@@ -613,7 +595,6 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 			       const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 			       int gen_type, const char *value, int is_nc);
 
-#ifdef HEADER_CONF_H
 GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 			       CONF_VALUE *cnf);
 GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
@@ -640,7 +621,6 @@ X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
     const char *name, const char *value);
 
 void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
-#endif
 
 void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
 				 X509_REQ *req, X509_CRL *crl, int flags);
@@ -707,13 +687,6 @@ STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 #define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0x10
 /* Disable checking the CN for a hostname, to support modern validation */
 #define X509_CHECK_FLAG_NEVER_CHECK_SUBJECT 0x20
-
-/*
- * Match reference identifiers starting with "." to any sub-domain.
- * This is a non-public flag, turned on implicitly when the subject
- * reference identity is a DNS name.
- */
-#define _X509_CHECK_FLAG_DOT_SUBDOMAINS 0x8000
 
 int X509_check_host(X509 *x, const char *chk, size_t chklen,
     unsigned int flags, char **peername);

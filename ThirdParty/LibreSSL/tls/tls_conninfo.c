@@ -1,4 +1,4 @@
-/* $OpenBSD: tls_conninfo.c,v 1.27 2024/03/26 06:31:22 jsing Exp $ */
+/* $OpenBSD: tls_conninfo.c,v 1.29 2026/03/28 11:33:33 tb Exp $ */
 /*
  * Copyright (c) 2015 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2015 Bob Beck <beck@openbsd.org>
@@ -89,7 +89,7 @@ tls_get_peer_cert_hash(struct tls *ctx, char **hash)
 static int
 tls_get_peer_cert_issuer(struct tls *ctx,  char **issuer)
 {
-	X509_NAME *name = NULL;
+	const X509_NAME *name = NULL;
 
 	*issuer = NULL;
 	if (ctx->ssl_peer_cert == NULL)
@@ -105,7 +105,7 @@ tls_get_peer_cert_issuer(struct tls *ctx,  char **issuer)
 static int
 tls_get_peer_cert_subject(struct tls *ctx, char **subject)
 {
-	X509_NAME *name = NULL;
+	const X509_NAME *name = NULL;
 
 	*subject = NULL;
 	if (ctx->ssl_peer_cert == NULL)
@@ -116,6 +116,14 @@ tls_get_peer_cert_subject(struct tls *ctx, char **subject)
 	if (*subject == NULL)
 		return (-1);
 	return (0);
+}
+
+static int
+tls_get_peer_cert_common_name(struct tls *ctx, char **common_name)
+{
+	if (ctx->ssl_peer_cert == NULL)
+		return (-1);
+	return tls_get_common_name(ctx, ctx->ssl_peer_cert, NULL, common_name);
 }
 
 static int
@@ -157,6 +165,9 @@ tls_get_peer_cert_info(struct tls *ctx)
 	if (tls_get_peer_cert_subject(ctx, &ctx->conninfo->subject) == -1)
 		goto err;
 	if (tls_get_peer_cert_issuer(ctx, &ctx->conninfo->issuer) == -1)
+		goto err;
+	if (tls_get_peer_cert_common_name(ctx,
+	    &ctx->conninfo->common_name) == -1)
 		goto err;
 	if (tls_get_peer_cert_times(ctx, &ctx->conninfo->notbefore,
 	    &ctx->conninfo->notafter) == -1)
@@ -298,6 +309,7 @@ tls_conninfo_free(struct tls_conninfo *conninfo)
 	free(conninfo->servername);
 	free(conninfo->version);
 
+	free(conninfo->common_name);
 	free(conninfo->hash);
 	free(conninfo->issuer);
 	free(conninfo->subject);

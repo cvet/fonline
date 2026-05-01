@@ -1,4 +1,4 @@
-/*	$OpenBSD: ecdhtest.c,v 1.20 2023/07/16 07:34:07 tb Exp $ */
+/*	$OpenBSD: ecdhtest.c,v 1.22 2024/12/24 18:32:31 tb Exp $ */
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
@@ -174,12 +174,6 @@ static const struct ecdh_kat_test {
     const char *want;
 } ecdh_kat_tests[] = {
 	/* Keys and shared secrets from RFC 5114 */
-	{
-		.nid =	NID_X9_62_prime192v1,
-		.keya =	"323fa3169d8e9c6593f59476bc142000ab5be0e249c43426",
-		.keyb =	"631f95bb4a67632c9c476eee9ab695ab240a0499307fcf62",
-		.want =	"ad420182633f8526bfe954acda376f05e5ff4f837f54febe",
-	},
 	{
 		.nid =	NID_secp224r1,
 		.keya =	"b558eb6c288da707bbb4f8fbae2ab9e9cb62e3bc5c7573e2"

@@ -3876,3 +3876,26 @@ UFBXT_FILE_TEST(synthetic_unknown_extrapolation)
 	ufbxt_assert(anim_curve->post_extrapolation.repeat_count == -1);
 }
 #endif
+
+UFBXT_FILE_TEST_ALT(bake_constant_rotation, maya_anim_interpolation)
+#if UFBXT_IMPL
+{
+	ufbx_node *scene_node = ufbx_find_node(scene, "pCube1");
+	ufbxt_assert(scene_node);
+
+	ufbx_error error;
+	ufbx_baked_anim *bake = ufbx_bake_anim(scene, scene->anim, NULL, &error);
+	if (!bake) ufbxt_log_error(&error);
+	ufbxt_assert(bake);
+
+	ufbxt_assert(bake->nodes.count == 1);
+
+	ufbx_baked_node *node = &bake->nodes.data[0];
+	ufbxt_assert(node->typed_id == scene_node->typed_id);
+	ufbxt_assert(!node->constant_translation);
+	ufbxt_assert(node->constant_rotation);
+	ufbxt_assert(node->constant_scale);
+
+	ufbx_free_baked_anim(bake);
+}
+#endif

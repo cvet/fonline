@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void InitServerEngine(ServerEngine*);
+extern void ServerInitHook(ServerEngine*);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -120,7 +120,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 });
             }
             else {
-                WriteLog("Can't write health file '{}'", health_file_name);
+                WriteLog(LogType::Warning, "Can't write health file '{}'", health_file_name);
             }
         }
 
@@ -419,7 +419,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             // Scripting
             WriteLog("Init script modules");
 
-            InitServerEngine(this);
+            ServerInitHook(this);
 
             InitModules();
 
@@ -542,7 +542,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                     ProcessUnloginedPlayer(player.get());
                 }
                 catch (const UnknownMessageException&) {
-                    WriteLog("Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
+                    WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
                     connection->HardDisconnect();
                 }
                 catch (const NetBufferException& ex) {
@@ -835,7 +835,7 @@ void ServerEngine::DrawGui()
 
         if (!Lock(max_wait_time)) {
             ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
-            WriteLog("Server hanged (no response more than {})", max_wait_time);
+            WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
             return;
         }
     }
@@ -1078,7 +1078,7 @@ void ServerEngine::ProcessPlayer(Player* player)
 
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](auto s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
+            Process_Command(*in_buf, [player](LogType, string_view s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:
@@ -1168,12 +1168,16 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     out_buf->Push(data);
 }
 
-void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player)
+void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed, Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetLogCallback("Process_Command", logcb);
+    SetLogCallback("Process_Command", logcb_typed);
     auto remove_log_callback = scope_exit([]() noexcept { safe_call([] { SetLogCallback("Process_Command", nullptr); }); });
+
+    // Local untyped helper so the existing command-output sites stay readable; all command
+    // responses are user-facing info, not warnings/errors.
+    const auto logcb = [&logcb_typed](string_view s) { logcb_typed(LogType::Info, s); };
 
     const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
@@ -1414,7 +1418,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", [this](string_view str) FO_DEFERRED { LogToClients(str); });
+            SetLogCallback("LogToClients", [this](LogType, string_view str) FO_DEFERRED { LogToClients(str); });
         }
     } break;
     default:
@@ -1881,7 +1885,7 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
     in_buf.Unlock();
 
     if (file_index >= _updateFilesData.size()) {
-        WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
+        WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->HardDisconnect();
         return;
     }
@@ -1899,7 +1903,7 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     FO_NON_CONST_METHOD_HINT();
 
     if (connection->UpdateFileIndex == -1) {
-        WriteLog("Wrong update call, client host '{}'", connection->GetHost());
+        WriteLog(LogType::Warning, "Wrong update call, client host '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }

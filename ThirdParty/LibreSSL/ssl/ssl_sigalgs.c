@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_sigalgs.c,v 1.50 2024/07/09 13:43:57 beck Exp $ */
+/* $OpenBSD: ssl_sigalgs.c,v 1.53 2026/03/30 06:20:08 tb Exp $ */
 /*
  * Copyright (c) 2018-2020 Bob Beck <beck@openbsd.org>
  * Copyright (c) 2021 Joel Sing <jsing@openbsd.org>
@@ -90,21 +90,21 @@ const struct ssl_sigalg sigalgs[] = {
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA256,
-		.key_type = EVP_PKEY_RSA,
+		.key_type = EVP_PKEY_RSA_PSS,
 		.md = EVP_sha256,
 		.security_level = 3,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA384,
-		.key_type = EVP_PKEY_RSA,
+		.key_type = EVP_PKEY_RSA_PSS,
 		.md = EVP_sha384,
 		.security_level = 4,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA512,
-		.key_type = EVP_PKEY_RSA,
+		.key_type = EVP_PKEY_RSA_PSS,
 		.md = EVP_sha512,
 		.security_level = 5,
 		.flags = SIGALG_FLAG_RSA_PSS,
@@ -147,12 +147,15 @@ const struct ssl_sigalg sigalgs[] = {
 /* Sigalgs for TLSv1.3, in preference order. */
 const uint16_t tls13_sigalgs[] = {
 	SIGALG_RSA_PSS_RSAE_SHA512,
+	SIGALG_RSA_PSS_PSS_SHA512,
 	SIGALG_RSA_PKCS1_SHA512,
 	SIGALG_ECDSA_SECP521R1_SHA512,
 	SIGALG_RSA_PSS_RSAE_SHA384,
+	SIGALG_RSA_PSS_PSS_SHA384,
 	SIGALG_RSA_PKCS1_SHA384,
 	SIGALG_ECDSA_SECP384R1_SHA384,
 	SIGALG_RSA_PSS_RSAE_SHA256,
+	SIGALG_RSA_PSS_PSS_SHA256,
 	SIGALG_RSA_PKCS1_SHA256,
 	SIGALG_ECDSA_SECP256R1_SHA256,
 };
@@ -161,12 +164,15 @@ const size_t tls13_sigalgs_len = (sizeof(tls13_sigalgs) / sizeof(tls13_sigalgs[0
 /* Sigalgs for TLSv1.2, in preference order. */
 const uint16_t tls12_sigalgs[] = {
 	SIGALG_RSA_PSS_RSAE_SHA512,
+	SIGALG_RSA_PSS_PSS_SHA512,
 	SIGALG_RSA_PKCS1_SHA512,
 	SIGALG_ECDSA_SECP521R1_SHA512,
 	SIGALG_RSA_PSS_RSAE_SHA384,
+	SIGALG_RSA_PSS_PSS_SHA384,
 	SIGALG_RSA_PKCS1_SHA384,
 	SIGALG_ECDSA_SECP384R1_SHA384,
 	SIGALG_RSA_PSS_RSAE_SHA256,
+	SIGALG_RSA_PSS_PSS_SHA256,
 	SIGALG_RSA_PKCS1_SHA256,
 	SIGALG_ECDSA_SECP256R1_SHA256,
 	SIGALG_RSA_PKCS1_SHA1, /* XXX */
@@ -271,12 +277,14 @@ ssl_sigalg_pkey_ok(SSL *s, const struct ssl_sigalg *sigalg, EVP_PKEY *pkey)
 {
 	if (sigalg == NULL || pkey == NULL)
 		return 0;
+
 	if (sigalg->key_type != EVP_PKEY_id(pkey))
 		return 0;
 
 	/* RSA PSS must have a sufficiently large RSA key. */
 	if ((sigalg->flags & SIGALG_FLAG_RSA_PSS)) {
-		if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA ||
+		if ((EVP_PKEY_id(pkey) != EVP_PKEY_RSA &&
+		    EVP_PKEY_id(pkey) != EVP_PKEY_RSA_PSS) ||
 		    EVP_PKEY_size(pkey) < (2 * EVP_MD_size(sigalg->md()) + 2))
 			return 0;
 	}

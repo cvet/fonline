@@ -1,4 +1,4 @@
-/*	$OpenBSD: sha3.c,v 1.15 2023/04/16 15:32:16 jsing Exp $	*/
+/*	$OpenBSD: sha3.c,v 1.20 2025/04/18 07:36:11 jsing Exp $	*/
 /*
  * The MIT License (MIT)
  *
@@ -26,11 +26,10 @@
 #include <endian.h>
 #include <string.h>
 
+#include "crypto_internal.h"
 #include "sha3_internal.h"
 
 #define KECCAKF_ROUNDS 24
-
-#define ROTL64(x, y) (((x) << (y)) | ((x) >> (64 - (y))))
 
 static const uint64_t sha3_keccakf_rndc[24] = {
 	0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
@@ -54,20 +53,11 @@ static const int sha3_keccakf_piln[24] = {
 static void
 sha3_keccakf(uint64_t st[25])
 {
-	uint64_t t, bc[5];
+	uint64_t t0, t1, bc[5];
 	int i, j, r;
 
-#if BYTE_ORDER != LITTLE_ENDIAN
-	uint8_t *v;
-
-	for (i = 0; i < 25; i++) {
-		v = (uint8_t *) &st[i];
-		st[i] = ((uint64_t) v[0])	 | (((uint64_t) v[1]) << 8) |
-			(((uint64_t) v[2]) << 16) | (((uint64_t) v[3]) << 24) |
-			(((uint64_t) v[4]) << 32) | (((uint64_t) v[5]) << 40) |
-			(((uint64_t) v[6]) << 48) | (((uint64_t) v[7]) << 56);
-	}
-#endif
+	for (i = 0; i < 25; i++)
+		st[i] = le64toh(st[i]);
 
 	for (r = 0; r < KECCAKF_ROUNDS; r++) {
 
@@ -76,18 +66,18 @@ sha3_keccakf(uint64_t st[25])
 			bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
 
 		for (i = 0; i < 5; i++) {
-			t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
+			t0 = bc[(i + 4) % 5] ^ crypto_rol_u64(bc[(i + 1) % 5], 1);
 			for (j = 0; j < 25; j += 5)
-				st[j + i] ^= t;
+				st[j + i] ^= t0;
 		}
 
 		/* Rho Pi */
-		t = st[1];
+		t0 = st[1];
 		for (i = 0; i < 24; i++) {
 			j = sha3_keccakf_piln[i];
-			bc[0] = st[j];
-			st[j] = ROTL64(t, sha3_keccakf_rotc[i]);
-			t = bc[0];
+			t1 = st[j];
+			st[j] = crypto_rol_u64(t0, sha3_keccakf_rotc[i]);
+			t0 = t1;
 		}
 
 		/* Chi */
@@ -102,92 +92,82 @@ sha3_keccakf(uint64_t st[25])
 		st[0] ^= sha3_keccakf_rndc[r];
 	}
 
-#if BYTE_ORDER != LITTLE_ENDIAN
-	for (i = 0; i < 25; i++) {
-		v = (uint8_t *) &st[i];
-		t = st[i];
-		v[0] = t & 0xFF;
-		v[1] = (t >> 8) & 0xFF;
-		v[2] = (t >> 16) & 0xFF;
-		v[3] = (t >> 24) & 0xFF;
-		v[4] = (t >> 32) & 0xFF;
-		v[5] = (t >> 40) & 0xFF;
-		v[6] = (t >> 48) & 0xFF;
-		v[7] = (t >> 56) & 0xFF;
-	}
-#endif
+	for (i = 0; i < 25; i++)
+		st[i] = htole64(st[i]);
 }
 
 int
-sha3_init(sha3_ctx *c, int mdlen)
+sha3_init(sha3_ctx *ctx, int mdlen)
 {
 	if (mdlen < 0 || mdlen >= KECCAK_BYTE_WIDTH / 2)
 		return 0;
 
-	memset(c, 0, sizeof(*c));
+	memset(ctx, 0, sizeof(*ctx));
 
-	c->mdlen = mdlen;
-	c->rsize = KECCAK_BYTE_WIDTH - 2 * mdlen;
+	ctx->mdlen = mdlen;
+	ctx->rsize = KECCAK_BYTE_WIDTH - 2 * mdlen;
 
 	return 1;
 }
 
 int
-sha3_update(sha3_ctx *c, const void *data, size_t len)
+sha3_update(sha3_ctx *ctx, const void *_data, size_t len)
 {
+	const uint8_t *data = _data;
 	size_t i, j;
 
-	j = c->pt;
+	j = ctx->pt;
 	for (i = 0; i < len; i++) {
-		c->state.b[j++] ^= ((const uint8_t *) data)[i];
-		if (j >= c->rsize) {
-			sha3_keccakf(c->state.q);
+		ctx->state.b[j++] ^= data[i];
+		if (j >= ctx->rsize) {
+			sha3_keccakf(ctx->state.q);
 			j = 0;
 		}
 	}
-	c->pt = j;
+	ctx->pt = j;
 
 	return 1;
 }
 
 int
-sha3_final(void *md, sha3_ctx *c)
+sha3_final(void *_md, sha3_ctx *ctx)
 {
+	uint8_t *md = _md;
 	int i;
 
-	c->state.b[c->pt] ^= 0x06;
-	c->state.b[c->rsize - 1] ^= 0x80;
-	sha3_keccakf(c->state.q);
+	ctx->state.b[ctx->pt] ^= 0x06;
+	ctx->state.b[ctx->rsize - 1] ^= 0x80;
+	sha3_keccakf(ctx->state.q);
 
-	for (i = 0; i < c->mdlen; i++) {
-		((uint8_t *) md)[i] = c->state.b[i];
-	}
+	for (i = 0; i < ctx->mdlen; i++)
+		md[i] = ctx->state.b[i];
 
 	return 1;
 }
 
 /* SHAKE128 and SHAKE256 extensible-output functionality. */
 void
-shake_xof(sha3_ctx *c)
+shake_xof(sha3_ctx *ctx)
 {
-	c->state.b[c->pt] ^= 0x1F;
-	c->state.b[c->rsize - 1] ^= 0x80;
-	sha3_keccakf(c->state.q);
-	c->pt = 0;
+	ctx->state.b[ctx->pt] ^= 0x1f;
+	ctx->state.b[ctx->rsize - 1] ^= 0x80;
+	sha3_keccakf(ctx->state.q);
+	ctx->pt = 0;
 }
 
 void
-shake_out(sha3_ctx *c, void *out, size_t len)
+shake_out(sha3_ctx *ctx, void *_out, size_t len)
 {
+	uint8_t *out = _out;
 	size_t i, j;
 
-	j = c->pt;
+	j = ctx->pt;
 	for (i = 0; i < len; i++) {
-		if (j >= c->rsize) {
-			sha3_keccakf(c->state.q);
+		if (j >= ctx->rsize) {
+			sha3_keccakf(ctx->state.q);
 			j = 0;
 		}
-		((uint8_t *) out)[i] = c->state.b[j++];
+		out[i] = ctx->state.b[j++];
 	}
-	c->pt = j;
+	ctx->pt = j;
 }

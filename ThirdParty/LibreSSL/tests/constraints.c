@@ -1,4 +1,4 @@
-/*	$OpenBSD: constraints.c,v 1.18 2023/12/13 05:59:50 tb Exp $	*/
+/*	$OpenBSD: constraints.c,v 1.19 2026/04/13 17:04:23 beck Exp $	*/
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -558,7 +558,54 @@ test_constraints1(void)
 		failure = 1;
 		goto done;
 	}
-
+	c = "openbsd.org";
+	cl = strlen("openbsd.org");
+	d = "oopenbsd.org";
+	dl = strlen("oopenbsd.org");
+	if (x509_constraints_sandns(d, dl, c, cl)) {
+		FAIL("constraint '%s' should not have matched '%s'\n",
+		    c, d);
+		failure = 1;
+		goto done;
+	}
+	d = "*.openbsd.org";
+	dl = strlen("*.openbsd.org");
+	if (!x509_constraints_sandns(d, dl, c, cl)) {
+		FAIL("constraint '%s' should have matched '%s'\n",
+		    c, d);
+		failure = 1;
+		goto done;
+	}
+	c = "www.openbsd.org";
+	cl = strlen("www.openbsd.org");
+	if (x509_constraints_sandns(d, dl, c, cl)) {
+		FAIL("constraint '%s' should not have matched '%s'\n",
+		    c, d);
+		failure = 1;
+		goto done;
+	}
+	c = "";
+	cl = 0;
+	if (!x509_constraints_sandns(d, dl, c, cl)) {
+		FAIL("constraint '%s' should have matched '%s'\n",
+		    c, d);
+		failure = 1;
+		goto done;
+	}
+	/*
+	 * Note that this *will* match, but we do not allow ".openbsd.org"
+	 * as a sandns name - see invalid sandnsname tests above.
+	 */
+	c = ".openbsd.org";
+	cl = strlen(".openbsd.org");
+	d = ".openbsd.org";
+	dl = strlen(".openbsd.org");
+	if (!x509_constraints_sandns(d, dl, c, cl)) {
+		FAIL("constraint '%s' should have matched '%s'\n",
+		    c, d);
+		failure = 1;
+		goto done;
+	}
  done:
 	return failure;
 }

@@ -84,7 +84,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            WriteLog("Proto critter invalid data");
+            WriteLog(LogType::Warning, "Proto critter invalid data");
             errors++;
             continue;
         }
@@ -95,7 +95,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         const auto* proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (proto == nullptr) {
-            WriteLog("Proto critter '{}' not found", proto_name);
+            WriteLog(LogType::Warning, "Proto critter '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -103,7 +103,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
                 cr_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog("Unable to load critter '{}'", proto_name);
+                WriteLog(LogType::Warning, "Unable to load critter '{}'", proto_name);
                 ReportExceptionAndContinue(ex);
                 errors++;
             }
@@ -115,7 +115,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            WriteLog("Proto item invalid data");
+            WriteLog(LogType::Warning, "Proto item invalid data");
             errors++;
             continue;
         }
@@ -126,7 +126,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
         const auto* proto = meta.GetProtoItem(hashed_proto_name);
 
         if (proto == nullptr) {
-            WriteLog("Proto item '{}' not found", proto_name);
+            WriteLog(LogType::Warning, "Proto item '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -134,7 +134,7 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
                 item_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog("Unable to load item '{}'", proto_name);
+                WriteLog(LogType::Warning, "Unable to load item '{}'", proto_name);
                 ReportExceptionAndContinue(ex);
                 errors++;
             }

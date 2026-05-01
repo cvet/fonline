@@ -5,6 +5,13 @@
 For build just run from repository root one of the following scripts:  
 *Todo: finalize API and declare here*
 
+Validation scenarios can be run one at a time or batched in a single command:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests
+Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
+```
+
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.

@@ -1,4 +1,4 @@
-/* $OpenBSD: conf_lib.c,v 1.24 2024/08/31 09:50:52 tb Exp $ */
+/* $OpenBSD: conf_lib.c,v 1.26 2025/05/10 05:54:38 tb Exp $ */
 /* Written by Richard Levitte (richard@levitte.org) for the OpenSSL
  * project 2000.
  */
@@ -58,11 +58,11 @@
 
 #include <stdio.h>
 #include <openssl/crypto.h>
-#include <openssl/err.h>
 #include <openssl/conf.h>
 #include <openssl/lhash.h>
 
 #include "conf_local.h"
+#include "err_local.h"
 
 static const CONF_METHOD *default_CONF_method = NULL;
 
@@ -131,6 +131,8 @@ LCRYPTO_ALIAS(NCONF_load_bio);
 STACK_OF(CONF_VALUE) *
 NCONF_get_section(const CONF *conf, const char *section)
 {
+	CONF_VALUE *v;
+
 	if (conf == NULL) {
 		CONFerror(CONF_R_NO_CONF);
 		return NULL;
@@ -141,7 +143,10 @@ NCONF_get_section(const CONF *conf, const char *section)
 		return NULL;
 	}
 
-	return _CONF_get_section_values(conf, section);
+	if ((v = _CONF_get_section(conf, section)) == NULL)
+		return NULL;
+
+	return (STACK_OF(CONF_VALUE) *)v->value;
 }
 LCRYPTO_ALIAS(NCONF_get_section);
 
