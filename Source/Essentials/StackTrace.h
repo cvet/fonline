@@ -51,13 +51,8 @@ struct StackTraceFrame
     uint32_t Line {};
 };
 
-// Maximum number of native PCs captured per snapshot. Has to be large enough to cover the
-// full call chain from main() up to the deepest native frame at the moment of capture, so the
-// resolver can splice native and script frames correctly without losing the trace's tail
-// (entry-point side) when scripts are deep in nested contexts. 256 fits even very deep
-// Windows stacks (Catch2 + worker threads + AS engine + exception machinery) without making
-// `StackTraceData` itself prohibitively large.
-inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 256;
+// Maximum number of native PCs captured per snapshot.
+inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
 
 // One level of script execution within the unified stack trace. The provider returns layers
 // in nesting order — innermost (active context) first, then up the parent-context chain.
