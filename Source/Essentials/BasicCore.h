@@ -381,9 +381,9 @@ private:
 template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
+public:
     static_assert(std::is_nothrow_invocable_v<T>);
 
-public:
     explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
     {

@@ -811,90 +811,109 @@ void ServerEngine::SyncPoint()
     }
 }
 
-void ServerEngine::DrawGui(string_view server_name)
+void ServerEngine::DrawGui()
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto default_buf_size = 1000000; // ~1mb
-    string buf;
-    buf.reserve(default_buf_size);
-
-    if (ImGui::Begin(string(server_name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (!_started) {
-            if (!_startingError) {
-                ImGui::TextUnformatted("Server is starting...");
-            }
-            else {
-                ImGui::TextUnformatted("Server starting error, see log");
-            }
+    if (!_started) {
+        if (!_startingError) {
+            ImGui::TextUnformatted("Server is starting...");
         }
         else {
-            if (Settings.LockMaxWaitTime != 0) {
-                const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+            ImGui::TextUnformatted("Server starting error, see log");
+        }
 
-                if (!Lock(max_wait_time)) {
-                    ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
-                    WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
-                    ImGui::End();
-                    return;
+        return;
+    }
+
+    if (Settings.LockMaxWaitTime != 0) {
+        const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+
+        if (!Lock(max_wait_time)) {
+            ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
+            WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
+            return;
+        }
+    }
+    else {
+        Lock(std::nullopt);
+    }
+
+    auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+
+    if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+
+        if (ImGui::BeginTable("##InfoTable", 2, TABLE_FLAGS)) {
+            ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+            const auto info_row = [](const char* key, const string& value) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(key);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(value.c_str(), value.c_str() + value.size());
+            };
+
+            info_row("Version", strex("{}", Settings.GameVersion).str());
+            info_row("Compatibility version", strex("{}", Settings.CompatibilityVersion).str());
+            info_row("System time", strex("{}", nanotime::now()).str());
+            info_row("Synchronized time", strex("{}", GetSynchronizedTime()).str());
+            info_row("Server uptime", strex("{}", _stats.Uptime).str());
+            info_row("Connections", strex("{}", _stats.CurOnline).str());
+            info_row("Players", strex("{}", EntityMngr.GetPlayersCount()).str());
+            info_row("Critters", strex("{}", EntityMngr.GetCrittersCount()).str());
+            info_row("Locations", strex("{}", EntityMngr.GetLocationsCount()).str());
+            info_row("Maps", strex("{}", EntityMngr.GetMapsCount()).str());
+            info_row("Items", strex("{}", EntityMngr.GetItemsCount()).str());
+            info_row("Loops per second", strex("{}", _stats.LoopsPerSecond).str());
+            info_row("Average loop time", strex("{}", _stats.LoopAvgTime).str());
+            info_row("Min loop time", strex("{}", _stats.LoopMinTime).str());
+            info_row("Max loop time", strex("{}", _stats.LoopMaxTime).str());
+            info_row("KBytes Send", strex("{}", _stats.BytesSend / 1024).str());
+            info_row("KBytes Recv", strex("{}", _stats.BytesRecv / 1024).str());
+            info_row("Compress ratio", strex("{}", numeric_cast<float64_t>(_stats.DataReal) / numeric_cast<float64_t>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1)).str());
+            info_row("DB requests per minute", strex("{}", DbStorage.GetDbRequestsPerMinute()).str());
+
+            ImGui::EndTable();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Players")) {
+        for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
+            if (ImGui::TreeNode(strex("{} ({})", player->GetName(), player->GetId()).c_str())) {
+                const auto* cr = player->GetControlledCritter();
+
+                ImGui::LabelText("Host:", "%s", strex(" {}", player->GetConnection()->GetHost()).c_str());
+
+                if (cr != nullptr) {
+                    ImGui::LabelText("Critter:", "%s", strex(" {}", cr->GetName()).c_str());
+                    ImGui::LabelText("Hex:", "%s", strex(" {}", cr->GetHex()).c_str());
                 }
-            }
-            else {
-                Lock(std::nullopt);
-            }
 
-            auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
-
-            ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-            if (ImGui::TreeNode("Info")) {
-                buf = GetHealthInfo();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Players")) {
-                for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
-                    if (ImGui::TreeNode(strex("{} ({})", player->GetName(), player->GetId()).c_str())) {
-                        const auto* cr = player->GetControlledCritter();
-
-                        ImGui::LabelText("Host:", "%s", strex(" {}", player->GetConnection()->GetHost()).c_str());
-
-                        if (cr != nullptr) {
-                            ImGui::LabelText("Critter:", "%s", strex(" {}", cr->GetName()).c_str());
-                            ImGui::LabelText("Hex:", "%s", strex(" {}", cr->GetHex()).c_str());
-                        }
-
-                        ImGui::TreePop();
-                    }
-                }
-
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Locations")) {
-                for (const auto& loc : EntityMngr.GetLocations() | std::views::values) {
-                    if (ImGui::TreeNode(strex("{} ({})", loc->GetProtoId(), loc->GetId()).c_str())) {
-                        for (const auto& map : loc->GetMaps()) {
-                            if (ImGui::TreeNode(strex("{} ({})", map->GetProtoId(), map->GetId()).c_str())) {
-                                ImGui::TreePop();
-                            }
-                        }
-
-                        ImGui::TreePop();
-                    }
-                }
-
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Data base")) {
-                DbStorage.DrawGui();
                 ImGui::TreePop();
             }
         }
     }
 
-    ImGui::End();
+    if (ImGui::CollapsingHeader("Locations")) {
+        for (const auto& loc : EntityMngr.GetLocations() | std::views::values) {
+            if (ImGui::TreeNode(strex("{} ({})", loc->GetProtoId(), loc->GetId()).c_str())) {
+                for (const auto& map : loc->GetMaps()) {
+                    if (ImGui::TreeNode(strex("{} ({})", map->GetProtoId(), map->GetId()).c_str())) {
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Data base")) {
+        DbStorage.DrawGui();
+    }
 }
 
 auto ServerEngine::GetHealthInfo() const -> string

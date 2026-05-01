@@ -94,7 +94,7 @@ public:
     }
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override { return false; }
-    [[nodiscard]] auto GetMousePosition() const -> ipos32 override { return _settings->MousePos; }
+    [[nodiscard]] auto GetMousePosition() const -> ipos32 override { return _lastMousePos; }
     [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override { return {}; }
     [[nodiscard]] auto GetClipboardText() -> const string& override { return _clipboardTextStorage; }
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
@@ -131,7 +131,7 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         ignore_unused(relative_to);
-        _settings->MousePos = pos;
+        _lastMousePos = pos;
     }
 
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override
@@ -189,6 +189,7 @@ private:
 
     raw_ptr<GlobalSettings> _settings {};
     string _clipboardTextStorage {};
+    ipos32 _lastMousePos {};
     deque<InputEvent> _eventsQueue {};
     deque<InputEvent> _nextFrameEventsQueue {};
     bool _shiftDown {};
