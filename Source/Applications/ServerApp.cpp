@@ -129,6 +129,15 @@ int main(int argc, char** argv) // Handled by SDL
                 auto* window = App->CreateChildWindow(client_size, title);
                 FO_RUNTIME_ASSERT(window);
 
+                const auto saved_screen_w = App->Settings.ScreenWidth;
+                const auto saved_screen_h = App->Settings.ScreenHeight;
+                App->Settings.ScreenWidth = client_size.width;
+                App->Settings.ScreenHeight = client_size.height;
+                auto restore_settings = scope_exit([&]() noexcept {
+                    App->Settings.ScreenWidth = saved_screen_w;
+                    App->Settings.ScreenHeight = saved_screen_h;
+                });
+
                 auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), *window);
                 clients.emplace_back(std::move(client));
                 client_windows.emplace_back(window);
@@ -234,9 +243,11 @@ int main(int argc, char** argv) // Handled by SDL
                 const irect32 area = {0, iround<int32_t>(content_top), iround<int32_t>(host_w), iround<int32_t>(content_h)};
                 main_rect = area;
 
+                auto* shown = App->GetActiveWindow();
+
                 for (size_t i = 0; i < child_count; i++) {
                     if (auto* child = App->GetChildWindow(i); child != nullptr) {
-                        child->SetDisplayRect(area);
+                        child->SetDisplayRect(child == shown ? area : irect32 {});
                     }
                 }
             }
@@ -264,13 +275,30 @@ int main(int argc, char** argv) // Handled by SDL
                 const auto draw_texture = [](AppWindow* w, ImVec2 region) {
                     auto* tex = w->GetRenderTexture();
 
-                    if (tex == nullptr || region.x <= 0.0f || region.y <= 0.0f) {
+                    if (tex == nullptr || region.x <= 0.0f || region.y <= 0.0f || tex->Size.width <= 0 || tex->Size.height <= 0) {
                         return;
                     }
 
+                    const auto tex_w = numeric_cast<float32_t>(tex->Size.width);
+                    const auto tex_h = numeric_cast<float32_t>(tex->Size.height);
+                    const auto scale = std::min({1.0f, region.x / tex_w, region.y / tex_h});
+                    const auto img_size = ImVec2(tex_w * scale, tex_h * scale);
+                    const auto cursor = ImGui::GetCursorScreenPos();
+                    ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + region.x, cursor.y + region.y), IM_COL32(0, 0, 0, 255));
+
+                    const auto img_origin = ImVec2(cursor.x + (region.x - img_size.x) * 0.5f, cursor.y + (region.y - img_size.y) * 0.5f);
+                    ImGui::SetCursorScreenPos(img_origin);
+
                     const ImVec2 uv0 = tex->FlippedHeight ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 0.0f);
                     const ImVec2 uv1 = tex->FlippedHeight ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 1.0f);
-                    ImGui::Image(tex, region, uv0, uv1);
+                    ImGui::Image(tex, img_size, uv0, uv1);
+
+                    w->SetDisplayRect({
+                        iround<int32_t>(img_origin.x),
+                        iround<int32_t>(img_origin.y),
+                        std::max(1, iround<int32_t>(img_size.x)),
+                        std::max(1, iround<int32_t>(img_size.y)),
+                    });
                 };
 
                 if (layout_mode == WindowLayoutMode::SingleTab) {
