@@ -187,12 +187,6 @@ private:
         nanotime ServerStartTime {};
         timespan Uptime {};
 
-        int64_t BytesSend {};
-        int64_t BytesRecv {};
-        int64_t DataReal {1};
-        int64_t DataCompressed {1};
-        float32_t CompressRatio {};
-
         size_t MaxOnline {};
         size_t CurOnline {};
 
