@@ -552,22 +552,15 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Fonts
-    auto load_fonts_ok = true;
-
-    if (!FontMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
-        !FontMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
-        !FontMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_OLD_DEFAULT, "Default", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::IfaceSprites, false, true) || //
-        !FontMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
-        load_fonts_ok = false;
-    }
-
-    FO_RUNTIME_ASSERT(load_fonts_ok);
-    FontMngr.SetDefaultFont(FONT_OLD_DEFAULT);
+    FontMngr.BindFoFont(FONT_FO, "Fonts/OldDefault.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_NUM, "Fonts/Numbers.fofnt", AtlasType::IfaceSprites, true, true);
+    FontMngr.BindFoFont(FONT_BIG_NUM, "Fonts/BigNumbers.fofnt", AtlasType::IfaceSprites, true, true);
+    FontMngr.BindFoFont(FONT_SAND_NUM, "Fonts/SandNumbers.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_SPECIAL, "Fonts/Special.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_OLD_DEFAULT, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_THIN, "Fonts/Thin.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_FAT, "Fonts/Fat.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_BIG, "Fonts/Big.fofnt", AtlasType::IfaceSprites, false, true);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -873,6 +866,9 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
 void MapperEngine::DrawMapperFrame()
 {
     FO_STACK_TRACE_ENTRY();
+
+    EffectMngr.UpdateEffects(GameTime);
+    FontMngr.FrameUpdate();
 
     {
         SprMngr.BeginScene();

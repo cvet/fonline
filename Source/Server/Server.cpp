@@ -1008,7 +1008,7 @@ void ServerEngine::DrawGui()
                 info_row("Lexems", cr->GetLexems());
                 info_row("Inventory items", strex("{}", cr->GetInvItems().size()).str());
                 info_row("Visible items", strex("{}", cr->GetVisibleItems().size()).str());
-                info_row("Attached critters", strex("{}", cr->AttachedCritters.size()).str());
+                info_row("Attached critters", strex("{}", cr->GetAttachedCritters().size()).str());
                 ImGui::EndTable();
             }
 

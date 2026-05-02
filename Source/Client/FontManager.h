@@ -43,6 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(FontManagerException);
+
 class SpriteManager;
 class AtlasSprite;
 
@@ -98,18 +100,21 @@ public:
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
     [[nodiscard]] auto HaveLetter(FontType font, uint32_t letter) const -> bool;
 
-    auto LoadFontFO(FontType font, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(FontType font, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(FontType font);
+    void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded);
+    void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type);
     void SetFontEffect(FontType font, RenderEffect* effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
     auto SplitLines(irect32 rect, string_view cstr, FontType font) -> vector<string>;
     void ClearFonts();
+    void FrameUpdate();
 
 private:
-    static constexpr int32_t FORMAT_TYPE_DRAW = 0;
-    static constexpr int32_t FORMAT_TYPE_SPLIT = 1;
-    static constexpr int32_t FORMAT_TYPE_LCOUNT = 2;
+    enum class FormatMode : int32_t
+    {
+        Draw,
+        Split,
+        LineCount,
+    };
 
     static constexpr auto COLOR_TEXT_DEFAULT = ucolor {60, 248, 0};
 
@@ -137,59 +142,37 @@ private:
         bool MakeGray {};
     };
 
-    // Todo: optimize text formatting - cache previous results
     struct FontFormatInfo
     {
-        raw_ptr<const FontData> CurFont {};
         TextFormat Format {};
+        raw_ptr<const FontData> CurFont {};
         irect32 Rect {};
-        vector<char> Str {};
-        raw_ptr<char> PStr {};
+        string Text {};
         int32_t LinesAll {1};
         int32_t LinesInRect {};
         int32_t CurX {};
         int32_t CurY {};
         int32_t MaxCurX {};
-        vector<ucolor> ColorDots {};
+        vector<ucolor> TextColor {};
         vector<int32_t> LineWidth {};
         vector<int32_t> LineSpaceWidth {};
-        int32_t OffsColDots {};
-        ucolor DefColor {COLOR_TEXT_DEFAULT};
-        raw_ptr<vector<string>> StrLines {};
-        bool IsError {};
-
-        void Prepare(string_view str)
-        {
-            const auto str_len = str.length();
-            const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
-            const auto max_lines = std::max<size_t>(str_len + 1, 1);
-
-            Str.assign(max_chars, '\0');
-            ColorDots.assign(max_chars, ucolor::clear);
-            LineWidth.assign(max_lines, 0);
-            LineSpaceWidth.assign(max_lines, 0);
-            PStr = Str.data();
-            LinesAll = 1;
-            LinesInRect = 0;
-            CurX = 0;
-            CurY = 0;
-            MaxCurX = 0;
-            OffsColDots = 0;
-            StrLines = nullptr;
-            IsError = false;
-        }
+        int32_t ColorOffset {};
+        ucolor Color {COLOR_TEXT_DEFAULT};
+        vector<string> Lines {};
+        uint64_t LastUsedFrame {};
     };
 
     [[nodiscard]] auto GetFont(FontType font) -> FontData*;
     [[nodiscard]] auto GetFont(FontType font) const -> const FontData*;
 
     void BuildFont(int32_t index);
-    void FormatText(FontFormatInfo& fi, int32_t fmt_type) const;
+    void FormatText(FontFormatInfo& fi, FormatMode mode) const;
+    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> const FontFormatInfo*;
 
     raw_ptr<SpriteManager> _sprMngr;
     vector<unique_ptr<FontData>> _allFonts {};
-    int32_t _defFontIndex {};
-    mutable FontFormatInfo _fontFormatInfoBuf {};
+    uint64_t _frameIndex {1};
+    mutable unordered_map<uint64_t, unique_ptr<FontFormatInfo>> _formatCache {};
 };
 
 FO_END_NAMESPACE

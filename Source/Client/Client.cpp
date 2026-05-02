@@ -339,6 +339,7 @@ void ClientEngine::MainLoop()
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
+    FontMngr.FrameUpdate();
 
     {
         SprMngr.BeginScene();

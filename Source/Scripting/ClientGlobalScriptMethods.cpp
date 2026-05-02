@@ -686,26 +686,17 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ClientEngine* client, readonly_vec
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_LoadFont(ClientEngine* client, FontType font, string_view fontFname)
+FO_SCRIPT_API void Client_Game_BindFont(ClientEngine* client, FontType font, string_view fontFname)
 {
-    bool result;
-
-    if (!fontFname.empty() && fontFname[0] == '*') {
-        result = client->FontMngr.LoadFontFO(font, fontFname.substr(1), AtlasType::IfaceSprites, false, false);
+    if (fontFname.ends_with(".fofnt")) {
+        client->FontMngr.BindFoFont(font, fontFname, AtlasType::IfaceSprites, false, false);
+    }
+    else if (fontFname.ends_with(".fnt")) {
+        client->FontMngr.BindBmfFont(font, fontFname, AtlasType::IfaceSprites);
     }
     else {
-        result = client->FontMngr.LoadFontBmf(font, fontFname, AtlasType::IfaceSprites);
+        throw ScriptException("Unknown font file extension", font, fontFname);
     }
-
-    if (!result) {
-        throw ScriptException("Can't load font", font, fontFname);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetDefaultFont(ClientEngine* client, FontType font)
-{
-    client->FontMngr.SetDefaultFont(font);
 }
 
 ///@ ExportMethod

@@ -87,7 +87,7 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _sprMngr.EndScene();
 
     // Load font
-    _fontMngr.LoadFontFO(FontType::Default, "Default", AtlasType::IfaceSprites, false, true);
+    _fontMngr.BindFoFont(FontType::Default, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
@@ -180,6 +180,8 @@ auto Updater::Process() -> bool
     }
 
     {
+        _effectMngr.UpdateEffects(_gameTime);
+        _fontMngr.FrameUpdate();
         _sprMngr.BeginScene();
 
         if (_splashPic) {
