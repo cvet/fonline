@@ -360,7 +360,27 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Load OpenGL function pointers via SDL and detect capabilities from GL_VERSION + extension strings
 #if !FO_OPENGL_ES
     LoadOpenGLFunctions();
-    FO_RUNTIME_ASSERT_STR(glGetString != nullptr, "Failed to load core OpenGL entry points");
+
+    // Validate required functions
+    {
+        string missing_funcs;
+
+        const auto check_loaded = [&](const char* fn_name, bool is_null) {
+            const string_view sv = fn_name;
+            if (is_null && !sv.ends_with("EXT") && !sv.ends_with("APPLE")) {
+                if (!missing_funcs.empty()) {
+                    missing_funcs += ", ";
+                }
+                missing_funcs += fn_name;
+            }
+        };
+
+#define FO_GL_FUNCTION_VALIDATE(name, type) check_loaded(#name, (name) == nullptr)
+        FO_GL_FUNCTIONS(FO_GL_FUNCTION_VALIDATE);
+#undef FO_GL_FUNCTION_VALIDATE
+
+        FO_RUNTIME_ASSERT_STR(missing_funcs.empty(), strex("Missing required OpenGL entry points: {}", missing_funcs));
+    }
 
     int32_t gl_major = 0;
     int32_t gl_minor = 0;
