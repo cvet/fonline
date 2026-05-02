@@ -108,6 +108,7 @@ SpriteManager::~SpriteManager()
 {
     FO_STACK_TRACE_ENTRY();
 
+    _eventUnsubscriber.Unsubscribe();
     _window->Destroy();
 }
 

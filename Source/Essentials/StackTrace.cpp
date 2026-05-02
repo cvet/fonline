@@ -299,20 +299,15 @@ extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTrac
     uint32_t prev_anchor = 0;
 
     for (const auto& layer : layers) {
-        for (const auto& frame : layer.ScriptFrames) {
-            frames.push_back(frame);
-        }
-
         const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
 
-        // Only splice native frames between layers when the anchor was actually located in
-        // the current capture. If it wasn't found (anchor == NativeFrameCount), leave
-        // prev_anchor alone — the remaining native frames will land in the tail after the
-        // outermost layer instead of being dumped into the gap between this layer and the
-        // next one (which would put main()'s frames in the wrong slot).
         if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
             ResolveNativeRange(st, prev_anchor, anchor, frames);
             prev_anchor = anchor;
+        }
+
+        for (const auto& frame : layer.ScriptFrames) {
+            frames.push_back(frame);
         }
     }
 
