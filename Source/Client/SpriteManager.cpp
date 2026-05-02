@@ -104,14 +104,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
 }
 
-SpriteManager::~SpriteManager()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _eventUnsubscriber.Unsubscribe();
-    _window->Destroy();
-}
-
 auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
