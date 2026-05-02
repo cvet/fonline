@@ -936,7 +936,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_RUNTIME_ASSERT(rect.height >= 0);
 
     const std::array<uint64_t, 8> key_parts {
-        hashing::hash<string> {}(str),
+        hashing_ex::hash(str.data(), str.size()),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),
