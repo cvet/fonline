@@ -35,11 +35,11 @@
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
+#include "ClientDataValidation.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "NetCommand.h"
 #include "PropertiesSerializator.h"
-#include "RemoteCallValidation.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1008,7 +1008,7 @@ void ServerEngine::DrawGui()
                 info_row("Lexems", cr->GetLexems());
                 info_row("Inventory items", strex("{}", cr->GetInvItems().size()).str());
                 info_row("Visible items", strex("{}", cr->GetVisibleItems().size()).str());
-                info_row("Attached critters", strex("{}", cr->AttachedCritters.size()).str());
+                info_row("Attached critters", strex("{}", cr->GetAttachedCritters().size()).str());
                 ImGui::EndTable();
             }
 
@@ -1878,8 +1878,8 @@ void ServerEngine::UnloadCritter(Critter* cr)
         cr->DetachFromCritter();
     }
 
-    if (!cr->AttachedCritters.empty()) {
-        for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+    if (cr->HasAttachedCritters()) {
+        for (auto* attached_cr : copy_hold_ref(cr->GetAttachedCritters())) {
             attached_cr->DetachFromCritter();
         }
     }
@@ -1996,16 +1996,18 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     cr->Send_TimeSync();
 
-    if (cr->ViewMapId) {
-        auto* map = EntityMngr.GetMap(cr->ViewMapId);
-        cr->ViewMapId = ident_t {};
+    if (const auto* view_map = cr->GetViewMap(); view_map != nullptr) {
+        auto* map = EntityMngr.GetMap(view_map->MapId);
 
         if (map != nullptr) {
-            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHex, cr->ViewMapDir);
+            MapMngr.ViewMap(cr, map, view_map->Look, view_map->Hex, view_map->Dir);
             cr->Send_ViewMap();
             cr->Send_TimeSync();
+            cr->ResetViewMap();
             return;
         }
+
+        cr->ResetViewMap();
     }
 
     const auto* map = EntityMngr.GetMap(cr->GetMapId());
@@ -2724,54 +2726,44 @@ void ServerEngine::Process_Property(Player* player)
     }
 
     if (prop == nullptr) {
-        WriteLog("Process_Property: unknown property index {}, player '{}', type {}", property_index, player->GetName(), type);
-        return;
+        throw GenericException("Unknown property index", player->GetName(), type, property_index);
     }
     if (entity == nullptr) {
-        WriteLog("Process_Property: entity not found for property '{}', player '{}', type {}, cr_id {}, item_id {}", prop->GetName(), player->GetName(), type, cr_id, item_id);
-        return;
+        throw GenericException("Entity not found for property", player->GetName(), type, property_index, cr_id, item_id);
     }
 
     if (prop->IsDisabled()) {
-        WriteLog("Process_Property: property '{}' is disabled, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (prop->IsVirtual()) {
-        WriteLog("Process_Property: property '{}' is virtual, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        WriteLog("Process_Property: property '{}' is not public sync, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!is_public && !prop->IsSynced()) {
-        WriteLog("Process_Property: property '{}' is not synced, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        WriteLog("Process_Property: property '{}' is not modifiable by client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        WriteLog("Process_Property: property '{}' is public but not modifiable by any client, player '{}', type {}, entity '{}'", prop->GetName(), player->GetName(), type, entity->GetName());
-        return;
+        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
-    if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
-        WriteLog("Process_Property: property '{}' data size mismatch (got {}, expected {}), player '{}', type {}, entity '{}'", prop->GetName(), data_size, prop->GetBaseSize(), player->GetName(), type, entity->GetName());
-        return;
+    try {
+        ValidateInboundPropertyData(prop, {static_cast<const uint8_t*>(prop_data.GetPtr()), prop_data.GetSize()}, *this);
     }
-    if (!prop->IsPlainData() && data_size != 0) {
-        WriteLog("Process_Property: property '{}' is complex but got non-zero data_size {}, player '{}', type {}, entity '{}'", prop->GetName(), data_size, player->GetName(), type, entity->GetName());
-        return;
+    catch (const ClientDataValidationException& ex) {
+        WriteLog("Process_Property: property '{}' validation failed ({}), player '{}', type {}, entity '{}'", prop->GetName(), ex.what(), player->GetName(), type, entity->GetName());
+        throw;
     }
 
     {
         player->SetIgnoreSendEntityProperty(entity, prop);
         auto revert_send_ignore = scope_exit([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
 
-        // Todo: verify property data from client
         entity->SetValueFromData(prop, prop_data);
     }
 }
@@ -3208,7 +3200,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         cr->SetDir(progress.Dir);
 
-        if (!cr->AttachedCritters.empty()) {
+        if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
 
             if (!validate_moving(cr_hex)) {

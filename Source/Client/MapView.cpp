@@ -42,6 +42,25 @@ static constexpr int32_t MAX_LIGHT_INTEN = 10000;
 static constexpr int32_t MAX_LIGHT_HEX = 200;
 static constexpr int32_t MAX_LIGHT_ALPHA = 255;
 
+// Property `Item::LightFlags` is still a packed uint8 (lower 6 bits: directions, 0x40: global, 0x80: inverse).
+// Translate it into the engine-internal split form (LightFlag + dirs mask).
+static auto SplitLegacyLightFlags(uint8_t raw) noexcept -> pair<LightFlag, uint8_t>
+{
+    static constexpr uint8_t LEGACY_GLOBAL_BIT = 0x40;
+    static constexpr uint8_t LEGACY_INVERSE_BIT = 0x80;
+    static constexpr uint8_t LEGACY_DIRS_MASK = 0x3F;
+
+    LightFlag flags = LightFlag::None;
+    if ((raw & LEGACY_GLOBAL_BIT) != 0) {
+        flags = CombineEnum(flags, LightFlag::Global);
+    }
+    if ((raw & LEGACY_INVERSE_BIT) != 0) {
+        flags = CombineEnum(flags, LightFlag::Inverse);
+    }
+
+    return {flags, static_cast<uint8_t>(raw & LEGACY_DIRS_MASK)};
+}
+
 void SpritePattern::Finish()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1375,7 +1394,8 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     for (const auto& item : cr->GetInvItems()) {
         if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), cr->GetSpriteOffsetPtr());
+            const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
+            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), cr->GetSpriteOffsetPtr());
             light_added = true;
             break;
         }
@@ -1383,7 +1403,8 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 
     // Default chosen light
     if (!light_added && cr->GetIsChosen()) {
-        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
+        const auto [flags, dirs] = SplitLegacyLightFlags(_engine->Settings.ChosenLightFlags);
+        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, flags, dirs, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
         light_added = true;
     }
 
@@ -1403,7 +1424,8 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
     }
 
     if (item->GetLightSource()) {
-        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), item->GetSpriteOffsetPtr());
+        const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
+        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), item->GetSpriteOffsetPtr());
     }
     else {
         FinishLightSource(item->GetId());
@@ -1425,7 +1447,7 @@ void MapView::UpdateHexLightSources(mpos hex)
     }
 }
 
-void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, uint8_t flags, int32_t intensity, const ipos32* offset)
+void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, uint8_t dirs, int32_t intensity, const ipos32* offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1434,13 +1456,13 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, dirs, intensity, offset)).first->second.get();
     }
     else {
         ls = it->second.get();
 
         // Ignore redundant updates
-        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity) {
+        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Dirs == dirs && ls->Intensity == intensity) {
             return;
         }
 
@@ -1451,6 +1473,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         ls->Color = color;
         ls->Distance = distance;
         ls->Flags = flags;
+        ls->Dirs = dirs;
         ls->Intensity = intensity;
     }
 
@@ -1521,11 +1544,11 @@ void MapView::ApplyLightFan(LightSource* ls)
     ls->FanHexes.clear();
     ls->FanHexes.reserve(numeric_cast<size_t>(distance) * GameSettings::MAP_DIR_COUNT);
 
-    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
         _globalLights++;
     }
 
-    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
         ls->Capacity = _globalDayLightCapacity;
     }
     else if (ls->Intensity >= 0) {
@@ -1535,7 +1558,7 @@ void MapView::ApplyLightFan(LightSource* ls)
         ls->Capacity = 100;
     }
 
-    if (IsBitSet(ls->Flags, LIGHT_INVERSE)) {
+    if (IsEnumSet(ls->Flags, LightFlag::Inverse)) {
         ls->Capacity = 100 - ls->Capacity;
     }
 
@@ -1549,6 +1572,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     ipos32 raw_traced_hex = {center_hex.x, center_hex.y};
     bool seek_start = true;
     optional<mpos> last_traced_hex;
+    const auto dirs_are_allowed = IsEnumSet(ls->Flags, LightFlag::AllowedDirs);
 
     for (int32_t i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
         mdir dir;
@@ -1582,7 +1606,9 @@ void MapView::ApplyLightFan(LightSource* ls)
 
             auto traced_hex = _mapSize.clamp_pos(raw_traced_hex);
 
-            if (IsBitSet(ls->Flags & LIGHT_DISABLE_DIR_MASK, 1u << i)) {
+            const bool dir_in_mask = (ls->Dirs & (1u << i)) != 0;
+            const bool dir_disabled = dirs_are_allowed ? !dir_in_mask : dir_in_mask;
+            if (dir_disabled) {
                 traced_hex = center_hex;
             }
             else {
@@ -1624,7 +1650,7 @@ void MapView::CleanLightFan(LightSource* ls)
 
     ls->Applied = false;
 
-    if (IsBitSet(ls->Flags, LIGHT_GLOBAL)) {
+    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
         FO_RUNTIME_ASSERT(_globalLights > 0);
         _globalLights--;
     }

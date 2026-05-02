@@ -225,10 +225,10 @@ void CritterManager::DestroyCritter(Critter* cr)
 
     // Tear off from environment
     {
-        cr->LockMapTransfers++;
-        auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
+        cr->LockMapTransfers();
+        auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
-        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || !cr->AttachedCritters.empty(); detector.AddLoop()) {
+        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters(); detector.AddLoop()) {
             try {
                 DestroyInventory(cr);
 
@@ -240,8 +240,8 @@ void CritterManager::DestroyCritter(Critter* cr)
                     cr->DetachFromCritter();
                 }
 
-                if (!cr->AttachedCritters.empty()) {
-                    for (auto* attached_cr : copy_hold_ref(cr->AttachedCritters)) {
+                if (cr->HasAttachedCritters()) {
+                    for (auto* attached_cr : copy_hold_ref(cr->GetAttachedCritters())) {
                         attached_cr->DetachFromCritter();
                     }
                 }

@@ -42,7 +42,8 @@
 #include "SDL3/SDL_video.h"
 
 #if !FO_OPENGL_ES
-#include "GL/glew.h"
+#define SDL_OPENGL_1_NO_PROTOTYPES
+#define SDL_OPENGL_1_FUNCTION_TYPEDEFS
 #include "SDL3/SDL_opengl.h"
 #endif
 
@@ -57,6 +58,96 @@
 #endif
 
 FO_BEGIN_NAMESPACE
+
+#if !FO_OPENGL_ES
+#define FO_GL_FUNCTIONS(X) \
+    X(glActiveTexture, PFNGLACTIVETEXTUREPROC); \
+    X(glAttachShader, PFNGLATTACHSHADERPROC); \
+    X(glBindBuffer, PFNGLBINDBUFFERPROC); \
+    X(glBindBufferBase, PFNGLBINDBUFFERBASEPROC); \
+    X(glBindFramebuffer, PFNGLBINDFRAMEBUFFERPROC); \
+    X(glBindFramebufferEXT, PFNGLBINDFRAMEBUFFEREXTPROC); \
+    X(glBindRenderbuffer, PFNGLBINDRENDERBUFFERPROC); \
+    X(glBindRenderbufferEXT, PFNGLBINDRENDERBUFFEREXTPROC); \
+    X(glBindTexture, PFNGLBINDTEXTUREPROC); \
+    X(glBindVertexArray, PFNGLBINDVERTEXARRAYPROC); \
+    X(glBindVertexArrayAPPLE, PFNGLBINDVERTEXARRAYAPPLEPROC); \
+    X(glBlendEquation, PFNGLBLENDEQUATIONPROC); \
+    X(glBlendFunc, PFNGLBLENDFUNCPROC); \
+    X(glBufferData, PFNGLBUFFERDATAPROC); \
+    X(glCheckFramebufferStatus, PFNGLCHECKFRAMEBUFFERSTATUSPROC); \
+    X(glCheckFramebufferStatusEXT, PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC); \
+    X(glClear, PFNGLCLEARPROC); \
+    X(glClearColor, PFNGLCLEARCOLORPROC); \
+    X(glClearDepthf, PFNGLCLEARDEPTHFPROC); \
+    X(glClearStencil, PFNGLCLEARSTENCILPROC); \
+    X(glCompileShader, PFNGLCOMPILESHADERPROC); \
+    X(glCreateProgram, PFNGLCREATEPROGRAMPROC); \
+    X(glCreateShader, PFNGLCREATESHADERPROC); \
+    X(glDeleteBuffers, PFNGLDELETEBUFFERSPROC); \
+    X(glDeleteFramebuffers, PFNGLDELETEFRAMEBUFFERSPROC); \
+    X(glDeleteFramebuffersEXT, PFNGLDELETEFRAMEBUFFERSEXTPROC); \
+    X(glDeleteProgram, PFNGLDELETEPROGRAMPROC); \
+    X(glDeleteRenderbuffers, PFNGLDELETERENDERBUFFERSPROC); \
+    X(glDeleteRenderbuffersEXT, PFNGLDELETERENDERBUFFERSEXTPROC); \
+    X(glDeleteShader, PFNGLDELETESHADERPROC); \
+    X(glDeleteTextures, PFNGLDELETETEXTURESPROC); \
+    X(glDeleteVertexArrays, PFNGLDELETEVERTEXARRAYSPROC); \
+    X(glDeleteVertexArraysAPPLE, PFNGLDELETEVERTEXARRAYSAPPLEPROC); \
+    X(glDepthMask, PFNGLDEPTHMASKPROC); \
+    X(glDetachShader, PFNGLDETACHSHADERPROC); \
+    X(glDisable, PFNGLDISABLEPROC); \
+    X(glDisableVertexAttribArray, PFNGLDISABLEVERTEXATTRIBARRAYPROC); \
+    X(glDrawElements, PFNGLDRAWELEMENTSPROC); \
+    X(glEnable, PFNGLENABLEPROC); \
+    X(glEnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC); \
+    X(glFramebufferRenderbuffer, PFNGLFRAMEBUFFERRENDERBUFFERPROC); \
+    X(glFramebufferRenderbufferEXT, PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC); \
+    X(glFramebufferTexture2D, PFNGLFRAMEBUFFERTEXTURE2DPROC); \
+    X(glFramebufferTexture2DEXT, PFNGLFRAMEBUFFERTEXTURE2DEXTPROC); \
+    X(glGenBuffers, PFNGLGENBUFFERSPROC); \
+    X(glGenFramebuffers, PFNGLGENFRAMEBUFFERSPROC); \
+    X(glGenFramebuffersEXT, PFNGLGENFRAMEBUFFERSEXTPROC); \
+    X(glGenRenderbuffers, PFNGLGENRENDERBUFFERSPROC); \
+    X(glGenRenderbuffersEXT, PFNGLGENRENDERBUFFERSEXTPROC); \
+    X(glGenTextures, PFNGLGENTEXTURESPROC); \
+    X(glGenVertexArrays, PFNGLGENVERTEXARRAYSPROC); \
+    X(glGenVertexArraysAPPLE, PFNGLGENVERTEXARRAYSAPPLEPROC); \
+    X(glGetError, PFNGLGETERRORPROC); \
+    X(glGetIntegerv, PFNGLGETINTEGERVPROC); \
+    X(glGetProgramInfoLog, PFNGLGETPROGRAMINFOLOGPROC); \
+    X(glGetProgramiv, PFNGLGETPROGRAMIVPROC); \
+    X(glGetShaderInfoLog, PFNGLGETSHADERINFOLOGPROC); \
+    X(glGetShaderiv, PFNGLGETSHADERIVPROC); \
+    X(glGetString, PFNGLGETSTRINGPROC); \
+    X(glGetUniformBlockIndex, PFNGLGETUNIFORMBLOCKINDEXPROC); \
+    X(glLinkProgram, PFNGLLINKPROGRAMPROC); \
+    X(glPixelStorei, PFNGLPIXELSTOREIPROC); \
+    X(glPolygonMode, PFNGLPOLYGONMODEPROC); \
+    X(glReadPixels, PFNGLREADPIXELSPROC); \
+    X(glRenderbufferStorage, PFNGLRENDERBUFFERSTORAGEPROC); \
+    X(glRenderbufferStorageEXT, PFNGLRENDERBUFFERSTORAGEEXTPROC); \
+    X(glScissor, PFNGLSCISSORPROC); \
+    X(glShaderSource, PFNGLSHADERSOURCEPROC); \
+    X(glTexImage2D, PFNGLTEXIMAGE2DPROC); \
+    X(glTexParameteri, PFNGLTEXPARAMETERIPROC); \
+    X(glTexSubImage2D, PFNGLTEXSUBIMAGE2DPROC); \
+    X(glUniformBlockBinding, PFNGLUNIFORMBLOCKBINDINGPROC); \
+    X(glUseProgram, PFNGLUSEPROGRAMPROC); \
+    X(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC); \
+    X(glViewport, PFNGLVIEWPORTPROC)
+
+#define FO_GL_FUNCTION_DEF(name, type) static type name = nullptr
+FO_GL_FUNCTIONS(FO_GL_FUNCTION_DEF);
+#undef FO_GL_FUNCTION_DEF
+
+static void LoadOpenGLFunctions() noexcept
+{
+#define FO_GL_FUNCTION_LOAD(name, type) name = reinterpret_cast<type>(SDL_GL_GetProcAddress(#name))
+    FO_GL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
+#undef FO_GL_FUNCTION_LOAD
+}
+#endif
 
 #if FO_MAC && !FO_OPENGL_ES
 #undef glGenVertexArrays
@@ -266,21 +357,58 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     _ctx->GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
 #endif
 
-    // Initialize GLEW
-    // Todo: remove GLEW and bind OpenGL functions manually
+    // Load OpenGL function pointers via SDL and detect capabilities from GL_VERSION + extension strings
 #if !FO_OPENGL_ES
-    const auto glew_result = glewInit();
-    FO_RUNTIME_ASSERT_STR(glew_result == GLEW_OK, strex("GLEW not initialized, result {}", glew_result));
-    _ctx->OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
-    _ctx->OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0; // >= 2.0
-    _ctx->OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0; // >= 3.0
-    _ctx->OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
+    LoadOpenGLFunctions();
+
+    // Validate required functions
+    {
+        string missing_funcs;
+
+        const auto check_loaded = [&](const char* fn_name, bool is_null) {
+            const string_view sv = fn_name;
+            if (is_null && !sv.ends_with("EXT") && !sv.ends_with("APPLE")) {
+                if (!missing_funcs.empty()) {
+                    missing_funcs += ", ";
+                }
+                missing_funcs += fn_name;
+            }
+        };
+
+#define FO_GL_FUNCTION_VALIDATE(name, type) check_loaded(#name, (name) == nullptr)
+        FO_GL_FUNCTIONS(FO_GL_FUNCTION_VALIDATE);
+#undef FO_GL_FUNCTION_VALIDATE
+
+        FO_RUNTIME_ASSERT_STR(missing_funcs.empty(), strex("Missing required OpenGL entry points: {}", missing_funcs));
+    }
+
+    int32_t gl_major = 0;
+    int32_t gl_minor = 0;
+
+    if (const auto* version_str = reinterpret_cast<const char*>(glGetString(GL_VERSION)); version_str != nullptr) {
+        const auto parts = strvex(version_str).split('.');
+
+        if (parts.size() >= 1) {
+            gl_major = numeric_cast<int32_t>(strvex(parts[0]).to_int64());
+        }
+        if (parts.size() >= 2) {
+            gl_minor = numeric_cast<int32_t>(strvex(parts[1]).to_int64());
+        }
+    }
+
+    const auto has_extension = [](const char* name) noexcept -> bool { return SDL_GL_ExtensionSupported(name); };
+    const auto at_least = [&](int32_t major, int32_t minor) noexcept -> bool { return gl_major > major || (gl_major == major && gl_minor >= minor); };
+
+    _ctx->OGL_version_2_0 = at_least(2, 0);
+    _ctx->OGL_vertex_buffer_object = at_least(2, 0) || has_extension("GL_ARB_vertex_buffer_object");
+    _ctx->OGL_framebuffer_object = at_least(3, 0) || has_extension("GL_ARB_framebuffer_object");
+    _ctx->OGL_framebuffer_object_ext = has_extension("GL_EXT_framebuffer_object");
 #if FO_MAC
-    _ctx->OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
+    _ctx->OGL_vertex_array_object = has_extension("GL_APPLE_vertex_array_object");
 #else
-    _ctx->OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0; // >= 3.0
+    _ctx->OGL_vertex_array_object = at_least(3, 0) || has_extension("GL_ARB_vertex_array_object");
 #endif
-    _ctx->OGL_uniform_buffer_object = GLEW_ARB_uniform_buffer_object != 0; // >= 3.1
+    _ctx->OGL_uniform_buffer_object = at_least(3, 1) || has_extension("GL_ARB_uniform_buffer_object");
 #endif
 
     // OpenGL ES extensions

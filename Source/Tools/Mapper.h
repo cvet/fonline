@@ -133,15 +133,15 @@ public:
     };
 
     // Todo: move mapper constants to enums
-    static constexpr auto FONT_FO = 0;
-    static constexpr auto FONT_NUM = 1;
-    static constexpr auto FONT_BIG_NUM = 2;
-    static constexpr auto FONT_SAND_NUM = 3;
-    static constexpr auto FONT_SPECIAL = 4;
-    static constexpr auto FONT_DEFAULT = 5;
-    static constexpr auto FONT_THIN = 6;
-    static constexpr auto FONT_FAT = 7;
-    static constexpr auto FONT_BIG = 8;
+    static constexpr auto FONT_FO = static_cast<FontType>(0);
+    static constexpr auto FONT_NUM = static_cast<FontType>(1);
+    static constexpr auto FONT_BIG_NUM = static_cast<FontType>(2);
+    static constexpr auto FONT_SAND_NUM = static_cast<FontType>(3);
+    static constexpr auto FONT_SPECIAL = static_cast<FontType>(4);
+    static constexpr auto FONT_OLD_DEFAULT = static_cast<FontType>(5);
+    static constexpr auto FONT_THIN = static_cast<FontType>(6);
+    static constexpr auto FONT_FAT = static_cast<FontType>(7);
+    static constexpr auto FONT_BIG = static_cast<FontType>(8);
     static constexpr auto CUR_MODE_DEFAULT = 0;
     static constexpr auto CUR_MODE_MOVE_SELECTION = 1;
     static constexpr auto CUR_MODE_PLACE_OBJECT = 2;
@@ -196,7 +196,7 @@ public:
     void UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup);
     void HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text);
     void ChangeZoom(float32_t new_zoom);
-    void DrawStr(const irect32& rect, string_view str, uint32_t flags, ucolor color, int32_t num_font);
+    void DrawStr(const irect32& rect, string_view str, ucolor color, TextFormat format);
 
     void CurDraw();
     void CurRMouseUp();

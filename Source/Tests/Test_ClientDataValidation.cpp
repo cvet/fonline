@@ -33,10 +33,10 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "ClientDataValidation.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
 #include "PropertiesSerializator.h"
-#include "RemoteCallValidation.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -65,7 +65,7 @@ static auto MakeRemoteCall(EngineMetadata& meta, std::initializer_list<ArgDesc> 
 
 static auto MakeRefTypeRawData(EngineMetadata& meta, string_view ref_type_name, const AnyData::Value& value) -> vector<uint8_t>
 {
-    PropertyRegistrator registrator("RemoteCallValidationEntity", EngineSideKind::ServerSide, meta.Hashes, meta);
+    PropertyRegistrator registrator("ClientDataValidationEntity", EngineSideKind::ServerSide, meta.Hashes, meta);
     const auto* prop = registrator.RegisterProperty({"Common", ref_type_name, "Value"});
     Properties props(&registrator);
     PropertiesSerializator::LoadPropertyFromValue(&props, prop, value, meta.Hashes, meta);
@@ -83,7 +83,7 @@ static void WriteRefTypePayload(DataWriter& writer, const vector<uint8_t>& raw_d
     }
 }
 
-TEST_CASE("RemoteCallValidation")
+TEST_CASE("ClientDataValidation")
 {
     EngineMetadata meta {[] { }};
     meta.RegisterSide(EngineSideKind::ServerSide);
@@ -154,7 +154,7 @@ TEST_CASE("RemoteCallValidation")
         writer.Write<int32_t>(2);
         writer.WritePtr(bytes, std::size(bytes));
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects invalid enum values")
@@ -165,7 +165,7 @@ TEST_CASE("RemoteCallValidation")
 
         writer.Write<int32_t>(77);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Accepts enum payloads sized to underlying type")
@@ -196,7 +196,7 @@ TEST_CASE("RemoteCallValidation")
 
         writer.Write<uint16_t>(uint16_t {7777});
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects truncated uint16 enum payload")
@@ -208,7 +208,7 @@ TEST_CASE("RemoteCallValidation")
 
         writer.Write<uint8_t>(uint8_t {0});
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects non finite floats inside arrays")
@@ -221,7 +221,7 @@ TEST_CASE("RemoteCallValidation")
         writer.Write<float32_t>(1.0f);
         writer.Write<float32_t>(std::numeric_limits<float32_t>::infinity());
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects unknown hashed strings")
@@ -233,7 +233,7 @@ TEST_CASE("RemoteCallValidation")
 
         writer.Write<hstring::hash_t>(unknown_hash);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects invalid bool values")
@@ -245,7 +245,7 @@ TEST_CASE("RemoteCallValidation")
 
         writer.Write<uint8_t>(invalid_bool);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects truncated nested collections")
@@ -260,7 +260,7 @@ TEST_CASE("RemoteCallValidation")
         writer.Write<int32_t>(2);
         writer.Write<uint16_t>(first_uint16);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Accepts valid ref type payloads and collections")
@@ -388,7 +388,7 @@ TEST_CASE("RemoteCallValidation")
         writer.Write<uint32_t>(field_size);
         writer.Write<int32_t>(invalid_enum);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
     SECTION("Rejects truncated ref type payloads inside arrays")
@@ -405,7 +405,7 @@ TEST_CASE("RemoteCallValidation")
         writer.Write<uint32_t>(numeric_cast<uint32_t>(full_raw.size()));
         writer.WritePtr(full_raw.data(), full_raw.size() - 1);
 
-        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), RemoteCallValidationException);
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 }
 
