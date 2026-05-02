@@ -554,20 +554,20 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     // Fonts
     auto load_fonts_ok = true;
 
-    if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
-        !SprMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_DEFAULT, "Default", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
+    if (!FontMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
+        !FontMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
+        !FontMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_OLD_DEFAULT, "Default", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::IfaceSprites, false, true) || //
+        !FontMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
         load_fonts_ok = false;
     }
 
     FO_RUNTIME_ASSERT(load_fonts_ok);
-    SprMngr.SetDefaultFont(FONT_DEFAULT);
+    FontMngr.SetDefaultFont(FONT_OLD_DEFAULT);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -5282,11 +5282,11 @@ void MapperEngine::DrawHistoryWindowImGui()
     ImGui::End();
 }
 
-void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32_t flags, ucolor color, int32_t num_font)
+void MapperEngine::DrawStr(const irect32& rect, string_view str, ucolor color, TextFormat format)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SprMngr.DrawText(rect, str, flags, color, num_font);
+    FontMngr.DrawText(rect, str, color, format);
 }
 
 void MapperEngine::CurDraw()
@@ -5339,7 +5339,7 @@ void MapperEngine::CurDraw()
 
             const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
             const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
-            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_NEUTRAL);
         }
         return;
     }
@@ -5365,7 +5365,7 @@ void MapperEngine::CurDraw()
 
         const auto width = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width) * zoom);
         const auto height = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom);
-        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
+        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_NEUTRAL);
     }
 }
 
@@ -6124,7 +6124,7 @@ void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
+    const string str = strex("|{} - {}\n", COLOR_TEXT_WHITE, message_text);
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
@@ -6166,7 +6166,7 @@ void MapperEngine::MessBoxDraw()
         return;
     }
 
-    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
+    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, COLOR_TEXT_WHITE, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
 }
 
 void MapperEngine::DrawIfaceLayer(int32_t layer)

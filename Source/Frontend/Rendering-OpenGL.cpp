@@ -43,6 +43,7 @@
 
 #if !FO_OPENGL_ES
 #define SDL_OPENGL_1_NO_PROTOTYPES
+#define SDL_OPENGL_1_FUNCTION_TYPEDEFS
 #include "SDL3/SDL_opengl.h"
 #endif
 

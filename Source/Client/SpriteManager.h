@@ -49,35 +49,9 @@
 
 FO_BEGIN_NAMESPACE
 
-// Font flags
-// Todo: convert FT_ font flags to enum
-static constexpr uint32_t FT_NOBREAK = 0x0001;
-static constexpr uint32_t FT_NOBREAK_LINE = 0x0002;
-static constexpr uint32_t FT_CENTERX = 0x0004;
-static constexpr uint32_t FT_CENTERY_ENGINE = 0x1000; // Todo: fix FT_CENTERY_ENGINE workaround
-static constexpr uint32_t FT_CENTERY = 0x0008 | FT_CENTERY_ENGINE;
-static constexpr uint32_t FT_CENTERR = 0x0010;
-static constexpr uint32_t FT_BOTTOM = 0x0020;
-static constexpr uint32_t FT_UPPER = 0x0040;
-static constexpr uint32_t FT_NO_COLORIZE = 0x0080;
-static constexpr uint32_t FT_ALIGN = 0x0100;
-static constexpr uint32_t FT_BORDERED = 0x0200;
-static constexpr auto FT_SKIPLINES(uint32_t l) -> uint32_t
-{
-    return 0x0400 | (l << 16);
-}
-static constexpr auto FT_SKIPLINES_END(uint32_t l) -> uint32_t
-{
-    return 0x0800 | (l << 16);
-}
-
 // Colors
-static constexpr auto COLOR_SPRITE = ucolor {128, 128, 128};
-static constexpr auto COLOR_SPRITE_RED = ucolor {255, 128, 128};
-static constexpr auto COLOR_TEXT = ucolor {60, 248, 0};
+static constexpr auto COLOR_NEUTRAL = ucolor {128, 128, 128};
 static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
-static constexpr auto COLOR_TEXT_DWHITE = ucolor {191, 191, 191};
-static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 
 class IAppWindow;
 class IAppRender;
@@ -169,6 +143,7 @@ struct DipData
 
 class SpriteManager final
 {
+    friend class FontManager;
     friend class Sprite;
 
 public:
@@ -298,104 +273,6 @@ private:
     ipos32 _windowSizeDiff {};
 
     EventUnsubscriber _eventUnsubscriber {};
-
-    // Todo: move fonts stuff to separate module
-public:
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, int32_t num_font) const -> int32_t;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, int32_t num_font) const -> int32_t;
-    [[nodiscard]] auto GetLineHeight(int32_t num_font) const -> int32_t;
-    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, int32_t num_font, uint32_t flags, isize32& result_size, int32_t& lines) const -> bool;
-    [[nodiscard]] auto HaveLetter(int32_t num_font, uint32_t letter) const -> bool;
-
-    auto LoadFontFO(int32_t index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(int32_t index, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(int32_t index);
-    void SetFontEffect(int32_t index, RenderEffect* effect);
-    void DrawText(irect32 rect, string_view str, uint32_t flags, ucolor color, int32_t num_font);
-    auto SplitLines(irect32 rect, string_view cstr, int32_t num_font) -> vector<string>;
-    void ClearFonts();
-
-private:
-    static constexpr int32_t FORMAT_TYPE_DRAW = 0;
-    static constexpr int32_t FORMAT_TYPE_SPLIT = 1;
-    static constexpr int32_t FORMAT_TYPE_LCOUNT = 2;
-
-    struct FontData
-    {
-        struct Letter
-        {
-            ipos32 Pos {};
-            isize32 Size {};
-            ipos32 Offset {};
-            int32_t XAdvance {};
-            frect32 TexPos {};
-            frect32 TexBorderedPos {};
-        };
-
-        raw_ptr<RenderEffect> DrawEffect {};
-        raw_ptr<RenderTexture> FontTex {};
-        raw_ptr<RenderTexture> FontTexBordered {};
-        unordered_map<uint32_t, Letter> Letters {};
-        int32_t SpaceWidth {};
-        int32_t LineHeight {};
-        int32_t YAdvance {};
-        shared_ptr<AtlasSprite> ImageNormal {};
-        shared_ptr<AtlasSprite> ImageBordered {};
-        bool MakeGray {};
-    };
-
-    // Todo: optimize text formatting - cache previous results
-    struct FontFormatInfo
-    {
-        raw_ptr<const FontData> CurFont {};
-        uint32_t Flags {};
-        irect32 Rect {};
-        vector<char> Str {};
-        raw_ptr<char> PStr {};
-        int32_t LinesAll {1};
-        int32_t LinesInRect {};
-        int32_t CurX {};
-        int32_t CurY {};
-        int32_t MaxCurX {};
-        vector<ucolor> ColorDots {};
-        vector<int32_t> LineWidth {};
-        vector<int32_t> LineSpaceWidth {};
-        int32_t OffsColDots {};
-        ucolor DefColor {COLOR_TEXT};
-        raw_ptr<vector<string>> StrLines {};
-        bool IsError {};
-
-        void Prepare(string_view str)
-        {
-            const auto str_len = str.length();
-            const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
-            const auto max_lines = std::max<size_t>(str_len + 1, 1);
-
-            Str.assign(max_chars, '\0');
-            ColorDots.assign(max_chars, ucolor::clear);
-            LineWidth.assign(max_lines, 0);
-            LineSpaceWidth.assign(max_lines, 0);
-            PStr = Str.data();
-            LinesAll = 1;
-            LinesInRect = 0;
-            CurX = 0;
-            CurY = 0;
-            MaxCurX = 0;
-            OffsColDots = 0;
-            StrLines = nullptr;
-            IsError = false;
-        }
-    };
-
-    auto GetFont(int32_t num) -> FontData*;
-    auto GetFont(int32_t num) const -> const FontData*;
-
-    void BuildFont(int32_t index);
-    void FormatText(FontFormatInfo& fi, int32_t fmt_type) const;
-
-    vector<unique_ptr<FontData>> _allFonts {};
-    int32_t _defFontIndex {};
-    mutable FontFormatInfo _fontFormatInfoBuf {};
 };
 
 FO_END_NAMESPACE

@@ -686,26 +686,26 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ClientEngine* client, readonly_vec
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_LoadFont(ClientEngine* client, int32_t fontIndex, string_view fontFname)
+FO_SCRIPT_API void Client_Game_LoadFont(ClientEngine* client, FontType font, string_view fontFname)
 {
     bool result;
 
     if (!fontFname.empty() && fontFname[0] == '*') {
-        result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), AtlasType::IfaceSprites, false, false);
+        result = client->FontMngr.LoadFontFO(font, fontFname.substr(1), AtlasType::IfaceSprites, false, false);
     }
     else {
-        result = client->SprMngr.LoadFontBmf(fontIndex, fontFname, AtlasType::IfaceSprites);
+        result = client->FontMngr.LoadFontBmf(font, fontFname, AtlasType::IfaceSprites);
     }
 
     if (!result) {
-        throw ScriptException("Can't load font", fontIndex, fontFname);
+        throw ScriptException("Can't load font", font, fontFname);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetDefaultFont(ClientEngine* client, int32_t font)
+FO_SCRIPT_API void Client_Game_SetDefaultFont(ClientEngine* client, FontType font)
 {
-    client->SprMngr.SetDefaultFont(font);
+    client->FontMngr.SetDefaultFont(font);
 }
 
 ///@ ExportMethod
@@ -776,7 +776,7 @@ FO_SCRIPT_API void Client_Game_SetEffect(ClientEngine* client, EffectType effect
         client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
     if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
-        client->SprMngr.SetFontEffect(static_cast<int32_t>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
+        client->FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
@@ -960,17 +960,17 @@ FO_SCRIPT_API void Client_Game_PlaySprite(ClientEngine* client, uint32_t sprId, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_GetTextInfo(ClientEngine* client, string_view text, isize32 size, int32_t font, uint32_t flags, isize32& resultSize, int32_t& resultLines)
+FO_SCRIPT_API void Client_Game_GetTextInfo(ClientEngine* client, string_view text, isize32 size, TextFormat format, isize32& resultSize, int32_t& resultLines)
 {
-    if (!client->SprMngr.GetTextInfo(size, text, font, flags, resultSize, resultLines)) {
-        throw ScriptException("Can't evaluate text information", font);
+    if (!client->FontMngr.GetTextInfo(size, text, format, resultSize, resultLines)) {
+        throw ScriptException("Can't evaluate text information", format.Font);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Game_GetTextLines(ClientEngine* client, isize32 size, int32_t font)
+FO_SCRIPT_API int32_t Client_Game_GetTextLines(ClientEngine* client, isize32 size, FontType font)
 {
-    return client->SprMngr.GetLinesCount(size, "", font);
+    return client->FontMngr.GetLinesCount(size, "", font);
 }
 
 ///@ ExportMethod
@@ -986,7 +986,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, pos, COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, pos, COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1002,7 +1002,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1026,7 +1026,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         y += -spr->GetSize().height + spr->GetOffset().y;
     }
 
-    client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1042,7 +1042,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1058,7 +1058,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1074,7 +1074,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->GetSize()), false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->GetSize()), false, false, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1090,7 +1090,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, false, false, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, false, false, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1107,7 +1107,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
     }
 
     const fpos32 draw_pos = fpos32(pos + (offs ? spr->GetOffset() : ipos32()));
-    client->SprMngr.DrawSpriteSizeExt(spr, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpriteSizeExt(spr, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
@@ -1123,11 +1123,11 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(ClientEngine* client, uint32_t 
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(spr, pos, size, sprSize, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSpritePattern(spr, pos, size, sprSize, color != ucolor::clear ? color : COLOR_NEUTRAL);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, ipos32 pos, isize32 size, ucolor color, int32_t font, uint32_t flags)
+FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1150,7 +1150,7 @@ FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, 
         y -= height;
     }
 
-    client->SprMngr.DrawText(irect32 {x, y, width, height}, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
+    client->FontMngr.DrawText(irect32 {x, y, width, height}, text, color != ucolor::clear ? color : COLOR_TEXT_WHITE, format);
 }
 
 ///@ ExportMethod
@@ -1180,7 +1180,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring model
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
     if (frames != nullptr) {
-        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : COLOR_SPRITE);
+        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : COLOR_NEUTRAL);
     }
 }
 
@@ -1267,7 +1267,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ClientEngine* client, uint32_t inst
     const auto result_x = iround<int32_t>(x) - model_spr->GetSize().width / 2 + model_spr->GetOffset().x;
     const auto result_y = iround<int32_t>(y) - model_spr->GetSize().height + model_spr->GetOffset().y;
 
-    client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_SPRITE);
+    client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_NEUTRAL);
 
     if (count > 13) {
         client->SprMngr.PopScissor();

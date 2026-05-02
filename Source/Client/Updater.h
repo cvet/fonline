@@ -38,6 +38,7 @@
 #include "ClientConnection.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "FontManager.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
@@ -83,6 +84,7 @@ private:
     EffectManager _effectMngr;
     HashStorage _hashStorage {};
     SpriteManager _sprMngr;
+    FontManager _fontMngr;
     nanotime _startTime {};
     bool _aborted {};
     vector<string> _messages {};

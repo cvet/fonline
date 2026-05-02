@@ -275,13 +275,13 @@ constexpr auto const_hash(const char* input) noexcept -> uint32_t
     return *input != 0 ? static_cast<uint32_t>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
-auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint32_t
+constexpr auto operator""_hash(const char* str, size_t size) noexcept -> uint32_t
 {
     (void)size;
     return const_hash(str);
 }
 
-auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
+constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 {
     (void)str;
     return size;
@@ -495,34 +495,13 @@ private:
     mutable std::atomic_int _refCounter {1};
 };
 
-// Bit operation helpers
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr auto IsBitSet(T x, T y) noexcept -> bool
-{
-    return (x & y) != 0;
-}
-
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr void SetBit(T& x, T y) noexcept
-{
-    x = x | y;
-}
-
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr void UnsetBit(T& x, T y) noexcept
-{
-    x = (x | y) ^ y;
-}
-
 // Enum operation helpers
 template<typename T>
     requires(std::is_enum_v<T>)
 constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 {
-    return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
+    using U = std::underlying_type_t<T>;
+    return (static_cast<U>(value) & static_cast<U>(check)) != 0;
 }
 
 template<typename T, typename... Args>
