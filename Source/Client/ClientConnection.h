@@ -84,9 +84,11 @@ public:
     raw_ptr<NetOutBuffer> OutBuf {&_netOut};
 
 private:
+    void CreateNetworkConnection(bool use_udp);
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
+    auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
     void Net_OnHandshakeAnswer();
@@ -94,7 +96,9 @@ private:
 
     raw_ptr<ClientNetworkSettings> _settings;
     unique_ptr<NetworkClientConnection> _netConnection {};
+    bool _connectingOverUdp {};
     bool _connectingHandled {};
+    bool _udpFallbackTried {};
     bool _wasHandshake {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};

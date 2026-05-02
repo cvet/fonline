@@ -72,7 +72,7 @@ protected:
     auto SendCallback() -> const_span<uint8_t>;
     void ReceiveCallback(const_span<uint8_t> buf);
 
-    ServerNetworkSettings& _settings;
+    raw_ptr<ServerNetworkSettings> _settings;
     string _host {};
     uint16_t _port {};
 
@@ -102,6 +102,7 @@ public:
     virtual void Shutdown() = 0;
 
     [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartUdpSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #if FO_HAVE_ASIO
     [[nodiscard]] static auto StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif

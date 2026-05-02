@@ -1,0 +1,414 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+#include "NetworkUdp.h"
+
+FO_BEGIN_NAMESPACE
+
+constexpr uint32_t UDP_PACKET_MAGIC = 0x31445055;
+constexpr uint16_t UDP_PACKET_VERSION = 1;
+constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
+
+template<typename T>
+static void AppendScalar(vector<uint8_t>& data, T value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* value_ptr = reinterpret_cast<const uint8_t*>(&value);
+    data.insert(data.end(), value_ptr, value_ptr + sizeof(T));
+}
+
+template<typename T>
+static auto ReadScalar(const_span<uint8_t> data, size_t& pos, T& value) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (pos + sizeof(T) > data.size()) {
+        return false;
+    }
+
+    std::memcpy(&value, data.data() + pos, sizeof(T));
+    pos += sizeof(T);
+    return true;
+}
+
+static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<uint8_t> payload) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> data;
+    data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
+
+    AppendScalar<uint32_t>(data, UDP_PACKET_MAGIC);
+    AppendScalar<uint16_t>(data, UDP_PACKET_VERSION);
+    AppendScalar<uint8_t>(data, static_cast<uint8_t>(type));
+    AppendScalar<uint8_t>(data, payload.empty() ? 0U : 1U);
+    AppendScalar<uint32_t>(data, session_id);
+    AppendScalar<uint32_t>(data, sequence);
+    AppendScalar<uint32_t>(data, ack_sequence);
+    AppendScalar<uint32_t>(data, ack_bits);
+    AppendScalar<uint32_t>(data, value);
+    AppendScalar<uint16_t>(data, numeric_cast<uint16_t>(payload.size()));
+    AppendScalar<uint16_t>(data, 0U);
+    data.insert(data.end(), payload.begin(), payload.end());
+
+    return data;
+}
+
+UdpOrderedChannel::UdpOrderedChannel(UdpTransportOptions options) :
+    _options {options}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void UdpOrderedChannel::Reset() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _sessionId = 0;
+    _nextOutgoingSequence = 1;
+    _nextIncomingSequence = 1;
+    _ackBits = 0;
+    _ackPending = false;
+    _pendingBytes = 0;
+    _pendingPackets.clear();
+    _receivedPackets.clear();
+    _readyData.clear();
+}
+
+void UdpOrderedChannel::SetSessionId(uint32_t session_id) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _sessionId = session_id;
+}
+
+auto UdpOrderedChannel::GetSessionId() const noexcept -> uint32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _sessionId;
+}
+
+auto UdpOrderedChannel::HasSession() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _sessionId != 0;
+}
+
+auto UdpOrderedChannel::HasReadyData() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_readyData.empty();
+}
+
+auto UdpOrderedChannel::CanAcceptPayload() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _pendingBytes < _options.MaxPendingBytes;
+}
+
+auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_ackPending) {
+        return true;
+    }
+
+    for (const auto& packet : _pendingPackets) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vector<uint8_t>>& packets, nanotime now) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t consumed = 0;
+
+    for (auto& packet : _pendingPackets) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+            packet.LastSend = now;
+            packet.SendCount++;
+            EmitPendingPacket(packet, packets);
+        }
+    }
+
+    const auto first_new_sequence = _nextOutgoingSequence;
+
+    while (consumed < new_data.size() && _pendingBytes < _options.MaxPendingBytes) {
+        const auto free_window = _options.MaxPendingBytes - _pendingBytes;
+        const auto chunk_size = std::min({new_data.size() - consumed, _options.MaxPayload, free_window});
+
+        if (chunk_size == 0) {
+            break;
+        }
+
+        PendingPacket packet;
+        packet.Sequence = _nextOutgoingSequence++;
+        packet.Payload.assign(new_data.begin() + consumed, new_data.begin() + consumed + chunk_size);
+        packet.LastSend = now;
+        packet.SendCount = 1;
+        _pendingBytes += chunk_size;
+        EmitPendingPacket(packet, packets);
+        _pendingPackets.emplace_back(std::move(packet));
+        consumed += chunk_size;
+    }
+
+    if (consumed != 0 && _options.Redundancy != 0) {
+        QueueTailRedundancy(packets, first_new_sequence);
+    }
+
+    if (_ackPending && packets.empty()) {
+        EmitAckPacket(packets);
+    }
+
+    if (!packets.empty()) {
+        _ackPending = false;
+    }
+
+    return consumed;
+}
+
+void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ApplyAcknowledgements(packet.AckSequence, packet.AckBits);
+
+    if (packet.Type != UdpPacketType::Payload || packet.Payload.empty()) {
+        return;
+    }
+
+    // A duplicate Payload still arms an ack so the sender can drop it from its pending list,
+    // but ack-only KeepAlive packets must not arm one — otherwise both peers would ping-pong
+    // ack-only packets forever once any payload has been acknowledged.
+    _ackPending = true;
+
+    if (packet.Sequence < _nextIncomingSequence) {
+        return;
+    }
+
+    if (packet.Sequence == _nextIncomingSequence) {
+        _readyData.insert(_readyData.end(), packet.Payload.begin(), packet.Payload.end());
+        _nextIncomingSequence++;
+
+        while (true) {
+            const auto it = _receivedPackets.find(_nextIncomingSequence);
+
+            if (it == _receivedPackets.end()) {
+                break;
+            }
+
+            _readyData.insert(_readyData.end(), it->second.begin(), it->second.end());
+            _receivedPackets.erase(it);
+            _nextIncomingSequence++;
+        }
+
+        RebuildAckBits();
+        return;
+    }
+
+    if (_receivedPackets.count(packet.Sequence) == 0) {
+        _receivedPackets.emplace(packet.Sequence, vector<uint8_t>(packet.Payload.begin(), packet.Payload.end()));
+        RebuildAckBits();
+    }
+}
+
+auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    data = _readyData;
+    _readyData.clear();
+    return data.size();
+}
+
+auto UdpOrderedChannel::MakeDisconnectPacket() const -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakePacket(UdpPacketType::Disconnect, 0, {});
+}
+
+void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto it = _pendingPackets.begin(); it != _pendingPackets.end();) {
+        if (IsPacketAcknowledged(it->Sequence, ack_sequence, ack_bits)) {
+            FO_RUNTIME_ASSERT(_pendingBytes >= it->Payload.size());
+            _pendingBytes -= it->Payload.size();
+            it = _pendingPackets.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+void UdpOrderedChannel::EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    packets.emplace_back(MakePacket(UdpPacketType::Payload, packet.Sequence, packet.Payload));
+}
+
+void UdpOrderedChannel::EmitAckPacket(vector<vector<uint8_t>>& packets) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    packets.emplace_back(MakePacket(UdpPacketType::KeepAlive, 0, {}));
+}
+
+void UdpOrderedChannel::RebuildAckBits() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _ackBits = 0;
+
+    for (const auto& [sequence, _] : _receivedPackets) {
+        if (sequence <= _nextIncomingSequence) {
+            continue;
+        }
+
+        const auto diff = sequence - _nextIncomingSequence;
+
+        if (diff < 32U) {
+            _ackBits |= 1U << diff;
+        }
+    }
+}
+
+void UdpOrderedChannel::QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint32_t resent = 0;
+
+    for (auto it = _pendingPackets.rbegin(); it != _pendingPackets.rend() && resent < _options.Redundancy; ++it) {
+        if (it->Sequence >= first_new_sequence) {
+            continue;
+        }
+
+        EmitPendingPacket(*it, packets);
+        resent++;
+    }
+}
+
+auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (sequence == 0) {
+        return true;
+    }
+
+    if (sequence <= ack_sequence) {
+        return true;
+    }
+
+    const auto diff = sequence - ack_sequence - 1;
+    return diff < 32U && (ack_bits & (1U << diff)) != 0;
+}
+
+auto UdpOrderedChannel::MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value) const -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakeRawPacket(type, _sessionId, sequence, _nextIncomingSequence != 0 ? _nextIncomingSequence - 1 : 0U, _ackBits, value, payload);
+}
+
+auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakeRawPacket(UdpPacketType::Connect, 0, 0, 0, 0, client_salt, {});
+}
+
+auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakeRawPacket(UdpPacketType::Accept, session_id, 0, 0, 0, client_salt, {});
+}
+
+auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t pos = 0;
+    uint32_t magic = 0;
+    uint16_t version = 0;
+    uint8_t type = 0;
+    uint8_t flags = 0;
+    uint16_t payload_size = 0;
+    uint16_t reserved = 0;
+
+    if (!ReadScalar<uint32_t>(data, pos, magic) || magic != UDP_PACKET_MAGIC) {
+        return false;
+    }
+
+    if (!ReadScalar<uint16_t>(data, pos, version) || version != UDP_PACKET_VERSION) {
+        return false;
+    }
+
+    if (!ReadScalar<uint8_t>(data, pos, type) || !ReadScalar<uint8_t>(data, pos, flags)) {
+        return false;
+    }
+
+    if (!ReadScalar<uint32_t>(data, pos, packet.SessionId) || !ReadScalar<uint32_t>(data, pos, packet.Sequence) || !ReadScalar<uint32_t>(data, pos, packet.AckSequence) || !ReadScalar<uint32_t>(data, pos, packet.AckBits) || !ReadScalar<uint32_t>(data, pos, packet.Value) || !ReadScalar<uint16_t>(data, pos, payload_size) || !ReadScalar<uint16_t>(data, pos, reserved)) {
+        return false;
+    }
+
+    ignore_unused(flags);
+    ignore_unused(reserved);
+
+    if (pos + payload_size != data.size()) {
+        return false;
+    }
+
+    packet.Type = static_cast<UdpPacketType>(type);
+    packet.Payload = {data.data() + pos, payload_size};
+    return true;
+}
+
+FO_END_NAMESPACE
