@@ -112,28 +112,57 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
+        DataBaseImpl::DrawGui();
+
+        constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+
+        const auto info_row = [](const char* key, string_view value) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(key);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(value.data(), value.data() + value.size());
+        };
+
         std::scoped_lock locker {_storageLocker};
 
-        if (_collections.empty()) {
-            ImGui::TextUnformatted("No memory collections");
-            return;
-        }
+        if (ImGui::TreeNode(strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).c_str())) {
+            if (_collections.empty()) {
+                ImGui::TextUnformatted("No memory collections");
+            }
 
-        for (auto&& [collection_name, collection] : _collections) {
-            if (ImGui::TreeNode(strex("{} ({})", collection_name.as_str(), collection.size()).c_str())) {
-                for (auto&& [id, doc] : collection) {
-                    if (ImGui::TreeNode(strex("{} ({} keys)", id, doc.Size()).c_str())) {
-                        for (auto&& [doc_key, doc_value] : doc) {
-                            const auto value_str = AnyData::ValueToString(doc_value);
-                            ImGui::BulletText("%s: %s", doc_key.c_str(), value_str.c_str());
+            for (auto&& [collection_name, collection] : _collections) {
+                ImGui::PushID(static_cast<const void*>(&collection));
+
+                if (ImGui::TreeNode(strex("{} ({})", collection_name.as_str(), collection.size()).c_str())) {
+                    for (auto&& [id, doc] : collection) {
+                        ImGui::PushID(static_cast<const void*>(&doc));
+
+                        if (ImGui::TreeNode(strex("{} ({} keys)", id, doc.Size()).c_str())) {
+                            if (ImGui::BeginTable("##DocFields", 2, TABLE_FLAGS)) {
+                                ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+                                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+                                for (auto&& [doc_key, doc_value] : doc) {
+                                    info_row(doc_key.c_str(), AnyData::ValueToString(doc_value));
+                                }
+
+                                ImGui::EndTable();
+                            }
+
+                            ImGui::TreePop();
                         }
 
-                        ImGui::TreePop();
+                        ImGui::PopID();
                     }
+
+                    ImGui::TreePop();
                 }
 
-                ImGui::TreePop();
+                ImGui::PopID();
             }
+
+            ImGui::TreePop();
         }
     }
 

@@ -254,6 +254,8 @@ public:
     SoundManager SndMngr;
     CacheStorage Cache;
 
+    ipos32 MousePos {};
+
     bool CanDrawInScripts {};
 
     vector<raw_ptr<RenderEffect>> OffscreenEffects {};

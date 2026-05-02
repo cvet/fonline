@@ -441,6 +441,15 @@ public:
     [[nodiscard]] auto GetOnScreenSizeChanged() noexcept -> EventObserver<>& override { return OnScreenSizeChanged; }
     [[nodiscard]] auto GetOnLowMemory() noexcept -> EventObserver<>& override;
     [[nodiscard]] auto GetWindowHandleForInput() const -> WindowInternalHandle* override;
+    [[nodiscard]] auto IsVirtual() const noexcept -> bool { return _isVirtual; }
+    [[nodiscard]] auto GetTitle() const noexcept -> const string& { return _title; }
+    [[nodiscard]] auto GetRenderTexture() noexcept -> RenderTexture* { return _virtualRenderTex.get(); }
+    // The screen rect (in host ImGui display coords) where this window's render texture is drawn by
+    // the application. The engine uses it for mouse coordinate translation and hover-based active
+    // window switching, but never sets it on its own — the layout owner (e.g. ServerApp) calls
+    // SetDisplayRect each frame.
+    [[nodiscard]] auto GetDisplayRect() const noexcept -> irect32 { return _displayRect; }
+    void SetDisplayRect(irect32 rect) noexcept { _displayRect = rect; }
 
     void GrabInput(bool enable) override;
     void SetSize(isize32 size) override;
@@ -451,6 +460,7 @@ public:
     void Blink() override;
     void AlwaysOnTop(bool enable) override;
     void Destroy() override;
+    void SetTitle(string_view title);
 
     EventObserver<> OnWindowSizeChanged {};
     EventObserver<> OnScreenSizeChanged {};
@@ -467,6 +477,13 @@ private:
     raw_ptr<Application> _app;
     raw_ptr<WindowInternalHandle> _windowHandle {};
     bool _grabbed {};
+    bool _isVirtual {};
+    string _title {};
+    isize32 _virtualSize {};
+    ipos32 _virtualPosition {};
+    isize32 _virtualLayoutSize {};
+    irect32 _displayRect {};
+    unique_ptr<RenderTexture> _virtualRenderTex {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
     int32_t _nonConstHelper {};
@@ -535,6 +552,7 @@ private:
 
     raw_ptr<Application> _app;
     string _clipboardTextStorage {};
+    ipos32 _lastMousePos {};
     int32_t _nonConstHelper {};
     bool _shiftDown {};
     bool _ctrlDown {};
@@ -600,17 +618,29 @@ public:
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
     [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
+    [[nodiscard]] auto GetActiveWindow() noexcept -> AppWindow* { return _activeWindow.get_no_const(); }
+    [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
+    [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> AppWindow* { return index < _childWindows.size() ? _childWindows[index].get() : nullptr; }
+    [[nodiscard]] auto TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32;
+    [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
+    [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
 
-    auto CreateChildWindow(isize32 size) -> AppWindow*;
+    auto CreateChildWindow(isize32 size, string_view title = {}) -> AppWindow*;
+    void DestroyChildWindow(AppWindow* window);
+    void SetActiveWindow(AppWindow* window);
+    void BeginWindowRender(AppWindow* window);
+    void EndWindowRender();
+
     void OpenLink(string_view link);
     void LoadImGuiEffect(const FileSystem& resources);
-#if FO_IOS
-    void SetMainLoopCallback(void (*callback)(void*));
-#endif
     void BeginFrame();
     void EndFrame();
     void RequestQuit(bool success = true) noexcept;
     void WaitForRequestedQuit();
+
+#if FO_IOS
+    void SetMainLoopCallback(void (*callback)(void*));
+#endif
 
     static void ShowErrorMessage(string_view message, string_view traceback, bool fatal_error);
     static void ShowProgressWindow(string_view text, const ProgressWindowCallback& callback);
@@ -656,6 +686,7 @@ private:
     struct Context;
 
     auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
+    void EnsureVirtualRenderTexture(AppWindow* window, isize32 size);
     auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
     auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
     auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;
@@ -696,6 +727,13 @@ private:
     unique_ptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};
     vector<raw_ptr<AppWindow>> _allWindows {};
+    vector<unique_ptr<AppWindow>> _childWindows {};
+    raw_ptr<AppWindow> _activeWindow {};
+    raw_ptr<AppWindow> _currentRenderingWindow {};
+    raw_ptr<RenderTexture> _previousRenderTarget {};
+    int32_t _hostScreenWidthSaved {};
+    int32_t _hostScreenHeightSaved {};
+    bool _hostScreenSizeSaved {};
     std::atomic_bool _quit {};
     std::atomic_bool _quitSuccess {true};
     std::condition_variable _quitEvent {};

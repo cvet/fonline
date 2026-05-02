@@ -648,7 +648,7 @@ void DataBaseImpl::WaitCommitChanges()
     std::unique_lock locker {_stateLocker};
 
     if (!_commitThreadActive) {
-        throw DataBaseException("Commit thread is not active");
+        return;
     }
 
     while (!_pendingCommitOperations.empty()) {
@@ -674,7 +674,69 @@ void DataBaseImpl::DrawGui()
 {
     FO_STACK_TRACE_ENTRY();
 
-    ImGui::TextUnformatted("No info");
+    constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+
+    const auto info_row = [](const char* key, string_view value) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(key);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextUnformatted(value.data(), value.data() + value.size());
+    };
+
+    size_t pending_count = 0;
+
+    {
+        std::scoped_lock locker {_stateLocker};
+        pending_count = _pendingCommitOperations.size();
+    }
+
+    if (ImGui::BeginTable("##DbSummary", 2, TABLE_FLAGS)) {
+        ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+        info_row("Valid state", strex("{}", InValidState()).str());
+        info_row("Backend failed", strex("{}", _backendFailed.load()).str());
+        info_row("Panic started", strex("{}", _panicStarted.load()).str());
+        info_row("Op log enabled", strex("{}", _opLogEnabled).str());
+        info_row("Commit thread active", strex("{}", _commitThreadActive).str());
+        info_row("Pending commit operations", strex("{}", pending_count).str());
+        info_row("Pending changes panic threshold", strex("{}", _pendingChangesPanicThreshold).str());
+        info_row("DB requests per minute", strex("{}", GetDbRequestsPerMinute()).str());
+        info_row("Collections", strex("{}", _collectionKeyTypes.size()).str());
+
+        if (_pendingChangesLog) {
+            info_row("Pending changes log path", _pendingChangesLog->GetPath());
+            info_row("Pending changes log lines", strex("{}", _pendingChangesLog->GetLinesCount()).str());
+            info_row("Pending changes log size", strex("{}", _pendingChangesLog->GetTextSize()).str());
+        }
+
+        if (_committedChangesLog) {
+            info_row("Committed changes log path", _committedChangesLog->GetPath());
+            info_row("Committed changes log lines", strex("{}", _committedChangesLog->GetLinesCount()).str());
+            info_row("Committed changes log size", strex("{}", _committedChangesLog->GetTextSize()).str());
+        }
+
+        ImGui::EndTable();
+    }
+
+    if (!_collectionKeyTypes.empty()) {
+        if (ImGui::TreeNode(strex("Collections ({})", _collectionKeyTypes.size()).c_str())) {
+            if (ImGui::BeginTable("##DbCollections", 2, TABLE_FLAGS)) {
+                ImGui::TableSetupColumn("Collection", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+                ImGui::TableSetupColumn("Key type", ImGuiTableColumnFlags_WidthStretch);
+
+                for (const auto& [collection_name, key_type] : _collectionKeyTypes) {
+                    const char* key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
+                    info_row(collection_name.as_str().c_str(), key_type_str);
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+    }
 }
 
 void DataBaseImpl::ScheduleCommit()

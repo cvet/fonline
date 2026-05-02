@@ -78,6 +78,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     _ctx->HeadlessRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
     _ctx->HeadlessRenderer->Init(Settings, nullptr);
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
+    MainWindow._title = Settings.GameName;
+    MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
+    _allWindows.emplace_back(&MainWindow);
+    _activeWindow = &MainWindow;
 }
 
 Application::~Application()
@@ -94,6 +98,16 @@ Application::~Application()
     _ctx->HeadlessRenderTarget = nullptr;
 
     _ctx->HeadlessRenderer = nullptr;
+
+    for (auto& window : _childWindows) {
+        window->_virtualRenderTex.reset();
+    }
+
+    _childWindows.clear();
+    _allWindows.clear();
+    _activeWindow = &MainWindow;
+    _currentRenderingWindow = nullptr;
+    _previousRenderTarget = nullptr;
 
     MainWindow._windowHandle = nullptr;
     _ctx->HeadlessWindowStubs.clear();
@@ -118,15 +132,149 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     ignore_unused(resources);
 }
 
-auto Application::CreateChildWindow(isize32 size) -> AppWindow*
+auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindow*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    ignore_unused(size);
+    if (size.width <= 0 || size.height <= 0) {
+        size = {Settings.ScreenWidth, Settings.ScreenHeight};
+    }
 
-    return nullptr;
+    auto window = unique_ptr<AppWindow> {new AppWindow {this}};
+    window->_isVirtual = true;
+    window->_virtualSize = size;
+    window->_virtualLayoutSize = size;
+    window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
+
+    auto* ptr = window.get();
+    _allWindows.emplace_back(ptr);
+    _childWindows.emplace_back(std::move(window));
+    _activeWindow = ptr;
+
+    return ptr;
+}
+
+void Application::DestroyChildWindow(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (window == nullptr || window == &MainWindow) {
+        return;
+    }
+
+    std::erase_if(_allWindows, [&](const auto& entry) { return entry.get_no_const() == window; });
+
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.get() == window; });
+
+    if (it == _childWindows.end()) {
+        return;
+    }
+
+    if (_activeWindow.get_no_const() == window) {
+        _activeWindow = &MainWindow;
+    }
+
+    if (_currentRenderingWindow.get_no_const() == window) {
+        _currentRenderingWindow = nullptr;
+    }
+
+    (*it)->_virtualRenderTex.reset();
+    _childWindows.erase(it);
+}
+
+void Application::SetActiveWindow(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _activeWindow = window != nullptr ? window : &MainWindow;
+}
+
+void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    FO_RUNTIME_ASSERT(window);
+    FO_RUNTIME_ASSERT(window->_isVirtual);
+
+    if (size.width <= 0 || size.height <= 0) {
+        size = window->_virtualSize;
+    }
+
+    window->_virtualLayoutSize = size;
+
+    if (!window->_virtualRenderTex || window->_virtualRenderTex->Size != size) {
+        window->_virtualRenderTex = _ctx->HeadlessRenderer->CreateTexture(size, true, true);
+    }
+}
+
+void Application::BeginWindowRender(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    FO_RUNTIME_ASSERT(window);
+
+    if (!window->_isVirtual) {
+        _currentRenderingWindow = window;
+        return;
+    }
+
+    EnsureVirtualRenderTexture(window, window->_virtualLayoutSize);
+
+    _previousRenderTarget = _ctx->HeadlessRenderTarget;
+    Render.SetRenderTarget(window->_virtualRenderTex.get());
+    _currentRenderingWindow = window;
+}
+
+void Application::EndWindowRender()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_currentRenderingWindow == nullptr) {
+        return;
+    }
+
+    const bool was_virtual = _currentRenderingWindow->_isVirtual;
+    auto* prev = _previousRenderTarget.get_no_const();
+
+    _previousRenderTarget = nullptr;
+    _currentRenderingWindow = nullptr;
+
+    if (was_virtual) {
+        Render.SetRenderTarget(prev);
+    }
+}
+
+auto Application::TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return pos;
+}
+
+auto Application::TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return pos;
+}
+
+auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return delta;
 }
 
 auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
@@ -286,6 +434,10 @@ void Application::EndFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_currentRenderingWindow != nullptr) {
+        EndWindowRender();
+    }
+
     _onFrameEndDispatcher();
 
 #if FO_TRACY
@@ -323,6 +475,10 @@ auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : isize32 {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight};
+    }
+
     return ResolveWindowStub()->Size;
 }
 
@@ -331,6 +487,12 @@ void AppWindow::SetSize(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_isVirtual) {
+        _virtualSize = size;
+        _onWindowSizeChangedDispatcher();
+        return;
+    }
 
     ResolveWindowStub()->Size = size;
     _onWindowSizeChangedDispatcher();
@@ -361,6 +523,10 @@ auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualPosition;
+    }
+
     return ResolveWindowStub()->Position;
 }
 
@@ -370,12 +536,21 @@ void AppWindow::SetPosition(ipos32 pos)
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        _virtualPosition = pos;
+        return;
+    }
+
     ResolveWindowStub()->Position = pos;
 }
 
 auto AppWindow::IsFocused() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_isVirtual) {
+        return _app->_activeWindow.get() == this;
+    }
 
     return true;
 }
@@ -386,12 +561,20 @@ void AppWindow::Minimize()
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        return;
+    }
+
     ResolveWindowStub()->Minimized = true;
 }
 
 auto AppWindow::IsFullscreen() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_isVirtual) {
+        return false;
+    }
 
     return ResolveWindowStub()->Fullscreen;
 }
@@ -401,6 +584,11 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_isVirtual) {
+        ignore_unused(enable);
+        return false;
+    }
 
     auto* window = ResolveWindowStub();
     const bool changed = window->Fullscreen != enable;
@@ -422,7 +610,20 @@ void AppWindow::AlwaysOnTop(bool enable)
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        return;
+    }
+
     ResolveWindowStub()->AlwaysOnTop = enable;
+}
+
+void AppWindow::SetTitle(string_view title)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _title = string {title};
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -439,6 +640,11 @@ void AppWindow::Destroy()
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_isVirtual) {
+        _app->DestroyChildWindow(this);
+        return;
+    }
 
     if (_windowHandle && this != &App->MainWindow) {
         std::erase_if(_app->_ctx->HeadlessWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });

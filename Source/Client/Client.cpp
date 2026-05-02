@@ -498,7 +498,7 @@ void ClientEngine::ProcessInputEvents()
         }
     }
     else {
-        Settings.MousePos = input.GetMousePosition();
+        MousePos = input.GetMousePosition();
 
         OnInputLost.Fire();
     }
@@ -526,7 +526,7 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
         OnKeyUp.Fire(key_code);
     }
     else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
-        Settings.MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
+        MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
 
         OnMouseMove.Fire({ev.MouseMove.DeltaX, ev.MouseMove.DeltaY});
     }
@@ -547,24 +547,24 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
         }
     }
     else if (ev.Type == InputEvent::EventType::TouchTapEvent) {
-        Settings.MousePos = {ev.TouchTap.TouchX, ev.TouchTap.TouchY};
+        MousePos = {ev.TouchTap.TouchX, ev.TouchTap.TouchY};
 
-        OnTouchTap.Fire(Settings.MousePos);
+        OnTouchTap.Fire(MousePos);
     }
     else if (ev.Type == InputEvent::EventType::TouchDoubleTapEvent) {
-        Settings.MousePos = {ev.TouchDoubleTap.TouchX, ev.TouchDoubleTap.TouchY};
+        MousePos = {ev.TouchDoubleTap.TouchX, ev.TouchDoubleTap.TouchY};
 
-        OnTouchDoubleTap.Fire(Settings.MousePos);
+        OnTouchDoubleTap.Fire(MousePos);
     }
     else if (ev.Type == InputEvent::EventType::TouchScrollEvent) {
-        Settings.MousePos = {ev.TouchScroll.TouchX, ev.TouchScroll.TouchY};
+        MousePos = {ev.TouchScroll.TouchX, ev.TouchScroll.TouchY};
 
-        OnTouchScroll.Fire(Settings.MousePos, {ev.TouchScroll.DeltaX, ev.TouchScroll.DeltaY});
+        OnTouchScroll.Fire(MousePos, {ev.TouchScroll.DeltaX, ev.TouchScroll.DeltaY});
     }
     else if (ev.Type == InputEvent::EventType::TouchZoomEvent) {
-        Settings.MousePos = {ev.TouchZoom.TouchX, ev.TouchZoom.TouchY};
+        MousePos = {ev.TouchZoom.TouchX, ev.TouchZoom.TouchY};
 
-        OnTouchZoom.Fire(Settings.MousePos, ev.TouchZoom.Factor);
+        OnTouchZoom.Fire(MousePos, ev.TouchZoom.Factor);
     }
 }
 

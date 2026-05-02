@@ -60,7 +60,7 @@ FO_SCRIPT_API PlayerView* Client_Game_CurPlayer(ClientEngine* client)
 ///@ ExportMethod Getter
 FO_SCRIPT_API ipos32 Client_Game_MousePos(ClientEngine* client)
 {
-    return client->Settings.MousePos;
+    return client->MousePos;
 }
 
 ///@ ExportMethod
@@ -323,8 +323,8 @@ FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ClientEngine* client)
     return numeric_cast<uint32_t>(client->GetConnection().GetBytesReceived());
 }
 
-///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Game_GetChosen(ClientEngine* client)
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API CritterView* Client_Game_Chosen(ClientEngine* client)
 {
     return client->GetChosen();
 }
@@ -818,7 +818,7 @@ FO_SCRIPT_API void Client_Game_SetEffect(ClientEngine* client, EffectType effect
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ClientEngine* client, ipos32 pos, MouseButton button)
 {
-    const auto prev_pos = client->Settings.MousePos;
+    const auto prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
         client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});

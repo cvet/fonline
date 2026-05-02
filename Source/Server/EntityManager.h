@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetItem(ident_t id) const noexcept -> const Item*;
     [[nodiscard]] auto GetItem(ident_t id) noexcept -> Item*;
     [[nodiscard]] auto GetItems() noexcept -> unordered_map<ident_t, raw_ptr<Item>>& { return _allItems; }
-    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allEntities.size(); }
+    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allItems.size(); }
 
     template<typename T>
     [[nodiscard]] auto Get(ident_t id) noexcept -> T*

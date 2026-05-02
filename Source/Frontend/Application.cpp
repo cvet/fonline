@@ -428,7 +428,24 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     WebRelated::ApplyWindowSettings(Settings);
 
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
+    MainWindow._title = Settings.GameName;
+    MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     _allWindows.emplace_back(&MainWindow);
+    _activeWindow = &MainWindow;
+
+    // Snap the host's logical screen size to the OS window's actual pixel size so the renderer
+    // doesn't letterbox/stretch — DPI scaling or OS constraints can make the created window differ
+    // from the configured size, and resizes from this point onwards are tracked in BeginFrame.
+    if (_ctx->ActiveRendererType != RenderType::Null) {
+        int32_t actual_width = Settings.ScreenWidth;
+        int32_t actual_height = Settings.ScreenHeight;
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &actual_width, &actual_height);
+        if (actual_width > 0 && actual_height > 0) {
+            Settings.ScreenWidth = actual_width;
+            Settings.ScreenHeight = actual_height;
+            MainWindow._virtualSize = {actual_width, actual_height};
+        }
+    }
 
     if (_ctx->ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
         SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
@@ -531,15 +548,14 @@ Application::~Application()
 
     CloseGamepad();
 
-    for (const auto window : _allWindows) {
-        if (window == nullptr || window == &MainWindow || !window->_windowHandle) {
-            continue;
-        }
-
-        if (_ctx->ActiveRendererType != RenderType::Null) {
-            SDL_DestroyWindow(reinterpret_cast<SDL_Window*>(window->_windowHandle.get_no_const()));
-        }
+    for (auto& window : _childWindows) {
+        window->_virtualRenderTex.reset();
     }
+
+    _childWindows.clear();
+    _activeWindow = &MainWindow;
+    _currentRenderingWindow = nullptr;
+    _previousRenderTarget = nullptr;
 
     if (MainWindow._windowHandle) {
         if (_ctx->ActiveRendererType != RenderType::Null) {
@@ -597,21 +613,242 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::CreateChildWindow(isize32 size) -> AppWindow*
+auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindow*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (size.width <= 0 || size.height <= 0) {
+        size = {Settings.ScreenWidth, Settings.ScreenHeight};
+    }
+
+    auto window = unique_ptr<AppWindow> {new AppWindow {this}};
+    window->_isVirtual = true;
+    window->_virtualSize = size;
+    window->_virtualLayoutSize = size;
+    window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
+
+    auto* ptr = window.get();
+    _allWindows.emplace_back(ptr);
+    _childWindows.emplace_back(std::move(window));
+
+    // A freshly spawned window always grabs focus — keeps the test bench predictable
+    // (e.g. spawning a client and immediately interacting with it without manual tab clicking).
+    _activeWindow = ptr;
+
+    return ptr;
+}
+
+void Application::DestroyChildWindow(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (window == nullptr || window == &MainWindow) {
+        return;
+    }
+
+    std::erase_if(_allWindows, [&](const auto& entry) { return entry.get_no_const() == window; });
+
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.get() == window; });
+
+    if (it == _childWindows.end()) {
+        return;
+    }
+
+    if (_activeWindow.get_no_const() == window) {
+        _activeWindow = !_childWindows.empty() && _childWindows.front().get() != window ? _childWindows.front().get() : &MainWindow;
+    }
+
+    if (_currentRenderingWindow.get_no_const() == window) {
+        EndWindowRender();
+    }
+
+    (*it)->_virtualRenderTex.reset();
+    _childWindows.erase(it);
+
+    if (_childWindows.empty()) {
+        _activeWindow = &MainWindow;
+    }
+}
+
+void Application::SetActiveWindow(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (window == nullptr) {
+        _activeWindow = &MainWindow;
+        return;
+    }
+
+    _activeWindow = window;
+}
+
+void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    FO_RUNTIME_ASSERT(window);
+    FO_RUNTIME_ASSERT(window->_isVirtual);
+
+    // Render at the window's logical size (always Settings.ScreenWidth × Settings.ScreenHeight by default).
+    // The display rect that the texture is scaled to lives in `window->_displayRect` and is set by the layout pass.
     ignore_unused(size);
 
-    throw NotImplementedException(FO_LINE_STR);
+    isize32 desired = window->_virtualSize.width > 0 && window->_virtualSize.height > 0 //
+        ?
+        window->_virtualSize //
+        :
+        isize32 {Settings.ScreenWidth, Settings.ScreenHeight};
 
-    /*auto* sdl_window = CreateInternalWindow(width, height);
-    auto* window = SafeAlloc::MakeRaw<AppWindow>();
-    window->_windowHandle = sdl_window;
-    _allWindows.emplace_back(window);
-    return window;*/
+    if (!window->_virtualRenderTex || window->_virtualRenderTex->Size != desired) {
+        window->_virtualRenderTex = _ctx->ActiveRenderer->CreateTexture(desired, true, true);
+        window->_virtualRenderTex->FlippedHeight = _ctx->ActiveRenderer->IsRenderTargetFlipped();
+    }
+}
+
+void Application::BeginWindowRender(AppWindow* window)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    FO_RUNTIME_ASSERT(window);
+    FO_RUNTIME_ASSERT(_currentRenderingWindow == nullptr);
+
+    if (!window->_isVirtual) {
+        _currentRenderingWindow = window;
+        return;
+    }
+
+    EnsureVirtualRenderTexture(window, window->_virtualLayoutSize);
+
+    _previousRenderTarget = _ctx->RenderTargetTex;
+    _currentRenderingWindow = window;
+
+    Render.SetRenderTarget(window->_virtualRenderTex.get());
+
+    // While client code runs we present its own viewport size as the engine's "screen size" —
+    // otherwise OS-window resizes would leak into Settings.ScreenWidth/Height and the client UI
+    // would relayout against the host frame size instead of staying tied to its virtual viewport.
+    if (window->_virtualSize.width > 0 && window->_virtualSize.height > 0) {
+        _hostScreenWidthSaved = Settings.ScreenWidth;
+        _hostScreenHeightSaved = Settings.ScreenHeight;
+        _hostScreenSizeSaved = true;
+        Settings.ScreenWidth = window->_virtualSize.width;
+        Settings.ScreenHeight = window->_virtualSize.height;
+    }
+
+    // Start each frame with an opaque black background so untouched pixels don't bleed the host
+    // backbuffer through ImGui::Image's alpha blending.
+    Render.ClearRenderTarget(ucolor {0, 0, 0, 255}, true, false);
+}
+
+void Application::EndWindowRender()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    if (_currentRenderingWindow == nullptr) {
+        return;
+    }
+
+    const bool was_virtual = _currentRenderingWindow->_isVirtual;
+    auto* prev = _previousRenderTarget.get_no_const();
+
+    _previousRenderTarget = nullptr;
+    _currentRenderingWindow = nullptr;
+
+    if (was_virtual) {
+        // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels.
+        if (_hostScreenSizeSaved) {
+            Settings.ScreenWidth = _hostScreenWidthSaved;
+            Settings.ScreenHeight = _hostScreenHeightSaved;
+            _hostScreenSizeSaved = false;
+        }
+
+        Render.SetRenderTarget(prev);
+    }
+}
+
+auto Application::TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Inside BeginWindowRender/EndWindowRender, callers (e.g. clients polling input.GetMousePosition()
+    // during their own MainLoop) want the position in *their own* viewport's coords — not the active
+    // tab's. Falling back to _activeWindow is only correct outside that scope (BeginFrame event prep).
+    auto* window = _currentRenderingWindow.get();
+
+    if (window == nullptr) {
+        window = _activeWindow.get();
+    }
+
+    if (window == nullptr || !window->_isVirtual) {
+        return pos;
+    }
+
+    const auto& rect = window->_displayRect;
+
+    if (rect.width <= 0 || rect.height <= 0 || window->_virtualSize.width <= 0 || window->_virtualSize.height <= 0) {
+        return pos;
+    }
+
+    const auto local_x = iround<int32_t>(numeric_cast<float32_t>(pos.x - rect.x) * numeric_cast<float32_t>(window->_virtualSize.width) / numeric_cast<float32_t>(rect.width));
+    const auto local_y = iround<int32_t>(numeric_cast<float32_t>(pos.y - rect.y) * numeric_cast<float32_t>(window->_virtualSize.height) / numeric_cast<float32_t>(rect.height));
+
+    return {local_x, local_y};
+}
+
+auto Application::TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* window = _activeWindow.get();
+
+    if (window == nullptr || !window->_isVirtual) {
+        return pos;
+    }
+
+    const auto& rect = window->_displayRect;
+
+    if (rect.width <= 0 || rect.height <= 0 || window->_virtualSize.width <= 0 || window->_virtualSize.height <= 0) {
+        return pos;
+    }
+
+    const auto host_x = rect.x + iround<int32_t>(numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(rect.width) / numeric_cast<float32_t>(window->_virtualSize.width));
+    const auto host_y = rect.y + iround<int32_t>(numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(rect.height) / numeric_cast<float32_t>(window->_virtualSize.height));
+
+    return {host_x, host_y};
+}
+
+auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* window = _activeWindow.get();
+
+    if (window == nullptr || !window->_isVirtual) {
+        return delta;
+    }
+
+    const auto& rect = window->_displayRect;
+
+    if (rect.width <= 0 || rect.height <= 0 || window->_virtualSize.width <= 0 || window->_virtualSize.height <= 0) {
+        return delta;
+    }
+
+    const auto local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(window->_virtualSize.width) / numeric_cast<float32_t>(rect.width));
+    const auto local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(window->_virtualSize.height) / numeric_cast<float32_t>(rect.height));
+
+    return {local_dx, local_dy};
 }
 
 auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
@@ -897,7 +1134,21 @@ void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
         return;
     }
 
-    const bool should_hide_cursor = !Input.IsMouseAvailable() || (Settings.HideNativeCursor && !imguiOverlayWantsCursor);
+    bool should_hide_cursor;
+
+    if (!Input.IsMouseAvailable()) {
+        should_hide_cursor = true;
+    }
+    else if (!_childWindows.empty()) {
+        // Multi-window test bench: keep the OS cursor visible over engine chrome (tab bar, server panel)
+        // and over the virtual viewport — clients render at a different scale than the host, so a game-drawn
+        // cursor wouldn't track 1:1 anyway. The user explicitly relies on the native cursor here.
+        should_hide_cursor = false;
+    }
+    else {
+        // Single-window legacy path: keep historical behavior — game owns the cursor when it wants to.
+        should_hide_cursor = Settings.HideNativeCursor && !imguiOverlayWantsCursor;
+    }
 
     if (should_hide_cursor == _nativeCursorHidden) {
         return;
@@ -1104,6 +1355,32 @@ void Application::BeginFrame()
     const bool imgui_capture_mouse = io.WantCaptureMouse;
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
+    const auto host_pos_inside_active_virtual = [&](ipos32 host_pos) -> bool {
+        auto* aw = _activeWindow.get();
+
+        if (aw == nullptr || !aw->_isVirtual) {
+            return false;
+        }
+
+        const auto& r = aw->_displayRect;
+        return r.width > 0 && r.height > 0 && //
+            host_pos.x >= r.x && host_pos.x < r.x + r.width && //
+            host_pos.y >= r.y && host_pos.y < r.y + r.height;
+    };
+
+    const auto switch_active_to_hovered_child = [&](ipos32 host_pos) {
+        for (auto& child : _childWindows) {
+            const auto& r = child->_displayRect;
+
+            if (r.width > 0 && r.height > 0 && host_pos.x >= r.x && host_pos.x < r.x + r.width && host_pos.y >= r.y && host_pos.y < r.y + r.height) {
+                if (_activeWindow.get() != child.get()) {
+                    _activeWindow = child.get();
+                }
+                break;
+            }
+        }
+    };
+
     if (!_ctx->NextFrameEventsQueue->empty()) {
         _ctx->EventsQueue->insert(_ctx->EventsQueue->end(), _ctx->NextFrameEventsQueue->begin(), _ctx->NextFrameEventsQueue->end());
         _ctx->NextFrameEventsQueue->clear();
@@ -1118,28 +1395,42 @@ void Application::BeginFrame()
         case SDL_EVENT_MOUSE_MOTION: {
             InputEvent::MouseMoveEvent ev;
             const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(sdl_event.motion.x), iround<int32_t>(sdl_event.motion.y)});
-            ev.MouseX = screen_pos.x;
-            ev.MouseY = screen_pos.y;
             const auto vp = _ctx->ActiveRenderer->GetViewPort();
             const auto x_ratio = numeric_cast<float32_t>(Settings.ScreenWidth) / numeric_cast<float32_t>(vp.width);
             const auto y_ratio = numeric_cast<float32_t>(Settings.ScreenHeight) / numeric_cast<float32_t>(vp.height);
-            ev.DeltaX = iround<int32_t>(sdl_event.motion.xrel * x_ratio);
-            ev.DeltaY = iround<int32_t>(sdl_event.motion.yrel * y_ratio);
+            const auto host_delta = ipos32 {iround<int32_t>(sdl_event.motion.xrel * x_ratio), iround<int32_t>(sdl_event.motion.yrel * y_ratio)};
 
-            if (!imgui_capture_mouse) {
+            switch_active_to_hovered_child(screen_pos);
+
+            // Mouse events are pushed to the active client; remap host (ImGui display) coords into
+            // the active virtual window's local screen coords so the client sees positions inside its own viewport.
+            const auto local_pos = TranslateHostPosToActiveWindow(screen_pos);
+            const auto local_delta = ScaleHostDeltaToActiveWindow(host_delta);
+
+            ev.MouseX = local_pos.x;
+            ev.MouseY = local_pos.y;
+            ev.DeltaX = local_delta.x;
+            ev.DeltaY = local_delta.y;
+
+            if (!imgui_capture_mouse || host_pos_inside_active_virtual(screen_pos)) {
                 _ctx->EventsQueue->emplace_back(ev);
             }
 
             io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.motion.which));
-            io.AddMousePosEvent(numeric_cast<float32_t>(ev.MouseX), numeric_cast<float32_t>(ev.MouseY));
+            io.AddMousePosEvent(numeric_cast<float32_t>(screen_pos.x), numeric_cast<float32_t>(screen_pos.y));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+            const auto button_screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(sdl_event.button.x), iround<int32_t>(sdl_event.button.y)});
+            switch_active_to_hovered_child(button_screen_pos);
+
+            const bool button_to_client = !imgui_capture_mouse || host_pos_inside_active_virtual(button_screen_pos);
+
             if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 InputEvent::MouseDownEvent ev;
                 ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
 
-                if (!imgui_capture_mouse) {
+                if (button_to_client) {
                     _ctx->EventsQueue->emplace_back(ev);
                 }
             }
@@ -1147,7 +1438,7 @@ void Application::BeginFrame()
                 InputEvent::MouseUpEvent ev;
                 ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
 
-                if (!imgui_capture_mouse) {
+                if (button_to_client) {
                     _ctx->EventsQueue->emplace_back(ev);
                 }
             }
@@ -1341,7 +1632,10 @@ void Application::BeginFrame()
             InputEvent::MouseWheelEvent ev;
             ev.Delta = iround<int32_t>(sdl_event.wheel.y);
 
-            if (!imgui_capture_mouse) {
+            const auto wheel_screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(sdl_event.wheel.mouse_x), iround<int32_t>(sdl_event.wheel.mouse_y)});
+            switch_active_to_hovered_child(wheel_screen_pos);
+
+            if (!imgui_capture_mouse || host_pos_inside_active_virtual(wheel_screen_pos)) {
                 _ctx->EventsQueue->emplace_back(ev);
             }
 
@@ -1515,11 +1809,20 @@ void Application::BeginFrame()
             int32_t width = 0;
             int32_t height = 0;
             SDL_GetWindowSizeInPixels(resized_window, &width, &height);
+
+            const bool is_main = (resized_window == static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
+
+            if (is_main && (Settings.ScreenWidth != width || Settings.ScreenHeight != height)) {
+                Settings.ScreenWidth = width;
+                Settings.ScreenHeight = height;
+            }
+
             _ctx->ActiveRenderer->OnResizeWindow({width, height});
 
             for (auto& window : copy(_allWindows)) {
                 if (static_cast<SDL_Window*>(window->_windowHandle.get()) == resized_window) {
                     window->_onWindowSizeChangedDispatcher();
+                    window->_onScreenSizeChangedDispatcher();
                 }
             }
         } break;
@@ -1605,6 +1908,10 @@ void Application::BeginFrame()
 void Application::EndFrame()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_currentRenderingWindow != nullptr) {
+        EndWindowRender();
+    }
 
     FO_RUNTIME_ASSERT(_ctx->RenderTargetTex == nullptr);
 
@@ -1743,6 +2050,10 @@ auto AppWindow::GetSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : isize32 {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight};
+    }
+
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32_t width = 1000;
         int32_t height = 1000;
@@ -1758,6 +2069,12 @@ void AppWindow::SetSize(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_isVirtual) {
+        _virtualSize = size;
+        _onWindowSizeChangedDispatcher();
+        return;
+    }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(ResolveWindowHandle()), size.width, size.height);
@@ -1793,6 +2110,10 @@ auto AppWindow::GetPosition() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualPosition;
+    }
+
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         int32_t x = 0;
         int32_t y = 0;
@@ -1809,6 +2130,11 @@ void AppWindow::SetPosition(ipos32 pos)
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        _virtualPosition = pos;
+        return;
+    }
+
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_SetWindowPosition(static_cast<SDL_Window*>(ResolveWindowHandle()), pos.x, pos.y);
     }
@@ -1820,6 +2146,10 @@ void AppWindow::SetPosition(ipos32 pos)
 auto AppWindow::IsFocused() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_isVirtual) {
+        return _app->_activeWindow.get() == this;
+    }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_INPUT_FOCUS) != 0;
@@ -1834,6 +2164,10 @@ void AppWindow::Minimize()
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        return;
+    }
+
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_MinimizeWindow(static_cast<SDL_Window*>(ResolveWindowHandle()));
     }
@@ -1845,6 +2179,10 @@ void AppWindow::Minimize()
 auto AppWindow::IsFullscreen() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_isVirtual) {
+        return false;
+    }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_FULLSCREEN) != 0;
@@ -1858,6 +2196,11 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    if (_isVirtual) {
+        ignore_unused(enable);
+        return false;
+    }
 
     if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         auto* window = ResolveWindowStub();
@@ -1888,7 +2231,7 @@ void AppWindow::Blink()
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
+    if (_isVirtual || _app->_ctx->ActiveRendererType == RenderType::Null) {
         return;
     }
 
@@ -1901,12 +2244,30 @@ void AppWindow::AlwaysOnTop(bool enable)
 
     FO_NON_CONST_METHOD_HINT();
 
+    if (_isVirtual) {
+        return;
+    }
+
     if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         ResolveWindowStub()->AlwaysOnTop = enable;
         return;
     }
 
     SDL_SetWindowAlwaysOnTop(static_cast<SDL_Window*>(ResolveWindowHandle()), enable);
+}
+
+void AppWindow::SetTitle(string_view title)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _title = string {title};
+
+    // Virtual windows show the title in the engine's tab bar; only OS windows need to push it down to SDL.
+    if (!_isVirtual && _windowHandle && _app->_ctx->ActiveRendererType != RenderType::Null) {
+        SDL_SetWindowTitle(static_cast<SDL_Window*>(_windowHandle.get()), _title.c_str());
+    }
 }
 
 void AppWindow::GrabInput(bool enable)
@@ -1934,6 +2295,11 @@ auto AppWindow::ResolveWindowStub() const -> HeadlessWindowStub*
 void AppWindow::Destroy()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_isVirtual) {
+        _app->DestroyChildWindow(this);
+        return;
+    }
 
     if (_app->_ctx->ActiveRendererType == RenderType::Null) {
         if (_windowHandle && this != &_app->MainWindow) {
@@ -1964,6 +2330,16 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+
+    // While a virtual window is active, redirect the implicit "back buffer" target (nullptr)
+    // to the window's offscreen texture so the existing render-target stack walks back into it.
+    if (tex == nullptr) {
+        if (auto* virt = _app->_currentRenderingWindow.get_no_const(); virt != nullptr && virt->IsVirtual()) {
+            if (auto* virt_tex = virt->GetRenderTexture(); virt_tex != nullptr) {
+                tex = virt_tex;
+            }
+        }
+    }
 
     _app->_ctx->ActiveRenderer->SetRenderTarget(tex);
     _app->_ctx->RenderTargetTex = tex;
@@ -2060,7 +2436,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     FO_STACK_TRACE_ENTRY();
 
     if (!IsMouseAvailable()) {
-        return _app->Settings.MousePos;
+        return _lastMousePos;
     }
 
     float32_t x = 100;
@@ -2070,7 +2446,8 @@ auto AppInput::GetMousePosition() const -> ipos32
         SDL_GetMouseState(&x, &y);
     }
 
-    return WindowPosToScreenPos(const_cast<Renderer*>(_app->_ctx->ActiveRenderer.get()), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
+    const auto host_pos = WindowPosToScreenPos(const_cast<Renderer*>(_app->_ctx->ActiveRenderer.get()), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
+    return _app->TranslateHostPosToActiveWindow(host_pos);
 }
 
 void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
@@ -2084,19 +2461,23 @@ void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
-        _app->Settings.MousePos = pos;
+        _lastMousePos = pos;
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
 
+        // When the active window is virtual, `pos` is in that window's local screen coords —
+        // remap it back into host (ImGui display) coords before handing it to SDL.
+        const auto host_pos = _app->TranslateActiveWindowPosToHost(pos);
+
         if (relative_to != nullptr) {
-            pos = ScreenPosToWindowPos(_app->_ctx->ActiveRenderer.get(), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, pos);
+            const auto window_pos = ScreenPosToWindowPos(_app->_ctx->ActiveRenderer.get(), {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, host_pos);
 
             if (auto* handle = relative_to->GetWindowHandleForInput(); handle != nullptr) {
-                SDL_WarpMouseInWindow(static_cast<SDL_Window*>(handle), numeric_cast<float32_t>(pos.x), numeric_cast<float32_t>(pos.y));
+                SDL_WarpMouseInWindow(static_cast<SDL_Window*>(handle), numeric_cast<float32_t>(window_pos.x), numeric_cast<float32_t>(window_pos.y));
             }
         }
         else {
-            SDL_WarpMouseGlobal(numeric_cast<float32_t>(pos.x), numeric_cast<float32_t>(pos.y));
+            SDL_WarpMouseGlobal(numeric_cast<float32_t>(host_pos.x), numeric_cast<float32_t>(host_pos.y));
         }
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);

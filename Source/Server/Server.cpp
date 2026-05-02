@@ -811,59 +811,317 @@ void ServerEngine::SyncPoint()
     }
 }
 
-void ServerEngine::DrawGui(string_view server_name)
+void ServerEngine::DrawGui()
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr auto default_buf_size = 1000000; // ~1mb
-    string buf;
-    buf.reserve(default_buf_size);
-
-    if (ImGui::Begin(string(server_name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (!_started) {
-            if (!_startingError) {
-                ImGui::TextUnformatted("Server is starting...");
-            }
-            else {
-                ImGui::TextUnformatted("Server starting error, see log");
-            }
+    if (!_started) {
+        if (!_startingError) {
+            ImGui::TextUnformatted("Server is starting...");
         }
         else {
-            if (Settings.LockMaxWaitTime != 0) {
-                const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+            ImGui::TextUnformatted("Server starting error, see log");
+        }
 
-                if (!Lock(max_wait_time)) {
-                    ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
-                    WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
-                    ImGui::End();
-                    return;
+        return;
+    }
+
+    if (Settings.LockMaxWaitTime != 0) {
+        const auto max_wait_time = timespan {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
+
+        if (!Lock(max_wait_time)) {
+            ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
+            WriteLog(LogType::Warning, "Server hanged (no response more than {})", max_wait_time);
+            return;
+        }
+    }
+    else {
+        Lock(std::nullopt);
+    }
+
+    auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+
+    constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+
+    const auto info_row = [](const char* key, string_view value) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(key);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextUnformatted(value.data(), value.data() + value.size());
+    };
+
+    const auto begin_info_table = [](const char* id) -> bool {
+        if (ImGui::BeginTable(id, 2, TABLE_FLAGS)) {
+            ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 220.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+            return true;
+        }
+        return false;
+    };
+
+    const auto draw_properties_table = [&info_row, &begin_info_table](const Entity* entity) {
+        if (begin_info_table("##PropsTable")) {
+            const auto& props = entity->GetProperties();
+            const auto* registrator = props.GetRegistrator();
+            const auto props_count = registrator->GetPropertiesCount();
+
+            for (size_t i = 1; i < props_count; ++i) {
+                const auto* prop = registrator->GetPropertyByIndexUnsafe(i);
+
+                if (prop->IsDisabled()) {
+                    continue;
                 }
-            }
-            else {
-                Lock(std::nullopt);
+                if (prop->IsClientOnly()) {
+                    continue;
+                }
+                if (prop->IsComponentItself()) {
+                    continue;
+                }
+                if (prop->IsVirtual()) {
+                    continue;
+                }
+
+                string value_str;
+
+                try {
+                    value_str = props.SavePropertyToText(prop);
+                }
+                catch (const std::exception& ex) {
+                    value_str = strex("<error: {}>", ex.what()).str();
+                }
+                catch (...) {
+                    FO_UNKNOWN_EXCEPTION();
+                }
+
+                info_row(prop->GetName().c_str(), value_str);
             }
 
-            auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+            ImGui::EndTable();
+        }
+    };
 
-            ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
-            if (ImGui::TreeNode("Info")) {
-                buf = GetHealthInfo();
-                ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+    if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (begin_info_table("##InfoTable")) {
+            info_row("Version", strex("{}", Settings.GameVersion).str());
+            info_row("Compatibility version", strex("{}", Settings.CompatibilityVersion).str());
+            info_row("System time", strex("{}", nanotime::now()).str());
+            info_row("Synchronized time", strex("{}", GetSynchronizedTime()).str());
+            info_row("Server uptime", strex("{}", _stats.Uptime).str());
+            info_row("Connections", strex("{}", _stats.CurOnline).str());
+            info_row("Players", strex("{}", EntityMngr.GetPlayersCount()).str());
+            info_row("Critters", strex("{}", EntityMngr.GetCrittersCount()).str());
+            info_row("Locations", strex("{}", EntityMngr.GetLocationsCount()).str());
+            info_row("Maps", strex("{}", EntityMngr.GetMapsCount()).str());
+            info_row("Items", strex("{}", EntityMngr.GetItemsCount()).str());
+            info_row("Total entities", strex("{}", EntityMngr.GetEntitiesCount()).str());
+            info_row("Loops per second", strex("{}", _stats.LoopsPerSecond).str());
+            info_row("Average loop time", strex("{}", _stats.LoopAvgTime).str());
+            info_row("Min loop time", strex("{}", _stats.LoopMinTime).str());
+            info_row("Max loop time", strex("{}", _stats.LoopMaxTime).str());
+            info_row("DB requests per minute", strex("{}", DbStorage.GetDbRequestsPerMinute()).str());
+
+            ImGui::EndTable();
+        }
+    }
+
+    const auto cond_to_str = [](CritterCondition cond) -> const char* {
+        switch (cond) {
+        case CritterCondition::Alive:
+            return "Alive";
+        case CritterCondition::Knockout:
+            return "Knockout";
+        case CritterCondition::Dead:
+            return "Dead";
+        }
+        return "?";
+    };
+
+    function<void(Item*)> draw_item;
+    draw_item = [&](Item* item) {
+        ImGui::PushID(static_cast<const void*>(item));
+
+        const auto label = strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount()).str();
+
+        if (ImGui::TreeNode(label.c_str())) {
+            if (begin_info_table("##ItemSummary")) {
+                info_row("Id", strex("{}", item->GetId()).str());
+                info_row("Proto", strex("{}", item->GetProtoId()).str());
+                info_row("Count", strex("{}", item->GetCount()).str());
+                info_row("Stackable", strex("{}", item->GetStackable()).str());
+                info_row("Ownership", strex("{}", item->GetOwnership()).str());
+                info_row("Critter slot", strex("{}", item->GetCritterSlot()).str());
+                info_row("Critter id", strex("{}", item->GetCritterId()).str());
+                info_row("Map id", strex("{}", item->GetMapId()).str());
+                info_row("Hex", strex("{}", item->GetHex()).str());
+                info_row("Container id", strex("{}", item->GetContainerId()).str());
+                info_row("Container stack", strex("{}", item->GetContainerStack()).str());
+                info_row("Has inner items", strex("{}", item->HasInnerItems()).str());
+                ImGui::EndTable();
+            }
+
+            if (ImGui::TreeNode("Properties")) {
+                draw_properties_table(item);
                 ImGui::TreePop();
             }
 
-            if (ImGui::TreeNode("Players")) {
-                for (const auto& player : EntityMngr.GetPlayers() | std::views::values) {
-                    if (ImGui::TreeNode(strex("{} ({})", player->GetName(), player->GetId()).c_str())) {
-                        const auto* cr = player->GetControlledCritter();
+            if (item->HasInnerItems()) {
+                const auto inner_items = item->GetAllInnerItems();
 
-                        ImGui::LabelText("Host:", "%s", strex(" {}", player->GetConnection()->GetHost()).c_str());
+                if (ImGui::TreeNode(strex("Inner items ({})", inner_items.size()).c_str())) {
+                    for (auto* inner : inner_items) {
+                        draw_item(inner);
+                    }
+                    ImGui::TreePop();
+                }
+            }
 
-                        if (cr != nullptr) {
-                            ImGui::LabelText("Critter:", "%s", strex(" {}", cr->GetName()).c_str());
-                            ImGui::LabelText("Hex:", "%s", strex(" {}", cr->GetHex()).c_str());
-                        }
+            ImGui::TreePop();
+        }
 
+        ImGui::PopID();
+    };
+
+    const auto draw_critter = [&](Critter* cr) {
+        ImGui::PushID(static_cast<const void*>(cr));
+
+        const char* cond_str = cond_to_str(cr->GetCondition());
+        const auto label = strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str).str();
+
+        if (ImGui::TreeNode(label.c_str())) {
+            if (begin_info_table("##CritterSummary")) {
+                info_row("Id", strex("{}", cr->GetId()).str());
+                info_row("Name", cr->GetName());
+                info_row("Proto", strex("{}", cr->GetProtoId()).str());
+                info_row("Map id", strex("{}", cr->GetMapId()).str());
+                info_row("Hex", strex("{}", cr->GetHex()).str());
+                info_row("Direction", strex("{}", cr->GetDir()).str());
+                info_row("Condition", cond_str);
+                info_row("Controlled by player", strex("{}", cr->GetControlledByPlayer()).str());
+                info_row("Has player", strex("{}", cr->HasPlayer()).str());
+                info_row("Offline time", cr->HasPlayer() ? string("0") : strex("{}", cr->GetOfflineTime()).str());
+                info_row("Is moving", strex("{}", cr->IsMoving()).str());
+                info_row("Is attached", strex("{}", cr->GetIsAttached()).str());
+                info_row("Attach master", strex("{}", cr->GetAttachMaster()).str());
+                info_row("Look distance", strex("{}", cr->GetLookDistance()).str());
+                info_row("Multihex", strex("{}", cr->GetMultihex()).str());
+                info_row("Lexems", cr->GetLexems());
+                info_row("Inventory items", strex("{}", cr->GetInvItems().size()).str());
+                info_row("Visible items", strex("{}", cr->GetVisibleItems().size()).str());
+                info_row("Attached critters", strex("{}", cr->AttachedCritters.size()).str());
+                ImGui::EndTable();
+            }
+
+            if (ImGui::TreeNode("Properties")) {
+                draw_properties_table(cr);
+                ImGui::TreePop();
+            }
+
+            const auto inv_items = cr->GetInvItems();
+
+            if (!inv_items.empty()) {
+                if (ImGui::TreeNode(strex("Inventory ({})", inv_items.size()).c_str())) {
+                    for (auto& item : inv_items) {
+                        draw_item(item.get());
+                    }
+                    ImGui::TreePop();
+                }
+            }
+
+            ImGui::TreePop();
+        }
+
+        ImGui::PopID();
+    };
+
+    const auto draw_map = [&](Map* map) {
+        ImGui::PushID(static_cast<const void*>(map));
+
+        const auto label = strex("{} ({})", map->GetProtoId(), map->GetId()).str();
+
+        if (ImGui::TreeNode(label.c_str())) {
+            const auto critters = map->GetCritters();
+            const auto items = map->GetItems();
+            const auto static_items = map->GetStaticItems();
+            const auto map_size = map->GetSize();
+
+            if (begin_info_table("##MapSummary")) {
+                info_row("Id", strex("{}", map->GetId()).str());
+                info_row("Proto", strex("{}", map->GetProtoId()).str());
+                info_row("Location id", strex("{}", map->GetLocId()).str());
+                info_row("Size", strex("{}x{}", map_size.width, map_size.height).str());
+                info_row("Work hex", strex("{}", map->GetWorkHex()).str());
+                info_row("Critters", strex("{}", critters.size()).str());
+                info_row("Player critters", strex("{}", map->GetPlayerCritters().size()).str());
+                info_row("Non-player critters", strex("{}", map->GetNonPlayerCritters().size()).str());
+                info_row("Items", strex("{}", items.size()).str());
+                info_row("Static items", strex("{}", static_items.size()).str());
+                ImGui::EndTable();
+            }
+
+            if (ImGui::TreeNode("Properties")) {
+                draw_properties_table(map);
+                ImGui::TreePop();
+            }
+
+            if (!critters.empty()) {
+                if (ImGui::TreeNode(strex("Critters ({})", critters.size()).c_str())) {
+                    for (auto& cr : critters) {
+                        draw_critter(cr.get());
+                    }
+                    ImGui::TreePop();
+                }
+            }
+
+            if (!items.empty()) {
+                if (ImGui::TreeNode(strex("Items ({})", items.size()).c_str())) {
+                    for (auto& item : items) {
+                        draw_item(item.get());
+                    }
+                    ImGui::TreePop();
+                }
+            }
+
+            ImGui::TreePop();
+        }
+
+        ImGui::PopID();
+    };
+
+    if (ImGui::CollapsingHeader(strex("Players ({})###Players", EntityMngr.GetPlayersCount()).c_str())) {
+        for (auto& player : EntityMngr.GetPlayers() | std::views::values) {
+            ImGui::PushID(static_cast<const void*>(player.get()));
+
+            const auto label = strex("{} ({})", player->GetName(), player->GetId()).str();
+
+            if (ImGui::TreeNode(label.c_str())) {
+                auto* cr = player->GetControlledCritter();
+                const auto* connection = player->GetConnection();
+
+                if (begin_info_table("##PlayerSummary")) {
+                    info_row("Id", strex("{}", player->GetId()).str());
+                    info_row("Name", player->GetName());
+                    info_row("Logined", strex("{}", player->GetLogined()).str());
+                    info_row("Host", connection->GetHost());
+                    info_row("Port", strex("{}", connection->GetPort()).str());
+                    info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
+                    info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
+                    info_row("Was handshake", strex("{}", connection->WasHandshake).str());
+                    info_row("Last activity", strex("{}", connection->LastActivityTime).str());
+                    info_row("Ping ok", strex("{}", connection->PingOk).str());
+                    info_row("Controlled critter id", strex("{}", player->GetControlledCritterId()).str());
+                    info_row("Last controlled critter id", strex("{}", player->GetLastControlledCritterId()).str());
+                    ImGui::EndTable();
+                }
+
+                if (ImGui::TreeNode("Properties")) {
+                    draw_properties_table(player.get());
+                    ImGui::TreePop();
+                }
+
+                if (cr != nullptr) {
+                    if (ImGui::TreeNode("Controlled critter")) {
+                        draw_critter(cr);
                         ImGui::TreePop();
                     }
                 }
@@ -871,30 +1129,83 @@ void ServerEngine::DrawGui(string_view server_name)
                 ImGui::TreePop();
             }
 
-            if (ImGui::TreeNode("Locations")) {
-                for (const auto& loc : EntityMngr.GetLocations() | std::views::values) {
-                    if (ImGui::TreeNode(strex("{} ({})", loc->GetProtoId(), loc->GetId()).c_str())) {
-                        for (const auto& map : loc->GetMaps()) {
-                            if (ImGui::TreeNode(strex("{} ({})", map->GetProtoId(), map->GetId()).c_str())) {
-                                ImGui::TreePop();
-                            }
-                        }
+            ImGui::PopID();
+        }
+    }
 
-                        ImGui::TreePop();
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
+
+        if (ImGui::CollapsingHeader(strex("Unlogined players ({})###UnloginedPlayers", _unloginedPlayers.size()).c_str())) {
+            int32_t index = 0;
+
+            for (auto& player : _unloginedPlayers) {
+                ImGui::PushID(index++);
+
+                const auto* connection = player->GetConnection();
+                const auto label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
+
+                if (ImGui::TreeNode(label.c_str())) {
+                    if (begin_info_table("##UnloginedSummary")) {
+                        info_row("Host", connection->GetHost());
+                        info_row("Port", strex("{}", connection->GetPort()).str());
+                        info_row("Was handshake", strex("{}", connection->WasHandshake).str());
+                        info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
+                        info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
+                        info_row("Last activity", strex("{}", connection->LastActivityTime).str());
+                        info_row("Ping ok", strex("{}", connection->PingOk).str());
+                        info_row("Update file index", strex("{}", connection->UpdateFileIndex).str());
+                        info_row("Update file portion", strex("{}", connection->UpdateFilePortion).str());
+                        ImGui::EndTable();
                     }
+
+                    ImGui::TreePop();
                 }
 
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Data base")) {
-                DbStorage.DrawGui();
-                ImGui::TreePop();
+                ImGui::PopID();
             }
         }
     }
 
-    ImGui::End();
+    if (ImGui::CollapsingHeader(strex("Locations ({})###Locations", EntityMngr.GetLocationsCount()).c_str())) {
+        for (auto& loc : EntityMngr.GetLocations() | std::views::values) {
+            ImGui::PushID(static_cast<const void*>(loc.get()));
+
+            const auto label = strex("{} ({})", loc->GetProtoId(), loc->GetId()).str();
+
+            if (ImGui::TreeNode(label.c_str())) {
+                if (begin_info_table("##LocSummary")) {
+                    info_row("Id", strex("{}", loc->GetId()).str());
+                    info_row("Proto", strex("{}", loc->GetProtoId()).str());
+                    info_row("Name", loc->GetName());
+                    info_row("Maps count", strex("{}", loc->GetMapsCount()).str());
+                    ImGui::EndTable();
+                }
+
+                if (ImGui::TreeNode("Properties")) {
+                    draw_properties_table(loc.get());
+                    ImGui::TreePop();
+                }
+
+                if (loc->HasMaps()) {
+                    if (ImGui::TreeNode(strex("Maps ({})", loc->GetMapsCount()).c_str())) {
+                        for (auto& map : loc->GetMaps()) {
+                            draw_map(map.get());
+                        }
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+
+            ImGui::PopID();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Data base")) {
+        DbStorage.DrawGui();
+    }
 }
 
 auto ServerEngine::GetHealthInfo() const -> string
@@ -915,13 +1226,11 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Locations: {}\n", EntityMngr.GetLocationsCount());
     buf += strex("Maps: {}\n", EntityMngr.GetMapsCount());
     buf += strex("Items: {}\n", EntityMngr.GetItemsCount());
+    buf += strex("Total entities: {}\n", EntityMngr.GetEntitiesCount());
     buf += strex("Loops per second: {}\n", _stats.LoopsPerSecond);
     buf += strex("Average loop time: {}\n", _stats.LoopAvgTime);
     buf += strex("Min loop time: {}\n", _stats.LoopMinTime);
     buf += strex("Max loop time: {}\n", _stats.LoopMaxTime);
-    buf += strex("KBytes Send: {}\n", _stats.BytesSend / 1024);
-    buf += strex("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-    buf += strex("Compress ratio: {}\n", numeric_cast<float64_t>(_stats.DataReal) / numeric_cast<float64_t>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
     buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
     return buf;
