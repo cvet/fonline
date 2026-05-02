@@ -208,39 +208,12 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     else if (type.IsEnum) {
         FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
         FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+        // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
+        // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size.
+        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
 
         int32_t value = 0;
-
-        if (type.EnumUnderlyingType->IsSignedInt) {
-            switch (type.Size) {
-            case sizeof(int8_t):
-                value = reader.Read<int8_t>();
-                break;
-            case sizeof(int16_t):
-                value = reader.Read<int16_t>();
-                break;
-            case sizeof(int32_t):
-                value = reader.Read<int32_t>();
-                break;
-            default:
-                throw ClientDataValidationException("Unsupported enum underlying size", type.Name, type.Size);
-            }
-        }
-        else {
-            switch (type.Size) {
-            case sizeof(uint8_t):
-                value = reader.Read<uint8_t>();
-                break;
-            case sizeof(uint16_t):
-                value = reader.Read<uint16_t>();
-                break;
-            case sizeof(uint32_t):
-                value = static_cast<int32_t>(reader.Read<uint32_t>());
-                break;
-            default:
-                throw ClientDataValidationException("Unsupported enum underlying size", type.Name, type.Size);
-            }
-        }
+        MemCopy(&value, reader.ReadPtr<uint8_t>(type.Size), type.Size);
 
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
@@ -492,8 +465,13 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
         }
     }
     else if (type.IsEnum) {
-        int32_t value;
-        MemCopy(&value, data, sizeof(value));
+        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
+        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
+
+        int32_t value = 0;
+        MemCopy(&value, data, type.Size);
+
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
         ignore_unused(hstr);
