@@ -155,7 +155,7 @@ public:
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
     auto operator=(SpriteManager&&) noexcept = delete;
-    ~SpriteManager();
+    ~SpriteManager() = default;
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->ToHashedString(str); }
     [[nodiscard]] auto GetResources() noexcept -> FileSystem& { return *_resources; }
