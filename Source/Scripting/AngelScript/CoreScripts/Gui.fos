@@ -694,7 +694,7 @@ class Object
 
     bool _HasSelfDraw()
     {
-        return _HasOnDraw;
+        return _HasOnDraw || _Grid != null;
     }
 
     void _RefreshNeedDraw()
@@ -1497,7 +1497,7 @@ class Panel : Object
 
     bool _HasSelfDraw() override
     {
-        return _HasOnDraw || _BackgroundImage != null;
+        return _HasOnDraw || _BackgroundImage != null || _Grid != null;
     }
 
     void _DrawImage(Sprite::Sprite image)
@@ -2235,7 +2235,7 @@ class Button : Panel
 
     bool _HasSelfDraw() override
     {
-        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null;
+        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null || _Grid != null;
     }
 
     void MouseClick(MouseButton button)
@@ -2783,6 +2783,8 @@ class Grid : Panel
         for (int i = 0; i < obj._Children.length(); i++) {
             _SetCellIndex(obj._Children[i], grid, cellIndex);
         }
+
+        obj._RefreshNeedDraw();
     }
 
     void _ResizeGrid(Object obj, Object cell, int cellIndex)
