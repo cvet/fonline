@@ -652,7 +652,7 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     }
 }
 
-auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data) -> ItemHexView*
+auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -672,7 +672,15 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
         RebuildFog();
     }
 
-    return AddItemInternal(item.get());
+    const bool was_present = GetItem(id) != nullptr;
+
+    auto* added = AddItemInternal(item.get());
+
+    if (fade_in && !was_present) {
+        added->FadeUp();
+    }
+
+    return added;
 }
 
 auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id) -> ItemHexView*
@@ -738,7 +746,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     if (item->GetId()) {
         if (auto* prev_item = GetItem(item->GetId()); prev_item != nullptr) {
-            item->RestoreFading(prev_item->StoreFading());
+            item->InheritAlphaFrom(prev_item);
             DestroyItem(prev_item);
         }
     }
@@ -3023,7 +3031,7 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
     return nullptr;
 }
 
-auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data) -> CritterHexView*
+auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3037,7 +3045,17 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
     cr->SetHex(hex);
     cr->ChangeDir(dir);
 
-    return AddCritterInternal(cr.get());
+    // Detect re-addition: if the previous view is still around (fading out), the new view inherits its
+    // alpha in AddCritterInternal, so we must skip the FadeUp() reset to keep the transition smooth.
+    const bool was_present = GetCritter(id) != nullptr;
+
+    auto* added = AddCritterInternal(cr.get());
+
+    if (fade_in && !was_present) {
+        added->FadeUp();
+    }
+
+    return added;
 }
 
 auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id) -> CritterHexView*
@@ -3064,7 +3082,7 @@ auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
 
     if (cr->GetId()) {
         if (auto* prev_cr = GetCritter(cr->GetId()); prev_cr != nullptr) {
-            cr->RestoreFading(prev_cr->StoreFading());
+            cr->InheritAlphaFrom(prev_cr);
             DestroyCritter(prev_cr);
         }
 

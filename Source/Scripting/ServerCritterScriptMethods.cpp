@@ -345,6 +345,20 @@ FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API CritterVisibilityMode Server_Critter_GetVisibilityMode(Critter* self, Critter* cr)
+{
+    if (cr == nullptr) {
+        throw ScriptException("Critter arg is null");
+    }
+
+    if (self == cr) {
+        return CritterVisibilityMode::Full;
+    }
+
+    return self->GetVisibleCritterMode(cr->GetId());
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
 {
     if (item == nullptr) {
@@ -771,10 +785,7 @@ FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 {
-    if (self->IsMoving()) {
-        self->StopMoving(MovingState::Stopped);
-        self->SendAndBroadcast_Moving();
-    }
+    self->GetEngine()->StopCritterMoving(self, MovingState::Stopped);
 }
 
 ///@ ExportMethod

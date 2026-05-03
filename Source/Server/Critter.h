@@ -107,7 +107,9 @@ public:
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<raw_ptr<Critter>> { return _attachedCritters; }
     [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<raw_ptr<Critter>> { return _attachedCritters; }
 
-    auto AddVisibleCritter(Critter* cr) -> bool;
+    auto AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool;
+    auto GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode;
+    void SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) noexcept;
     auto RemoveVisibleCritter(Critter* cr) -> bool;
     auto AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool;
     auto AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool;
@@ -154,6 +156,7 @@ public:
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
+    void Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode);
     void Send_LoadMap(const Map* map);
     void Send_AddItemOnMap(const Item* item);
     void Send_RemoveItemFromMap(const Item* item);
@@ -188,6 +191,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, Critter* /*targetCr*/, CritterVisibilityMode /*mode*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
@@ -209,6 +214,7 @@ private:
     vector<raw_ptr<Critter>> _visibleCr {};
     unordered_map<ident_t, raw_ptr<Critter>> _visibleCrWhoSeeMeMap {};
     unordered_map<ident_t, raw_ptr<Critter>> _visibleCrMap {};
+    unordered_map<ident_t, CritterVisibilityMode> _visibleCrModes {};
     unordered_set<ident_t> _visibleCrGroup1 {};
     unordered_set<ident_t> _visibleCrGroup2 {};
     unordered_set<ident_t> _visibleCrGroup3 {};

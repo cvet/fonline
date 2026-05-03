@@ -88,7 +88,11 @@ void HexView::Finish()
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetFade(false);
+    _targetAlpha = 0;
+
+    const auto from_alpha = std::max(_curAlpha, _defaultAlpha);
+    _curAlpha = from_alpha;
+    StartFade(from_alpha);
 
     _finishing = true;
     _finishingTime = _fadingTime;
@@ -112,17 +116,34 @@ void HexView::FadeUp()
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetFade(true);
+    StartFade(0);
 }
 
-void HexView::SetFade(bool fade_up)
+void HexView::InheritAlphaFrom(const HexView* prev)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prev);
+
+    _curAlpha = prev->_curAlpha;
+
+    if (_curAlpha != _targetAlpha) {
+        StartFade(_curAlpha);
+    }
+    else {
+        _fading = false;
+        _fadingTime = {};
+    }
+}
+
+void HexView::StartFade(uint8_t from_alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto time = _map->GetEngine()->GameTime.GetFrameTime();
 
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : timespan::zero);
-    _fadeUp = fade_up;
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings.FadingDuration};
+    _fadeFromAlpha = from_alpha;
     _fading = true;
 
     EvaluateCurAlpha();
@@ -134,16 +155,17 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         const auto time = _map->GetEngine()->GameTime.GetFrameTime();
-        const int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
         const int32_t fading_duration = _map->GetEngine()->Settings.FadingDuration;
-        const int32_t fading_percent = fading_duration == 0 ? 0 : std::clamp(fading_remaining * 100 / fading_duration, 0, 100);
-        const int32_t fading_proc = 100 - fading_percent;
+        const int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
+        const float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
 
-        if (fading_proc == 100) {
+        if (t >= 1.0f) {
             _fading = false;
+            _curAlpha = _targetAlpha;
         }
-
-        _curAlpha = numeric_cast<uint8_t>(_fadeUp ? fading_proc * _targetAlpha / 100 : (100 - fading_proc) * _targetAlpha / 100);
+        else {
+            _curAlpha = lerp(_fadeFromAlpha, _targetAlpha, t);
+        }
     }
     else {
         _curAlpha = _targetAlpha;
@@ -154,8 +176,13 @@ void HexView::SetTargetAlpha(uint8_t alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_targetAlpha == alpha) {
+        return;
+    }
+
+    const auto from_alpha = _curAlpha;
     _targetAlpha = alpha;
-    EvaluateCurAlpha();
+    StartFade(from_alpha);
 }
 
 void HexView::SetDefaultAlpha(uint8_t alpha)
@@ -164,8 +191,7 @@ void HexView::SetDefaultAlpha(uint8_t alpha)
 
     if (_defaultAlpha == _targetAlpha) {
         _defaultAlpha = alpha;
-        _targetAlpha = alpha;
-        EvaluateCurAlpha();
+        SetTargetAlpha(alpha);
     }
     else {
         _defaultAlpha = alpha;
@@ -176,8 +202,7 @@ void HexView::RestoreAlpha()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _targetAlpha = _defaultAlpha;
-    EvaluateCurAlpha();
+    SetTargetAlpha(_defaultAlpha);
 }
 
 void HexView::RefreshSprite()

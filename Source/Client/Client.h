@@ -211,6 +211,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, CritterView* /*cr*/, CritterVisibilityMode /*mode*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
@@ -311,6 +313,7 @@ protected:
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
+    void Net_OnCritterVisibilityMode();
     void Net_OnInfoMessage();
     void Net_OnAddItemOnMap();
     void Net_OnRemoveItemFromMap();

@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern bool CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*);
+extern CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*);
 
 MapManager::MapManager(ServerEngine* engine) :
     _engine {engine}
@@ -1065,24 +1065,36 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
         return;
     }
 
-    bool is_see = IsCritterSeeCritter(map, cr, target);
+    auto vis_mode = IsCritterSeeCritter(map, cr, target);
 
-    if (!is_see && target->HasAttachedCritters()) {
+    if (vis_mode == CritterVisibilityMode::None && target->HasAttachedCritters()) {
         for (auto& attached_cr : target->GetAttachedCritters()) {
             FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
-            is_see = IsCritterSeeCritter(map, cr, attached_cr.get());
+            const auto attached_mode = IsCritterSeeCritter(map, cr, attached_cr.get());
 
-            if (is_see) {
+            if (attached_mode != CritterVisibilityMode::None) {
+                vis_mode = attached_mode;
                 break;
             }
         }
     }
 
+    const bool is_see = vis_mode != CritterVisibilityMode::None;
+
     if (is_see) {
-        if (target->AddVisibleCritter(cr)) {
+        if (target->AddVisibleCritter(cr, vis_mode)) {
             cr->Send_AddCritter(target);
             cr->OnCritterAppeared.Fire(target);
+        }
+        else {
+            const auto prev_mode = cr->GetVisibleCritterMode(target->GetId());
+
+            if (prev_mode != vis_mode) {
+                cr->SetVisibleCritterMode(target->GetId(), vis_mode);
+                cr->Send_CritterVisibilityMode(target, vis_mode);
+                cr->OnCritterVisibilityModeChanged.Fire(target, vis_mode);
+            }
         }
     }
     else {
@@ -1137,7 +1149,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     }
 }
 
-auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> bool
+auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> CritterVisibilityMode
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1202,7 +1214,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, mdi
             continue;
         }
 
-        if (CheckCritterVisibilityHook(_engine.get(), map, view_cr, cr)) {
+        if (CheckCritterVisibilityHook(_engine.get(), map, view_cr, cr) != CritterVisibilityMode::None) {
             view_cr->Send_AddCritter(cr);
         }
     }

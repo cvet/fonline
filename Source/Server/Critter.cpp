@@ -203,8 +203,7 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(_attachedCritters.empty());
 
     if (IsMoving()) {
-        StopMoving();
-        SendAndBroadcast_Moving();
+        StopMoving(MovingState::Stopped);
     }
 
     vec_add_unique_value(cr->_attachedCritters, this);
@@ -338,6 +337,7 @@ void Critter::ClearVisibleEnitites()
     FO_RUNTIME_ASSERT(_visibleCrWhoSeeMeMap.empty());
     FO_RUNTIME_ASSERT(_visibleCr.empty());
     FO_RUNTIME_ASSERT(_visibleCrMap.empty());
+    FO_RUNTIME_ASSERT(_visibleCrModes.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup1.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup2.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup3.empty());
@@ -452,7 +452,27 @@ auto Critter::GetGlobalMapGroup() -> span<raw_ptr<Critter>>
     return *_globalMapGroup;
 }
 
-auto Critter::AddVisibleCritter(Critter* cr) -> bool
+auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto it = _visibleCrModes.find(cr_id);
+    return it != _visibleCrModes.end() ? it->second : CritterVisibilityMode::None;
+}
+
+void Critter::SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (mode == CritterVisibilityMode::None) {
+        _visibleCrModes.erase(cr_id);
+    }
+    else {
+        _visibleCrModes[cr_id] = mode;
+    }
+}
+
+auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -461,6 +481,7 @@ auto Critter::AddVisibleCritter(Critter* cr) -> bool
     FO_RUNTIME_ASSERT(cr != this);
     FO_RUNTIME_ASSERT(cr->GetId() != GetId());
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+    FO_RUNTIME_ASSERT(mode != CritterVisibilityMode::None);
 
     const auto inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
 
@@ -471,6 +492,7 @@ auto Critter::AddVisibleCritter(Critter* cr) -> bool
     const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
     FO_RUNTIME_ASSERT(inserted2);
 
+    cr->_visibleCrModes[GetId()] = mode;
     _visibleCrWhoSeeMe.emplace_back(cr);
     cr->_visibleCr.emplace_back(this);
 
@@ -498,6 +520,8 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     const auto it_map2 = cr->_visibleCrMap.find(GetId());
     FO_RUNTIME_ASSERT(it_map2 != cr->_visibleCrMap.end());
     cr->_visibleCrMap.erase(it_map2);
+
+    cr->_visibleCrModes.erase(GetId());
 
     const auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
     FO_RUNTIME_ASSERT(it != _visibleCrWhoSeeMe.end());
@@ -834,6 +858,15 @@ void Critter::Send_RemoveCritter(const Critter* cr)
 
     if (_player) {
         _player->Send_RemoveCritter(cr);
+    }
+}
+
+void Critter::Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_player) {
+        _player->Send_CritterVisibilityMode(cr, mode);
     }
 }
 

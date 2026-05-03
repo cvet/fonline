@@ -107,6 +107,7 @@ public:
 
     void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
     void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
 
     ///@ ExportEvent
@@ -131,6 +132,10 @@ public:
     FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterMoved, Critter* /*cr*/, mpos /*oldHex*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterStartMoving, Critter* /*cr*/, bool /*wasMoving*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterStopMoving, Critter* /*cr*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent

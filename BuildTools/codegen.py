@@ -1649,7 +1649,7 @@ def generate_generic_code() -> None:
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
-        global_lines.append('bool CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return true; }')
+        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return CritterVisibilityMode::Full; }')
     if not is_engine_hook_enabled('CheckItemVisibilityHook'):
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
