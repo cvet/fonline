@@ -67,7 +67,7 @@ public:
     [[nodiscard]] auto GetDrawEffect() -> RenderEffect* { return _drawEffect.get(); }
     [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8_t { return _curAlpha; }
     [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _targetAlpha == 0; }
+    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _curAlpha == 0 && !_fading; }
     [[nodiscard]] auto IsFading() const noexcept -> bool { return _fading; }
     [[nodiscard]] auto IsFinishing() const noexcept -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const noexcept -> bool;
@@ -75,8 +75,7 @@ public:
     auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*;
     auto AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, const ipos32* phex_offset) -> MapSprite*;
     void Finish();
-    auto StoreFading() -> tuple<bool, bool, nanotime> { return {_fading, _fadeUp, _fadingTime}; }
-    void RestoreFading(const tuple<bool, bool, nanotime>& data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
+    void InheritAlphaFrom(const HexView* prev);
     void FadeUp();
     void SetTargetAlpha(uint8_t alpha);
     void SetDefaultAlpha(uint8_t alpha);
@@ -95,7 +94,7 @@ protected:
     void ProcessFading();
 
 private:
-    void SetFade(bool fade_up);
+    void StartFade(uint8_t from_alpha);
     void EvaluateCurAlpha();
 
     raw_ptr<MapSprite> _mapSpr {};
@@ -111,8 +110,8 @@ private:
     uint8_t _targetAlpha {0xFF};
 
     bool _fading {};
-    bool _fadeUp {};
     nanotime _fadingTime {};
+    uint8_t _fadeFromAlpha {0xFF};
 
     bool _finishing {};
     nanotime _finishingTime {};

@@ -381,6 +381,7 @@ enum class NetMessage : uint8_t
     CritterMoveSpeed = 48,
     CritterPos = 49,
     CritterAttachments = 50,
+    CritterVisibilityMode = 51,
     CritterTeleport = 52,
     ChosenAddItem = 65,
     ChosenRemoveItem = 66,
@@ -892,6 +893,13 @@ enum class CritterSeeType : uint8_t
     Any = 0,
     WhoSeeMe = 1,
     WhoISee = 2,
+};
+
+///@ ExportEnum
+enum class CritterVisibilityMode : uint8_t
+{
+    None = 0,
+    Full = 1,
 };
 
 ///@ ExportEnum

@@ -98,7 +98,7 @@ public:
     void ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, hdir dir) { ViewMap(view_cr, map, look, hex, mdir(dir)); }
 
 private:
-    auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> bool;
+    auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> CritterVisibilityMode;
 
     void ProcessCritterLook(Map* map, Critter* cr, Critter* target);
     void Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);

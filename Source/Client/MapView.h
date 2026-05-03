@@ -219,7 +219,7 @@ public:
     void InstantScrollTo(mpos center_hex);
 
     // Critters
-    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> CritterHexView*;
     auto AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id = {}) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
@@ -232,7 +232,7 @@ public:
     void DestroyCritter(CritterHexView* cr);
 
     // Items
-    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data) -> ItemHexView*;
+    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ItemHexView*;
     auto AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id = {}) -> ItemHexView*;
     auto AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ItemHexView*;
     auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;

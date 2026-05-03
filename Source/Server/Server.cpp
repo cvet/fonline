@@ -2557,8 +2557,7 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
-    cr->StopMoving(MovingState::Stopped);
-    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
+    StopCritterMoving(cr, MovingState::Stopped, [&] { cr->SendAndBroadcast(player, [&](Critter* cr2) { cr2->Send_Moving(cr); }); });
 }
 
 void ServerEngine::Process_Dir(Player* player)
@@ -3074,8 +3073,7 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : (cr->IsAlive() ? MovingState::GenericError : MovingState::NotAlive);
-            cr->StopMoving(reason);
-            cr->SendAndBroadcast_Moving();
+            StopCritterMoving(cr, reason);
         }
     }
 }
@@ -3089,7 +3087,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
     FO_RUNTIME_ASSERT(moving);
     moving->ValidateRuntimeState();
 
-    const auto validate_moving = [cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
+    const auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
         const auto validate_moving_inner = [&]() -> bool {
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return false;
@@ -3108,8 +3106,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         if (!validate_moving_inner()) {
             if (!cr->IsDestroyed() && cr->GetMovingUid() == expected_uid) {
-                cr->StopMoving();
-                cr->SendAndBroadcast_Moving();
+                StopCritterMoving(cr, MovingState::Stopped);
             }
 
             return false;
@@ -3163,8 +3160,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             }
             else {
                 moving->SetBlockHexes(old_hex, target_hex);
-                cr->StopMoving(MovingState::HexBusy);
-                cr->SendAndBroadcast_Moving();
+                StopCritterMoving(cr, MovingState::HexBusy);
                 return;
             }
 
@@ -3210,13 +3206,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         if (progress.Completed) {
             const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
-
-            cr->StopMoving(MovingState::Success);
-
-            if (incorrect_final_position) {
-                cr->SendAndBroadcast_Moving();
-            }
-
+            StopCritterMoving(cr, MovingState::Success, incorrect_final_position ? nullptr : [] { });
             return;
         }
 
@@ -3236,12 +3226,16 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
         cr->DetachFromCritter();
     }
 
+    const bool was_moving = cr->IsMoving();
+
     cr->StopMoving(MovingState::Stopped);
     cr->SetMoving(std::move(moving));
     cr->GetMoving()->ValidateRuntimeState();
     cr->SetMovingSpeed(cr->GetMoving()->GetSpeed());
 
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
+
+    OnCritterStartMoving.Fire(cr, was_moving);
 }
 
 void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator)
@@ -3254,6 +3248,26 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<
     const auto start_hex = cr->GetHex();
 
     StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+}
+
+void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!cr->IsMoving()) {
+        return;
+    }
+
+    cr->StopMoving(reason);
+
+    if (customSend) {
+        customSend();
+    }
+    else {
+        cr->SendAndBroadcast_Moving();
+    }
+
+    OnCritterStopMoving.Fire(cr);
 }
 
 void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
@@ -3270,17 +3284,17 @@ void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
     }
 
     if (speed == 0) {
-        cr->StopMoving(MovingState::Stopped);
-        cr->SendAndBroadcast_Moving();
+        StopCritterMoving(cr, MovingState::Stopped);
         return;
     }
 
     const auto cur_time = GameTime.GetFrameTime();
     cr->GetMoving()->ChangeSpeed(speed, cur_time);
-
     cr->SetMovingSpeed(speed);
 
     cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
+
+    OnCritterStartMoving.Fire(cr, true);
 }
 
 void ServerEngine::Process_RemoteCall(Player* player)

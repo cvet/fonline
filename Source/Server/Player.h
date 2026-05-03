@@ -78,6 +78,7 @@ public:
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
+    void Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode);
     void Send_LoadMap(const Map* map);
     void Send_Property(NetProperty type, const Property* prop, const Entity* entity);
     void Send_AddItemOnMap(const Item* item);
