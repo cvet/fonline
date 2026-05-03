@@ -204,7 +204,6 @@ void Critter::AttachToCritter(Critter* cr)
 
     if (IsMoving()) {
         StopMoving(MovingState::Stopped);
-        SendAndBroadcast_Move();
     }
 
     vec_add_unique_value(cr->_attachedCritters, this);
