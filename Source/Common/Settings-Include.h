@@ -275,7 +275,6 @@ FIXED_SETTING(int32_t, Hex, ChosenLightIntensity, 20); // Chosen light intensity
 FIXED_SETTING(uint8_t, Hex, ChosenLightFlags, 0); // Chosen light flags
 VARIABLE_SETTING(bool, Hex, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
-VARIABLE_SETTING(bool, Hex, ScrollCheck, true); // If true, scroll check is enabled
 VARIABLE_SETTING(bool, Hex, ScrollKeybLeft, false); // Keyboard map scroll left (read only)
 VARIABLE_SETTING(bool, Hex, ScrollKeybRight, false); // Keyboard map scroll right (read only)
 VARIABLE_SETTING(bool, Hex, ScrollKeybUp, false); // Keyboard map scroll up (read only)

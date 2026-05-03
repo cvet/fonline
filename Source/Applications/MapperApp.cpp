@@ -102,7 +102,6 @@ int main(int argc, char** argv) // Handled by SDL
         InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::ShowMessageOnException);
 
         App->Settings.ScreenHudHeight = 0;
-        App->Settings.ScrollCheck = false;
 
 #if FO_IOS
         MapperEntry(nullptr);

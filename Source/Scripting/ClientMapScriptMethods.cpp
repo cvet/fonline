@@ -139,6 +139,18 @@ FO_SCRIPT_API void Client_Map_RebuildFog(MapView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsScrollCheck(MapView* self)
+{
+    return self->IsScrollCheck();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetScrollCheck(MapView* self, bool enabled)
+{
+    self->SetScrollCheck(enabled);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {

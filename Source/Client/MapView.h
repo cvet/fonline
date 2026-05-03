@@ -166,6 +166,7 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto IsScrollCheck() const noexcept -> bool { return _scrollCheckEnabled; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
@@ -176,6 +177,7 @@ public:
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
+    void SetScrollCheck(bool enabled) noexcept { _scrollCheckEnabled = enabled; }
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
     void Process();
@@ -368,6 +370,7 @@ private:
 
     fpos32 _zoomAnchor {};
     float32_t _minZoomScroll {};
+    bool _scrollCheckEnabled {};
     irect32 _scrollArea {};
     fpos32 _scrollOffset {};
     fpos32 _extraScrollOffset {};

@@ -83,6 +83,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     _maxScroll = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
     _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
     _viewSize = fsize32(_screenSize);
+    _scrollCheckEnabled = true;
 
     SetSpritesZoom(1.0f);
     SetSpritesZoomTarget(1.0f);
@@ -176,6 +177,7 @@ void MapView::EnableMapperMode()
 
     _mapperMode = true;
     _isShowTrack = true;
+    _scrollCheckEnabled = false;
 
     _hexTrack.resize(_mapSize.square());
 }
@@ -2735,7 +2737,7 @@ void MapView::ProcessZoom(float32_t dt)
         return;
     }
 
-    const float32_t min_zoom = _engine->Settings.ScrollCheck ? _minZoomScroll : GameSettings::MIN_ZOOM;
+    const float32_t min_zoom = _scrollCheckEnabled ? _minZoomScroll : GameSettings::MIN_ZOOM;
     constexpr float32_t max_zoom = GameSettings::MAX_ZOOM;
     const float32_t clamped_target_zoom = std::clamp(target_zoom, min_zoom, max_zoom);
 
@@ -2824,7 +2826,7 @@ void MapView::InstantScroll(fpos32 scroll)
 
     _scrollOffset += scroll;
 
-    if (_engine->Settings.ScrollCheck) {
+    if (_scrollCheckEnabled) {
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {

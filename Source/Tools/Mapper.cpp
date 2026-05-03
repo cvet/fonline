@@ -1190,7 +1190,9 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::D:
-        Settings.ScrollCheck = !Settings.ScrollCheck;
+        if (_curMap) {
+            _curMap->SetScrollCheck(!_curMap->IsScrollCheck());
+        }
         break;
     case KeyCode::B:
         if (_curMap) {
@@ -2711,7 +2713,14 @@ void MapperEngine::DrawMapWindowImGui()
     ImGui::SameLine();
     ImGui::TextUnformatted("Tile layer");
 
-    ImGui::Checkbox("Scroll check", &Settings.ScrollCheck);
+    if (_curMap) {
+        bool scroll_check_enabled = _curMap->IsScrollCheck();
+
+        if (ImGui::Checkbox("Scroll check", &scroll_check_enabled)) {
+            _curMap->SetScrollCheck(scroll_check_enabled);
+        }
+    }
+
     ImGui::Checkbox("Show corners", &Settings.ShowCorners);
     ImGui::Checkbox("Roof preview", &PreviewRoofTiles);
 
@@ -5791,6 +5800,7 @@ void MapperEngine::ParseCommand(string_view command)
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
             map->EnableMapperMode();
+            map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
 
             LoadedMaps.emplace_back(std::move(map));
@@ -5903,6 +5913,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
     new_map->EnableMapperMode();
+    new_map->SetScrollCheck(false);
 
     try {
         new_map->LoadFromFile(map_name, map_text);
