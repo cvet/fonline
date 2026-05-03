@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_tlsext.c,v 1.154 2024/07/09 12:27:27 beck Exp $ */
+/* $OpenBSD: ssl_tlsext.c,v 1.159 2025/12/04 21:16:17 beck Exp $ */
 /*
  * Copyright (c) 2016, 2017, 2019 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -1445,7 +1445,7 @@ tlsext_keyshare_client_needs(SSL *s, uint16_t msg_type)
 static int
 tlsext_keyshare_client_build(SSL *s, uint16_t msg_type, CBB *cbb)
 {
-	CBB client_shares, key_exchange;
+	CBB client_shares, key_exchange, key_exchange2;
 
 	if (!CBB_add_u16_length_prefixed(cbb, &client_shares))
 		return 0;
@@ -1457,6 +1457,31 @@ tlsext_keyshare_client_build(SSL *s, uint16_t msg_type, CBB *cbb)
 		return 0;
 	if (!tls_key_share_public(s->s3->hs.key_share, &key_exchange))
 		return 0;
+
+	/*
+	 * We wish to include a second key share prediction in a TLS 1.3 client
+	 * hello if we have more than one preferred group. We never wish to do
+	 * this in response to a server selected group (Either from a TLS 1.2
+	 * server, or from a hello retry request after having negotiated TLS
+	 * 1.3).
+	 *
+	 * Therefore we only do this if we have not yet negotiated
+	 * a version, and our max version could negotiate TLS 1.3.
+	 */
+	if (s->s3->hs.negotiated_tls_version == 0 &&
+	    s->s3->hs.our_max_tls_version >= TLS1_3_VERSION) {
+		if (s->s3->hs.tls13.key_share != NULL) {
+			if (!CBB_add_u16(&client_shares,
+			    tls_key_share_group(s->s3->hs.tls13.key_share)))
+				return 0;
+			if (!CBB_add_u16_length_prefixed(&client_shares,
+			    &key_exchange2))
+				return 0;
+			if (!tls_key_share_public(s->s3->hs.tls13.key_share,
+			    &key_exchange2))
+				return 0;
+		}
+	}
 
 	if (!CBB_flush(cbb))
 		return 0;
@@ -1523,7 +1548,7 @@ tlsext_keyshare_server_process(SSL *s, uint16_t msg_type, CBS *cbs, int *alert)
 			*alert = SSL_AD_INTERNAL_ERROR;
 			return 0;
 		}
-		if (!tls_key_share_peer_public(s->s3->hs.key_share,
+		if (!tls_key_share_server_peer_public(s->s3->hs.key_share,
 		    &key_exchange, &decode_error, NULL)) {
 			if (!decode_error)
 				*alert = SSL_AD_INTERNAL_ERROR;
@@ -1554,6 +1579,7 @@ tlsext_keyshare_server_process(SSL *s, uint16_t msg_type, CBS *cbs, int *alert)
 		for (j = 0; j < server_groups_len; j++) {
 			if (server_groups[j] == client_groups[i]) {
 				client_preferred_group = client_groups[i];
+				s->s3->hs.tls13.server_group = client_preferred_group;
 				preferred_group_found = 1;
 				break;
 			}
@@ -1613,7 +1639,7 @@ tlsext_keyshare_server_process(SSL *s, uint16_t msg_type, CBS *cbs, int *alert)
 			*alert = SSL_AD_INTERNAL_ERROR;
 			return 0;
 		}
-		if (!tls_key_share_peer_public(s->s3->hs.key_share,
+		if (!tls_key_share_server_peer_public(s->s3->hs.key_share,
 		    &key_exchange, &decode_error, NULL)) {
 			if (!decode_error)
 				*alert = SSL_AD_INTERNAL_ERROR;
@@ -1686,11 +1712,33 @@ tlsext_keyshare_client_process(SSL *s, uint16_t msg_type, CBS *cbs, int *alert)
 		*alert = SSL_AD_INTERNAL_ERROR;
 		return 0;
 	}
+
+	if (s->s3->hs.tls13.server_version >= TLS1_3_VERSION &&
+	    tls_key_share_group(s->s3->hs.key_share) != group &&
+	    s->s3->hs.tls13.key_share != NULL &&
+	    tls_key_share_group(s->s3->hs.tls13.key_share) == group) {
+		/*
+		 * Server chose our second key share prediction, switch to it,
+		 * and discard the first one.
+		 */
+		tls_key_share_free(s->s3->hs.key_share);
+		s->s3->hs.key_share = s->s3->hs.tls13.key_share;
+		s->s3->hs.tls13.key_share = NULL;
+	}
+
 	if (tls_key_share_group(s->s3->hs.key_share) != group) {
 		*alert = SSL_AD_INTERNAL_ERROR;
 		return 0;
 	}
-	if (!tls_key_share_peer_public(s->s3->hs.key_share,
+
+	/*
+	 * Discard our now unused second key share prediction if we had made one
+	 * with our initial 1.3 client hello
+	 */
+	tls_key_share_free(s->s3->hs.tls13.key_share);
+	s->s3->hs.tls13.key_share = NULL;
+
+	if (!tls_key_share_client_peer_public(s->s3->hs.key_share,
 	    &key_exchange, &decode_error, NULL)) {
 		if (!decode_error)
 			*alert = SSL_AD_INTERNAL_ERROR;
@@ -2410,13 +2458,12 @@ tlsext_randomize_build_order(SSL *s)
 {
 	const struct tls_extension *psk_ext;
 	size_t idx, new_idx;
-	size_t alpn_idx = 0, sni_idx = 0;
 
 	free(s->tlsext_build_order);
 	s->tlsext_build_order_len = 0;
 
-	if ((s->tlsext_build_order = calloc(sizeof(*s->tlsext_build_order),
-	    N_TLS_EXTENSIONS)) == NULL)
+	if ((s->tlsext_build_order = calloc(N_TLS_EXTENSIONS,
+	    sizeof(*s->tlsext_build_order))) == NULL)
 		return 0;
 	s->tlsext_build_order_len = N_TLS_EXTENSIONS;
 
@@ -2433,28 +2480,6 @@ tlsext_randomize_build_order(SSL *s)
 		s->tlsext_build_order[new_idx] = &tls_extensions[idx];
 	}
 
-	/*
-	 * XXX - Apache2 special until year 2025: ensure that SNI precedes ALPN
-	 * for clients so that virtual host setups work correctly.
-	 */
-
-	if (s->server)
-		return 1;
-
-	for (idx = 0; idx < N_TLS_EXTENSIONS; idx++) {
-		if (s->tlsext_build_order[idx]->type == TLSEXT_TYPE_alpn)
-			alpn_idx = idx;
-		if (s->tlsext_build_order[idx]->type == TLSEXT_TYPE_server_name)
-			sni_idx = idx;
-	}
-	if (alpn_idx < sni_idx) {
-		const struct tls_extension *tmp;
-
-		tmp = s->tlsext_build_order[alpn_idx];
-		s->tlsext_build_order[alpn_idx] = s->tlsext_build_order[sni_idx];
-		s->tlsext_build_order[sni_idx] = tmp;
-	}
-
 	return 1;
 }
 
@@ -2466,8 +2491,8 @@ tlsext_linearize_build_order(SSL *s)
 	free(s->tlsext_build_order);
 	s->tlsext_build_order_len = 0;
 
-	if ((s->tlsext_build_order = calloc(sizeof(*s->tlsext_build_order),
-	    N_TLS_EXTENSIONS)) == NULL)
+	if ((s->tlsext_build_order = calloc(N_TLS_EXTENSIONS,
+	    sizeof(*s->tlsext_build_order))) == NULL)
 		return 0;
 	s->tlsext_build_order_len = N_TLS_EXTENSIONS;
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: ui_openssl.c,v 1.28 2023/02/16 08:38:17 tb Exp $ */
+/* $OpenBSD: ui_openssl.c,v 1.30 2026/03/10 05:28:31 deraadt Exp $ */
 /* Written by Richard Levitte (richard@levitte.org) and others
  * for the OpenSSL project 2001.
  */
@@ -153,7 +153,7 @@ static int echo_console(UI *ui);
 static int noecho_console(UI *ui);
 static int close_console(UI *ui);
 
-static UI_METHOD ui_openssl = {
+static const UI_METHOD ui_openssl = {
 	.name = "OpenSSL default user interface",
 	.ui_open_session = open_console,
 	.ui_write_string = write_string,
@@ -162,7 +162,7 @@ static UI_METHOD ui_openssl = {
 };
 
 /* The method with all the built-in thingies */
-UI_METHOD *
+const UI_METHOD *
 UI_OpenSSL(void)
 {
 	return &ui_openssl;
@@ -300,9 +300,9 @@ open_console(UI *ui)
 	is_a_tty = 1;
 
 #define DEV_TTY "/dev/tty"
-	if ((tty_in = fopen(DEV_TTY, "r")) == NULL)
+	if ((tty_in = fopen(DEV_TTY, "re")) == NULL)
 		tty_in = stdin;
-	if ((tty_out = fopen(DEV_TTY, "w")) == NULL)
+	if ((tty_out = fopen(DEV_TTY, "we")) == NULL)
 		tty_out = stderr;
 
 	if (tcgetattr(fileno(tty_in), &tty_orig) == -1) {

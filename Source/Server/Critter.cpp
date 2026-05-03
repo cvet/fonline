@@ -42,8 +42,10 @@
 
 FO_BEGIN_NAMESPACE
 
+extern auto CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) -> bool;
+
 Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
@@ -55,9 +57,16 @@ Critter::~Critter()
     FO_STACK_TRACE_ENTRY();
 }
 
+auto Critter::GetName() const noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _player ? _player->GetName() : _proto->GetName();
+}
+
 auto Critter::GetOfflineTime() const -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_NO_STACK_TRACE_ENTRY();
 
     return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
@@ -147,24 +156,40 @@ void Critter::DetachPlayer()
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
-void Critter::ClearMove()
+void Critter::SetMoving(refcount_ptr<MovingContext> moving)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Moving.Uid++;
-    Moving.Steps = {};
-    Moving.ControlSteps = {};
-    Moving.StartTime = {};
-    Moving.OffsetTime = {};
-    Moving.Speed = {};
-    Moving.StartHex = {};
-    Moving.EndHex = {};
-    Moving.WholeTime = {};
-    Moving.WholeDist = {};
-    Moving.StartHexOffset = {};
-    Moving.EndHexOffset = {};
+    if (_moving) {
+        _moving->Complete(MovingState::Stopped);
+        _lastMoving = _moving;
+    }
 
+    _moving = std::move(moving);
+    _movingUid++;
+    SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
+}
+
+void Critter::StopMoving(MovingState reason)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_moving) {
+        return;
+    }
+
+    _moving->Complete(reason);
+    _lastMoving = _moving;
+    _moving.reset();
+    _movingUid++;
     SetMovingSpeed(0);
+}
+
+void Critter::SetViewMap(ViewMapContext ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _viewMap = SafeAlloc::MakeUnique<ViewMapContext>(std::move(ctx));
 }
 
 void Critter::AttachToCritter(Critter* cr)
@@ -175,14 +200,14 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
     FO_RUNTIME_ASSERT(!cr->GetIsAttached());
     FO_RUNTIME_ASSERT(!GetIsAttached());
-    FO_RUNTIME_ASSERT(AttachedCritters.empty());
+    FO_RUNTIME_ASSERT(_attachedCritters.empty());
 
     if (IsMoving()) {
-        ClearMove();
+        StopMoving();
         SendAndBroadcast_Moving();
     }
 
-    vec_add_unique_value(cr->AttachedCritters, this);
+    vec_add_unique_value(cr->_attachedCritters, this);
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -200,7 +225,7 @@ void Critter::DetachFromCritter()
     auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    vec_remove_unique_value(cr->AttachedCritters, this);
+    vec_remove_unique_value(cr->_attachedCritters, this);
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -225,7 +250,7 @@ void Critter::MoveAttachedCritters()
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
 
-    for (auto& cr : AttachedCritters) {
+    for (auto& cr : _attachedCritters) {
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(cr->GetIsAttached());
         FO_RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
@@ -247,7 +272,7 @@ void Critter::MoveAttachedCritters()
     // Callbacks time
     refcount_ptr this_ref_holder = this;
     refcount_ptr map_ref_holder = map;
-    const auto dir = GeometryHelper::AngleToDir(GetDirAngle());
+    const auto dir = GetDir();
 
     for (const auto& moved_critter : moved_critters) {
         Critter* cr = std::get<0>(moved_critter);
@@ -548,25 +573,32 @@ auto Critter::CheckVisibleItem(ident_t item_id) const noexcept -> bool
     return _visibleItems.count(item_id) != 0;
 }
 
-void Critter::ChangeDir(uint8 dir)
+auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir = numeric_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
-    const auto dir_angle = GeometryHelper::DirToAngle(normalized_dir);
+    FO_RUNTIME_ASSERT(item);
 
-    SetDirAngle(dir_angle);
-    SetDir(normalized_dir);
+    if (IsDestroyed() || item->IsDestroyed()) {
+        return false;
+    }
+    if (item->GetOwnership() != ItemOwnership::MapHex) {
+        return false;
+    }
+    if (!GetMapId() || item->GetMapId() != GetMapId()) {
+        return false;
+    }
+
+    const auto* map = _engine->EntityMngr.GetMap(GetMapId());
+    FO_RUNTIME_ASSERT(map);
+
+    return CheckItemVisibilityHook(_engine.get(), map, this, item);
 }
 
-void Critter::ChangeDirAngle(int32 dir_angle)
+void Critter::ChangeDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(numeric_cast<int16>(dir_angle));
-    const auto dir = GeometryHelper::AngleToDir(normalized_dir_angle);
-
-    SetDirAngle(normalized_dir_angle);
     SetDir(dir);
 }
 
@@ -633,11 +665,11 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
     return it->get();
 }
 
-auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32
+auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 count = 0;
+    int32_t count = 0;
 
     for (const auto& item : _invItems) {
         if (item->GetProtoId() == pid) {
@@ -659,7 +691,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     }
 }
 
-void Critter::Broadcast_Action(CritterAction action, int32 action_data, const Item* item)
+void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -718,7 +750,7 @@ void Critter::SendAndBroadcast_Moving()
     }
 }
 
-void Critter::SendAndBroadcast_Action(CritterAction action, int32 action_data, const Item* context_item)
+void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -877,7 +909,7 @@ void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32 action_data, const Item* context_item)
+void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item)
 {
     FO_STACK_TRACE_ENTRY();
 

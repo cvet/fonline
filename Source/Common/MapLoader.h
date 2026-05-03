@@ -35,21 +35,24 @@
 
 #include "Common.h"
 
-#include "ProtoManager.h"
+#include "ConfigFile.h"
+#include "EntityProtos.h"
 
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapLoaderException);
 
+class EngineMetadata;
+
 class MapLoader final
 {
 public:
-    using CrLoadFunc = function<void(ident_t id, const ProtoCritter* proto, const map<string, string>& kv)>;
-    using ItemLoadFunc = function<void(ident_t id, const ProtoItem* proto, const map<string, string>& kv)>;
+    using CrLoadFunc = function<void(ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv)>;
+    using ItemLoadFunc = function<void(ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv)>;
 
     MapLoader() = delete;
 
-    static void Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
+    static void Load(string_view name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
 };
 
 FO_END_NAMESPACE

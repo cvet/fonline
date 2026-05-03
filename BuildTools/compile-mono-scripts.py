@@ -1,53 +1,65 @@
 #!/usr/bin/python3
 
-import os
-import sys
+from __future__ import annotations
+
 import argparse
 import subprocess
+from pathlib import Path
 
-parser = argparse.ArgumentParser(description='FOnline scripts generation')
-parser.add_argument('-scripts', dest='scripts', required=True, help='path to scripts directory')
-parser.add_argument('-assembly', dest='assembly', action='append', default=[], help='assembly name')
-args = parser.parse_args()
 
-msbuild = 'msbuild'
-#if os.name == 'nt':
-#    if os.path.isdir('C:/Program Files/Mono/bin'):
-#        msbuild = 'C:/Program Files/Mono/bin/msbuild'
-#    elif os.path.isdir('C:/Program Files (x86)/Mono/bin'):
-#        msbuild = 'C:/Program Files (x86)/Mono/bin/msbuild'
+TARGETS = ('Server', 'Client', 'Mapper')
+CLIENT_AOT_PLATFORMS = ('x86', 'amd64', 'arm', 'arm64', 'wasm')
+MAPPER_AOT_PLATFORMS = ('x86', 'amd64', 'wasm')
 
-# Compile
-def compileAssembly(target, name):
-    subprocess.check_call([msbuild, '-noLogo', '-m', '-target:Build', '-p:Configuration=Release',
-            '-p:OutputPath=' + target + 'Assemblies', name + '.' + target + '.csproj'], shell = True)
 
-for target in ['Server', 'Client', 'Mapper']:
-    for assembly in args.assembly:
-        compileAssembly(target, assembly)
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='FOnline scripts generation')
+    parser.add_argument('-scripts', dest='scripts', required=True, help='path to scripts directory')
+    parser.add_argument('-assembly', dest='assembly', action='append', default=[], help='assembly name')
+    return parser
 
-# Link
-# Todo:
-def linkAssembly(target, name):
-    pass
 
-for target in ['Server', 'Client', 'Mapper']:
-    for assembly in args.assembly:
-        linkAssembly(target, assembly)
+def compile_assembly(msbuild_path: str, scripts_path: Path, target: str, name: str) -> None:
+    subprocess.check_call([
+        msbuild_path,
+        '-noLogo',
+        '-m',
+        '-target:Build',
+        '-p:Configuration=Release',
+        '-p:OutputPath=' + target + 'Assemblies',
+        name + '.' + target + '.csproj',
+    ], cwd=scripts_path)
 
-# AOT
-# Todo:
-def aotAssembly(target, name, platform):
-    pass
 
-for target in ['Server', 'Client', 'Mapper']:
-    for platform in ['x86', 'amd64', 'arm', 'arm64', 'wasm']:
+def link_assembly(target: str, name: str) -> None:
+    _ = target, name
+
+
+def aot_assembly(target: str, name: str, platform: str) -> None:
+    _ = target, name, platform
+
+
+def main() -> None:
+    args = create_parser().parse_args()
+    msbuild_path = 'msbuild'
+    scripts_path = Path(args.scripts).resolve()
+
+    for target in TARGETS:
         for assembly in args.assembly:
-            aotAssembly('Client', assembly, platform)
+            compile_assembly(msbuild_path, scripts_path, target, assembly)
 
-for platform in ['x86', 'amd64', 'arm', 'arm64', 'wasm']:
-    for a in args.assembly:
-        aotAssembly('Client', a, platform)
-for platform in ['x86', 'amd64', 'wasm']:
-    for a in args.assembly:
-        aotAssembly('Mapper', a, platform)
+    for target in TARGETS:
+        for assembly in args.assembly:
+            link_assembly(target, assembly)
+
+    for platform in CLIENT_AOT_PLATFORMS:
+        for assembly in args.assembly:
+            aot_assembly('Client', assembly, platform)
+
+    for platform in MAPPER_AOT_PLATFORMS:
+        for assembly in args.assembly:
+            aot_assembly('Mapper', assembly, platform)
+
+
+if __name__ == '__main__':
+    main()

@@ -37,6 +37,12 @@
 
 FO_BEGIN_NAMESPACE
 
+constexpr size_t AsyncQueueDropLimit = 100000;
+
+static void StartAsyncWorker();
+static void StopAsyncWorker() noexcept;
+static void AsyncWorkerLoop() noexcept;
+static void WriteSync(string_view message) noexcept;
 [[maybe_unused]] static void FlushLogAtExit();
 
 struct BaseLoggingData
@@ -53,37 +59,178 @@ struct BaseLoggingData
 #endif
     }
 
-    std::recursive_mutex LogLocker {};
+    ~BaseLoggingData() { StopAsyncWorker(); }
+
+    std::mutex LogLocker {};
     std::ofstream LogFileHandle {};
+    std::atomic_bool AsyncEnabled {};
+    std::mutex AsyncQueueMutex {};
+    std::condition_variable AsyncSignal {};
+    std::deque<std::string> AsyncQueue {};
+    size_t AsyncDroppedCount {};
+    bool AsyncFinish {};
+    std::thread AsyncWorker {};
 };
 FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
 
-static void FlushLogAtExit()
+extern void LogToFile(string_view path)
 {
-    if (BaseLogging != nullptr && BaseLogging->LogLocker.try_lock()) {
-        std::scoped_lock locker(std::adopt_lock, BaseLogging->LogLocker);
+    bool open_failed = false;
 
-        if (BaseLogging->LogFileHandle) {
+    {
+        std::scoped_lock locker {BaseLogging->LogLocker};
+
+        if (BaseLogging->LogFileHandle.is_open()) {
             BaseLogging->LogFileHandle.close();
         }
+
+        BaseLogging->LogFileHandle.open(std::string(path), std::ios::out | std::ios::binary | std::ios::trunc);
+
+        if (!BaseLogging->LogFileHandle) {
+            open_failed = true;
+        }
+    }
+
+    if (open_failed) {
+        WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
     }
 }
 
-extern void LogToFile(string_view path)
+extern void SetAsyncLogWriting(bool enabled)
 {
-    std::scoped_lock locker(BaseLogging->LogLocker);
-
-    BaseLogging->LogFileHandle.open(std::string(path), std::ios::out | std::ios::binary | std::ios::trunc);
-
-    if (!BaseLogging->LogFileHandle) {
-        WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
+    if (enabled) {
+        StartAsyncWorker();
+    }
+    else {
+        StopAsyncWorker();
     }
 }
 
 extern void WriteBaseLog(string_view message) noexcept
 {
     try {
-        std::scoped_lock locker(BaseLogging->LogLocker);
+        if (BaseLogging->AsyncEnabled.load(std::memory_order_acquire)) {
+            bool enqueued = false;
+            bool dropped = false;
+
+            {
+                std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+
+                if (BaseLogging->AsyncEnabled.load(std::memory_order_relaxed)) {
+                    if (BaseLogging->AsyncQueue.size() >= AsyncQueueDropLimit) {
+                        BaseLogging->AsyncDroppedCount++;
+                        dropped = true;
+                    }
+                    else {
+                        BaseLogging->AsyncQueue.emplace_back(message);
+                        enqueued = true;
+                    }
+                }
+            }
+
+            if (enqueued) {
+                BaseLogging->AsyncSignal.notify_one();
+            }
+
+            if (enqueued || dropped) {
+                return;
+            }
+        }
+
+        WriteSync(message);
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static void StartAsyncWorker()
+{
+    if (BaseLogging->AsyncWorker.joinable()) {
+        return;
+    }
+
+    {
+        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+
+        BaseLogging->AsyncFinish = false;
+        BaseLogging->AsyncEnabled.store(true, std::memory_order_release);
+    }
+
+    BaseLogging->AsyncWorker = std::thread([] { AsyncWorkerLoop(); });
+}
+
+static void StopAsyncWorker() noexcept
+{
+    if (!BaseLogging->AsyncWorker.joinable()) {
+        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
+        return;
+    }
+
+    {
+        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+
+        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
+        BaseLogging->AsyncFinish = true;
+    }
+
+    BaseLogging->AsyncSignal.notify_all();
+
+    try {
+        BaseLogging->AsyncWorker.join();
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static void AsyncWorkerLoop() noexcept
+{
+    try {
+        std::deque<std::string> drained;
+        size_t drained_drop_count = 0;
+
+        while (true) {
+            {
+                std::unique_lock queue_lock {BaseLogging->AsyncQueueMutex};
+
+                BaseLogging->AsyncSignal.wait(queue_lock, [] { return BaseLogging->AsyncFinish || !BaseLogging->AsyncQueue.empty() || BaseLogging->AsyncDroppedCount != 0; });
+
+                drained.swap(BaseLogging->AsyncQueue);
+                drained_drop_count = BaseLogging->AsyncDroppedCount;
+                BaseLogging->AsyncDroppedCount = 0;
+
+                if (drained.empty() && drained_drop_count == 0 && BaseLogging->AsyncFinish) {
+                    return;
+                }
+            }
+
+            for (const auto& msg : drained) {
+                WriteSync(msg);
+            }
+
+            if (drained_drop_count != 0) {
+                std::string drop_notice = "Dropped ";
+                drop_notice += std::to_string(drained_drop_count);
+                drop_notice += " log messages due to high volume (queue limit ";
+                drop_notice += std::to_string(AsyncQueueDropLimit);
+                drop_notice += ")\n";
+                WriteSync(drop_notice);
+            }
+
+            drained.clear();
+            drained_drop_count = 0;
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+static void WriteSync(string_view message) noexcept
+{
+    try {
+        std::scoped_lock locker {BaseLogging->LogLocker};
 
         if (BaseLogging->LogFileHandle) {
             BaseLogging->LogFileHandle << message;
@@ -98,9 +245,19 @@ extern void WriteBaseLog(string_view message) noexcept
     }
 }
 
-extern auto GetLogLocker() noexcept -> std::recursive_mutex&
+static void FlushLogAtExit()
 {
-    return BaseLogging->LogLocker;
+    if (BaseLogging != nullptr) {
+        StopAsyncWorker();
+
+        if (BaseLogging->LogLocker.try_lock()) {
+            std::scoped_lock locker {std::adopt_lock, BaseLogging->LogLocker};
+
+            if (BaseLogging->LogFileHandle) {
+                BaseLogging->LogFileHandle.close();
+            }
+        }
+    }
 }
 
 FO_END_NAMESPACE

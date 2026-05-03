@@ -46,13 +46,13 @@ public:
     ~NetworkClientConnection_Interthread() override = default;
 
     auto CheckStatusImpl(bool for_write) -> bool override;
-    auto SendDataImpl(const_span<uint8> buf) -> size_t override;
-    auto ReceiveDataImpl(vector<uint8>& buf) -> size_t override;
+    auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
+    auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t override;
     void DisconnectImpl() noexcept override;
 
 private:
     InterthreadDataCallback _interthreadSend {};
-    vector<uint8> _interthreadReceived {};
+    vector<uint8_t> _interthreadReceived {};
     std::mutex _interthreadReceivedLocker {};
     std::atomic_bool _interthreadRequestDisconnect {};
 };
@@ -71,9 +71,23 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
 
     _interthreadReceived.clear();
 
-    const auto port = numeric_cast<uint16>(_settings->ServerPort);
+    const auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-    _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) FO_DEFERRED {
+    function<InterthreadDataCallback(InterthreadDataCallback)> listener;
+
+    {
+        std::scoped_lock locker(InterthreadListenersLocker);
+
+        const auto it = InterthreadListeners.find(port);
+
+        if (it == InterthreadListeners.end()) {
+            throw NetworkClientException("Interthread listener is not available", port);
+        }
+
+        listener = it->second;
+    }
+
+    _interthreadSend = listener([this](const_span<uint8_t> buf) FO_DEFERRED {
         if (!buf.empty()) {
             auto locker = std::unique_lock {_interthreadReceivedLocker};
 
@@ -104,7 +118,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
     return for_write ? true : !_interthreadReceived.empty();
 }
 
-auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8> buf) -> size_t
+auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -113,7 +127,7 @@ auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8> buf) ->
     return buf.size();
 }
 
-auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8>& buf) -> size_t
+auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 

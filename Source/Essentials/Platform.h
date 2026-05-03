@@ -59,6 +59,11 @@ struct Platform
     // Other: warning log message
     static auto ForkProcess() noexcept -> bool;
 
+    // Windows: GetCurrentProcessId
+    // Linux & Mac: getpid
+    // Other: "0"
+    static auto GetCurrentProcessIdStr() noexcept -> string;
+
     // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
     // Linux & Mac: dlopen/dlclose/dlsym
     // Other: nullptr
@@ -70,10 +75,6 @@ struct Platform
     {
         return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
     }
-
-    // Windows: GetAsyncKeyState
-    // Other: false
-    static auto IsShiftDown() noexcept -> bool;
 };
 
 FO_END_NAMESPACE

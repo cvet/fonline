@@ -57,8 +57,8 @@ public:
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
 
     auto CheckStatus(bool for_write) -> bool;
-    auto SendData(const_span<uint8> buf) -> size_t;
-    auto ReceiveData() -> const_span<uint8>;
+    auto SendData(const_span<uint8_t> buf) -> size_t;
+    auto ReceiveData() -> const_span<uint8_t>;
     void Disconnect() noexcept;
 
     [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
@@ -66,8 +66,8 @@ public:
 
 protected:
     virtual auto CheckStatusImpl(bool for_write) -> bool = 0;
-    virtual auto SendDataImpl(const_span<uint8> buf) -> size_t = 0;
-    virtual auto ReceiveDataImpl(vector<uint8>& buf) -> size_t = 0;
+    virtual auto SendDataImpl(const_span<uint8_t> buf) -> size_t = 0;
+    virtual auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t = 0;
     virtual void DisconnectImpl() noexcept = 0;
 
     raw_ptr<ClientNetworkSettings> _settings;
@@ -77,7 +77,7 @@ protected:
 private:
     size_t _bytesSend {};
     size_t _bytesReceived {};
-    vector<uint8> _incomeBuf {};
+    vector<uint8_t> _incomeBuf {};
 };
 
 FO_END_NAMESPACE

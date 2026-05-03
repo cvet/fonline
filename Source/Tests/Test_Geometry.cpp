@@ -37,6 +37,7 @@
 
 #include "Application.h"
 #include "Geometry.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -46,12 +47,18 @@ TEST_CASE("GeometryHelper")
     CHECK(GeometryHelper::GetDistance(0, 0, 0, 0) == 0);
     CHECK(GeometryHelper::GetDistance(0, 0, 1, 0) >= 0);
     CHECK(GeometryHelper::GetDistance(mpos {0, 0}, mpos {1, 1}) >= 0);
+    CHECK(GeometryHelper::GetDistance(1, 2, 7, 9) == GeometryHelper::GetDistance(7, 9, 1, 2));
 
-    // GetDir
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0) <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}) <= 7);
-    CHECK(GeometryHelper::GetDir(0, 0, 1, 0, 10.0f) <= 7);
-    CHECK(GeometryHelper::GetDir(mpos {0, 0}, mpos {1, 0}, 10.0f) <= 7);
+    // GetStepsCoords
+    const auto zero_steps = GeometryHelper::GetStepsCoords({}, {});
+    CHECK(is_float_equal(zero_steps.x, 0.0f));
+    CHECK(is_float_equal(zero_steps.y, 0.0f));
+
+    // GetHexDir
+    CHECK(GeometryHelper::GetHexDir(0, 0, 1, 0).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(mpos {0, 0}, mpos {1, 0}).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(0, 0, 1, 0, 10.0f).value() <= 7);
+    CHECK(GeometryHelper::GetHexDir(mpos {0, 0}, mpos {1, 0}, 10.0f).value() <= 7);
 
     // GetDirAngle
     CHECK(GeometryHelper::GetDirAngle(0, 0, 1, 0) >= 0.0f);
@@ -59,39 +66,26 @@ TEST_CASE("GeometryHelper")
 
     // GetDirAngleDiff
     CHECK(GeometryHelper::GetDirAngleDiff(30.0f, 60.0f) == 30.0f);
+    CHECK(GeometryHelper::GetDirAngleDiff(350.0f, 10.0f) == 20.0f);
 
     // GetDirAngleDiffSided
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(30.0f, 60.0f), 30.0f));
     CHECK(is_float_equal(GeometryHelper::GetDirAngleDiffSided(60.0f, 30.0f), -30.0f));
 
-    // DirToAngle / AngleToDir / NormalizeAngle
-    for (uint8 d = 0; d < 6; d++) {
-        int16 angle = GeometryHelper::DirToAngle(d);
-        uint8 dir = GeometryHelper::AngleToDir(angle);
-        CHECK(dir == d);
-        CHECK(GeometryHelper::NormalizeAngle(angle + 360 * 2) == angle);
-    }
-
     // CheckDist
     CHECK(GeometryHelper::CheckDist(mpos {0, 0}, mpos {0, 0}, 0));
     CHECK_FALSE(GeometryHelper::CheckDist(mpos {0, 0}, mpos {10, 10}, 5));
 
-    // ReverseDir
-    for (uint8 d = 0; d < GameSettings::MAP_DIR_COUNT; d++) {
-        uint8 rev = GeometryHelper::ReverseDir(d);
-        CHECK(GeometryHelper::ReverseDir(rev) == d);
-    }
-
     // MoveHexByDir
     mpos hex {5, 5};
     msize map_size {10, 10};
-    bool moved = GeometryHelper::MoveHexByDir(hex, 2, map_size);
+    bool moved = GeometryHelper::MoveHexByDir(hex, hdir::SouthEast, map_size);
     CHECK(moved);
     CHECK(map_size.is_valid_pos(hex));
 
     // MoveHexByDirUnsafe
     ipos32 ihex {5, 5};
-    GeometryHelper::MoveHexByDirUnsafe(ihex, 2);
+    GeometryHelper::MoveHexByDirUnsafe(ihex, hdir::SouthEast);
     CHECK(map_size.is_valid_pos(ihex));
 
     // MoveHexAroundAway
@@ -115,15 +109,287 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::MoveHexAroundAwayUnsafe(ihex9, GeometryHelper::HexesInRadius(3));
     CHECK(GeometryHelper::GetDistance(ihex3, ihex9) == 4);
 
+    // MoveHexAroundAway (safe)
+    mpos safe_hex {5, 5};
+    CHECK(GeometryHelper::MoveHexAroundAway(safe_hex, 1, map_size));
+    CHECK(GeometryHelper::GetDistance(mpos {5, 5}, safe_hex) == 1);
+
+    mpos border_hex {0, 0};
+    const mpos border_before = border_hex;
+    CHECK_FALSE(GeometryHelper::MoveHexAroundAway(border_hex, 1, map_size));
+    CHECK(border_hex == border_before);
+
     // ForEachMultihexLines
-    vector<uint8> lines = {2, 2, 4, 1};
+    vector<uint8_t> lines = {2, 2, 4, 1};
     mpos start {5, 5};
-    int32 count = 0;
+    int32_t count = 0;
     GeometryHelper::ForEachMultihexLines(lines, start, map_size, [&](mpos pos) {
         CHECK(map_size.is_valid_pos(pos));
         count++;
     });
     CHECK(count == 3);
+
+    // ForEachMultihexLines edge cases
+    vector<uint8_t> invalid_and_odd = {9, 5, 2};
+    int32_t skipped_count = 0;
+    GeometryHelper::ForEachMultihexLines(invalid_and_odd, start, map_size, [&](mpos) { skipped_count++; });
+    CHECK(skipped_count == 4);
+
+    vector<uint8_t> reverse_path = {2, 1, 5, 1};
+    int32_t reverse_count = 0;
+    GeometryHelper::ForEachMultihexLines(reverse_path, start, map_size, [&](mpos pos) {
+        CHECK(pos != start);
+        reverse_count++;
+    });
+    CHECK(reverse_count == 1);
+
+    // HexesInRadius
+    CHECK(GeometryHelper::HexesInRadius(0) == 1);
+    CHECK(GeometryHelper::HexesInRadius(1) == 7);
+    CHECK(GeometryHelper::HexesInRadius(2) == 19);
+}
+
+TEST_CASE("GetHexPos and GetHexPosCoord")
+{
+    constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
+    constexpr int32_t half_w = w / 2;
+    constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
+    constexpr int32_t hex_h = GameSettings::MAP_HEX_HEIGHT;
+
+    SECTION("GetHexPos origin")
+    {
+        const ipos32 pos = GeometryHelper::GetHexPos(ipos32 {0, 0});
+        CHECK(pos.x == 0);
+        CHECK(pos.y == 0);
+    }
+
+    SECTION("GetHexPos mpos overload matches ipos32 overload")
+    {
+        for (int16_t rx = 0; rx < 10; rx++) {
+            for (int16_t ry = 0; ry < 10; ry++) {
+                CHECK(GeometryHelper::GetHexPos(mpos {rx, ry}) == GeometryHelper::GetHexPos(ipos32 {rx, ry}));
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord at hex center returns exact hex")
+    {
+        for (int32_t rx = -5; rx <= 5; rx++) {
+            for (int32_t ry = -5; ry <= 5; ry++) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                ipos32 offset;
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center, &offset);
+                INFO("rx=" << rx << " ry=" << ry << " center=" << center.x << "," << center.y);
+                CHECK(result.x == rx);
+                CHECK(result.y == ry);
+                CHECK(offset.x == 0);
+                CHECK(offset.y == 0);
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord roundtrip with small offsets")
+    {
+        for (int32_t rx = -3; rx <= 3; rx++) {
+            for (int32_t ry = -3; ry <= 3; ry++) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+
+                // Small offsets within hex interior
+                for (int32_t dx = -2; dx <= 2; dx++) {
+                    for (int32_t dy = -2; dy <= 2; dy++) {
+                        ipos32 offset;
+                        const ipos32 result = GeometryHelper::GetHexPosCoord({center.x + dx, center.y + dy}, &offset);
+                        INFO("rx=" << rx << " ry=" << ry << " dx=" << dx << " dy=" << dy);
+                        CHECK(result.x == rx);
+                        CHECK(result.y == ry);
+                        CHECK(offset.x == dx);
+                        CHECK(offset.y == dy);
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord covers every pixel in grid area")
+    {
+        // For a block of hexes, verify that every pixel resolves to a valid hex
+        // and the offset is within hex bounds
+        constexpr int32_t test_range = 4;
+
+        for (int32_t rx = -test_range; rx <= test_range; rx++) {
+            for (int32_t ry = -test_range; ry <= test_range; ry++) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+
+                // Scan full hex bounding box area
+                for (int32_t px = center.x - half_w; px <= center.x + half_w; px++) {
+                    for (int32_t py = center.y - hex_h / 2; py <= center.y + hex_h / 2; py++) {
+                        ipos32 offset;
+                        const ipos32 result = GeometryHelper::GetHexPosCoord({px, py}, &offset);
+
+                        // Verify the result is self-consistent: center + offset == input pixel
+                        const ipos32 result_center = GeometryHelper::GetHexPos(result);
+                        INFO("px=" << px << " py=" << py << " result=" << result.x << "," << result.y);
+                        CHECK(result_center.x + offset.x == px);
+                        CHECK(result_center.y + offset.y == py);
+
+                        // Offset must be within hex bounds
+                        CHECK(std::abs(offset.x) <= half_w);
+                        CHECK(std::abs(offset.y) <= hex_h / 2);
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord hex boundary continuity")
+    {
+        // Adjacent pixels should resolve to the same or neighboring hexes
+        constexpr int32_t scan_min = -100;
+        constexpr int32_t scan_max = 100;
+
+        for (int32_t px = scan_min; px < scan_max; px++) {
+            for (int32_t py = scan_min; py < scan_max; py++) {
+                const ipos32 hex_here = GeometryHelper::GetHexPosCoord({px, py});
+                const ipos32 hex_right = GeometryHelper::GetHexPosCoord({px + 1, py});
+                const ipos32 hex_down = GeometryHelper::GetHexPosCoord({px, py + 1});
+
+                // Moving one pixel should change hex by at most 1
+                const int32_t dist_right = GeometryHelper::GetDistance(hex_here, hex_right);
+                const int32_t dist_down = GeometryHelper::GetDistance(hex_here, hex_down);
+                INFO("px=" << px << " py=" << py);
+                CHECK(dist_right <= 1);
+                CHECK(dist_down <= 1);
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord without hex_offset (nullptr)")
+    {
+        const ipos32 center = GeometryHelper::GetHexPos(ipos32 {3, 4});
+        const ipos32 result = GeometryHelper::GetHexPosCoord(center, nullptr);
+        CHECK(result.x == 3);
+        CHECK(result.y == 4);
+
+        // Also via default argument
+        const ipos32 result2 = GeometryHelper::GetHexPosCoord(center);
+        CHECK(result2.x == 3);
+        CHECK(result2.y == 4);
+    }
+
+    SECTION("GetHexPosCoord negative coordinates")
+    {
+        for (int32_t rx = -10; rx <= 0; rx++) {
+            for (int32_t ry = -10; ry <= 0; ry++) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center);
+                INFO("rx=" << rx << " ry=" << ry);
+                CHECK(result.x == rx);
+                CHECK(result.y == ry);
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord large coordinates")
+    {
+        const int32_t coords[] = {-100, -50, 0, 50, 100};
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                ipos32 offset;
+                const ipos32 result = GeometryHelper::GetHexPosCoord(center, &offset);
+                INFO("rx=" << rx << " ry=" << ry);
+                CHECK(result.x == rx);
+                CHECK(result.y == ry);
+                CHECK(offset.x == 0);
+                CHECK(offset.y == 0);
+            }
+        }
+    }
+
+    SECTION("GetHexOffset consistency")
+    {
+        for (int32_t ax = 0; ax < 5; ax++) {
+            for (int32_t ay = 0; ay < 5; ay++) {
+                for (int32_t bx = 0; bx < 5; bx++) {
+                    for (int32_t by = 0; by < 5; by++) {
+                        const ipos32 from_raw {ax, ay};
+                        const ipos32 to_raw {bx, by};
+                        const ipos32 pixel_from = GeometryHelper::GetHexPos(from_raw);
+                        const ipos32 pixel_to = GeometryHelper::GetHexPos(to_raw);
+                        const ipos32 hex_offset = GeometryHelper::GetHexOffset(from_raw, to_raw);
+                        CHECK(hex_offset.x == pixel_to.x - pixel_from.x);
+                        CHECK(hex_offset.y == pixel_to.y - pixel_from.y);
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("GetHexOffset mpos overload matches ipos32 overload")
+    {
+        for (int16_t ax = 0; ax < 5; ax++) {
+            for (int16_t ay = 0; ay < 5; ay++) {
+                for (int16_t bx = 0; bx < 5; bx++) {
+                    for (int16_t by = 0; by < 5; by++) {
+                        CHECK(GeometryHelper::GetHexOffset(mpos {ax, ay}, mpos {bx, by}) == GeometryHelper::GetHexOffset(ipos32 {ax, ay}, ipos32 {bx, by}));
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("GetHexAxialCoord roundtrip")
+    {
+        for (int32_t rx = -5; rx <= 5; rx++) {
+            for (int32_t ry = -5; ry <= 5; ry++) {
+                const ipos32 axial = GeometryHelper::GetHexAxialCoord(ipos32 {rx, ry});
+                const ipos32 pixel = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                INFO("rx=" << rx << " ry=" << ry);
+                CHECK(axial.x == pixel.x / half_w);
+                CHECK(axial.y == pixel.y / h);
+            }
+        }
+    }
+
+    SECTION("GetHexAxialCoord mpos overload matches ipos32 overload")
+    {
+        for (int16_t rx = 0; rx < 10; rx++) {
+            for (int16_t ry = 0; ry < 10; ry++) {
+                CHECK(GeometryHelper::GetHexAxialCoord(mpos {rx, ry}) == GeometryHelper::GetHexAxialCoord(ipos32 {rx, ry}));
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord at hex vertices resolves correctly")
+    {
+        // Test points at hex vertices - should resolve to valid hexes
+        for (int32_t rx = -3; rx <= 3; rx++) {
+            for (int32_t ry = -3; ry <= 3; ry++) {
+                const ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+
+                if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                    // Pointy-top hex vertices
+                    const ipos32 vertices[] = {
+                        {center.x, center.y - hex_h / 2}, // top
+                        {center.x + half_w, center.y - hex_h / 4}, // upper-right
+                        {center.x + half_w, center.y + hex_h / 4}, // lower-right
+                        {center.x, center.y + hex_h / 2}, // bottom
+                        {center.x - half_w, center.y + hex_h / 4}, // lower-left
+                        {center.x - half_w, center.y - hex_h / 4}, // upper-left
+                    };
+
+                    for (const auto& v : vertices) {
+                        ipos32 offset;
+                        const ipos32 result = GeometryHelper::GetHexPosCoord(v, &offset);
+                        const ipos32 result_center = GeometryHelper::GetHexPos(result);
+                        INFO("rx=" << rx << " ry=" << ry << " vertex=" << v.x << "," << v.y);
+                        CHECK(result_center.x + offset.x == v.x);
+                        CHECK(result_center.y + offset.y == v.y);
+                    }
+                }
+            }
+        }
+    }
 }
 
 FO_END_NAMESPACE

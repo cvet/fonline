@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -84,12 +84,19 @@ bool isAligned(const void* const pointer, asUINT alignment);
 
 #else
 
+	#ifdef __GNUC__
+	// Disable the warning about casting to incompatible function type
+	// This is a bit of a hack, but it works perfectly because we're just passing
+	// a couple of primitives extra, and the called function can safely ignore them if not needed
+	#pragma GCC diagnostic ignored "-Wcast-function-type"
+	#endif
+
 	typedef void *(*asALLOCFUNCDEBUG_t)(size_t, const char *, unsigned int);
 
-	#define asNEW(x)        new(((asALLOCFUNCDEBUG_t)(userAlloc))(sizeof(x), __FILE__, __LINE__)) x
+	#define asNEW(x)        new((reinterpret_cast<asALLOCFUNCDEBUG_t>(userAlloc))(sizeof(x), __FILE__, __LINE__)) x
 	#define asDELETE(ptr,x) {void *tmp = ptr; (ptr)->~x(); userFree(tmp);}
 
-	#define asNEWARRAY(x,cnt)  (x*)((asALLOCFUNCDEBUG_t)(userAlloc))(sizeof(x)*cnt, __FILE__, __LINE__)
+	#define asNEWARRAY(x,cnt)  (x*)(reinterpret_cast<asALLOCFUNCDEBUG_t>(userAlloc))(sizeof(x)*cnt, __FILE__, __LINE__)
 	#define asDELETEARRAY(ptr) userFree(ptr)
 
 #ifdef WIP_16BYTE_ALIGN

@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::DisableLogTags);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
 
         FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
 
@@ -71,11 +71,19 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
-                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path), true);
+            const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
+                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto dir = strex(output_path).extract_dir().str();
+
+                if (!dir.empty()) {
+                    const auto dir_ok = fs_create_directories(dir);
+                    FO_RUNTIME_ASSERT(dir_ok);
+                }
+
+                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_RUNTIME_ASSERT(file);
-                const auto write_ok = file.Write(data);
-                FO_RUNTIME_ASSERT(write_ok);
+                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+                FO_RUNTIME_ASSERT(file);
             };
 
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
@@ -118,11 +126,19 @@ int main(int argc, char** argv)
                 res_files.AddDirSource(dir, res_pack.RecursiveInput);
             }
 
-            const auto write_file = [&](string_view path, const_span<uint8> data) FO_DEFERRED {
-                auto file = DiskFileSystem::OpenFile(strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path), true);
+            const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
+                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto dir = strex(output_path).extract_dir().str();
+
+                if (!dir.empty()) {
+                    const auto dir_ok = fs_create_directories(dir);
+                    FO_RUNTIME_ASSERT(dir_ok);
+                }
+
+                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_RUNTIME_ASSERT(file);
-                const auto write_ok = file.Write(data);
-                FO_RUNTIME_ASSERT(write_ok);
+                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+                FO_RUNTIME_ASSERT(file);
             };
 
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});

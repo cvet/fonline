@@ -59,7 +59,7 @@ public:
     ~ProtoTextBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32 override { return 5; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };

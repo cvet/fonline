@@ -42,7 +42,7 @@
 FO_BEGIN_NAMESPACE
 
 Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* location, StaticMap* static_map, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _staticMap {static_map},
@@ -74,7 +74,7 @@ void Map::SetLocation(Location* loc) noexcept
     _mapLocation = loc;
 }
 
-auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_unsafe) const -> optional<mpos>
+auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool skip_unsafe) const -> optional<mpos>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -86,8 +86,8 @@ auto Map::FindStartHex(mpos hex, int32 multihex, int32 seek_radius, bool skip_un
     }
 
     const auto hexes_around = GeometryHelper::HexesInRadius(seek_radius);
-    int32 pos = GenericUtils::Random(1, hexes_around);
-    int32 iterations = 0;
+    int32_t pos = GetEngine()->Random(1, hexes_around);
+    int32_t iterations = 0;
 
     while (true) {
         if (++iterations > hexes_around) {
@@ -134,6 +134,10 @@ void Map::AddCritter(Critter* cr)
     }
 
     AddCritterToField(cr);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(cr, true);
+    }
 }
 
 void Map::RemoveCritter(Critter* cr)
@@ -154,6 +158,10 @@ void Map::RemoveCritter(Critter* cr)
     }
 
     RemoveCritterFromField(cr);
+
+    if (cr->IsPersistent() && !cr->IsExplicitlyPersistent()) {
+        _engine->EntityMngr.MakePersistent(cr, false);
+    }
 }
 
 void Map::AddCritterToField(Critter* cr)
@@ -194,7 +202,7 @@ void Map::SetMultihexCritter(Critter* cr, bool set)
         const auto hex = cr->GetHex();
         const auto hexes_around = GeometryHelper::HexesInRadius(multihex);
 
-        for (int32 i = 1; i < hexes_around; i++) {
+        for (int32_t i = 1; i < hexes_around; i++) {
             if (auto hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
                 auto& field = _hexField->GetCellForWriting(hex_around);
 
@@ -229,34 +237,17 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     vec_add_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
 
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, true);
+    }
+
     // Process critters view
     for (auto* cr : copy_hold_ref(GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
         }
 
-        if (!item->GetHidden()) {
-            if (!item->GetAlwaysView()) {
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), hex);
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    continue;
-                }
-            }
-
+        if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
@@ -341,6 +332,10 @@ void Map::RemoveItem(ident_t item_id)
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
 
+    if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
+        _engine->EntityMngr.MakePersistent(item, false);
+    }
+
     RecacheHexFlags(field);
 
     if (item->HasMultihexEntries()) {
@@ -414,13 +409,13 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
     return !field.ShootBlocked && !static_field.ShootBlocked;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
+auto Map::IsHexesMovable(mpos hex, int32_t radius) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto hexes_around = GeometryHelper::HexesInRadius(radius);
 
-    for (int32 i = 0; i < hexes_around; i++) {
+    for (int32_t i = 0; i < hexes_around; i++) {
         if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
             if (!IsHexMovable(check_hex)) {
                 return false;
@@ -431,21 +426,19 @@ auto Map::IsHexesMovable(mpos hex, int32 radius) const -> bool
     return true;
 }
 
-auto Map::IsHexesMovable(mpos hex, int32 radius, Critter* ignore_cr) -> bool
+auto Map::HasLivingCritter(mpos hex, const Critter* ignore_cr) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_engine->Settings.CritterBlockHex) {
-        if (ignore_cr != nullptr && !ignore_cr->IsDead()) {
-            // Todo: make movable checks without critter removing
-            RemoveCritterFromField(ignore_cr);
-            const auto result = IsHexesMovable(hex, radius);
-            AddCritterToField(ignore_cr);
-            return result;
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    for (const auto& cr : field.Critters) {
+        if (!cr->IsDead() && cr.get() != ignore_cr) {
+            return true;
         }
     }
 
-    return IsHexesMovable(hex, radius);
+    return false;
 }
 
 void Map::ChangeViewItem(Item* item)
@@ -458,56 +451,13 @@ void Map::ChangeViewItem(Item* item)
         }
 
         if (cr->CheckVisibleItem(item->GetId())) {
-            if (item->GetHidden()) {
+            if (!cr->CanSeeItemOnMap(item)) {
                 cr->RemoveVisibleItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
-            else if (!item->GetAlwaysView()) { // Check distance for non-hide items
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    cr->RemoveVisibleItem(item->GetId());
-                    cr->Send_RemoveItemFromMap(item);
-                    cr->OnItemOnMapDisappeared.Fire(item, nullptr);
-                }
-            }
         }
-        else if (!item->GetHidden()) {
-            if (!item->GetAlwaysView()) { // Check distance for non-hide items
-                bool allowed;
-
-                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
-                }
-                else {
-                    auto dist = GeometryHelper::GetDistance(cr->GetHex(), item->GetHex());
-
-                    if (item->GetIsTrap()) {
-                        dist += item->GetTrapValue();
-                    }
-
-                    allowed = dist <= cr->GetLookDistance();
-                }
-
-                if (!allowed) {
-                    continue;
-                }
-            }
-
+        else if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
@@ -533,15 +483,6 @@ auto Map::IsTriggerItemOnHex(mpos hex) const noexcept -> bool
     return field.HasTriggerItem;
 }
 
-auto Map::IsGagItemOnHex(mpos hex) const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField->GetCellForReading(hex);
-
-    return field.HasGagItem;
-}
-
 auto Map::GetItem(ident_t item_id) noexcept -> Item*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -564,26 +505,7 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     auto& field2 = _hexField->GetCellForWriting(hex);
 
     for (auto& item : field2.Items) {
-        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetHidden() && picker->CheckVisibleItem(item->GetId())))) {
-            return item.get();
-        }
-    }
-
-    return nullptr;
-}
-
-auto Map::GetGagItemOnHex(mpos hex) const noexcept -> const Item*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto& field = _hexField->GetCellForReading(hex);
-
-    if (field.Items.empty()) {
-        return nullptr;
-    }
-
-    for (const auto& item : field.Items) {
-        if (item->GetIsGag()) {
+        if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || picker->CanSeeItemOnMap(item.get()))) {
             return item.get();
         }
     }
@@ -605,7 +527,7 @@ auto Map::GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>
     return field2.Items;
 }
 
-auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
+auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -614,7 +536,7 @@ auto Map::GetItemsInRadius(mpos hex, int32 radius) -> vector<raw_ptr<Item>>
     vector<raw_ptr<Item>> items;
     items.reserve(numeric_cast<size_t>(hexes_around) * 2);
 
-    for (int32 i = 0; i < hexes_around; i++) {
+    for (int32_t i = 0; i < hexes_around; i++) {
         if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
             const auto& field = _hexField->GetCellForReading(hex_around);
 
@@ -645,7 +567,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) -> vector<Item*>
     vector<Item*> triggers;
 
     for (auto& item : field2.Items) {
-        if (item->GetIsTrigger() || item->GetIsTrap()) {
+        if (item->GetIsTrigger()) {
             triggers.emplace_back(item.get());
         }
     }
@@ -679,38 +601,32 @@ void Map::RecacheHexFlags(Field& field)
 {
     FO_STACK_TRACE_ENTRY();
 
-    field.HasCritter = false;
-    field.HasBlockCritter = false;
-    field.HasGagItem = false;
+    field.HasCritter = !field.Critters.empty();
     field.HasTriggerItem = false;
     field.HasNoMoveItem = false;
+    field.MovableWithGag = false;
     field.HasNoShootItem = false;
-
-    field.HasCritter = !field.Critters.empty();
-
-    if (_engine->Settings.CritterBlockHex && field.HasCritter) {
-        field.HasBlockCritter = std::ranges::any_of(field.Critters, [](auto&& cr) { return !cr->IsDead(); });
-    }
+    field.MovableWithGag = !field.ManualBlock;
 
     if (!field.Items.empty()) {
         for (const auto& item : field.Items) {
-            if (!field.HasNoMoveItem && !item->GetNoBlock()) {
+            if (!item->GetNoBlock()) {
                 field.HasNoMoveItem = true;
+                field.MovableWithGag = field.MovableWithGag && item->GetIsGag();
             }
-            if (!field.HasNoShootItem && !item->GetShootThru()) {
+            if (!item->GetShootThru()) {
                 field.HasNoShootItem = true;
+                field.MovableWithGag = field.MovableWithGag && item->GetIsGag();
             }
-            if (!field.HasGagItem && item->GetIsGag()) {
-                field.HasGagItem = true;
-            }
-            if (!field.HasTriggerItem && (item->GetIsTrigger() || item->GetIsTrap())) {
+            if (!field.HasTriggerItem && item->GetIsTrigger()) {
                 field.HasTriggerItem = true;
             }
         }
     }
 
     field.ShootBlocked = field.HasNoShootItem || (field.ManualBlock && field.ManualBlockFull);
-    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.HasBlockCritter || field.ManualBlock;
+    field.MoveBlocked = field.ShootBlocked || field.HasNoMoveItem || field.ManualBlock;
+    field.MovableWithGag = field.MovableWithGag && (field.HasNoMoveItem || field.HasNoShootItem);
 }
 
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
@@ -813,7 +729,25 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critte
     return critters;
 }
 
-auto Map::GetCrittersInRadius(mpos hex, int32 radius, CritterFindType find_type) -> vector<Critter*>
+auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<const Critter*> critters;
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (field.HasCritter) {
+        for (const auto& cr : field.Critters) {
+            if (cr->CheckFind(find_type)) {
+                critters.emplace_back(cr.get());
+            }
+        }
+    }
+
+    return critters;
+}
+
+auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<Critter*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -896,7 +830,7 @@ auto Map::GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>
     return _staticMap->HexField->GetCellForWriting(hex).StaticItems;
 }
 
-auto Map::GetStaticItemsInRadius(mpos hex, int32 radius, hstring pid) -> vector<StaticItem*>
+auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<StaticItem*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -932,7 +866,7 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     const irect32 scroll_area = GetScrollAxialArea();
 
     if (!scroll_area.is_zero()) {
-        const ipos32 axial_hex = _engine->Geometry.GetHexAxialCoord(hex);
+        const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
         if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
             axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
@@ -943,7 +877,7 @@ auto Map::IsOutsideArea(mpos hex) const -> bool
     return false;
 }
 
-void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
+void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1014,6 +948,45 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, uint8 dir)
             }
         }
     }
+}
+
+auto Map::CheckGagItems(mpos hex, int32_t radius, const function<bool(const Item*)>& gag_callback) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
+
+    for (int32_t i = 0; i < hexes_around; i++) {
+        if (auto check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
+            if (IsHexMovable(check_hex)) {
+                continue;
+            }
+            if (!CheckGagItem(check_hex, gag_callback)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+auto Map::CheckGagItem(mpos hex, const function<bool(const Item*)>& gag_callback) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (!field.MovableWithGag) {
+        return false;
+    }
+
+    for (const auto& item : field.Items) {
+        if (item->GetIsGag() && (!gag_callback || !gag_callback(item.get()))) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE

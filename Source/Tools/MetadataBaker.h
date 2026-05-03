@@ -57,7 +57,7 @@ public:
     ~MetadataBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32 override { return 1; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 1; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
@@ -69,20 +69,33 @@ private:
         vector<string_view> Tokens {};
     };
 
+    struct RefTypeState
+    {
+        string Target {};
+        string SourceFile {};
+        size_t LineNumber {};
+        vector<pair<string, string>> Fields {};
+    };
+
     struct TagsParsingContext
     {
         unique_ptr<EngineMetadata> Meta {};
         unordered_set<string> OtherEntityTypes {};
+        unordered_map<string, unordered_map<string, string>> ComponentScopes {};
+        unordered_map<string, RefTypeState> RefTypes {};
+        vector<string> RefTypeRegistrationOrder {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};
     };
 
-    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8>;
+    auto BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>;
     void ParseEnum(TagsParsingContext& ctx) const;
     void ParseEntity(TagsParsingContext& ctx) const;
+    void ParseFixedType(TagsParsingContext& ctx) const;
+    void ParseValueType(TagsParsingContext& ctx) const;
+    void ParseRefType(TagsParsingContext& ctx) const;
     void ParseEntityHolder(TagsParsingContext& ctx) const;
-    void ParsePropertyComponent(TagsParsingContext& ctx) const;
     void ParseProperty(TagsParsingContext& ctx) const;
     void ParseEvent(TagsParsingContext& ctx) const;
     void ParseRemoteCall(TagsParsingContext& ctx) const;

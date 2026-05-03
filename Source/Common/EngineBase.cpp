@@ -33,6 +33,8 @@
 
 #include "EngineBase.h"
 
+#include "ImGuiStuff.h"
+
 FO_BEGIN_NAMESPACE
 
 struct EngineBaseData
@@ -45,68 +47,68 @@ struct EngineBaseData
                     type.IsInt = true;
                     type.IsInt8 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int8);
+                    type.Size = sizeof(int8_t);
                 }},
             {"int16",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt16 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int16);
+                    type.Size = sizeof(int16_t);
                 }},
             {"int32",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt32 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int32);
+                    type.Size = sizeof(int32_t);
                 }},
             {"int64",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsInt64 = true;
                     type.IsSignedInt = true;
-                    type.Size = sizeof(int64);
+                    type.Size = sizeof(int64_t);
                 }},
             {"uint8",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt8 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint8);
+                    type.Size = sizeof(uint8_t);
                 }},
             {"uint16",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt16 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint16);
+                    type.Size = sizeof(uint16_t);
                 }},
             {"uint32",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt32 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint32);
+                    type.Size = sizeof(uint32_t);
                 }},
             {"uint64",
                 [](BaseTypeDesc& type) {
                     type.IsInt = true;
                     type.IsUInt64 = true;
                     type.IsSignedInt = false;
-                    type.Size = sizeof(uint64);
+                    type.Size = sizeof(uint64_t);
                 }},
             {"float32",
                 [](BaseTypeDesc& type) {
                     type.IsFloat = true;
                     type.IsSingleFloat = true;
-                    type.Size = sizeof(float32);
+                    type.Size = sizeof(float32_t);
                 }},
             {"float64",
                 [](BaseTypeDesc& type) {
                     type.IsFloat = true;
                     type.IsDoubleFloat = true;
-                    type.Size = sizeof(float64);
+                    type.Size = sizeof(float64_t);
                 }},
             {"bool",
                 [](BaseTypeDesc& type) {
@@ -141,7 +143,8 @@ struct EngineBaseData
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
-EngineMetadata::EngineMetadata(const MeatdataRegistrator& registrator)
+EngineMetadata::EngineMetadata(const MeatdataRegistrator& registrator) :
+    _protoMngr(*this)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -172,6 +175,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     const auto it = _entityTypes.find(Hashes.ToHashedString(name));
     FO_RUNTIME_ASSERT(it == _entityTypes.end());
+    FO_RUNTIME_ASSERT(!_fixedTypesByStr.contains(name));
 
     auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, Hashes, *this);
 
@@ -188,7 +192,9 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     if (has_protos) {
         _entityRelatives.emplace(strex("Proto{}", name), &entry.first->second);
-        RegisterBaseType(strex("Proto{}", name));
+        auto& proto_type = RegisterBaseType(strex("Proto{}", name));
+        proto_type.IsEntityProto = true;
+        proto_type.Size = sizeof(hstring::hash_t);
     }
     if (has_statics) {
         _entityRelatives.emplace(strex("Static{}", name), &entry.first->second);
@@ -199,8 +205,6 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         RegisterBaseType(strex("Abstract{}", name));
     }
 
-    RegisterEnumGroup(strex("{}Component", name), "int32", {{"None", 0}});
-
     if (!exported) {
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
 
@@ -208,11 +212,45 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         registrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
-    RegisterBaseType(name);
+    auto& type = RegisterBaseType(name);
+
+    if (is_global) {
+        type.IsSingleton = true;
+    }
+
     return registrator;
 }
 
-void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync)
+auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> PropertyRegistrator*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+
+    const auto it = _fixedTypes.find(Hashes.ToHashedString(name));
+    FO_RUNTIME_ASSERT(it == _fixedTypes.end());
+    FO_RUNTIME_ASSERT(!_entityTypesByStr.contains(name));
+
+    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, Hashes, *this);
+
+    EntityTypeDesc desc;
+    desc.Exported = exported;
+    desc.HasProtos = true;
+    desc.PropRegistrator = registrator;
+
+    const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
+
+    if (!exported) {
+        RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
+    }
+
+    RegisterBaseType(name);
+
+    return registrator;
+}
+
+void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -222,14 +260,16 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
     FO_RUNTIME_ASSERT(it != _entityTypesByStr.end());
     FO_RUNTIME_ASSERT(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0);
 
-    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync});
+    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
 
     auto* registrator = GetPropertyRegistratorForEdit(holder_type);
-    const auto* prop = registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"});
-    RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32>(prop->GetRegIndex()));
+    const auto* prop = persistent ? //
+        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
+        registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
+    RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
 }
 
-void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32>&& key_values)
+void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -237,10 +277,10 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     FO_RUNTIME_ASSERT(IsValidBaseType(underlying_type));
     FO_RUNTIME_ASSERT(_enums.count(name) == 0);
 
-    unordered_map<int32, string> key_values_rev;
+    unordered_map<int32_t, string> key_values_rev;
 
     for (auto&& [key, value] : key_values) {
-        FO_RUNTIME_ASSERT_STR(key != "None" || value == 0, strex("Wrong enum {}", name));
+        FO_RUNTIME_ASSERT_STR(key != "None" || value <= 0, strex("Wrong enum {}", name));
         FO_RUNTIME_ASSERT(key_values_rev.count(value) == 0);
         key_values_rev.emplace(value, key);
         string full_key = strex("{}::{}", name, key);
@@ -256,13 +296,13 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     RegisterBaseType(name);
 }
 
-void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name, int32 entry_value)
+void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     const auto name_str = string(name);
-    FO_RUNTIME_ASSERT(name_str != "None" || entry_value == 0);
+    FO_RUNTIME_ASSERT(name_str != "None" || entry_value <= 0);
     FO_RUNTIME_ASSERT(_enums.count(name) != 0);
     FO_RUNTIME_ASSERT(_enums.at(name_str).count(entry_name) == 0);
     FO_RUNTIME_ASSERT(_enumsRev.at(name_str).count(entry_value) == 0);
@@ -308,7 +348,7 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
         auto& field = layout_desc.Fields.emplace_back();
         field.Name = field_name;
         field.Type = GetBaseType(field_type);
-        FO_RUNTIME_ASSERT(field.Type.IsPrimitive || field.Type.IsEnum || field.Type.IsSimpleStruct);
+        FO_RUNTIME_ASSERT(field.Type.IsPrimitive || field.Type.IsEnum || field.Type.IsSimpleStruct || field.Type.IsHashedString);
         FO_RUNTIME_ASSERT(field.Type.Size != 0);
         FO_RUNTIME_ASSERT_STR(offset % field.Type.Size == 0, strex("{}::{} layout data is not aligned", name, field.Name));
         field.Offset = offset;
@@ -335,6 +375,31 @@ void EngineMetadata::RegisterRefType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+    FO_RUNTIME_ASSERT(_refTypes.count(name) != 0);
+    FO_RUNTIME_ASSERT(!layout.empty());
+
+    auto& ref_type = _refTypes[string(name)];
+    FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
+    FO_RUNTIME_ASSERT(_dynamicRefTypeRegistrators.count(string(name)) == 0);
+
+    auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, Hashes, *this);
+
+    for (const auto& [field_name, field_type] : layout) {
+        ignore_unused(fields_registrator->RegisterProperty({"Common", field_type, field_name}));
+    }
+
+    ref_type.FieldsRegistrator = fields_registrator.get();
+    ref_type.IsDynamicLayout = true;
+    _dynamicRefTypeRegistrators.emplace(name, std::move(fields_registrator));
+}
+
 void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods)
 {
     FO_STACK_TRACE_ENTRY();
@@ -344,6 +409,8 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
 
     auto& ref_type = _refTypes[string(name)];
     FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
 
     ref_type.Methods = std::move(methods);
 }
@@ -357,6 +424,8 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
 
     auto& ref_type = _refTypes[string(name)];
     FO_RUNTIME_ASSERT(ref_type.Methods.empty());
+    FO_RUNTIME_ASSERT(!ref_type.IsDynamicLayout);
+    FO_RUNTIME_ASSERT(ref_type.FieldsRegistrator == nullptr);
 
     ref_type.Methods.emplace_back(std::move(method));
 }
@@ -452,6 +521,33 @@ void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(_migrationRules.empty());
 
+    for (const auto& [name1, rules_by_info] : migration_rules) {
+        for (const auto& [name2, rules] : rules_by_info) {
+            for (const auto& [target, replacement] : rules) {
+                FO_RUNTIME_ASSERT(target != replacement);
+
+                unordered_set<hstring> visited {};
+                visited.emplace(target);
+
+                hstring current = replacement;
+
+                while (true) {
+                    const auto [name3, inserted] = visited.emplace(current);
+                    ignore_unused(name1, name2, name3);
+                    FO_RUNTIME_ASSERT(inserted);
+
+                    const auto it = rules.find(current);
+
+                    if (it == rules.end()) {
+                        break;
+                    }
+
+                    current = it->second;
+                }
+            }
+        }
+    }
+
     _migrationRules = std::move(migration_rules);
 }
 
@@ -466,10 +562,34 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     const auto htarget = Hashes.ToHashedString(target);
     const auto hreplacement = Hashes.ToHashedString(replacement);
 
-    _migrationRules[hrule_name][hextra_info][htarget] = hreplacement;
+    auto& rules = _migrationRules[hrule_name][hextra_info];
+
+    FO_RUNTIME_ASSERT(!rules.contains(htarget));
+    FO_RUNTIME_ASSERT(htarget != hreplacement);
+
+    unordered_set<hstring> visited {};
+    visited.emplace(htarget);
+
+    hstring current = hreplacement;
+
+    while (true) {
+        const auto [name, inserted] = visited.emplace(current);
+        ignore_unused(name);
+        FO_RUNTIME_ASSERT(inserted);
+
+        const auto it = rules.find(current);
+
+        if (it == rules.end()) {
+            break;
+        }
+
+        current = it->second;
+    }
+
+    rules.emplace(htarget, hreplacement);
 }
 
-void EngineMetadata::RegisterBaseType(string_view type_str)
+auto EngineMetadata::RegisterBaseType(string_view type_str) -> BaseTypeDesc&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -485,6 +605,7 @@ void EngineMetadata::RegisterBaseType(string_view type_str)
 
     BaseTypeDesc type;
     type.Name = type_str;
+    type.HashedName = Hashes.ToHashedString(type_str);
 
     if (const auto it = Data->BuiltinTypes.find(type_str); it != Data->BuiltinTypes.end()) {
         it->second(type);
@@ -513,13 +634,17 @@ void EngineMetadata::RegisterBaseType(string_view type_str)
         type.IsObject = true;
         type.IsGlobalEntity = it6->second->IsGlobal;
     }
+    else if (const auto it7 = _fixedTypesByStr.find(type_str); it7 != _fixedTypesByStr.end()) {
+        type.IsFixedType = true;
+        type.IsObject = true;
+        type.Size = sizeof(hstring::hash_t);
+    }
     else {
         throw TypeResolveException("Invalid base type", type_str);
     }
 
     type.IsPrimitive = type.IsInt || type.IsFloat || type.IsBool;
-
-    _baseTypes.emplace(type_str, std::move(type));
+    return _baseTypes.emplace(type_str, std::move(type)).first->second;
 }
 
 void EngineMetadata::FinalizeRegistration()
@@ -528,7 +653,7 @@ void EngineMetadata::FinalizeRegistration()
 
     FO_RUNTIME_ASSERT(!_registrationFinalized);
     FO_RUNTIME_ASSERT(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }));
-    FO_RUNTIME_ASSERT(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty(); }));
+    FO_RUNTIME_ASSERT(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrator == nullptr; }));
 
     _registrationFinalized = true;
 }
@@ -539,7 +664,12 @@ auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept ->
 
     const auto it = _entityTypes.find(type_name);
 
-    return it != _entityTypes.end() ? it->second.PropRegistrator.get() : nullptr;
+    if (it != _entityTypes.end()) {
+        return it->second.PropRegistrator.get();
+    }
+
+    const auto it2 = _fixedTypes.find(type_name);
+    return it2 != _fixedTypes.end() ? it2->second.PropRegistrator.get() : nullptr;
 }
 
 auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*
@@ -558,9 +688,14 @@ auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> Pro
     FO_RUNTIME_ASSERT(!_registrationFinalized);
 
     const auto it = _entityTypesByStr.find(type_name);
-    FO_RUNTIME_ASSERT(it != _entityTypesByStr.end());
 
-    return const_cast<PropertyRegistrator*>(it->second->PropRegistrator.get_no_const());
+    if (it != _entityTypesByStr.end()) {
+        return it->second->PropRegistrator.get_no_const();
+    }
+
+    const auto it2 = _fixedTypesByStr.find(type_name);
+    FO_RUNTIME_ASSERT(it2 != _fixedTypesByStr.end());
+    return it2->second->PropRegistrator.get_no_const();
 }
 
 auto EngineMetadata::IsValidBaseType(string_view type_str) const noexcept -> bool
@@ -599,6 +734,37 @@ auto EngineMetadata::GetEntityTypes() const noexcept -> const map<hstring, Entit
     FO_NO_STACK_TRACE_ENTRY();
 
     return _entityTypes;
+}
+
+auto EngineMetadata::IsFixedType(hstring type_name) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _fixedTypes.contains(type_name);
+}
+
+auto EngineMetadata::IsFixedType(string_view type_name) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _fixedTypesByStr.contains(type_name);
+}
+
+auto EngineMetadata::GetFixedType(hstring type_name) const -> const EntityTypeDesc&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto it = _fixedTypes.find(type_name);
+    FO_RUNTIME_ASSERT(it != _fixedTypes.end());
+
+    return it->second;
+}
+
+auto EngineMetadata::GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _fixedTypes;
 }
 
 auto EngineMetadata::GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*
@@ -749,7 +915,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
     return pair(type, tokens_len);
 }
 
-auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int32
+auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -767,7 +933,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, bool* failed)
     return it->second;
 }
 
-auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int32
+auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -796,7 +962,7 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_n
     return value_it->second;
 }
 
-auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32 value, bool* failed) const -> const string&
+auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed) const -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -823,48 +989,6 @@ auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32 value, bo
     }
 
     return value_it->second;
-}
-
-auto EngineMetadata::ResolveGenericValue(string_view str, bool* failed) const -> int32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (str.empty()) {
-        return 0;
-    }
-    if (str[0] == '"') {
-        return 0;
-    }
-
-    if (str[0] == '@') {
-        return Hashes.ToHashedString(str.substr(1)).as_int32();
-    }
-    else if (str.starts_with("Content::")) {
-        return Hashes.ToHashedString(str.substr(str.rfind(':') + 1)).as_int32();
-    }
-    else if (strex(str).is_number()) {
-        return strex(str).to_int32();
-    }
-    else if (strex(str).compare_ignore_case("true")) {
-        return 1;
-    }
-    else if (strex(str).compare_ignore_case("false")) {
-        return 0;
-    }
-
-    bool enum_failed = false;
-    const auto enum_value = ResolveEnumValue(str, &enum_failed);
-
-    if (enum_failed) {
-        WriteLog("Failed to resolve generic value: '{}'", str);
-
-        if (failed != nullptr) {
-            *failed = true;
-            return 0;
-        }
-    }
-
-    return enum_value;
 }
 
 auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDesc&
@@ -921,26 +1045,96 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
     return result;
 }
 
+auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoItem(proto_id);
+}
+
+auto EngineMetadata::GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoCritter(proto_id);
+}
+
+auto EngineMetadata::GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoMap(proto_id);
+}
+
+auto EngineMetadata::GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _protoMngr.GetProtoLocation(proto_id);
+}
+
+auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+        type_name = it->second->PropRegistrator->GetTypeName();
+    }
+
+    return _protoMngr.GetProtoEntity(type_name, proto_id);
+}
+
+auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
+        type_name = it->second->PropRegistrator->GetTypeName();
+    }
+
+    return _protoMngr.GetProtoEntities(type_name);
+}
+
+void EngineMetadata::RegisterProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+
+    _protoMngr.AddProto(type_name, proto);
+}
+
+void EngineMetadata::RegisterProtos(const FileSystem& resources)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_registrationFinalized);
+
+    _protoMngr.LoadFromResources(resources);
+}
+
 BaseEngine::BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
     ScriptSystem(),
-    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr),
+    Entity(GetPropertyRegistrator(ENTITY_TYPE_NAME), nullptr, nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Resources {std::move(resources)},
-    Geometry(settings),
     GameTime(settings),
-    ProtoMngr(*this),
-    TimeEventMngr(*this)
+    TimeEventMngr(*this),
+    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(this)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    RegisterProtos(Resources);
+    FinalizeRegistration();
 }
 
 void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance();
+    GameTime.FrameAdvance(IsRunInDebugger() || Settings.DisableNetworking);
 
     SetFrameTime(GameTime.GetFrameTime());
     SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
@@ -951,7 +1145,16 @@ void BaseEngine::FrameAdvance()
     }
 }
 
-void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
+auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(min_value <= max_value);
+
+    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+}
+
+void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -974,16 +1177,12 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_RUNTIME_ASSERT(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls().size());
 }
 
-void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8> data)
+void BaseEngine::HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _inboundRemoteCallHandlers.find(name);
-
-    if (it == _inboundRemoteCallHandlers.end()) {
-        throw GenericException("Invalid remote call", name);
-    }
-
+    FO_RUNTIME_ASSERT(it != _inboundRemoteCallHandlers.end());
     it->second(name, caller, data);
 }
 

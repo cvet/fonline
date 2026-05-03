@@ -1,24 +1,24 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-      this software in a product, an acknowledgment in the product 
+      this software in a product, an acknowledgment in the product
       documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -61,7 +61,8 @@ struct asSScriptVariable
 	asCString   name;
 	asCDataType type;
 	int         stackOffset;
-	asUINT      declaredAtProgramPos;
+	asUINT      onHeap : 1;
+	asUINT      declaredAtProgramPos : 31;
 };
 
 enum asEListPatternNodeType
@@ -91,10 +92,37 @@ struct asSListPatternDataTypeNode : public asSListPatternNode
 
 enum asEObjVarInfoOption
 {
-	asOBJ_UNINIT,
-	asOBJ_INIT,
-	asBLOCK_BEGIN,
-	asBLOCK_END
+	asOBJ_UNINIT,	// object is uninitialized/destroyed
+	asOBJ_INIT,		// object is initialized
+	asBLOCK_BEGIN,	// scope block begins
+	asBLOCK_END,	// scope block ends
+	asOBJ_VARDECL	// object variable is declared (but not necessarily initialized)
+};
+
+enum asEFuncTrait
+{
+	asTRAIT_CONSTRUCTOR = 1<<0,  // method
+	asTRAIT_DESTRUCTOR  = 1<<1,  // method
+	asTRAIT_CONST       = 1<<2,  // method
+	asTRAIT_PRIVATE     = 1<<3,  // method
+	asTRAIT_PROTECTED   = 1<<4,  // method
+	asTRAIT_FINAL       = 1<<5,  // method
+	asTRAIT_OVERRIDE    = 1<<6,  // method
+	asTRAIT_SHARED      = 1<<7,  // function
+	asTRAIT_EXTERNAL    = 1<<8,  // function
+	asTRAIT_EXPLICIT    = 1<<9,  // method
+	asTRAIT_PROPERTY    = 1<<10, // method/function
+	asTRAIT_DELETED     = 1<<11, // method
+	asTRAIT_VARIADIC    = 1<<12  // method/function
+};
+
+struct asSFunctionTraits
+{
+	asSFunctionTraits() : traits(0) {}
+	void SetTrait(asEFuncTrait trait, bool set) { if (set) traits |= trait; else traits &= ~trait; }
+	bool GetTrait(asEFuncTrait trait) const { return (traits & trait) ? true : false; }
+protected:
+	asDWORD traits;
 };
 
 struct asSObjectVariableInfo
@@ -104,10 +132,17 @@ struct asSObjectVariableInfo
 	asEObjVarInfoOption option;
 };
 
+struct asSTryCatchInfo
+{
+	asUINT tryPos;
+	asUINT catchPos;
+	asUINT stackSize;
+};
+
 struct asSSystemFunctionInterface;
 
-// TODO: Might be interesting to allow enumeration of accessed global variables, and 
-//       also functions/methods that are being called. This could be used to build a 
+// TODO: Might be interesting to allow enumeration of accessed global variables, and
+//       also functions/methods that are being called. This could be used to build a
 //       code database with call graphs, etc.
 
 void RegisterScriptFunction(asCScriptEngine *engine);
@@ -127,7 +162,10 @@ public:
 	asEFuncType          GetFuncType() const;
 	const char          *GetModuleName() const;
 	asIScriptModule     *GetModule() const;
+#ifdef AS_DEPRECATED
+	// deprecated since 2025-04-25, 2.38.0
 	const char          *GetScriptSectionName() const;
+#endif
 	const char          *GetConfigGroup() const;
 	asDWORD              GetAccessMask() const;
 	void                *GetAuxiliary() const;
@@ -144,15 +182,19 @@ public:
 	bool                 IsFinal() const;
 	bool                 IsOverride() const;
 	bool                 IsShared() const;
+	bool                 IsExplicit() const;
+	bool                 IsProperty() const;
+	bool                 IsVariadic() const;
 	asUINT               GetParamCount() const;
 	int                  GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const;
-#ifdef AS_DEPRECATED
-	// Deprecated, since 2.29.0, 2014-04-06
-	int                  GetParamTypeId(asUINT index, asDWORD *flags = 0) const;
-#endif
 	int                  GetReturnTypeId(asDWORD *flags = 0) const;
 
-	// Type id for function pointers 
+	// Template functions
+	asUINT       GetSubTypeCount() const;
+	int          GetSubTypeId(asUINT subTypeIndex = 0) const;
+	asITypeInfo* GetSubType(asUINT subTypeIndex = 0) const;
+
+	// Type id for function pointers
 	int                  GetTypeId() const;
 	bool                 IsCompatibleWithTypeId(int typeId) const;
 
@@ -165,10 +207,18 @@ public:
 	asUINT               GetVarCount() const;
 	int                  GetVar(asUINT index, const char **name, int *typeId = 0) const;
 	const char *         GetVarDecl(asUINT index, bool includeNamespace = false) const;
+#ifdef AS_DEPRECATED
+	// deprecated since 2025-11-14, 2.39.0
 	int                  FindNextLineWithCode(int line) const;
+#endif
+	int                  GetDeclaredAt(const char** scriptSection, int* row, int* col) const;
+	int                  GetLineEntryCount() const;
+	int                  GetLineEntry(asUINT index, int* row, int* col, const char** sectionName, const asDWORD** byteCode) const;
 
 	// For JIT compilation
-	asDWORD             *GetByteCode(asUINT *length = 0);
+	asDWORD *            GetByteCode(asUINT *length = 0);
+	int                  SetJITFunction(asJITFunction jitFunc);
+	asJITFunction        GetJITFunction() const;
 
 	// User data
 	void                *SetUserData(void *userData, asPWORD type);
@@ -178,10 +228,21 @@ public:
 	//-----------------------------------
 	// Internal methods
 
+	void SetShared(bool set) { traits.SetTrait(asTRAIT_SHARED, set); }
+	void SetReadOnly(bool set) { traits.SetTrait(asTRAIT_CONST, set); }
+	void SetFinal(bool set) { traits.SetTrait(asTRAIT_FINAL, set); }
+	void SetOverride(bool set) { traits.SetTrait(asTRAIT_OVERRIDE, set); }
+	void SetExplicit(bool set) { traits.SetTrait(asTRAIT_EXPLICIT, set); }
+	void SetProtected(bool set) { traits.SetTrait(asTRAIT_PROTECTED, set); }
+	void SetPrivate(bool set) { traits.SetTrait(asTRAIT_PRIVATE, set); }
+	void SetProperty(bool set) { traits.SetTrait(asTRAIT_PROPERTY, set); }
+	void SetVariadic(bool set) { traits.SetTrait(asTRAIT_VARIADIC, set); }
+	bool IsFactory() const;
+
 	asCScriptFunction(asCScriptEngine *engine, asCModule *mod, asEFuncType funcType);
 	~asCScriptFunction();
 
-	// Keep an internal reference counter to separate references coming from 
+	// Keep an internal reference counter to separate references coming from
 	// application or script objects and references coming from the script code
 	int AddRefInternal();
 	int ReleaseInternal();
@@ -198,7 +259,7 @@ public:
 
 	void      DestroyInternal();
 
-	void      AddVariable(asCString &name, asCDataType &type, int stackOffset);
+	void      AddVariable(const asCString &name, const asCDataType &type, int stackOffset, bool onHeap);
 
 	int       GetSpaceNeededForArguments();
 	int       GetSpaceNeededForReturnValue();
@@ -207,9 +268,9 @@ public:
 	void      ComputeSignatureId();
 	bool      IsSignatureEqual(const asCScriptFunction *func) const;
 	bool      IsSignatureExceptNameEqual(const asCScriptFunction *func) const;
-	bool      IsSignatureExceptNameEqual(const asCDataType &retType, const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
+	bool      IsSignatureExceptNameEqual(const asCDataType &retType, const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly, bool isVariadic) const;
 	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCScriptFunction *fun) const;
-	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
+	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly, bool isVariadic) const;
 	bool      IsSignatureExceptNameAndObjectTypeEqual(const asCScriptFunction *func) const;
 
 	asCTypeInfo *GetTypeInfoOfLocalVar(short varOffset);
@@ -229,6 +290,9 @@ public:
 	void      AllocateScriptFunctionData();
 	void      DeallocateScriptFunctionData();
 
+	asCScriptFunction* FindNextFunctionCalled(asUINT startSearchFromProgramPos, int *stackDelta, asUINT *outProgramPos);
+	asCScriptFunction* GetCalledFunction(asDWORD programPos);
+
 	asCGlobalProperty *GetPropertyByGlobalVarPtr(void *gvarPtr);
 
 	// GC methods (for delegates)
@@ -237,6 +301,10 @@ public:
 	bool GetFlag();
 	void EnumReferences(asIScriptEngine *engine);
 	void ReleaseAllHandles(asIScriptEngine *engine);
+
+	// Don't allow the script function to be copied
+private:
+	asCScriptFunction(const asCScriptFunction&);
 
 public:
 	//-----------------------------------
@@ -254,14 +322,11 @@ public:
 	asCString                    name;
 	asCDataType                  returnType;
 	asCArray<asCDataType>        parameterTypes;
+	asCArray<asCDataType>        templateSubTypes; // Increase ref of template subtypes
 	asCArray<asCString>          parameterNames;
 	asCArray<asETypeModifiers>   inOutFlags;
 	asCArray<asCString *>        defaultArgs;
-	bool                         isReadOnly;
-	bool                         isPrivate;
-	bool                         isProtected;
-	bool                         isFinal;
-	bool                         isOverride;
+	asSFunctionTraits            traits;
 	asCObjectType               *objectType;
 	int                          signatureId;
 
@@ -269,10 +334,9 @@ public:
 
 	asEFuncType                  funcType;
 	asDWORD                      accessMask;
-	bool                         isShared;
 
-	// Namespace will be null for funcdefs that are declared as child funcdefs 
-	// of a class. In this case the namespace shall be taken from the parentClass 
+	// Namespace will be null for funcdefs that are declared as child funcdefs
+	// of a class. In this case the namespace shall be taken from the parentClass
 	// in the funcdefType
 	asSNameSpace                *nameSpace;
 
@@ -294,17 +358,11 @@ public:
 		// The stack space needed for the local variables
 		asDWORD                         variableSpace;
 
-		// These hold information on objects and function pointers, including temporary
-		// variables used by exception handler and when saving bytecode
-		asCArray<asCTypeInfo*>          objVariableTypes;
-		asCArray<int>                   objVariablePos;
-
-		// The first variables in above array are allocated on the heap, the rest on the stack.
-		// This variable shows how many are on the heap.
-		asUINT                          objVariablesOnHeap;
-
 		// Holds information on scope for object variables on the stack
 		asCArray<asSObjectVariableInfo> objVariableInfo;
+
+		// Holds information on try/catch blocks for exception handling
+		asCArray<asSTryCatchInfo>       tryCatchInfo;
 
 		// The stack needed to execute the function
 		int                             stackNeeded;
@@ -312,8 +370,10 @@ public:
 		// JIT compiled code of this function
 		asJITFunction                   jitFunction;
 
-		// Holds debug information on explicitly declared variables
+		// Holds type information on both explicitly declared variables and temporary variables
+		// Used during exception handling, byte code serialization, debugging, and context serialization
 		asCArray<asSScriptVariable*>    variables;
+
 		// Store position, line number pairs for debug information
 		asCArray<int>                   lineNumbers;
 		// Store the script section where the code was declared

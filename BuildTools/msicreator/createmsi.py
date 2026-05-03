@@ -14,27 +14,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys, os, subprocess, shutil, uuid, json
-from glob import glob
+from __future__ import annotations
+
+import json
+import os
 import platform
+import subprocess
+import sys
+import uuid
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from glob import glob
+from pathlib import Path
+from typing import Any
 
 sys.path.append(os.getcwd())
 
-def gen_guid():
+
+def gen_guid() -> str:
     return str(uuid.uuid4()).upper()
 
+
+@dataclass(slots=True)
 class Node:
-    def __init__(self, dirs, files):
-        assert(isinstance(dirs, list))
-        assert(isinstance(files, list))
-        self.dirs = dirs
-        self.files = files
+    dirs: list[str]
+    files: list[str]
+
+    def __post_init__(self) -> None:
+        assert isinstance(self.dirs, list)
+        assert isinstance(self.files, list)
+
 
 class PackageGenerator:
 
-    def __init__(self, jsonfile):
-        jsondata = json.load(open(jsonfile, 'rb'))
+    def __init__(self, jsonfile: str) -> None:
+        with open(jsonfile, 'rb') as file:
+            jsondata: dict[str, Any] = json.load(file)
         self.product_name = jsondata['product_name']
         self.manufacturer = jsondata['manufacturer']
         self.version = jsondata['version']
@@ -84,7 +99,7 @@ class PackageGenerator:
         self.feature_components = {}
         self.feature_properties = {}
 
-    def generate_files(self):
+    def generate_files(self) -> None:
         self.root = ET.Element('Wix', {'xmlns': 'http://schemas.microsoft.com/wix/2006/wi'})
         product = ET.SubElement(self.root, 'Product', {
             'Name': self.product_name,
@@ -254,7 +269,7 @@ class PackageGenerator:
         with open(self.main_xml, 'w') as of:
             of.write(doc.toprettyxml(indent=' '))
 
-    def create_registry_entries(self, comp, reg):
+    def create_registry_entries(self, comp: ET.Element, reg: dict[str, str]) -> None:
         reg_key = ET.SubElement(comp, 'RegistryKey', {
             'Root': reg['root'],
             'Key': reg['key'],
@@ -267,11 +282,12 @@ class PackageGenerator:
             'KeyPath': reg['key_path'],
           })
 
-    def scan_feature(self, top_feature, installdir, depth, feature):
+    def scan_feature(self, top_feature: ET.Element, installdir: ET.Element, depth: int, feature: dict[str, Any]) -> None:
+        _ = depth
         for sd in [feature['staged_dir']]:
             if '/' in sd or '\\' in sd:
                 sys.exit('Staged_dir %s must not have a path segment.' % sd)
-            nodes = {}
+            nodes: dict[str, Node] = {}
             for root, dirs, files in os.walk(sd):
                 cur_node = Node(dirs, files)
                 nodes[root] = cur_node
@@ -289,16 +305,18 @@ class PackageGenerator:
             self.create_xml(nodes, sd, installdir, sd)
             self.build_features(nodes, top_feature, sd)
 
-    def build_features(self, nodes, top_feature, staging_dir):
+    def build_features(self, nodes: dict[str, Node], top_feature: ET.Element, staging_dir: str) -> None:
+        _ = nodes
         feature = ET.SubElement(top_feature, 'Feature',  self.feature_properties[staging_dir])
         for component_id in self.feature_components[staging_dir]:
             ET.SubElement(feature, 'ComponentRef', {
                 'Id': component_id,
             })
 
-    def path_to_id(self, pathname):
-            return pathname.replace('\\', '_').replace('/', '_').replace('#', '_').replace('-', '_')                                                                                                   
-    def create_xml(self, nodes, current_dir, parent_xml_node, staging_dir):
+    def path_to_id(self, pathname: str) -> str:
+        return pathname.replace('\\', '_').replace('/', '_').replace('#', '_').replace('-', '_')
+
+    def create_xml(self, nodes: dict[str, Node], current_dir: str, parent_xml_node: ET.Element, staging_dir: str) -> None:
         cur_node = nodes[current_dir]
         if cur_node.files:
             component_id = 'ApplicationFiles%d' % self.component_num
@@ -335,7 +353,7 @@ class PackageGenerator:
             })
             self.create_xml(nodes, os.path.join(current_dir, dirname), dir_node, staging_dir)
 
-    def build_package(self, wixdir):
+    def build_package(self, wixdir: str = '') -> None:
         """
         wixdir = 'c:\\Program Files\\Wix Toolset v3.11\\bin'
         if platform.system() != "Windows":
@@ -356,7 +374,8 @@ class PackageGenerator:
         else:
             subprocess.check_output([os.path.join(wixdir, 'wixl'), '-o', self.final_output, self.main_xml])
 
-def run(args):
+
+def run(args: list[str]) -> None:
     if len(args) != 1:
         sys.exit('createmsi.py <msi definition json>')
     jsonfile = args[0]
@@ -366,5 +385,9 @@ def run(args):
     p.generate_files()
     p.build_package()
 
-if __name__ == '__main__':
+
+def main() -> None:
     run(sys.argv[1:])
+
+if __name__ == '__main__':
+    main()

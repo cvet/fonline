@@ -62,6 +62,8 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     // Collect files
     vector<File> filtered_files;
+    set<string> filtered_paths;
+    set<string> packs_to_complete;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
@@ -80,6 +82,35 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
 
         filtered_files.emplace_back(File::Load(file_header));
+        filtered_paths.emplace(file_header.GetPath());
+        packs_to_complete.emplace(text_pack_name);
+    }
+
+    // Ensure full language set for changed text packs
+    for (const auto& file_header : files) {
+        const string ext = strex(file_header.GetPath()).get_file_extension();
+
+        if (ext != "fotxt") {
+            continue;
+        }
+
+        const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        const auto& text_pack_name = name_pair[0];
+        const auto& lang_name = name_pair[1];
+
+        if (!packs_to_complete.contains(text_pack_name)) {
+            continue;
+        }
+        if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
+            continue;
+        }
+        if (filtered_paths.contains(file_header.GetPath())) {
+            continue;
+        }
+
+        filtered_files.emplace_back(File::Load(file_header));
+        filtered_paths.emplace(file_header.GetPath());
     }
 
     if (filtered_files.empty()) {
@@ -112,7 +143,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     // Parse texts
     vector<pair<string, map<string, TextPack>>> lang_packs;
-    HashStorage hashes;
+    HashStorage hashes {};
 
     for (const auto& target_lang : languages) {
         map<string, TextPack> lang_pack;
@@ -124,10 +155,10 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
             const auto& lang_name = name_pair[1];
 
             if (lang_name == target_lang) {
-                TextPack text_pack;
+                TextPack text_pack {hashes};
 
-                if (!text_pack.LoadFromString(file.GetStr(), hashes)) {
-                    throw LanguagePackException("Invalid text file", file.GetPath());
+                if (!text_pack.LoadFromString(file.GetStr(), text_pack_name)) {
+                    throw TextPackException("Invalid text file", file.GetPath());
                 }
 
                 lang_pack.emplace(text_pack_name, std::move(text_pack));

@@ -32,7 +32,7 @@
 //
 
 #include "WorkThread.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "GlobalData.h"
 #include "Platform.h"
 #include "StackTrace.h"
@@ -42,32 +42,41 @@ FO_BEGIN_NAMESPACE
 
 struct WorkThreadData
 {
-    WorkThreadData() { SetThisThreadName("Main"); }
+    WorkThreadData() { set_this_thread_name("Main"); }
 };
 FO_GLOBAL_DATA(WorkThreadData, WorkThread);
 
-static thread_local string ThreadName;
+static thread_local std::string ThreadName;
 
-extern void SetThisThreadName(const string& name) noexcept
+extern void set_this_thread_name(const string& name) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    ThreadName = name;
+    try {
+        ThreadName = name;
+    }
+    catch (...) {
+    }
 
-    Platform::SetThreadName(ThreadName);
+    Platform::SetThreadName(name);
 
 #if FO_TRACY
-    tracy::SetThreadName(ThreadName.c_str());
+    tracy::SetThreadName(name.c_str());
 #endif
 }
 
-extern auto GetThisThreadName() noexcept -> const string&
+extern auto get_this_thread_name() noexcept -> const std::string&
 {
     FO_STACK_TRACE_ENTRY();
 
     if (ThreadName.empty()) {
         static std::atomic_int32_t thread_counter = 0;
-        ThreadName = strex(strex::safe_format, "{}", ++thread_counter);
+
+        try {
+            ThreadName = strex("{}", ++thread_counter);
+        }
+        catch (...) {
+        }
     }
 
     return ThreadName;
@@ -78,7 +87,7 @@ WorkThread::WorkThread(string_view name)
     FO_STACK_TRACE_ENTRY();
 
     _name = name;
-    _thread = std::thread(&WorkThread::ThreadEntry, this);
+    _thread = run_thread(name, [this] { ThreadEntry(); });
 }
 
 WorkThread::~WorkThread()
@@ -222,8 +231,6 @@ void WorkThread::ThreadEntry() noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        SetThisThreadName(_name);
-
         while (true) {
             Job job;
 

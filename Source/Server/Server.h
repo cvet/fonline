@@ -41,6 +41,7 @@
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "Geometry.h"
+#include "ImGuiStuff.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -78,7 +79,7 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
-    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _defaultLang; }
+    [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
 
     void Shutdown() override;
 
@@ -89,21 +90,24 @@ public:
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
-    void DrawGui(string_view server_name);
+    void DrawGui();
 
-    auto LoginPlayer(Player* unlogined_player, string_view name) -> Player*;
+    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
+    auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
+    auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
 
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32 count, Properties* props) -> FO_NON_NULL Item*;
+    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> FO_NON_NULL Item*;
 
-    auto CreateCritter(hstring pid, bool for_player) -> Critter*;
+    auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
     void UnloadCritter(Critter* cr);
     void UnloadCritterInnerEntities(Critter* cr);
     void SwitchPlayerCritter(Player* player, Critter* cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
-    void StartCritterMoving(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, ipos16 end_hex_offset, const Player* initiator);
-    void ChangeCritterMovingSpeed(Critter* cr, uint16 speed);
+    void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
+    void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -114,7 +118,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8 /*command*/);
+    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, Player* /*unloginedPlayer*/);
     ///@ ExportEvent
@@ -122,9 +126,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32& /*speed*/);
+    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32_t& /*speed*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
+    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterMoved, Critter* /*cr*/, mpos /*oldHex*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
     ///@ ExportEvent
@@ -144,10 +150,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
@@ -164,7 +166,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
+    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, mdir /*dir*/);
 
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -184,12 +186,6 @@ private:
     {
         nanotime ServerStartTime {};
         timespan Uptime {};
-
-        int64 BytesSend {};
-        int64 BytesRecv {};
-        int64 DataReal {1};
-        int64 DataCompressed {1};
-        float32 CompressRatio {};
 
         size_t MaxOnline {};
         size_t CurOnline {};
@@ -211,11 +207,10 @@ private:
     void SyncPoint();
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ServerConnection* connection);
-    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
+    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
@@ -238,9 +233,9 @@ private:
     void OnSendLocationValue(Entity* entity, const Property* prop);
     void OnSendCustomEntityValue(Entity* entity, const Property* prop);
 
-    void OnSetCritterLook(Entity* entity, const Property* prop);
+    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop);
+    void OnSetItemHidden(Entity* entity, const Property* prop);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemMultihexLines(Entity* entity, const Property* prop);
 
@@ -251,28 +246,50 @@ private:
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
+    auto InitHealthFileJob() -> std::optional<timespan>;
+    auto HealthFileJob() -> std::optional<timespan>;
+    auto HealthFileWriteJob(const string& health_info) -> std::optional<timespan>;
+    auto WriteHealthFile(string_view text) -> bool;
+    auto InitScriptSystemJob() -> std::optional<timespan>;
+    auto InitNetworkingJob() -> std::optional<timespan>;
+    auto InitStorageJob() -> std::optional<timespan>;
+    auto InitMetadataJob() -> std::optional<timespan>;
+    auto InitLanguageJob() -> std::optional<timespan>;
+    auto InitMapsJob() -> std::optional<timespan>;
+    auto InitClientPacksJob() -> std::optional<timespan>;
+    auto InitGameLogicJob() -> std::optional<timespan>;
+    auto InitDoneJob() -> std::optional<timespan>;
+    auto SyncPointJob() -> std::optional<timespan>;
+    auto FrameTimeJob() -> std::optional<timespan>;
+    auto ScriptSystemJob() -> std::optional<timespan>;
+    auto UnloginedPlayersJob() -> std::optional<timespan>;
+    auto PlayersJob() -> std::optional<timespan>;
+    auto CrittersJob() -> std::optional<timespan>;
+    auto TimeEventsJob() -> std::optional<timespan>;
+    auto LogDispatchJob() -> std::optional<timespan>;
+    auto LoopJob() -> std::optional<timespan>;
+
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
+    string _healthFileName {};
 
     std::mutex _syncLocker {};
     std::condition_variable _syncWaitSignal {};
     std::condition_variable _syncRunSignal {};
-    int32 _syncRequest {};
+    int32_t _syncRequest {};
     bool _syncPointReady {};
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    vector<vector<uint8>> _updateFilesData {};
-    vector<uint8> _updateFilesDesc {};
+    vector<vector<uint8_t>> _updateFilesData {};
+    vector<uint8_t> _updateFilesDesc {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
-    LanguagePack _defaultLang {};
+    TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<shared_ptr<NetworkServerConnection>> _newConnections {};
-    mutable std::mutex _newConnectionsLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};

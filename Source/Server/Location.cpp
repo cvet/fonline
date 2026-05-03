@@ -39,20 +39,20 @@
 FO_BEGIN_NAMESPACE
 
 Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto Location::GetMapByIndex(int32 index) noexcept -> Map*
+auto Location::GetMapByIndex(int32_t index) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (index < 0 || index >= numeric_cast<int32>(_locMaps.size())) {
+    if (index < 0 || index >= numeric_cast<int32_t>(_locMaps.size())) {
         return nullptr;
     }
 
@@ -104,8 +104,12 @@ void Location::AddMap(Map* map)
     SetMapIds(map_ids);
 
     map->SetLocId(GetId());
-    map->SetLocMapIndex(numeric_cast<int32>(_locMaps.size()) - 1);
+    map->SetLocMapIndex(numeric_cast<int32_t>(_locMaps.size()) - 1);
     map->SetLocation(this);
+
+    if (IsPersistent()) {
+        _engine->EntityMngr.MakePersistent(map, true);
+    }
 }
 
 void Location::RemoveMap(Map* map)
@@ -123,6 +127,10 @@ void Location::RemoveMap(Map* map)
     map->SetLocId({});
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
+
+    if (map->IsPersistent() && !map->IsExplicitlyPersistent()) {
+        _engine->EntityMngr.MakePersistent(map, false);
+    }
 }
 
 FO_END_NAMESPACE

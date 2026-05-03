@@ -39,7 +39,11 @@
 
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptEngine;
+    class asITypeInfo;
+}
 
 FO_BEGIN_NAMESPACE
 
@@ -80,8 +84,8 @@ public:
     auto GetEnumNames() const -> ScriptArray*;
     auto GetEnumValues() const -> ScriptArray*;
 
-    void Instantiate(void* out, int out_type_id) const;
-    void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
+    void Instantiate(void** out, int out_type_id) const;
+    void InstantiateCopy(void* in, int in_type_id, void** out, int out_type_id) const;
 
 protected:
     raw_ptr<AngelScript::asITypeInfo> _typeInfo;

@@ -239,7 +239,7 @@ inline void MemMove(void* dest, const void* src, size_t size) noexcept
     }
 }
 
-inline void MemFill(void* ptr, int32 value, size_t size) noexcept
+inline void MemFill(void* ptr, int32_t value, size_t size) noexcept
 {
     if (size != 0) {
         std::memset(ptr, value, size);

@@ -34,10 +34,13 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "Client.h"
 #include "Server.h"
 #include "Settings.h"
 
 FO_USING_NAMESPACE();
+
+static void ServerWithClientLoop(ServerEngine* server, refcount_ptr<ClientEngine>& client);
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -48,20 +51,60 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
 
         {
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
-            App->WaitForRequestedQuit();
+            refcount_ptr<ClientEngine> client;
+
+            if (App->Settings.AutoStartClientOnServer) {
+                ServerWithClientLoop(server.get(), client);
+            }
+            else {
+                App->WaitForRequestedQuit();
+            }
+
+            if (client) {
+                client->Shutdown();
+                client.reset();
+            }
+
             server->Shutdown();
         }
 
-        ExitApp(true);
+        ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static void ServerWithClientLoop(ServerEngine* server, refcount_ptr<ClientEngine>& client)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(server);
+
+    WriteLog("Auto start embedded headless client");
+
+    FrameBalancer balancer {false, 0, 100}; // 100 fps
+
+    while (!App->IsQuitRequested()) {
+        balancer.StartLoop();
+        App->BeginFrame();
+
+        if (server->IsStarted() && !client) {
+            client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
+        }
+
+        if (client) {
+            client->MainLoop();
+        }
+
+        App->EndFrame();
+        balancer.EndLoop();
     }
 }

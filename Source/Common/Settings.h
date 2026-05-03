@@ -89,13 +89,32 @@ protected:
         auto operator=(const name&) -> name& = delete; \
         auto operator=(name&&) noexcept -> name& = delete
 #define SETTING_GROUP_END() }
-#define FIXED_SETTING(type, name, ...) const type name = {}
-#define VARIABLE_SETTING(type, name, ...) type name = {}
+#define FIXED_SETTING(type, group, name, ...) const type name = {}
+#define VARIABLE_SETTING(type, group, name, ...) type name = {}
 #include "Settings-Include.h"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
 public:
+    CommonSettings& Common;
+    NetworkSettings& Network;
+    ServerNetworkSettings& ServerNetwork;
+    ClientNetworkSettings& ClientNetwork;
+    AudioSettings& Audio;
+    ViewSettings& View;
+    GeometrySettings& Geometry;
+    RenderSettings& Render;
+    TimerSettings& Timer;
+    BakingSettings& Baking;
+    CritterSettings& Critter;
+    CritterViewSettings& CritterView;
+    HexSettings& Hex;
+    PlatformSettings& Platform;
+    InputSettings& Input;
+    MapperSettings& Mapper;
+    ClientSettings& Client;
+    ServerSettings& Server;
+
     explicit GlobalSettings(bool baking_mode);
     GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;
@@ -108,17 +127,19 @@ public:
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplyCommandLine(int32 argc, char** argv);
+    void ApplyCommandLine(int32_t argc, char** argv);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
+    void ApplyDefaultSettings();
     void ApplyAutoSettings();
+    void CopyFrom(const GlobalSettings& other);
     void SetCustomSetting(string_view name, any_t value);
     void Draw(bool editable);
 
 private:
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
-    void AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir);
-    void AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir);
+    void AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir);
+    void AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir);
 
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};

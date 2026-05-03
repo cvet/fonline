@@ -32,15 +32,17 @@
 //
 
 #include "Client.h"
+#include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
+#include "Movement.h"
 #include "NetCommand.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
 
-extern void InitClientEngine(ClientEngine*);
+extern void ClientInitHook(ClientEngine*);
 
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
@@ -51,18 +53,20 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window) :
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
-    EffectMngr(Settings, Resources),
+    EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    ResMngr(Resources, SprMngr, *this),
-    SndMngr(Settings, Resources),
-    Keyb(Settings, SprMngr),
+    FontMngr(SprMngr),
+    ResMngr(Settings, Resources, SprMngr, *this),
+    SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Headless test clients still execute the normal draw pipeline, so dummy mode
+    // must synthesize the full default effect set instead of the updater-only subset.
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
@@ -72,7 +76,6 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
 #endif
 
-    SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
     ResMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
@@ -83,15 +86,16 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-    InitSubsystems(this);
+    MapScriptTypes(this);
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(this, Settings, Resources);
+#endif
 
-    ProtoMngr.LoadFromResources(Resources);
-
-    _curLang = LanguagePack {Settings.Language, *this};
-    _curLang.LoadFromResources(Resources);
+    _curLang = TextPack {Hashes};
+    _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Modules initialization
-    InitClientEngine(this);
+    ClientInitHook(this);
 
     InitModules();
 
@@ -131,7 +135,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32>(i));
+                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
                     continue;
@@ -151,18 +155,18 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int32 prop_index, PropertyPostSetCallback callback) {
+        const auto set_callback = [](const auto* registrator, int32_t prop_index, PropertyPostSetCallback callback) {
             const auto* prop = registrator->GetPropertyByIndex(prop_index);
             prop->AddPostSetter(std::move(callback));
         };
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContour(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemContour(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::BadItem_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
@@ -176,16 +180,16 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
     }
 
-    _eventUnsubscriber += window->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
+    _eventUnsubscriber += window.GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, AppWindow* window, const MeatdataRegistrator& mapper_registrator) :
+ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window, const MeatdataRegistrator& mapper_registrator) :
     BaseEngine(settings, std::move(resources), mapper_registrator),
-    EffectMngr(Settings, Resources),
+    EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    ResMngr(Resources, SprMngr, *this),
-    SndMngr(Settings, Resources),
-    Keyb(Settings, SprMngr),
+    FontMngr(SprMngr),
+    ResMngr(Settings, Resources, SprMngr, *this),
+    SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
     _conn(Settings)
 {
@@ -201,14 +205,18 @@ void ClientEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    TimeEventMngr.ClearTimeEvents();
-    ShutdownBackends();
+    OnFinish.Fire();
 
-    App->Render.SetRenderTarget(nullptr);
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
+    TimeEventMngr.ClearTimeEvents();
 
     _conn.SetConnectHandler(nullptr);
     _conn.SetDisconnectHandler(nullptr);
     _conn.Disconnect();
+
+    SprMngr.GetRender().SetRenderTarget(nullptr);
 
     _chosen = nullptr;
 
@@ -235,28 +243,30 @@ void ClientEngine::Shutdown()
 
     DestroyInnerEntities();
 
+    ShutdownBackends();
+
     FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
-auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& pass, uint32& flags, int32& ox, int32& oy, string& anim_name) -> bool
+auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name);
+    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim);
+    return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) == EventResult::ContinueChain;
 }
 
-auto ClientEngine::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32& f_state_anim, int32& f_action_anim, int32& f_state_anim_ex, int32& f_action_anim_ex, uint32& flags) -> bool
+auto ClientEngine::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags);
+    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::IsConnecting() const noexcept -> bool
@@ -306,7 +316,7 @@ void ClientEngine::MainLoop()
     FrameAdvance();
 
 #if FO_TRACY
-    TracyPlot("Client FPS", numeric_cast<int64>(GameTime.GetFramesPerSecond()));
+    TracyPlot("Client FPS", numeric_cast<int64_t>(GameTime.GetFramesPerSecond()));
 #endif
 
     // Network
@@ -325,10 +335,11 @@ void ClientEngine::MainLoop()
         _curMap->Process();
     }
 
-    App->MainWindow.GrabInput(_curMap && _curMap->IsManualScrolling());
+    SprMngr.GetWindow().GrabInput(_curMap && _curMap->IsManualScrolling());
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
+    FontMngr.FrameUpdate();
 
     {
         SprMngr.BeginScene();
@@ -343,8 +354,9 @@ void ClientEngine::MainLoop()
         }
 
         CanDrawInScripts = true;
+        const auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
+
         OnRenderIface.Fire();
-        CanDrawInScripts = false;
 
         ProcessVideo();
         ProcessScreenEffectFading();
@@ -391,17 +403,20 @@ void ClientEngine::ProcessScreenEffectFading()
         }
 
         if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const auto proc = GenericUtils::Percent(screen_effect.Duration.to_ms<int32>(), (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32>()) + 1;
-            int32 res[4];
+            const int32_t effect_duration = screen_effect.Duration.to_ms<int32_t>();
+            const int32_t effect_elapsed = (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32_t>();
+            const int32_t effect_percent = effect_duration == 0 ? 0 : std::clamp(effect_elapsed * 100 / effect_duration, 0, 100);
+            const int32_t proc = std::min(effect_percent + 1, 100);
+            int32_t res[4];
 
             for (auto i = 0; i < 4; i++) {
-                const int32 sc = (reinterpret_cast<uint8*>(&screen_effect.StartColor))[i];
-                const int32 ec = (reinterpret_cast<uint8*>(&screen_effect.EndColor))[i];
+                const int32_t sc = (reinterpret_cast<uint8_t*>(&screen_effect.StartColor))[i];
+                const int32_t ec = (reinterpret_cast<uint8_t*>(&screen_effect.EndColor))[i];
                 const auto dc = ec - sc;
-                res[i] = sc + dc * numeric_cast<int32>(proc) / 100;
+                res[i] = sc + dc * numeric_cast<int32_t>(proc) / 100;
             }
 
-            const auto color = ucolor {numeric_cast<uint8>(res[0]), numeric_cast<uint8>(res[1]), numeric_cast<uint8>(res[2]), numeric_cast<uint8>(res[3])};
+            const auto color = ucolor {numeric_cast<uint8_t>(res[0]), numeric_cast<uint8_t>(res[1]), numeric_cast<uint8_t>(res[2]), numeric_cast<uint8_t>(res[3])};
 
             for (auto i = 0; i < 6; i++) {
                 full_screen_quad[i].PointColor = color;
@@ -414,13 +429,21 @@ void ClientEngine::ProcessScreenEffectFading()
     }
 }
 
-void ClientEngine::ScreenQuake(int32 noise, timespan time)
+void ClientEngine::ScreenQuake(int32_t noise, timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _quakeScreenOffsX = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = numeric_cast<float32>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32>() / 30.0f);
+    if (!_curMap) {
+        _quakeScreenOffsX = 0.0f;
+        _quakeScreenOffsY = 0.0f;
+        _quakeScreenOffsStep = 0.0f;
+        _quakeScreenOffsNextTime = {};
+        return;
+    }
+
+    _quakeScreenOffsX = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsY = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32_t>() / 30.0f);
 
     _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
 
@@ -430,6 +453,14 @@ void ClientEngine::ScreenQuake(int32 noise, timespan time)
 void ClientEngine::ProcessScreenEffectQuake()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_curMap) {
+        _quakeScreenOffsX = 0.0f;
+        _quakeScreenOffsY = 0.0f;
+        _quakeScreenOffsStep = 0.0f;
+        _quakeScreenOffsNextTime = {};
+        return;
+    }
 
     if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
         if (_quakeScreenOffsX < 0.0f) {
@@ -459,16 +490,17 @@ void ClientEngine::ProcessInputEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto& input = SprMngr.GetInput();
+
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
-        while (App->Input.PollEvent(ev)) {
+        while (input.PollEvent(ev)) {
             ProcessInputEvent(ev);
         }
     }
     else {
-        Settings.MousePos = App->Input.GetMousePosition();
+        MousePos = input.GetMousePosition();
 
-        Keyb.Lost();
         OnInputLost.Fire();
     }
 }
@@ -478,7 +510,7 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
     FO_STACK_TRACE_ENTRY();
 
     if (_video && !_video->IsStopped() && _videoCanInterrupt) {
-        if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent) {
+        if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent || ev.Type == InputEvent::EventType::TouchTapEvent || ev.Type == InputEvent::EventType::TouchDoubleTapEvent || ev.Type == InputEvent::EventType::TouchScrollEvent || ev.Type == InputEvent::EventType::TouchZoomEvent) {
             _video->Stop();
         }
     }
@@ -487,35 +519,15 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
 
-        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
-            Keyb.CtrlDwn = true;
-        }
-        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
-            Keyb.AltDwn = true;
-        }
-        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
-            Keyb.ShiftDwn = true;
-        }
-
         OnKeyDown.Fire(key_code, key_text);
     }
     else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
         const auto key_code = ev.KeyUp.Code;
 
-        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
-            Keyb.CtrlDwn = false;
-        }
-        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
-            Keyb.AltDwn = false;
-        }
-        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
-            Keyb.ShiftDwn = false;
-        }
-
         OnKeyUp.Fire(key_code);
     }
     else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
-        Settings.MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
+        MousePos = {ev.MouseMove.MouseX, ev.MouseMove.MouseY};
 
         OnMouseMove.Fire({ev.MouseMove.DeltaX, ev.MouseMove.DeltaY});
     }
@@ -534,6 +546,26 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
             OnMouseDown.Fire(MouseButton::WheelDown);
             OnMouseUp.Fire(MouseButton::WheelDown);
         }
+    }
+    else if (ev.Type == InputEvent::EventType::TouchTapEvent) {
+        MousePos = {ev.TouchTap.TouchX, ev.TouchTap.TouchY};
+
+        OnTouchTap.Fire(MousePos);
+    }
+    else if (ev.Type == InputEvent::EventType::TouchDoubleTapEvent) {
+        MousePos = {ev.TouchDoubleTap.TouchX, ev.TouchDoubleTap.TouchY};
+
+        OnTouchDoubleTap.Fire(MousePos);
+    }
+    else if (ev.Type == InputEvent::EventType::TouchScrollEvent) {
+        MousePos = {ev.TouchScroll.TouchX, ev.TouchScroll.TouchY};
+
+        OnTouchScroll.Fire(MousePos, {ev.TouchScroll.DeltaX, ev.TouchScroll.DeltaY});
+    }
+    else if (ev.Type == InputEvent::EventType::TouchZoomEvent) {
+        MousePos = {ev.TouchZoom.TouchX, ev.TouchZoom.TouchY};
+
+        OnTouchZoom.Fire(MousePos, ev.TouchZoom.Factor);
     }
 }
 
@@ -571,7 +603,7 @@ void ClientEngine::Net_OnDisconnect()
     OnDisconnected.Fire();
 }
 
-void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data)
+void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -579,7 +611,7 @@ void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
 
     _conn.OutBuf->StartMsg(NetMessage::RemoteCall);
     _conn.OutBuf->Write<hstring>(name);
-    _conn.OutBuf->Write<int32>(numeric_cast<int32>(data.size()));
+    _conn.OutBuf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
     _conn.OutBuf->Push(data);
     _conn.OutBuf->EndMsg();
 }
@@ -589,7 +621,7 @@ void ClientEngine::Net_SendDir(CritterHexView* cr)
     _conn.OutBuf->StartMsg(NetMessage::SendCritterDir);
     _conn.OutBuf->Write(_curMap->GetId());
     _conn.OutBuf->Write(cr->GetId());
-    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
 }
 
@@ -597,28 +629,31 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    FO_RUNTIME_ASSERT(cr->IsMoving());
 
-    if (cr->Moving.Steps.size() > 500) {
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+
+    if (moving->GetSteps().size() > Settings.MaxPathFindLength) {
         BreakIntoDebugger();
-        cr->ClearMove();
+        cr->StopMoving();
         return;
     }
 
     _conn.OutBuf->StartMsg(NetMessage::SendCritterMove);
     _conn.OutBuf->Write(_curMap->GetId());
     _conn.OutBuf->Write(cr->GetId());
-    _conn.OutBuf->Write(cr->Moving.Speed);
-    _conn.OutBuf->Write(cr->Moving.StartHex);
-    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.Steps.size()));
-    for (const auto step : cr->Moving.Steps) {
-        _conn.OutBuf->Write(step);
+    _conn.OutBuf->Write(moving->GetSpeed());
+    _conn.OutBuf->Write(moving->GetStartHex());
+    _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
+    for (const auto step : moving->GetSteps()) {
+        _conn.OutBuf->Write(step.hex());
     }
-    _conn.OutBuf->Write(numeric_cast<uint16>(cr->Moving.ControlSteps.size()));
-    for (const auto control_step : cr->Moving.ControlSteps) {
+    _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetControlSteps().size()));
+    for (const auto control_step : moving->GetControlSteps()) {
         _conn.OutBuf->Write(control_step);
     }
-    _conn.OutBuf->Write(cr->Moving.EndHexOffset);
+    _conn.OutBuf->Write(moving->GetEndHexOffset());
     _conn.OutBuf->EndMsg();
 }
 
@@ -631,7 +666,7 @@ void ClientEngine::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf->Write(cr->GetId());
     _conn.OutBuf->Write(cr->GetHex());
     _conn.OutBuf->Write(cr->GetHexOffset());
-    _conn.OutBuf->Write(cr->GetDirAngle());
+    _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
 }
 
@@ -646,7 +681,7 @@ void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, cons
     const auto prop_raw_data = props.GetRawData(prop);
 
     _conn.OutBuf->StartMsg(NetMessage::SendProperty);
-    _conn.OutBuf->Write(numeric_cast<uint32>(prop_raw_data.size()));
+    _conn.OutBuf->Write(numeric_cast<uint32_t>(prop_raw_data.size()));
     _conn.OutBuf->Write(type);
 
     switch (type) {
@@ -686,9 +721,9 @@ void ClientEngine::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32_t>();
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     data.resize(data_size);
     _conn.InBuf->Pop(data.data(), data_size);
 
@@ -706,7 +741,7 @@ void ClientEngine::Net_OnInitData()
         auto reader = DataReader(data);
 
         while (true) {
-            const auto name_len = reader.Read<int16>();
+            const auto name_len = reader.Read<int16_t>();
 
             if (name_len == -1) {
                 break;
@@ -714,8 +749,8 @@ void ClientEngine::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint32>();
-            const auto hash = reader.Read<uint32>();
+            const auto size = reader.Read<uint32_t>();
+            const auto hash = reader.Read<uint64_t>();
 
             ignore_unused(hash);
 
@@ -766,7 +801,7 @@ void ClientEngine::Net_OnAddCritter()
     const auto pid = _conn.InBuf->Read<hstring>(Hashes);
     const auto hex = _conn.InBuf->Read<mpos>();
     const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
     const auto cond = _conn.InBuf->Read<CritterCondition>();
     const auto is_controlled_by_player = _conn.InBuf->Read<bool>();
     const auto is_player_offline = _conn.InBuf->Read<bool>();
@@ -777,7 +812,7 @@ void ClientEngine::Net_OnAddCritter()
     CritterHexView* hex_cr;
 
     if (_curMap) {
-        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir_angle, _tempPropertiesData);
+        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData);
         FO_RUNTIME_ASSERT(hex_cr);
 
         if (_mapLoaded) {
@@ -787,7 +822,9 @@ void ClientEngine::Net_OnAddCritter()
         cr = hex_cr;
     }
     else {
-        const auto* proto = ProtoMngr.GetProtoCritter(pid);
+        const auto* proto = GetProtoCritter(pid);
+        FO_RUNTIME_ASSERT(proto);
+
         const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
 
         if (it != _globalMapCritters.end()) {
@@ -812,15 +849,17 @@ void ClientEngine::Net_OnAddCritter()
     cr->SetIsPlayerOffline(is_player_offline);
 
     // Initial items
-    const auto items_count = _conn.InBuf->Read<uint32>();
+    const auto items_count = _conn.InBuf->Read<uint32_t>();
 
-    for (uint32 i = 0; i < items_count; i++) {
+    for (uint32_t i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
@@ -829,11 +868,11 @@ void ClientEngine::Net_OnAddCritter()
     // Initial attachment
     const auto is_attached = _conn.InBuf->Read<bool>();
 
-    const auto attached_critters_count = _conn.InBuf->Read<uint16>();
+    const auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
-    for (uint16 i = 0; i < attached_critters_count; i++) {
+    for (uint16_t i = 0; i < attached_critters_count; i++) {
         attached_critters[i] = _conn.InBuf->Read<ident_t>();
     }
 
@@ -878,15 +917,16 @@ void ClientEngine::Net_OnAddCritter()
         }
 #endif
 
-        if (items_count != 0) {
-            _curMap->UpdateCritterLightSource(hex_cr);
-        }
-
         if (is_chosen) {
             _curMap->RebuildFog();
         }
 
         hex_cr->RefreshView(true);
+        hex_cr->RefreshOffs();
+
+        if (items_count != 0 && !is_chosen) {
+            _curMap->UpdateCritterLightSource(hex_cr);
+        }
     }
 
     OnCritterIn.Fire(cr.get());
@@ -950,7 +990,7 @@ void ClientEngine::Net_OnCritterDir()
     FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -961,10 +1001,10 @@ void ClientEngine::Net_OnCritterDir()
 
     if (cr != nullptr) {
         if (cr->GetControlledByPlayer()) {
-            cr->ChangeLookDirAngle(dir_angle);
+            cr->ChangeLookDir(dir);
         }
         else {
-            cr->ChangeDirAngle(dir_angle);
+            cr->ChangeDir(dir);
         }
     }
 }
@@ -988,7 +1028,7 @@ void ClientEngine::Net_OnCritterMoveSpeed()
     FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf->Read<ident_t>();
-    const auto speed = _conn.InBuf->Read<uint16>();
+    const auto speed = _conn.InBuf->Read<uint16_t>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1003,18 +1043,14 @@ void ClientEngine::Net_OnCritterMoveSpeed()
     if (!cr->IsMoving()) {
         return;
     }
-    if (speed == cr->Moving.Speed) {
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+
+    if (speed == moving->GetSpeed()) {
         return;
     }
 
-    const auto diff = numeric_cast<float32>(speed) / numeric_cast<float32>(cr->Moving.Speed);
-    const auto elapsed_time = (GameTime.GetFrameTime() - cr->Moving.StartTime + cr->Moving.OffsetTime).to_ms<float32>();
-
-    cr->Moving.WholeTime /= diff;
-    cr->Moving.StartTime = GameTime.GetFrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {iround<int32>(elapsed_time / diff)};
-    cr->Moving.Speed = speed;
-    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
+    moving->ChangeSpeed(speed, GameTime.GetFrameTime());
 
     cr->RefreshView();
 }
@@ -1025,7 +1061,7 @@ void ClientEngine::Net_OnCritterAction()
 
     const auto cr_id = _conn.InBuf->Read<ident_t>();
     const auto action = _conn.InBuf->Read<CritterAction>();
-    const auto action_ext = _conn.InBuf->Read<int32>();
+    const auto action_ext = _conn.InBuf->Read<int32_t>();
     const auto is_context_item = _conn.InBuf->Read<bool>();
 
     refcount_ptr<ItemView> context_item;
@@ -1035,7 +1071,9 @@ void ClientEngine::Net_OnCritterAction()
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
 
@@ -1077,7 +1115,9 @@ void ClientEngine::Net_OnCritterMoveItem()
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto = GetProtoItem(item_pid);
+        FO_RUNTIME_ASSERT(proto);
+
         moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
 
@@ -1097,9 +1137,9 @@ void ClientEngine::Net_OnCritterMoveItem()
         BreakIntoDebugger();
 
         // Skip rest data
-        const auto items_count = _conn.InBuf->Read<uint32>();
+        const auto items_count = _conn.InBuf->Read<uint32_t>();
 
-        for (uint32 i = 0; i < items_count; i++) {
+        for (uint32_t i = 0; i < items_count; i++) {
             (void)_conn.InBuf->Read<ident_t>();
             (void)_conn.InBuf->Read<hstring>(Hashes);
             (void)_conn.InBuf->Read<CritterItemSlot>();
@@ -1111,20 +1151,22 @@ void ClientEngine::Net_OnCritterMoveItem()
     }
 
     // Todo: refactor critters inventory updating
-    const auto items_count = _conn.InBuf->Read<uint32>();
+    const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
         FO_RUNTIME_ASSERT(!cr->GetIsChosen());
 
         cr->DeleteAllInvItems();
 
-        for (uint32 i = 0; i < items_count; i++) {
+        for (uint32_t i = 0; i < items_count; i++) {
             const auto item_id = _conn.InBuf->Read<ident_t>();
             const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
             const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-            const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+            const auto* proto = GetProtoItem(item_pid);
+            FO_RUNTIME_ASSERT(proto);
+
             auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
@@ -1133,15 +1175,13 @@ void ClientEngine::Net_OnCritterMoveItem()
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
         hex_cr->RefreshView();
-        hex_cr->Action(action, static_cast<int32>(prev_slot), moved_item.get(), false);
+        hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item.get(), false);
     }
 
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
         if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             moved_item->SetCritterSlot(prev_slot);
-
-            OnItemInvChanged.Fire(item, moved_item.get());
         }
     }
 
@@ -1182,7 +1222,7 @@ void ClientEngine::Net_OnCritterPos()
     const auto cr_id = _conn.InBuf->Read<ident_t>();
     const auto hex = _conn.InBuf->Read<mpos>();
     const auto hex_offset = _conn.InBuf->Read<ipos16>();
-    const auto dir_angle = _conn.InBuf->Read<int16>();
+    const auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
         BreakIntoDebugger();
@@ -1197,10 +1237,10 @@ void ClientEngine::Net_OnCritterPos()
         return;
     }
 
-    cr->ClearMove();
+    cr->StopMoving();
 
-    cr->ChangeLookDirAngle(dir_angle);
-    cr->ChangeMoveDirAngle(dir_angle);
+    cr->ChangeLookDir(dir);
+    cr->ChangeMoveDir(dir);
 
     if (cr->GetHex() != hex) {
         _curMap->MoveCritter(cr, hex, true);
@@ -1217,6 +1257,8 @@ void ClientEngine::Net_OnCritterPos()
         cr->SetHexOffset(hex_offset);
         cr->RefreshOffs();
     }
+
+    cr->RefreshView();
 }
 
 void ClientEngine::Net_OnCritterAttachments()
@@ -1227,11 +1269,11 @@ void ClientEngine::Net_OnCritterAttachments()
     const auto is_attached = _conn.InBuf->Read<bool>();
     const auto attach_master = _conn.InBuf->Read<ident_t>();
 
-    const auto attached_critters_count = _conn.InBuf->Read<uint16>();
+    const auto attached_critters_count = _conn.InBuf->Read<uint16_t>();
     vector<ident_t> attached_critters;
     attached_critters.resize(attached_critters_count);
 
-    for (uint16 i = 0; i < attached_critters_count; i++) {
+    for (uint16_t i = 0; i < attached_critters_count; i++) {
         attached_critters[i] = _conn.InBuf->Read<ident_t>();
     }
 
@@ -1303,7 +1345,9 @@ void ClientEngine::Net_OnChosenAddItem()
         chosen->DeleteInvItem(prev_item);
     }
 
-    const auto* proto = ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto = GetProtoItem(item_pid);
+    FO_RUNTIME_ASSERT(proto);
+
     auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
@@ -1423,6 +1467,7 @@ void ClientEngine::Net_OnPlaceToGameComplete()
 
         if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
             hex_chosen->RefreshView();
+            hex_chosen->RefreshOffs();
             _curMap->UpdateCritterLightSource(hex_chosen);
         }
     }
@@ -1436,7 +1481,7 @@ void ClientEngine::Net_OnProperty()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32_t>();
     const auto type = _conn.InBuf->Read<NetProperty>();
 
     ident_t cr_id;
@@ -1464,7 +1509,7 @@ void ClientEngine::Net_OnProperty()
         break;
     }
 
-    const auto property_index = _conn.InBuf->Read<uint16>();
+    const auto property_index = _conn.InBuf->Read<uint16_t>();
 
     PropertyRawData prop_data;
     _conn.InBuf->Pop(prop_data.Alloc(data_size), data_size);
@@ -1538,18 +1583,6 @@ void ClientEngine::Net_OnProperty()
 
         entity->SetValueFromData(prop, prop_data);
     }
-
-    if (type == NetProperty::MapItem) {
-        auto* item = dynamic_cast<ItemView*>(entity);
-
-        OnItemMapChanged.Fire(item, item);
-    }
-
-    if (type == NetProperty::ChosenItem) {
-        auto* item = dynamic_cast<ItemView*>(entity);
-
-        OnItemInvChanged.Fire(item, item);
-    }
 }
 
 void ClientEngine::Net_OnTimeSync()
@@ -1558,8 +1591,8 @@ void ClientEngine::Net_OnTimeSync()
 
     const auto time = _conn.InBuf->Read<synctime>();
 
-    GameTime.SetSynchronizedTime(time);
-    SetSynchronizedTime(time);
+    GameTime.SetSynchronizedTimeMonotonic(time);
+    SetSynchronizedTime(GameTime.GetSynchronizedTime());
 }
 
 void ClientEngine::Net_OnLoadMap()
@@ -1572,7 +1605,7 @@ void ClientEngine::Net_OnLoadMap()
     const auto map_id = _conn.InBuf->Read<ident_t>();
     const auto loc_pid = _conn.InBuf->Read<hstring>(Hashes);
     const auto map_pid = _conn.InBuf->Read<hstring>(Hashes);
-    const auto map_index_in_loc = _conn.InBuf->Read<int32>();
+    const auto map_index_in_loc = _conn.InBuf->Read<int32_t>();
 
     if (map_pid) {
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
@@ -1585,11 +1618,14 @@ void ClientEngine::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        const auto* loc_proto = ProtoMngr.GetProtoLocation(loc_pid);
+        const auto* loc_proto = GetProtoLocation(loc_pid);
+        FO_RUNTIME_ASSERT(loc_proto);
+        const auto* map_proto = GetProtoMap(map_pid);
+        FO_RUNTIME_ASSERT(map_proto);
+
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        const auto* map_proto = ProtoMngr.GetProtoMap(map_pid);
         _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto);
         _curMap->RestoreData(_tempPropertiesData);
         _curMap->LoadStaticData();
@@ -1611,18 +1647,20 @@ void ClientEngine::Net_OnSomeItems()
     FO_STACK_TRACE_ENTRY();
 
     const auto context_param = any_t(_conn.InBuf->Read<string>());
-    const auto items_count = _conn.InBuf->Read<uint32>();
+    const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     vector<refcount_ptr<ItemView>> items;
     items.reserve(items_count);
 
-    for (uint32 i = 0; i < items_count; i++) {
+    for (uint32_t i = 0; i < items_count; i++) {
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
         FO_RUNTIME_ASSERT(item_id);
 
-        const auto* proto = ProtoMngr.GetProtoItem(pid);
+        const auto* proto = GetProtoItem(pid);
+        FO_RUNTIME_ASSERT(proto);
+
         auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
@@ -1654,7 +1692,7 @@ void ClientEngine::Net_OnRemoteCall()
     FO_STACK_TRACE_ENTRY();
 
     const auto remote_call_name = _conn.InBuf->Read<hstring>(Hashes);
-    const auto data_size = _conn.InBuf->Read<int32>();
+    const auto data_size = _conn.InBuf->Read<int32_t>();
 
     _remoteCallData.resize(data_size);
     _conn.InBuf->Pop(_remoteCallData.data(), data_size);
@@ -1687,6 +1725,7 @@ void ClientEngine::Net_OnAddCustomEntity()
     }
 
     auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
+    FO_RUNTIME_ASSERT(entity);
 
     OnCustomEntityIn.Fire(entity);
 }
@@ -1737,23 +1776,24 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto entries_count = _conn.InBuf->Read<uint16>();
+    const auto entries_count = _conn.InBuf->Read<uint16_t>();
 
     if (entries_count == 0) {
         return;
     }
 
-    for (uint16 i = 0; i < entries_count; i++) {
+    for (uint16_t i = 0; i < entries_count; i++) {
         const auto entry = _conn.InBuf->Read<hstring>(Hashes);
-        const auto entities_count = _conn.InBuf->Read<uint32>();
+        const auto entities_count = _conn.InBuf->Read<uint32_t>();
 
-        for (uint32 j = 0; j < entities_count; j++) {
+        for (uint32_t j = 0; j < entities_count; j++) {
             const auto id = _conn.InBuf->Read<ident_t>();
             const auto pid = _conn.InBuf->Read<hstring>(Hashes);
             _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder != nullptr) {
                 auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
+                FO_RUNTIME_ASSERT(entity);
 
                 ReceiveCustomEntities(entity);
             }
@@ -1764,7 +1804,7 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
     }
 }
 
-auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8>>& data) -> CustomEntityView*
+auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> CustomEntityView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1777,7 +1817,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
 
     if (pid) {
         FO_RUNTIME_ASSERT(has_protos);
-        proto = ProtoMngr.GetProtoEntity(type_name, pid);
+        proto = GetProtoEntity(type_name, pid);
         FO_RUNTIME_ASSERT(proto);
     }
     else {
@@ -1792,7 +1832,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
         entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
     }
     else {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr);
+        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
     }
 
     entity->RestoreData(data);
@@ -1805,9 +1845,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
     }
 
     entity->SetCustomHolderEntry(entry);
-
     holder->AddInnerEntity(entry, entity.get());
-
     return entity.get();
 }
 
@@ -1815,25 +1853,25 @@ void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto whole_time = _conn.InBuf->Read<uint32>();
-    const auto offset_time = _conn.InBuf->Read<uint32>();
-    const auto speed = _conn.InBuf->Read<uint16>();
+    const auto whole_time = _conn.InBuf->Read<uint32_t>();
+    const auto offset_time = _conn.InBuf->Read<uint32_t>();
+    const auto speed = _conn.InBuf->Read<uint16_t>();
     const auto start_hex = _conn.InBuf->Read<mpos>();
 
-    const auto steps_count = _conn.InBuf->Read<uint16>();
-    vector<uint8> steps;
+    const auto steps_count = _conn.InBuf->Read<uint16_t>();
+    vector<mdir> steps;
     steps.resize(steps_count);
 
-    for (uint16 i = 0; i < steps_count; i++) {
-        steps[i] = _conn.InBuf->Read<uint8>();
+    for (uint16_t i = 0; i < steps_count; i++) {
+        steps[i] = mdir(_conn.InBuf->Read<hdir>());
     }
 
-    const auto control_steps_count = _conn.InBuf->Read<uint16>();
-    vector<uint16> control_steps;
+    const auto control_steps_count = _conn.InBuf->Read<uint16_t>();
+    vector<uint16_t> control_steps;
     control_steps.resize(control_steps_count);
 
-    for (uint16 i = 0; i < control_steps_count; i++) {
-        control_steps[i] = _conn.InBuf->Read<uint16>();
+    for (uint16_t i = 0; i < control_steps_count; i++) {
+        control_steps[i] = _conn.InBuf->Read<uint16_t>();
     }
 
     const auto end_hex_offset = _conn.InBuf->Read<ipos16>();
@@ -1848,68 +1886,17 @@ void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
         return;
     }
 
-    cr->ClearMove();
+    cr->StopMoving();
 
-    cr->Moving.Speed = speed;
-    cr->Moving.StartTime = GameTime.GetFrameTime();
-    cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
-    cr->Moving.WholeTime = numeric_cast<float32>(whole_time);
-    cr->Moving.Steps = steps;
-    cr->Moving.ControlSteps = control_steps;
-    cr->Moving.StartHex = start_hex;
-    cr->Moving.StartHexOffset = cr->GetHexOffset();
-    cr->Moving.EndHexOffset = end_hex_offset;
+    auto start_hex_offset = cr->GetHexOffset();
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
-        const auto cr_offset = Geometry.GetHexOffset(start_hex, cr->GetHex());
-        cr->Moving.StartHexOffset = {numeric_cast<int16>(cr->Moving.StartHexOffset.x + cr_offset.x), numeric_cast<int16>(cr->Moving.StartHexOffset.y + cr_offset.y)};
+        const auto cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
+        start_hex_offset = {numeric_cast<int16_t>(start_hex_offset.x + cr_offset.x), numeric_cast<int16_t>(start_hex_offset.y + cr_offset.y)};
     }
 
-    cr->Moving.WholeDist = 0.0f;
-
-    mpos next_start_hex = start_hex;
-    uint16 control_step_begin = 0;
-
-    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hex = next_start_hex;
-
-        FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-        FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-
-        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = GeometryHelper::MoveHexByDir(hex, cr->Moving.Steps[j], _curMap->GetSize());
-            FO_RUNTIME_ASSERT(move_ok);
-        }
-
-        auto&& [ox, oy] = Geometry.GetHexOffset(next_start_hex, hex);
-
-        if (i == 0) {
-            ox -= cr->Moving.StartHexOffset.x;
-            oy -= cr->Moving.StartHexOffset.y;
-        }
-        if (i == cr->Moving.ControlSteps.size() - 1) {
-            ox += cr->Moving.EndHexOffset.x;
-            oy += cr->Moving.EndHexOffset.y;
-        }
-
-        const auto proj_oy = numeric_cast<float32>(oy) * Geometry.GetYProj();
-        const auto dist = std::sqrt(numeric_cast<float32>(ox * ox) + proj_oy * proj_oy);
-
-        cr->Moving.WholeDist += dist;
-
-        control_step_begin = cr->Moving.ControlSteps[i];
-        next_start_hex = hex;
-
-        cr->Moving.EndHex = hex;
-    }
-
-    cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
-    cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
-
-    FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-    FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-    FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-    FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+    cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(_curMap->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+    cr->GetMoving()->ValidateRuntimeState();
 }
 
 auto ClientEngine::GetEntity(ident_t id) -> ClientEntity*
@@ -1941,7 +1928,7 @@ void ClientEngine::UnregisterEntity(ClientEntity* entity)
     _allEntities.erase(entity->GetId());
 }
 
-auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
+auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1975,7 +1962,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32
     return _ifaceAnimCounter;
 }
 
-void ClientEngine::AnimFree(uint32 anim_id)
+void ClientEngine::AnimFree(uint32_t anim_id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1989,7 +1976,7 @@ void ClientEngine::AnimFree(uint32 anim_id)
     }
 }
 
-auto ClientEngine::AnimGetSpr(uint32 anim_id) -> Sprite*
+auto ClientEngine::AnimGetSpr(uint32_t anim_id) -> Sprite*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2167,7 +2154,7 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSetCritterContourColor(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterContour(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2176,7 +2163,20 @@ void ClientEngine::OnSetCritterContourColor(Entity* entity, const Property* prop
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsMapSpriteValid()) {
-        cr->GetMapSprite()->SetContour(cr->GetMapSprite()->GetContour(), cr->GetContourColor());
+        cr->GetMapSprite()->SetContour(cr->GetContour());
+    }
+}
+
+void ClientEngine::OnSetItemContour(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->IsMapSpriteValid()) {
+        item->GetMapSprite()->SetContour(item->GetContour());
     }
 }
 
@@ -2199,16 +2199,13 @@ void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    // Colorize, ColorizeColor, BadItem, ShootThru, LightThru, NoBlock
+    // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
 
         if (prop == item->GetPropertyColorize() || prop == item->GetPropertyColorizeColor()) {
             item->RefreshAlpha();
-            item->RefreshSprite();
-        }
-        else if (prop == item->GetPropertyBadItem()) {
             item->RefreshSprite();
         }
         else if (prop == item->GetPropertyShootThru()) {
@@ -2298,11 +2295,30 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto lang_pack = LanguagePack {lang_name, *this};
-    lang_pack.LoadFromResources(Resources);
+    auto lang_pack = TextPack {Hashes};
+    lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
     Settings.Language = lang_name;
+}
+
+auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (lang_name.empty() || lang_name == Settings.Language) {
+        return _curLang;
+    }
+
+    for (auto&& [cached_lang_name, cached_pack] : _langPackCache) {
+        if (cached_lang_name == lang_name) {
+            return cached_pack;
+        }
+    }
+
+    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {Hashes});
+    cached_pack.LoadFromResources(Resources, lang_name);
+    return cached_pack;
 }
 
 void ClientEngine::UnloadMap()
@@ -2310,6 +2326,20 @@ void ClientEngine::UnloadMap()
     FO_STACK_TRACE_ENTRY();
 
     OnMapUnload.Fire();
+
+    if (_curMap && (_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f)) {
+        _curMap->SetExtraScrollOffset({});
+    }
+
+    _quakeScreenOffsX = 0.0f;
+    _quakeScreenOffsY = 0.0f;
+    _quakeScreenOffsStep = 0.0f;
+    _quakeScreenOffsNextTime = {};
+
+    Settings.ScrollMouseRight = false;
+    Settings.ScrollMouseLeft = false;
+    Settings.ScrollMouseDown = false;
+    Settings.ScrollMouseUp = false;
 
     if (_curMap) {
         _curMap->DestroySelf();
@@ -2440,107 +2470,23 @@ void ClientEngine::DestroyInnerEntities()
     }
 }
 
-auto ClientEngine::CustomCall(string_view command, string_view separator) -> string
+void ClientEngine::DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Parse command
-    vector<string> args;
-    const auto command_str = string(command);
-    istringstream ss(command_str);
-
-    if (!separator.empty()) {
-        string arg;
-        const auto sep = *separator.data();
-
-        while (std::getline(ss, arg, sep)) {
-            args.push_back(arg);
-        }
+    if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
+        _lmapZoom = zoom;
+        _lmapWMap.x = x;
+        _lmapWMap.y = y;
+        _lmapWMap.width = w;
+        _lmapWMap.height = h;
+        LmapPrepareMap();
     }
-    else {
-        args.emplace_back(command);
+    else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
+        LmapPrepareMap();
     }
 
-    if (args.empty()) {
-        throw ScriptException("Empty custom call command");
-    }
-
-    // Execute
-    const auto cmd = args[0];
-
-    if (cmd == "DumpAtlases") {
-        SprMngr.GetAtlasMngr().DumpAtlases();
-    }
-    else if (cmd == "SwitchShowTrack") {
-        if (_curMap) {
-            _curMap->SwitchShowTrack();
-        }
-    }
-    else if (cmd == "SwitchShowHex") {
-        if (_curMap) {
-            _curMap->SwitchShowHex();
-        }
-    }
-    else if (cmd == "SwitchLookBorders") {
-        // _drawLookBorders = !_drawLookBorders;
-        // _rebuildFog = true;
-    }
-    else if (cmd == "SwitchShootBorders") {
-        // _drawShootBorders = !_drawShootBorders;
-        // _rebuildFog = true;
-    }
-    else if (cmd == "GetShootBorders") {
-        // return _drawShootBorders ? "true" : "false";
-    }
-    else if (cmd == "SetShootBorders" && args.size() >= 2) {
-        // auto set = (args[1] == "true");
-        // if (_drawShootBorders != set) {
-        //    _drawShootBorders = set;
-        //    _curMap->RebuildFog();
-        // }
-    }
-    else if (cmd == "BytesSend") {
-        return strex("{}", _conn.GetBytesSend());
-    }
-    else if (cmd == "BytesReceive") {
-        return strex("{}", _conn.GetBytesReceived());
-    }
-    else if (cmd == "SetResolution" && args.size() >= 3) {
-        const int32 w = strex(args[1]).to_int32();
-        const int32 h = strex(args[2]).to_int32();
-
-        SprMngr.SetScreenSize({w, h});
-        SprMngr.SetWindowSize({w, h});
-    }
-    else if (cmd == "RefreshAlwaysOnTop") {
-        SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);
-    }
-    else if (cmd == "DrawMiniMap" && args.size() >= 6) {
-        const int32 zoom = strex(args[1]).to_int32();
-        const int32 x = strex(args[2]).to_int32();
-        const int32 y = strex(args[3]).to_int32();
-        const int32 w = strex(args[4]).to_int32();
-        const int32 h = strex(args[5]).to_int32();
-
-        if (zoom != _lmapZoom || x != _lmapWMap.x || y != _lmapWMap.y || w != _lmapWMap.width || h != _lmapWMap.height) {
-            _lmapZoom = zoom;
-            _lmapWMap.x = x;
-            _lmapWMap.y = y;
-            _lmapWMap.width = w;
-            _lmapWMap.height = h;
-            LmapPrepareMap();
-        }
-        else if (GameTime.GetFrameTime() >= _lmapPrepareNextTime) {
-            LmapPrepareMap();
-        }
-
-        SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
-    }
-    else {
-        throw ScriptException("Invalid custom call command", cmd, args.size());
-    }
-
-    return "";
+    SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
 }
 
 void ClientEngine::Connect()
@@ -2558,7 +2504,7 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
-void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, int32> pos_or_dir, int32 speed)
+void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2568,13 +2514,13 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
 
     const auto prev_moving = cr->IsMoving();
 
-    cr->ClearMove();
+    cr->StopMoving();
 
     bool try_move = false;
     mpos hex;
     ipos16 hex_offset;
-    vector<uint8> steps;
-    vector<uint16> control_steps;
+    vector<mdir> steps;
+    vector<uint16_t> control_steps;
 
     if (speed != 0 && cr->IsAlive()) {
         if (pos_or_dir.index() == 0) {
@@ -2590,106 +2536,43 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
             }
         }
         else if (pos_or_dir.index() == 1) {
-            const auto quad_dir = std::get<1>(pos_or_dir);
+            const auto dir = std::get<1>(pos_or_dir);
 
-            if (quad_dir != -1) {
-                hex = cr->GetHex();
+            hex = cr->GetHex();
+            hex_offset = cr->GetHexOffset();
+            vector<mdir> raw_steps;
 
-                if (cr->GetMap()->TraceMoveWay(hex, hex_offset, steps, quad_dir)) {
-                    control_steps.push_back(numeric_cast<uint16>(steps.size()));
-                    try_move = true;
-                }
+            if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, dir, cr->GetMultihex())) {
+                steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
+                control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
+                try_move = true;
             }
         }
     }
 
     if (try_move) {
-        cr->Moving.Steps = steps;
-        cr->Moving.ControlSteps = control_steps;
-        cr->Moving.StartTime = GameTime.GetFrameTime();
-        cr->Moving.Speed = numeric_cast<uint16>(speed);
-        cr->Moving.StartHex = cr->GetHex();
-        cr->Moving.EndHex = hex;
-        cr->Moving.StartHexOffset = cr->GetHexOffset();
-        cr->Moving.EndHexOffset = hex_offset;
-
-        cr->Moving.WholeTime = {};
-        cr->Moving.WholeDist = {};
-
-        FO_RUNTIME_ASSERT(cr->Moving.Speed > 0);
-        const auto base_move_speed = numeric_cast<float32>(cr->Moving.Speed);
-
-        auto next_start_hex = cr->Moving.StartHex;
-        uint16 control_step_begin = 0;
-
-        for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-            auto hex2 = next_start_hex;
-
-            FO_RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
-            FO_RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
-            for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-                const auto move_ok = GeometryHelper::MoveHexByDir(hex2, cr->Moving.Steps[j], cr->GetMap()->GetSize());
-                FO_RUNTIME_ASSERT(move_ok);
-            }
-
-            auto offset2 = Geometry.GetHexOffset(next_start_hex, hex2);
-
-            if (i == 0) {
-                offset2.x -= cr->Moving.StartHexOffset.x;
-                offset2.y -= cr->Moving.StartHexOffset.y;
-            }
-            if (i == cr->Moving.ControlSteps.size() - 1) {
-                offset2.x += cr->Moving.EndHexOffset.x;
-                offset2.y += cr->Moving.EndHexOffset.y;
-            }
-
-            const auto proj_oy = numeric_cast<float32>(offset2.y) * Geometry.GetYProj();
-            const auto dist = std::sqrt(numeric_cast<float32>(offset2.x * offset2.x) + proj_oy * proj_oy);
-
-            cr->Moving.WholeDist += dist;
-            cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
-
-            control_step_begin = cr->Moving.ControlSteps[i];
-            next_start_hex = hex2;
-
-            if (i == cr->Moving.ControlSteps.size() - 1) {
-                FO_RUNTIME_ASSERT(hex2 == cr->Moving.EndHex);
-            }
-        }
-
-        cr->Moving.WholeTime = std::max(cr->Moving.WholeTime, 0.0001f);
-        cr->Moving.WholeDist = std::max(cr->Moving.WholeDist, 0.0001f);
-
-        FO_RUNTIME_ASSERT(!cr->Moving.Steps.empty());
-        FO_RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
-        FO_RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
-        FO_RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
-
+        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), hex_offset));
+        cr->GetMoving()->ValidateRuntimeState();
         cr->RefreshView();
         Net_SendMove(cr);
     }
 
     if (prev_moving && !cr->IsMoving()) {
-        cr->ClearMove();
+        cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
     }
 }
 
-void ClientEngine::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
+void ClientEngine::CritterLookTo(CritterHexView* cr, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prev_dir_angle = cr->GetDirAngle();
+    const auto prev_dir = cr->GetDir();
 
-    if (dir_or_angle.index() == 0) {
-        cr->ChangeDir(std::get<0>(dir_or_angle));
-    }
-    else if (dir_or_angle.index() == 1) {
-        cr->ChangeLookDirAngle(std::get<1>(dir_or_angle));
-    }
+    cr->ChangeLookDir(dir);
 
-    if (cr->GetDirAngle() != prev_dir_angle) {
+    if (cr->GetDir() != prev_dir) {
         Net_SendDir(cr);
     }
 }
@@ -2721,7 +2604,7 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
     }
 
     _video = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    _videoTex = App->Render.CreateTexture(_video->GetSize(), true, false);
+    _videoTex = SprMngr.GetRender().CreateTexture(_video->GetSize(), true, false);
 
     if (names.size() > 1) {
         SndMngr.StopMusic();

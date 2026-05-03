@@ -34,7 +34,7 @@
 #pragma once
 
 #include "BasicCore.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -243,6 +243,22 @@ template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto checked_add(const U& value1, const U& value2) -> U
 {
+    if constexpr (std::integral<T>) {
+        if constexpr (std::is_unsigned_v<T>) {
+            if (value1 > std::numeric_limits<T>::max() - value2) {
+                throw OverflowException("Integer addition overflow", typeid(T).name(), value1, value2);
+            }
+        }
+        else {
+            if (value2 > 0 && value1 > std::numeric_limits<T>::max() - value2) {
+                throw OverflowException("Integer addition overflow", typeid(T).name(), value1, value2);
+            }
+            if (value2 < 0 && value1 < std::numeric_limits<T>::min() - value2) {
+                throw OverflowException("Integer addition underflow", typeid(T).name(), value1, value2);
+            }
+        }
+    }
+
     return numeric_cast<T>(value1 + value2);
 }
 
@@ -250,6 +266,22 @@ template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto checked_sub(const U& value1, const U& value2) -> U
 {
+    if constexpr (std::integral<T>) {
+        if constexpr (std::is_unsigned_v<T>) {
+            if (value1 < value2) {
+                throw OverflowException("Integer subtraction underflow", typeid(T).name(), value1, value2);
+            }
+        }
+        else {
+            if (value2 > 0 && value1 < std::numeric_limits<T>::min() + value2) {
+                throw OverflowException("Integer subtraction underflow", typeid(T).name(), value1, value2);
+            }
+            if (value2 < 0 && value1 > std::numeric_limits<T>::max() + value2) {
+                throw OverflowException("Integer subtraction overflow", typeid(T).name(), value1, value2);
+            }
+        }
+    }
+
     return numeric_cast<T>(value1 - value2);
 }
 
@@ -257,6 +289,36 @@ template<typename T, typename U>
     requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
 [[nodiscard]] constexpr auto checked_mul(const U& value1, const U& value2) -> U
 {
+    if constexpr (std::integral<T>) {
+        if constexpr (std::is_unsigned_v<T>) {
+            if (value2 != 0 && value1 > std::numeric_limits<T>::max() / value2) {
+                throw OverflowException("Integer multiplication overflow", typeid(T).name(), value1, value2);
+            }
+        }
+        else {
+            if (value1 > 0) {
+                if (value2 > 0) {
+                    if (value1 > std::numeric_limits<T>::max() / value2) {
+                        throw OverflowException("Integer multiplication overflow", typeid(T).name(), value1, value2);
+                    }
+                }
+                else if (value2 < std::numeric_limits<T>::min() / value1) {
+                    throw OverflowException("Integer multiplication underflow", typeid(T).name(), value1, value2);
+                }
+            }
+            else if (value1 < 0) {
+                if (value2 > 0) {
+                    if (value1 < std::numeric_limits<T>::min() / value2) {
+                        throw OverflowException("Integer multiplication underflow", typeid(T).name(), value1, value2);
+                    }
+                }
+                else if (value2 < std::numeric_limits<T>::max() / value1) {
+                    throw OverflowException("Integer multiplication overflow", typeid(T).name(), value1, value2);
+                }
+            }
+        }
+    }
+
     return numeric_cast<T>(value1 * value2);
 }
 
@@ -281,21 +343,21 @@ template<typename T, typename U>
 // Lerp
 template<typename T, typename U = std::decay_t<T>>
     requires(std::floating_point<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::signed_integral<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + iround<U>((v2 - v1) * t));
 }
 
 template<typename T, typename U = std::decay_t<T>>
     requires(std::unsigned_integral<U>)
-[[nodiscard]] constexpr auto lerp(T v1, T v2, float32 t) -> U
+[[nodiscard]] constexpr auto lerp(T v1, T v2, float32_t t) -> U
 {
     return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : iround<U>(v1 * (1 - t) + v2 * t));
 }

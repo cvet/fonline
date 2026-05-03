@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_sess.c,v 1.128 2024/07/22 14:47:15 jsing Exp $ */
+/* $OpenBSD: ssl_sess.c,v 1.131 2025/10/24 11:36:08 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -247,7 +247,7 @@ SSL_SESSION_new(void)
 LSSL_ALIAS(SSL_SESSION_new);
 
 SSL_SESSION *
-ssl_session_dup(SSL_SESSION *sess, int include_ticket)
+ssl_session_dup(const SSL_SESSION *sess, int include_ticket)
 {
 	SSL_SESSION *copy;
 	CBS cbs;
@@ -313,7 +313,7 @@ ssl_session_dup(SSL_SESSION *sess, int include_ticket)
 		goto err;
 
 	if (!CRYPTO_dup_ex_data(CRYPTO_EX_INDEX_SSL_SESSION, &copy->ex_data,
-	    &sess->ex_data))
+	    (CRYPTO_EX_DATA *)&sess->ex_data))
 		goto err;
 
 	/* Omit prev/next: the new session gets its own slot in the cache. */
@@ -344,6 +344,13 @@ ssl_session_dup(SSL_SESSION *sess, int include_ticket)
 
 	return NULL;
 }
+
+SSL_SESSION *
+SSL_SESSION_dup(const SSL_SESSION *src)
+{
+	return ssl_session_dup(src, 1);
+}
+LSSL_ALIAS(SSL_SESSION_dup);
 
 const unsigned char *
 SSL_SESSION_get_id(const SSL_SESSION *ss, unsigned int *len)
@@ -1057,7 +1064,7 @@ LSSL_ALIAS(SSL_CTX_get_timeout);
 int
 SSL_set_session_secret_cb(SSL *s, int (*tls_session_secret_cb)(SSL *s,
     void *secret, int *secret_len, STACK_OF(SSL_CIPHER) *peer_ciphers,
-    SSL_CIPHER **cipher, void *arg), void *arg)
+    const SSL_CIPHER **cipher, void *arg), void *arg)
 {
 	if (s == NULL)
 		return (0);

@@ -39,13 +39,17 @@
 
 #include "ScriptSystem.h"
 
-#include <angelscript.h>
+namespace AngelScript
+{
+    class asIScriptFunction;
+    class asIScriptGeneric;
+}
 
 FO_BEGIN_NAMESPACE
 
 struct ScriptDataAccessor final : DataAccessor
 {
-    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32 override { return ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX; }
+    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX; }
     [[nodiscard]] auto GetArraySize(void* data) const -> size_t override;
     [[nodiscard]] auto GetArrayElement(void* data, size_t index) const -> void* override;
     [[nodiscard]] auto GetDictSize(void* data) const -> size_t override;

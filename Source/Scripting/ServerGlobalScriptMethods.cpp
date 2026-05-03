@@ -50,6 +50,50 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    return server->CreateCritter(proto->GetProtoId(), forPlayer);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+{
+    const auto* proto = server->GetProtoCritter(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid critter proto id arg", protoId);
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
+    }
+
+    return server->CreateCritter(protoId, forPlayer, &props_);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    Properties props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
+    }
+
+    return server->CreateCritter(proto->GetProtoId(), forPlayer, &props_);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crId, bool forPlayer)
 {
     return server->LoadCritter(crId, forPlayer);
@@ -72,7 +116,7 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ServerEngine* server, iden
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
 {
     ignore_unused(server);
 
@@ -95,7 +139,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr1, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item1, Item* item2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1, Item* item2)
 {
     ignore_unused(server);
 
@@ -117,7 +161,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item1, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
 {
     ignore_unused(server);
 
@@ -140,7 +184,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, Critter* cr)
 {
     ignore_unused(server);
 
@@ -163,7 +207,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, Cr
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, mpos hex)
 {
     ignore_unused(server);
 
@@ -180,7 +224,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Critter* cr, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
 {
     ignore_unused(server);
 
@@ -197,7 +241,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Crit
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, mpos hex)
 {
     ignore_unused(server);
 
@@ -213,7 +257,7 @@ FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, Item* item, mp
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
 {
     ignore_unused(server);
 
@@ -257,7 +301,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critt
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Critter* toCr)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -290,7 +334,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Map* toMap, mpos toHex)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -336,7 +380,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Item* toCont)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -353,7 +397,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32 count, Item* toCont, any_t stackId)
+FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -481,7 +525,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32 count)
+FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32_t count)
 {
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
@@ -506,7 +550,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32 count)
+FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32_t count)
 {
     auto* item = server->EntityMngr.GetItem(itemId);
 
@@ -595,6 +639,18 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Location proto arg is null");
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId());
+    FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
@@ -605,11 +661,16 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
-    const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+    const auto* proto = server->GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
@@ -618,13 +679,36 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto, readonly_map<LocationProperty, any_t> props)
 {
-    const auto* proto = server->ProtoMngr.GetProtoLocation(protoId);
+    if (proto == nullptr) {
+        throw ScriptException("Location proto arg is null");
+    }
+
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
-        props_.SetValueAsAnyProps(static_cast<int32>(key), value);
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
+    }
+
+    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, &props_);
+    FO_RUNTIME_ASSERT(loc);
+    return loc;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
+{
+    const auto* proto = server->GetProtoLocation(protoId);
+
+    if (proto == nullptr) {
+        throw ScriptException("Invalid location proto id arg", protoId);
+    }
+
+    auto props_ = proto->GetProperties().Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
@@ -679,58 +763,64 @@ FO_SCRIPT_API Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_LoginPlayer(ServerEngine* server, Player* unloginedPlayer, string_view name)
+FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
 {
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
+    vector<Critter*> critters;
+    critters.reserve(server->EntityMngr.GetCritters().size());
+
+    for (auto& cr : server->EntityMngr.GetCritters() | std::views::values) {
+        if (cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
+        }
     }
-    if (strvex(name).trim() != name) {
-        throw ScriptException("Wrong player name (trimmed space)");
-    }
-    if (!strvex(name).is_valid_utf8()) {
-        throw ScriptException("Wrong player name encoding");
+
+    return critters;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
+{
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    return server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, Player* unloginedPlayer)
+{
+    if (unloginedPlayer == nullptr) {
+        throw ScriptException("Unlogined player arg is null");
     }
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    return server->LoginPlayer(unloginedPlayer, name);
+    return server->LoginPlayerToNewRecord(unloginedPlayer);
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, string_view name)
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
 {
-    if (name.empty()) {
-        throw ScriptException("Empty player name");
+    if (unloginedPlayer == nullptr) {
+        throw ScriptException("Unlogined player arg is null");
+    }
+    if (unloginedPlayer->GetLogined()) {
+        throw ScriptException("Player is already logined");
+    }
+    if (!playerId) {
+        throw ScriptException("Player id arg is zero");
     }
 
-    // Check existence
-    const auto id = server->MakePlayerId(name);
-    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
+    return server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+}
 
-    if (doc.Empty()) {
+///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
+{
+    if (!playerId) {
         return nullptr;
     }
 
-    // Find online
-    refcount_ptr<Player> player = server->EntityMngr.GetPlayer(id);
-
-    if (player) {
-        player->AddRef();
-        return player.get();
-    }
-
-    // Load from db
-    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    player = SafeAlloc::MakeRefCounted<Player>(server, id, SafeAlloc::MakeUnique<ServerConnection>(server->Settings, dummy_net_conn));
-    player->SetName(name);
-
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, server->Hashes, *server)) {
-        throw ScriptException("Player data db read failed");
-    }
-
-    player->AddRef();
-    return player.get();
+    return server->EntityMngr.GetPlayer(playerId);
 }
 
 ///@ ExportMethod
@@ -752,9 +842,29 @@ FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32 skipCount)
+FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
+{
+    if (mapProto == nullptr) {
+        throw ScriptException("Map proto arg is null");
+    }
+
+    return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), 0);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount)
 {
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
+{
+    if (mapProto == nullptr) {
+        throw ScriptException("Map proto arg is null");
+    }
+
+    return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
 }
 
 ///@ ExportMethod
@@ -789,6 +899,24 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, hstring pid
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, ProtoMap* proto)
+{
+    vector<Map*> maps;
+
+    if (proto == nullptr) {
+        maps.reserve(server->EntityMngr.GetLocationsCount());
+    }
+
+    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
+        if (proto == nullptr || proto->GetProtoId() == map->GetProtoId()) {
+            maps.emplace_back(map.get());
+        }
+    }
+
+    return maps;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ident_t locId)
 {
     return server->EntityMngr.GetLocation(locId);
@@ -801,25 +929,33 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring lo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32 skipCount)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto)
+{
+    if (locProto == nullptr) {
+        throw ScriptException("Location proto arg is null");
+    }
+
+    return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), 0);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount)
 {
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationComponent component)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
 {
-    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
-        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
-            return loc.get();
-        }
+    if (locProto == nullptr) {
+        throw ScriptException("Location proto arg is null");
     }
 
-    return nullptr;
+    return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32 propertyValue)
+FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
@@ -867,15 +1003,17 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, h
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationComponent component)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, ProtoLocation* proto)
 {
     auto& locs = server->EntityMngr.GetLocations();
-
     vector<Location*> result;
-    result.reserve(locs.size());
+
+    if (proto == nullptr) {
+        result.reserve(locs.size());
+    }
 
     for (auto& loc : locs | std::views::values) {
-        if (loc->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+        if (proto == nullptr || proto->GetProtoId() == loc->GetProtoId()) {
             result.emplace_back(loc.get());
         }
     }
@@ -884,7 +1022,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, L
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32 propertyValue)
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
     auto& locs = server->EntityMngr.GetLocations();
@@ -921,6 +1059,25 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, hstrin
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, ProtoItem* proto)
+{
+    auto& items = server->EntityMngr.GetItems();
+    vector<Item*> result;
+
+    if (proto == nullptr) {
+        result.reserve(items.size());
+    }
+
+    for (auto& item : items | std::views::values) {
+        if (proto == nullptr || proto->GetProtoId() == item->GetProtoId()) {
+            result.emplace_back(item.get());
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
 {
     auto& players = server->EntityMngr.GetPlayers();
@@ -938,7 +1095,313 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
 ///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(ServerEngine* server)
 {
-    return server->DbStorage.GetAllIds(server->PlayersCollectionName);
+    return server->DbStorage.GetAllIntIds(server->PlayersCollectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server, hstring collectionName)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+
+    return server->DbStorage.GetAllIntIds(collectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server, hstring collectionName)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+
+    return server->DbStorage.GetAllStringIds(collectionName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
+{
+    if (entity == nullptr) {
+        throw ScriptException("Entity arg is null");
+    }
+
+    return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* server, ident_t playerId)
+{
+    if (!playerId) {
+        throw ScriptException("Player id arg is zero");
+    }
+
+    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, playerId);
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, ident_t id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    return server->DbStorage.Valid(collectionName, id);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, string_view id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    return server->DbStorage.Valid(collectionName, string(id));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, ident_t id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    const auto doc = server->DbStorage.Get(collectionName, id);
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, string_view id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    const auto doc = server->DbStorage.Get(collectionName, string(id));
+    map<string, string> result;
+
+    for (const auto& [key, value] : doc) {
+        result.emplace(key, AnyData::ValueToString(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, id)) {
+        throw ScriptException("Record already exists");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    server->DbStorage.Insert(collectionName, id, doc);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, string(id))) {
+        throw ScriptException("Record already exists");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    server->DbStorage.Insert(collectionName, string(id), doc);
+}
+
+namespace
+{
+    template<typename T>
+    static void ValidateAndUpdateRecord(ServerEngine* server, hstring collectionName, const auto& id, string_view key, const T& value)
+    {
+        if (!collectionName) {
+            throw ScriptException("Collection name arg is empty");
+        }
+        if constexpr (std::is_same_v<std::decay_t<decltype(id)>, ident_t>) {
+            if (!id) {
+                throw ScriptException("Record id arg is zero");
+            }
+        }
+        else {
+            if (id.empty()) {
+                throw ScriptException("Record id arg is empty");
+            }
+        }
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if constexpr (std::is_same_v<T, string_view>) {
+            if (!strvex(value).is_valid_utf8()) {
+                throw ScriptException("Record value has invalid encoding");
+            }
+        }
+
+        if (!server->DbStorage.Valid(collectionName, id)) {
+            throw ScriptException("Record not found");
+        }
+
+        if constexpr (std::is_same_v<T, string_view>) {
+            server->DbStorage.Update(collectionName, id, key, string(value));
+        }
+        else {
+            server->DbStorage.Update(collectionName, id, key, value);
+        }
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, ident_t id, string_view key, string_view value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, string_view id, string_view key, string_view value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, int64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, string_view id, string_view key, int64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, float64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, string_view id, string_view key, float64_t value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, ident_t id, string_view key, bool value)
+{
+    ValidateAndUpdateRecord(server, collectionName, id, key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, string_view id, string_view key, bool value)
+{
+    ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, ident_t id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+
+    if (server->DbStorage.Valid(collectionName, id)) {
+        server->DbStorage.Delete(collectionName, id);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, string_view id)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+
+    if (server->DbStorage.Valid(collectionName, string(id))) {
+        server->DbStorage.Delete(collectionName, string(id));
+    }
 }
 
 ///@ ExportMethod
@@ -954,6 +1417,20 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, hstri
 
     for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
         if (!cr->IsDestroyed() && (!pid || pid == cr->GetProtoId())) {
+            result.emplace_back(cr);
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, ProtoCritter* proto)
+{
+    vector<Critter*> result;
+
+    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
+        if (!cr->IsDestroyed() && (proto == nullptr || proto->GetProtoId() == cr->GetProtoId())) {
             result.emplace_back(cr);
         }
     }
@@ -988,12 +1465,12 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEn
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackName textPack, uint32 strNum)
+FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey textKey)
 {
-    return server->GetLangPack().GetTextPack(textPack).GetStrCount(strNum) != 0;
+    return server->GetLangPack().IsTextPresent(textKey);
 }
 
-static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32
+static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {
         log = strex(log).replace('\r', '\n', '\n').erase('\r');
@@ -1089,7 +1566,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     ::CloseHandle(pi.hProcess);
     ::CloseHandle(pi.hThread);
 
-    return std::bit_cast<int32>(retval);
+    return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
     FILE* in = popen(string(command).c_str(), "r");
@@ -1116,7 +1593,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view command)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command)
 {
     ignore_unused(server);
 
@@ -1125,7 +1602,7 @@ FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view com
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Game_SystemCall(ServerEngine* server, string_view command, string& output)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command, string& output)
 {
     ignore_unused(server);
 

@@ -42,6 +42,7 @@
 #include "Geometry.h"
 #include "HexView.h"
 #include "ModelSprites.h"
+#include "Movement.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -59,7 +60,9 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !Moving.Steps.empty(); }
+    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
+    [[nodiscard]] auto GetMoving() noexcept -> MovingContext* { return _moving.get(); }
+    [[nodiscard]] auto GetMoving() const noexcept -> const MovingContext* { return _moving.get(); }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
@@ -69,38 +72,23 @@ public:
 #endif
 
     void Init();
-    void ChangeDir(uint8 dir);
-    void ChangeDirAngle(int32 dir_angle);
-    void ChangeLookDirAngle(int32 dir_angle);
-    void ChangeMoveDirAngle(int32 dir_angle);
+    void ChangeDir(mdir dir);
+    void ChangeLookDir(mdir dir);
+    void ChangeMoveDir(mdir dir);
     void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
     void StopAnim();
     void RefreshView(bool no_smooth = false);
-    void Action(CritterAction action, int32 action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call);
     void Process();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;
-    void ClearMove();
+    void SetMoving(refcount_ptr<MovingContext> moving);
+    void StopMoving();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
-
-    struct MovingData
-    {
-        uint16 Speed {};
-        vector<uint8> Steps {};
-        vector<uint16> ControlSteps {};
-        nanotime StartTime {};
-        timespan OffsetTime {};
-        mpos StartHex {};
-        mpos EndHex {};
-        float32 WholeTime {};
-        float32 WholeDist {};
-        ipos16 StartHexOffset {};
-        ipos16 EndHexOffset {};
-    } Moving {};
 
 private:
     struct CritterAnim
@@ -109,19 +97,20 @@ private:
         CritterActionAnim ActionAnim {};
         refcount_ptr<Entity> ContextItem {};
         raw_ptr<const SpriteSheet> Frames {};
-        int32 FrameIndex {};
+        int32_t FrameIndex {};
         timespan FramesDuration {};
     };
 
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetModelLayersData() const -> const int32*;
+    auto GetModelLayersData() const -> const int32_t*;
 #endif
-
     void OnDestroySelf() override;
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim();
-    void SetAnimSpr(const SpriteSheet* anim, int32 frm_index);
+    void SetAnimSpr(const SpriteSheet* anim, int32_t frm_index);
+
+    refcount_ptr<MovingContext> _moving {};
 
     bool _needReset {};
     nanotime _resetTime {};

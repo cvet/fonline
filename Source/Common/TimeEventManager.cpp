@@ -45,14 +45,14 @@ TimeEventManager::TimeEventManager(BaseEngine& engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32
+auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
     te->Id = ++_timeEventCounter;
-    te->Func = std::move(func);
     te->FuncName = std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func);
+    te->Func = std::move(func);
     te->FireTime = _engine->GetFrameTime() + std::max(delay, MIN_REPEAT_TIME);
     te->RepeatDuration = repeat;
     te->Data = std::move(data);
@@ -65,7 +65,7 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
     return _timeEventCounter;
 }
 
-auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id) const -> size_t
+auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -100,7 +100,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
     return 0;
 }
 
-void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data)
+void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -139,7 +139,7 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     }
 }
 
-void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id)
+void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -209,7 +209,13 @@ void TimeEventManager::ClearTimeEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
+    for (auto* entity : copy_hold_ref(_timeEventEntities)) {
+        entity->ClearAllTimeEvents();
+    }
+
     _timeEventEntities.clear();
+    _curTimeEventEntity.reset();
+    _curTimeEvent.reset();
 }
 
 void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)

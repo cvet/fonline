@@ -1,4 +1,4 @@
-/* $OpenBSD: crypto.h,v 1.75 2024/08/31 12:43:58 jsing Exp $ */
+/* $OpenBSD: crypto.h,v 1.80 2025/09/28 07:52:53 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
  *
@@ -182,7 +182,7 @@ extern "C" {
 #define CRYPTO_LOCK_ECDSA               32
 #define CRYPTO_LOCK_EC			33
 #define CRYPTO_LOCK_ECDH		34
-#define CRYPTO_LOCK_BN  		35
+#define CRYPTO_LOCK_BN			35
 #define CRYPTO_LOCK_EC_PRE_COMP		36
 #define CRYPTO_LOCK_STORE		37
 #define CRYPTO_LOCK_COMP		38
@@ -349,11 +349,9 @@ struct CRYPTO_dynlock_value *(*CRYPTO_get_dynlock_create_callback(void))(const c
 void (*CRYPTO_get_dynlock_lock_callback(void))(int mode, struct CRYPTO_dynlock_value *l, const char *file, int line);
 void (*CRYPTO_get_dynlock_destroy_callback(void))(struct CRYPTO_dynlock_value *l, const char *file, int line);
 
-/* CRYPTO_set_mem_functions includes CRYPTO_set_locked_mem_functions --
- * call the latter last if you need different functions */
-int CRYPTO_set_mem_functions(void *(*m)(size_t), void *(*r)(void *, size_t), void (*f)(void *));
-int CRYPTO_set_mem_ex_functions(void *(*m)(size_t, const char *, int),
-    void *(*r)(void *, size_t, const char *, int), void (*f)(void *));
+int CRYPTO_set_mem_functions(void *(*m)(size_t, const char *, int),
+    void *(*r)(void *, size_t, const char *, int),
+    void (*f)(void *, const char *, int));
 
 void *CRYPTO_malloc(size_t num, const char *file, int line);
 char *CRYPTO_strdup(const char *str, const char *file, int line);
@@ -371,7 +369,7 @@ __declspec(noreturn)
 __attribute__((__noreturn__))
 #endif
 void OpenSSLDie(const char *file, int line, const char *assertion);
-#define OPENSSL_assert(e)       (void)((e) ? 0 : (OpenSSLDie(__FILE__, __LINE__, #e),1))
+#define OPENSSL_assert(e)       (void)((e) ? 0 : (OpenSSLDie(OPENSSL_FILE, OPENSSL_LINE, #e),1))
 
 int FIPS_mode(void);
 int FIPS_mode_set(int r);
@@ -416,6 +414,7 @@ int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 #define OPENSSL_INIT_reserved_internal		_OPENSSL_INIT_FLAG_NOOP
 #define OPENSSL_INIT_ATFORK			_OPENSSL_INIT_FLAG_NOOP
 #define OPENSSL_INIT_ENGINE_ALL_BUILTIN		_OPENSSL_INIT_FLAG_NOOP
+#define OPENSSL_INIT_NO_ATEXIT			_OPENSSL_INIT_FLAG_NOOP
 
 int OPENSSL_init_crypto(uint64_t opts, const void *settings);
 void OPENSSL_cleanup(void);

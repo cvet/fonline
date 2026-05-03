@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -58,11 +58,13 @@ public:
 	~asCOutputBuffer ();
 	void Clear();
 	void Callback(asSMessageInfo *msg);
+	static void CDeclCallback(asSMessageInfo* msg, asCOutputBuffer* buf) { buf->Callback(msg); }
 	void Append(asCOutputBuffer &in);
 	void SendToCallback(asCScriptEngine *engine, asSSystemFunctionInterface *func, void *obj);
 
 	struct message_t
 	{
+		message_t() : row(0), col(0), type(asMSGTYPE_INFORMATION) {}
 		asCString section;
 		int row;
 		int col;

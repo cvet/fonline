@@ -1,13 +1,14 @@
 @echo off
+setlocal
 
-call "%~dp0\setup-env.cmd"
+set "PYTHON_BIN="
+where py >nul 2>nul && set "PYTHON_BIN=py -3"
+if not defined PYTHON_BIN where python >nul 2>nul && set "PYTHON_BIN=python"
 
-if not exist "%FO_WORKSPACE%" mkdir "%FO_WORKSPACE%"
-pushd "%FO_WORKSPACE%"
+if not defined PYTHON_BIN (
+	echo Python not found
+	exit /b 1
+)
 
-cd build-win64-toolset
-cmake --build . --config Release --target %1 --parallel
-if errorlevel 1 exit /b 1
-
-popd
-exit /b
+%PYTHON_BIN% "%~dp0buildtools.py" toolset %*
+exit /b %errorlevel%

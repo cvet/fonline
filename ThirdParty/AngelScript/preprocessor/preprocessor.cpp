@@ -76,30 +76,6 @@ public:
     /* Lexems                                                               */
     /************************************************************************/
 
-    enum LexemType
-    {
-        IDENTIFIER,             // Names which can be expanded.
-        COMMA,                  // ,
-        SEMICOLON,
-        OPEN,                   // {[(
-        CLOSE,                  // }])
-        PREPROCESSOR,           // Begins with #
-        NEWLINE,
-        WHITESPACE,
-        IGNORE,
-        COMMENT,
-        STRING,
-        NUMBER,
-        BACKSLASH
-    };
-
-    class Lexem
-    {
-public:
-        std::string Value;
-        LexemType   Type;
-    };
-
     const std::string Numbers = "0123456789";
     const std::string IdentifierStart = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const std::string IdentifierBody = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -122,7 +98,6 @@ public:
         CLOSE
     };
 
-    typedef std::list< Lexem >  LexemList;
     typedef LexemList::iterator LLITR;
 
     std::string IntToString( int i );
@@ -1125,7 +1100,7 @@ void Preprocessor::DeleteContext( Context* ctx ) noexcept
 	}
 }
 
-int Preprocessor::Preprocess( Context* ctx, std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader )
+int Preprocessor::PreprocessToLexems( Context* ctx, std::string file_path, LexemList& result, OutStream* errors, FileLoader* loader )
 {
     static OutStream  null_stream;
     static FileLoader default_loader;
@@ -1147,11 +1122,18 @@ int Preprocessor::Preprocess( Context* ctx, std::string file_path, OutStream& re
     ctx->RootPath = ( n != std::string::npos ? file_path.substr( 0, n + 1 ) : "" );
 
     DefineTable define_table = ctx->CustomDefines;
-    LexemList   lexems;
 
-    RecursivePreprocess( ctx, ctx->RootFile, loader ? *loader : default_loader, lexems, define_table );
-    PrintLexemList( ctx, lexems, result );
+    result.clear();
+    RecursivePreprocess( ctx, ctx->RootFile, loader ? *loader : default_loader, result, define_table );
     return ctx->ErrorsCount;
+}
+
+int Preprocessor::Preprocess( Context* ctx, std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader )
+{
+    LexemList lexems;
+    const int errors_count = PreprocessToLexems( ctx, std::move( file_path ), lexems, errors, loader );
+    PrintLexemList( ctx, lexems, result );
+    return errors_count;
 }
 
 void Preprocessor::Define( Context* ctx, const std::string& str )

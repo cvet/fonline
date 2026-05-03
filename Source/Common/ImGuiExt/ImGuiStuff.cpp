@@ -32,8 +32,15 @@
 //
 
 #include "ImGuiStuff.h"
+#include "EngineBase.h"
 
 FO_USING_NAMESPACE();
+
+ScriptImGui::ScriptImGui(BaseEngine* engine) :
+    Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr, nullptr),
+    _engine {engine}
+{
+}
 
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
@@ -41,7 +48,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     ignore_unused(user_data);
 
-    constexpr SafeAllocator<uint8> allocator;
+    constexpr SafeAllocator<uint8_t> allocator;
     return allocator.allocate(sz);
 }
 
@@ -51,8 +58,8 @@ static void ImGuiFree(void* ptr, void* user_data)
 
     ignore_unused(user_data);
 
-    constexpr SafeAllocator<uint8> allocator;
-    allocator.deallocate(static_cast<uint8*>(ptr), 0);
+    constexpr SafeAllocator<uint8_t> allocator;
+    allocator.deallocate(static_cast<uint8_t*>(ptr), 0);
 }
 
 void ImGuiExt::Init()

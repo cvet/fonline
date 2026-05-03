@@ -54,10 +54,10 @@ public:
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8>;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8_t>;
 
     void SetString(string_view entry_name, string_view str);
-    void SetData(string_view entry_name, const_span<uint8> data);
+    void SetData(string_view entry_name, const_span<uint8_t> data);
     void RemoveEntry(string_view entry_name);
 
 private:

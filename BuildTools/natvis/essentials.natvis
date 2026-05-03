@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="fo::raw_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::unique_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::refcount_ptr&lt;*&gt;">
+    <DisplayString Condition="_ptr == 0">nullptr</DisplayString>
+    <DisplayString>ptr={_ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_ptr != 0">_ptr</ExpandedItem>
+      <Item Name="[ptr]" Condition="_ptr != 0" ExcludeView="simple">_ptr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::propagate_const&lt;*&gt;">
+    <DisplayString>{_smartPtr}</DisplayString>
+    <Expand>
+      <ExpandedItem>_smartPtr</ExpandedItem>
+      <Item Name="[value]" ExcludeView="simple">_smartPtr</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::StackTraceFrame">
+    <DisplayString Condition="Type == fo::StackTraceFrame::FrameType::Script">[Script] {Function,s} @ {File,s}:{Line}</DisplayString>
+    <DisplayString>[Native] {Function,s} @ {File,s}:{Line}</DisplayString>
+    <Expand>
+      <Item Name="Type">Type</Item>
+      <Item Name="Function">Function</Item>
+      <Item Name="File">File</Item>
+      <Item Name="Line">Line</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ScriptStackTraceLayer">
+    <DisplayString>{ScriptFrames._Mypair._Myval2._Mylast - ScriptFrames._Mypair._Myval2._Myfirst} script frames + {BirthNativeFrameCount} birth native frames</DisplayString>
+    <Expand>
+      <Item Name="[script frames]">ScriptFrames</Item>
+      <Item Name="[birth native count]">BirthNativeFrameCount</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::StackTraceData">
+    <DisplayString Condition="NativeFrameCount == 0 &amp;&amp; ScriptLayers._Ptr == 0">empty stack</DisplayString>
+    <DisplayString>{NativeFrameCount} native frames + script layers</DisplayString>
+    <Expand>
+      <Item Name="[native count]" ExcludeView="simple">NativeFrameCount</Item>
+      <Synthetic Name="[script layers]" ExcludeView="simple" Condition="ScriptLayers._Ptr != 0">
+        <DisplayString>script layers available</DisplayString>
+        <Expand>
+          <ExpandedItem>*ScriptLayers._Ptr</ExpandedItem>
+        </Expand>
+      </Synthetic>
+      <CustomListItems MaxItemsPerView="64" Condition="NativeFrameCount != 0">
+        <Variable Name="count" InitialValue="NativeFrameCount > 64 ? 64 : NativeFrameCount" />
+        <Variable Name="idx" InitialValue="0" />
+        <Loop>
+          <Break Condition="idx == count" />
+          <Item Name="[Native {idx}]">NativeFrames[idx]</Item>
+          <Exec>idx = idx + 1</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::BaseEngineException">
+    <DisplayString>[{_name,s}] {_message}</DisplayString>
+    <Expand>
+      <Item Name="Type">_name,s</Item>
+      <Item Name="Message">_message</Item>
+      <Item Name="What" ExcludeView="simple">_extendedMessage</Item>
+      <ExpandedItem>_params</ExpandedItem>
+      <ExpandedItem>_stackTrace</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::hstring">
+    <DisplayString>hash={_entry-&gt;Hash,d} {_entry-&gt;Str}</DisplayString>
+    <Expand>
+      <Item Name="String">_entry-&gt;Str</Item>
+      <Item Name="Hash">_entry-&gt;Hash,d</Item>
+      <Item Name="HashHex" ExcludeView="simple">_entry-&gt;Hash,x</Item>
+      <Item Name="Entry">_entry</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ucolor">
+    <DisplayString>rgba({(int)comp.r}, {(int)comp.g}, {(int)comp.b}, {(int)comp.a})</DisplayString>
+    <Expand>
+      <Item Name="rgba">rgba,x</Item>
+      <Item Name="r">(int)comp.r</Item>
+      <Item Name="g">(int)comp.g</Item>
+      <Item Name="b">(int)comp.b</Item>
+      <Item Name="a">(int)comp.a</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::ipos&lt;*&gt;">
+    <DisplayString>({x}, {y})</DisplayString>
+    <Expand>
+      <Item Name="x">x</Item>
+      <Item Name="y">y</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::timespan">
+    <DisplayString Condition="_value == 0">0 ns</DisplayString>
+    <DisplayString>{_value} ns / {_value / 1000} us / {_value / 1000000} ms / {_value / 1000000000} s</DisplayString>
+    <Expand>
+      <Item Name="nanoseconds">_value</Item>
+      <Item Name="microseconds">_value / 1000</Item>
+      <Item Name="milliseconds">_value / 1000000</Item>
+      <Item Name="seconds">_value / 1000000000</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::nanotime">
+    <DisplayString Condition="_value == 0">0 ns (steady time)</DisplayString>
+    <DisplayString>{_value} ns / {_value / 1000} us / {_value / 1000000} ms / {_value / 1000000000} s since steady epoch</DisplayString>
+    <Expand>
+      <Item Name="raw">_value</Item>
+      <Item Name="nanoseconds">_value</Item>
+      <Item Name="microseconds">_value / 1000</Item>
+      <Item Name="milliseconds">_value / 1000000</Item>
+      <Item Name="seconds">_value / 1000000000</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="fo::synctime">
+    <DisplayString Condition="_value == 0">0 ms (sync time)</DisplayString>
+    <DisplayString>{_value} ms / {_value / 1000} s / {_value / 60000} min / {_value / 3600000} h since sync epoch</DisplayString>
+    <Expand>
+      <Item Name="raw">_value</Item>
+      <Item Name="milliseconds">_value</Item>
+      <Item Name="seconds">_value / 1000</Item>
+      <Item Name="minutes">_value / 60000</Item>
+      <Item Name="hours">_value / 3600000</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: freenull.c.head,v 1.10 2024/08/30 05:00:38 tb Exp $	*/
+/*	$OpenBSD: freenull.c.head,v 1.11 2025/08/25 06:01:33 tb Exp $	*/
 
 #include <openssl/asn1.h>
 #include <openssl/cmac.h>
@@ -10,6 +10,7 @@
 #include <openssl/gost.h>
 #endif
 #include <openssl/hmac.h>
+#include <openssl/mlkem.h>
 #include <openssl/ocsp.h>
 #include <openssl/pkcs12.h>
 #include <openssl/ts.h>
@@ -107,6 +108,8 @@ main(int argc, char **argv)
 	IPAddressOrRange_free(NULL);
 	IPAddressRange_free(NULL);
 	ISSUING_DIST_POINT_free(NULL);
+	MLKEM_private_key_free(NULL);
+	MLKEM_public_key_free(NULL);
 	NAME_CONSTRAINTS_free(NULL);
 	NCONF_free(NULL);
 	NETSCAPE_SPKAC_free(NULL);
@@ -178,7 +181,6 @@ main(int argc, char **argv)
 	X509_NAME_ENTRY_free(NULL);
 	X509_NAME_free(NULL);
 	X509_OBJECT_free(NULL);
-	X509_PKEY_free(NULL);
 	X509_PUBKEY_free(NULL);
 	X509_REQ_INFO_free(NULL);
 	X509_REQ_free(NULL);

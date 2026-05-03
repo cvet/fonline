@@ -1,4 +1,4 @@
-/* $OpenBSD: tlsexttest.c,v 1.92 2024/09/11 15:04:16 tb Exp $ */
+/* $OpenBSD: tlsexttest.c,v 1.97 2026/04/03 07:37:52 jsing Exp $ */
 /*
  * Copyright (c) 2017 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -1608,9 +1608,10 @@ test_tlsext_ri_server(void)
  */
 
 static const unsigned char tlsext_sigalgs_client[] = {
-	0x00, 0x16, 0x08, 0x06, 0x06, 0x01, 0x06, 0x03,
-	0x08, 0x05, 0x05, 0x01, 0x05, 0x03, 0x08, 0x04,
-	0x04, 0x01, 0x04, 0x03, 0x02, 0x01, 0x02, 0x03,
+	0x00, 0x1c, 0x08, 0x06, 0x08, 0x0b, 0x06, 0x01,
+	0x06, 0x03, 0x08, 0x05, 0x08, 0x0a, 0x05, 0x01,
+	0x05, 0x03, 0x08, 0x04, 0x08, 0x09, 0x04, 0x01,
+	0x04, 0x03, 0x02, 0x01, 0x02, 0x03,
 };
 
 static int
@@ -2824,7 +2825,7 @@ test_tlsext_srtp_client(void)
 		errx(1, "Failed to create CBB");
 
 	/* SRTP is for DTLS */
-	if ((ssl_ctx = SSL_CTX_new(DTLSv1_client_method())) == NULL)
+	if ((ssl_ctx = SSL_CTX_new(DTLS_client_method())) == NULL)
 		errx(1, "failed to create SSL_CTX");
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
@@ -3064,7 +3065,7 @@ test_tlsext_srtp_server(void)
 		errx(1, "Failed to create CBB");
 
 	/* SRTP is for DTLS */
-	if ((ssl_ctx = SSL_CTX_new(DTLSv1_client_method())) == NULL)
+	if ((ssl_ctx = SSL_CTX_new(DTLS_client_method())) == NULL)
 		errx(1, "failed to create SSL_CTX");
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
@@ -3186,13 +3187,14 @@ test_tlsext_srtp_server(void)
 #endif /* OPENSSL_NO_SRTP */
 
 static const unsigned char tlsext_clienthello_default[] = {
-	0x00, 0x34, 0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08,
+	0x00, 0x3a, 0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08,
 	0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19,
 	0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23,
-	0x00, 0x00, 0x00, 0x0d, 0x00, 0x18, 0x00, 0x16,
-	0x08, 0x06, 0x06, 0x01, 0x06, 0x03, 0x08, 0x05,
-	0x05, 0x01, 0x05, 0x03, 0x08, 0x04, 0x04, 0x01,
-	0x04, 0x03, 0x02, 0x01, 0x02, 0x03,
+	0x00, 0x00, 0x00, 0x0d, 0x00, 0x1e, 0x00, 0x1c,
+	0x08, 0x06, 0x08, 0x0b, 0x06, 0x01, 0x06, 0x03,
+	0x08, 0x05, 0x08, 0x0a, 0x05, 0x01, 0x05, 0x03,
+	0x08, 0x04, 0x08, 0x09, 0x04, 0x01, 0x04, 0x03,
+	0x02, 0x01, 0x02, 0x03,
 };
 
 /* An empty array is an incomplete type and sizeof() is undefined. */
@@ -3665,7 +3667,7 @@ test_tlsext_keyshare_client(void)
 	if ((ssl->s3->hs.key_share =
 	    tls_key_share_new_nid(NID_X25519)) == NULL)
 		errx(1, "failed to create key share");
-	if (!tls_key_share_generate(ssl->s3->hs.key_share))
+	if (!tls_key_share_client_generate(ssl->s3->hs.key_share))
 		errx(1, "failed to generate key share");
 
 	ssl->s3->hs.our_max_tls_version = TLS1_2_VERSION;
@@ -3738,6 +3740,11 @@ test_tlsext_keyshare_client(void)
 	}
 	if (ssl->s3->hs.key_share == NULL) {
 		FAIL("Did not select a key share");
+		goto done;
+	}
+	if (tls_key_share_group(ssl->s3->hs.key_share) != 29) {
+		FAIL("wrong key share group: got %d, expected 29\n",
+		     tls_key_share_group(ssl->s3->hs.key_share));
 		goto done;
 	}
 
@@ -3885,14 +3892,14 @@ test_tlsext_keyshare_server(void)
 		goto done;
 	}
 
-	if (!tls_key_share_generate(ssl->s3->hs.key_share)) {
+	if (!tls_key_share_server_generate(ssl->s3->hs.key_share)) {
 		FAIL("failed to generate key share");
 		goto done;
 	}
 
 	CBS_init(&cbs, bogokey, sizeof(bogokey));
 
-	if (!tls_key_share_peer_public(ssl->s3->hs.key_share, &cbs,
+	if (!tls_key_share_server_peer_public(ssl->s3->hs.key_share, &cbs,
 	    &decode_error, NULL)) {
 		FAIL("failed to load peer public key\n");
 		goto done;
@@ -3921,7 +3928,7 @@ test_tlsext_keyshare_server(void)
 		FAIL("failed to create key share");
 		goto done;
 	}
-	if (!tls_key_share_generate(ssl->s3->hs.key_share)) {
+	if (!tls_key_share_server_generate(ssl->s3->hs.key_share)) {
 		FAIL("failed to generate key share");
 		goto done;
 	}
@@ -4542,12 +4549,10 @@ test_tlsext_valid_hostnames(void)
 #define N_TLSEXT_RANDOMIZATION_TESTS 1000
 
 static int
-test_tlsext_check_extension_order(SSL *ssl)
+test_tlsext_check_psk_is_last_extension(SSL *ssl)
 {
 	const struct tls_extension *ext;
 	uint16_t type;
-	size_t alpn_idx, sni_idx;
-	size_t i;
 
 	if (ssl->tlsext_build_order_len == 0) {
 		FAIL("Unexpected zero build order length");
@@ -4557,34 +4562,6 @@ test_tlsext_check_extension_order(SSL *ssl)
 	ext = ssl->tlsext_build_order[ssl->tlsext_build_order_len - 1];
 	if ((type = tls_extension_type(ext)) != TLSEXT_TYPE_psk) {
 		FAIL("last extension is %u, want %u\n", type, TLSEXT_TYPE_psk);
-		return 1;
-	}
-
-	if (ssl->server)
-		return 0;
-
-	alpn_idx = sni_idx = ssl->tlsext_build_order_len;
-	for (i = 0; i < ssl->tlsext_build_order_len; i++) {
-		ext = ssl->tlsext_build_order[i];
-		if (tls_extension_type(ext) == TLSEXT_TYPE_alpn)
-			alpn_idx = i;
-		if (tls_extension_type(ext) == TLSEXT_TYPE_server_name)
-			sni_idx = i;
-	}
-
-	if (alpn_idx == ssl->tlsext_build_order_len) {
-		FAIL("could not find alpn extension\n");
-		return 1;
-	}
-
-	if (sni_idx == ssl->tlsext_build_order_len) {
-		FAIL("could not find alpn extension\n");
-		return 1;
-	}
-
-	if (sni_idx >= alpn_idx) {
-		FAIL("sni does not precede alpn: %zu >= %zu\n",
-		    sni_idx, alpn_idx);
 		return 1;
 	}
 
@@ -4600,7 +4577,7 @@ test_tlsext_randomized_extensions(SSL *ssl)
 	for (i = 0; i < N_TLSEXT_RANDOMIZATION_TESTS; i++) {
 		if (!tlsext_randomize_build_order(ssl))
 			errx(1, "failed to randomize extensions");
-		failed |= test_tlsext_check_extension_order(ssl);
+		failed |= test_tlsext_check_psk_is_last_extension(ssl);
 	}
 
 	return failed;

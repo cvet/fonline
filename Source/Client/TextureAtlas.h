@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-enum class AtlasType : uint8
+enum class AtlasType : uint8_t
 {
     IfaceSprites,
     MapSprites,

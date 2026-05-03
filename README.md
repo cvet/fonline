@@ -5,7 +5,6 @@
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
-[![Codacy](https://app.codacy.com/project/badge/Grade/25dce96e818d45c48745028fd86c5d99)](https://www.codacy.com/gh/cvet/fonline/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
 [![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cvet/fonline)
 
@@ -84,7 +83,7 @@ Following Linux packages need to build game for target platforms:
 * Common: `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux: `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
 * Building for Web: `nodejs` `default-jre`
-* Building for Android: `android-sdk` `openjdk-8-jdk` `ant`
+* Building for Android: `openjdk-17-jdk`
 
 Build scripts will download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
@@ -118,7 +117,7 @@ They are located in ThirdParty directory (except dotnet, it's downladed by deman
 * [Asio](https://think-async.com/Asio/) - networking library
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
-* [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
+* [GLM](https://github.com/g-truc/glm) - mathematics library for vectors, matrices and quaternions
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [SDL](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
@@ -176,7 +175,6 @@ Please follow these instructions to understand how to use this engine by design:
 ### Todo list *(generated from source code)*
 
 * Common: export any_t with ExportType
-* Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: recursion guard for EventDispatcher
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: move texcoord offset calculation to gpu

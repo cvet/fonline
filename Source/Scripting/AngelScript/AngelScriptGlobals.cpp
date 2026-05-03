@@ -40,6 +40,8 @@
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
 
+#include <angelscript.h>
+
 FO_BEGIN_NAMESPACE
 
 template<size_t... I>
@@ -62,7 +64,7 @@ static void Global_Assert(AngelScript::asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(ArgsCount);
 
-    for (int32 i = 1; i < gen->GetArgCount(); i++) {
+    for (int32_t i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetScriptObjectInfo(obj, obj_type_id));
@@ -81,7 +83,7 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     vector<string> obj_infos;
     obj_infos.reserve(ArgsCount);
 
-    for (int32 i = 1; i < gen->GetArgCount(); i++) {
+    for (int32_t i = 1; i < gen->GetArgCount(); i++) {
         const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
         const auto obj_type_id = gen->GetArgTypeId(i);
         obj_infos.emplace_back(GetScriptObjectInfo(obj, obj_type_id));
@@ -90,7 +92,7 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     ThrowWithArgs(message, obj_infos, std::make_index_sequence<ArgsCount> {});
 }
 
-static void Global_Yield(int32 durationMs)
+static void Global_Yield(int32_t durationMs)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -100,6 +102,27 @@ static void Global_Yield(int32 durationMs)
     auto* backend = GetScriptBackend(engine);
     auto* context_mngr = backend->GetContextMngr();
     context_mngr->SuspendScriptContext(ctx, engine->GameTime.GetFrameTime() + std::chrono::milliseconds(durationMs));
+}
+
+static auto Global_GetGlobalExceptionCount() -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* ctx = AngelScript::asGetActiveContext();
+    FO_RUNTIME_ASSERT(ctx);
+    const auto* backend = GetScriptBackend(ctx->GetEngine());
+    return backend->GetExceptionCounter();
+}
+
+static auto Global_GetContextExceptionCount() -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* ctx = AngelScript::asGetActiveContext();
+    FO_RUNTIME_ASSERT(ctx);
+    const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    return ctx_ext->ExceptionCount;
 }
 
 static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
@@ -135,8 +158,8 @@ static void Game_ParseEnum(AngelScript::asIScriptGeneric* gen)
     const auto& enum_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     const auto& enum_value_name = *cast_from_void<string*>(gen->GetAddressOfArg(0));
 
-    const int32 enum_value = meta->ResolveEnumValue(enum_name, enum_value_name);
-    new (gen->GetAddressOfReturnLocation()) int32(enum_value);
+    const int32_t enum_value = meta->ResolveEnumValue(enum_name, enum_value_name);
+    new (gen->GetAddressOfReturnLocation()) int32_t(enum_value);
 }
 
 static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
@@ -148,10 +171,12 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     const auto& enum_value_name = *cast_from_void<string*>(gen->GetAddressOfArg(0));
 
     bool failed = false;
-    const int32 enum_value = meta->ResolveEnumValue(enum_name, enum_value_name, &failed);
+    const int32_t enum_value = meta->ResolveEnumValue(enum_name, enum_value_name, &failed);
 
     if (!failed) {
-        *cast_from_void<int32*>(gen->GetArgAddress(1)) = enum_value;
+        const auto& enum_type = meta->GetBaseType(enum_name);
+        MemFill(gen->GetArgAddress(1), 0, enum_type.Size);
+        MemCopy(gen->GetArgAddress(1), &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -163,7 +188,8 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 
     const auto* meta = GetEngineMetadata(gen->GetEngine());
     const auto& enum_name = *cast_from_void<const string*>(gen->GetAuxiliary());
-    const auto enum_index = *cast_from_void<int32*>(gen->GetAddressOfArg(0));
+    int32_t enum_index = 0;
+    MemCopy(&enum_index, gen->GetAddressOfArg(0), meta->GetBaseType(enum_name).Size);
     const bool full_spec = *cast_from_void<bool*>(gen->GetAddressOfArg(1));
 
     bool failed = false;
@@ -180,7 +206,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) string(std::move(enum_value_name));
 }
 
-static auto Game_ParseGenericEnum(Entity* entity, string enum_name, string value_name) -> int32
+static auto Game_ParseGenericEnum(Entity* entity, string enum_name, string value_name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -226,41 +252,41 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
         }
     }
     else if (type.IsEnum) {
-        new (gen->GetAddressOfReturnLocation()) int32(numeric_cast<int32>(strvex(value).to_int64()));
+        WriteEnumValueFromInt32(gen->GetAddressOfReturnLocation(), type, numeric_cast<int32_t>(strvex(value).to_int64()));
     }
     else if (type.IsPrimitive) {
         if (type.IsBool) {
             new (gen->GetAddressOfReturnLocation()) bool(strvex(value).to_bool());
         }
         else if (type.IsInt8) {
-            new (gen->GetAddressOfReturnLocation()) int8(numeric_cast<int8>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) int8_t(numeric_cast<int8_t>(strvex(value).to_int64()));
         }
         else if (type.IsInt16) {
-            new (gen->GetAddressOfReturnLocation()) int16(numeric_cast<int16>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) int16_t(numeric_cast<int16_t>(strvex(value).to_int64()));
         }
         else if (type.IsInt32) {
-            new (gen->GetAddressOfReturnLocation()) int32(numeric_cast<int32>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) int32_t(numeric_cast<int32_t>(strvex(value).to_int64()));
         }
         else if (type.IsInt64) {
-            new (gen->GetAddressOfReturnLocation()) int64(numeric_cast<int64>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) int64_t(numeric_cast<int64_t>(strvex(value).to_int64()));
         }
         else if (type.IsUInt8) {
-            new (gen->GetAddressOfReturnLocation()) uint8(numeric_cast<uint8>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) uint8_t(numeric_cast<uint8_t>(strvex(value).to_int64()));
         }
         else if (type.IsUInt16) {
-            new (gen->GetAddressOfReturnLocation()) uint16(numeric_cast<uint16>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) uint16_t(numeric_cast<uint16_t>(strvex(value).to_int64()));
         }
         else if (type.IsUInt32) {
-            new (gen->GetAddressOfReturnLocation()) uint32(numeric_cast<uint32>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) uint32_t(numeric_cast<uint32_t>(strvex(value).to_int64()));
         }
         else if (type.IsUInt64) {
-            new (gen->GetAddressOfReturnLocation()) uint64(numeric_cast<uint64>(strvex(value).to_int64()));
+            new (gen->GetAddressOfReturnLocation()) uint64_t(numeric_cast<uint64_t>(strvex(value).to_int64()));
         }
         else if (type.IsSingleFloat) {
-            new (gen->GetAddressOfReturnLocation()) float32(strvex(value).to_float32());
+            new (gen->GetAddressOfReturnLocation()) float32_t(strvex(value).to_float32());
         }
         else if (type.IsDoubleFloat) {
-            new (gen->GetAddressOfReturnLocation()) float64(strvex(value).to_float64());
+            new (gen->GetAddressOfReturnLocation()) float64_t(strvex(value).to_float64());
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -291,41 +317,41 @@ static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
         }
     }
     else if (type.IsEnum) {
-        value = strex("{}", *cast_from_void<const int32*>(new_value));
+        value = strex("{}", ReadEnumValueAsInt32(new_value, type));
     }
     else if (type.IsPrimitive) {
         if (type.IsBool) {
             value = strex("{}", *cast_from_void<const bool*>(new_value));
         }
         else if (type.IsInt8) {
-            value = strex("{}", *cast_from_void<const int8*>(new_value));
+            value = strex("{}", *cast_from_void<const int8_t*>(new_value));
         }
         else if (type.IsInt16) {
-            value = strex("{}", *cast_from_void<const int16*>(new_value));
+            value = strex("{}", *cast_from_void<const int16_t*>(new_value));
         }
         else if (type.IsInt32) {
-            value = strex("{}", *cast_from_void<const int32*>(new_value));
+            value = strex("{}", *cast_from_void<const int32_t*>(new_value));
         }
         else if (type.IsInt64) {
-            value = strex("{}", *cast_from_void<const int64*>(new_value));
+            value = strex("{}", *cast_from_void<const int64_t*>(new_value));
         }
         else if (type.IsUInt8) {
-            value = strex("{}", *cast_from_void<const uint8*>(new_value));
+            value = strex("{}", *cast_from_void<const uint8_t*>(new_value));
         }
         else if (type.IsUInt16) {
-            value = strex("{}", *cast_from_void<const uint16*>(new_value));
+            value = strex("{}", *cast_from_void<const uint16_t*>(new_value));
         }
         else if (type.IsUInt32) {
-            value = strex("{}", *cast_from_void<const uint32*>(new_value));
+            value = strex("{}", *cast_from_void<const uint32_t*>(new_value));
         }
         else if (type.IsUInt64) {
-            value = strex("{}", *cast_from_void<const uint64*>(new_value));
+            value = strex("{}", *cast_from_void<const uint64_t*>(new_value));
         }
         else if (type.IsSingleFloat) {
-            value = strex("{}", *cast_from_void<const float32*>(new_value));
+            value = strex("{}", *cast_from_void<const float32_t*>(new_value));
         }
         else if (type.IsDoubleFloat) {
-            value = strex("{}", *cast_from_void<const float64*>(new_value));
+            value = strex("{}", *cast_from_void<const float64_t*>(new_value));
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -338,15 +364,60 @@ static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
     engine->Settings.SetCustomSetting(name, any_t(std::move(value)));
 }
 
+static void Setting_GetGroup(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (gen->GetAddressOfReturnLocation()) void*(gen->GetObject());
+}
+
+static auto SplitSettingPath(string_view setting_name) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> path;
+    size_t prev_pos = 0;
+
+    while (prev_pos <= setting_name.size()) {
+        const auto pos = setting_name.find('.', prev_pos);
+
+        if (pos == string_view::npos) {
+            path.emplace_back(setting_name.substr(prev_pos));
+            break;
+        }
+
+        path.emplace_back(setting_name.substr(prev_pos, pos - prev_pos));
+        prev_pos = pos + 1;
+    }
+
+    return path;
+}
+
+static auto MakeScriptSettingGroupTypeName(const vector<string>& path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string result = "GlobalSettingsGroup";
+
+    for (const auto& part : path) {
+        result += '_';
+        result += part;
+    }
+
+    return result;
+}
+
 void RegisterAngelScriptEnums(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     const auto* meta = GetEngineMetadata(as_engine);
 
     for (auto&& [enum_name, enum_pairs] : meta->GetAllEnums()) {
-        FO_AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str()));
+        const auto& enum_type = meta->GetBaseType(enum_name);
+        const auto* underlying_type_name = enum_type.EnumUnderlyingType ? enum_type.EnumUnderlyingType->Name.c_str() : "int32";
+        FO_AS_VERIFY(as_engine->RegisterEnum(enum_name.c_str(), underlying_type_name));
 
         for (auto&& [key, value] : enum_pairs) {
             FO_AS_VERIFY(as_engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
@@ -358,7 +429,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     auto* backend = GetScriptBackend(as_engine);
     const auto* meta = backend->GetMetadata();
 
@@ -388,6 +459,8 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", FO_SCRIPT_GENERIC(Global_ThrowException<10>), FO_SCRIPT_GENERIC_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetContextExceptionCount()", FO_SCRIPT_FUNC(Global_GetContextExceptionCount), FO_SCRIPT_FUNC_CONV));
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
@@ -406,17 +479,17 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
         const auto* registrator = meta->GetPropertyRegistrator(type_name);
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto* enums_arr = CreateScriptArray(as_engine, strex("{}Property[]", registrator->GetTypeName()).c_str());
+            auto* enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
             backend->AddCleanupCallback([enums_arr]() FO_DEFERRED { enums_arr->Release(); });
-            enums_arr->Reserve(numeric_cast<int32>(properties.size()));
+            enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
-                const int32 e = prop->GetRegIndex();
+                const int32_t e = prop->GetRegIndex();
                 enums_arr->InsertLast(cast_to_void(&e));
             }
 
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
-            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{}Property[]@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
+            FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr)));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
         }
     }
@@ -425,19 +498,52 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectType("GlobalSettings", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOHANDLE));
     FO_AS_VERIFY(as_engine->RegisterGlobalProperty("GlobalSettings Settings", cast_to_void(meta)));
 
-    const auto register_engine_setting = [&]<typename T>(const char* name, T& data, bool writeble) {
+    unordered_map<string, string> setting_group_types;
+    setting_group_types.emplace("", "GlobalSettings");
+
+    const auto ensure_setting_group = [&](const vector<string>& path) -> const string& {
+        FO_RUNTIME_ASSERT(!path.empty());
+
+        string current_path;
+        string parent_path;
+
+        for (const auto& part : path) {
+            if (!current_path.empty()) {
+                current_path += '.';
+            }
+
+            current_path += part;
+
+            if (!setting_group_types.contains(current_path)) {
+                const auto partial_path = SplitSettingPath(current_path);
+                const auto type_name = MakeScriptSettingGroupTypeName(partial_path);
+                const auto& parent_type = setting_group_types.at(parent_path);
+
+                FO_AS_VERIFY(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(parent_type.c_str(), strex("{}@ get_{}() const", type_name, part).c_str(), FO_SCRIPT_GENERIC(Setting_GetGroup), FO_SCRIPT_GENERIC_CONV));
+
+                setting_group_types.emplace(current_path, type_name);
+            }
+
+            parent_path = current_path;
+        }
+
+        return setting_group_types.at(current_path);
+    };
+
+    const auto register_engine_setting = [&]<typename T>(const char* owner_type, const char* name, T& data, bool writeble) {
         string type_str;
 
-        if constexpr (std::is_same_v<T, int32>) {
+        if constexpr (std::is_same_v<T, int32_t>) {
             type_str = "int";
         }
-        else if constexpr (std::is_same_v<T, int64>) {
+        else if constexpr (std::is_same_v<T, int64_t>) {
             type_str = "int64";
         }
-        else if constexpr (std::is_same_v<T, float32>) {
+        else if constexpr (std::is_same_v<T, float32_t>) {
             type_str = "float";
         }
-        else if constexpr (std::is_same_v<T, float64>) {
+        else if constexpr (std::is_same_v<T, float64_t>) {
             type_str = "double";
         }
         else if constexpr (std::is_same_v<T, bool>) {
@@ -448,10 +554,10 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
         }
 
         if (!type_str.empty()) {
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
 
             if (writeble) {
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
             }
         }
     };
@@ -459,15 +565,27 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     static GlobalSettings dummy_settings(false);
     GlobalSettings& settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : dummy_settings;
 
-#define FIXED_SETTING(type, name, ...) register_engine_setting.operator()<type>(#name, const_cast<type&>(settings.name), false)
-#define VARIABLE_SETTING(type, name, ...) register_engine_setting.operator()<type>(#name, settings.name, true)
+#define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}).c_str(), #name, const_cast<type&>(settings.name), false)
+#define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}).c_str(), #name, settings.name, true)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("{} get_{}()", MakeScriptTypeName(*setting_type), setting_name).c_str(), FO_SCRIPT_GENERIC(Setting_GetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GlobalSettings", strex("void set_{}({} value)", setting_name, MakeScriptTypeName(*setting_type)).c_str(), FO_SCRIPT_GENERIC(Setting_SetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
+        const auto path = SplitSettingPath(setting_name);
+        FO_RUNTIME_ASSERT(!path.empty());
+
+        string owner_type = "GlobalSettings";
+
+        if (path.size() > 1) {
+            const vector<string> group_path(path.begin(), path.end() - 1);
+            owner_type = ensure_setting_group(group_path);
+        }
+
+        const auto& accessor_name = path.back();
+
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("{} get_{}()", MakeScriptTypeName(*setting_type), accessor_name).c_str(), FO_SCRIPT_GENERIC(Setting_GetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type.c_str(), strex("void set_{}({} value)", accessor_name, MakeScriptTypeName(*setting_type)).c_str(), FO_SCRIPT_GENERIC(Setting_SetValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(&setting_name)));
     }
 }
 

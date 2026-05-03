@@ -38,66 +38,114 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptHelpers.h"
 
-#include <as_context.h>
+#include <angelscript.h>
 #include <preprocessor.h>
+
+#if FO_TRACY
+#include <as_context.h> // For AngelScript::asCContext::BeginScriptCall / EndScriptCall hooks
+#endif
 // ReSharper disable CppRedundantQualifier
 
 #include "WinApiUndef-Include.h" // Remove garbage from includes above
 
 FO_BEGIN_NAMESPACE
 
-struct AngelScriptContextExtendedData
+static auto BuildScriptFrameForContext(AngelScript::asIScriptContext* ctx, uint32_t stack_level) noexcept -> optional<StackTraceFrame>;
+static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
+
+struct AngelScriptStackTraceInstaller
 {
-    bool ExecutionActive {};
-    size_t ExecutionCalls {};
-    FO_NAMESPACE nanotime SuspendEndTime {};
-    FO_NAMESPACE vector<const FO_NAMESPACE SourceLocationData*> StackTrace {};
-    FO_NAMESPACE vector<FO_NAMESPACE refcount_ptr<const FO_NAMESPACE Entity>> ValidCheck {};
+    AngelScriptStackTraceInstaller() noexcept { SetScriptStackTraceProvider(&CollectScriptStackLayers); }
+};
+FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
+
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param);
+static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
+
 #if FO_TRACY
-    FO_NAMESPACE vector<TracyCZoneCtx> TracyExecutionCalls {};
-#endif
-};
-
-struct StackTraceEntryStorage
+struct AngelScriptTracyCallEntry
 {
-    static constexpr size_t STACK_TRACE_FUNC_BUF_SIZE = 64;
-    static constexpr size_t STACK_TRACE_FILE_BUF_SIZE = 128;
+    static constexpr size_t FUNC_BUF_SIZE = 64;
+    static constexpr size_t FILE_BUF_SIZE = 128;
 
-    array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
+    array<char, FUNC_BUF_SIZE> FuncBuf {};
     size_t FuncBufLen {};
-    array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
+    array<char, FILE_BUF_SIZE> FileBuf {};
     size_t FileBufLen {};
-
-    SourceLocationData SrcLoc {};
+    uint32_t Line {};
 };
 
-struct AngelScriptStackTraceData
+struct AngelScriptTracyData
 {
-    unordered_map<size_t, StackTraceEntryStorage> ScriptCallCacheEntries {};
-    list<StackTraceEntryStorage> ScriptCallExceptionEntries {};
-    std::mutex ScriptCallCacheEntriesLocker {};
+    unordered_map<size_t, AngelScriptTracyCallEntry> CacheEntries {};
+    std::mutex CacheLocker {};
 };
-FO_GLOBAL_DATA(AngelScriptStackTraceData, AngelScriptStackTrace);
+FO_GLOBAL_DATA(AngelScriptTracyData, AngelScriptTracy);
 
 static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func);
 static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept;
-static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
+#endif
 
 static void CleanupScriptContext(AngelScript::asIScriptContext* ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+    const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     delete ctx_ext;
 }
 
-AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout) :
+auto AngelScriptContextExtendedData::Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+}
+
+auto AngelScriptContextExtendedData::Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData());
+}
+
+AngelScriptContextManager::AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback) :
     _asEngine {as_engine},
-    _overrunTimeout {overrun_timeout}
+    _overrunTimeout {overrun_timeout},
+    _debuggerStopCallback {std::move(debugger_stop_callback)}
 {
     FO_STACK_TRACE_ENTRY();
 
     as_engine->SetContextUserDataCleanupCallback(CleanupScriptContext);
+
+    int32_t as_result = 0;
+    FO_AS_VERIFY(as_engine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
+}
+
+AngelScriptContextManager::~AngelScriptContextManager()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto cleanup_context = [](AngelScript::asIScriptContext* ctx) {
+        safe_call([&] {
+            auto state = ctx->GetState();
+
+            if (state == AngelScript::asEXECUTION_ACTIVE || state == AngelScript::asEXECUTION_SUSPENDED) {
+                ctx->Abort();
+                state = ctx->GetState();
+            }
+
+            if (state != AngelScript::asEXECUTION_UNINITIALIZED) {
+                ctx->Unprepare();
+            }
+        });
+    };
+
+    for (const auto& ctx : _busyContexts) {
+        cleanup_context(ctx.get_no_const());
+    }
+    for (const auto& ctx : _freeContexts) {
+        cleanup_context(ctx.get_no_const());
+    }
 }
 
 void AngelScriptContextManager::CreateContext()
@@ -106,24 +154,28 @@ void AngelScriptContextManager::CreateContext()
 
     auto* ctx = _asEngine->CreateContext();
     FO_RUNTIME_ASSERT(ctx);
-    vec_add_unique_value(_freeContexts, ctx);
+    _freeContexts.emplace_back(refcount_ptr<AngelScript::asIScriptContext>::adopt, ctx);
 
     auto ctx_ext = SafeAlloc::MakeUnique<AngelScriptContextExtendedData>();
-    ctx_ext->StackTrace.reserve(128);
+#if FO_TRACY
+    ctx_ext->TracyStackTrace.reserve(128);
+    ctx_ext->TracyZones.reserve(128);
+#endif
     ctx->SetUserData(cast_to_void(ctx_ext.release()));
 
-#if !FO_NO_MANUAL_STACK_TRACE
+#if FO_TRACY
     auto* ctx_impl = dynamic_cast<AngelScript::asCContext*>(ctx);
     FO_RUNTIME_ASSERT(ctx_impl);
     ctx_impl->BeginScriptCall = AngelScriptBeginCall;
     ctx_impl->EndScriptCall = AngelScriptEndCall;
-#else
-    ignore_unused(AngelScriptBeginCall);
-    ignore_unused(AngelScriptEndCall);
 #endif
 
-    int32 as_result = 0;
+    int32_t as_result = 0;
     FO_AS_VERIFY(ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), nullptr, AngelScript::asCALL_CDECL));
+
+    if (_contextSetupCallback) {
+        _contextSetupCallback(ctx, AngelScriptContextSetupReason::Create);
+    }
 }
 
 auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContext*
@@ -135,8 +187,25 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     }
 
     auto ctx = _freeContexts.back();
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx.get());
+    FO_RUNTIME_ASSERT(ctx_ext);
+
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
+
+    auto* parent_ctx = AngelScript::asGetActiveContext();
+    auto* parent_ctx_ext = parent_ctx != nullptr ? AngelScriptContextExtendedData::Get(parent_ctx) : nullptr;
+    auto* root_ctx = parent_ctx_ext != nullptr ? parent_ctx_ext->Root.get() : parent_ctx;
+    ctx_ext->Parent = parent_ctx;
+    ctx_ext->Root = root_ctx != nullptr ? root_ctx : ctx.get();
+    ctx_ext->Exception = {};
+
+    CaptureNativeStackFrames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, 1);
+
+    if (_contextSetupCallback) {
+        _contextSetupCallback(ctx.get(), AngelScriptContextSetupReason::Request);
+    }
+
     return ctx.get();
 }
 
@@ -151,17 +220,40 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
     try {
         FO_RUNTIME_ASSERT(ctx->GetState() != AngelScript::asEXECUTION_ACTIVE);
 
-        int32 as_result = 0;
+        int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
         refcount_ptr ctx_holder = ctx;
         vec_remove_unique_value(_busyContexts, ctx);
         vec_add_unique_value(_freeContexts, ctx);
 
-        auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_RUNTIME_ASSERT(ctx_ext);
+
+        if (_contextSetupCallback) {
+            _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
+        }
+
         ctx_ext->SuspendEndTime = {};
-        ctx_ext->ValidCheck.clear();
+        ctx_ext->DeferredPropertyEntity = nullptr;
+        ctx_ext->DeferredProperty = nullptr;
+        ctx_ext->DeferredPropertyCallback = nullptr;
+        ctx_ext->Parent = nullptr;
+        ctx_ext->Root = nullptr;
+        ctx_ext->Exception = {};
+        ctx_ext->BirthNativeFrameCount = 0;
+
+        for (auto& other : _busyContexts) {
+            auto* other_ext = AngelScriptContextExtendedData::Get(other.get());
+            FO_RUNTIME_ASSERT(other_ext);
+
+            if (other_ext->Parent == ctx) {
+                other_ext->Parent.reset();
+            }
+            if (other_ext->Root == ctx) {
+                other_ext->Root.reset();
+            }
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -186,66 +278,81 @@ auto AngelScriptContextManager::PrepareContext(AngelScript::asIScriptFunction* f
     return ctx;
 }
 
-void AngelScriptContextManager::AddSetupScriptContextEntity(AngelScript::asIScriptContext* ctx, Entity* entity)
+void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _contextSetupCallback = std::move(context_setup_callback);
+}
+
+auto AngelScriptContextManager::IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& ctx : _busyContexts) {
+        const auto* ctx_ext = AngelScriptContextExtendedData::Get(const_cast<AngelScript::asIScriptContext*>(ctx.get()));
+        FO_RUNTIME_ASSERT(ctx_ext);
+
+        if (ctx_ext->DeferredPropertyEntity == entity && ctx_ext->DeferredProperty == prop && ctx_ext->DeferredPropertyCallback == func) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void AngelScriptContextManager::MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_RUNTIME_ASSERT(ctx_ext);
 
-    vec_safe_add_unique_value(ctx_ext->ValidCheck, entity);
+    ctx_ext->DeferredPropertyEntity = entity;
+    ctx_ext->DeferredProperty = prop;
+    ctx_ext->DeferredPropertyCallback = func;
 }
 
 auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 exec_result = 0;
+    int32_t exec_result = 0;
 
     {
-        auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_RUNTIME_ASSERT(ctx_ext);
-        FO_RUNTIME_ASSERT(!ctx_ext->ExecutionActive);
-        FO_RUNTIME_ASSERT(!ctx_ext->ExecutionCalls);
-
-        ctx_ext->ExecutionActive = true;
-
-        if (ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
-            for (const auto* loc : ctx_ext->StackTrace) {
-                ctx_ext->ExecutionCalls++;
-                PushStackTrace(loc);
 
 #if FO_TRACY
-                const auto loc_func = string_view(loc->function);
-                const auto loc_file = string_view(loc->file);
-                const auto tracy_srcloc = ___tracy_alloc_srcloc(loc->line, loc_file.data(), loc_file.length(), loc_func.data(), loc_func.length(), 0);
-                const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
-                ctx_ext->TracyExecutionCalls.emplace_back(tracy_ctx);
-#endif
+        FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionActive);
+        FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionCalls);
+        ctx_ext->TracyExecutionActive = true;
+
+        if (ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
+            for (const auto* entry : ctx_ext->TracyStackTrace) {
+                ctx_ext->TracyExecutionCalls++;
+                const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
+                const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+                ctx_ext->TracyZones.emplace_back(tracy_zone);
             }
         }
 
-        auto after_execution = scope_exit([&]() noexcept {
-            ctx_ext->ExecutionActive = false;
+        auto tracy_after_execution = scope_exit([&]() noexcept {
+            ctx_ext->TracyExecutionActive = false;
 
-            while (ctx_ext->ExecutionCalls > 0) {
-                ctx_ext->ExecutionCalls--;
-                PopStackTrace();
+            while (ctx_ext->TracyExecutionCalls > 0) {
+                ctx_ext->TracyExecutionCalls--;
+                ___tracy_emit_zone_end(ctx_ext->TracyZones.back());
+                ctx_ext->TracyZones.pop_back();
             }
 
             if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
-                ctx_ext->StackTrace.clear();
+                ctx_ext->TracyStackTrace.clear();
             }
-
-#if FO_TRACY
-            while (!ctx_ext->TracyExecutionCalls.empty()) {
-                ___tracy_emit_zone_end(ctx_ext->TracyExecutionCalls.back());
-                ctx_ext->TracyExecutionCalls.pop_back();
-            }
-#endif
         });
+#endif
 
         const auto execution_time = TimeMeter();
 
@@ -258,12 +365,14 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
             exec_result = AngelScript::asEXECUTION_EXCEPTION;
         }
 
-        const auto execution_duration = execution_time.GetDuration();
+        if (_overrunTimeout) {
+            const auto execution_duration = execution_time.GetDuration();
 
-        if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
-            if constexpr (!FO_DEBUG) {
-                const string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
-                WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+            if (execution_duration >= _overrunTimeout && !IsRunInDebugger()) {
+                if constexpr (!FO_DEBUG) {
+                    const string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
+                    WriteLog("Script execution overrun: {} ({})", func_decl, execution_duration);
+                }
             }
         }
     }
@@ -279,20 +388,53 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
 
     if (exec_result != AngelScript::asEXECUTION_FINISHED) {
         if (exec_result == AngelScript::asEXECUTION_EXCEPTION) {
+            const string ex_string = ctx->GetExceptionString();
+            const auto ex = AngelScriptContextExtendedData::Get(ctx)->Exception;
+
+            if (_debuggerStopCallback) {
+                string source_path;
+                optional<uint32_t> source_line;
+                string function_name;
+
+                if (const auto* ex_func = ctx->GetExceptionFunction(); ex_func != nullptr) {
+                    function_name = ex_func->GetName();
+                }
+
+                if (const auto ex_line = ctx->GetExceptionLineNumber(); ex_line != 0) {
+                    const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
+                    const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
+                    const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+
+                    source_path = ex_orig_file;
+
+                    if (ex_orig_line != 0) {
+                        source_line = numeric_cast<uint32_t>(ex_orig_line - 1);
+                    }
+                }
+
+                _debuggerStopCallback("exception", ex_string, source_path, source_line, function_name);
+            }
+
             ctx->Abort();
-            const auto ex = ctx->GetStdException();
 
             if (ex) {
                 std::rethrow_exception(ex);
             }
             else {
-                const string ex_string = ctx->GetExceptionString();
                 throw ScriptCallException(ex_string);
             }
         }
 
         if (exec_result == AngelScript::asEXECUTION_ABORTED) {
+            if (_debuggerStopCallback) {
+                _debuggerStopCallback("aborted", "Execution of script aborted", "", std::nullopt, "");
+            }
+
             throw ScriptCallException("Execution of script aborted");
+        }
+
+        if (_debuggerStopCallback) {
+            _debuggerStopCallback("error", strex("Context execution error: {}", exec_result).str(), "", std::nullopt, "");
         }
 
         ctx->Abort();
@@ -312,7 +454,7 @@ void AngelScriptContextManager::SuspendScriptContext(AngelScript::asIScriptConte
         ctx->Suspend();
     }
 
-    auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_RUNTIME_ASSERT(ctx_ext);
 
     ctx_ext->SuspendEndTime = time;
@@ -331,13 +473,13 @@ void AngelScriptContextManager::ResumeSuspendedContexts(nanotime time)
 
     for (auto& ctx : _busyContexts) {
         if (ctx->GetState() == AngelScript::asEXECUTION_PREPARED || ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
-            const auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+            const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx.get());
             FO_RUNTIME_ASSERT(ctx_ext);
 
             if (time >= ctx_ext->SuspendEndTime) {
-                const bool some_entity_destroyed = std::ranges::any_of(ctx_ext->ValidCheck, [](auto&& e) { return e->IsDestroyed(); });
+                const bool entity_destroyed = ctx_ext->DeferredPropertyEntity && ctx_ext->DeferredPropertyEntity->IsDestroyed();
 
-                if (some_entity_destroyed) {
+                if (entity_destroyed) {
                     finish_contexts.emplace_back(ctx.get());
                 }
                 else {
@@ -366,92 +508,92 @@ void AngelScriptContextManager::ResumeSuspendedContexts(nanotime time)
     }
 }
 
-static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func)
+static auto BuildScriptFrameForContext(AngelScript::asIScriptContext* ctx, uint32_t stack_level) noexcept -> optional<StackTraceFrame>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+    try {
+        const auto as_stack_level = numeric_cast<AngelScript::asUINT>(stack_level);
+        const auto* func = ctx->GetFunction(as_stack_level);
 
-    if (ctx_ext == nullptr || !ctx_ext->ExecutionActive) {
-        return;
-    }
-
-    StackTraceEntryStorage* storage = nullptr;
-    const auto func_key = std::bit_cast<size_t>(func);
-
-    {
-        std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
-
-        const auto it = AngelScriptStackTrace->ScriptCallCacheEntries.find(func_key);
-
-        if (it != AngelScriptStackTrace->ScriptCallCacheEntries.end()) {
-            storage = &it->second;
+        if (func == nullptr) {
+            return std::nullopt;
         }
-    }
 
-    if (storage == nullptr) {
-        const int32 ctx_line = ctx->GetLineNumber();
-
+        const int32_t ctx_line = ctx->GetLineNumber(as_stack_level);
         const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
-        const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
-        const auto orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
 
-        const auto* func_decl = func->GetDeclaration(true);
+        StackTraceFrame frame;
+        frame.Type = StackTraceFrame::FrameType::Script;
 
-        {
-            std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
-
-            storage = &AngelScriptStackTrace->ScriptCallCacheEntries.emplace(func_key, StackTraceEntryStorage {}).first->second;
-
-            const auto safe_copy = [](auto& to, size_t& len, string_view from) {
-                len = std::min(from.length(), to.size() - 1);
-                MemCopy(to.data(), from.data(), len);
-                to[len] = 0;
-            };
-
-            safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
-            safe_copy(storage->FileBuf, storage->FileBufLen, orig_file);
-
-            storage->SrcLoc.name = nullptr;
-            storage->SrcLoc.function = storage->FuncBuf.data();
-            storage->SrcLoc.file = storage->FileBuf.data();
-            storage->SrcLoc.line = orig_line;
+        if (const auto* decl = func->GetDeclaration(true); decl != nullptr) {
+            frame.Function = decl;
         }
+        else if (const auto* name = func->GetName(); name != nullptr) {
+            frame.Function = name;
+        }
+
+        if (ctx_line != 0 && lnt != nullptr) {
+            frame.File = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
+            frame.Line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
+        }
+        else {
+            frame.Line = ctx_line > 0 ? numeric_cast<uint32_t>(ctx_line) : 0u;
+        }
+
+        return frame;
     }
-
-    ctx_ext->ExecutionCalls++;
-    ctx_ext->StackTrace.emplace_back(&storage->SrcLoc);
-    PushStackTrace(&storage->SrcLoc);
-
-#if FO_TRACY
-    const auto tracy_srcloc = ___tracy_alloc_srcloc(storage->SrcLoc.line, storage->FileBuf.data(), storage->FileBufLen, storage->FuncBuf.data(), storage->FuncBufLen, 0);
-    const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
-    ctx_ext->TracyExecutionCalls.emplace_back(tracy_ctx);
-#endif
+    catch (...) {
+        return std::nullopt;
+    }
 }
 
-static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept
+static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* ctx_ext = cast_from_void<AngelScriptContextExtendedData*>(ctx->GetUserData());
+    try {
+        auto* ctx = AngelScript::asGetActiveContext();
 
-    if (ctx_ext == nullptr || !ctx_ext->ExecutionActive) {
-        return;
+        while (ctx != nullptr) {
+            auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+
+            ScriptStackTraceLayer layer;
+            const auto callstack_size = ctx->GetCallstackSize();
+            layer.ScriptFrames.reserve(callstack_size);
+
+            for (AngelScript::asUINT i = 0; i < callstack_size; i++) {
+                if (auto frame = BuildScriptFrameForContext(ctx, numeric_cast<uint32_t>(i)); frame.has_value()) {
+                    layer.ScriptFrames.emplace_back(std::move(*frame));
+                }
+            }
+
+            if (ctx_ext != nullptr) {
+                layer.BirthNativeFrames = ctx_ext->BirthNativeFrames;
+                layer.BirthNativeFrameCount = ctx_ext->BirthNativeFrameCount;
+            }
+
+            if (!layer.ScriptFrames.empty() || layer.BirthNativeFrameCount != 0) {
+                out_layers.emplace_back(std::move(layer));
+            }
+
+            ctx = ctx_ext != nullptr ? ctx_ext->Parent.get() : nullptr;
+        }
     }
-
-    FO_STRONG_ASSERT(ctx_ext->ExecutionCalls > 0);
-
-    if (ctx_ext->ExecutionCalls > 0) {
-        ctx_ext->ExecutionCalls--;
-        ctx_ext->StackTrace.pop_back();
-        PopStackTrace();
-
-#if FO_TRACY
-        ___tracy_emit_zone_end(ctx_ext->TracyExecutionCalls.back());
-        ctx_ext->TracyExecutionCalls.pop_back();
-#endif
+    catch (...) {
+        BreakIntoDebugger();
     }
+}
+
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(param);
+
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    ctx_ext->Exception = std::current_exception();
 }
 
 static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param)
@@ -460,27 +602,61 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     ignore_unused(param);
 
-    auto& ex = ctx->GetStdException();
+    // Count exceptions
+    auto* backend = GetScriptBackend(ctx->GetEngine());
+    backend->IncreaseExceptionCounter();
+
+    for (auto* ctx_iter = ctx; ctx_iter != nullptr;) {
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx_iter);
+        FO_RUNTIME_ASSERT(ctx_ext);
+        ctx_ext->ExceptionCount++;
+        ctx_iter = ctx_ext->Parent.get();
+    }
+
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_RUNTIME_ASSERT(ctx_ext);
+    auto& ex = ctx_ext->Exception;
 
     if (ex) {
         return;
     }
 
-    const auto* ex_func = ctx->GetExceptionFunction();
-    const auto ex_line = ctx->GetExceptionLineNumber();
+    // Capture the script call stack as it stands right now.
+    ex = std::make_exception_ptr(ScriptCoreException(ctx->GetExceptionString()));
+}
 
-    const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
-    const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-    const auto ex_orig_line = numeric_cast<uint32>(Preprocessor::ResolveOriginalLine(ex_line, lnt));
+#if FO_TRACY
+static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func)
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* func_decl = ex_func->GetDeclaration(true);
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
 
-    StackTraceEntryStorage* storage = nullptr;
+    if (ctx_ext == nullptr || !ctx_ext->TracyExecutionActive) {
+        return;
+    }
+
+    AngelScriptTracyCallEntry* entry = nullptr;
+    const auto func_key = std::bit_cast<size_t>(func);
 
     {
-        std::scoped_lock lock {AngelScriptStackTrace->ScriptCallCacheEntriesLocker};
+        std::scoped_lock lock {AngelScriptTracy->CacheLocker};
 
-        storage = &AngelScriptStackTrace->ScriptCallExceptionEntries.emplace_back(StackTraceEntryStorage {});
+        if (const auto it = AngelScriptTracy->CacheEntries.find(func_key); it != AngelScriptTracy->CacheEntries.end()) {
+            entry = &it->second;
+        }
+    }
+
+    if (entry == nullptr) {
+        const int32_t ctx_line = ctx->GetLineNumber();
+        const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
+        const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
+        const auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
+        const auto* func_decl = func->GetDeclaration(true);
+
+        std::scoped_lock lock {AngelScriptTracy->CacheLocker};
+
+        entry = &AngelScriptTracy->CacheEntries.emplace(func_key, AngelScriptTracyCallEntry {}).first->second;
 
         const auto safe_copy = [](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
@@ -488,19 +664,39 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
             to[len] = 0;
         };
 
-        safe_copy(storage->FuncBuf, storage->FuncBufLen, func_decl);
-        safe_copy(storage->FileBuf, storage->FileBufLen, ex_orig_file);
-
-        storage->SrcLoc.name = nullptr;
-        storage->SrcLoc.function = storage->FuncBuf.data();
-        storage->SrcLoc.file = storage->FileBuf.data();
-        storage->SrcLoc.line = ex_orig_line;
+        safe_copy(entry->FuncBuf, entry->FuncBufLen, func_decl != nullptr ? string_view {func_decl} : string_view {});
+        safe_copy(entry->FileBuf, entry->FileBufLen, orig_file);
+        entry->Line = orig_line;
     }
 
-    PushStackTrace(&storage->SrcLoc);
-    auto stack_trace_entry_end = scope_exit([]() noexcept { PopStackTrace(); });
-    ex = std::make_exception_ptr(ScriptException(ctx->GetExceptionString()));
+    ctx_ext->TracyExecutionCalls++;
+    ctx_ext->TracyStackTrace.emplace_back(entry);
+
+    const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
+    const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+    ctx_ext->TracyZones.emplace_back(tracy_zone);
 }
+
+static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+
+    if (ctx_ext == nullptr || !ctx_ext->TracyExecutionActive) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(ctx_ext->TracyExecutionCalls > 0);
+
+    if (ctx_ext->TracyExecutionCalls > 0) {
+        ctx_ext->TracyExecutionCalls--;
+        ctx_ext->TracyStackTrace.pop_back();
+        ___tracy_emit_zone_end(ctx_ext->TracyZones.back());
+        ctx_ext->TracyZones.pop_back();
+    }
+}
+#endif
 
 FO_END_NAMESPACE
 

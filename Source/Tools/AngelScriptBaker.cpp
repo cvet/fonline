@@ -61,7 +61,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 
     // Collect files
     vector<File> filtered_files;
-    uint64 max_write_time = 0;
+    uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
@@ -105,21 +105,21 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     if (bake_server) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerServerEngine(*_context->BakedFiles);
-            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-server", data);
         }));
     }
     if (bake_client) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerClientEngine(*_context->BakedFiles);
-            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-client", data);
         }));
     }
     if (bake_mapper) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
-            auto data = CompileAngelScript(&engine, filtered_files, message_callback);
+            auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-mapper", data);
         }));
     }
@@ -130,7 +130,8 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         try {
             file_baking.get();
         }
-        catch (const ScriptCompilerException&) {
+        catch (const ScriptCompilerException& ex) {
+            WriteLog("AngelScript compile error: {}", ex.what());
             errors++;
         }
         catch (const std::exception& ex) {

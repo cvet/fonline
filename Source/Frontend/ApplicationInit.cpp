@@ -36,19 +36,21 @@
 #include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
+#include "WebRelated.h"
 
 FO_BEGIN_NAMESPACE
 
-raw_ptr<Application> App;
+unique_ptr<Application> App {};
+
+extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void SetupLogging(bool disable_log_tags);
-static auto LoadSettings(int32 argc, char** argv) -> GlobalSettings;
+static auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
-static void SetupWebClipboard();
 
-void InitApp(int32 argc, char** argv, AppInitFlags flags)
+void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -82,6 +84,14 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     auto settings = LoadSettings(argc, argv);
     WriteLog("Version: {}", settings.GameVersion);
 
+    // Switch logging to a dedicated worker thread once the user setting is known
+    if (settings.AsyncLogWrite) {
+        SetAsyncLogWriting(true);
+    }
+
+    // Project-side early init (before App frontend, after settings + exception/log callbacks)
+    ApplicationInitHook(flags, settings);
+
     // Prebake resources
     if (!IsPackaged() && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {
         WriteLog("Prebake resources");
@@ -89,7 +99,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     }
 
     // Application frontend initialization
-    App = SafeAlloc::MakeRaw<Application>(std::move(settings), flags);
+    App = SafeAlloc::MakeUnique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
     SetBadAllocCallback([]() FO_DEFERRED { App->RequestQuit(); });
@@ -98,10 +108,7 @@ void InitApp(int32 argc, char** argv, AppInitFlags flags)
     SetupSignals();
 
     // Set up clipboard events for web
-    SetupWebClipboard();
-
-    // Init mouse pos
-    App->Settings.MousePos = App->Input.GetMousePosition();
+    WebRelated::SetupClipboard();
 }
 
 static void SetupExceptionCallback(bool show_message_on_exception)
@@ -113,6 +120,12 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 
         if (fatal_error) {
             WriteLog(LogType::Error, "Shutdown!");
+
+#if FO_WEB
+            if (App) {
+                App->RequestQuit();
+            }
+#endif
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !App))) {
@@ -139,14 +152,17 @@ static void SetupLogging(bool disable_log_tags)
     }
 }
 
-auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
+auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings
 {
     FO_STACK_TRACE_ENTRY();
 
     auto settings = GlobalSettings(false);
 
     if (argc == -1) {
-        return settings; // Unit testing
+        // Unit testing
+        settings.ApplyDefaultSettings();
+        settings.ApplyAutoSettings();
+        return settings;
     }
 
     if (!IsPackaged()) {
@@ -155,7 +171,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         string config_to_apply_dir;
         bool auto_find_config = false;
 
-        for (int32 i = 0; i < argc; i++) {
+        for (int32_t i = 0; i < argc; i++) {
             const string_view arg = strex(argv[i]).trim().strv();
 
             if (arg == "-ApplyConfig" || arg == "--ApplyConfig") {
@@ -173,7 +189,9 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                if (std::filesystem::exists(dir / FO_MAIN_CONFIG) && !std::filesystem::is_directory(dir / FO_MAIN_CONFIG)) {
+                const auto config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+
+                if (fs_exists(config_path) && !fs_is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
                     config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
                     break;
@@ -195,7 +213,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         // Apply sub config
         vector<string> sub_configs_to_apply;
 
-        for (int32 i = 0; i < argc; i++) {
+        for (int32_t i = 0; i < argc; i++) {
             const string_view arg = strex(argv[i]).trim().strv();
 
             if (arg == "-ApplySubConfig" || arg == "--ApplySubConfig") {
@@ -211,34 +229,6 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
             sub_configs_to_apply.emplace_back(settings.UnpackagedSubConfig);
         }
 
-        if (auto_find_config && Platform::IsShiftDown()) {
-            const auto& sub_configs = settings.GetSubConfigs();
-            vector<string> sub_config_names;
-            set<int32> selected_sub_configs;
-
-            for (size_t i = 0; i < sub_configs.size(); i++) {
-                const auto& sub_config = sub_configs[i];
-                sub_config_names.emplace_back(sub_config.Name);
-
-                if (std::ranges::find(sub_configs_to_apply, sub_config.Name) != sub_configs_to_apply.end()) {
-                    selected_sub_configs.emplace(numeric_cast<int32>(i));
-                }
-            }
-
-            sub_config_names.emplace_back("RUN AS PACKAGED");
-            sub_configs_to_apply.clear();
-            Application::ChooseOptionsWindow("Choose sub config(s) to apply:", sub_config_names, selected_sub_configs);
-
-            for (const auto i : selected_sub_configs) {
-                if (i == numeric_cast<int32>(sub_config_names.size()) - 1) {
-                    ForcePackaged();
-                }
-                else {
-                    sub_configs_to_apply.emplace_back(sub_config_names[i]);
-                }
-            }
-        }
-
         for (const auto& sub_config_name : sub_configs_to_apply) {
             if (!sub_config_name.empty() && sub_config_name != "NONE") {
                 WriteLog("Apply sub config {}", sub_config_name);
@@ -250,7 +240,7 @@ auto LoadSettings(int32 argc, char** argv) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    if (DiskFileSystem::IsDir(settings.CacheResources)) {
+    if (fs_is_dir(settings.CacheResources)) {
         const auto cache = CacheStorage(settings.CacheResources);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
@@ -295,8 +285,10 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (std::filesystem::exists(settings.BakeOutput) && std::filesystem::is_directory(settings.BakeOutput)) {
-            Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
+        if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
+            if (!settings.IgnoreMissingBakerWarning) {
+                Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
+            }
         }
         else {
             throw AppInitException("Baker not found. Unable to bake resources");
@@ -305,7 +297,7 @@ static void PrebakeResources(BakingSettings& settings)
 }
 
 #if FO_LINUX || FO_MAC
-static void SignalHandler(int32 sig)
+static void SignalHandler(int sig)
 {
     std::signal(sig, SignalHandler);
     App->RequestQuit();
@@ -319,47 +311,6 @@ static void SetupSignals()
 #if FO_LINUX || FO_MAC
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
-#endif
-}
-
-#if FO_WEB
-FO_END_NAMESPACE
-extern "C"
-{
-    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
-    {
-        return FO_NAMESPACE App->Input.GetClipboardText().c_str();
-    }
-    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
-    {
-        FO_NAMESPACE App->Input.SetClipboardText(text);
-    }
-}
-FO_BEGIN_NAMESPACE
-#endif
-
-static void SetupWebClipboard()
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_WEB
-    // clang-format off
-    MAIN_THREAD_EM_ASM({
-        var canvas = document.querySelector(UTF8ToString($0));
-        if (canvas) {
-            canvas.addEventListener("copy", (event) => {
-                const text = _Emscripten_ClipboardGet();
-                event.clipboardData.setData("text/plain", UTF8ToString(text));
-                event.preventDefault();
-            });
-            canvas.addEventListener("paste", (event) => {
-                const text = event.clipboardData.getData('text/plain');
-                _Emscripten_ClipboardSet(text);
-                event.preventDefault();
-            });
-        }
-    }, WEB_CANVAS_ID.c_str());
-    // clang-format on
 #endif
 }
 

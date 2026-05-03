@@ -32,20 +32,23 @@
 //
 
 #include "RenderTarget.h"
+#include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
-RenderTargetManager::RenderTargetManager(RenderSettings& settings, AppWindow* window, FlushCallback flush) :
+RenderTargetManager::RenderTargetManager(RenderSettings& settings, IAppWindow& window, FlushCallback flush) :
     _settings {&settings},
+    _window {&window},
+    _render {&window.GetRender()},
     _flush {std::move(flush)}
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_flush);
 
-    _eventUnsubscriber += window->OnScreenSizeChanged += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
+    _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&
@@ -115,8 +118,8 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
         tex_size.height += _settings->ScreenHeight;
     }
     else if (rt->_sizeKind == RenderTarget::SizeKindType::Map) {
-        tex_size.width += _settings->ScreenWidth + _settings->MapHexWidth;
-        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + _settings->MapHexLineHeight * 2;
+        tex_size.width += _settings->ScreenWidth + GameSettings::MAP_HEX_WIDTH;
+        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + GameSettings::MAP_HEX_LINE_HEIGHT * 2;
     }
 
     tex_size.width = std::max(tex_size.width, 1);
@@ -125,13 +128,13 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
     FO_RUNTIME_ASSERT(tex_size.width > 0);
     FO_RUNTIME_ASSERT(tex_size.height > 0);
 
-    rt->_texture = App->Render.CreateTexture(tex_size, linear_filtered, with_depth);
-    rt->_texture->FlippedHeight = App->Render.IsRenderTargetFlipped();
+    rt->_texture = _render->CreateTexture(tex_size, linear_filtered, with_depth);
+    rt->_texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
-    auto* prev_tex = App->Render.GetRenderTarget();
-    App->Render.SetRenderTarget(rt->_texture.get());
-    App->Render.ClearRenderTarget(ucolor::clear, with_depth);
-    App->Render.SetRenderTarget(prev_tex);
+    auto* prev_tex = _render->GetRenderTarget();
+    _render->SetRenderTarget(rt->_texture.get());
+    _render->ClearRenderTarget(ucolor::clear, with_depth);
+    _render->SetRenderTarget(prev_tex);
 }
 
 void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
@@ -147,7 +150,7 @@ void RenderTargetManager::PushRenderTarget(RenderTarget* rt)
     _rtStack.emplace_back(rt);
 
     if (!redundant) {
-        App->Render.SetRenderTarget(rt->_texture.get());
+        _render->SetRenderTarget(rt->_texture.get());
         rt->_lastPixelPicks.clear();
     }
 }
@@ -166,10 +169,10 @@ void RenderTargetManager::PopRenderTarget()
 
     if (!redundant) {
         if (!_rtStack.empty()) {
-            App->Render.SetRenderTarget(_rtStack.back()->_texture.get());
+            _render->SetRenderTarget(_rtStack.back()->_texture.get());
         }
         else {
-            App->Render.SetRenderTarget(nullptr);
+            _render->SetRenderTarget(nullptr);
         }
     }
 }
@@ -213,7 +216,7 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
 
     FO_NON_CONST_METHOD_HINT();
 
-    App->Render.ClearRenderTarget(color, with_depth);
+    _render->ClearRenderTarget(color, with_depth);
 }
 
 void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
@@ -255,7 +258,7 @@ void RenderTargetManager::DumpTextures() const
         if (rt != nullptr) {
             const string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
             auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-            GenericUtils::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
+            WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
         }
     };
 

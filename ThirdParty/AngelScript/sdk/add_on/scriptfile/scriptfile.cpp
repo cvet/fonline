@@ -506,21 +506,25 @@ float CScriptFile::ReadFloat()
 	size_t r = fread(buf, 4, 1, file);
 	if( r == 0 ) return 0;
 
-	asUINT val = 0;
+	union conv
+	{
+		asUINT val;
+		float fp;
+	} value = { 0 };
 	if( mostSignificantByteFirst )
 	{
 		unsigned int n = 0;
 		for( ; n < 4; n++ )
-			val |= asUINT(buf[n]) << ((3-n)*8);
+			value.val |= asUINT(buf[n]) << ((3-n)*8);
 	}
 	else
 	{
 		unsigned int n = 0;
 		for( ; n < 4; n++ )
-			val |= asUINT(buf[n]) << (n*8);
+			value.val |= asUINT(buf[n]) << (n*8);
 	}
 
-	return *reinterpret_cast<float*>(&val);
+	return value.fp;
 }
 
 double CScriptFile::ReadDouble()
@@ -532,21 +536,25 @@ double CScriptFile::ReadDouble()
 	size_t r = fread(buf, 8, 1, file);
 	if( r == 0 ) return 0;
 
-	asQWORD val = 0;
+	union conv
+	{
+		asQWORD val;
+		double fp;
+	} value = { 0 };
 	if( mostSignificantByteFirst )
 	{
 		unsigned int n = 0;
 		for( ; n < 8; n++ )
-			val |= asQWORD(buf[n]) << ((7-n)*8);
+			value.val |= asQWORD(buf[n]) << ((7-n)*8);
 	}
 	else
 	{
 		unsigned int n = 0;
 		for( ; n < 8; n++ )
-			val |= asQWORD(buf[n]) << (n*8);
+			value.val |= asQWORD(buf[n]) << (n*8);
 	}
 
-	return *reinterpret_cast<double*>(&val);
+	return value.fp;
 }
 
 bool CScriptFile::IsEOF() const
@@ -617,16 +625,21 @@ int CScriptFile::WriteFloat(float f)
 		return 0;
 
 	unsigned char buf[4];
-	asUINT val = *reinterpret_cast<asUINT*>(&f);
+	union conv
+	{
+		asUINT val;
+		float fp;
+	} value;
+	value.fp = f;
 	if( mostSignificantByteFirst )
 	{
 		for( unsigned int n = 0; n < 4; n++ )
-			buf[n] = (val >> ((3-n)*4)) & 0xFF;
+			buf[n] = (value.val >> ((3-n)*4)) & 0xFF;
 	}
 	else
 	{
 		for( unsigned int n = 0; n < 4; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
+			buf[n] = (value.val >> (n*8)) & 0xFF;
 	}
 
 	size_t r = fwrite(&buf, 4, 1, file);
@@ -639,16 +652,21 @@ int CScriptFile::WriteDouble(double d)
 		return 0;
 
 	unsigned char buf[8];
-	asQWORD val = *reinterpret_cast<asQWORD*>(&d);
+	union conv
+	{
+		asQWORD val;
+		double fp;
+	} value;
+	value.fp = d;
 	if( mostSignificantByteFirst )
 	{
 		for( unsigned int n = 0; n < 8; n++ )
-			buf[n] = (val >> ((7-n)*8)) & 0xFF;
+			buf[n] = (value.val >> ((7-n)*8)) & 0xFF;
 	}
 	else
 	{
 		for( unsigned int n = 0; n < 8; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
+			buf[n] = (value.val >> (n*8)) & 0xFF;
 	}
 
 	size_t r = fwrite(&buf, 8, 1, file);

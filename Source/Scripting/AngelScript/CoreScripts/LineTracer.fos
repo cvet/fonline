@@ -62,207 +62,79 @@ class MapBorderTracer : LineTracer::ITraceContext
     }
 };
 
-const float SQRT3T2_FLOAT = 3.4641016151;
-const float SQRT3_FLOAT = 1.732050807568877;
-const float BIAS_FLOAT = 0.02;
-const float RAD2DEG = 57.29577951;
-const float DEG2RAD = 0.01745329;
+int ExecuteHexTrace(Map map, mpos fromHex, mpos toHex, int dist, mpos[] traceLine, ITraceContext context)
+{
+    context.StartExec(map, fromHex, toHex, dist);
+
+    int traceCount = int(traceLine.length());
+    int resultDist = traceCount;
+
+    for (int i = 0; i < traceCount; i++) {
+        if (context.Exec(map, traceLine[i])) {
+            resultDist = i + 1;
+            break;
+        }
+    }
+
+    context.FinishExec(map, resultDist);
+    return resultDist;
+}
 
 int LineTracerHex(Map map, mpos fromHex, mpos toHex, ITraceContext context)
 {
-    return LineTracerHex(map, fromHex, toHex, 0, 0.0, context);
+    return LineTracerHex(map, fromHex, toHex, 0, 0.0, ZERO_IPOS, ZERO_IPOS, context);
+}
+
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, ipos startOffset, ipos targetOffset, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, toHex, 0, 0.0, startOffset, targetOffset, context);
 }
 
 int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, ITraceContext context)
 {
-    return LineTracerHex(map, fromHex, toHex, dist, 0.0, context);
+    return LineTracerHex(map, fromHex, toHex, dist, 0.0, ZERO_IPOS, ZERO_IPOS, context);
+}
+
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, ipos startOffset, ipos targetOffset, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, toHex, dist, 0.0, startOffset, targetOffset, context);
 }
 
 int LineTracerHex(Map map, mpos fromHex, float dirAngle, int dist, ITraceContext context)
 {
-    float angle = 360.0 - dirAngle + 60.0;
-    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
+    return LineTracerHex(map, fromHex, dirAngle, dist, ZERO_IPOS, ZERO_IPOS, context);
+}
 
-    float dx = -math::cos(angle * DEG2RAD);
-    float dy = -math::sin(angle * DEG2RAD);
+int LineTracerHex(Map map, mpos fromHex, mdir dir, int dist, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, float(dir.angle), dist, ZERO_IPOS, ZERO_IPOS, context);
+}
 
-    if (math::abs(dx) > math::abs(dy)) {
-        dy /= math::abs(dx);
-        dx = dx > 0 ? 1.0 : -1.0;
-    }
-    else {
-        dx /= math::abs(dy);
-        dy = dy > 0 ? 1.0 : -1.0;
-    }
+int LineTracerHex(Map map, mpos fromHex, float dirAngle, int dist, ipos startOffset, ipos targetOffset, ITraceContext context)
+{
+    mpos toHex;
+    mpos[] traceLine = Game.TraceHexLine(map.Size, fromHex, dirAngle, dist, startOffset, targetOffset, toHex);
+    return ExecuteHexTrace(map, fromHex, toHex, dist, traceLine, context);
+}
 
-    float sx = float(fromHex.x) + 0.5f;
-    float sy = float(fromHex.y) + 0.5f;
-    int tx = int(sx + dx * float(dist));
-    int ty = int(sy + dy * float(dist));
-    mpos toHex = mpos(tx, ty);
-
-    return LineTracerHex(map, fromHex, toHex, dist, 0.0, context);
+int LineTracerHex(Map map, mpos fromHex, mdir dir, int dist, ipos startOffset, ipos targetOffset, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, float(dir.angle), dist, startOffset, targetOffset, context);
 }
 
 int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOffset, ITraceContext context)
+{
+    return LineTracerHex(map, fromHex, toHex, dist, dirAngleOffset, ZERO_IPOS, ZERO_IPOS, context);
+}
+
+int LineTracerHex(Map map, mpos fromHex, mpos toHex, int dist, float dirAngleOffset, ipos startOffset, ipos targetOffset, ITraceContext context)
 {
     if (dist == 0) {
         dist = Game.GetDistance(fromHex, toHex);
     }
 
-    context.StartExec(map, fromHex, toHex, dist);
-
-    float sx = float(fromHex.x);
-    float sy = float(fromHex.y);
-    float tx = float(toHex.x);
-    float ty = float(toHex.y);
-    float txOdd = float(Math::Abs(toHex.x % 2));
-    float sxOdd = float(Math::Abs(fromHex.x % 2));
-
-    float xStart = sx * 3.0 + BIAS_FLOAT;
-    float yStart = sy * SQRT3T2_FLOAT - sxOdd * SQRT3_FLOAT + BIAS_FLOAT;
-
-    float xEnd = tx * 3.0 + BIAS_FLOAT;
-    float yEnd = ty * SQRT3T2_FLOAT - txOdd * SQRT3_FLOAT + BIAS_FLOAT;
-
-    if (dirAngleOffset != 0.0) {
-        xEnd -= xStart;
-        yEnd -= yStart;
-
-        float angleOffsetRad = -dirAngleOffset * DEG2RAD;
-        float ox = math::cos(angleOffsetRad) * xEnd - math::sin(angleOffsetRad) * yEnd;
-        float oy = math::sin(angleOffsetRad) * xEnd + math::cos(angleOffsetRad) * yEnd;
-
-        xEnd = xStart + ox;
-        yEnd = yStart + oy;
-    }
-
-    float dx = xEnd - xStart;
-    float dy = yEnd - yStart;
-
-    float nx = (tx - sx) * 3.0 + BIAS_FLOAT;
-    float ny = (ty - sy) * SQRT3T2_FLOAT - (txOdd - sxOdd) * SQRT3_FLOAT + BIAS_FLOAT;
-    float angle = 180.0 + math::atan2(ny, nx) * RAD2DEG - dirAngleOffset;
-    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
-
-    float dirAngle = -60.0 + angle;
-    dirAngle = dirAngle < 0.0 ? 360.0 - (-dirAngle % 360.0) : dirAngle % 360.0;
-    dirAngle = 360.0 - dirAngle;
-
-    uint8 dirLeft;
-    uint8 dirRight;
-
-    if (dirAngle >= 30.0 && dirAngle < 90.0) {
-        dirLeft = 0;
-        dirRight = 1;
-    }
-    else if (dirAngle >= 90.0 && dirAngle < 150.0) {
-        dirLeft = 1;
-        dirRight = 2;
-    }
-    else if (dirAngle >= 150.0 && dirAngle < 210.0) {
-        dirLeft = 2;
-        dirRight = 3;
-    }
-    else if (dirAngle >= 210.0 && dirAngle < 270.0) {
-        dirLeft = 3;
-        dirRight = 4;
-    }
-    else if (dirAngle >= 270.0 && dirAngle < 330.0) {
-        dirLeft = 4;
-        dirRight = 5;
-    }
-    else {
-        dirLeft = 5;
-        dirRight = 1;
-    }
-
-    mpos curHex = fromHex;
-    mpos prevHex = fromHex;
-
-    angle = angle < 0.0 ? 360.0 - (-angle % 360.0) : angle % 360.0;
-
-    for (int i = 1; i <= dist; i++) {
-        mpos tLeft = curHex;
-        mpos tRight = curHex;
-        map.MoveHexByDir(tLeft, dirLeft, 1);
-        map.MoveHexByDir(tRight, dirRight, 1);
-
-        float c1x = float(tLeft.x) * 3.0;
-        float c1y = float(tLeft.y) * SQRT3T2_FLOAT - (float(tLeft.x % 2)) * SQRT3_FLOAT;
-        float c2x = float(tRight.x) * 3.0;
-        float c2y = float(tRight.y) * SQRT3T2_FLOAT - (float(tRight.x % 2)) * SQRT3_FLOAT;
-        float distLeft = Math::AbsF(dx * (yStart - c1y) - dy * (xStart - c1x));
-        float distRight = Math::AbsF(dx * (yStart - c2y) - dy * (xStart - c2x));
-
-        if (distLeft <= distRight) {
-            curHex = tLeft;
-        } // left hand biased
-        else {
-            curHex = tRight;
-        }
-
-        // if MoveHexByDir tried to leave the map and failed:
-        if (curHex == prevHex) {
-            dist = i - 1;
-            break;
-        }
-
-        prevHex = curHex;
-
-        if (context.Exec(map, curHex)) {
-            dist = i;
-            break;
-        }
-    }
-
-    context.FinishExec(map, dist);
-    return dist;
-}
-
-int LineTracerSquare(Map map, mpos fromHex, mpos toHex, int dist, ITraceContext context)
-{
-    context.StartExec(map, fromHex, toHex, dist);
-
-    float angle = math::atan2(float(toHex.y - fromHex.y), float(toHex.x - fromHex.x));
-    float dx = math::cos(angle);
-    float dy = math::sin(angle);
-
-    if (math::abs(dx) > math::abs(dy)) {
-        dy /= math::abs(dx);
-        dx = dx > 0 ? 1.0f : -1.0;
-    }
-    else {
-        dx /= math::abs(dy);
-        dy = dy > 0 ? 1.0f : -1.0;
-    }
-
-    float x1 = float(fromHex.x) + 0.5;
-    float y1 = float(fromHex.y) + 0.5;
-    int maxx = map.Size.width;
-    int maxy = map.Size.height;
-    int cx = 0;
-    int cy = 0;
-
-    for (int i = 1; i <= dist; i++) {
-        x1 += dx;
-        y1 += dy;
-        cx = int(math::floor(x1));
-        cy = int(math::floor(y1));
-
-        if (cx >= maxx || cy >= maxy) {
-            dist = i - 1;
-            break;
-        }
-
-        if (context.Exec(map, mpos(cx, cy))) {
-            dist = i;
-            break;
-        }
-    }
-
-    context.FinishExec(map, dist);
-    return dist;
+    mpos[] traceLine = Game.TraceHexLine(map.Size, fromHex, toHex, dist, dirAngleOffset, startOffset, targetOffset);
+    return ExecuteHexTrace(map, fromHex, toHex, dist, traceLine, context);
 }
 
 }

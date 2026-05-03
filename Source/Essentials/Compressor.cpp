@@ -46,12 +46,12 @@ auto Compressor::CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> 
     return initial_size * 110 / 100 + 12;
 }
 
-auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
+auto Compressor::Compress(const_span<uint8_t> data) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto buf_len = numeric_cast<uLongf>(CalculateMaxCompressedBufSize(data.size()));
-    auto buf = vector<uint8>(buf_len);
+    auto buf = vector<uint8_t>(buf_len);
 
     const auto result = compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
 
@@ -63,12 +63,12 @@ auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
     return buf;
 }
 
-auto Compressor::Decompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
+auto Compressor::Decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto buf_len = numeric_cast<uLongf>(data.size() * mul_approx);
-    auto buf = vector<uint8>(buf_len);
+    auto buf = vector<uint8_t>(buf_len);
 
     while (true) {
         const auto result = uncompress(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()));
@@ -105,7 +105,7 @@ StreamCompressor::~StreamCompressor()
     Reset();
 }
 
-void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
+void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -114,12 +114,12 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
         MemFill(&_impl->ZStream, 0, sizeof(z_stream));
 
         _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
-            constexpr SafeAllocator<uint8> allocator;
+            constexpr SafeAllocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
         _impl->ZStream.zfree = [](voidpf, voidpf address) {
-            constexpr SafeAllocator<uint8> allocator;
-            allocator.deallocate(static_cast<uint8*>(address), 0);
+            constexpr SafeAllocator<uint8_t> allocator;
+            allocator.deallocate(static_cast<uint8_t*>(address), 0);
         };
 
         const auto deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
@@ -128,7 +128,7 @@ void StreamCompressor::Compress(const_span<uint8> buf, vector<uint8>& result)
 
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
 
-    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
+    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8_t*>(buf.data()));
     _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
     _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
@@ -169,7 +169,7 @@ StreamDecompressor::~StreamDecompressor()
     Reset();
 }
 
-void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result)
+void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -178,12 +178,12 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
         MemFill(&_impl->ZStream, 0, sizeof(z_stream));
 
         _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
-            constexpr SafeAllocator<uint8> allocator;
+            constexpr SafeAllocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
         _impl->ZStream.zfree = [](voidpf, voidpf address) {
-            constexpr SafeAllocator<uint8> allocator;
-            allocator.deallocate(static_cast<uint8*>(address), 0);
+            constexpr SafeAllocator<uint8_t> allocator;
+            allocator.deallocate(static_cast<uint8_t*>(address), 0);
         };
 
         const auto inflate_init = inflateInit(&_impl->ZStream);
@@ -192,7 +192,7 @@ void StreamDecompressor::Decompress(const_span<uint8> buf, vector<uint8>& result
 
     result.resize(std::max(result.capacity(), buf.size() * 2));
 
-    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8*>(buf.data()));
+    _impl->ZStream.next_in = static_cast<Bytef*>(const_cast<uint8_t*>(buf.data()));
     _impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
     _impl->ZStream.next_out = static_cast<Bytef*>(result.data());
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());

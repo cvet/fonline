@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2020 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -38,7 +38,7 @@
 
 #include <stdlib.h>
 
-#if !defined(__APPLE__) && !defined(__SNC__) && !defined(__ghs__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+#if !defined(__APPLE__) && !defined(__SNC__) && !defined(__ghs__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__DragonFly__)
 #include <malloc.h>
 #endif
 
@@ -71,7 +71,6 @@ BEGIN_AS_NAMESPACE
 
 // TODO: Allow user to register its own aligned memory routines
 // Wrappers for aligned allocations
-#ifdef AS_DEBUG // (FOnline Patch)
 void *debugAlignedMalloc(size_t size, size_t align, const char *file, int line)
 {
 	void *mem = ((asALLOCFUNCDEBUG_t)userAlloc)(size + (align-1) + sizeof(void*), file, line);
@@ -83,7 +82,6 @@ void *debugAlignedMalloc(size_t size, size_t align, const char *file, int line)
 	((void**)amem)[-1] = mem;
 	return amem;
 }
-#endif
 
 void *alignedMalloc(size_t size, size_t align)
 {
@@ -243,6 +241,11 @@ void asCMemoryMgr::FreeScriptNode(void *ptr)
 		scriptNodePool.Allocate(100, 0);
 
 	scriptNodePool.PushLast(ptr);
+	
+#ifdef AS_DEBUG
+	// clear the memory to facilitate identification of use after free
+	memset(ptr, 0xCDCDCDCD, sizeof(asCScriptNode));
+#endif
 
 	LEAVECRITICALSECTION(cs);
 }
@@ -251,6 +254,8 @@ void asCMemoryMgr::FreeScriptNode(void *ptr)
 
 void *asCMemoryMgr::AllocByteInstruction()
 {
+	// This doesn't need a critical section because, only one compilation is allowed at a time
+	
 	if( byteInstructionPool.GetLength() )
 		return byteInstructionPool.PopLast();
 
@@ -268,6 +273,11 @@ void asCMemoryMgr::FreeByteInstruction(void *ptr)
 		byteInstructionPool.Allocate(100, 0);
 
 	byteInstructionPool.PushLast(ptr);
+	
+#ifdef AS_DEBUG
+	// clear the memory to facilitate identification of use after free
+	memset(ptr, 0xCDCDCDCD, sizeof(asCByteInstruction));
+#endif
 }
 
 #endif // AS_NO_COMPILER

@@ -44,27 +44,19 @@ FO_DECLARE_EXCEPTION(ScriptCallException);
 FO_DECLARE_EXCEPTION(ScriptCompilerException);
 
 // ReSharper disable CppInconsistentNaming
-enum class ScriptEnum_uint8 : uint8
+enum class ScriptEnum_uint8 : uint8_t
 {
 };
-enum class ScriptEnum_uint16 : uint16
+enum class ScriptEnum_uint16 : uint16_t
 {
 };
-enum class ScriptEnum_int32 : int32
+enum class ScriptEnum_int32 : int32_t
 {
 };
-enum class ScriptEnum_uint32 : uint32
+enum class ScriptEnum_uint32 : uint32_t
 {
 };
 // ReSharper restore CppInconsistentNaming
-
-using GameComponent = ScriptEnum_int32;
-using PlayerComponent = ScriptEnum_int32;
-using ItemComponent = ScriptEnum_int32;
-using CritterComponent = ScriptEnum_int32;
-using MapComponent = ScriptEnum_int32;
-using LocationComponent = ScriptEnum_int32;
-static_assert(sizeof(GameComponent) == sizeof(hstring::hash_t));
 
 using GameProperty = ScriptEnum_uint16;
 using PlayerProperty = ScriptEnum_uint16;
@@ -73,8 +65,13 @@ using CritterProperty = ScriptEnum_uint16;
 using MapProperty = ScriptEnum_uint16;
 using LocationProperty = ScriptEnum_uint16;
 
+class ScriptSystem;
 class FileSystem;
+
 class Property;
+class PropertyRawData;
+class PropertyRegistrator;
+class Properties;
 
 class EngineMetadata;
 class BaseEngine;
@@ -83,7 +80,28 @@ class Entity;
 using AbstractItem = Entity;
 using ScriptSelfEntity = Entity;
 
-class ScriptSystem;
+class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
+{
+public:
+    explicit DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept;
+    DynamicRefTypeInstance(const DynamicRefTypeInstance&) = delete;
+    DynamicRefTypeInstance(DynamicRefTypeInstance&&) = delete;
+    auto operator=(const DynamicRefTypeInstance&) -> DynamicRefTypeInstance& = delete;
+    auto operator=(DynamicRefTypeInstance&&) -> DynamicRefTypeInstance& = delete;
+    ~DynamicRefTypeInstance() noexcept;
+
+    [[nodiscard]] auto GetRawData(const Property* prop) const -> span<const uint8_t>;
+    [[nodiscard]] auto GetSerializedRawData(const BaseTypeDesc& base_type) -> const vector<uint8_t>&;
+
+    void LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data);
+    void SetValue(const Property* prop, PropertyRawData& prop_data);
+
+private:
+    raw_ptr<const PropertyRegistrator> _registrator;
+    unique_ptr<Properties> _props {};
+    vector<uint8_t> _cachedRawData {};
+    bool _cachedRawDataDirty {};
+};
 
 template<typename T>
 using readonly_vector = const vector<T>&;
@@ -94,7 +112,7 @@ struct ScriptFuncDesc;
 
 struct DataAccessor
 {
-    [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32 = 0;
+    [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32_t = 0;
     [[nodiscard]] virtual auto GetArraySize(void* /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetArrayElement(void* /*data*/, size_t /*index*/) const -> void* { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetDictSize(void* /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
@@ -160,7 +178,7 @@ namespace NativeDataProvider
             _ptrs {vec_transform(cont, [](auto&& e) -> pair<void*, void*> { return {cast_to_void(&e.first), cast_to_void(&e.second)}; })}
         {
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
-            _addCallback = [&](void* key, void* value) FO_DEFERRED { cont.emplace_back(*cast_from_void<const typename T::key_type*>(key), *cast_from_void<typename T::mapped_type*>(value)); };
+            _addCallback = [&](void* key, void* value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key), *cast_from_void<typename T::mapped_type*>(value)); };
         }
 
         // Const dict
@@ -184,11 +202,11 @@ namespace NativeDataProvider
         function<void(void*, void*)> _addCallback {};
     };
 
-    using StorageEntryType = variant<int32, ArrayDataProxy, DictDataProxy, Entity*>;
+    using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, Entity*>;
 
     struct NativeDataAccessor final : DataAccessor
     {
-        [[nodiscard]] auto GetBackendIndex() const noexcept -> int32 override { return -1; }
+        [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return -1; }
         [[nodiscard]] auto GetArraySize(void* data) const -> size_t override { return cast_from_void<ArrayDataProxy*>(data)->Size(); }
         [[nodiscard]] auto GetArrayElement(void* data, size_t index) const -> void* override { return cast_from_void<ArrayDataProxy*>(data)->Get(index); }
         [[nodiscard]] auto GetDictSize(void* data) const -> size_t override { return cast_from_void<DictDataProxy*>(data)->Size(); }
@@ -226,11 +244,13 @@ namespace NativeDataProvider
 struct ScriptFuncDesc
 {
     using CallType = function<void(FuncCallData&)>;
+    using AttributeCheckerType = function<bool(string_view)>;
 
     hstring Name {};
     vector<ArgDesc> Args {};
     ComplexTypeDesc Ret {};
     CallType Call {};
+    AttributeCheckerType AttributeChecker {};
     uintptr_t DelegateObj {};
 };
 
@@ -260,6 +280,7 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
     [[nodiscard]] auto IsDelegate() const noexcept -> bool { return _func && _func->DelegateObj != 0; }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName { return _func ? ScriptFuncName(_func->Name, _func->DelegateObj) : ScriptFuncName(); }
+    [[nodiscard]] auto HasAttribute(string_view attribute) const noexcept -> bool { return _func && _func->AttributeChecker(attribute); }
 
     [[nodiscard]] auto GetResult() noexcept -> TRet
     {
@@ -440,8 +461,8 @@ namespace NativeDataCaller
 class ScriptSystemBackend
 {
 public:
-    static constexpr int32 ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32 MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
+    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
 
@@ -455,8 +476,7 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    void InitSubsystems(BaseEngine* engine);
-    void InitSubsystems(EngineMetadata* meta, const FileSystem& resources);
+    void MapScriptTypes(EngineMetadata* meta);
     void InitModules();
     void ProcessScriptEvents();
 
@@ -506,13 +526,13 @@ public:
     }
 
     template<typename TRet, typename... Args>
-    [[nodiscard]] auto CheckFunc(hstring func_name) const noexcept -> bool
+    [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
     {
         const auto range = _globalFuncMap.equal_range(func_name);
         const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
         for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>())) {
+            if (ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<TRet>()) && (attribute.empty() || it->second->AttributeChecker(attribute))) {
                 return true;
             }
         }
@@ -542,11 +562,30 @@ public:
         return func && func.Call(args...);
     }
 
+    template<typename TRet = void, typename... Args>
+        requires(std::is_void_v<TRet>)
+    [[nodiscard]] auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
+    {
+        const auto range = _globalFuncMap.equal_range(func_name);
+        const array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
+
+        for (auto it = range.first; it != range.second; ++it) {
+            if (!it->second->AttributeChecker("AdminRemoteCall") || !ValidateArgs(it->second.get(), args_arr, ArgMapTypeIndex<void>())) {
+                continue;
+            }
+
+            auto func = ScriptFunc<void, Args...>(it->second.get());
+            return func && func.Call(args...);
+        }
+
+        return false;
+    }
+
     [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
     void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
-    void AddInitFunc(ScriptFunc<void> func, int32 priority);
+    void AddInitFunc(ScriptFunc<void> func, int32_t priority);
 
     template<typename T>
         requires(!std::is_pointer_v<T>)
@@ -562,6 +601,17 @@ public:
             _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type});
             _engineTypes.emplace(typeid(vector<raw_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true});
         }
+    }
+
+    template<typename TKey, typename TValue>
+        requires(!std::is_pointer_v<TKey> && !std::is_pointer_v<TValue>)
+    void MapEngineDictType(const BaseTypeDesc& key_type, const BaseTypeDesc& value_type)
+    {
+        using raw_key_t = std::remove_cvref_t<TKey>;
+        using raw_value_t = std::remove_cvref_t<TValue>;
+
+        _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type});
+        _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type, .IsMutable = true});
     }
 
 private:
@@ -582,7 +632,7 @@ private:
     vector<function<void()>> _loopCallbacks {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
-    vector<pair<ScriptFunc<void>, int32>> _initFunc {};
+    vector<pair<ScriptFunc<void>, int32_t>> _initFunc {};
 };
 
 class ScriptHelpers final
@@ -593,10 +643,10 @@ public:
     template<typename T, typename U>
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, U prop_index) -> const Property*
     {
-        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32>(prop_index));
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32_t>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*;
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*;
 
     template<typename T>
     static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool

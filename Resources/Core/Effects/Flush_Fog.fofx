@@ -2,8 +2,8 @@
 
 [ShaderCommon]
 const float FogBlackout = 0.5;
-const float AttackBlackout = 0.4;
-const float AttackAroundShining = 0.4;
+const float OverlayBlackout = 0.4;
+const float OverlayAroundShining = 0.4;
 
 [VertexShader]
 layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
@@ -33,13 +33,14 @@ void main(void)
     vec4 tex = texture(MainTex, TexCoord);
     
     float fog = tex.r;
-    float attack = tex.g;
-    float attackDist = tex.b;
+    vec3 overlay = tex.gba;
+    float overlayCoverage = max(max(overlay.r, overlay.g), overlay.b);
     
     float a = 1.0 - max(fog, FogBlackout);
-    if (attackDist > 0.0) {
-        a = max(attack * AttackBlackout, a);
-        FragColor = vec4(attack - a, 0.0, 0.0, a - max(AttackAroundShining - attackDist, 0.0));
+    if (overlayCoverage > 0.0) {
+        a = max(overlayCoverage * OverlayBlackout, a);
+        float overlayAlpha = max(a - max(OverlayAroundShining - overlayCoverage, 0.0), 0.0);
+        FragColor = vec4(max(overlay - vec3(a), vec3(0.0)), overlayAlpha);
     } else {
         if (a == 0.0) {
             discard;

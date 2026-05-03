@@ -35,6 +35,8 @@
 
 #if FO_ENABLE_3D
 
+#include "Application.h"
+#include "EngineBase.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -43,7 +45,7 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 len = 0;
+    uint32_t len = 0;
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
     reader.ReadPtr(Vertices.data(), len * sizeof(Vertex3D));
@@ -62,7 +64,7 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 
     string tmp;
 
-    for (uint32 i = 0, j = len; i < j; i++) {
+    for (uint32_t i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
@@ -78,7 +80,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32 len = 0;
+    uint32_t len = 0;
     reader.ReadPtr(&len, sizeof(len));
     string tmp;
     tmp.resize(len);
@@ -88,7 +90,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
 
-    if (reader.Read<uint8>() != 0) {
+    if (reader.Read<uint8_t>() != 0) {
         AttachedMesh = SafeAlloc::MakeUnique<MeshData>();
         AttachedMesh->Load(reader, hash_resolver);
         AttachedMesh->Owner = this;
@@ -99,7 +101,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 
     reader.ReadPtr(&len, sizeof(len));
 
-    for (uint32 i = 0; i < len; i++) {
+    for (uint32_t i = 0; i < len; i++) {
         auto child = SafeAlloc::MakeUnique<ModelBone>();
         child->Load(reader, hash_resolver);
         Children.emplace_back(std::move(child));
@@ -167,25 +169,25 @@ auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, IAppRender& render, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {&settings},
     _resources {&resources},
     _effectMngr {&effect_mngr},
+    _render {&render},
     _gameTime {&game_time},
     _hashResolver {&hash_resolver},
     _nameResolver {&name_resolver},
     _animNameResolver {&anim_name_resolver},
     _textureLoader {tex_loader},
-    _geometry(settings),
-    _particleMngr(settings, effect_mngr, resources, game_time, std::move(tex_loader))
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
 {
     FO_STACK_TRACE_ENTRY();
 
-    _moveTransitionTime = numeric_cast<float32>(_settings->Animation3dSmoothTime) / 1000.0f;
+    _moveTransitionTime = numeric_cast<float32_t>(_settings->Animation3dSmoothTime) / 1000.0f;
     _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
     if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32>(1000.0f / numeric_cast<float32>(_settings->Animation3dFPS));
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
     }
 
     _headBone = GetBoneHashedString(settings.HeadBone);
@@ -239,9 +241,9 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
-    const auto anim_count = reader.Read<uint32>();
+    const auto anim_count = reader.Read<uint32_t>();
 
-    for (uint32 i = 0; i < anim_count; i++) {
+    for (uint32_t i = 0; i < anim_count; i++) {
         auto anim = SafeAlloc::MakeUnique<ModelAnimation>();
         anim->Load(reader, *_hashResolver);
         _loadedAnims.push_back(std::move(anim));
@@ -404,21 +406,21 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept;
-static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept;
-static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool;
+static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept;
+static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept;
+static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool;
 
-auto ModelManager::MatrixProject(float32 objx, float32 objy, float32 objz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* winx, float32* winy, float32* winz) -> bool
+auto ModelManager::MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float32 in[4];
+    float32_t in[4];
     in[0] = objx;
     in[1] = objy;
     in[2] = objz;
     in[3] = 1.0f;
 
-    float32 out[4];
+    float32_t out[4];
     MultMatrixVecf(model_matrix, in, out);
     MultMatrixVecf(proj_matrix, out, in);
 
@@ -434,8 +436,8 @@ auto ModelManager::MatrixProject(float32 objx, float32 objy, float32 objz, const
     in[1] = in[1] * 0.5f + 0.5f;
     in[2] = in[2] * 0.5f + 0.5f;
 
-    in[0] = in[0] * numeric_cast<float32>(viewport[2] + viewport[0]);
-    in[1] = in[1] * numeric_cast<float32>(viewport[3] + viewport[1]);
+    in[0] = in[0] * numeric_cast<float32_t>(viewport[2] + viewport[0]);
+    in[1] = in[1] * numeric_cast<float32_t>(viewport[3] + viewport[1]);
 
     *winx = in[0];
     *winy = in[1];
@@ -444,31 +446,31 @@ auto ModelManager::MatrixProject(float32 objx, float32 objy, float32 objz, const
     return true;
 }
 
-auto ModelManager::MatrixUnproject(float32 winx, float32 winy, float32 winz, const float32 model_matrix[16], const float32 proj_matrix[16], const int32 viewport[4], float32* objx, float32* objy, float32* objz) -> bool
+auto ModelManager::MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float32 final_matrix[16];
+    float32_t final_matrix[16];
     MultMatricesf(model_matrix, proj_matrix, final_matrix);
 
     if (!InvertMatrixf(final_matrix, final_matrix)) {
         return false;
     }
 
-    float32 in[4];
+    float32_t in[4];
     in[0] = winx;
     in[1] = winy;
     in[2] = winz;
     in[3] = 1.0f;
 
-    in[0] = (in[0] - numeric_cast<float32>(viewport[0])) / numeric_cast<float32>(viewport[2]);
-    in[1] = (in[1] - numeric_cast<float32>(viewport[1])) / numeric_cast<float32>(viewport[3]);
+    in[0] = (in[0] - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]);
+    in[1] = (in[1] - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]);
 
     in[0] = in[0] * 2 - 1;
     in[1] = in[1] * 2 - 1;
     in[2] = in[2] * 2 - 1;
 
-    float32 out[4];
+    float32_t out[4];
     MultMatrixVecf(final_matrix, in, out);
 
     if (out[3] == 0.0f) {
@@ -485,7 +487,7 @@ auto ModelManager::MatrixUnproject(float32 winx, float32 winy, float32 winz, con
     return true;
 }
 
-static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16]) noexcept
+static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -496,7 +498,7 @@ static void MultMatricesf(const float32 a[16], const float32 b[16], float32 r[16
     }
 }
 
-static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float32 out[4]) noexcept
+static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -505,11 +507,11 @@ static void MultMatrixVecf(const float32 matrix[16], const float32 in[4], float3
     }
 }
 
-static auto InvertMatrixf(const float32 m[16], float32 inv_out[16]) noexcept -> bool
+static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    float32 inv[16];
+    float32_t inv[16];
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
     inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
     inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
@@ -555,7 +557,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    mat44::RotationX(_modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, _matRot);
+    _matRot = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _forceDraw = true;
     _lastDrawTime = GetTime();
     SetupFrame(_modelInfo->_drawSize);
@@ -567,34 +569,35 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
     // Projection
-    const auto frame_ratio = numeric_cast<float32>(_frameSize.width) / numeric_cast<float32>(_frameSize.height);
-    const auto proj_height = numeric_cast<float32>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
+    const auto frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
+    const auto proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProj;
-    _frameProjColMaj.Transpose();
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    vec3 out;
-    ModelManager::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
-    return {iround<int32>(out.x / const_numeric_cast<float32>(FRAME_SCALE)), iround<int32>(out.y / const_numeric_cast<float32>(FRAME_SCALE))};
+    const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
+    vec3 out {};
+    const auto identity = mat44 {1.0f};
+    ModelManager::MatrixProject(pos.x, pos.y, pos.z, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    return {iround<int32_t>(out.x / const_numeric_cast<float32_t>(FRAME_SCALE)), iround<int32_t>(out.y / const_numeric_cast<float32_t>(FRAME_SCALE))};
 }
 
 auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
 {
     FO_STACK_TRACE_ENTRY();
 
-    const int32 viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
-    const auto xf = numeric_cast<float32>(pos.x) * numeric_cast<float32>(FRAME_SCALE);
-    const auto yf = numeric_cast<float32>(pos.y) * numeric_cast<float32>(FRAME_SCALE);
-    vec3 out;
-    ModelManager::MatrixUnproject(xf, numeric_cast<float32>(_frameSize.height) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
+    const auto xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
+    const auto yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
+    vec3 out {};
+    const auto identity = mat44 {1.0f};
+    ModelManager::MatrixUnproject(xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -618,7 +621,7 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32* layers, float32 ntime, ModelAnimFlags flags) -> bool
+auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32_t* layers, float32_t ntime, ModelAnimFlags flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -643,15 +646,15 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     // Get animation index
     const auto anim_pair = std::make_pair(state_anim, action_anim);
-    float32 speed = 1.0f;
-    int32 anim_index = 0;
+    float32_t speed = 1.0f;
+    int32_t anim_index = 0;
 
     if (!IsEnumSet(flags, ModelAnimFlags::Init)) {
         anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
     }
 
     // Check animation changes
-    int32 new_layers[MODEL_LAYERS_COUNT];
+    int32_t new_layers[MODEL_LAYERS_COUNT];
 
     if (layers != nullptr) {
         MemCopy(new_layers, layers, sizeof(_curLayers));
@@ -704,7 +707,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         // Get unused layers and meshes
         bool unused_layers[MODEL_LAYERS_COUNT] = {};
 
-        for (int32 i = 0; i < numeric_cast<int32>(MODEL_LAYERS_COUNT); i++) {
+        for (int32_t i = 0; i < numeric_cast<int32_t>(MODEL_LAYERS_COUNT); i++) {
             if (new_layers[i] == 0) {
                 continue;
             }
@@ -739,9 +742,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
 
         // Append animations
-        set<uint32> keep_alive_particles;
+        set<uint32_t> keep_alive_particles;
 
-        for (int32 i = 0; i < numeric_cast<int32>(MODEL_LAYERS_COUNT); i++) {
+        for (int32_t i = 0; i < numeric_cast<int32_t>(MODEL_LAYERS_COUNT); i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
                 continue;
             }
@@ -960,7 +963,7 @@ void ModelInstance::MoveModel(ipos32 offset)
     _forceDraw = true;
 }
 
-void ModelInstance::UpdatePose(bool staying_pose, bool moving, int32 moving_speed)
+void ModelInstance::UpdatePose(bool staying_pose, bool moving, int32_t moving_speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -970,11 +973,11 @@ void ModelInstance::UpdatePose(bool staying_pose, bool moving, int32 moving_spee
     if (_isMoving) {
         if (moving_speed < _modelMngr->_settings->RunAnimStartSpeed) {
             _isRunning = false;
-            _movingSpeedFactor = numeric_cast<float32>(moving_speed) / numeric_cast<float32>(_modelMngr->_settings->WalkAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->WalkAnimBaseSpeed);
         }
         else {
             _isRunning = true;
-            _movingSpeedFactor = numeric_cast<float32>(moving_speed) / numeric_cast<float32>(_modelMngr->_settings->RunAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->RunAnimBaseSpeed);
         }
     }
 
@@ -1051,20 +1054,25 @@ void ModelInstance::RefreshMoveAnimation()
 
     _curMovingAnim = action_anim;
 
-    float32 speed = 1.0f;
+    float32_t speed = 1.0f;
     const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
-
-    if (anim_index == _curMovingAnimIndex) {
-        return;
-    }
-
-    _curMovingAnimIndex = anim_index;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
     }
 
-    constexpr float32 smooth_time = 0.001f;
+    if (anim_index == _curMovingAnimIndex) {
+        if (_isMoving && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+            _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
+            _forceDraw = true;
+        }
+
+        return;
+    }
+
+    _curMovingAnimIndex = anim_index;
+
+    constexpr float32_t smooth_time = 0.001f;
 
     if (anim_index != -1) {
         const auto new_track = _curMoveTrack == 0 ? 1 : 0;
@@ -1162,15 +1170,15 @@ auto ModelInstance::GetViewSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto draw_width_scale = numeric_cast<float32>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32>(_modelInfo->_drawSize.width);
-    const auto draw_height_scale = numeric_cast<float32>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32>(_modelInfo->_drawSize.height);
-    const auto view_width = iround<int32>(numeric_cast<float32>(_modelInfo->_viewSize.width) * draw_width_scale);
-    const auto view_height = iround<int32>(numeric_cast<float32>(_modelInfo->_viewSize.height) * draw_height_scale);
+    const auto draw_width_scale = numeric_cast<float32_t>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.width);
+    const auto draw_height_scale = numeric_cast<float32_t>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.height);
+    const auto view_width = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.width) * draw_width_scale);
+    const auto view_height = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.height) * draw_height_scale);
 
     return {view_width, view_height};
 }
 
-auto ModelInstance::GetSpeed() const -> float32
+auto ModelInstance::GetSpeed() const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1190,38 +1198,37 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
     // Transformations
     if (clear) {
-        _matScaleBase = mat44();
-        _matRotBase = mat44();
-        _matTransBase = mat44();
+        _matScaleBase = mat44 {1.0f};
+        _matRotBase = mat44 {1.0f};
+        _matTransBase = mat44 {1.0f};
     }
 
-    mat44 mat_tmp;
     if (data.ScaleX != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(data.ScaleX, 1.0f, 1.0f), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {data.ScaleX, 1.0f, 1.0f});
     }
     if (data.ScaleY != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, data.ScaleY, 1.0f), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {1.0f, data.ScaleY, 1.0f});
     }
     if (data.ScaleZ != 0.0f) {
-        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, 1.0f, data.ScaleZ), mat_tmp);
+        _matScaleBase *= glm::scale(mat44 {1.0f}, vec3 {1.0f, 1.0f, data.ScaleZ});
     }
     if (data.RotX != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationX(-data.RotX * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, -data.RotX * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     }
     if (data.RotY != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationY(data.RotY * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, data.RotY * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
     }
     if (data.RotZ != 0.0f) {
-        _matRotBase = _matRotBase * mat44::RotationZ(data.RotZ * DEG_TO_RAD_FLOAT, mat_tmp);
+        _matRotBase *= glm::rotate(mat44 {1.0f}, data.RotZ * DEG_TO_RAD_FLOAT, vec3 {0.0f, 0.0f, 1.0f});
     }
     if (data.MoveX != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(data.MoveX, 0.0f, 0.0f), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {data.MoveX, 0.0f, 0.0f});
     }
     if (data.MoveY != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, data.MoveY, 0.0f), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {0.0f, data.MoveY, 0.0f});
     }
     if (data.MoveZ != 0.0f) {
-        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, 0.0f, -data.MoveZ), mat_tmp);
+        _matTransBase *= glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, -data.MoveZ});
     }
 
     // Speed
@@ -1335,21 +1342,19 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 }
 
-void ModelInstance::SetDir(uint8 dir, bool smooth_rotation)
+void ModelInstance::SetDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto dir_angle = GeometryHelper::DirToAngle(dir);
-
-    SetMoveDirAngle(dir_angle, smooth_rotation);
-    SetLookDirAngle(dir_angle);
+    SetMoveDir(dir, smooth_rotation);
+    SetLookDir(dir);
 }
 
-void ModelInstance::SetLookDirAngle(int32 dir_angle)
+void ModelInstance::SetLookDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32>(180 - dir_angle);
+    const auto new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
@@ -1362,11 +1367,11 @@ void ModelInstance::SetLookDirAngle(int32 dir_angle)
     }
 }
 
-void ModelInstance::SetMoveDirAngle(int32 dir_angle, bool smooth_rotation)
+void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto new_angle = numeric_cast<float32>(180 - dir_angle);
+    const auto new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
@@ -1380,32 +1385,29 @@ void ModelInstance::SetMoveDirAngle(int32 dir_angle, bool smooth_rotation)
     }
 
     if (!_modelInfo->_rotationBone) {
-        SetLookDirAngle(dir_angle);
+        SetLookDir(dir);
     }
 }
 
-void ModelInstance::SetRotation(float32 rx, float32 ry, float32 rz)
+void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44 my;
-    mat44 mx;
-    mat44 mz;
-    mat44::RotationX(rx, mx);
-    mat44::RotationY(ry, my);
-    mat44::RotationZ(rz, mz);
+    const auto mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
+    const auto my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
+    const auto mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
 
     _matRot = mx * my * mz;
 }
 
-void ModelInstance::SetScale(float32 sx, float32 sy, float32 sz)
+void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44::Scaling(vec3(sx, sy, sz), _matScale);
+    _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
 }
 
-void ModelInstance::SetSpeed(float32 speed)
+void ModelInstance::SetSpeed(float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1465,7 +1467,7 @@ void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
     }
 }
 
-void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32 anim_layer)
+void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32_t anim_layer)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1485,7 +1487,7 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32 anim_la
     // Create new combined mesh
     if (_actualCombinedMeshesCount >= _combinedMeshes.size()) {
         auto combined_mesh = SafeAlloc::MakeUnique<CombinedMesh>();
-        combined_mesh->MeshBuf = App->Render.CreateDrawBuffer(true);
+        combined_mesh->MeshBuf = _modelMngr->_render->CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
         _combinedMeshes.emplace_back(std::move(combined_mesh));
@@ -1513,7 +1515,7 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
     return combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() <= combined_mesh->SkinBones.size();
 }
 
-void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32 anim_layer)
+void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32_t anim_layer)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1546,7 +1548,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         }
 
         // Add bones matrices offset
-        const auto bone_index_offset = numeric_cast<float32>(combined_mesh->CurBoneMatrix);
+        const auto bone_index_offset = numeric_cast<float32_t>(combined_mesh->CurBoneMatrix);
         const auto start_vertex = vertices.size() - mesh_data->Vertices.size();
         for (auto i = start_vertex, j = vertices.size(); i < j; i++) {
             for (auto& blend_index : vertices[i].BlendIndices) {
@@ -1557,8 +1559,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Set mesh transform and anim layer
     combined_mesh->Meshes.emplace_back(mesh_data);
-    combined_mesh->MeshVertices.emplace_back(numeric_cast<uint32>(vertices.size() - vertices_old_size));
-    combined_mesh->MeshIndices.emplace_back(numeric_cast<uint32>(indices.size() - indices_old_size));
+    combined_mesh->MeshVertices.emplace_back(numeric_cast<uint32_t>(vertices.size() - vertices_old_size));
+    combined_mesh->MeshIndices.emplace_back(numeric_cast<uint32_t>(indices.size() - indices_old_size));
     combined_mesh->MeshAnimLayers.emplace_back(anim_layer);
 
     // Add bones matrices
@@ -1619,11 +1621,11 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
 // -1 - inside
 // 0 - outside
 // 1 - one point
-static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float32 r, Vertex3D& in) -> int32
+static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float32_t r, Vertex3D& in) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto sq = [](float32 f) -> float32 { return f * f; };
+    auto sq = [](float32_t f) -> float32_t { return f * f; };
     const auto a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
     const auto b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
     const auto c = sq(sp.x) + sq(sp.y) + sq(sp.z) + sq(p1.Position.x) + sq(p1.Position.y) + sq(p1.Position.z) - 2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - sq(r);
@@ -1685,25 +1687,27 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<vindex_t> result_indices;
-        vector<uint32> result_mesh_vertices;
-        vector<uint32> result_mesh_indices;
+        vector<uint32_t> result_mesh_vertices;
+        vector<uint32_t> result_mesh_indices;
 
         result_vertices.reserve(vertices.size());
         result_indices.reserve(indices.size());
         result_mesh_vertices.reserve(combined_mesh->MeshVertices.size());
         result_mesh_indices.reserve(combined_mesh->MeshIndices.size());
 
-        uint32 i_pos = 0;
-        uint32 i_count = 0;
+        uint32_t i_pos = 0;
+        uint32_t i_count = 0;
 
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
             // Move shape to face space
-            auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
-            auto sm = mesh_transform.Inverse() * shape.GlobalTransformationMatrix;
-            vec3 ss;
-            vec3 sp;
-            quaternion sr;
-            sm.Decompose(ss, sr, sp);
+            const auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
+            const auto sm = glm::inverse(mesh_transform) * shape.GlobalTransformationMatrix;
+            vec3 ss {};
+            vec3 sp {};
+            quaternion sr {};
+            vec3 skew {};
+            glm::vec<4, float32_t, glm::defaultp> perspective {};
+            glm::decompose(sm, ss, sr, sp, skew, perspective);
 
             // Check anim layer
             const auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
@@ -1734,16 +1738,16 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                 if (shape.IsSphere) {
                     // Find intersections
                     Vertex3D i1;
-                    int32 r1 = SphereLineIntersection(v1, v2, sp, shape.SphereRadius * ss.x, i1);
+                    int32_t r1 = SphereLineIntersection(v1, v2, sp, shape.SphereRadius * ss.x, i1);
                     Vertex3D i2;
-                    int32 r2 = SphereLineIntersection(v2, v3, sp, shape.SphereRadius * ss.x, i2);
+                    int32_t r2 = SphereLineIntersection(v2, v3, sp, shape.SphereRadius * ss.x, i2);
                     Vertex3D i3;
-                    int32 r3 = SphereLineIntersection(v3, v1, sp, shape.SphereRadius * ss.x, i3);
+                    int32_t r3 = SphereLineIntersection(v3, v1, sp, shape.SphereRadius * ss.x, i3);
 
                     // Process intersections
                     bool outside = (r1 == 0 && r2 == 0 && r3 == 0);
                     bool ignore = (r1 == -2 || r2 == -2 || r3 == -2);
-                    int32 sum = r1 + r2 + r3;
+                    int32_t sum = r1 + r2 + r3;
 
                     if (!ignore && sum == 2) {
                         // 1 1 0, corner in
@@ -1812,8 +1816,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                 }
             }
 
-            result_mesh_vertices.emplace_back(numeric_cast<uint32>(result_vertices.size() - vertices_old_size));
-            result_mesh_indices.emplace_back(numeric_cast<uint32>(result_indices.size() - indices_old_size));
+            result_mesh_vertices.emplace_back(numeric_cast<uint32_t>(result_vertices.size() - vertices_old_size));
+            result_mesh_indices.emplace_back(numeric_cast<uint32_t>(result_indices.size() - indices_old_size));
         }
 
         vertices = result_vertices;
@@ -1826,18 +1830,18 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     if (cut->UnskinBone1 && cut->UnskinBone2) {
         // Find unskin bones
         ModelBone* unskin_bone1 = nullptr;
-        float32 unskin_bone1_index = 0.0f;
+        float32_t unskin_bone1_index = 0.0f;
         ModelBone* unskin_bone2 = nullptr;
-        float32 unskin_bone2_index = 0.0f;
+        float32_t unskin_bone2_index = 0.0f;
 
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone1) {
                 unskin_bone1 = combined_mesh->SkinBones[i].get();
-                unskin_bone1_index = numeric_cast<float32>(i);
+                unskin_bone1_index = numeric_cast<float32_t>(i);
             }
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone2) {
                 unskin_bone2 = combined_mesh->SkinBones[i].get();
-                unskin_bone2_index = numeric_cast<float32>(i);
+                unskin_bone2_index = numeric_cast<float32_t>(i);
             }
             if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
                 break;
@@ -1859,12 +1863,14 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                 }
 
                 // Move shape to face space
-                auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
-                auto sm = mesh_transform.Inverse() * cut->UnskinShape.GlobalTransformationMatrix;
-                vec3 ss;
-                vec3 sp;
-                quaternion sr;
-                sm.Decompose(ss, sr, sp);
+                const auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
+                const auto sm = glm::inverse(mesh_transform) * cut->UnskinShape.GlobalTransformationMatrix;
+                vec3 ss {};
+                vec3 sp {};
+                quaternion sr {};
+                vec3 skew {};
+                glm::vec<4, float32_t, glm::defaultp> perspective {};
+                glm::decompose(sm, ss, sr, sp, skew, perspective);
                 auto sphere_square_radius = powf(cut->UnskinShape.SphereRadius * ss.x, 2.0f);
                 auto revert_shape = cut->RevertUnskinShape;
 
@@ -1875,7 +1881,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     auto& v = vertices[v_pos];
 
                     // Get vertex side
-                    auto v_side = ((v.Position - sp).SquareLength() <= sphere_square_radius);
+                    const auto diff = v.Position - sp;
+                    auto v_side = (glm::dot(diff, diff) <= sphere_square_radius);
                     if (revert_shape) {
                         v_side = !v_side;
                     }
@@ -1895,7 +1902,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         }
 
                         // Skip equal influence side
-                        bool influence_side = unskin_bone1->Find(combined_mesh->SkinBones[iround<int32>(v.BlendIndices[b])]->Name) != nullptr;
+                        bool influence_side = unskin_bone1->Find(combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name) != nullptr;
 
                         if (v_side == influence_side) {
                             continue;
@@ -1935,7 +1942,7 @@ void ModelInstance::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32>();
+    const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -1943,7 +1950,7 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameSize.width / FRAME_SCALE;
     const auto h = _frameSize.height / FRAME_SCALE;
-    ProcessAnimation(dt, {w / 2, h - h / 4}, const_numeric_cast<float32>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, const_numeric_cast<float32_t>(FRAME_SCALE));
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
@@ -1954,24 +1961,19 @@ void ModelInstance::Draw()
     DrawAllParticles();
 }
 
-void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
+void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Update world matrix, only for root
     if (!_parentBone) {
         const auto pos3d = Convert2dTo3d(pos);
-        mat44 mat_rot_y;
-        mat44 mat_scale;
-        mat44 mat_trans;
-        mat44::Scaling(vec3(scale, scale, scale), mat_scale);
-        mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, mat_rot_y);
-        mat44::Translation(pos3d, mat_trans);
+        const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
+        const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
 
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
-        _groundPos.x = _parentMatrix.a4;
-        _groundPos.y = _parentMatrix.b4;
-        _groundPos.z = _parentMatrix.c4;
+        _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
     // Rotate body
@@ -1981,8 +1983,8 @@ void ModelInstance::ProcessAnimation(float32 elapsed, ipos32 pos, float32 scale)
     }
 
     // Advance animation time
-    float32 prev_track_pos = 0.0f;
-    float32 new_track_pos = 0.0f;
+    float32_t prev_track_pos = 0.0f;
+    float32_t new_track_pos = 0.0f;
 
     if (_bodyAnimController && elapsed >= 0.0f) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
@@ -2077,13 +2079,11 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
     FO_STACK_TRACE_ENTRY();
 
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
+        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr->_headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
-        mat44 mat_rot;
-        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, mat_rot);
+        const auto mat_rot = glm::rotate(mat44 {1.0f}, (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
         bone->CombinedTransformationMatrix = *parent_matrix * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -2103,7 +2103,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float32));
+    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_frameProjColMaj), 16 * sizeof(float32_t));
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -2113,18 +2113,17 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* wm = model_buf->WorldMatrices;
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
-        auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-        m.Transpose(); // Convert to column major order
-        MemCopy(wm, m[0], 16 * sizeof(float32));
+        const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
+        MemCopy(wm, glm::value_ptr(m), 16 * sizeof(float32_t));
         wm += 16;
     }
 
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
-    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float32));
+    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
-    MemCopy(model_buf->LightColor, &_modelMngr->_lightColor, 4 * sizeof(float32));
+    MemCopy(model_buf->LightColor, &_modelMngr->_lightColor, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2132,8 +2131,8 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32)], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32));
-                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float32)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float32));
+                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32_t)], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
+                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float32_t)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float32_t));
             }
             else {
                 effect->ModelTex[i] = nullptr;
@@ -2197,9 +2196,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
         return std::nullopt;
     }
 
-    vec3 pos;
-    quaternion rot;
-    bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
+    vec3 pos {};
+    quaternion rot {};
+    vec3 scale {};
+    vec3 skew {};
+    glm::vec<4, float32_t, glm::defaultp> perspective {};
+    glm::decompose(bone->CombinedTransformationMatrix, scale, rot, pos, skew, perspective);
 
     const auto p = Convert3dTo2d(pos);
     const auto x = p.x - _frameSize.width / FRAME_SCALE / 2;
@@ -2212,7 +2214,7 @@ auto ModelInstance::GetAnimDuration() const -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::chrono::milliseconds(iround<int32>(_animDuration * 1000.0f));
+    return std::chrono::milliseconds(iround<int32_t>(_animDuration * 1000.0f));
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -2235,6 +2237,21 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) :
     _drawSize.height = _modelMngr->_settings->DefaultModelDrawHeight;
     _viewSize.width = _modelMngr->_settings->DefaultModelViewWidth != 0 ? _modelMngr->_settings->DefaultModelViewWidth : _drawSize.width / 4;
     _viewSize.height = _modelMngr->_settings->DefaultModelViewHeight != 0 ? _modelMngr->_settings->DefaultModelViewHeight : _viewSize.height / 2;
+}
+
+auto ModelInformation::ParseInt32Value(string_view value, bool* failed) const -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strvex(value).is_explicit_bool()) {
+        return strvex(value).to_bool() ? 1 : 0;
+    }
+    if (strvex(value).is_number()) {
+        return numeric_cast<int32_t>(strvex(value).to_int64());
+    }
+
+    const auto enum_value = _modelMngr->_nameResolver->ResolveEnumValue(value, failed);
+    return enum_value;
 }
 
 auto ModelInformation::Load(string_view name) -> bool
@@ -2265,8 +2282,8 @@ auto ModelInformation::Load(string_view name) -> bool
         bool convert_value_fail = false;
 
         hstring mesh;
-        int32 layer = -1;
-        int32 layer_val = 0;
+        int32_t layer = -1;
+        int32_t layer_val = 0;
 
         ModelAnimationData dummy_link {};
         auto* link = &_animDataDefault;
@@ -2368,10 +2385,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> buf;
 
                 if (token == "Layer") {
-                    layer = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                    layer = ParseInt32Value(buf, &convert_value_fail);
                 }
                 else {
-                    layer_val = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                    layer_val = ParseInt32Value(buf, &convert_value_fail);
                 }
 
                 link = &dummy_link;
@@ -2448,11 +2465,11 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
-                            const auto cut_layer = _modelMngr->_nameResolver->ResolveGenericValue(cut_layer_name, &convert_value_fail);
+                            const auto cut_layer = ParseInt32Value(cut_layer_name, &convert_value_fail);
                             cut->Layers.emplace_back(cut_layer);
                         }
                         else {
-                            for (int32 i = 0; i < numeric_cast<int32>(MODEL_LAYERS_COUNT); i++) {
+                            for (int32_t i = 0; i < numeric_cast<int32_t>(MODEL_LAYERS_COUNT); i++) {
                                 if (i != layer) {
                                     cut->Layers.emplace_back(i);
                                 }
@@ -2539,7 +2556,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> link->ScaleZ;
             }
             else if (token == "Scale") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = link->ScaleY = link->ScaleZ = valuef;
             }
@@ -2547,116 +2564,116 @@ auto ModelInformation::Load(string_view name) -> bool
                 *istr >> link->SpeedAjust;
             }
             else if (token == "RotX+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX + valuef);
             }
             else if (token == "RotY+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY + valuef);
             }
             else if (token == "RotZ+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ + valuef);
             }
             else if (token == "MoveX+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX + valuef);
             }
             else if (token == "MoveY+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY + valuef);
             }
             else if (token == "MoveZ+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ + valuef);
             }
             else if (token == "ScaleX+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
             }
             else if (token == "ScaleY+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
             }
             else if (token == "ScaleZ+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Scale+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
             }
             else if (token == "Speed+") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
             else if (token == "RotX*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotX = (link->RotX == 0.0f ? valuef : link->RotX * valuef);
             }
             else if (token == "RotY*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotY = (link->RotY == 0.0f ? valuef : link->RotY * valuef);
             }
             else if (token == "RotZ*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ * valuef);
             }
             else if (token == "MoveX*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX * valuef);
             }
             else if (token == "MoveY*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY * valuef);
             }
             else if (token == "MoveZ*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ * valuef);
             }
             else if (token == "ScaleX*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
             }
             else if (token == "ScaleY*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
             }
             else if (token == "ScaleZ*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Scale*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
                 link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
                 link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
             }
             else if (token == "Speed*") {
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
             }
@@ -2665,9 +2682,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_layers = strex(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = _modelMngr->_nameResolver->ResolveGenericValue(disabled_layer_name, &convert_value_fail);
+                    const auto disabled_layer = ParseInt32Value(disabled_layer_name, &convert_value_fail);
 
-                    if (disabled_layer >= 0 && disabled_layer < const_numeric_cast<int32>(MODEL_LAYERS_COUNT)) {
+                    if (disabled_layer >= 0 && disabled_layer < const_numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
                         link->DisabledLayer.emplace_back(disabled_layer);
                     }
                 }
@@ -2688,11 +2705,11 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Texture") {
                 *istr >> buf;
-                auto index = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                auto index = ParseInt32Value(buf, &convert_value_fail);
 
                 *istr >> buf;
 
-                if (index >= 0 && index < const_numeric_cast<int32>(MODEL_MAX_TEXTURES)) {
+                if (index >= 0 && index < const_numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
                     link->TextureInfo.emplace_back(buf, mesh, index);
                 }
             }
@@ -2703,9 +2720,9 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Anim") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 string a1;
                 string a2;
@@ -2714,29 +2731,29 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AnimSpeed") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
-                float32 valuef = 0.0f;
+                float32_t valuef = 0.0f;
                 *istr >> valuef;
                 _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2)), valuef);
             }
             else if (token == "AnimLayerValue") {
                 *istr >> buf;
-                const auto ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 *istr >> buf;
-                const auto anim_layer = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto anim_layer = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                const auto anim_layer_value = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                const auto anim_layer_value = ParseInt32Value(buf, &convert_value_fail);
 
                 const auto index = std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2));
 
                 if (_animLayerValues.count(index) == 0) {
-                    _animLayerValues.emplace(index, vector<pair<int32, int32>>());
+                    _animLayerValues.emplace(index, vector<pair<int32_t, int32_t>>());
                 }
 
                 _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
@@ -2749,9 +2766,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 *istr >> buf;
-                ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
             }
@@ -2759,9 +2776,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 *istr >> buf;
-                ind1 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind1 = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                ind2 = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                ind2 = ParseInt32Value(buf, &convert_value_fail);
 
                 _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
             }
@@ -2770,15 +2787,15 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DrawSize") {
                 *istr >> buf;
-                _drawSize.width = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _drawSize.width = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                _drawSize.height = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _drawSize.height = ParseInt32Value(buf, &convert_value_fail);
             }
             else if (token == "ViewSize") {
                 *istr >> buf;
-                _viewSize.width = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _viewSize.width = ParseInt32Value(buf, &convert_value_fail);
                 *istr >> buf;
-                _viewSize.height = _modelMngr->_nameResolver->ResolveGenericValue(buf, &convert_value_fail);
+                _viewSize.height = ParseInt32Value(buf, &convert_value_fail);
             }
             else if (token == "DisableAnimationInterpolation") {
                 disable_animation_interpolation = true;
@@ -2858,7 +2875,7 @@ auto ModelInformation::Load(string_view name) -> bool
             if (anim_count != 0) {
                 // Add animation bones, not included to base hierarchy
                 // All bones linked with animation in SetupAnimationOutput
-                for (int32 i = 0; i < anim_count; i++) {
+                for (int32_t i = 0; i < anim_count; i++) {
                     const auto& bones_hierarchy = _animController->GetAnimationBones(i);
 
                     for (const auto& bone_hierarchy : bones_hierarchy) {
@@ -2905,7 +2922,7 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32* speed) -> int32
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2936,7 +2953,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     return anim_index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32* speed) const -> int32
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32_t* speed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3010,8 +3027,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
         shape.IsSphere = false;
 
         // Calculate bounding box size
-        float32 vmin[3];
-        float32 vmax[3];
+        float32_t vmin[3];
+        float32_t vmax[3];
 
         for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++) {
             const Vertex3D& v = mesh->Vertices[i];
@@ -3048,7 +3065,7 @@ ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
     FO_STACK_TRACE_ENTRY();
 }
 
-static void SetupBonesExt(multimap<uint32, ModelBone*>& bones, ModelBone* bone, uint32 depth)
+static void SetupBonesExt(multimap<uint32_t, ModelBone*>& bones, ModelBone* bone, uint32_t depth)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3063,7 +3080,7 @@ void ModelHierarchy::SetupBones()
 {
     FO_STACK_TRACE_ENTRY();
 
-    multimap<uint32, ModelBone*> bones;
+    multimap<uint32_t, ModelBone*> bones;
     SetupBonesExt(bones, _rootBone.get(), 0);
 
     for (auto* bone : bones | std::views::values) {

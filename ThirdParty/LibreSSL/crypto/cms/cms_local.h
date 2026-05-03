@@ -1,4 +1,4 @@
-/* $OpenBSD: cms_local.h,v 1.6 2024/05/19 07:12:50 jsg Exp $ */
+/* $OpenBSD: cms_local.h,v 1.7 2026/04/06 08:18:19 tb Exp $ */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
@@ -55,7 +55,9 @@
 #ifndef HEADER_CMS_LOCAL_H
 #define HEADER_CMS_LOCAL_H
 
+#include <openssl/asn1.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 /*
  * Cryptographic message syntax (CMS) structures: taken from RFC3852
@@ -364,8 +366,6 @@ struct CMS_OtherKeyAttribute_st {
 
 /* ESS structures */
 
-#ifdef HEADER_X509V3_H
-
 struct CMS_ReceiptRequest_st {
 	ASN1_OCTET_STRING *signedContentIdentifier;
 	CMS_ReceiptsFrom *receiptsFrom;
@@ -379,7 +379,6 @@ struct CMS_ReceiptsFrom_st {
 		STACK_OF(GENERAL_NAMES) *receiptList;
 	} d;
 };
-#endif
 
 struct CMS_Receipt_st {
 	long version;

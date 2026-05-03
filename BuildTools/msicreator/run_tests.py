@@ -14,10 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, sys, subprocess
+import os
+import subprocess
+import sys
 import createmsi
 
-def build_msvcrt():
+
+TEST_DIRECTORIES = [
+    ('basictest', 'msidef.json'),
+    ('two_items', 'two.json'),
+    ('msvcrt', 'msvcrt.json'),
+    ('icons', 'icons.json'),
+    ('shortcuts', 'shortcuts.json'),
+    ('registryentries', 'registryentry.json'),
+    ('majorupgrade', 'majorupgrade.json'),
+]
+
+def build_msvcrt() -> None:
     msvcrt_file = 'program.cpp'
     msvcrt_staging_dir = 'msvcrt/main'
     msvcrt_binary_out = 'main/program.exe'
@@ -32,7 +45,7 @@ def build_msvcrt():
                            '/Fe' + msvcrt_binary_out],
                           cwd='msvcrt')
 
-def build_iconexe():
+def build_iconexe() -> None:
     staging_dir = 'shortcuts/staging'
     if not os.path.exists(staging_dir):
         os.mkdir(staging_dir)
@@ -56,22 +69,19 @@ def build_iconexe():
                            ],
                           cwd='shortcuts')
 
-def build_binaries():
+def build_binaries() -> None:
     build_msvcrt()
     build_iconexe()
 
-if __name__ == '__main__':
-    testdirs = [('basictest', 'msidef.json'),
-                ('two_items', 'two.json'),
-                ('msvcrt', 'msvcrt.json'),
-                ('icons', 'icons.json'),
-                ('shortcuts', 'shortcuts.json'),
-                ('registryentries', 'registryentry.json'),
-                ('majorupgrade', 'majorupgrade.json')
-    ]
 
+def main() -> None:
     build_binaries()
-    for d in testdirs:
-        os.chdir(d[0])
-        createmsi.run([d[1]])
-        os.chdir('..')
+    for test_dir, definition in TEST_DIRECTORIES:
+        os.chdir(test_dir)
+        try:
+            createmsi.run([definition])
+        finally:
+            os.chdir('..')
+
+if __name__ == '__main__':
+    main()

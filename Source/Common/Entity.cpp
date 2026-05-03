@@ -32,19 +32,18 @@
 //
 
 #include "Entity.h"
-#include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    _props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept :
+    _props {registrator, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
 
-    if (props != nullptr) {
-        _props.CopyFrom(*props);
+    if (init_props != nullptr) {
+        _props.CopyFrom(*init_props);
     }
 }
 
@@ -124,7 +123,21 @@ void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
     }
 }
 
-auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool
+void Entity::UnsubscribeAllEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _events.reset();
+}
+
+void Entity::ClearAllTimeEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _timeEvents.reset();
+}
+
+auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -134,7 +147,7 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> b
         }
     }
 
-    return true;
+    return EventResult::ContinueChain;
 }
 
 void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
@@ -170,41 +183,41 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t su
     }
 }
 
-auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool
+auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
     if (callbacks.empty()) {
-        return true;
+        return EventResult::ContinueChain;
     }
+
+    bool had_exception = false;
 
     // Callbacks vector may be changed/invalidated during cycle work
     for (const auto& cb : copy(callbacks)) {
-        const auto ex_policy = cb.ExPolicy;
+        EventResult result = EventResult::ContinueChain;
 
         try {
-            if (!cb.Callback(call)) {
-                return false;
-            }
+            result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
+            had_exception = true;
 
-            if (ex_policy == EventExceptionPolicy::IgnoreAndContinueChain) {
-                continue;
+            // If callback has explicit result, then exception means that it failed to process event, so we should stop chain
+            if (cb.HasExplicitResult) {
+                return EventResult::StopChain;
             }
-            if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
-                return true;
-            }
-            if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
-                return false;
-            }
+        }
+
+        if (result == EventResult::StopChain) {
+            return EventResult::StopChain;
         }
     }
 
-    return true;
+    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
 }
 
 void Entity::MarkAsDestroying() noexcept
@@ -227,14 +240,14 @@ void Entity::MarkAsDestroyed() noexcept
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const
+void Entity::StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
-void Entity::RestoreData(const vector<vector<uint8>>& props_data)
+void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -248,14 +261,14 @@ void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
     _props.SetValueFromData(prop, prop_data);
 }
 
-auto Entity::GetValueAsInt(const Property* prop) const -> int32
+auto Entity::GetValueAsInt(const Property* prop) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetPlainDataValueAsInt(prop);
 }
 
-auto Entity::GetValueAsInt(int32 prop_index) const -> int32
+auto Entity::GetValueAsInt(int32_t prop_index) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -269,21 +282,21 @@ auto Entity::GetValueAsAny(const Property* prop) const -> any_t
     return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsAny(int32 prop_index) const -> any_t
+auto Entity::GetValueAsAny(int32_t prop_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return _props.GetValueAsAny(prop_index);
 }
 
-void Entity::SetValueAsInt(const Property* prop, int32 value)
+void Entity::SetValueAsInt(const Property* prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
-void Entity::SetValueAsInt(int32 prop_index, int32 value)
+void Entity::SetValueAsInt(int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -297,7 +310,7 @@ void Entity::SetValueAsAny(const Property* prop, const any_t& value)
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsAny(int32 prop_index, const any_t& value)
+void Entity::SetValueAsAny(int32_t prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -392,7 +405,7 @@ EntityEvent::EntityEvent(Entity* entity, const char* callback_name) noexcept :
     FO_NO_STACK_TRACE_ENTRY();
 }
 
-auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> bool
+auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 {
     FO_STACK_TRACE_ENTRY();
 

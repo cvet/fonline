@@ -32,6 +32,7 @@
 //
 
 #include "MapBaker.h"
+#include "AngelScriptScripting.h"
 #include "ConfigFile.h"
 #include "MapLoader.h"
 #include "ProtoManager.h"
@@ -111,34 +112,39 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     // Load protos
     auto server_engine = BakerServerEngine(*_context->BakedFiles);
     auto client_engine = BakerClientEngine(*_context->BakedFiles);
-    auto server_proto_mngr = ProtoManager(server_engine);
-    auto client_proto_mngr = ProtoManager(client_engine);
-    server_engine.InitSubsystems(&server_engine, *_context->BakedFiles);
 
     vector<std::future<void>> proto_loadings;
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_proto_mngr.LoadFromResources(*_context->BakedFiles); }));
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_proto_mngr.LoadFromResources(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->BakedFiles); }));
 
     for (auto& proto_loading : proto_loadings) {
         proto_loading.get();
     }
+
+    server_engine.FinalizeRegistration();
+    client_engine.FinalizeRegistration();
+
+    server_engine.MapScriptTypes(&server_engine);
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
+#endif
 
     // Bake maps
     const auto bake_map = [&](const File& file) {
         const string& file_content = file.GetStr();
 
         string map_name = [&]() -> string {
-            const auto fomap = ConfigFile(file.GetPath(), file_content, nullptr, ConfigFileOption::ReadFirstSection);
+            const auto fomap = ConfigFile(file.GetPath(), file_content, ConfigFileOption::ReadFirstSection);
             return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
         }();
 
-        vector<uint8> props_data;
-        uint32 map_cr_count = 0;
-        uint32 map_item_count = 0;
-        uint32 map_client_item_count = 0;
-        vector<uint8> map_cr_data;
-        vector<uint8> map_item_data;
-        vector<uint8> map_client_item_data;
+        vector<uint8_t> props_data;
+        uint32_t map_cr_count = 0;
+        uint32_t map_item_count = 0;
+        uint32_t map_client_item_count = 0;
+        vector<uint8_t> map_cr_data;
+        vector<uint8_t> map_item_data;
+        vector<uint8_t> map_client_item_data;
         auto map_cr_data_writer = DataWriter(map_cr_data);
         auto map_item_data_writer = DataWriter(map_item_data);
         auto map_client_item_data_writer = DataWriter(map_client_item_data);
@@ -148,8 +154,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         size_t errors = 0;
 
         MapLoader::Load(
-            map_name, file_content, server_proto_mngr, server_engine.Hashes,
-            [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) {
+            map_name, file_content, server_engine, server_engine.Hashes,
+            [&](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 
@@ -159,10 +165,10 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                 map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
-                map_cr_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+                map_cr_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                 map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
             },
-            [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) {
+            [&](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(kv);
 
@@ -172,14 +178,16 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                 map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
-                map_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+                map_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                 map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
                 const auto is_static = proto->GetStatic();
                 const auto is_hidden = proto->GetHidden();
 
                 if (is_static && !is_hidden) {
-                    const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
+                    const auto* client_proto = client_engine.GetProtoItem(proto->GetProtoId());
+                    FO_RUNTIME_ASSERT(client_proto);
+
                     auto client_props = client_proto->GetProperties().Copy();
                     client_props.ApplyFromText(kv);
 
@@ -187,7 +195,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                     map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                     map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
                     client_props.StoreAllData(props_data, client_str_hashes);
-                    map_client_item_data_writer.Write<uint32>(numeric_cast<uint32>(props_data.size()));
+                    map_client_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                     map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
                 }
             });
@@ -198,20 +206,20 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         // Server side
         {
-            vector<uint8> map_data;
+            vector<uint8_t> map_data;
             auto final_writer = DataWriter(map_data);
 
-            final_writer.Write<uint32>(numeric_cast<uint32>(str_hashes.size()));
+            final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
 
             for (const auto& hstr : str_hashes) {
                 const auto& str = hstr.as_str();
-                final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
+                final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
 
-            final_writer.Write<uint32>(map_cr_count);
+            final_writer.Write<uint32_t>(map_cr_count);
             final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
-            final_writer.Write<uint32>(map_item_count);
+            final_writer.Write<uint32_t>(map_item_count);
             final_writer.WritePtr(map_item_data.data(), map_item_data.size());
 
             _context->WriteData(strex("{}.fomap-bin-server", map_name), map_data);
@@ -219,18 +227,18 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         // Client side
         {
-            vector<uint8> map_data;
+            vector<uint8_t> map_data;
             auto final_writer = DataWriter(map_data);
 
-            final_writer.Write<uint32>(numeric_cast<uint32>(client_str_hashes.size()));
+            final_writer.Write<uint32_t>(numeric_cast<uint32_t>(client_str_hashes.size()));
 
             for (const auto& hstr : client_str_hashes) {
                 const auto& str = hstr.as_str();
-                final_writer.Write<uint32>(numeric_cast<uint32>(str.length()));
+                final_writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
                 final_writer.WritePtr(str.c_str(), str.length());
             }
 
-            final_writer.Write<uint32>(map_client_item_count);
+            final_writer.Write<uint32_t>(map_client_item_count);
             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 
             _context->WriteData(strex("{}.fomap-bin-client", map_name), map_data);

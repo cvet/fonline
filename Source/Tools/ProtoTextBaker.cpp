@@ -61,7 +61,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     // Collect files
     vector<File> filtered_files;
-    uint64 max_write_time = 0;
+    uint64_t max_write_time = 0;
 
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
@@ -98,6 +98,10 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     const auto engine = BakerServerEngine(*_context->BakedFiles);
     const auto proto_rule_name = engine.Hashes.ToHashedString("Proto");
+    const auto item_type_name = engine.Hashes.ToHashedString("Item");
+    const auto critter_type_name = engine.Hashes.ToHashedString("Critter");
+    const auto map_type_name = engine.Hashes.ToHashedString("Map");
+    const auto location_type_name = engine.Hashes.ToHashedString("Location");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
@@ -105,12 +109,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     for (const auto& file : filtered_files) {
         const bool is_fomap = strex(file.GetPath()).get_file_extension() == "fomap";
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &engine.Hashes, fopro_options);
+        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
 
-        for (auto& section : fopro.GetSections()) {
-            const auto& section_name = section.first;
-            auto& section_kv = section.second;
-
+        for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
             // Skip default section
             if (section_name.empty()) {
                 continue;
@@ -121,15 +122,34 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             if (is_fomap && section_name == "Header") {
                 type_name = engine.Hashes.ToHashedString("Map");
             }
-            else if (strex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
+            else if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
                 type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
+            }
+            else if (const auto section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+                type_name = section_type;
             }
             else {
                 throw ProtoTextBakerException("Invalid proto section name", section_name, file.GetPath());
             }
 
-            if (!engine.IsValidEntityType(type_name) || !engine.GetEntityType(type_name).HasProtos) {
+            if (engine.IsValidEntityType(type_name)) {
+                if (!engine.GetEntityType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else if (engine.IsFixedType(type_name)) {
+                if (!engine.GetFixedType(type_name).HasProtos) {
+                    throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+                }
+            }
+            else {
                 throw ProtoTextBakerException("Invalid proto type", section_name, file.GetPath());
+            }
+
+            map<string, string> section_kv;
+
+            for (const auto& [key, value] : section_kv_view) {
+                section_kv.emplace(string(key), string(value));
             }
 
             const auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
@@ -153,7 +173,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         for (auto&& [key, value] : from_kv) {
             FO_RUNTIME_ASSERT(!key.empty());
 
-            if (strex(key).starts_with("$Text")) {
+            if (strvex(key).starts_with("$Text")) {
                 to_kv[key] = value;
             }
         }
@@ -199,28 +219,37 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
             all_proto_texts[type_name][pid] = {};
 
+            const auto text_pack_name = [&]() -> string_view {
+                if (type_name == item_type_name) {
+                    return "Items";
+                }
+                if (type_name == critter_type_name) {
+                    return "Critters";
+                }
+                if (type_name == map_type_name) {
+                    return "Maps";
+                }
+                if (type_name == location_type_name) {
+                    return "Locations";
+                }
+                return "Protos";
+            }();
+
             for (auto&& [key, value] : proto_kv) {
-                FO_RUNTIME_ASSERT(strex(key).starts_with("$Text"));
+                FO_RUNTIME_ASSERT(strvex(key).starts_with("$Text"));
 
                 const auto key_tok = strex(key).split(' ');
                 const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
-                TextPackKey text_key = pid.as_uint32();
+                FO_RUNTIME_ASSERT(key_tok.size() <= 4);
 
-                for (size_t i = 2; i < key_tok.size(); i++) {
-                    const string& num = key_tok[i];
+                const string_view key2 = key_tok.size() >= 3 ? string_view {key_tok[2]} : string_view {};
+                const string_view key3 = key_tok.size() >= 4 ? string_view {key_tok[3]} : string_view {};
+                const auto text_key = TextPackKey::FromPack(engine.Hashes, text_pack_name, pid.as_str(), key2, key3);
 
-                    if (!num.empty()) {
-                        if (strex(num).is_number()) {
-                            text_key += strex(num).to_uint32();
-                        }
-                        else {
-                            text_key += engine.Hashes.ToHashedString(num).as_uint32();
-                        }
-                    }
-                }
-
-                all_proto_texts[type_name][pid][lang].AddStr(text_key, StringEscaping::DecodeString(value));
+                auto& lang_packs_map = all_proto_texts[type_name][pid];
+                lang_packs_map.try_emplace(lang, engine.Hashes);
+                lang_packs_map.at(lang).AddStr(text_key, StringEscaping::DecodeString(value));
             }
         }
     }
@@ -231,22 +260,21 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& lang : _context->Settings->BakeLanguages) {
         auto empty_lang_pack = map<string, TextPack>();
-        empty_lang_pack["Items"] = {};
-        empty_lang_pack["Critters"] = {};
-        empty_lang_pack["Maps"] = {};
-        empty_lang_pack["Locations"] = {};
-        empty_lang_pack["Protos"] = {};
+        empty_lang_pack.try_emplace("Items", engine.Hashes);
+        empty_lang_pack.try_emplace("Critters", engine.Hashes);
+        empty_lang_pack.try_emplace("Maps", engine.Hashes);
+        empty_lang_pack.try_emplace("Locations", engine.Hashes);
+        empty_lang_pack.try_emplace("Protos", engine.Hashes);
         lang_packs.emplace_back(lang, std::move(empty_lang_pack));
     }
 
-    const auto fill_proto_texts = [&](hstring entity_name, TextPackName pack_name) {
+    const auto fill_proto_texts = [&](hstring entity_name, string_view pack_name) {
         for (auto&& [pid, proto_texts] : all_proto_texts[entity_name]) {
             for (const auto& proto_text : proto_texts) {
                 const auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
                 if (it != lang_packs.end()) {
-                    const auto& pack_name_str = engine.ResolveEnumValueName("TextPackName", static_cast<int32>(pack_name));
-                    auto& text_pack = it->second[pack_name_str];
+                    auto& text_pack = it->second.at(string(pack_name));
 
                     if (text_pack.CheckIntersections(proto_text.second)) {
                         WriteLog("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
@@ -262,14 +290,14 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
-    fill_proto_texts(engine.Hashes.ToHashedString("Item"), TextPackName::Items);
-    fill_proto_texts(engine.Hashes.ToHashedString("Critter"), TextPackName::Critters);
-    fill_proto_texts(engine.Hashes.ToHashedString("Map"), TextPackName::Maps);
-    fill_proto_texts(engine.Hashes.ToHashedString("Location"), TextPackName::Locations);
+    fill_proto_texts(item_type_name, "Items");
+    fill_proto_texts(critter_type_name, "Critters");
+    fill_proto_texts(map_type_name, "Maps");
+    fill_proto_texts(location_type_name, "Locations");
 
     for (auto&& [type_name, type_desc] : engine.GetEntityTypes()) {
         if (!type_desc.Exported && type_desc.HasProtos) {
-            fill_proto_texts(type_name, TextPackName::Protos);
+            fill_proto_texts(type_name, "Protos");
         }
     }
 

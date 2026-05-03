@@ -7,25 +7,25 @@
 .set	noat
 
 .align	5
-.globl	bn_mul_add_words
-.ent	bn_mul_add_words
-bn_mul_add_words:
+.globl	bn_mulw_add_words
+.ent	bn_mulw_add_words
+bn_mulw_add_words:
 	.set	noreorder
-	bgtz	$6,bn_mul_add_words_internal
+	bgtz	$6,bn_mulw_add_words_internal
 	move	$2,$0
 	jr	$31
 	move	$4,$2
-.end	bn_mul_add_words
+.end	bn_mulw_add_words
 
 .align	5
-.ent	bn_mul_add_words_internal
-bn_mul_add_words_internal:
+.ent	bn_mulw_add_words_internal
+bn_mulw_add_words_internal:
 	.set	reorder
 	li	$3,-4
 	and	$8,$6,$3
-	beqz	$8,.L_bn_mul_add_words_tail
+	beqz	$8,.L_bn_mulw_add_words_tail
 
-.L_bn_mul_add_words_loop:
+.L_bn_mulw_add_words_loop:
 	lw	$12,0($5)
 	multu	$12,$7
 	lw	$13,0($4)
@@ -84,13 +84,13 @@ bn_mul_add_words_internal:
 	sltu	$1,$11,$1
 	sw	$11,-4($4)
 	.set	noreorder
-	bgtz	$8,.L_bn_mul_add_words_loop
+	bgtz	$8,.L_bn_mulw_add_words_loop
 	addu	$2,$1
 
-	beqz	$6,.L_bn_mul_add_words_return
+	beqz	$6,.L_bn_mulw_add_words_return
 	nop
 
-.L_bn_mul_add_words_tail:
+.L_bn_mulw_add_words_tail:
 	.set	reorder
 	lw	$12,0($5)
 	multu	$12,$7
@@ -105,7 +105,7 @@ bn_mul_add_words_internal:
 	sltu	$1,$13,$1
 	sw	$13,0($4)
 	addu	$2,$1
-	beqz	$6,.L_bn_mul_add_words_return
+	beqz	$6,.L_bn_mulw_add_words_return
 
 	lw	$12,4($5)
 	multu	$12,$7
@@ -120,7 +120,7 @@ bn_mul_add_words_internal:
 	sltu	$1,$13,$1
 	sw	$13,4($4)
 	addu	$2,$1
-	beqz	$6,.L_bn_mul_add_words_return
+	beqz	$6,.L_bn_mulw_add_words_return
 
 	lw	$12,2*4($5)
 	multu	$12,$7
@@ -135,32 +135,32 @@ bn_mul_add_words_internal:
 	sw	$13,2*4($4)
 	addu	$2,$1
 
-.L_bn_mul_add_words_return:
+.L_bn_mulw_add_words_return:
 	.set	noreorder
 	jr	$31
 	move	$4,$2
-.end	bn_mul_add_words_internal
+.end	bn_mulw_add_words_internal
 
 .align	5
-.globl	bn_mul_words
-.ent	bn_mul_words
-bn_mul_words:
+.globl	bn_mulw_words
+.ent	bn_mulw_words
+bn_mulw_words:
 	.set	noreorder
-	bgtz	$6,bn_mul_words_internal
+	bgtz	$6,bn_mulw_words_internal
 	move	$2,$0
 	jr	$31
 	move	$4,$2
-.end	bn_mul_words
+.end	bn_mulw_words
 
 .align	5
-.ent	bn_mul_words_internal
-bn_mul_words_internal:
+.ent	bn_mulw_words_internal
+bn_mulw_words_internal:
 	.set	reorder
 	li	$3,-4
 	and	$8,$6,$3
-	beqz	$8,.L_bn_mul_words_tail
+	beqz	$8,.L_bn_mulw_words_tail
 
-.L_bn_mul_words_loop:
+.L_bn_mulw_words_loop:
 	lw	$12,0($5)
 	multu	$12,$7
 	lw	$14,4($5)
@@ -200,13 +200,13 @@ bn_mul_words_internal:
 	sltu	$11,$2,$1
 	sw	$2,-4($4)
 	.set	noreorder
-	bgtz	$8,.L_bn_mul_words_loop
+	bgtz	$8,.L_bn_mulw_words_loop
 	addu	$2,$11,$10
 
-	beqz	$6,.L_bn_mul_words_return
+	beqz	$6,.L_bn_mulw_words_return
 	nop
 
-.L_bn_mul_words_tail:
+.L_bn_mulw_words_tail:
 	.set	reorder
 	lw	$12,0($5)
 	multu	$12,$7
@@ -217,7 +217,7 @@ bn_mul_words_internal:
 	sltu	$13,$2,$1
 	sw	$2,0($4)
 	addu	$2,$13,$12
-	beqz	$6,.L_bn_mul_words_return
+	beqz	$6,.L_bn_mulw_words_return
 
 	lw	$12,4($5)
 	multu	$12,$7
@@ -228,7 +228,7 @@ bn_mul_words_internal:
 	sltu	$13,$2,$1
 	sw	$2,4($4)
 	addu	$2,$13,$12
-	beqz	$6,.L_bn_mul_words_return
+	beqz	$6,.L_bn_mulw_words_return
 
 	lw	$12,2*4($5)
 	multu	$12,$7
@@ -239,32 +239,32 @@ bn_mul_words_internal:
 	sw	$2,2*4($4)
 	addu	$2,$13,$12
 
-.L_bn_mul_words_return:
+.L_bn_mulw_words_return:
 	.set	noreorder
 	jr	$31
 	move	$4,$2
-.end	bn_mul_words_internal
+.end	bn_mulw_words_internal
 
 .align	5
-.globl	bn_sqr_words
-.ent	bn_sqr_words
-bn_sqr_words:
+.globl	bn_sqr_word_wise
+.ent	bn_sqr_word_wise
+bn_sqr_word_wise:
 	.set	noreorder
-	bgtz	$6,bn_sqr_words_internal
+	bgtz	$6,bn_sqr_word_wise_internal
 	move	$2,$0
 	jr	$31
 	move	$4,$2
-.end	bn_sqr_words
+.end	bn_sqr_word_wise
 
 .align	5
-.ent	bn_sqr_words_internal
-bn_sqr_words_internal:
+.ent	bn_sqr_word_wise_internal
+bn_sqr_word_wise_internal:
 	.set	reorder
 	li	$3,-4
 	and	$8,$6,$3
-	beqz	$8,.L_bn_sqr_words_tail
+	beqz	$8,.L_bn_sqr_word_wise_tail
 
-.L_bn_sqr_words_loop:
+.L_bn_sqr_word_wise_loop:
 	lw	$12,0($5)
 	multu	$12,$12
 	lw	$14,4($5)
@@ -298,13 +298,13 @@ bn_sqr_words_internal:
 	sw	$11,-2*4($4)
 
 	.set	noreorder
-	bgtz	$8,.L_bn_sqr_words_loop
+	bgtz	$8,.L_bn_sqr_word_wise_loop
 	sw	$10,-4($4)
 
-	beqz	$6,.L_bn_sqr_words_return
+	beqz	$6,.L_bn_sqr_word_wise_return
 	nop
 
-.L_bn_sqr_words_tail:
+.L_bn_sqr_word_wise_tail:
 	.set	reorder
 	lw	$12,0($5)
 	multu	$12,$12
@@ -313,7 +313,7 @@ bn_sqr_words_internal:
 	mfhi	$12
 	sw	$13,0($4)
 	sw	$12,4($4)
-	beqz	$6,.L_bn_sqr_words_return
+	beqz	$6,.L_bn_sqr_word_wise_return
 
 	lw	$12,4($5)
 	multu	$12,$12
@@ -322,7 +322,7 @@ bn_sqr_words_internal:
 	mfhi	$12
 	sw	$13,2*4($4)
 	sw	$12,3*4($4)
-	beqz	$6,.L_bn_sqr_words_return
+	beqz	$6,.L_bn_sqr_word_wise_return
 
 	lw	$12,2*4($5)
 	multu	$12,$12
@@ -331,12 +331,12 @@ bn_sqr_words_internal:
 	sw	$13,4*4($4)
 	sw	$12,5*4($4)
 
-.L_bn_sqr_words_return:
+.L_bn_sqr_word_wise_return:
 	.set	noreorder
 	jr	$31
 	move	$4,$2
 
-.end	bn_sqr_words_internal
+.end	bn_sqr_word_wise_internal
 
 .align	5
 .globl	bn_add_words

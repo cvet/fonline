@@ -1,3 +1,18 @@
+#
+# Copyright (c) 2014 Brent Cook
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 set(
 	SSL_SRC
 	bio_ssl.c
@@ -19,7 +34,6 @@ set(
 	ssl_kex.c
 	ssl_lib.c
 	ssl_methods.c
-	ssl_packet.c
 	ssl_pkt.c
 	ssl_rsa.c
 	ssl_seclevel.c
@@ -72,6 +86,13 @@ target_include_directories(ssl_obj
 		../include
 		${CMAKE_BINARY_DIR}/include)
 
+if(MSVC)
+	# "C4702" - unreachable code
+	set_source_files_properties(d1_pkt.c s3_cbc.c PROPERTIES
+		COMPILE_OPTIONS /wd4702
+	)
+endif()
+
 add_library(bs_obj OBJECT ${BS_SRC})
 target_include_directories(bs_obj
 	PRIVATE
@@ -110,10 +131,12 @@ elseif(HOST_ARM)
 	target_include_directories(ssl_obj PRIVATE ../crypto/arch/arm/)
 elseif(HOST_I386)
 	target_include_directories(ssl_obj PRIVATE ../crypto/arch/i386/)
+elseif(HOST_LOONGARCH64)
+	target_include_directories(ssl_obj PRIVATE ../crypto/arch/loongarch64)
 elseif(HOST_MIPS64)
 	target_include_directories(ssl_obj PRIVATE ../crypto/arch/mips64)
 elseif(HOST_MIPS)
-	# XXX - can this go away? the directory doesn't exist...
+	target_include_directories(ssl_obj PRIVATE ../crypto/arch/mips)
 elseif(HOST_POWERPC)
 	target_include_directories(ssl_obj PRIVATE ../crypto/arch/powerpc)
 elseif(HOST_POWERPC64)
@@ -157,4 +180,3 @@ if(BUILD_SHARED_LIBS)
 	add_library(ssl-static STATIC $<TARGET_OBJECTS:ssl_obj>)
 	target_link_libraries(ssl-static crypto-static ${PLATFORM_LIBS})
 endif()
-

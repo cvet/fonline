@@ -53,7 +53,6 @@ public:
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
-    [[nodiscard]] auto IsDrawContour() const noexcept -> bool { return !GetIsWall() && !GetIsScenery() && !GetNoHighlight() && !GetBadItem(); }
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
     [[nodiscard]] auto GetAnim() const -> const Sprite* { return _anim.get(); }
@@ -66,10 +65,10 @@ public:
     void RefreshAlpha();
     void PlayAnim(hstring anim_name, bool looped, bool reversed);
     void StopAnim();
-    void SetAnimTime(float32 normalized_time);
-    void SetAnimDir(uint8 dir);
+    void SetAnimTime(float32_t normalized_time);
+    void SetAnimDir(mdir dir);
     void RefreshAnim();
-    void MoveToHex(mpos hex, float32 speed);
+    void MoveToHex(mpos hex, float32_t speed);
     void RefreshOffs();
     void SetMultihexEntries(vector<mpos> entries);
 
@@ -81,17 +80,17 @@ private:
     bool _animLooped {};
     bool _animReversed {};
     bool _animStopped {};
-    float32 _animTime {};
-    uint8 _animDir {};
+    float32_t _animTime {};
+    mdir _animDir {};
 
     bool _isMoving {};
-    float32 _moveSpeed {};
+    float32_t _moveSpeed {};
     fpos32 _moveStepOffset {};
     fpos32 _moveStartOffset {};
     fpos32 _moveCurOffset {};
-    float32 _moveWholeDist {};
+    float32_t _moveWholeDist {};
     nanotime _moveUpdateLastTime {};
-    uint8 _moveDir {};
+    mdir _moveDir {};
     vector<mpos> _moveSteps {};
 
     unique_ptr<vector<mpos>> _multihexEntries {};

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -45,8 +45,8 @@ public:
 	~asCString();
 
 #ifdef AS_CAN_USE_CPP11
-	asCString(asCString &&);
-	asCString &operator =(asCString &&);
+	asCString(asCString&&) noexcept;
+	asCString &operator =(asCString &&) noexcept;
 #endif // c++11
 
 	asCString(const asCString &);

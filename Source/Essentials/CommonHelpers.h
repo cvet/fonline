@@ -35,7 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
-#include "ExceptionHadling.h"
+#include "ExceptionHandling.h"
 #include "MemorySystem.h"
 #include "SmartPointers.h"
 #include "StackTrace.h"
@@ -150,7 +150,7 @@ template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<T>
 {
-    auto ref_vec = ref_hold_vector<T>(std::move(value));
+    auto ref_vec = ref_hold_vector<T>(value.size());
     for (auto&& ref : value) {
         ref_vec.add(ref);
     }
@@ -283,7 +283,8 @@ template<std::ranges::range T, typename U>
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    vector<decltype(transfromer(nullptr))> vec;
+    using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
+    vector<result_type> vec;
     vec.reserve(cont.size());
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));

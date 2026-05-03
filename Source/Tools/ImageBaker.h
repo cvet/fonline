@@ -47,30 +47,30 @@ class ImageBaker final : public BaseBaker
 {
 public:
     static constexpr string_view_nt NAME = "Image";
-    static constexpr int32 MAX_DIRS_MINUS_ONE = 7;
+    static constexpr int32_t MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
     {
-        uint16 Width {};
-        uint16 Height {};
-        int16 NextX {};
-        int16 NextY {};
-        vector<uint8> Data {};
+        uint16_t Width {};
+        uint16_t Height {};
+        int16_t NextX {};
+        int16_t NextY {};
+        vector<uint8_t> Data {};
         bool Shared {};
-        uint16 SharedIndex {};
+        uint16_t SharedIndex {};
     };
 
     struct FrameSequence
     {
-        int16 OffsX {};
-        int16 OffsY {};
+        int16_t OffsX {};
+        int16_t OffsY {};
         vector<FrameShot> Frames {};
     };
 
     struct FrameCollection
     {
-        uint16 SequenceSize {};
-        uint16 AnimTicks {};
+        uint16_t SequenceSize {};
+        uint16_t AnimTicks {};
         FrameSequence Main {};
         bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
@@ -88,7 +88,7 @@ public:
     ~ImageBaker() override = default;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32 override { return 4; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 4; }
 
     void AddLoader(const LoadFunc& loader, const vector<string>& file_extensions);
     void BakeFiles(const FileCollection& files, string_view target_path) const override;

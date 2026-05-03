@@ -37,95 +37,54 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32 STACK_TRACE_MAX_SIZE = 63;
+struct StackTraceFrame
+{
+    enum class FrameType : uint8_t
+    {
+        Native,
+        Script,
+    };
 
-#if FO_TRACY
-using SourceLocationData = tracy::SourceLocationData;
-#else
-struct SourceLocationData;
-#endif
+    FrameType Type {FrameType::Native};
+    std::string Function {};
+    std::string File {};
+    uint32_t Line {};
+};
+
+inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
+
+struct ScriptStackTraceLayer
+{
+    std::vector<StackTraceFrame> ScriptFrames {};
+    std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    uint32_t BirthNativeFrameCount {};
+};
 
 struct StackTraceData
 {
-    uint32 CallsCount {};
-    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE + 1> CallTree {};
+    std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> NativeFrames {};
+    uint32_t NativeFrameCount {};
+    std::shared_ptr<const std::vector<ScriptStackTraceLayer>> ScriptLayers {};
 };
 
-namespace details
-{
-    inline thread_local StackTraceData StackTrace;
-}
-
-[[maybe_unused]] inline void StackTraceView()
-{
-    (void)details::StackTrace; // <<< Hover to view stack trace in visual studio debugger
-}
-
-// Profiling & stack trace obtaining
 #if FO_TRACY
-#if !FO_NO_MANUAL_STACK_TRACE
-#define FO_STACK_TRACE_ENTRY() \
-    ZoneScoped; \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, TracyLine))
-#define FO_STACK_TRACE_ENTRY_NAMED(name) \
-    ZoneScopedN(name); \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(TracyConcat(__tracy_source_location, TracyLine))
-#else
 #define FO_STACK_TRACE_ENTRY() ZoneScoped
 #define FO_STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)
-#endif
-#define FO_NO_STACK_TRACE_ENTRY()
-
-#else
-struct SourceLocationData // Same as tracy::SourceLocationData
-{
-    const char* name;
-    const char* function;
-    const char* file;
-    uint32_t line;
-};
-
-#if !FO_NO_MANUAL_STACK_TRACE
-#define FO_STACK_TRACE_ENTRY() \
-    static constexpr FO_NAMESPACE SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, static_cast<uint32_t>(__LINE__)}; \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
-#define FO_STACK_TRACE_ENTRY_NAMED(name) \
-    static constexpr FO_NAMESPACE SourceLocationData FO_CONCAT(___fo_source_location, __LINE__) {nullptr, name, __FILE__, static_cast<uint32_t>(__LINE__)}; \
-    auto ___fo_stack_entry = FO_NAMESPACE StackTraceScopeEntry(FO_CONCAT(___fo_source_location, __LINE__))
 #else
 #define FO_STACK_TRACE_ENTRY()
 #define FO_STACK_TRACE_ENTRY_NAMED(name)
 #endif
 #define FO_NO_STACK_TRACE_ENTRY()
-#endif
 
-extern void PushStackTrace(const SourceLocationData* loc) noexcept;
-extern void PopStackTrace() noexcept;
-extern auto GetStackTrace() noexcept -> const StackTraceData&;
-extern auto GetStackTraceEntry(uint32 deep) noexcept -> const SourceLocationData*;
+using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTraceLayer>& out_layers)>;
+
+extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
+extern auto HasScriptStackTraceProvider() noexcept -> bool;
+extern auto GetStackTrace() noexcept -> StackTraceData;
+extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, uint32_t skip = 0) noexcept;
+extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
+extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
+extern auto FormatStackTrace(const StackTraceData& st) -> std::string;
 extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
-
-#if !FO_NO_MANUAL_STACK_TRACE
-struct StackTraceScopeEntry
-{
-    FO_FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept
-    {
-        auto& st = details::StackTrace;
-        const uint32 cc = st.CallsCount;
-        const uint32 idx = cc < STACK_TRACE_MAX_SIZE ? cc : STACK_TRACE_MAX_SIZE;
-        st.CallTree[idx] = &loc;
-        st.CallsCount = cc + 1;
-        StackTraceCounter = &st.CallsCount;
-    }
-    FO_FORCE_INLINE ~StackTraceScopeEntry() noexcept { (*StackTraceCounter)--; }
-
-    StackTraceScopeEntry(const StackTraceScopeEntry&) = delete;
-    StackTraceScopeEntry(StackTraceScopeEntry&&) noexcept = delete;
-    auto operator=(const StackTraceScopeEntry&) -> StackTraceScopeEntry& = delete;
-    auto operator=(StackTraceScopeEntry&&) noexcept -> StackTraceScopeEntry& = delete;
-
-    uint32* StackTraceCounter;
-};
-#endif
 
 FO_END_NAMESPACE

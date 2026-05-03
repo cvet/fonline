@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_clnt.c,v 1.168 2024/07/22 14:47:15 jsing Exp $ */
+/* $OpenBSD: ssl_clnt.c,v 1.171 2026/04/03 12:58:19 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -229,6 +229,13 @@ ssl3_connect(SSL *s)
 			    &s->s3->hs.our_min_tls_version,
 			    &s->s3->hs.our_max_tls_version)) {
 				SSLerror(s, SSL_R_NO_PROTOCOLS_AVAILABLE);
+				ret = -1;
+				goto end;
+			}
+
+			/* Ensure that we cannot negotiate TLSv1.1 or lower. */
+			if (s->s3->hs.our_min_tls_version < TLS1_2_VERSION) {
+				SSLerror(s, ERR_R_INTERNAL_ERROR);
 				ret = -1;
 				goto end;
 			}
@@ -926,7 +933,7 @@ ssl3_get_server_hello(SSL *s)
 	 * pre-shared secret.
 	 */
 	if (s->tls_session_secret_cb != NULL) {
-		SSL_CIPHER *pref_cipher = NULL;
+		const SSL_CIPHER *pref_cipher = NULL;
 		int master_key_length = sizeof(s->session->master_key);
 
 		if (!s->tls_session_secret_cb(s,
@@ -1195,7 +1202,7 @@ ssl3_get_server_kex_dhe(SSL *s, CBS *cbs)
 		}
 		goto err;
 	}
-	if (!tls_key_share_peer_public(s->s3->hs.key_share, cbs,
+	if (!tls_key_share_client_peer_public(s->s3->hs.key_share, cbs,
 	    &decode_error, &invalid_key)) {
 		if (decode_error) {
 			SSLerror(s, SSL_R_BAD_PACKET_LENGTH);
@@ -1264,7 +1271,7 @@ ssl3_get_server_kex_ecdhe(SSL *s, CBS *cbs)
 	if ((s->s3->hs.key_share = tls_key_share_new(group_id)) == NULL)
 		goto err;
 
-	if (!tls_key_share_peer_public(s->s3->hs.key_share, &public,
+	if (!tls_key_share_client_peer_public(s->s3->hs.key_share, &public,
 	    &decode_error, NULL)) {
 		if (decode_error)
 			goto decode_err;
@@ -1859,7 +1866,7 @@ ssl3_send_client_kex_dhe(SSL *s, CBB *cbb)
 		goto err;
 	}
 
-	if (!tls_key_share_generate(s->s3->hs.key_share))
+	if (!tls_key_share_client_generate(s->s3->hs.key_share))
 		goto err;
 	if (!tls_key_share_public(s->s3->hs.key_share, cbb))
 		goto err;
@@ -1898,7 +1905,7 @@ ssl3_send_client_kex_ecdhe(SSL *s, CBB *cbb)
 		goto err;
 	}
 
-	if (!tls_key_share_generate(s->s3->hs.key_share))
+	if (!tls_key_share_client_generate(s->s3->hs.key_share))
 		goto err;
 
 	if (!CBB_add_u8_length_prefixed(cbb, &public))

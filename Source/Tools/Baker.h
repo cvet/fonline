@@ -47,8 +47,8 @@ FO_DECLARE_EXCEPTION(ResourceBakingException);
 class Properties;
 class ScriptSystem;
 
-using BakeCheckerCallback = function<bool(string_view, uint64)>;
-using AsyncWriteDataCallback = function<void(string_view, const_span<uint8>)>;
+using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
+using AsyncWriteDataCallback = function<void(string_view, const_span<uint8_t>)>;
 
 struct BakingContext
 {
@@ -71,7 +71,7 @@ public:
     virtual ~BaseBaker() = default;
 
     [[nodiscard]] virtual auto GetName() const -> string_view = 0;
-    [[nodiscard]] virtual auto GetOrder() const -> int32 = 0;
+    [[nodiscard]] virtual auto GetOrder() const -> int32_t = 0;
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
 
@@ -115,8 +115,8 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
-    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
@@ -129,16 +129,16 @@ private:
     };
 
     [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64& write_time, unique_del_ptr<const uint8>* data) const -> bool;
+    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time, unique_del_ptr<const uint8_t>* data) const -> bool;
 
-    auto CheckData(string_view res_pack_name, string_view path, uint64 write_time) -> bool;
-    void WriteData(string_view res_pack_name, string_view path, span<const uint8> data);
+    auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
+    void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);
 
     raw_ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};
     FileSystem _outputResources {};
     mutable std::mutex _outputFilesLocker {};
-    unordered_map<string, uint64> _outputFiles {}; // Path and input file last write time
+    unordered_map<string, uint64_t> _outputFiles {}; // Path and input file last write time
     bool _nonConstHelper {};
 };
 

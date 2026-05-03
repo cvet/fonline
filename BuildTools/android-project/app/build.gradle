@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseStoreFile = '$RELEASE_STORE_FILE$'
+def releaseStorePassword = '$RELEASE_STORE_PASSWORD$'
+def releaseKeyAlias = '$RELEASE_KEY_ALIAS$'
+def releaseKeyPassword = '$RELEASE_KEY_PASSWORD$'
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+android {
+    namespace "$PACKAGE$"
+    compileSdkVersion $COMPILE_SDK$
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "$PACKAGE$"
+        minSdkVersion $MIN_SDK$
+        targetSdkVersion $TARGET_SDK$
+        versionCode $VERSION_CODE$
+        versionName "$VERSION_NAME$"
+        ndk {
+            abiFilters $ABI_FILTERS$
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    androidResources {
+        noCompress += ['zip']
+    }
+
+    sourceSets.main {
+        jniLibs.srcDir 'libs'
+        assets.srcDirs = ['src/main/assets']
+    }
+
+    lint {
+        abortOnError = false
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+}

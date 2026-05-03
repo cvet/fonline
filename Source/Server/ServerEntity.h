@@ -58,26 +58,31 @@ public:
     [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine* { return _engine.get(); }
     [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return _engine.get(); }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
+    [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
 
     void SetInitCalled() noexcept { _initCalled = true; }
 
 protected:
-    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
+    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept;
 
     raw_ptr<ServerEngine> _engine;
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager
+    void SetPersistent(bool persistent) noexcept; // Invoked by EntityManager
+    void SetExplicitlyPersistent(bool explicitly_persistent); // Invoked by EntityManager
 
     ident_t _id;
     bool _initCalled {};
+    bool _isPersistent {};
 };
 
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-        ServerEntity(engine, id, registrator, props),
+    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props = nullptr) noexcept :
+        ServerEntity(engine, id, registrator, props, base_props),
         EntityProperties(GetInitRef())
     {
     }
@@ -89,7 +94,7 @@ class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
     CustomEntityWithProto(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
-        CustomEntity(engine, id, registrator, &proto->GetProperties()),
+        CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {
     }

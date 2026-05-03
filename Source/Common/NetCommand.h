@@ -43,7 +43,6 @@ FO_BEGIN_NAMESPACE
 static constexpr auto CMD_EXIT = 1;
 static constexpr auto CMD_MYINFO = 2;
 static constexpr auto CMD_GAMEINFO = 3;
-static constexpr auto CMD_CRITID = 4;
 static constexpr auto CMD_MOVECRIT = 5;
 static constexpr auto CMD_DISCONCRIT = 7;
 static constexpr auto CMD_TOGLOBAL = 8;

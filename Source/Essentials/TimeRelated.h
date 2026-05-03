@@ -44,11 +44,11 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
-///@ ExportValueType timespan timespan Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class timespan
 {
 public:
-    using underlying_type = int64;
+    using underlying_type = int64_t;
     using resolution = std::chrono::nanoseconds;
 
     constexpr timespan() noexcept = default;
@@ -106,37 +106,37 @@ public:
     template<typename T>
     [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T
     {
-        return static_cast<T>(static_cast<float64>(_value) / static_cast<float64>(other._value));
+        return static_cast<T>(static_cast<float64_t>(_value) / static_cast<float64_t>(other._value));
     }
 
     static const timespan zero;
 
 private:
-    int64 _value {};
+    int64_t _value {};
 };
 static_assert(some_strong_type<timespan>);
 
 struct time_desc_t
 {
-    int32 year {};
-    int32 month {}; // 1..12
-    int32 day {}; // 1..31
-    int32 hour {}; // 0..23
-    int32 minute {}; // 0..59
-    int32 second {}; // 0..59
-    int32 millisecond {}; // 0..999
-    int32 microsecond {}; // 0..999
-    int32 nanosecond {}; // 0..999
+    int32_t year {};
+    int32_t month {}; // 1..12
+    int32_t day {}; // 1..31
+    int32_t hour {}; // 0..23
+    int32_t minute {}; // 0..59
+    int32_t second {}; // 0..59
+    int32_t millisecond {}; // 0..999
+    int32_t microsecond {}; // 0..999
+    int32_t nanosecond {}; // 0..999
 };
 
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
-auto make_time_offset(int32 year, int32 month, int32 day, int32 hour, int32 minute, int32 second, int32 millisecond, int32 microsecond, int32 nanosecond, bool local) -> timespan;
+auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
-///@ ExportValueType nanotime nanotime Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class nanotime
 {
 public:
-    using underlying_type = int64;
+    using underlying_type = int64_t;
     using resolution = std::chrono::nanoseconds;
 
     constexpr nanotime() noexcept = default;
@@ -198,15 +198,15 @@ public:
     static const nanotime zero;
 
 private:
-    int64 _value {};
+    int64_t _value {};
 };
 static_assert(some_strong_type<nanotime>);
 
-///@ ExportValueType synctime synctime Layout = int64-value
+///@ ExportValueType Layout = int64-value
 class synctime
 {
 public:
-    using underlying_type = int64;
+    using underlying_type = int64_t;
     using resolution = std::chrono::milliseconds;
 
     constexpr synctime() noexcept = default;
@@ -258,7 +258,7 @@ public:
     static const synctime zero;
 
 private:
-    int64 _value {};
+    int64_t _value {};
 };
 static_assert(some_strong_type<synctime>);
 

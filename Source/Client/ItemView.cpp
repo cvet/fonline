@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 ItemView::ItemView(ClientEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
@@ -86,7 +86,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_
     return AddRawInnerItem(item.get());
 }
 
-auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
+auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 

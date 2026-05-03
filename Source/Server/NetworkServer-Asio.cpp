@@ -54,6 +54,7 @@ public:
     void StartAsyncRead();
 
 private:
+    void LogSocketOperationError(string_view operation, const std::error_code& error);
     void AsyncReadComplete(std::error_code error, size_t bytes);
     void NextAsyncRead();
     void StartAsyncWrite();
@@ -65,7 +66,7 @@ private:
 
     unique_ptr<asio::ip::tcp::socket> _socket;
     std::atomic_bool _writePending {};
-    std::vector<uint8> _inBufData {};
+    std::vector<uint8_t> _inBufData {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -107,14 +108,39 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
 {
     FO_STACK_TRACE_ENTRY();
 
-    _host = _socket->remote_endpoint().address().to_string();
-    _port = _socket->remote_endpoint().port();
+    std::error_code endpoint_error;
+    const auto endpoint = _socket->remote_endpoint(endpoint_error);
+
+    if (!endpoint_error) {
+        _host = endpoint.address().to_string();
+        _port = endpoint.port();
+    }
+    else {
+        _host = "Unknown";
+        _port = 0;
+    }
 
     if (settings.DisableTcpNagle) {
-        _socket->set_option(asio::ip::tcp::no_delay(true));
+        std::error_code no_delay_error;
+        _socket->set_option(asio::ip::tcp::no_delay(true), no_delay_error);
+        LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
 
     _inBufData.resize(_settings.NetBufferSize);
+}
+
+void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation, const std::error_code& error)
+{
+    if (!error || error == asio::error::not_connected || error == asio::error::bad_descriptor || error == asio::error::operation_aborted) {
+        return;
+    }
+
+    if (_port != 0) {
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, error.message());
+    }
+    else {
+        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, error.message());
+    }
 }
 
 NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
@@ -219,19 +245,24 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _socket->shutdown(asio::ip::tcp::socket::shutdown_both);
-    _socket->close();
+    std::error_code shutdown_error;
+    _socket->shutdown(asio::ip::tcp::socket::shutdown_both, shutdown_error);
+    LogSocketOperationError("shutdown", shutdown_error);
+
+    std::error_code close_error;
+    _socket->close(close_error);
+    LogSocketOperationError("close", close_error);
 }
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16>(settings.ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
 
     AcceptNext();
-    _runThread = std::thread(&NetworkServer_Asio::Run, this);
+    _runThread = run_thread("Network-Asio", [this] { Run(); });
 }
 
 void NetworkServer_Asio::Shutdown()
@@ -269,16 +300,27 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto rearm_accept = scope_success([this]() noexcept {
+        if (!_context.stopped()) {
+            AcceptNext();
+        }
+    });
+
     if (!error) {
-        auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
-        connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
-        _connectionCallback(std::move(connection));
+        try {
+            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
+            connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
+            _connectionCallback(std::move(connection));
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
     }
     else {
-        WriteLog("Accept error: {}", error.message());
+        if (error != asio::error::operation_aborted) {
+            WriteLog(LogType::Warning, "Accept error: {}", error.message());
+        }
     }
-
-    AcceptNext();
 }
 
 FO_END_NAMESPACE

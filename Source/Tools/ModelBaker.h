@@ -57,12 +57,12 @@ public:
     ~ModelBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32 override { return 4; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 4; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8>;
+    auto BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>;
 };
 
 FO_END_NAMESPACE

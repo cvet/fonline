@@ -37,17 +37,23 @@ FO_BEGIN_NAMESPACE
 
 hstring::entry hstring::_zeroEntry;
 
+HashStorage::HashStorage(HashFunc hash_func) :
+    _hashFunc {hash_func}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
 auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static_assert(std::same_as<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}, {}))>);
 
     if (s.empty()) {
         return {};
     }
 
-    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
+    const auto hash_value = _hashFunc(s.data(), s.length());
     FO_RUNTIME_ASSERT(hash_value != 0);
 
     {
@@ -124,122 +130,6 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
     }
 
     return {};
-}
-
-auto Hashing::MurmurHash2(const void* data, size_t len) noexcept -> uint32
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (len == 0) {
-        return 0;
-    }
-
-    constexpr uint32 seed = 0;
-    constexpr uint32 m = 0x5BD1E995;
-    constexpr auto r = 24;
-    const auto* pdata = static_cast<const uint8*>(data);
-    auto h = seed ^ static_cast<uint32>(len);
-
-    while (len >= 4) {
-        uint32 k = pdata[0];
-        k |= pdata[1] << 8;
-        k |= pdata[2] << 16;
-        k |= pdata[3] << 24;
-
-        k *= m;
-        k ^= k >> r;
-        k *= m;
-
-        h *= m;
-        h ^= k;
-
-        pdata += 4;
-        len -= 4;
-    }
-
-    switch (len) {
-    case 3:
-        h ^= pdata[2] << 16;
-        [[fallthrough]];
-    case 2:
-        h ^= pdata[1] << 8;
-        [[fallthrough]];
-    case 1:
-        h ^= pdata[0];
-        h *= m;
-        [[fallthrough]];
-    default:
-        break;
-    }
-
-    h ^= h >> 13;
-    h *= m;
-    h ^= h >> 15;
-
-    return h;
-}
-
-auto Hashing::MurmurHash2_64(const void* data, size_t len) noexcept -> uint64
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (len == 0) {
-        return 0;
-    }
-
-    constexpr uint32 seed = 0;
-    constexpr auto m = 0xc6a4a7935bd1e995ULL;
-    constexpr auto r = 47;
-    const auto* pdata = static_cast<const uint8*>(data);
-    const auto* pdata2 = reinterpret_cast<const uint64*>(pdata);
-    const auto* end = pdata2 + len / 8;
-    auto h = seed ^ len * m;
-
-    while (pdata2 != end) {
-        auto k = *pdata2++;
-
-        k *= m;
-        k ^= k >> r;
-        k *= m;
-
-        h ^= k;
-        h *= m;
-    }
-
-    const auto* data3 = reinterpret_cast<const uint8*>(pdata2);
-
-    switch (len & 7) {
-    case 7:
-        h ^= static_cast<uint64>(data3[6]) << 48;
-        [[fallthrough]];
-    case 6:
-        h ^= static_cast<uint64>(data3[5]) << 40;
-        [[fallthrough]];
-    case 5:
-        h ^= static_cast<uint64>(data3[4]) << 32;
-        [[fallthrough]];
-    case 4:
-        h ^= static_cast<uint64>(data3[3]) << 24;
-        [[fallthrough]];
-    case 3:
-        h ^= static_cast<uint64>(data3[2]) << 16;
-        [[fallthrough]];
-    case 2:
-        h ^= static_cast<uint64>(data3[1]) << 8;
-        [[fallthrough]];
-    case 1:
-        h ^= static_cast<uint64>(data3[0]);
-        h *= m;
-        [[fallthrough]];
-    default:
-        break;
-    }
-
-    h ^= h >> r;
-    h *= m;
-    h ^= h >> r;
-
-    return h;
 }
 
 FO_END_NAMESPACE

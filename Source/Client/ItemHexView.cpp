@@ -70,10 +70,6 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
-    if (GetBadItem()) {
-        mspr->SetContour(ContourType::Red);
-    }
-
     if (!GetNoLightInfluence()) {
         mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
     }
@@ -93,7 +89,7 @@ void ItemHexView::Process()
 
     if (_isMoving) {
         const auto time = _engine->GameTime.GetFrameTime();
-        const auto dt = (time - _moveUpdateLastTime).to_ms<float32>();
+        const auto dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
         _moveUpdateLastTime = time;
 
         _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
@@ -106,16 +102,16 @@ void ItemHexView::Process()
             _isMoving = false;
         }
 
-        const auto proc = iround<int32>(dist / _moveWholeDist * 100.0f);
+        const auto proc = iround<int32_t>(dist / _moveWholeDist * 100.0f);
         const auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {
-            const auto [x, y] = _engine->Geometry.GetHexOffset(hex, step_hex);
+            const auto [x, y] = GeometryHelper::GetHexOffset(hex, step_hex);
 
-            _moveStartOffset.x -= numeric_cast<float32>(x);
-            _moveStartOffset.y -= numeric_cast<float32>(y);
-            _moveCurOffset.x -= numeric_cast<float32>(x);
-            _moveCurOffset.y -= numeric_cast<float32>(y);
+            _moveStartOffset.x -= numeric_cast<float32_t>(x);
+            _moveStartOffset.y -= numeric_cast<float32_t>(y);
+            _moveCurOffset.x -= numeric_cast<float32_t>(x);
+            _moveCurOffset.y -= numeric_cast<float32_t>(y);
             RefreshOffs();
 
             _map->MoveItem(this, step_hex);
@@ -123,7 +119,7 @@ void ItemHexView::Process()
     }
 }
 
-void ItemHexView::MoveToHex(mpos hex, float32 speed)
+void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -141,15 +137,15 @@ void ItemHexView::MoveToHex(mpos hex, float32 speed)
     _moveSteps.emplace_back(cur_hex);
     _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
-    auto pos_offset = _engine->Geometry.GetHexOffset(cur_hex, hex);
-    pos_offset.y += GenericUtils::Random(5, 25); // Center of body
+    auto pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
+    pos_offset.y += _engine->Random(5, 25); // Center of body
 
-    _moveStepOffset = GenericUtils::GetStepsCoords({}, pos_offset);
+    _moveStepOffset = GeometryHelper::GetStepsCoords({}, pos_offset);
     _moveWholeDist = fpos32(pos_offset).dist();
 
     _moveStartOffset = fpos32(_sprOffset);
     _moveCurOffset = _moveStartOffset;
-    _moveDir = GeometryHelper::GetDir(cur_hex, hex);
+    _moveDir = mdir(iround<int32_t>(GeometryHelper::GetDirAngle(cur_hex, hex)));
     _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
@@ -186,7 +182,7 @@ void ItemHexView::StopAnim()
     }
 }
 
-void ItemHexView::SetAnimTime(float32 normalized_time)
+void ItemHexView::SetAnimTime(float32_t normalized_time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -197,7 +193,7 @@ void ItemHexView::SetAnimTime(float32 normalized_time)
     }
 }
 
-void ItemHexView::SetAnimDir(uint8 dir)
+void ItemHexView::SetAnimDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -287,8 +283,8 @@ void ItemHexView::RefreshOffs()
     }
 
     if (_isMoving) {
-        _sprOffset.x += iround<int32>(_moveCurOffset.x);
-        _sprOffset.y += iround<int32>(_moveCurOffset.y);
+        _sprOffset.x += iround<int32_t>(_moveCurOffset.x);
+        _sprOffset.y += iround<int32_t>(_moveCurOffset.y);
     }
 }
 

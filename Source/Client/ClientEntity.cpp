@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
-    Entity(registrator, props),
+ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) :
+    Entity(registrator, props, engine->Settings.ClientPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {

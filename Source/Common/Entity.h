@@ -65,7 +65,7 @@ FO_BEGIN_NAMESPACE
     { \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
-    static uint16 prop##_RegIndex
+    static uint16_t prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
@@ -80,6 +80,8 @@ public:
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
+    ///@ ExportProperty Common Persistent
+    FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
 
     explicit EntityProperties(Properties& props) noexcept;
 
@@ -87,7 +89,7 @@ protected:
     raw_ptr<Properties> _propsRef;
 };
 
-enum class EntityHolderEntrySync : uint8
+enum class EntityHolderEntrySync : uint8_t
 {
     NoSync,
     OwnerSync,
@@ -99,7 +101,6 @@ struct EntityEventDesc
     string Name {};
     vector<ArgDesc> Args {};
     bool Exported {};
-    bool Deferred {};
 };
 
 struct EntityTypeDesc
@@ -108,6 +109,7 @@ struct EntityTypeDesc
     {
         hstring TargetType {};
         EntityHolderEntrySync Sync {};
+        bool Persistent {};
     };
 
     bool Exported {};
@@ -126,18 +128,17 @@ class Entity
     friend class EntityEvent;
 
 public:
-    using EventCallback = function<bool(FuncCallData&)>;
-
     ///@ ExportEnum
-    enum class EventExceptionPolicy : uint8
+    enum class EventResult : int32_t
     {
-        IgnoreAndContinueChain,
-        StopChainAndReturnTrue,
-        StopChainAndReturnFalse,
+        ContinueChain,
+        StopChain,
     };
 
+    using EventCallback = function<EventResult(FuncCallData&)>;
+
     ///@ ExportEnum
-    enum class EventPriority : int32
+    enum class EventPriority : int32_t
     {
         Lowest = 0,
         Low = 1000000,
@@ -150,10 +151,8 @@ public:
     {
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
-        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal};
-        bool OneShot {}; // Todo: improve entity event OneShot
-        bool Deferred {}; // Todo: improve entity event Deferred
+        bool HasExplicitResult {};
     };
 
     struct TimeEventData
@@ -161,7 +160,7 @@ public:
         using FuncType = variant<ScriptFunc<void>, ScriptFunc<void, any_t>, ScriptFunc<void, vector<any_t>>, // All possible variants for time events
             ScriptFunc<void, ScriptSelfEntity*>, ScriptFunc<void, ScriptSelfEntity*, any_t>, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>;
 
-        uint32 Id {};
+        uint32_t Id {};
         FuncType Func {};
         ScriptFuncName FuncName {};
         nanotime FireTime {};
@@ -184,10 +183,10 @@ public:
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties& { return _props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
     [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
-    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int32;
-    [[nodiscard]] auto GetValueAsInt(int32 prop_index) const -> int32;
+    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int32_t;
+    [[nodiscard]] auto GetValueAsInt(int32_t prop_index) const -> int32_t;
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
-    [[nodiscard]] auto GetValueAsAny(int32 prop_index) const -> any_t;
+    [[nodiscard]] auto GetValueAsAny(int32_t prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
     [[nodiscard]] auto GetInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
@@ -197,17 +196,19 @@ public:
     [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
-    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint32>** all_data_sizes) const;
-    void RestoreData(const vector<vector<uint8>>& props_data);
+    void StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const;
+    void RestoreData(const vector<vector<uint8_t>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
-    void SetValueAsInt(const Property* prop, int32 value);
-    void SetValueAsInt(int32 prop_index, int32 value);
+    void SetValueAsInt(const Property* prop, int32_t value);
+    void SetValueAsInt(int32_t prop_index, int32_t value);
     void SetValueAsAny(const Property* prop, const any_t& value);
-    void SetValueAsAny(int32 prop_index, const any_t& value);
+    void SetValueAsAny(int32_t prop_index, const any_t& value);
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAllEvent(string_view event_name) noexcept;
-    auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> bool;
+    void UnsubscribeAllEvents() noexcept;
+    void ClearAllTimeEvents() noexcept;
+    auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> EventResult;
     void AddInnerEntity(hstring entry, Entity* entity);
     void RemoveInnerEntity(hstring entry, Entity* entity);
     void ClearInnerEntities();
@@ -219,11 +220,11 @@ public:
     void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(const PropertyRegistrator* registrator, const Properties* props) noexcept;
+    Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept;
     virtual ~Entity() = default;
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
-    auto GetRefCount() const noexcept -> int32 { return _refCounter.load(); }
+    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     bool _nonConstHelper {};
 
@@ -231,7 +232,7 @@ private:
     auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
     void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
     void UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept;
-    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> bool;
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
@@ -245,13 +246,19 @@ private:
 class EntityEvent
 {
 public:
+    EntityEvent() = delete;
+    EntityEvent(const EntityEvent&) = delete;
+    EntityEvent(EntityEvent&&) noexcept = delete;
+    auto operator=(const EntityEvent&) = delete;
+    auto operator=(EntityEvent&&) noexcept = delete;
+
     void Subscribe(Entity::EventCallbackData&& callback);
     void Unsubscribe(uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAll() noexcept;
 
 protected:
     EntityEvent(Entity* entity, const char* callback_name) noexcept;
-    auto FireEvent(FuncCallData& call) noexcept -> bool;
+    auto FireEvent(FuncCallData& call) noexcept -> Entity::EventResult;
     auto CheckCallbacks() -> bool;
 
     raw_ptr<Entity> _entity;
@@ -267,13 +274,17 @@ public:
         EntityEvent(entity, Name.c_str())
     {
     }
+    EntityEventWrapper(const EntityEventWrapper&) = delete;
+    EntityEventWrapper(EntityEventWrapper&&) noexcept = delete;
+    auto operator=(const EntityEventWrapper&) = delete;
+    auto operator=(EntityEventWrapper&&) noexcept = delete;
 
-    auto Fire(Args... args) noexcept -> bool
+    auto Fire(Args... args) noexcept -> Entity::EventResult
     {
         FO_STACK_TRACE_ENTRY_NAMED(Name.c_str());
 
         if (!CheckCallbacks()) {
-            return true;
+            return Entity::EventResult::ContinueChain;
         }
 
         if (_entity->IsGlobal()) {

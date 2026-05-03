@@ -1,24 +1,24 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2016 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-      this software in a product, an acknowledgment in the product 
+      this software in a product, an acknowledgment in the product
       documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -93,6 +93,7 @@ enum eTokenType
 	ttDec,                 // --
 
 	ttDot,                 // .
+	ttVariadic,            // ...
 	ttScope,               // ::
 
 	// Statement tokens
@@ -101,8 +102,8 @@ enum eTokenType
 	ttListSeparator,       // ,
 	ttStartStatementBlock, // {
 	ttEndStatementBlock,   // }
-	ttOpenParanthesis,     // (
-	ttCloseParanthesis,    // )
+	ttOpenParenthesis,     // (
+	ttCloseParenthesis,    // )
 	ttOpenBracket,         // [
 	ttCloseBracket,        // ]
 	ttAmp,                 // &
@@ -130,6 +131,7 @@ enum eTokenType
 	ttIf,                  // if
 	ttElse,                // else
 	ttFor,                 // for
+	ttForEach,             // foreach
 	ttWhile,               // while
 	ttBool,                // bool
 	ttFuncDef,             // funcdef
@@ -174,7 +176,10 @@ enum eTokenType
 	ttProtected,           // protected
 	ttNamespace,           // namespace
 	ttMixin,               // mixin
-	ttAuto                 // auto
+	ttAuto,                // auto
+	ttTry,                 // try
+	ttCatch,               // catch
+	ttUsing                // using
 };
 
 struct sTokenWord
@@ -205,6 +210,7 @@ sTokenWord const tokenWords[] =
 	asTokenDef("="         , ttAssignment),
 	asTokenDef("=="        , ttEqual),
 	asTokenDef("."         , ttDot),
+	asTokenDef("..."       , ttVariadic),
 	asTokenDef("|"         , ttBitOr),
 	asTokenDef("|="        , ttOrAssign),
 	asTokenDef("||"        , ttOr),
@@ -229,8 +235,8 @@ sTokenWord const tokenWords[] =
 	asTokenDef(","         , ttListSeparator),
 	asTokenDef("{"         , ttStartStatementBlock),
 	asTokenDef("}"         , ttEndStatementBlock),
-	asTokenDef("("         , ttOpenParanthesis),
-	asTokenDef(")"         , ttCloseParanthesis),
+	asTokenDef("("         , ttOpenParenthesis),
+	asTokenDef(")"         , ttCloseParenthesis),
 	asTokenDef("["         , ttOpenBracket),
 	asTokenDef("]"         , ttCloseBracket),
 	asTokenDef("?"         , ttQuestion),
@@ -244,8 +250,9 @@ sTokenWord const tokenWords[] =
 	asTokenDef("auto"      , ttAuto),
 	asTokenDef("bool"      , ttBool),
 	asTokenDef("break"     , ttBreak),
-	asTokenDef("case"      , ttCase), 
+	asTokenDef("case"      , ttCase),
 	asTokenDef("cast"      , ttCast),
+	asTokenDef("catch"     , ttCatch),
 	asTokenDef("class"     , ttClass),
 	asTokenDef("const"     , ttConst),
 	asTokenDef("continue"  , ttContinue),
@@ -261,6 +268,7 @@ sTokenWord const tokenWords[] =
 	asTokenDef("false"     , ttFalse),
 	asTokenDef("float"     , ttFloat),
 	asTokenDef("for"       , ttFor),
+	asTokenDef("foreach"   , ttForEach),
 	asTokenDef("funcdef"   , ttFuncDef),
 	asTokenDef("if"        , ttIf),
 	asTokenDef("import"    , ttImport),
@@ -269,7 +277,7 @@ sTokenWord const tokenWords[] =
 	asTokenDef("int"       , ttInt),
 	asTokenDef("int8"      , ttInt8),
 	asTokenDef("int16"     , ttInt16),
-	asTokenDef("int32"     , ttInt),  
+	asTokenDef("int32"     , ttInt),
 	asTokenDef("int64"     , ttInt64),
 	asTokenDef("interface" , ttInterface),
 	asTokenDef("is"        , ttIs),
@@ -284,12 +292,14 @@ sTokenWord const tokenWords[] =
 	asTokenDef("return"    , ttReturn),
 	asTokenDef("switch"    , ttSwitch),
 	asTokenDef("true"      , ttTrue),
+	asTokenDef("try"       , ttTry),
 	asTokenDef("typedef"   , ttTypedef),
 	asTokenDef("uint"      , ttUInt),
 	asTokenDef("uint8"     , ttUInt8),
 	asTokenDef("uint16"    , ttUInt16),
 	asTokenDef("uint32"    , ttUInt),
 	asTokenDef("uint64"    , ttUInt64),
+	asTokenDef("using"     , ttUsing),
 	asTokenDef("void"      , ttVoid),
 	asTokenDef("while"     , ttWhile),
 	asTokenDef("xor"       , ttXor),
@@ -313,6 +323,10 @@ const char * const SET_TOKEN       = "set";
 const char * const ABSTRACT_TOKEN  = "abstract";
 const char * const FUNCTION_TOKEN  = "function";
 const char * const IF_HANDLE_TOKEN = "if_handle_then_const";
+const char * const EXTERNAL_TOKEN  = "external";
+const char * const EXPLICIT_TOKEN  = "explicit";
+const char * const PROPERTY_TOKEN  = "property";
+const char * const DELETE_TOKEN    = "delete";
 
 END_AS_NAMESPACE
 

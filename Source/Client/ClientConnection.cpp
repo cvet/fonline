@@ -82,9 +82,17 @@ void ClientConnection::Connect()
 
     try {
         // First try interthread communication
-        const auto port = numeric_cast<uint16>(_settings->ServerPort);
+        const auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-        if (InterthreadListeners.count(port) != 0) {
+        bool has_interthread_listener = false;
+
+        {
+            std::scoped_lock locker(InterthreadListenersLocker);
+
+            has_interthread_listener = InterthreadListeners.count(port) != 0;
+        }
+
+        if (has_interthread_listener) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
         }
         else {
@@ -167,7 +175,8 @@ void ClientConnection::ProcessConnection()
 
     // Lags emulation
     if (_settings->ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {GenericUtils::Random(_settings->ArtificalLags / 2, _settings->ArtificalLags)};
+        const auto lag_ms = std::uniform_int_distribution<int32_t> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
+        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {lag_ms};
     }
 
     if (_artificalLagTime.has_value()) {
@@ -306,7 +315,12 @@ void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
+    const uint32_t encrypt_key = //
+        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 24) | //
+        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
+        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
+        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);
@@ -321,7 +335,7 @@ void ClientConnection::Net_OnHandshakeAnswer()
     FO_STACK_TRACE_ENTRY();
 
     const auto outdated = _netIn.Read<bool>();
-    const auto encrypt_key = _netIn.Read<uint32>();
+    const auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
 
@@ -337,7 +351,7 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         const auto time = nanotime::now();
-        _settings->Ping = (time - _pingTime).to_ms<int32>();
+        _settings->Ping = (time - _pingTime).to_ms<int32_t>();
         _pingTime = nanotime::zero;
         _pingCallTime = time + std::chrono::milliseconds(_settings->PingPeriod);
     }

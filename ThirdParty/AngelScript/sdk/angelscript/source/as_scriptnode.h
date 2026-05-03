@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -58,6 +58,7 @@ enum eScriptNode
 	snExpressionStatement,
 	snIf,
 	snFor,
+	snForEach,
 	snWhile,
 	snReturn,
 	snExpression,
@@ -65,6 +66,7 @@ enum eScriptNode
 	snFunctionCall,
 	snConstructCall,
 	snArgList,
+	snVariadic,
 	snExprPreOp,
 	snExprPostOp,
 	snExprOperator,
@@ -87,10 +89,12 @@ enum eScriptNode
 	snFuncDef,
 	snVirtualProperty,
 	snNamespace,
+	snUsing,
 	snMixin,
 	snListPattern,
 	snNamedArgument,
-	snScope
+	snScope,
+	snTryCatch
 };
 
 struct sToken

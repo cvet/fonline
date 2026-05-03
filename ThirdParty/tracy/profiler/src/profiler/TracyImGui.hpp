@@ -32,6 +32,7 @@ void DrawZigZag( ImDrawList* draw, const ImVec2& wpos, double start, double end,
 void DrawStripedRect( ImDrawList* draw, const ImVec2& wpos, double x0, double y0, double x1, double y1, double sw, uint32_t color, bool fix_stripes_in_screen_space, bool inverted );
 void DrawHistogramMinMaxLabel( ImDrawList* draw, int64_t tmin, int64_t tmax, ImVec2 wpos, float w, float ty );
 void PrintSource( const std::vector<Tokenizer::Line>& lines );
+bool PrintTextWrapped( const char* text, const char* end = nullptr );
 
 
 static constexpr const uint32_t SyntaxColors[] = {
@@ -237,6 +238,26 @@ static constexpr const uint32_t AsmSyntaxColors[] = {
     ImGui::PopID();
     ImGui::PopStyleColor( 5 );
     return res;
+}
+
+[[maybe_unused]] static inline void TextFocusedClipboard( const char* label, const char* value, const char* clipboard, const int clipboardButtonId, ImFont* font = nullptr, float fontSizeBase = 0.f )
+{
+    TextDisabledUnformatted( label );
+    ImGui::SameLine();
+    // Due to the font size change, we need to realign the button vertically by hand
+    // We center-align it based on the previous font.
+    // This is apparently the recommended (only) way to do it: https://github.com/ocornut/imgui/issues/1284
+    ImVec2 cursorPos = ImGui::GetCursorPos();
+    const float previousFontSize = ImGui::GetFontSize();
+    ImGui::PushFont( font, fontSizeBase );
+    const float buttonFontSize = ImGui::GetFontSize();
+    cursorPos.y += ( previousFontSize - buttonFontSize ) / 2.f;
+    ImGui::SetCursorPos( cursorPos );
+    if( ClipboardButton( clipboardButtonId ) ) ImGui::SetClipboardText( value );
+    ImGui::PopFont();
+
+    ImGui::SameLine();
+    ImGui::TextUnformatted( clipboard );
 }
 
 [[maybe_unused]] static tracy_force_inline void DrawLine( ImDrawList* draw, const ImVec2& v1, const ImVec2& v2, uint32_t col, float thickness = 1.0f )

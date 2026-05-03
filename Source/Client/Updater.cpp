@@ -34,6 +34,7 @@
 // Todo: support restoring file downloading from interrupted position
 
 #include "Updater.h"
+#include "Application.h"
 #include "DefaultSprites.h"
 #include "NetCommand.h"
 
@@ -47,12 +48,13 @@ static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
 static auto* StrClientOutdated = "Client outdated, please update it";
 
-Updater::Updater(GlobalSettings& settings, AppWindow* window) :
+Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _settings {&settings},
     _conn(*_settings),
     _gameTime(*_settings),
-    _effectMngr(*_settings, _resources),
-    _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
+    _effectMngr(*_settings, _resources, window.GetRender()),
+    _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage),
+    _fontMngr(_sprMngr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,17 +82,18 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
     }
     _sprMngr.EndScene();
 
     // Load font
-    _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
+    _fontMngr.BindFoFont(FontType::Default, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
     _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
+    _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
     // Connect
@@ -130,10 +133,10 @@ auto Updater::Process() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _gameTime.FrameAdvance();
+    _gameTime.FrameAdvance(IsRunInDebugger());
 
     InputEvent ev;
-    while (App->Input.PollEvent(ev)) {
+    while (_sprMngr.GetInput().PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
                 App->RequestQuit();
@@ -159,8 +162,8 @@ auto Updater::Process() -> bool
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
-            const auto cur = numeric_cast<float32>(cur_bytes) / (1024.0f * 1024.0f);
-            const auto max = std::max(numeric_cast<float32>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
+            const auto cur = numeric_cast<float32_t>(cur_bytes) / (1024.0f * 1024.0f);
+            const auto max = std::max(numeric_cast<float32_t>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
             const string name = strex(update_file.Name).format_path();
 
             update_text += strex("{} {:.2f} / {:.2f} MB\n", name, cur, max);
@@ -169,29 +172,31 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32>();
-    const auto dots = iround<int32>(std::fmod((nanotime::now() - _startTime).to_ms<float64>() / 100.0, 50.0)) + 1;
+    const auto elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
+    const auto dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
 
     for ([[maybe_unused]] const auto i : iterate_range(dots)) {
         update_text += ".";
     }
 
     {
+        _effectMngr.UpdateEffects(_gameTime);
+        _fontMngr.FrameUpdate();
         _sprMngr.BeginScene();
 
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
         }
 
         if (elapsed_time >= _settings->UpdaterInfoDelay) {
             if (_settings->UpdaterInfoPos < 0) {
-                _sprMngr.DrawText({0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
             else if (_settings->UpdaterInfoPos == 0) {
-                _sprMngr.DrawText({0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
             else {
-                _sprMngr.DrawText({0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
         }
 
@@ -219,8 +224,8 @@ void Updater::Abort(string_view text)
     AddText(text);
     _conn.Disconnect();
 
-    if (_tempFile) {
-        _tempFile = nullptr;
+    if (_tempFile.is_open()) {
+        _tempFile.close();
     }
 }
 
@@ -228,9 +233,9 @@ void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = _conn.InBuf->Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32_t>();
 
-    vector<uint8> data;
+    vector<uint8_t> data;
     data.resize(data_size);
     _conn.InBuf->Pop(data.data(), data_size);
 
@@ -248,8 +253,8 @@ void Updater::Net_OnInitData()
 
         auto reader = DataReader(data);
 
-        for (int32 file_index = 0;; file_index++) {
-            const auto name_len = reader.Read<int16>();
+        for (int32_t file_index = 0;; file_index++) {
+            const auto name_len = reader.Read<int16_t>();
 
             if (name_len == -1) {
                 break;
@@ -257,8 +262,8 @@ void Updater::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint32>();
-            const auto hash = reader.Read<uint32>();
+            const auto size = reader.Read<uint32_t>();
+            const auto hash = reader.Read<uint64_t>();
 
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
@@ -268,7 +273,7 @@ void Updater::Net_OnInitData()
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }
 
-                if (strex(file_hash).to_uint32() == hash) {
+                if (strex(file_hash).to_uint64() == hash) {
                     continue;
                 }*/
 
@@ -294,11 +299,20 @@ void Updater::Net_OnInitData()
     }
 }
 
+void Updater::Net_OnTimeSync()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto time = _conn.InBuf->Read<synctime>();
+
+    _gameTime.SetSynchronizedTimeMonotonic(time);
+}
+
 void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = numeric_cast<size_t>(_conn.InBuf->Read<int32>());
+    const auto data_size = numeric_cast<size_t>(_conn.InBuf->Read<int32_t>());
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
@@ -306,7 +320,13 @@ void Updater::Net_OnUpdateFileData()
     auto& update_file = _filesToUpdate.front();
 
     // Write data to temp file
-    if (!_tempFile->Write(_updateFileBuf.data(), std::min(update_file.RemaningSize, _updateFileBuf.size()))) {
+    const auto write_size = std::min(update_file.RemaningSize, _updateFileBuf.size());
+
+    if (write_size != 0u) {
+        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), static_cast<std::streamsize>(write_size));
+    }
+
+    if (!_tempFile) {
         Abort(StrFilesystemError);
         return;
     }
@@ -331,16 +351,27 @@ void Updater::GetNextFile()
 
     const auto make_write_path = [this](string_view fname) -> string { return strex(_settings->ClientResources).combine_path(fname); };
 
-    if (_tempFile) {
-        _tempFile = nullptr;
+    if (_tempFile.is_open()) {
+        _tempFile.close();
 
-        const auto& prev_update_file = _filesToUpdate.front();
-
-        if (!DiskFileSystem::DeleteFile(make_write_path(prev_update_file.Name))) {
+        if (_tempFile.fail()) {
             Abort(StrFilesystemError);
             return;
         }
-        if (!DiskFileSystem::RenameFile(make_write_path(strex("~{}", prev_update_file.Name)), make_write_path(prev_update_file.Name))) {
+
+        const auto& prev_update_file = _filesToUpdate.front();
+        const auto prev_path_str = make_write_path(prev_update_file.Name);
+
+        std::error_code ec;
+        const auto prev_path = std::filesystem::path {fs_make_path(prev_path_str)};
+        (void)fs_remove_file(prev_path_str);
+
+        if (fs_exists(prev_path_str)) {
+            Abort(StrFilesystemError);
+            return;
+        }
+
+        if (!fs_rename(make_write_path(strex("~{}", prev_update_file.Name)), prev_path_str)) {
             Abort(StrFilesystemError);
             return;
         }
@@ -355,10 +386,20 @@ void Updater::GetNextFile()
         _conn.OutBuf->Write(next_update_file.Index);
         _conn.OutBuf->EndMsg();
 
-        DiskFileSystem::DeleteFile(make_write_path(strex("~{}", next_update_file.Name)));
-        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(make_write_path(strex("~{}", next_update_file.Name)), true));
+        const auto temp_path = make_write_path(strex("~{}", next_update_file.Name));
+        (void)fs_remove_file(temp_path);
+        const auto dir = strex(temp_path).extract_dir().str();
 
-        if (!*_tempFile) {
+        if (!dir.empty()) {
+            if (!fs_create_directories(dir)) {
+                Abort(StrFilesystemError);
+                return;
+            }
+        }
+
+        _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, std::ios::binary | std::ios::trunc);
+
+        if (!_tempFile) {
             Abort(StrFilesystemError);
         }
     }

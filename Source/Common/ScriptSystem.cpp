@@ -32,36 +32,209 @@
 //
 
 #include "ScriptSystem.h"
-#include "AngelScriptScripting.h"
 #include "Application.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
 #include "Geometry.h"
+#include "Properties.h"
+#include "PropertiesSerializator.h"
 
 FO_BEGIN_NAMESPACE
 
-void ScriptSystem::InitSubsystems(BaseEngine* engine)
+static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32_t>>& funcs, ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    InitSubsystems(engine, engine->Resources);
+    funcs.emplace_back(std::move(func), priority);
+    std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
-void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resources)
+static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, string_view error)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& func : funcs | std::views::keys) {
+        if (!func.Call()) {
+            throw ScriptSystemException(error);
+        }
+    }
+}
+
+DynamicRefTypeInstance::DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept :
+    _registrator {registrator},
+    _props {SafeAlloc::MakeUnique<Properties>(registrator)}
+{
+}
+
+DynamicRefTypeInstance::~DynamicRefTypeInstance() noexcept = default;
+
+void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    FO_RUNTIME_ASSERT(fields_registrator == _registrator);
+
+    _props = SafeAlloc::MakeUnique<Properties>(_registrator.get());
+
+    const auto* pdata = raw_data.data();
+    const auto* pdata_end = raw_data.data() + raw_data.size();
+
+    for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        span<const uint8_t> field_raw_data {};
+
+        if (pdata < pdata_end) {
+            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
+            }
+
+            uint32_t field_size;
+            MemCopy(&field_size, pdata, sizeof(field_size));
+            pdata += sizeof(field_size);
+
+            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+                throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
+            }
+            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
+            }
+
+            field_raw_data = {pdata, field_size};
+            pdata += field_size;
+        }
+
+        if (!field_raw_data.empty()) {
+            _props->SetRawData(field_prop, field_raw_data);
+        }
+    }
+
+    if (pdata != pdata_end) {
+        throw PropertySerializationException("Corrupted ref type property data", base_type.Name);
+    }
+
+    _cachedRawData.assign(raw_data.begin(), raw_data.end());
+    _cachedRawDataDirty = false;
+}
+
+auto DynamicRefTypeInstance::GetRawData(const Property* prop) const -> span<const uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_RUNTIME_ASSERT(prop->GetRegistrator() == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+    return _props->GetRawData(prop);
+}
+
+void DynamicRefTypeInstance::SetValue(const Property* prop, PropertyRawData& prop_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_RUNTIME_ASSERT(prop->GetRegistrator() == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+
+    _props->SetValue(prop, prop_data);
+    _cachedRawDataDirty = true;
+}
+
+auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const vector<uint8_t>&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(base_type.IsRefType);
+    FO_RUNTIME_ASSERT(base_type.RefType);
+    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    FO_RUNTIME_ASSERT(fields_registrator == _registrator);
+    FO_RUNTIME_ASSERT(_props);
+
+    if (_cachedRawDataDirty) {
+        vector<span<const uint8_t>> field_raw_entries(fields_registrator->GetPropertiesCount());
+        vector<bool> field_is_default(fields_registrator->GetPropertiesCount(), true);
+        size_t last_non_default_field = 0;
+
+        for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
+            const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            const auto field_raw_data = _props->GetRawData(field_prop);
+
+            bool is_default = field_raw_data.empty();
+
+            if (!is_default && field_prop->IsPlainData()) {
+                is_default = true;
+
+                for (const auto byte : field_raw_data) {
+                    if (byte != 0) {
+                        is_default = false;
+                        break;
+                    }
+                }
+            }
+
+            field_raw_entries[i] = field_raw_data;
+            field_is_default[i] = is_default;
+
+            if (!is_default) {
+                last_non_default_field = i;
+            }
+        }
+
+        if (last_non_default_field == 0) {
+            _cachedRawData.clear();
+        }
+        else {
+            size_t data_size = 0;
+
+            for (size_t i = 1; i <= last_non_default_field; i++) {
+                data_size += sizeof(uint32_t);
+
+                if (!field_is_default[i]) {
+                    data_size += field_raw_entries[i].size();
+                }
+            }
+
+            _cachedRawData.resize(data_size);
+            auto* pdata = _cachedRawData.data();
+
+            for (size_t i = 1; i <= last_non_default_field; i++) {
+                const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
+                MemCopy(pdata, &field_size, sizeof(field_size));
+                pdata += sizeof(field_size);
+
+                if (field_size != 0) {
+                    MemCopy(pdata, field_raw_entries[i].data(), field_size);
+                    pdata += field_size;
+                }
+            }
+
+            FO_RUNTIME_ASSERT(static_cast<size_t>(pdata - _cachedRawData.data()) == data_size);
+        }
+
+        _cachedRawDataDirty = false;
+    }
+
+    return _cachedRawData;
+}
+
+void ScriptSystem::MapScriptTypes(EngineMetadata* meta)
 {
     FO_STACK_TRACE_ENTRY();
 
     MapEngineType<bool>(meta->GetBaseType("bool"));
-    MapEngineType<int8>(meta->GetBaseType("int8"));
-    MapEngineType<int16>(meta->GetBaseType("int16"));
-    MapEngineType<int32>(meta->GetBaseType("int32"));
-    MapEngineType<int64>(meta->GetBaseType("int64"));
-    MapEngineType<uint8>(meta->GetBaseType("uint8"));
-    MapEngineType<uint16>(meta->GetBaseType("uint16"));
-    MapEngineType<uint32>(meta->GetBaseType("uint32"));
-    MapEngineType<uint64>(meta->GetBaseType("uint64"));
-    MapEngineType<float32>(meta->GetBaseType("float32"));
-    MapEngineType<float64>(meta->GetBaseType("float64"));
+    MapEngineType<int8_t>(meta->GetBaseType("int8"));
+    MapEngineType<int16_t>(meta->GetBaseType("int16"));
+    MapEngineType<int32_t>(meta->GetBaseType("int32"));
+    MapEngineType<int64_t>(meta->GetBaseType("int64"));
+    MapEngineType<uint8_t>(meta->GetBaseType("uint8"));
+    MapEngineType<uint16_t>(meta->GetBaseType("uint16"));
+    MapEngineType<uint32_t>(meta->GetBaseType("uint32"));
+    MapEngineType<uint64_t>(meta->GetBaseType("uint64"));
+    MapEngineType<float32_t>(meta->GetBaseType("float32"));
+    MapEngineType<float64_t>(meta->GetBaseType("float64"));
     MapEngineType<ident_t>(meta->GetBaseType("ident"));
     MapEngineType<timespan>(meta->GetBaseType("timespan"));
     MapEngineType<nanotime>(meta->GetBaseType("nanotime"));
@@ -77,16 +250,25 @@ void ScriptSystem::InitSubsystems(EngineMetadata* meta, const FileSystem& resour
     MapEngineType<frect32>(meta->GetBaseType("frect"));
     MapEngineType<mpos>(meta->GetBaseType("mpos"));
     MapEngineType<msize>(meta->GetBaseType("msize"));
+    MapEngineType<mdir>(meta->GetBaseType("mdir"));
+    MapEngineType<hdir>(meta->GetBaseType("hdir"));
     MapEngineType<string>(meta->GetBaseType("string"));
     MapEngineType<hstring>(meta->GetBaseType("hstring"));
     MapEngineType<any_t>(meta->GetBaseType("any"));
+    MapEngineType<GameProperty>(meta->GetBaseType("GameProperty"));
+    MapEngineType<PlayerProperty>(meta->GetBaseType("PlayerProperty"));
+    MapEngineType<ItemProperty>(meta->GetBaseType("ItemProperty"));
+    MapEngineType<CritterProperty>(meta->GetBaseType("CritterProperty"));
+    MapEngineType<MapProperty>(meta->GetBaseType("MapProperty"));
+    MapEngineType<LocationProperty>(meta->GetBaseType("LocationProperty"));
     MapEngineType<Entity>(meta->GetBaseType("Entity"));
 
-#if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(meta, resources);
-#endif
-
-    ignore_unused(resources);
+    MapEngineDictType<int32_t, int32_t>(meta->GetBaseType("int32"), meta->GetBaseType("int32"));
+    MapEngineDictType<string, string>(meta->GetBaseType("string"), meta->GetBaseType("string"));
+    MapEngineDictType<ItemProperty, int32_t>(meta->GetBaseType("ItemProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<CritterProperty, int32_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("int32"));
+    MapEngineDictType<CritterProperty, any_t>(meta->GetBaseType("CritterProperty"), meta->GetBaseType("any"));
+    MapEngineDictType<LocationProperty, any_t>(meta->GetBaseType("LocationProperty"), meta->GetBaseType("any"));
 }
 
 void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend)
@@ -109,12 +291,11 @@ void ScriptSystem::ShutdownBackends()
     _backends.clear();
 }
 
-void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32 priority)
+void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _initFunc.emplace_back(std::move(func), priority);
-    std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
+    AddModuleFunc(_initFunc, std::move(func), priority);
 }
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
@@ -174,11 +355,7 @@ void ScriptSystem::InitModules()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& func : _initFunc | std::views::keys) {
-        if (!func.Call()) {
-            throw ScriptSystemException("Module initialization failed");
-        }
-    }
+    RunModuleFuncs(_initFunc, "Module initialization failed");
 }
 
 void ScriptSystem::ProcessScriptEvents()
@@ -195,7 +372,7 @@ void ScriptSystem::ProcessScriptEvents()
     }
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32 prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -204,25 +204,25 @@ public:
 private:
     T* _ptr;
 };
-static_assert(sizeof(raw_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<raw_ptr<int32>>);
+static_assert(sizeof(raw_ptr<int32_t>) == sizeof(int32_t*));
+static_assert(std::is_standard_layout_v<raw_ptr<int32_t>>);
 
 inline auto ptr_hash(const void* p) noexcept -> size_t
 {
     if constexpr (sizeof(p) == sizeof(uint64_t)) {
-        return FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p)));
+        return hashing_ex::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p)));
     }
     else if constexpr (sizeof(p) < sizeof(uint64_t)) {
-        return static_cast<size_t>(FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p))));
+        return static_cast<size_t>(hashing_ex::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p))));
     }
     else {
-        return FO_HASH_NAMESPACE detail::wyhash::hash(static_cast<const void*>(&p), sizeof(p));
+        return hashing_ex::hash(static_cast<const void*>(&p), sizeof(p));
     }
 }
 
 FO_END_NAMESPACE
 template<typename T>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE raw_ptr<T>>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE raw_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE raw_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
@@ -327,12 +327,12 @@ public:
 private:
     T* _ptr;
 };
-static_assert(sizeof(unique_ptr<int32>) == sizeof(int32*));
-static_assert(std::is_standard_layout_v<unique_ptr<int32>>);
+static_assert(sizeof(unique_ptr<int32_t>) == sizeof(int32_t*));
+static_assert(std::is_standard_layout_v<unique_ptr<int32_t>>);
 
 FO_END_NAMESPACE
 template<typename T>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE unique_ptr<T>>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE unique_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE unique_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
@@ -500,11 +500,11 @@ private:
 
     T* _ptr {};
 };
-static_assert(std::is_standard_layout_v<refcount_ptr<int32>>);
+static_assert(std::is_standard_layout_v<refcount_ptr<int32_t>>);
 
 FO_END_NAMESPACE
 template<typename T>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE refcount_ptr<T>>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE refcount_ptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE refcount_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
@@ -663,7 +663,7 @@ using unique_del_ptr = propagate_const<std::unique_ptr<T, function<void(T*)>>>;
 
 FO_END_NAMESPACE
 template<typename T>
-struct FO_HASH_NAMESPACE hash<FO_NAMESPACE propagate_const<T>>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE propagate_const<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE propagate_const<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }

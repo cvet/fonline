@@ -63,7 +63,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
 {
     if (count <= 0) {
         return nullptr;
@@ -73,13 +73,41 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32 count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
 {
     if (count <= 0) {
         return nullptr;
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Item proto arg is null");
+    }
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
 }
 
 ///@ ExportMethod
@@ -233,6 +261,17 @@ FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
     }
 
     return cr;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
+{
+    if (self->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        FO_RUNTIME_ASSERT(map);
+        map->ChangeViewItem(self);
+        map->RecacheHexFlags(self->GetHex());
+    }
 }
 
 FO_END_NAMESPACE

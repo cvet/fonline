@@ -36,116 +36,9 @@
 
 FO_BEGIN_NAMESPACE
 
-auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(size);
-    ignore_unused(linear_filtered);
-    ignore_unused(with_depth);
-
-    return nullptr;
-}
-
-auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(is_static);
-
-    return nullptr;
-}
-
-auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(usage);
-    ignore_unused(name);
-    ignore_unused(loader);
-
-    return nullptr;
-}
-
-auto Null_Renderer::CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(left);
-    ignore_unused(right);
-    ignore_unused(bottom);
-    ignore_unused(top);
-    ignore_unused(nearp);
-    ignore_unused(farp);
-
-    return {};
-}
-
-auto Null_Renderer::GetViewPort() -> irect32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return {};
-}
-
-auto Null_Renderer::IsRenderTargetFlipped() const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return false;
-}
-
-void Null_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(settings);
-    ignore_unused(window);
-}
-
-void Null_Renderer::Present()
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
-void Null_Renderer::SetRenderTarget(RenderTexture* tex)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(tex);
-}
-
-void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(color);
-    ignore_unused(depth);
-    ignore_unused(stencil);
-}
-
-void Null_Renderer::EnableScissor(irect32 rect)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(rect);
-}
-
-void Null_Renderer::DisableScissor()
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
-void Null_Renderer::OnResizeWindow(isize32 size)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(size);
-}
-
 RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth) :
     Size {size},
-    SizeData {numeric_cast<float32>(size.width), numeric_cast<float32>(size.height), 1.0f / numeric_cast<float32>(size.width), 1.0f / numeric_cast<float32>(size.height)},
+    SizeData {numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height), 1.0f / numeric_cast<float32_t>(size.width), 1.0f / numeric_cast<float32_t>(size.height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
@@ -182,16 +75,16 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     FO_STACK_TRACE_ENTRY();
 
     const auto fofx_content = loader(name);
-    const auto fofx = ConfigFile(name, fofx_content, nullptr, ConfigFileOption::CollectContent);
+    const auto fofx = ConfigFile(name, fofx_content, ConfigFileOption::CollectContent);
     FO_RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
     FO_RUNTIME_ASSERT(passes >= 1);
-    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32>(EFFECT_MAX_PASSES));
+    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
-    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32>(EFFECT_MAX_PASSES)));
+    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
@@ -270,14 +163,14 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
 
-        auto blend_func = strex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
+        auto blend_func = strvex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
         FO_RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
-        _depthWrite[pass] = strex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
 
         const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
@@ -285,8 +178,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
-        _posEggTex[pass] = pass_info.GetAsInt("EffectInfo", "EggTex", -1);
-        _needEggTex |= _posEggTex[pass] != -1;
+        _posEggBuf[pass] = pass_info.GetAsInt("EffectInfo", "EggBuf", -1);
+        _needEggBuf |= _posEggBuf[pass] != -1;
         _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
         _needProjBuf |= _posProjBuf[pass] != -1;
         _posMainTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);

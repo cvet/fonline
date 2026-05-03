@@ -38,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 CritterView::CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
@@ -86,7 +86,7 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
     return AddRawInvItem(item.get());
 }
 
-auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
+auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 

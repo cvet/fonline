@@ -69,9 +69,20 @@ FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Location_GetMapCount(Location* self)
+FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, ProtoMap* mapProto)
 {
-    return numeric_cast<int32>(self->GetMapsCount());
+    if (mapProto == nullptr) {
+        throw ScriptException("Map proto arg is null");
+    }
+
+    Map* map = self->GetEngine()->MapMngr.CreateMap(mapProto->GetProtoId(), self);
+    return map;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Location_GetMapCount(Location* self)
+{
+    return numeric_cast<int32_t>(self->GetMapsCount());
 }
 
 ///@ ExportMethod
@@ -87,11 +98,27 @@ FO_SCRIPT_API Map* Server_Location_GetMap(Location* self, hstring mapPid)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32 index)
+FO_SCRIPT_API Map* Server_Location_GetMap(Location* self, ProtoMap* mapProto)
+{
+    if (mapProto == nullptr) {
+        throw ScriptException("Map proto arg is null");
+    }
+
+    for (auto& map : self->GetMaps()) {
+        if (map->GetProtoId() == mapProto->GetProtoId()) {
+            return map.get();
+        }
+    }
+
+    return nullptr;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32_t index)
 {
     auto maps = self->GetMaps();
 
-    if (index < 0 || index >= numeric_cast<int32>(maps.size())) {
+    if (index < 0 || index >= numeric_cast<int32_t>(maps.size())) {
         throw ScriptException("Invalid index arg", index);
     }
 

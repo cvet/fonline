@@ -1,0 +1,120 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+#pragma once
+
+#include "Common.h"
+
+#include "Geometry.h"
+#include "LineTracer.h"
+
+FO_BEGIN_NAMESPACE
+
+enum class HexBlockResult : int8_t
+{
+    Passable = 0, // Hex is passable for movement
+    Blocked = -1, // Permanently blocked
+    DeferGag = 1, // Blocked by gag item — route through after distance gap
+    DeferCritter = 2, // Blocked by critter — route through as last resort
+};
+
+struct FindPathInput
+{
+    mpos FromHex {};
+    mpos ToHex {};
+    msize MapSize {};
+    int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.MaxPathFindLength)
+    int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
+    int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
+    bool FreeMovement {}; // Use LineTracer optimization for control steps
+    function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
+};
+
+struct FindPathOutput
+{
+    enum class ResultType : int8_t
+    {
+        Unknown = -1,
+        Ok = 0,
+        AlreadyHere = 2,
+        HexBusy = 6,
+        TooFar = 8,
+        NoWay = 9,
+        BacktraceError = 10,
+        InvalidHexes = 11,
+        TraceFailed = 12,
+    };
+
+    ResultType Result {ResultType::Unknown};
+    vector<mdir> Steps {};
+    vector<uint16_t> ControlSteps {};
+    mpos NewToHex {};
+};
+
+struct TraceLineInput
+{
+    mpos StartHex {};
+    mpos TargetHex {};
+    int32_t MaxDist {}; // 0 means use distance (start, target)
+    float32_t Angle {};
+    msize MapSize {};
+    bool CheckLastMovable {};
+    function<bool(mpos)> IsHexBlocked {}; // Return true if hex is blocked (stops trace)
+    function<bool(mpos)> IsHexMovable {}; // Optional: return true if hex is movable
+};
+
+struct TraceLineOutput
+{
+    bool IsFullTrace {};
+    bool HasLastMovable {};
+    mpos PreBlock {};
+    mpos Block {};
+    mpos LastMovable {};
+};
+
+namespace PathFinding
+{
+    // Check a single hex or multihex perimeter in a given BFS direction
+    // For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
+    // Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
+    [[nodiscard]] auto CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
+
+    // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
+    [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
+
+    // Core line trace from start toward target, stopping at blocked hexes
+    [[nodiscard]] auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;
+
+}
+
+FO_END_NAMESPACE

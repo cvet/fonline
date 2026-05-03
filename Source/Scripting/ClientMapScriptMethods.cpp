@@ -79,16 +79,15 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
-        const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        const auto* proto = self->GetEngine()->GetProtoItem(mapSpr->ProtoId);
         color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
         is_flat = proto->GetDrawFlatten();
         const auto is_item = proto->GetIsScenery() || proto->GetIsWall();
         no_light = is_flat && !is_item;
         draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
-        draw_order_hy_offset = numeric_cast<int32>(proto->GetDrawOrderOffsetHexY());
+        draw_order_hy_offset = numeric_cast<int32_t>(proto->GetDrawOrderOffsetHexY());
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
-        contour_color = proto->GetBadItem() ? ucolor {255, 0, 0} : ucolor::clear;
     }
 
     auto* mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
@@ -129,7 +128,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     }
 
     if (contour_color != ucolor::clear) {
-        mspr->SetContour(ContourType::Custom, contour_color);
+        mspr->SetContour(contour_color);
     }
 }
 
@@ -150,10 +149,10 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, mpos hex)
+FO_SCRIPT_API ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Item id arg is zero");
+        throw ScriptException("Invalid hex arg");
     }
 
     return self->GetItemOnHex(hex);
@@ -166,10 +165,10 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(MapView* self, mpos hex)
+FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Item id arg is zero");
+        throw ScriptException("Invalid hex arg");
     }
 
     return vec_transform(self->GetItemsOnHex(hex), [](auto&& item) -> ItemView* { return item.get(); });
@@ -183,6 +182,54 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterI
     }
 
     return self->GetCritter(critterId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API CritterView* Client_Map_GetCritterOnHex(MapView* self, mpos hex, CritterFindType findType)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto& cr : self->GetCritters()) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex())) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
+        const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        return dist1 < dist2;
+    });
+
+    return !critters.empty() ? critters.front() : nullptr;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API CritterView* Client_Map_GetCritterInRadius(MapView* self, mpos hex, int32_t radius, CritterFindType findType)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto& cr : self->GetCritters()) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex() + radius)) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
+        const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
+        const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        return dist1 < dist2;
+    });
+
+    return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///@ ExportMethod
@@ -223,7 +270,25 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, ProtoCritter* proto, CritterFindType findType)
+{
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto arg is null");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto& cr : self->GetCritters()) {
+        if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
+            critters.emplace_back(cr.get());
+        }
+    }
+
+    return critters;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(MapView* self, mpos hex, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -247,7 +312,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos hex, int32 radius, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(MapView* self, mpos hex, int32_t radius, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -271,7 +336,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -286,7 +351,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -301,7 +366,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float32 angle, int32 dist)
+FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -316,7 +381,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(MapView* self, mpos fromHex, mpos& to
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, int32 cut)
+FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, mpos fromHex, mpos toHex, int32_t cut)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -327,7 +392,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
 
     if (GeometryHelper::GetDistance(fromHex, toHex) <= 1) {
         if (GeometryHelper::GetDistance(fromHex, toHex) > 0 && cut == 0) {
-            return {GeometryHelper::GetDir(fromHex, toHex)};
+            return {GeometryHelper::GetHexDir(fromHex, toHex)};
         }
         return {};
     }
@@ -335,7 +400,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
         return {};
     }
 
@@ -352,7 +417,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, mpos fromHex, mpos
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, int32 cut)
+FO_SCRIPT_API vector<mdir> Client_Map_GetPath(MapView* self, CritterView* cr, mpos toHex, int32_t cut)
 {
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid toHex arg");
@@ -365,7 +430,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
 
     if (GeometryHelper::GetDistance(cr->GetHex(), toHex) <= 1 + cr->GetMultihex()) {
         if (GeometryHelper::GetDistance(cr->GetHex(), toHex) > cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetDir(cr->GetHex(), toHex)};
+            return {GeometryHelper::GetHexDir(cr->GetHex(), toHex)};
         }
         return {};
     }
@@ -373,7 +438,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
         return {};
     }
 
@@ -390,7 +455,7 @@ FO_SCRIPT_API vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, int32 cut)
+FO_SCRIPT_API int32_t Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos toHex, int32_t cut)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -406,7 +471,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos t
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32>(cut))) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
         return 0;
     }
 
@@ -420,11 +485,11 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, mpos fromHex, mpos t
         return 0;
     }
 
-    return numeric_cast<int32>(result->DirSteps.size());
+    return numeric_cast<int32_t>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, int32 cut)
+FO_SCRIPT_API int32_t Client_Map_GetPathLength(MapView* self, CritterView* cr, mpos toHex, int32_t cut)
 {
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid toHex arg");
@@ -443,7 +508,7 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpo
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
         return 0;
     }
 
@@ -457,11 +522,11 @@ FO_SCRIPT_API int32 Client_Map_GetPathLength(MapView* self, CritterView* cr, mpo
         return 0;
     }
 
-    return numeric_cast<int32>(result->DirSteps.size());
+    return numeric_cast<int32_t>(result->DirSteps.size());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, ipos16 hex_offset, int32 speed, bool canStop)
+FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, ipos16 hex_offset, int32_t speed, bool canStop)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -479,24 +544,20 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(MapView* self, mpos hex, ipos16 he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, int32 speed, bool canStop)
+FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, int32_t speed, bool canStop)
 {
     self->ApplyScrollOffset(offset, speed, canStop);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, int32 speed, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
 {
     self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir)
+FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
-
     if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
         return true;
     }
@@ -506,15 +567,11 @@ FO_SCRIPT_API bool Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Client_Map_MoveHexByDir(MapView* self, mpos& hex, uint8 dir, int32 steps)
+FO_SCRIPT_API int32_t Client_Map_MoveHexByDir(MapView* self, mpos& hex, mdir dir, int32_t steps)
 {
-    if (dir >= GameSettings::MAP_DIR_COUNT) {
-        throw ScriptException("Invalid dir arg");
-    }
+    int32_t result = 0;
 
-    int32 result = 0;
-
-    for (int32 i = 0; i < steps; i++) {
+    for (int32_t i = 0; i < steps; i++) {
         if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
             result++;
         }
@@ -533,16 +590,17 @@ FO_SCRIPT_API void Client_Map_RedrawMap(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32 targetZoom)
+FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32_t targetZoom)
 {
     if (is_float_equal(targetZoom, self->GetSpritesZoomTarget())) {
         return;
     }
 
-    const fpos32 mouse_pos = fpos32(App->Input.GetMousePosition());
     const fsize32 screen_size = fsize32(self->GetScreenSize());
-    const float32 mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
-    const float32 mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
+    const auto& input = self->GetEngine()->SprMngr.GetInput();
+    const fpos32 mouse_pos = input.IsMouseAvailable() ? fpos32(input.GetMousePosition()) : fpos32 {screen_size.width / 2.0f, screen_size.height / 2.0f};
+    const float32_t mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
+    const float32_t mouse_y_factor = std::clamp(mouse_pos.y / screen_size.height, 0.0f, 1.0f);
 
     self->ChangeZoom(targetZoom, {mouse_x_factor, mouse_y_factor});
 }
@@ -555,10 +613,8 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
     }
 
     const auto hex_pos = self->GetHexMapPos(hex);
-    const auto& settings = self->GetEngine()->Settings;
-    const ipos32 hex_center = {settings.MapHexWidth / 2, settings.MapHexHeight / 2};
-    const auto screen_pos = self->MapToScreenPos(hex_pos + hex_center);
-    return screen_pos;
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    return self->MapToScreenPos(hex_pos + hex_center);
 }
 
 ///@ ExportMethod
@@ -571,6 +627,34 @@ FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos&
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex, ipos32& hexOffset)
 {
     return self->GetHexAtScreen(pos, hex, &hexOffset);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, mpos hex, ipos32 hexOffset, isize32 eggSize)
+{
+    self->SetTransparentEgg(slot, hex, hexOffset, eggSize, false);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, CritterView* cr)
+{
+    const auto* cr_hex = dynamic_cast<CritterHexView*>(cr);
+
+    if (cr_hex == nullptr || cr_hex->GetMap() != self || !cr_hex->IsMapSpriteValid()) {
+        self->ClearTransparentEgg(slot);
+        return;
+    }
+
+    const auto rect = cr_hex->GetViewRect();
+    const auto hex_pos = self->GetHexMapPos(cr_hex->GetHex());
+    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_pos.x, rect.y + rect.height / 2 - hex_pos.y};
+    self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_ClearTransparentEgg(MapView* self, TransparentEggSlot slot)
+{
+    self->ClearTransparentEgg(slot);
 }
 
 ///@ ExportMethod
@@ -587,7 +671,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32 extraRange)
+FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
 {
     auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
@@ -602,6 +686,12 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetEntityAtScreen(pos, 0, true).first;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsHexValid(MapView* self, mpos hex)
+{
+    return self->GetSize().is_valid_pos(hex);
 }
 
 ///@ ExportMethod
@@ -645,31 +735,35 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetShootBorders(MapView* self, bool enabled, int32 dist)
+FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
 {
-    self->SetShootBorders(enabled, dist);
+    self->SetFogOfWar(fogId, cr, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, int32 spriteCount)
+FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, mpos hex, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    self->SetFogOfWar(fogId, hex, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_ClearFogOfWar(MapView* self, hstring fogId)
+{
+    self->ClearFogOfWar(fogId);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, int32_t spriteCount)
 {
     if (spriteCount < 1) {
         throw ScriptException("Invalid sprite count");
     }
 
     return self->RunSpritePattern(spriteName, spriteCount);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetCrittersContour(MapView* self, ContourType contour)
-{
-    self->SetCrittersContour(contour);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ResetCritterContour(MapView* self)
-{
-    self->SetCritterContour(ident_t {}, ContourType::None);
 }
 
 ///@ ExportMethod
@@ -681,7 +775,7 @@ FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, mpos hex)
 {
-    if (self->GetEngine()->ProtoMngr.GetProtoItemSafe(pid) == nullptr) {
+    if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid item pid arg");
     }
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -695,6 +789,18 @@ FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, m
 FO_SCRIPT_API void Client_Map_SetHiddenRoof(MapView* self, mpos hex)
 {
     self->SetHiddenRoof(hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SwitchShowTrack(MapView* self)
+{
+    self->SwitchShowTrack();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SwitchShowHex(MapView* self)
+{
+    self->SwitchShowHex();
 }
 
 FO_END_NAMESPACE

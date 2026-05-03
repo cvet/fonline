@@ -1,13 +1,14 @@
-cd "%~dp0../Source" && clang-format -i ^
-Applications/*.cpp ^
-Client/*.cpp Client/*.h ^
-Common/*.cpp Common/*.h ^
-Common/ImGuiExt/*.cpp Common/ImGuiExt/*.h ^
-Essentials/*.cpp Essentials/*.h ^
-Server/*.cpp Server/*.h ^
-Tools/*.cpp Tools/*.h ^
-Scripting/*.cpp ^
-Scripting/AngelScript/*.cpp Scripting/AngelScript/*.h ^
-Scripting/AngelScript/CoreScripts/*.fos ^
-Frontend/*.cpp Frontend/*.h ^
-Tests/*.cpp
+@echo off
+setlocal
+
+set "PYTHON_BIN="
+where py >nul 2>nul && set "PYTHON_BIN=py -3"
+if not defined PYTHON_BIN where python >nul 2>nul && set "PYTHON_BIN=python"
+
+if not defined PYTHON_BIN (
+	echo Python not found
+	exit /b 1
+)
+
+%PYTHON_BIN% "%~dp0buildtools.py" format-source
+exit /b %errorlevel%

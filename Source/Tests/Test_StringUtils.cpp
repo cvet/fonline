@@ -1,4 +1,4 @@
-﻿//      __________        ___               ______            _
+//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -96,19 +96,27 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
+        constexpr string_view hello_lower = " \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_upper = " \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   ";
+        constexpr string_view other_word = " \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   ";
+        constexpr string_view three_e = "\xD0\xB5\xD0\xB5\xD0\xB5";
+        constexpr string_view upper_source = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   ";
+        constexpr string_view upper_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   ";
+
         CHECK(strex("").is_valid_utf8());
         CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
-        CHECK(strex(" приВЕт   ").is_valid_utf8());
-        CHECK(strex(" приВЕт   ").is_valid_utf8());
-        CHECK(strex(" Привет   ").compare_ignore_case_utf8(" приВЕт   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8(" тттввв   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8("еее"));
-        CHECK(strex(" Привет   ").length_utf8() == 10);
-        CHECK(strex("еее").length_utf8() == 3);
-        CHECK(strex(" Привет   ").compare_ignore_case_utf8(" ПРИВЕТ   "));
-        CHECK_FALSE(strex(" Привет   ").compare_ignore_case_utf8(" ПРЕТТТ   "));
-        CHECK(strex(" ПриВЕТ   ").lower_utf8() == " привет   ");
-        CHECK(strex(" ПриВет   ").upper_utf8() == " ПРИВЕТ   ");
+        CHECK(strex(hello_lower).is_valid_utf8());
+        CHECK(strex(hello_lower).is_valid_utf8());
+        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_lower));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(other_word));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(three_e));
+        CHECK(strex(hello_mixed).length_utf8() == 10);
+        CHECK(strex(three_e).length_utf8() == 3);
+        CHECK(strex(hello_mixed).compare_ignore_case_utf8(hello_upper));
+        CHECK_FALSE(strex(hello_mixed).compare_ignore_case_utf8(" \xD0\x9F\xD0\xA0\xD0\x95\xD0\xA2\xD0\xA2\xD0\xA2   "));
+        CHECK(strex(upper_source).lower_utf8() == hello_lower);
+        CHECK(strex(upper_mixed).upper_utf8() == hello_upper);
     }
 
     SECTION("StartsWith")
@@ -161,8 +169,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("00000000012").to_int32() == 12);
         CHECK(strex("1").to_int32() == 1);
         CHECK(strex("-156").to_int32() == -156);
-        CHECK(strex("-429496729500").to_int32() == std::numeric_limits<int32>::min());
-        CHECK(strex("4294967295").to_int32() == std::numeric_limits<int32>::max());
+        CHECK(strex("-429496729500").to_int32() == std::numeric_limits<int32_t>::min());
+        CHECK(strex("4294967295").to_int32() == std::numeric_limits<int32_t>::max());
         CHECK(strex("0xFFFF").to_int32() == 0xFFFF);
         CHECK(strex("-0xFFFF").to_int32() == -0xFFFF);
         CHECK(strex("012345").to_int32() == 12345); // Do not recognize octal numbers
@@ -172,8 +180,8 @@ TEST_CASE("StringUtils")
         CHECK(strex("12.1111").to_int32() == 12);
 
         CHECK(strex("111").to_uint32() == 111);
-        CHECK(strex("-100").to_uint32() == std::numeric_limits<uint32>::min());
-        CHECK(strex("1000000000000").to_uint32() == std::numeric_limits<uint32>::max());
+        CHECK(strex("-100").to_uint32() == std::numeric_limits<uint32_t>::min());
+        CHECK(strex("1000000000000").to_uint32() == std::numeric_limits<uint32_t>::max());
         CHECK(strex("4294967295").to_uint32() == 4294967295);
 
         CHECK(strex("66666666666677").to_int64() == 66666666666677ll);
@@ -182,35 +190,35 @@ TEST_CASE("StringUtils")
         CHECK(strex("-666666666666.").to_int64() == -666666666666ll);
         CHECK(strex("-666666666666.f").to_int64() == -666666666666ll);
         CHECK(strex("-666666666666.111111111111111").to_int64() == -666666666666ll);
-        CHECK(strex("-9223372036854775808").to_int64() == std::numeric_limits<int64>::min()); // Min 64bit signed -9223372036854775808
-        CHECK(strex("-9223372036854775807").to_int64() == (std::numeric_limits<int64>::min() + 1));
-        CHECK(strex("-9223372036854775809").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("-9223372036854779999").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("-9223372036854775809").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("-18446744073709551614").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("-18446744073709551616").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("-18446744073456345654709551616").to_int64() == std::numeric_limits<int64>::min());
-        CHECK(strex("9223372036854775807").to_int64() == std::numeric_limits<int64>::max()); // Max 64bit signed 9223372036854775807
-        CHECK(strex("9223372036854775806").to_int64() == (std::numeric_limits<int64>::max() - 1));
-        CHECK_FALSE(strex("9223372036854775808").to_int64() == std::numeric_limits<int64>::max());
-        CHECK_FALSE(strex("18446744073709551615").to_int64() == std::numeric_limits<int64>::max());
-        CHECK(strex("18446744073709551615").to_int64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max())); // Max 64bit 18446744073709551615
-        CHECK(strex("18446744073709551614").to_int64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max() - 1));
-        CHECK(strex("18446744073709551616").to_int64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex("184467440737095516546734734716").to_int64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
-        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).to_int64() == std::bit_cast<int64>(std::numeric_limits<uint64>::max()));
+        CHECK(strex("-9223372036854775808").to_int64() == std::numeric_limits<int64_t>::min()); // Min 64bit signed -9223372036854775808
+        CHECK(strex("-9223372036854775807").to_int64() == (std::numeric_limits<int64_t>::min() + 1));
+        CHECK(strex("-9223372036854775809").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("-9223372036854779999").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("-9223372036854775809").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("-18446744073709551614").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("-18446744073709551616").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("-18446744073456345654709551616").to_int64() == std::numeric_limits<int64_t>::min());
+        CHECK(strex("9223372036854775807").to_int64() == std::numeric_limits<int64_t>::max()); // Max 64bit signed 9223372036854775807
+        CHECK(strex("9223372036854775806").to_int64() == (std::numeric_limits<int64_t>::max() - 1));
+        CHECK_FALSE(strex("9223372036854775808").to_int64() == std::numeric_limits<int64_t>::max());
+        CHECK_FALSE(strex("18446744073709551615").to_int64() == std::numeric_limits<int64_t>::max());
+        CHECK(strex("18446744073709551615").to_int64() == std::bit_cast<int64_t>(std::numeric_limits<uint64_t>::max())); // Max 64bit 18446744073709551615
+        CHECK(strex("18446744073709551614").to_int64() == std::bit_cast<int64_t>(std::numeric_limits<uint64_t>::max() - 1));
+        CHECK(strex("18446744073709551616").to_int64() == std::bit_cast<int64_t>(std::numeric_limits<uint64_t>::max()));
+        CHECK(strex("184467440737095516546734734716").to_int64() == std::bit_cast<int64_t>(std::numeric_limits<uint64_t>::max()));
+        CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH, '5')).to_int64() == std::bit_cast<int64_t>(std::numeric_limits<uint64_t>::max()));
         CHECK(strex(string(strex::MAX_NUMBER_STRING_LENGTH + 1, '5')).to_int64() == 0);
 
         CHECK(is_float_equal(strex("455.6573").to_float32(), 455.6573f));
-        CHECK(is_float_equal(strex("0xFFFF").to_float32(), numeric_cast<float32>(0xFFFF)));
-        CHECK(is_float_equal(strex("-0xFFFF").to_float32(), numeric_cast<float32>(-0xFFFF)));
-        CHECK(is_float_equal(strex("0xFFFF.44").to_float32(), numeric_cast<float32>(0)));
-        CHECK(is_float_equal(strex("f").to_float32(), numeric_cast<float32>(0)));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::min()).to_float32(), std::numeric_limits<float32>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32>::max()).to_float32(), std::numeric_limits<float32>::max()));
+        CHECK(is_float_equal(strex("0xFFFF").to_float32(), numeric_cast<float32_t>(0xFFFF)));
+        CHECK(is_float_equal(strex("-0xFFFF").to_float32(), numeric_cast<float32_t>(-0xFFFF)));
+        CHECK(is_float_equal(strex("0xFFFF.44").to_float32(), numeric_cast<float32_t>(0)));
+        CHECK(is_float_equal(strex("f").to_float32(), numeric_cast<float32_t>(0)));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32_t>::min()).to_float32(), std::numeric_limits<float32_t>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float32_t>::max()).to_float32(), std::numeric_limits<float32_t>::max()));
         CHECK(is_float_equal(strex("34567774455.65745678555").to_float64(), 34567774455.65745678555));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::min()).to_float64(), std::numeric_limits<float64>::min()));
-        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64>::max()).to_float64(), std::numeric_limits<float64>::max()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64_t>::min()).to_float64(), std::numeric_limits<float64_t>::min()));
+        CHECK(is_float_equal(strex("{}", std::numeric_limits<float64_t>::max()).to_float64(), std::numeric_limits<float64_t>::max()));
 
         CHECK(strex(" true ").to_bool() == true);
         CHECK(strex(" 1 ").to_bool() == true);
@@ -228,13 +236,13 @@ TEST_CASE("StringUtils")
         CHECK(strex(" One Two  X \tThree   ").split('X') == vector<string>({"One Two", "Three"}));
         CHECK(strex(",One,Two").split(',') == vector<string>({"One", "Two"}));
         CHECK(strex("One,Two,").split(',') == vector<string>({"One", "Two"}));
-        CHECK(strex(" 111 222  33Three g66 7").split_to_int32(' ') == vector<int32>({111, 222, 0, 0, 7}));
-        CHECK(strex("").split_to_int32(' ') == vector<int32>({}));
-        CHECK(strex("             ").split_to_int32(' ') == vector<int32>({}));
-        CHECK(strex("1").split_to_int32(' ') == vector<int32>({1}));
-        CHECK(strex("1 -2").split_to_int32(' ') == vector<int32>({1, -2}));
-        CHECK(strex("\t1   X -2 X 3").split_to_int32('X') == vector<int32>({1, -2, 3}));
-        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").split_to_int32('X') == vector<int32>({1, -2, 3}));
+        CHECK(strex(" 111 222  33Three g66 7").split_to_int32(' ') == vector<int32_t>({111, 222, 0, 0, 7}));
+        CHECK(strex("").split_to_int32(' ') == vector<int32_t>({}));
+        CHECK(strex("             ").split_to_int32(' ') == vector<int32_t>({}));
+        CHECK(strex("1").split_to_int32(' ') == vector<int32_t>({1}));
+        CHECK(strex("1 -2").split_to_int32(' ') == vector<int32_t>({1, -2}));
+        CHECK(strex("\t1   X -2 X 3").split_to_int32('X') == vector<int32_t>({1, -2, 3}));
+        CHECK(strex("\t1 X\t\t  X X-2   X X 3\n").split_to_int32('X') == vector<int32_t>({1, -2, 3}));
     }
 
     SECTION("Substring")
@@ -291,8 +299,8 @@ TEST_CASE("StringUtils")
     {
         CHECK(strex().parse_wide_char(L"Hello").str() == "Hello");
         CHECK(strex("Hello").parse_wide_char(L"World").str() == "HelloWorld");
-        CHECK(strex().parse_wide_char(L"HelloМир").to_wide_char() == L"HelloМир");
-        CHECK(strex("Мир").parse_wide_char(L"Мир").to_wide_char() == L"МирМир");
+        CHECK(strex().parse_wide_char(L"HelloÐœÐ¸Ñ€").to_wide_char() == L"HelloÐœÐ¸Ñ€");
+        CHECK(strex("ÐœÐ¸Ñ€").parse_wide_char(L"ÐœÐ¸Ñ€").to_wide_char() == L"ÐœÐ¸Ñ€ÐœÐ¸Ñ€");
     }
 #endif
 }

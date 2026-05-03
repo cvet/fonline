@@ -55,10 +55,11 @@ public:
     [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime; }
     [[nodiscard]] auto IsTimeSynchronized() const noexcept -> bool { return !!_syncTimeBase; }
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
-    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32 { return _fps; }
+    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps; }
 
     void SetSynchronizedTime(synctime time) noexcept;
-    void FrameAdvance();
+    void SetSynchronizedTimeMonotonic(synctime time) noexcept;
+    void FrameAdvance(bool clamp_to_cap);
 
 private:
     raw_ptr<TimerSettings> _settings;
@@ -68,11 +69,12 @@ private:
     timespan _debuggingOffset {};
 
     synctime _syncTimeBase {};
+    synctime _syncTimeFloor {};
     nanotime _syncTimeSet {};
 
-    int32 _fps {};
+    int32_t _fps {};
     nanotime _fpsMeasureTime {};
-    int32 _fpsMeasureCounter {};
+    int32_t _fpsMeasureCounter {};
 };
 
 FO_END_NAMESPACE

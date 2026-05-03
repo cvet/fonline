@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto GetInvItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _invItems; }
 
     auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
-    auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ItemView*;
     auto AddRawInvItem(ItemView* item) -> ItemView*;
     void DeleteInvItem(ItemView* item);
     void DeleteAllInvItems();

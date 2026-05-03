@@ -55,8 +55,8 @@ public:
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFileExists(string_view path) const -> bool = 0;
-    [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
-    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> = 0;
+    [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool = 0;
+    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
 };
 
@@ -76,8 +76,8 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return _dataSource->IsDiskDir(); }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _dataSource->GetPackName(); }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _dataSource->IsFileExists(path); }
-    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64& write_time) const -> bool override { return _dataSource->GetFileInfo(path, size, write_time); }
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override { return _dataSource->OpenFile(path, size, write_time); }
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override { return _dataSource->GetFileInfo(path, size, write_time); }
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> override { return _dataSource->OpenFile(path, size, write_time); }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _dataSource->GetFileNames(dir, recursive, ext); }
 
 private:

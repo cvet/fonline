@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_oaep.c,v 1.39 2024/03/26 05:37:28 joshua Exp $ */
+/* $OpenBSD: rsa_oaep.c,v 1.41 2025/08/25 18:47:39 tb Exp $ */
 /*
  * Copyright 1999-2018 The OpenSSL Project Authors. All Rights Reserved.
  *
@@ -7,7 +7,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -74,12 +74,12 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
 #include "constant_time.h"
+#include "err_local.h"
 #include "evp_local.h"
 #include "rsa_local.h"
 

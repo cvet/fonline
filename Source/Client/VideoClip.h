@@ -42,7 +42,7 @@ FO_DECLARE_EXCEPTION(VideoClipException);
 class VideoClip
 {
 public:
-    explicit VideoClip(vector<uint8> video_data);
+    explicit VideoClip(vector<uint8_t> video_data);
     VideoClip(const VideoClip&) = delete;
     VideoClip(VideoClip&&) noexcept = default;
     auto operator=(const VideoClip&) = delete;
@@ -66,7 +66,7 @@ public:
 private:
     struct Impl;
 
-    auto DecodePacket() -> int32;
+    auto DecodePacket() -> int32_t;
 
     unique_ptr<Impl> _impl;
 };

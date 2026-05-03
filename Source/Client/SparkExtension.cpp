@@ -32,18 +32,20 @@
 //
 
 #include "SparkExtension.h"
+#include "Application.h"
 #include "VisualParticles.h"
 
 namespace SPK::FO
 {
-    SparkRenderBuffer::SparkRenderBuffer(size_t vertices)
+    SparkRenderBuffer::SparkRenderBuffer(size_t vertices, FO_NAMESPACE IAppRender& render) :
+        _render {&render}
     {
         FO_STACK_TRACE_ENTRY();
 
         FO_RUNTIME_ASSERT(vertices > 0);
         FO_RUNTIME_ASSERT(vertices % 4 == 0);
 
-        _renderBuf = App->Render.CreateDrawBuffer(false);
+        _renderBuf = _render->CreateDrawBuffer(false);
 
         auto& vbuf = _renderBuf->Vertices;
         auto& vpos = _renderBuf->VertCount;
@@ -90,7 +92,7 @@ namespace SPK::FO
         v.Color = ucolor {color.r, color.g, color.b, color.a};
     }
 
-    void SparkRenderBuffer::SetNextTexCoord(float32 tu, float32 tv)
+    void SparkRenderBuffer::SetNextTexCoord(float32_t tu, float32_t tv)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -98,7 +100,8 @@ namespace SPK::FO
 
         v.TexU = tu;
         v.TexV = tv;
-        v.EggTexU = 0.0f;
+        v.EggFlags[0] = 0.0f;
+        v.EggFlags[1] = 0.0f;
     }
 
     void SparkRenderBuffer::Render(size_t vertices, RenderEffect* effect) const
@@ -181,7 +184,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, *_particleMngr->_render.get_no_const());
     }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
@@ -198,8 +201,7 @@ namespace SPK::FO
 
         if (_modelView != _particleMngr->_viewMatColMaj) {
             _modelView = _particleMngr->_viewMatColMaj;
-            _invModelView = _modelView;
-            _invModelView.Inverse();
+            _invModelView = glm::inverse(_modelView);
         }
 
         if (!group.isEnabled(PARAM_TEXTURE_INDEX)) {
@@ -220,9 +222,9 @@ namespace SPK::FO
         }
 
         const bool globalOrientation = precomputeOrientation3D(group, //
-            Vector3D(-_invModelView.c1, -_invModelView.c2, -_invModelView.c3), //
-            Vector3D(_invModelView.b1, _invModelView.b2, _invModelView.b3), //
-            Vector3D(_invModelView.d1, _invModelView.d2, _invModelView.d3));
+            Vector3D(-_invModelView[0][2], -_invModelView[1][2], -_invModelView[2][2]), //
+            Vector3D(_invModelView[0][1], _invModelView[1][1], _invModelView[2][1]), //
+            Vector3D(_invModelView[0][3], _invModelView[1][3], _invModelView[2][3]));
 
         if (globalOrientation) {
             computeGlobalOrientation3D(group);
@@ -241,7 +243,7 @@ namespace SPK::FO
         FO_RUNTIME_ASSERT(_effect);
         FO_RUNTIME_ASSERT(_texture);
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
+        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_projMatColMaj), sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect.get());
@@ -253,7 +255,7 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        const float32 diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
+        const float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
         const Vector3D diag_v(diagonal, diagonal, diagonal);
 
         if (group.isEnabled(PARAM_SCALE)) {
@@ -309,21 +311,21 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetDrawWidth() const -> int32
+    auto SparkQuadRenderer::GetDrawWidth() const -> int32_t
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawWidth;
     }
 
-    auto SparkQuadRenderer::GetDrawHeight() const -> int32
+    auto SparkQuadRenderer::GetDrawHeight() const -> int32_t
     {
         FO_STACK_TRACE_ENTRY();
 
         return _drawHeight;
     }
 
-    void SparkQuadRenderer::SetDrawSize(int32 width, int32 height)
+    void SparkQuadRenderer::SetDrawSize(int32_t width, int32_t height)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -402,7 +404,7 @@ namespace SPK::FO
         upVector.set(0.0f, 1.0f, 0.0f);
 
         if (const auto* attrib = descriptor.getAttributeWithValue("draw size"); attrib != nullptr) {
-            const auto tmpSize = attrib->getValues<int32>();
+            const auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
             case 1:
@@ -426,7 +428,7 @@ namespace SPK::FO
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("scale"); attrib != nullptr) {
-            const auto tmpScale = attrib->getValues<float32>();
+            const auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
             case 1:

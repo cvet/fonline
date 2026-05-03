@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_local.h,v 1.8 2024/01/01 15:43:02 tb Exp $ */
+/* $OpenBSD: rsa_local.h,v 1.11 2025/11/26 10:19:57 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,6 +56,9 @@
  * [including the GNU Public Licence.]
  */
 
+#ifndef HEADER_RSA_LOCAL_H
+#define HEADER_RSA_LOCAL_H
+
 __BEGIN_HIDDEN_DECLS
 
 #define RSA_MIN_MODULUS_BITS	512
@@ -81,9 +84,7 @@ struct rsa_meth_st {
 /* New sign and verify functions: some libraries don't allow arbitrary data
  * to be signed/verified: this allows them to be used. Note: for this to work
  * the RSA_public_decrypt() and RSA_private_encrypt() should *NOT* be used
- * RSA_sign(), RSA_verify() should be used instead. Note: for backwards
- * compatibility this functionality is only enabled if the RSA_FLAG_SIGN_VER
- * option is set in 'flags'.
+ * RSA_sign(), RSA_verify() should be used instead.
  */
 	int (*rsa_sign)(int type, const unsigned char *m, unsigned int m_length,
 	    unsigned char *sigret, unsigned int *siglen, const RSA *rsa);
@@ -98,9 +99,6 @@ struct rsa_meth_st {
 };
 
 struct rsa_st {
-	/* The first parameter is used to pickup errors where
-	 * this is passed instead of aEVP_PKEY, it is set to 0 */
-	int pad;
 	long version;
 	const RSA_METHOD *meth;
 
@@ -157,3 +155,5 @@ int BN_BLINDING_is_local(BN_BLINDING *b);
 BN_BLINDING *RSA_setup_blinding(RSA *rsa, BN_CTX *ctx);
 
 __END_HIDDEN_DECLS
+
+#endif /* HEADER_RSA_LOCAL_H */

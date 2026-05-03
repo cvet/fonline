@@ -38,6 +38,7 @@
 #include "MetadataRegistration.h"
 #include "Settings.h"
 #include "Updater.h"
+#include "WebRelated.h"
 
 #if !FO_TESTING_APP
 #include "SDL3/SDL_main.h"
@@ -57,15 +58,30 @@ static void MainEntry([[maybe_unused]] void* data)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (App->IsQuitRequested()) {
+        return;
+    }
+
     try {
-#if FO_WEB
-        // Wait file system synchronization
-        if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+        if (!WebRelated::IsPersistentDataReady()) {
             return;
         }
-#endif
 
-        App->BeginFrame();
+        try {
+            App->BeginFrame();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
+
+        auto end_frame = scope_success([&]() {
+            try {
+                App->EndFrame();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        });
 
         // Synchronize files and start client
         if (!Data->Client) {
@@ -74,16 +90,14 @@ static void MainEntry([[maybe_unused]] void* data)
                 if (!Data->ResourcesSynced) {
                     if (!IsPackaged()) {
                         Data->ResourcesSynced = true;
-                        App->EndFrame();
                         return;
                     }
 
                     if (!Data->ResourceUpdater) {
-                        Data->ResourceUpdater = SafeAlloc::MakeUnique<Updater>(App->Settings, &App->MainWindow);
+                        Data->ResourceUpdater = SafeAlloc::MakeUnique<Updater>(App->Settings, App->MainWindow);
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
-                        App->EndFrame();
                         return;
                     }
 
@@ -92,7 +106,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 // Create game module
-                Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), &App->MainWindow);
+                Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -120,8 +134,6 @@ static void MainEntry([[maybe_unused]] void* data)
                 Data->Client.reset();
             }
         }
-
-        App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -140,7 +152,7 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     try {
-        InitApp(numeric_cast<int32>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
+        InitApp(numeric_cast<int32_t>(argc), argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
         WriteLog("Compatibility version: {}", App->Settings.CompatibilityVersion);
 
 #if FO_IOS
@@ -148,8 +160,8 @@ int main(int argc, char** argv) // Handled by SDL
         App->SetMainLoopCallback(MainEntry);
 
 #elif FO_WEB
-        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(true, function(err) { Module.syncfsDone = 1; }););
-        emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
+        WebRelated::InitializePersistentData();
+        WebRelated::StartMainLoop(MainEntry, nullptr);
 
 #elif FO_ANDROID
         while (!App->IsQuitRequested()) {
@@ -175,7 +187,7 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Client.reset();
         }
 
-        ExitApp(true);
+        ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

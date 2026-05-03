@@ -66,14 +66,14 @@ class Serializator
 
     uint8[] GetData()
     {
-        uint8[] data = array<uint8>(dataArray);
+        uint8[] data = dataArray.clone();
         data.resize(dataSize);
         return data;
     }
 
     int SetData(const uint8[] data)
     {
-        dataArray = array<uint8>(data);
+        dataArray = data.clone();
         bufSize = data.length();
         dataSize = data.length();
         return dataSize;
@@ -257,12 +257,6 @@ class Serializator
     Serializator Set(const ucolor& value)
     {
         return Set(value.value);
-    }
-
-    Serializator Set(const TextPackName& value)
-    {
-        int i = value;
-        return Set(i);
     }
 
     Serializator Set(const any& value)
@@ -593,7 +587,7 @@ class Serializator
     {
         string str;
         Get(str);
-        value = hstring(str);
+        value = str.hstr();
         return this;
     }
 
@@ -622,14 +616,6 @@ class Serializator
     Serializator Get(ucolor& value)
     {
         Get(value.value);
-        return this;
-    }
-
-    Serializator Get(TextPackName& value)
-    {
-        int i = 0;
-        Get(i);
-        value = TextPackName(i);
         return this;
     }
 

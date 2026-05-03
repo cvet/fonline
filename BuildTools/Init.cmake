@@ -7,210 +7,206 @@ function(SetOption var value)
 	endif()
 endfunction()
 
-# Quiet all non-error messages instead ourself
-function(message mode)
-	if(${mode} STREQUAL "FATAL_ERROR")
-		_message(FATAL_ERROR ${ARGN})
-	elseif(${mode} STREQUAL "SEND_ERROR")
-		_message(SEND_ERROR ${ARGN})
-	elseif(FO_VERBOSE_BUILD)
-		_message(${mode} ${ARGN})
-	endif()
-endfunction()
+macro(SetValue)
+	set(${ARGV})
+endmacro()
 
-function(StatusMessage)
-	_message(STATUS ${ARGN})
-endfunction()
+SetValue(FO_BUILDTOOLS_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
-function(AbortMessage)
-	_message(FATAL_ERROR ${ARGN})
-endfunction()
+macro(IncludeFile)
+	include(${ARGV})
+endmacro()
 
-# Skip all install rules
-function(install)
-endfunction()
+IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/Commands.cmake")
+IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/Options.cmake")
+IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/Build.cmake")
+IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/helpers/State.cmake")
 
-function(export)
-endfunction()
-
-set(CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE)
-
-# Disable warnings in third-party libs
-function(DisableLibWarnings)
-	foreach(lib ${ARGV})
-		target_compile_options(${lib} PRIVATE
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
-			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
-	endforeach()
-endfunction()
-
-# Add C/CXX compile option
-macro(add_compile_options_C_CXX)
-	foreach(option ${ARGV})
-		add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:${option}>)
+macro(IncludeBuildTool)
+	foreach(buildTool ${ARGV})
+		IncludeFile("${FO_BUILDTOOLS_DIR}/cmake/${buildTool}.cmake")
 	endforeach()
 endmacro()
 
-# Temporary variables
-set(FO_ENGINE_ROOT "")
-set(FO_BUILD_HASH "")
-set(FO_GIT_ROOT "")
-set(FO_GIT_HASH_RESULT "")
-set(FO_GIT_HASH "")
-set(FO_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel")
-set(FO_MULTICONFIG OFF)
-set(FO_HEADLESS_ONLY ON)
-set(FO_WINDOWS 0)
-set(FO_LINUX 0)
-set(FO_MAC 0)
-set(FO_ANDROID 0)
-set(FO_IOS 0)
-set(FO_WEB 0)
-set(FO_HAVE_OPENGL 0)
-set(FO_OPENGL_ES 0)
-set(FO_HAVE_DIRECT_3D 0)
-set(FO_HAVE_METAL 0)
-set(FO_HAVE_VULKAN 0)
-set(FO_BUILD_LIBRARY OFF)
-set(FO_BUILD_COMMON_LIB OFF)
-set(FO_BUILD_CLIENT_LIB OFF)
-set(FO_BUILD_SERVER_LIB OFF)
-set(FO_BUILD_MAPPER_LIB OFF)
-set(FO_BUILD_BAKER_LIB OFF)
-set(FO_BUILD_EDITOR_LIB OFF)
-set(FO_GEN_DEPENDENCIES "")
-set(FO_CLIENT_OUTPUT "")
-set(FO_SERVER_OUTPUT "")
-set(FO_EDITOR_OUTPUT "")
-set(FO_MAPPER_OUTPUT "")
-set(FO_ASCOMPILER_OUTPUT "")
-set(FO_BAKER_OUTPUT "")
-set(FO_TESTS_OUTPUT "")
-set(FO_PROCESSOR_ARCHITECTURE "")
-set(FO_BUILD_PLATFORM "")
-set(FO_COMMON_SYSTEM_LIBS "")
-set(FO_COMMON_LIBS "")
-set(FO_SERVER_SYSTEM_LIBS "")
-set(FO_SERVER_LIBS "")
-set(FO_CLIENT_SYSTEM_LIBS "")
-set(FO_CLIENT_LIBS "")
-set(FO_RENDER_SYSTEM_LIBS "")
-set(FO_RENDER_LIBS "")
-set(FO_BAKER_SYSTEM_LIBS "")
-set(FO_BAKER_LIBS "")
-set(FO_TESTING_LIBS "")
-set(FO_DUMMY_TARGETS "")
-set(FO_USE_GLEW OFF)
-set(FO_RPMALLOC_DIR "")
-set(FO_SDL_DIR "")
-set(FO_TRACY_DIR "")
-set(FO_ZLIB_DIR "")
-set(FO_PNG_DIR "")
-set(FO_OGG_DIR "")
-set(FO_VORBIS_DIR "")
-set(FO_THEORA_DIR "")
-set(FO_ACM_DIR "")
-set(FO_SHA_DIR "")
-set(FO_GLEW_DIR "")
-set(FO_UFBX_DIR "")
-set(FO_JSON_DIR "")
-set(FO_FMT_DIR "")
-set(FO_ASIO_DIR "")
-set(FO_WEBSOCKETS_DIR "")
-set(FO_MONGODB_DIR "")
-set(FO_UNQLITE_DIR "")
-set(FO_VARIANT_DIR "")
-set(FO_LIBRESSL_DIR "")
-set(FO_DEAR_IMGUI_DIR "")
-set(FO_CATCH2_DIR "")
-set(FO_BACKWARDCPP_DIR "")
-set(FO_SPARK_DIR "")
-set(FO_GLSLANG_DIR "")
-set(FO_SPIRV_CROSS_DIR "")
-set(FO_ANGELSCRIPT_SCRIPTING_DIR "")
-set(FO_ANGELSCRIPT_SDK_DIR "")
-set(FO_ANGELSCRIPT_PREPROCESSOR_DIR "")
-set(FO_ACM_SOURCE "")
-set(FO_SHA_SOURCE "")
-set(FO_ZLIB_CONTRIB_SOURCE "")
-set(FO_ZLIB_CONTRIB_SOURCE "")
-set(FO_CATCH2_SOURCE "")
-set(FO_DOTNET_DIR "")
-set(FO_MONO_OS "")
-set(FO_MONO_ARCH "")
-set(FO_MONO_CONFIGURATION "")
-set(FO_MONO_TRIPLET "")
-set(FO_MONO_SETUP_SCRIPT "")
-set(FO_RPMALLOC_SOURCE "")
-set(FO_OGG_SOURCE "")
-set(FO_VORBIS_SOURCE "")
-set(FO_THEORA_SOURCE "")
-set(FO_GLEW_SOURCE "")
-set(FO_UFBX_SOURCE "")
-set(FO_IMGUI_SOURCE "")
-set(FO_COMMON_SOURCE "")
-set(FO_SERVER_BASE_SOURCE "")
-set(FO_CLIENT_BASE_SOURCE "")
-set(FO_SERVER_SOURCE "")
-set(FO_CLIENT_SOURCE "")
-set(FO_EDITOR_SOURCE "")
-set(FO_MAPPER_SOURCE "")
-set(FO_BAKER_SOURCE "")
-set(FO_SOURCE_META_FILES "")
-set(FO_TESTS_SOURCE "")
-set(FO_ADDED_COMMON_HEADERS "")
-set(FO_CORE_LIBS_GROUP "")
-set(FO_COMMANDS_GROUP "")
-set(FO_APPLICATIONS_GROUP "")
-set(FO_CACHE_VARIABLES "")
-set(FO_CONTRIBUTION_DIR "")
-set(FO_SPRITE_ATLAS "")
-set(FO_CODEGEN_COMMAND "")
-set(FO_CODEGEN_COMMAND_ARGS "")
-set(FO_CODEGEN_META_SOURCE "")
-set(FO_CODEGEN_OUTPUT "")
-set(FO_COMMON_NATIVE_SOURCE "")
-set(FO_SERVER_NATIVE_SOURCE "")
-set(FO_CLIENT_NATIVE_SOURCE "")
-set(FO_EDITOR_NATIVE_SOURCE "")
-set(FO_MAPPER_NATIVE_SOURCE "")
-set(FO_MONO_ASSEMBLIES "")
-set(FO_MONO_SOURCE "")
-set(FO_PACKAGES "")
-set(FO_RC_FILE "")
-set(FO_CONFIG_VAR_LIST "")
+# ---------------------------------------------------------------------------
+# find_package interception
+#
+# On Windows we route every find_package() call through an explicit registry
+# of handler macros so that no third-party CMakeLists.txt accidentally pulls
+# a system library install. Each looked-up package either gets remapped onto
+# a bundled in-tree dependency or is explicitly allowed to fall through to
+# CMake's stock search via PassThroughFindPackage.
+#
+# Use:
+#   RegisterFindPackageHandler(<Name> <macro-name>) — register a handler
+#                                                     for find_package(<Name>)
+#   PassThroughFindPackage                          — built-in handler that
+#                                                     forwards to the original
+#                                                     find_package() (use for
+#                                                     build tools / system
+#                                                     packages we accept)
+#
+# The handler macro receives the original find_package() arguments, with the
+# package name as the first positional argument. Variables set inside the
+# handler land in the find_package() caller's scope, mirroring CMake's
+# normal find_package semantics.
+#
+# The interceptor itself is installed at the top of the ThirdParty stage,
+# before any AddSubdirectory() reaches a third-party tree.
+# ---------------------------------------------------------------------------
 
-# Configuration duplication
-execute_process(COMMAND ${CMAKE_COMMAND} --help-variable-list OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt")
-file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt" varFullList)
+macro(RegisterFindPackageHandler packageName handlerMacroName)
+	set(_FO_FIND_PKG_HANDLER_${packageName} "${handlerMacroName}")
+endmacro()
 
-foreach(var ${varFullList})
-	if("${var}" MATCHES "<CONFIG>")
-		if("${var}" MATCHES "<LANG>")
-			foreach(lang C CXX CSharp CUDA OBJC OBJCXX Fortran HIP ISPC Swift ASM ASM_NASM ASM_MARMASM ASM_MASM ASM-ATT)
-				string(REPLACE "<LANG>" "${lang}" langVar "${var}")
-				list(APPEND FO_CONFIG_VAR_LIST "${langVar}")
-			endforeach()
-		else()
-			list(APPEND FO_CONFIG_VAR_LIST "${var}")
-		endif()
+macro(PassThroughFindPackage)
+	_find_package(${ARGV})
+endmacro()
+
+# Built-in handler: report the package as missing without reaching the host
+# system. If the consumer marked it REQUIRED, abort configure with a clear
+# diagnostic. Use for optional probes that we deliberately don't ship
+# (e.g. SDL's LibUSB, glslang's SPIRV-Tools-opt, ...).
+macro(NotFoundFindPackage _fo_nf_pkg)
+	list(FIND ARGN "REQUIRED" _fo_nf_required_idx)
+	if(NOT _fo_nf_required_idx EQUAL -1)
+		AbortMessage("find_package(${_fo_nf_pkg}) is REQUIRED but the project routes it to NotFoundFindPackage. Either bundle the dependency and register a real handler, or stop the consumer from requesting it.")
 	endif()
-endforeach()
+	set(${_fo_nf_pkg}_FOUND FALSE)
+endmacro()
 
-function(CopyConfigurationType configFrom configTo)
-	string(TOUPPER "${configFrom}" configFrom)
-	string(TOUPPER "${configTo}" configTo)
+# ---------------------------------------------------------------------------
+# Pipeline stages
+#
+# The build is structured as a strict sequence of named stages. Each stage
+# is exposed via a public macro and must be invoked exactly once, in the
+# canonical order. Stage helpers validate ordering: invoking a stage out of
+# order, twice, or skipping it produces a hard error during CMake configure.
+#
+# Stage entry-point macros (call in this order, each exactly once):
+#   1. StartProjectGeneration       (Init)
+#   2. RegisterProjectOptions       (ProjectOptions)
+#   3. AddThirdPartyLibraries       (ThirdParty)
+#   4. RegisterEngineSources        (EngineSources)
+#   5. SetupCodeGeneration          (Codegen)
+#   6. BuildCoreLibraries           (CoreLibs)
+#   7. BuildApplications            (Applications)
+#   8. SetupScriptsAndBaking        (ScriptsAndBaking)
+#   9. BuildPackages                (Packages)
+#  10. FinalizeProjectGeneration    (Finalize)
+#
+# Each stage exposes Pre and Post hook lists. Hooks are macros (or functions)
+# invoked in registration order at the boundaries of the stage. Register a
+# hook with AddStageHook(<Stage> Pre|Post <macro-name>).
+# ---------------------------------------------------------------------------
 
-	foreach(configVar ${FO_CONFIG_VAR_LIST})
-		string(REPLACE "<CONFIG>" "${configFrom}" configVarFrom "${configVar}")
-		string(REPLACE "<CONFIG>" "${configTo}" configVarTo "${configVar}")
+set(FO_KNOWN_STAGES
+	Init
+	ProjectOptions
+	ThirdParty
+	EngineSources
+	Codegen
+	CoreLibs
+	Applications
+	ScriptsAndBaking
+	Packages
+	Finalize)
 
-		if(NOT "${${configVarFrom}}" STREQUAL "")
-			set("${configVarTo}" "${${configVarFrom}}" PARENT_SCOPE)
+set(FO_STAGES_EXECUTED "")
+
+macro(AddStageHook stage when hookName)
+	if(NOT "${stage}" IN_LIST FO_KNOWN_STAGES)
+		AbortMessage("AddStageHook: unknown stage '${stage}'. Known: ${FO_KNOWN_STAGES}")
+	endif()
+	if(NOT "${when}" STREQUAL "Pre" AND NOT "${when}" STREQUAL "Post")
+		AbortMessage("AddStageHook: 'when' must be Pre or Post (got '${when}')")
+	endif()
+	if("${stage}" IN_LIST FO_STAGES_EXECUTED)
+		AbortMessage("AddStageHook: stage '${stage}' has already executed; hooks must be registered before the stage runs")
+	endif()
+	list(APPEND FO_HOOKS_${stage}_${when} "${hookName}")
+endmacro()
+
+macro(InvokeStageHooks stage when)
+	foreach(_hook IN LISTS FO_HOOKS_${stage}_${when})
+		cmake_language(CALL ${_hook})
+	endforeach()
+endmacro()
+
+macro(_RunStage stage)
+	# Validate stage name.
+	list(FIND FO_KNOWN_STAGES "${stage}" _stage_index)
+	if(_stage_index EQUAL -1)
+		AbortMessage("Pipeline: unknown stage '${stage}'. Known: ${FO_KNOWN_STAGES}")
+	endif()
+
+	# Each stage runs exactly once.
+	if("${stage}" IN_LIST FO_STAGES_EXECUTED)
+		AbortMessage("Pipeline: stage '${stage}' has already been executed; each stage must run exactly once")
+	endif()
+
+	# All preceding stages must have run.
+	if(_stage_index GREATER 0)
+		math(EXPR _last_required "${_stage_index} - 1")
+		foreach(_idx RANGE 0 ${_last_required})
+			list(GET FO_KNOWN_STAGES ${_idx} _prev_stage)
+			if(NOT "${_prev_stage}" IN_LIST FO_STAGES_EXECUTED)
+				AbortMessage("Pipeline: stage '${stage}' invoked before '${_prev_stage}'. The canonical order is: ${FO_KNOWN_STAGES}")
+			endif()
+		endforeach()
+	endif()
+
+	InvokeStageHooks(${stage} Pre)
+	IncludeBuildTool(stages/${stage})
+	InvokeStageHooks(${stage} Post)
+	list(APPEND FO_STAGES_EXECUTED "${stage}")
+endmacro()
+
+# Public stage entry points — strict, no auto-cascade. Calling a stage out of
+# sequence, twice, or skipping any predecessor aborts CMake configure.
+macro(StartProjectGeneration)
+	_RunStage(Init)
+endmacro()
+
+macro(RegisterProjectOptions)
+	_RunStage(ProjectOptions)
+endmacro()
+
+macro(AddThirdPartyLibraries)
+	_RunStage(ThirdParty)
+endmacro()
+
+macro(RegisterEngineSources)
+	_RunStage(EngineSources)
+endmacro()
+
+macro(SetupCodeGeneration)
+	_RunStage(Codegen)
+endmacro()
+
+macro(BuildCoreLibraries)
+	_RunStage(CoreLibs)
+endmacro()
+
+macro(BuildApplications)
+	_RunStage(Applications)
+endmacro()
+
+macro(SetupScriptsAndBaking)
+	_RunStage(ScriptsAndBaking)
+endmacro()
+
+macro(BuildPackages)
+	_RunStage(Packages)
+endmacro()
+
+macro(FinalizeProjectGeneration)
+	_RunStage(Finalize)
+
+	# Sanity check: by the time Finalize finishes, every stage must have run.
+	foreach(_stage IN LISTS FO_KNOWN_STAGES)
+		if(NOT "${_stage}" IN_LIST FO_STAGES_EXECUTED)
+			AbortMessage("Pipeline: stage '${_stage}' was never executed. Project must call every stage in order before FinalizeProjectGeneration().")
 		endif()
 	endforeach()
-endfunction()
-
-# Evaluate engine root
-get_filename_component(FO_ENGINE_ROOT ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
-cmake_path(RELATIVE_PATH FO_ENGINE_ROOT BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endmacro()

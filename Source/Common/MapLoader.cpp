@@ -33,12 +33,11 @@
 
 #include "MapLoader.h"
 #include "ConfigFile.h"
+#include "EngineBase.h"
 
 FO_BEGIN_NAMESPACE
 
-// Todo: restore supporting of the map old text format
-
-void MapLoader::Load(string_view name, const string& buf, const ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -50,7 +49,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
     }
 
     // Header
-    ConfigFile map_data(strex("{}.fomap", name), buf, &hash_resolver);
+    ConfigFile map_data(strex("{}.fomap", name), buf);
 
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
@@ -83,7 +82,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            WriteLog("Proto critter invalid data");
+            WriteLog(LogType::Warning, "Proto critter invalid data");
             errors++;
             continue;
         }
@@ -91,10 +90,10 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
-        const auto* proto = proto_mngr.GetProtoCritterSafe(hashed_proto_name);
+        const auto* proto = meta.GetProtoCritter(hashed_proto_name);
 
         if (proto == nullptr) {
-            WriteLog("Proto critter '{}' not found", proto_name);
+            WriteLog(LogType::Warning, "Proto critter '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -102,7 +101,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
                 cr_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog("Unable to load critter '{}'", proto_name);
+                WriteLog(LogType::Warning, "Unable to load critter '{}'", proto_name);
                 ReportExceptionAndContinue(ex);
                 errors++;
             }
@@ -114,7 +113,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         auto& kv = *pkv;
 
         if (kv.count("$Proto") == 0) {
-            WriteLog("Proto item invalid data");
+            WriteLog(LogType::Warning, "Proto item invalid data");
             errors++;
             continue;
         }
@@ -122,10 +121,10 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
         const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
         const auto& proto_name = kv["$Proto"];
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
-        const auto* proto = proto_mngr.GetProtoItemSafe(hashed_proto_name);
+        const auto* proto = meta.GetProtoItem(hashed_proto_name);
 
         if (proto == nullptr) {
-            WriteLog("Proto item '{}' not found", proto_name);
+            WriteLog(LogType::Warning, "Proto item '{}' not found", proto_name);
             errors++;
         }
         else {
@@ -133,7 +132,7 @@ void MapLoader::Load(string_view name, const string& buf, const ProtoManager& pr
                 item_load(id, proto, kv);
             }
             catch (const std::exception& ex) {
-                WriteLog("Unable to load item '{}'", proto_name);
+                WriteLog(LogType::Warning, "Unable to load item '{}'", proto_name);
                 ReportExceptionAndContinue(ex);
                 errors++;
             }

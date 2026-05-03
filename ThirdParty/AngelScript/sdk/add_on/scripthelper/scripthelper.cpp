@@ -5,6 +5,7 @@
 #include <fstream>
 #include <set>
 #include <stdlib.h>
+#include "../autowrapper/aswrappedcall.h"
 
 using namespace std;
 
@@ -189,8 +190,8 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 			}
 			else if (refTypeId & asTYPEID_MASK_OBJECT)
 			{
-				// Expect the pointer to point to a valid object
-				assert(*reinterpret_cast<void**>(ref) != 0);
+				// Use the registered assignment operator to do a value assign. 
+				// This assumes that the ref is pointing to a valid object instance.
 				engine->AssignScriptObject(ref, execCtx->GetAddressOfReturnValue(), engine->GetTypeInfoById(refTypeId));
 			}
 			else
@@ -245,7 +246,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 
 	asDWORD currAccessMask = 0;
 	string currNamespace = "";
-	engine->SetDefaultNamespace(currNamespace.c_str());
+	engine->SetDefaultNamespace("");
 
 	// Export the engine version, just for info
 	strm << "// AngelScript " << asGetLibraryVersion() << "\n";
@@ -280,11 +281,12 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		const char *enumName = ti->GetName();
-		strm << "enum " << enumName << "\n";
+		const char* underlyingType = engine->GetTypeDeclaration(ti->GetUnderlyingTypeId());
+		strm << "enum " << enumName << " " << underlyingType << "\n";
 		for( asUINT m = 0; m < ti->GetEnumValueCount(); m++ )
 		{
 			const char *valName;
-			int val;
+			asINT64 val;
 			valName = ti->GetEnumValueByIndex(m, &val);
 			strm << "enumval " << enumName << " " << valName << " " << val << "\n";
 		}
@@ -350,7 +352,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
-		strm << "typedef " << ti->GetName() << " \"" << engine->GetTypeDeclaration(ti->GetTypedefTypeId()) << "\"\n";
+		strm << "typedef " << ti->GetName() << " \"" << engine->GetTypeDeclaration(ti->GetUnderlyingTypeId()) << "\"\n";
 	}
 
 	c = engine->GetFuncdefCount();
@@ -398,7 +400,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 						currAccessMask = accessMask;
 					}
-					strm << "intfmthd " << typeDecl.c_str() << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+					strm << "intfmthd " << typeDecl.c_str() << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << (func->IsProperty() ? " property" : "") << "\"\n";
 				}
 			}
 			else
@@ -438,7 +440,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 						currAccessMask = accessMask;
 					}
-					strm << "objmthd \"" << typeDecl.c_str() << "\" \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+					strm << "objmthd \"" << typeDecl.c_str() << "\" \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << (func->IsProperty() ? " property" : "") << "\"\n";
 				}
 				for( m = 0; m < type->GetPropertyCount(); m++ )
 				{
@@ -449,7 +451,13 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 						currAccessMask = accessMask;
 					}
-					strm << "objprop \"" << typeDecl.c_str() << "\" \"" << type->GetPropertyDeclaration(m) << "\"\n";
+					strm << "objprop \"" << typeDecl.c_str() << "\" \"" << type->GetPropertyDeclaration(m) << "\"";
+
+					// Save information about composite properties
+					int compositeOffset;
+					bool isCompositeIndirect;
+					type->GetProperty(m, 0, 0, 0, 0, 0, 0, 0, &compositeOffset, &isCompositeIndirect);
+					strm << " " << compositeOffset << " " << (isCompositeIndirect ? "1" : "0") << "\n";
 				}
 			}
 		}
@@ -495,7 +503,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
-		strm << "func \"" << Escape::Quotes(func->GetDeclaration()).c_str() << "\"\n";
+		strm << "func \"" << Escape::Quotes(func->GetDeclaration()).c_str() << (func->IsProperty() ? " property" : "") << "\"\n";
 	}
 
 	// Write global properties
@@ -524,12 +532,19 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		strm << "prop \"" << (isConst ? "const " : "") << engine->GetTypeDeclaration(typeId) << " " << name << "\"\n";
 	}
 
-	engine->SetDefaultNamespace("");
-
 	// Write string factory
 	strm << "\n// String factory\n";
+
+	// Reset the namespace for the string factory and default array type
+	if ("" != currNamespace)
+	{
+		strm << "namespace \"\"\n";
+		currNamespace = "";
+		engine->SetDefaultNamespace("");
+	}
+
 	asDWORD flags = 0;
-	int typeId = engine->GetStringFactoryReturnTypeId(&flags);
+	int typeId = engine->GetStringFactory(&flags);
 	if( typeId > 0 )
 		strm << "strfactory \"" << ((flags & asTM_CONST) ? "const " : "") << engine->GetTypeDeclaration(typeId) << ((flags & asTM_INOUTREF) ? "&" : "") << "\"\n";
 
@@ -545,7 +560,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	return 0;
 }
 
-int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *configFile)
+int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *configFile, asIStringFactory *stringFactory)
 {
 	int r;
 
@@ -725,11 +740,18 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		}
 		else if( token == "objprop" )
 		{
-			string name, decl;
+			string name, decl, compositeOffset = "0", isCompositeIndirect = "0";
 			in::GetToken(engine, name, config, pos);
 			name = name.substr(1, name.length() - 2);
 			in::GetToken(engine, decl, config, pos);
 			decl = decl.substr(1, decl.length() - 2);
+			in::GetToken(engine, compositeOffset, config, pos);
+			in::GetToken(engine, isCompositeIndirect, config, pos);
+			if( !(isCompositeIndirect == "0" || isCompositeIndirect == "1") )
+			{
+				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Wrong value for composite indirect. Is it an old config version?");
+				return -1;
+			}
 
 			asITypeInfo *type = engine->GetTypeInfoById(engine->GetTypeIdByDecl(name.c_str()));
 			if( type == 0 )
@@ -740,7 +762,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 
 			// All properties must have different offsets in order to make them
 			// distinct, so we simply register them with an incremental offset
-			r = engine->RegisterObjectProperty(name.c_str(), decl.c_str(), type->GetPropertyCount());
+			r = engine->RegisterObjectProperty(name.c_str(), decl.c_str(), type->GetPropertyCount(), compositeOffset != "0" ? type->GetPropertyCount() : 0, isCompositeIndirect != "0");
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register object property");
@@ -810,11 +832,19 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			in::GetToken(engine, type, config, pos);
 			type = type.substr(1, type.length() - 2);
 
-			r = engine->RegisterStringFactory(type.c_str(), asFUNCTION(0), asCALL_GENERIC);
-			if( r < 0 )
+			if (stringFactory == 0)
 			{
-				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register string factory");
+				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_WARNING, "Cannot register string factory without the actual implementation");
 				return -1;
+			}
+			else
+			{
+				r = engine->RegisterStringFactory(type.c_str(), stringFactory);
+				if (r < 0)
+				{
+					engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register string factory");
+					return -1;
+				}
 			}
 		}
 		else if( token == "defarray" )
@@ -832,10 +862,11 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		}
 		else if( token == "enum" )
 		{
-			string type;
-			in::GetToken(engine, type, config, pos);
+			string typeName, typeOf;
+			in::GetToken(engine, typeName, config, pos);
+			in::GetToken(engine, typeOf, config, pos);
 
-			r = engine->RegisterEnum(type.c_str());
+			r = engine->RegisterEnum(typeName.c_str(), typeOf.c_str());
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register enum type");
@@ -849,7 +880,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			in::GetToken(engine, name, config, pos);
 			in::GetToken(engine, value, config, pos);
 
-			r = engine->RegisterEnumValue(type.c_str(), name.c_str(), atol(value.c_str()));
+			r = engine->RegisterEnumValue(type.c_str(), name.c_str(), atoll(value.c_str()));
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register enum value");
@@ -895,10 +926,12 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 	stringstream text;
 
 	const asIScriptFunction *function = ctx->GetExceptionFunction();
+	const char* scriptSection = 0;
+	int line = ctx->GetExceptionLineNumber(0, &scriptSection);
 	text << "func: " << function->GetDeclaration() << "\n";
 	text << "modl: " << (function->GetModuleName() ? function->GetModuleName() : "") << "\n";
-	text << "sect: " << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << "\n";
-	text << "line: " << ctx->GetExceptionLineNumber() << "\n";
+	text << "sect: " << (scriptSection ? scriptSection : "") << "\n";
+	text << "line: " << line << "\n";
 	text << "desc: " << ctx->GetExceptionString() << "\n";
 
 	if( showStack )
@@ -911,7 +944,8 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 			{
 				if( function->GetFuncType() == asFUNC_SCRIPT )
 				{
-					text << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << " (" << ctx->GetLineNumber(n) << "): " << function->GetDeclaration() << "\n";
+					line = ctx->GetLineNumber(n, 0, &scriptSection);
+					text << (scriptSection ? scriptSection : "") << " (" << line << "): " << function->GetDeclaration() << "\n";
 				}
 				else
 				{
@@ -928,6 +962,45 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 	}
 
 	return text.str();
+}
+
+void ScriptThrow(const string &msg)
+{
+	asIScriptContext *ctx = asGetActiveContext();
+	if (ctx)
+		ctx->SetException(msg.c_str());
+}
+
+string ScriptGetExceptionInfo()
+{
+	asIScriptContext *ctx = asGetActiveContext();
+	if (!ctx)
+		return "";
+	
+	const char *msg = ctx->GetExceptionString();
+	if (msg == 0)
+		return "";
+
+	return string(msg);
+}
+
+void RegisterExceptionRoutines(asIScriptEngine *engine)
+{
+	int r;
+
+	// The string type must be available
+	assert(engine->GetTypeInfoByDecl("string"));
+
+	if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
+	{
+		r = engine->RegisterGlobalFunction("void throw(const string &in)", asFUNCTION(ScriptThrow), asCALL_CDECL); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("string getExceptionInfo()", asFUNCTION(ScriptGetExceptionInfo), asCALL_CDECL); assert(r >= 0);
+	}
+	else
+	{
+		r = engine->RegisterGlobalFunction("void throw(const string &in)", WRAP_FN(ScriptThrow), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("string getExceptionInfo()", WRAP_FN(ScriptGetExceptionInfo), asCALL_GENERIC); assert(r >= 0);
+	}
 }
 
 END_AS_NAMESPACE

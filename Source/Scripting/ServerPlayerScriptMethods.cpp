@@ -44,15 +44,31 @@ FO_SCRIPT_API string Server_Player_GetHost(Player* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32 Server_Player_GetPort(Player* self)
+FO_SCRIPT_API int32_t Server_Player_GetPort(Player* self)
 {
-    return numeric_cast<int32>(self->GetConnection()->GetPort());
+    return numeric_cast<int32_t>(self->GetConnection()->GetPort());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 {
     self->GetConnection()->GracefulDisconnect();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
+{
+    if (name.empty()) {
+        throw ScriptException("Player name arg is empty");
+    }
+    if (strvex(name).trim() != name) {
+        throw ScriptException("Wrong player name (trimmed space)");
+    }
+    if (!strvex(name).is_valid_utf8()) {
+        throw ScriptException("Wrong player name encoding");
+    }
+
+    self->SetName(name);
 }
 
 ///@ ExportMethod

@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetItem(ident_t id) const noexcept -> const Item*;
     [[nodiscard]] auto GetItem(ident_t id) noexcept -> Item*;
     [[nodiscard]] auto GetItems() noexcept -> unordered_map<ident_t, raw_ptr<Item>>& { return _allItems; }
-    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allEntities.size(); }
+    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allItems.size(); }
 
     template<typename T>
     [[nodiscard]] auto Get(ident_t id) noexcept -> T*
@@ -119,6 +119,7 @@ public:
     void UnregisterItem(Item* item, bool delete_from_db);
     void RegisterCustomEntity(CustomEntity* custom_entity);
     void UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db);
+    void MakePersistent(ServerEntity* entity, bool persistent, bool explicitly_requested = false);
 
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
@@ -132,9 +133,14 @@ public:
     void DestroyAllEntities();
 
 private:
+    void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
+    void MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
+    void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
+
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& is_error) noexcept;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
+    auto StoreEntityDoc(ServerEntity* entity) -> AnyData::Document;
 
     void RegisterEntity(ServerEntity* entity);
     void UnregisterEntity(ServerEntity* entity, bool delete_from_db);

@@ -45,7 +45,7 @@ class FileHeader
 {
 public:
     FileHeader() noexcept = default;
-    explicit FileHeader(string_view path, size_t size, uint64 write_time, const DataSource* ds);
+    explicit FileHeader(string_view path, size_t size, uint64_t write_time, const DataSource* ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -57,7 +57,7 @@ public:
     [[nodiscard]] auto GetPath() const -> const string&;
     [[nodiscard]] auto GetDiskPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetWriteTime() const -> uint64;
+    [[nodiscard]] auto GetWriteTime() const -> uint64_t;
     [[nodiscard]] auto GetDataSource() const -> const DataSource*;
     [[nodiscard]] auto Copy() const -> FileHeader;
 
@@ -65,14 +65,14 @@ protected:
     bool _isLoaded {};
     string _filePath {};
     size_t _fileSize {};
-    uint64 _writeTime {};
+    uint64_t _writeTime {};
     raw_ptr<const DataSource> _dataSource {};
 };
 
 class FileReader final
 {
 public:
-    explicit FileReader(const_span<uint8> buf);
+    explicit FileReader(const_span<uint8_t> buf);
     FileReader(const FileReader&) = delete;
     FileReader(FileReader&&) noexcept = default;
     auto operator=(const FileReader&) = delete;
@@ -80,23 +80,23 @@ public:
     ~FileReader() = default;
 
     [[nodiscard]] auto GetStr() const -> string;
-    [[nodiscard]] auto GetData() const -> vector<uint8>;
-    [[nodiscard]] auto GetBuf() const -> const uint8*;
+    [[nodiscard]] auto GetData() const -> vector<uint8_t>;
+    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetCurBuf() const -> const uint8*;
+    [[nodiscard]] auto GetCurBuf() const -> const uint8_t*;
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
-    [[nodiscard]] auto GetUInt8() -> uint8;
-    [[nodiscard]] auto GetInt8() -> int8 { return std::bit_cast<int8>(GetUInt8()); }
-    [[nodiscard]] auto GetBEUInt16() -> uint16;
-    [[nodiscard]] auto GetBEInt16() -> int16 { return std::bit_cast<int16>(GetBEUInt16()); }
-    [[nodiscard]] auto GetLEUInt16() -> uint16;
-    [[nodiscard]] auto GetLEInt16() -> int16 { return std::bit_cast<int16>(GetLEUInt16()); }
-    [[nodiscard]] auto GetBEUInt32() -> uint32;
-    [[nodiscard]] auto GetBEInt32() -> int32 { return std::bit_cast<int32>(GetBEUInt32()); }
-    [[nodiscard]] auto GetLEUInt32() -> uint32;
-    [[nodiscard]] auto GetLEInt32() -> int32 { return std::bit_cast<int32>(GetLEUInt32()); }
+    [[nodiscard]] auto GetUInt8() -> uint8_t;
+    [[nodiscard]] auto GetInt8() -> int8_t { return std::bit_cast<int8_t>(GetUInt8()); }
+    [[nodiscard]] auto GetBEUInt16() -> uint16_t;
+    [[nodiscard]] auto GetBEInt16() -> int16_t { return std::bit_cast<int16_t>(GetBEUInt16()); }
+    [[nodiscard]] auto GetLEUInt16() -> uint16_t;
+    [[nodiscard]] auto GetLEInt16() -> int16_t { return std::bit_cast<int16_t>(GetLEUInt16()); }
+    [[nodiscard]] auto GetBEUInt32() -> uint32_t;
+    [[nodiscard]] auto GetBEInt32() -> int32_t { return std::bit_cast<int32_t>(GetBEUInt32()); }
+    [[nodiscard]] auto GetLEUInt32() -> uint32_t;
+    [[nodiscard]] auto GetLEInt32() -> int32_t { return std::bit_cast<int32_t>(GetLEUInt32()); }
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
@@ -106,7 +106,7 @@ public:
     void GoBack(size_t offs);
 
 private:
-    const_span<uint8> _buf;
+    const_span<uint8_t> _buf;
     size_t _curPos {};
 };
 
@@ -114,7 +114,7 @@ class File final : public FileHeader
 {
 public:
     File() noexcept = default;
-    explicit File(string_view path, size_t size, uint64 write_time, const DataSource* ds, unique_del_ptr<const uint8>&& buf);
+    explicit File(string_view path, size_t size, uint64_t write_time, const DataSource* ds, unique_del_ptr<const uint8_t>&& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -122,14 +122,14 @@ public:
     ~File() = default;
 
     [[nodiscard]] auto GetStr() const -> string;
-    [[nodiscard]] auto GetData() const -> vector<uint8>;
-    [[nodiscard]] auto GetBuf() const -> const uint8*;
+    [[nodiscard]] auto GetData() const -> vector<uint8_t>;
+    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
     [[nodiscard]] auto GetReader() const -> FileReader;
 
     static auto Load(const FileHeader& fh) -> File;
 
 protected:
-    unique_del_ptr<const uint8> _fileBuf {};
+    unique_del_ptr<const uint8_t> _fileBuf {};
 };
 
 class FileCollection final

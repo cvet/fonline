@@ -50,6 +50,22 @@ if host_machine.cpu_family() == 'arm'
   ]
 endif
 
+if host_machine.cpu_family() == 'aarch64'
+  add_languages('c')
+  angel_srcs += [
+    '../../source/as_callfunc_arm64.cpp',
+    '../../source/as_callfunc_arm64_gcc.S',
+  ]
+endif
+
+if host_machine.cpu_family() == 'riscv64'
+  add_languages('c')
+  angel_srcs += [
+    '../../source/as_callfunc_riscv64.cpp',
+    '../../source/as_callfunc_riscv64_gcc.S',
+  ]
+endif
+
 angelscript_version_num = run_command(find_program('python3'), 'detect_ver.py', '--num').stdout().strip()
 angelscript_lib = library(
   'angelscript',
@@ -57,6 +73,7 @@ angelscript_lib = library(
   dependencies : threads,
   version : angelscript_version_num,
   install : true,
+  cpp_args:'-Wfatal-errors'
 )
 angelscript_inc = include_directories('../../include')
 angelscript_dep  = declare_dependency(

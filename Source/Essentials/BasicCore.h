@@ -107,7 +107,6 @@
 
 // Custom hashmaps
 #include "ankerl/unordered_dense.h"
-#define FO_HASH_NAMESPACE ankerl::unordered_dense::
 
 // OS specific API
 #if FO_MAC || FO_IOS
@@ -177,31 +176,15 @@
 FO_BEGIN_NAMESPACE
 
 // Base types
-using int8 = std::int8_t;
-using uint8 = std::uint8_t;
-using int16 = std::int16_t;
-using int32 = std::int32_t;
-using uint16 = std::uint16_t;
-using uint32 = std::uint32_t;
-using int64 = std::int64_t;
-using uint64 = std::uint64_t;
-using float32 = float;
-using float64 = double;
+using float32_t = float;
+using float64_t = double;
 
 // Check the sizes of base types
-static_assert(sizeof(int8) == 1);
-static_assert(sizeof(uint8) == 1);
-static_assert(sizeof(int16) == 2);
-static_assert(sizeof(uint16) == 2);
-static_assert(sizeof(int32) == 4);
-static_assert(sizeof(uint32) == 4);
-static_assert(sizeof(int64) == 8);
-static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(size_t) >= 4);
 static_assert(sizeof(int) >= 4);
-static_assert(sizeof(float32) == 4);
-static_assert(sizeof(float64) == 8);
+static_assert(sizeof(float32_t) == 4);
+static_assert(sizeof(float64_t) == 8);
 static_assert(CHAR_BIT == 8); // NOLINT(misc-redundant-expression)
 
 // Bind to global scope frequently used types
@@ -217,6 +200,9 @@ using std::variant;
 
 template<typename T>
 using const_span = span<const T>;
+
+namespace hashing = ankerl::unordered_dense;
+namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 
 // String view for null terminated string
 class string_view_nt : public string_view
@@ -262,7 +248,7 @@ struct fixed_string
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 
-extern auto ItoA(int64 num, char buf[64], int32 base) noexcept -> const char*;
+extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
@@ -284,18 +270,18 @@ constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std
 }
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) noexcept -> uint32
+constexpr auto const_hash(const char* input) noexcept -> uint32_t
 {
-    return *input != 0 ? static_cast<uint32>(*input) + 33 * const_hash(input + 1) : 5381;
+    return *input != 0 ? static_cast<uint32_t>(*input) + 33 * const_hash(input + 1) : 5381;
 }
 
-auto constexpr operator""_hash(const char* str, size_t size) noexcept -> uint32
+constexpr auto operator""_hash(const char* str, size_t size) noexcept -> uint32_t
 {
     (void)size;
     return const_hash(str);
 }
 
-auto constexpr operator""_len(const char* str, size_t size) noexcept -> size_t
+constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 {
     (void)str;
     return size;
@@ -372,7 +358,7 @@ template<typename T, std::integral U>
     requires(std::is_pointer_v<T> && std::is_void_v<remove_all_pointers_t<T>>)
 inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
 {
-    return cast_to_void(cast_from_void<uint8*>(ptr) + offset);
+    return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
 }
 
 // Stack unwind detector
@@ -395,9 +381,9 @@ private:
 template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
+public:
     static_assert(std::is_nothrow_invocable_v<T>);
 
-public:
     explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
     {
@@ -509,34 +495,13 @@ private:
     mutable std::atomic_int _refCounter {1};
 };
 
-// Bit operation helpers
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr auto IsBitSet(T x, T y) noexcept -> bool
-{
-    return (x & y) != 0;
-}
-
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr void SetBit(T& x, T y) noexcept
-{
-    x = x | y;
-}
-
-template<typename T>
-    requires(std::is_unsigned_v<T>)
-constexpr void UnsetBit(T& x, T y) noexcept
-{
-    x = (x | y) ^ y;
-}
-
 // Enum operation helpers
 template<typename T>
     requires(std::is_enum_v<T>)
 constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 {
-    return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
+    using U = std::underlying_type_t<T>;
+    return (static_cast<U>(value) & static_cast<U>(check)) != 0;
 }
 
 template<typename T, typename... Args>
@@ -578,6 +543,32 @@ FO_BEGIN_NAMESPACE
     }; \
     FO_BEGIN_NAMESPACE
 
+#define FO_DECLARE_TYPE_FORMATTER_EXT(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            return formatter<FO_NAMESPACE string_view>::format(__VA_ARGS__, ctx); \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_FORMATTER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct std::formatter<type> : formatter<FO_NAMESPACE string_view> \
+    { \
+        template<typename FormatContext> \
+        auto format(const type& value, FormatContext& ctx) const \
+        { \
+            __VA_ARGS__; \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
 #define FO_DECLARE_TYPE_PARSER(type, ...) \
     FO_END_NAMESPACE \
     inline auto operator>>(std::istream& istr, type& value)->std::istream& \
@@ -589,16 +580,34 @@ FO_BEGIN_NAMESPACE
     } \
     FO_BEGIN_NAMESPACE
 
+#define FO_DECLARE_TYPE_PARSER_EXT(type, op1, op2, op3) \
+    FO_END_NAMESPACE \
+    inline auto operator>>(std::istream& istr, type& value)->std::istream& \
+    { \
+        op1; \
+        value = !!(istr >> op2) ? op3 : type {}; \
+        return istr; \
+    } \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_PARSER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    inline auto operator>>(std::istream& istr, type& value)->std::istream& \
+    { \
+        __VA_ARGS__; \
+    } \
+    FO_BEGIN_NAMESPACE
+
 #define FO_DECLARE_TYPE_HASHER(type) \
     FO_END_NAMESPACE \
     template<> \
-    struct FO_HASH_NAMESPACE hash<type> \
+    struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
         auto operator()(const type& v) const noexcept \
         { \
             static_assert(std::has_unique_object_representations_v<type>); \
-            return detail::wyhash::hash(&v, sizeof(v)); \
+            return FO_NAMESPACE hashing_ex::hash(&v, sizeof(v)); \
         } \
     }; \
     FO_BEGIN_NAMESPACE
@@ -606,20 +615,33 @@ FO_BEGIN_NAMESPACE
 #define FO_DECLARE_TYPE_HASHER_EXT(type, ...) \
     FO_END_NAMESPACE \
     template<> \
-    struct FO_HASH_NAMESPACE hash<type> \
+    struct FO_NAMESPACE hashing::hash<type> \
     { \
         using is_avalanching = void; \
         auto operator()(const type& v) const noexcept \
         { \
-            return detail::wyhash::hash(__VA_ARGS__); \
+            return FO_NAMESPACE hashing_ex::hash(__VA_ARGS__); \
+        } \
+    }; \
+    FO_BEGIN_NAMESPACE
+
+#define FO_DECLARE_TYPE_HASHER_EXT2(type, ...) \
+    FO_END_NAMESPACE \
+    template<> \
+    struct FO_NAMESPACE hashing::hash<type> \
+    { \
+        using is_avalanching = void; \
+        auto operator()(const type& v) const noexcept \
+        { \
+            return __VA_ARGS__; \
         } \
     }; \
     FO_BEGIN_NAMESPACE
 
 // Math constants
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32> / 180.0f;
+constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32_t>;
+constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32_t> * 2.0f;
+constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32_t>;
+constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32_t> / 180.0f;
 
 FO_END_NAMESPACE

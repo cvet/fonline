@@ -32,11 +32,12 @@
 //
 
 #include "ServerEntity.h"
+#include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
-ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) noexcept :
-    Entity(registrator, props),
+ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept :
+    Entity(registrator, props, engine->Settings.ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {
@@ -48,6 +49,28 @@ void ServerEntity::SetId(ident_t id) noexcept
     FO_STACK_TRACE_ENTRY();
 
     _id = id;
+}
+
+void ServerEntity::SetPersistent(bool persistent) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _isPersistent = persistent;
+}
+
+auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto& props = const_cast<Properties&>(GetProperties());
+    return EntityProperties(props).GetExplicitlyPersistent();
+}
+
+void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    EntityProperties(GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
 }
 
 FO_END_NAMESPACE

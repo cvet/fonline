@@ -64,28 +64,28 @@ concept rect_type = requires(T t) {
 };
 
 // Color type
-///@ ExportValueType ucolor ucolor Layout = uint32-value
+///@ ExportValueType Layout = uint32-value
 struct ucolor
 {
-    using underlying_type = uint32;
+    using underlying_type = uint32_t;
 
     constexpr ucolor() noexcept :
         rgba {}
     {
     }
-    constexpr explicit ucolor(uint32 rgba_) noexcept :
+    constexpr explicit ucolor(uint32_t rgba_) noexcept :
         rgba {rgba_}
     {
     }
-    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_) noexcept :
+    constexpr ucolor(uint8_t r_, uint8_t g_, uint8_t b_) noexcept :
         comp {.r = r_, .g = g_, .b = b_, .a = 255}
     {
     }
-    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_, uint8 a_) noexcept :
+    constexpr ucolor(uint8_t r_, uint8_t g_, uint8_t b_, uint8_t a_) noexcept :
         comp {.r = r_, .g = g_, .b = b_, .a = a_}
     {
     }
-    constexpr explicit ucolor(const ucolor& other, uint8 a_) noexcept :
+    constexpr explicit ucolor(const ucolor& other, uint8_t a_) noexcept :
         rgba {other.rgba}
     {
         comp.a = a_;
@@ -98,15 +98,15 @@ struct ucolor
 
     struct components
     {
-        uint8 r;
-        uint8 g;
-        uint8 b;
-        uint8 a;
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+        uint8_t a;
     };
 
     union
     {
-        uint32 rgba;
+        uint32_t rgba;
         components comp;
     };
 
@@ -210,7 +210,7 @@ struct ipos
     // [[nodiscard]] constexpr auto operator*(const ipos& other) const -> ipos { return {checked_mul(x, other.x), checked_mul(y, other.y)}; }
     // [[nodiscard]] constexpr auto operator/(const ipos& other) const -> ipos { return {checked_div(x, other.x), checked_div(y, other.y)}; }
 
-    [[nodiscard]] auto idist() const -> T { return iround<T>(std::sqrt(numeric_cast<float64>(x * x + y * y))); }
+    [[nodiscard]] auto idist() const -> T { return iround<T>(std::sqrt(numeric_cast<float64_t>(x * x + y * y))); }
     [[nodiscard]] auto is_zero() const noexcept -> bool { return x == 0 && y == 0; }
 
     T x {};
@@ -345,7 +345,7 @@ struct irect
         const T y1 = std::min(y, other.y);
         const T x2 = std::max(x + width, other.x + other.width);
         const T y2 = std::max(y + height, other.y + other.height);
-        return irect(x1, y1, x2 - y2, y2 - y1);
+        return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
     T x {};
@@ -364,7 +364,7 @@ struct fpos
         y {y_}
     {
     }
-    constexpr fpos(int32 x_, int32 y_) noexcept :
+    constexpr fpos(int32_t x_, int32_t y_) noexcept :
         x {safe_numeric_cast<T>(x_)},
         y {safe_numeric_cast<T>(y_)}
     {
@@ -606,53 +606,53 @@ struct frect
     T height {};
 };
 
-///@ ExportValueType ipos8 ipos8 Layout = int8-x+int8-y
-using ipos8 = ipos<int8>;
+///@ ExportValueType Layout = int8-x+int8-y
+using ipos8 = ipos<int8_t>;
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-///@ ExportValueType ipos16 ipos16 Layout = int16-x+int16-y
-using ipos16 = ipos<int16>;
+///@ ExportValueType Layout = int16-x+int16-y
+using ipos16 = ipos<int16_t>;
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
-///@ ExportValueType ipos ipos32 Layout = int32-x+int32-y
-using ipos32 = ipos<int32>;
+///@ ExportValueType Name = ipos Layout = int32-x+int32-y
+using ipos32 = ipos<int32_t>;
 static_assert(sizeof(ipos32) == 8 && std ::is_standard_layout_v<ipos32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
-///@ ExportValueType isize isize32 Layout = int32-width+int32-height
-using isize32 = isize<int32>;
+///@ ExportValueType Name = isize Layout = int32-width+int32-height
+using isize32 = isize<int32_t>;
 static_assert(sizeof(isize32) == 8 && std ::is_standard_layout_v<isize32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
-///@ ExportValueType irect irect32 Layout = int32-x+int32-y+int32-width+int32-height
-using irect32 = irect<int32>;
+///@ ExportValueType Name = irect Layout = int32-x+int32-y+int32-width+int32-height
+using irect32 = irect<int32_t>;
 static_assert(sizeof(irect32) == 16 && std ::is_standard_layout_v<irect32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
-///@ ExportValueType fpos fpos32 Layout = float32-x+float32-y
-using fpos32 = fpos<float32>;
+///@ ExportValueType Name = fpos Layout = float32-x+float32-y
+using fpos32 = fpos<float32_t>;
 static_assert(sizeof(fpos32) == 8 && std::is_standard_layout_v<fpos32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
-///@ ExportValueType fsize fsize32 Layout = float32-width+float32-height
-using fsize32 = fsize<float32>;
+///@ ExportValueType Name = fsize Layout = float32-width+float32-height
+using fsize32 = fsize<float32_t>;
 static_assert(sizeof(fsize32) == 8 && std::is_standard_layout_v<fsize32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
-///@ ExportValueType frect frect32 Layout = float32-x+float32-y+float32-width+float32-height
-using frect32 = frect<float32>;
+///@ ExportValueType Name = frect Layout = float32-x+float32-y+float32-width+float32-height
+using frect32 = frect<float32_t>;
 static_assert(sizeof(frect32) == 16 && std::is_standard_layout_v<frect32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE frect32, "{} {} {} {}", value.x, value.y, value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE frect32, value.x >> value.y >> value.width >> value.height);

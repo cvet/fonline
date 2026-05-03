@@ -62,11 +62,11 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (std::floating_point<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
-        entry += numeric_cast<float32>(any_value.AsDouble());
+        entry += numeric_cast<float32_t>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
-        entry = static_cast<T>(static_cast<int64>(entry) | any_value.AsInt64());
+        entry = static_cast<T>(static_cast<int64_t>(entry) | any_value.AsInt64());
     }
     else if constexpr (some_strong_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
@@ -113,7 +113,7 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         const auto& arr = arr_value.AsArray();
 
         for (const auto& arr_entry : arr) {
-            entry.emplace_back(numeric_cast<float32>(arr_entry.AsDouble()));
+            entry.emplace_back(numeric_cast<float32_t>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
@@ -152,6 +152,24 @@ static void DrawEditableEntry(string_view name, T& entry)
 }
 
 GlobalSettings::GlobalSettings(bool baking_mode) :
+    Common {static_cast<CommonSettings&>(*this)},
+    Network {static_cast<NetworkSettings&>(*this)},
+    ServerNetwork {static_cast<ServerNetworkSettings&>(*this)},
+    ClientNetwork {static_cast<ClientNetworkSettings&>(*this)},
+    Audio {static_cast<AudioSettings&>(*this)},
+    View {static_cast<ViewSettings&>(*this)},
+    Geometry {static_cast<GeometrySettings&>(*this)},
+    Render {static_cast<RenderSettings&>(*this)},
+    Timer {static_cast<TimerSettings&>(*this)},
+    Baking {static_cast<BakingSettings&>(*this)},
+    Critter {static_cast<CritterSettings&>(*this)},
+    CritterView {static_cast<CritterViewSettings&>(*this)},
+    Hex {static_cast<HexSettings&>(*this)},
+    Platform {static_cast<PlatformSettings&>(*this)},
+    Input {static_cast<InputSettings&>(*this)},
+    Mapper {static_cast<MapperSettings&>(*this)},
+    Client {static_cast<ClientSettings&>(*this)},
+    Server {static_cast<ServerSettings&>(*this)},
     _bakingMode {baking_mode}
 {
     FO_STACK_TRACE_ENTRY();
@@ -160,42 +178,40 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         // Auto settings
         _appliedSettings.emplace("ApplyConfig");
         _appliedSettings.emplace("ApplySubConfig");
-        _appliedSettings.emplace("UnpackagedSubConfig");
-        _appliedSettings.emplace("CommandLine");
-        _appliedSettings.emplace("CommandLineArgs");
-        _appliedSettings.emplace("GitBranch");
-        _appliedSettings.emplace("GitCommit");
-        _appliedSettings.emplace("CompatibilityVersion");
-        _appliedSettings.emplace("WebBuild");
-        _appliedSettings.emplace("WindowsBuild");
-        _appliedSettings.emplace("LinuxBuild");
-        _appliedSettings.emplace("MacOsBuild");
-        _appliedSettings.emplace("AndroidBuild");
-        _appliedSettings.emplace("IOsBuild");
-        _appliedSettings.emplace("DesktopBuild");
-        _appliedSettings.emplace("TabletBuild");
-        _appliedSettings.emplace("MapHexagonal");
-        _appliedSettings.emplace("MapSquare");
-        _appliedSettings.emplace("MapDirCount");
-        _appliedSettings.emplace("Packaged");
-        _appliedSettings.emplace("DebugBuild");
-        _appliedSettings.emplace("RenderDebug");
-        _appliedSettings.emplace("MonitorWidth");
-        _appliedSettings.emplace("MonitorHeight");
-        _appliedSettings.emplace("ClientResourceEntries");
-        _appliedSettings.emplace("MapperResourceEntries");
-        _appliedSettings.emplace("ServerResourceEntries");
-        _appliedSettings.emplace("MousePos");
-        _appliedSettings.emplace("DummyIntVec");
-        _appliedSettings.emplace("Ping");
-        _appliedSettings.emplace("ScrollMouseUp");
-        _appliedSettings.emplace("ScrollMouseDown");
-        _appliedSettings.emplace("ScrollMouseLeft");
-        _appliedSettings.emplace("ScrollMouseRight");
-        _appliedSettings.emplace("ScrollKeybUp");
-        _appliedSettings.emplace("ScrollKeybDown");
-        _appliedSettings.emplace("ScrollKeybLeft");
-        _appliedSettings.emplace("ScrollKeybRight");
+        _appliedSettings.emplace("Common.UnpackagedSubConfig");
+        _appliedSettings.emplace("Common.CommandLine");
+        _appliedSettings.emplace("Common.CommandLineArgs");
+        _appliedSettings.emplace("Common.GitBranch");
+        _appliedSettings.emplace("Common.GitCommit");
+        _appliedSettings.emplace("Network.CompatibilityVersion");
+        _appliedSettings.emplace("Platform.WebBuild");
+        _appliedSettings.emplace("Platform.WindowsBuild");
+        _appliedSettings.emplace("Platform.LinuxBuild");
+        _appliedSettings.emplace("Platform.MacOsBuild");
+        _appliedSettings.emplace("Platform.AndroidBuild");
+        _appliedSettings.emplace("Platform.IOsBuild");
+        _appliedSettings.emplace("Platform.DesktopBuild");
+        _appliedSettings.emplace("Platform.TabletBuild");
+        _appliedSettings.emplace("Geometry.MapHexagonal");
+        _appliedSettings.emplace("Geometry.MapSquare");
+        _appliedSettings.emplace("Geometry.MapDirCount");
+        _appliedSettings.emplace("Common.Packaged");
+        _appliedSettings.emplace("Common.DebugBuild");
+        _appliedSettings.emplace("Render.RenderDebug");
+        _appliedSettings.emplace("View.MonitorWidth");
+        _appliedSettings.emplace("View.MonitorHeight");
+        _appliedSettings.emplace("Baking.ClientResourceEntries");
+        _appliedSettings.emplace("Baking.MapperResourceEntries");
+        _appliedSettings.emplace("Baking.ServerResourceEntries");
+        _appliedSettings.emplace("ClientNetwork.Ping");
+        _appliedSettings.emplace("Hex.ScrollMouseUp");
+        _appliedSettings.emplace("Hex.ScrollMouseDown");
+        _appliedSettings.emplace("Hex.ScrollMouseLeft");
+        _appliedSettings.emplace("Hex.ScrollMouseRight");
+        _appliedSettings.emplace("Hex.ScrollKeybUp");
+        _appliedSettings.emplace("Hex.ScrollKeybDown");
+        _appliedSettings.emplace("Hex.ScrollKeybLeft");
+        _appliedSettings.emplace("Hex.ScrollKeybRight");
     }
 }
 
@@ -209,14 +225,10 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
 
     const string config_path = strex(config_dir).combine_path(config_name);
 
-    if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
+    if (const auto settings_content = fs_read_file(config_path)) {
         _appliedConfigs.emplace_back(config_path);
 
-        string settings_content;
-        settings_content.resize(settings_file.GetSize());
-        settings_file.Read(settings_content.data(), settings_content.size());
-
-        auto config = ConfigFile(config_name, settings_content);
+        auto config = ConfigFile(config_name, *settings_content);
         ApplyConfigFile(config, config_dir);
     }
     else {
@@ -229,18 +241,18 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     FO_STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : config.GetSection("")) {
-        SetValue(key, value, config_dir);
+        SetValue(string(key), string(value), config_dir);
     }
 
     AddResourcePacks(config.GetSections("ResourcePack"), config_dir);
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32 argc, char** argv)
+void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (int32 i = 0; i < argc; i++) {
+    for (int32_t i = 0; i < argc; i++) {
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -317,12 +329,25 @@ void GlobalSettings::ApplyInternalConfig()
 
     const auto config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
-    if (strex(config_str).starts_with("###InternalConfig###")) {
+    if (strvex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
     auto config = ConfigFile("InternalConfig.fomain", config_str);
     ApplyConfigFile(config, "");
+}
+
+void GlobalSettings::ApplyDefaultSettings()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_DISABLE_WARNINGS_PUSH()
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
+#include "Settings-Include.h"
+    FO_DISABLE_WARNINGS_POP()
 }
 
 void GlobalSettings::ApplyAutoSettings()
@@ -373,7 +398,7 @@ void GlobalSettings::ApplyAutoSettings()
 
     const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int32&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    const_cast<int32_t&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;
@@ -387,6 +412,25 @@ void GlobalSettings::ApplyAutoSettings()
     const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
     const_cast<string&>(GitCommit) = FO_BUILD_HASH;
     const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
+}
+
+void GlobalSettings::CopyFrom(const GlobalSettings& other)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _resourcePacks = other._resourcePacks;
+    _subConfigs = other._subConfigs;
+    _appliedConfigs = other._appliedConfigs;
+    _appliedSettings = other._appliedSettings;
+    _bakingMode = other._bakingMode;
+    _customSettings = other._customSettings;
+    _emptySetting = other._emptySetting;
+
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = other.name
+#define VARIABLE_SETTING(type, group, name, ...) name = other.name
+#include "Settings-Include.h"
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
@@ -465,16 +509,11 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                         }
                     }
                     else {
-                        const string file_path = strex(config_dir).combine_path(name);
-                        auto file = DiskFileSystem::OpenFile(file_path, false);
+                        const string file_path = fs_is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
+                        if (auto file_content = fs_read_file(file_path)) {
+                            *file_content = strvex(*file_content).trim();
 
-                        if (file) {
-                            string file_content;
-                            file_content.resize(file.GetSize());
-                            file.Read(file_content.data(), file_content.size());
-                            file_content = strex(file_content).trim();
-
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(file_content);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
                             end_pos++;
                         }
                         else {
@@ -505,11 +544,13 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define SET_SETTING(sett) \
     SetEntry(sett, value, append); \
     break
-#define FIXED_SETTING(type, name, ...) \
+#define FIXED_SETTING(type, group, name, ...) \
     case const_hash(#name): \
+    case const_hash(#group "." #name): \
         SET_SETTING(const_cast<type&>(name))
-#define VARIABLE_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, group, name, ...) \
     case const_hash(#name): \
+    case const_hash(#group "." #name): \
         SET_SETTING(name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
@@ -517,7 +558,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     switch (const_hash(setting_name.c_str())) {
 #include "Settings-Include.h"
     default:
-        _customSettings[setting_name] = any_t(setting_value);
+        _customSettings[setting_name] = any_t(string(value));
         break;
     }
 
@@ -528,14 +569,14 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     }
 }
 
-void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_packs, string_view config_dir)
+void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* res_pack : res_packs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = res_pack->find(key);
-            return it != res_pack->end() ? it->second : string();
+            return it != res_pack->end() ? string(it->second) : string();
         };
 
         ResourcePackInfo pack_info;
@@ -556,7 +597,7 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
         if (auto mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
             pack_info.MapperOnly = strvex(mapper_only).to_bool();
         }
-        if (std::bit_cast<int8>(pack_info.ServerOnly) + std::bit_cast<int8>(pack_info.ClientOnly) + std::bit_cast<int8>(pack_info.MapperOnly) > 1) {
+        if (std::bit_cast<int8_t>(pack_info.ServerOnly) + std::bit_cast<int8_t>(pack_info.ClientOnly) + std::bit_cast<int8_t>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
@@ -600,14 +641,14 @@ void GlobalSettings::AddResourcePacks(const vector<map<string, string>*>& res_pa
     }
 }
 
-void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_configs, string_view config_dir)
+void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto* sub_config : sub_configs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = sub_config->find(key);
-            return it != sub_config->end() ? it->second : string();
+            return it != sub_config->end() ? string(it->second) : string();
         };
 
         SubConfigInfo config_info;
@@ -635,7 +676,7 @@ void GlobalSettings::AddSubConfigs(const vector<map<string, string>*>& sub_confi
 
         for (auto&& [key, value] : *sub_config) {
             if (key != "Name" && key != "Parent") {
-                config_info.Settings[key] = value;
+                config_info.Settings[string(key)] = string(value);
             }
         }
 
@@ -663,8 +704,8 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     };
 
-#define FIXED_SETTING(type, name, ...) add_setting(#name, name)
-#define VARIABLE_SETTING(type, name, ...) add_setting(#name, name)
+#define FIXED_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
+#define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
@@ -676,19 +717,19 @@ void GlobalSettings::Draw(bool editable)
 {
     FO_STACK_TRACE_ENTRY();
 
-#define FIXED_SETTING(type, name, ...) \
+#define FIXED_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#name, const_cast<type&>(name)); \
+        DrawEditableEntry(#group "." #name, const_cast<type&>(name)); \
     } \
     else { \
-        DrawEntry(#name, name); \
+        DrawEntry(#group "." #name, name); \
     }
-#define VARIABLE_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#name, name); \
+        DrawEditableEntry(#group "." #name, name); \
     } \
     else { \
-        DrawEntry(#name, name); \
+        DrawEntry(#group "." #name, name); \
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()

@@ -1,4 +1,4 @@
-.\" $OpenBSD: SSL_SESSION_new.3,v 1.9 2021/09/14 14:08:15 schwarze Exp $
+.\" $OpenBSD: SSL_SESSION_new.3,v 1.12 2025/10/24 13:18:22 tb Exp $
 .\"
 .\" Copyright (c) 2016 Ingo Schwarze <schwarze@openbsd.org>
 .\"
@@ -14,16 +14,20 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 14 2021 $
+.Dd $Mdocdate: October 24 2025 $
 .Dt SSL_SESSION_NEW 3
 .Os
 .Sh NAME
-.Nm SSL_SESSION_new
+.Nm SSL_SESSION_new ,
+.Nm SSL_SESSION_dup
 .Nd construct a new SSL_SESSION object
 .Sh SYNOPSIS
+.Lb libssl libcrypto
 .In openssl/ssl.h
 .Ft SSL_SESSION *
 .Fn SSL_SESSION_new void
+.Ft SSL_SESSION *
+.Fn SSL_SESSION_dup "const SSL_SESSION *src"
 .Sh DESCRIPTION
 .Fn SSL_SESSION_new
 allocates and initializes a new
@@ -38,9 +42,20 @@ When the object is no longer needed, it can be destructed with
 .Fn SSL_SESSION_new
 is used internally, for example by
 .Xr SSL_connect 3 .
+.Pp
+.Fn SSL_SESSION_dup
+creates a deep copy of
+.Fa src
+with the exception that
+the reference count is set to 1, that
+the peer certificate is shared with
+.Fa src ,
+and that the new session is not part of any session cache.
 .Sh RETURN VALUES
 .Fn SSL_SESSION_new
-returns the new
+and
+.Fn SSL_SESSION_dup
+return the new
 .Vt SSL_SESSION
 object or
 .Dv NULL
@@ -76,3 +91,7 @@ returns
 .Fn SSL_SESSION_new
 first appeared in SSLeay 0.5.2 and has been available since
 .Ox 2.4 .
+.Pp
+.Fn SSL_SESSION_dup
+first appeared in OpenSSL 1.1.1 and has been available since
+.Ox 7.9 .

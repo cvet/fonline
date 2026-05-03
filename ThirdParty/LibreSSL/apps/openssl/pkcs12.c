@@ -1,4 +1,4 @@
-/* $OpenBSD: pkcs12.c,v 1.28 2024/08/22 12:14:33 tb Exp $ */
+/* $OpenBSD: pkcs12.c,v 1.31 2025/11/27 08:26:32 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -88,7 +88,6 @@ static int dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bags, char *pass,
     int passlen, int options, char *pempass);
 static int print_attribs(BIO *out, const STACK_OF(X509_ATTRIBUTE) *attrlst,
     const char *name);
-static void hex_prin(BIO *out, unsigned char *buf, int len);
 static int alg_print(BIO *x, const X509_ALGOR *alg);
 static int set_pbe(BIO *err, int *ppbe, const char *str);
 
@@ -152,7 +151,8 @@ pkcs12_opt_passarg(char *arg)
 	return (0);
 }
 
-static const EVP_CIPHER *get_cipher_by_name(char *name)
+static const EVP_CIPHER *
+get_cipher_by_name(char *name)
 {
 	if (name == NULL || strcmp(name, "") == 0)
 		return (NULL);
@@ -653,8 +653,16 @@ pkcs12_main(int argc, char **argv)
 			    cfg.certfile, FORMAT_PEM, NULL,
 			    "certificates from certfile")) == NULL)
 				goto export_end;
-			while (sk_X509_num(morecerts) > 0)
-				sk_X509_push(certs, sk_X509_shift(morecerts));
+			while (sk_X509_num(morecerts) > 0) {
+				X509 *cert = sk_X509_shift(morecerts);
+
+				if (!sk_X509_push(certs, cert)) {
+					X509_free(cert);
+					sk_X509_pop_free(morecerts, X509_free);
+					goto export_end;
+				}
+			}
+
 			sk_X509_free(morecerts);
 		}
 
@@ -678,11 +686,18 @@ pkcs12_main(int argc, char **argv)
 
 			if (vret == X509_V_OK) {
 				/* Exclude verified certificate */
-				for (i = 1; i < sk_X509_num(chain2); i++)
-					sk_X509_push(certs, sk_X509_value(
-					    chain2, i));
-				/* Free first certificate */
-				X509_free(sk_X509_value(chain2, 0));
+				X509_free(sk_X509_shift(chain2));
+
+				while (sk_X509_num(chain2) > 0) {
+					X509 *cert = sk_X509_shift(chain2);
+
+					if (!sk_X509_push(certs, cert)) {
+						X509_free(cert);
+						sk_X509_pop_free(chain2,
+						    X509_free);
+						goto export_end;
+					}
+				}
 				sk_X509_free(chain2);
 			} else {
 				if (vret != X509_V_ERR_UNSPECIFIED)
@@ -692,6 +707,7 @@ pkcs12_main(int argc, char **argv)
 					    vret));
 				else
 					ERR_print_errors(bio_err);
+				sk_X509_pop_free(chain2, X509_free);
 				goto export_end;
 			}
 		}
@@ -1004,6 +1020,17 @@ alg_print(BIO *x, const X509_ALGOR *alg)
 	return 1;
 }
 
+static void
+hex_print(BIO *out, const ASN1_STRING *str)
+{
+	const unsigned char *buf = ASN1_STRING_get0_data(str);
+	int len = ASN1_STRING_length(str);
+	int i;
+
+	for (i = 0; i < len; i++)
+		BIO_printf(out, "%02X ", buf[i]);
+}
+
 /* Generalised attribute print: handle PKCS#8 and bag attributes */
 static void
 print_attribute(BIO *out, const ASN1_TYPE *av)
@@ -1013,21 +1040,19 @@ print_attribute(BIO *out, const ASN1_TYPE *av)
 	switch (av->type) {
 	case V_ASN1_BMPSTRING:
 		value = OPENSSL_uni2asc(
-		    av->value.bmpstring->data,
-		    av->value.bmpstring->length);
-		BIO_printf(out, "%s\n", value);
+		    ASN1_STRING_get0_data(av->value.bmpstring),
+		    ASN1_STRING_length(av->value.bmpstring));
+		BIO_printf(out, "%s\n", value != NULL ? value : "(null)");
 		free(value);
 		break;
 
 	case V_ASN1_OCTET_STRING:
-		hex_prin(out, av->value.octet_string->data,
-		    av->value.octet_string->length);
+		hex_print(out, av->value.octet_string);
 		BIO_printf(out, "\n");
 		break;
 
 	case V_ASN1_BIT_STRING:
-		hex_prin(out, av->value.bit_string->data,
-		    av->value.bit_string->length);
+		hex_print(out, av->value.bit_string);
 		BIO_printf(out, "\n");
 		break;
 
@@ -1077,15 +1102,6 @@ print_attribs(BIO *out, const STACK_OF(X509_ATTRIBUTE) *attrlst,
 			BIO_printf(out, "<No Values>\n");
 	}
 	return 1;
-}
-
-static void
-hex_prin(BIO *out, unsigned char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		BIO_printf(out, "%02X ", buf[i]);
 }
 
 static int

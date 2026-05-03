@@ -38,6 +38,7 @@
 #include "ClientConnection.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "FontManager.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
@@ -47,7 +48,7 @@ class Updater final
 {
 public:
     Updater() = delete;
-    explicit Updater(GlobalSettings& settings, AppWindow* window);
+    explicit Updater(GlobalSettings& settings, IAppWindow& window);
     Updater(const Updater&) = delete;
     Updater(Updater&&) noexcept = delete;
     auto operator=(const Updater&) = delete;
@@ -59,11 +60,11 @@ public:
 private:
     struct UpdateFile
     {
-        int32 Index {};
+        int32_t Index {};
         string Name;
         size_t Size {};
         size_t RemaningSize {};
-        uint32 Hash {};
+        uint64_t Hash {};
     };
 
     void AddText(string_view text);
@@ -73,6 +74,7 @@ private:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
+    void Net_OnTimeSync();
     void Net_OnUpdateFileData();
 
     raw_ptr<ClientSettings> _settings;
@@ -82,16 +84,17 @@ private:
     EffectManager _effectMngr;
     HashStorage _hashStorage {};
     SpriteManager _sprMngr;
+    FontManager _fontMngr;
     nanotime _startTime {};
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
     size_t _filesWholeSize {};
-    unique_ptr<DiskFile> _tempFile {};
-    vector<uint8> _updateFileBuf {};
+    std::ofstream _tempFile {};
+    vector<uint8_t> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};
-    vector<vector<uint8>> _globalsPropertiesData {};
+    vector<vector<uint8_t>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
 

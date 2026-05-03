@@ -42,6 +42,7 @@ FO_DISABLE_WARNINGS_PUSH()
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
+class IAppRender;
 class ParticleManager;
 FO_END_NAMESPACE
 
@@ -52,15 +53,16 @@ namespace SPK::FO
     class SparkRenderBuffer final : public RenderBuffer
     {
     public:
-        explicit SparkRenderBuffer(size_t vertices);
+        SparkRenderBuffer(size_t vertices, FO_NAMESPACE IAppRender& render);
 
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
-        void SetNextTexCoord(float32 tu, float32 tv);
+        void SetNextTexCoord(float32_t tu, float32_t tv);
         void Render(size_t vertices, RenderEffect* effect) const;
 
     private:
         mutable unique_ptr<RenderDrawBuffer> _renderBuf {};
+        raw_ptr<FO_NAMESPACE IAppRender> _render {};
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
     };
@@ -90,9 +92,9 @@ namespace SPK::FO
 
         void Setup(string_view path, ParticleManager& particle_mngr);
 
-        auto GetDrawWidth() const -> int32;
-        auto GetDrawHeight() const -> int32;
-        void SetDrawSize(int32 width, int32 height);
+        auto GetDrawWidth() const -> int32_t;
+        auto GetDrawHeight() const -> int32_t;
+        void SetDrawSize(int32_t width, int32_t height);
 
         auto GetEffectName() const -> const string&;
         void SetEffectName(const string& effect_name);
@@ -123,8 +125,8 @@ namespace SPK::FO
         raw_ptr<RenderTexture> _texture {};
         frect32 _textureAtlasOffset {};
 
-        int32 _drawWidth {};
-        int32 _drawHeight {};
+        int32_t _drawWidth {};
+        int32_t _drawHeight {};
 
         string _effectName {};
         string _textureName {};

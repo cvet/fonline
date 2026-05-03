@@ -56,11 +56,11 @@ public:
     ~TimeEventManager() = default;
 
     [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity.get(), _curTimeEvent.get()}; }
-    [[nodiscard]] auto CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id) const -> size_t;
+    [[nodiscard]] auto CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
 
-    auto StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32;
-    void ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id, optional<timespan> repeat, optional<vector<any_t>> data);
-    void StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32 id);
+    auto StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
+    void ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
+    void StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id);
     void ProcessTimeEvents();
     void ClearTimeEvents();
 
@@ -74,7 +74,7 @@ private:
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     raw_ptr<Entity> _curTimeEventEntity {};
     raw_ptr<const Entity::TimeEventData> _curTimeEvent {};
-    uint32 _timeEventCounter {};
+    uint32_t _timeEventCounter {};
     any_t _emptyAnyValue {};
     bool _nonConstHelper {};
 };

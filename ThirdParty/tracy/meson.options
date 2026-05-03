@@ -1,6 +1,6 @@
 option('tracy_enable', type : 'boolean', value : true, description : 'Enable profiling', yield: true)
 option('on_demand', type : 'boolean', value : false, description : 'On-demand profiling')
-option('callstack', type : 'boolean', value : false, description : 'Enfore callstack collection for tracy regions')
+option('callstack', type : 'integer', value : 0, description : 'Enforce callstack collection for tracy zones x frames deep')
 option('no_callstack', type : 'boolean', value : false, description : 'Disable all callstack related functionality')
 option('no_callstack_inlines', type : 'boolean', value : false, description : 'Disables the inline functions in callstacks')
 option('only_localhost', type : 'boolean', value : false, description : 'Only listen on the localhost interface')
@@ -25,3 +25,4 @@ option('fibers', type : 'boolean', value : false, description : 'Enable fibers s
 option('no_crash_handler', type : 'boolean', value : false, description : 'Disable crash handling')
 option('verbose', type : 'boolean', value : false, description : 'Enable verbose logging')
 option('debuginfod', type : 'boolean', value : false, description : 'Enable debuginfod support')
+option('ignore_memory_faults', type : 'boolean', value : false, description : 'Ignore instrumentation errors from memory free events that do not have a matching allocation')

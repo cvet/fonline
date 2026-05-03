@@ -54,6 +54,7 @@ struct LoggingData
         MainThreadId = std::this_thread::get_id();
     }
 
+    std::recursive_mutex Locker {};
     vector<pair<string, LogFunc>> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
@@ -65,7 +66,7 @@ void SetLogCallback(string_view key, LogFunc callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(GetLogLocker());
+    std::scoped_lock locker {Logging->Locker};
 
     if (!key.empty()) {
         std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
@@ -83,7 +84,7 @@ void LogDisableTags()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(GetLogLocker());
+    std::scoped_lock locker {Logging->Locker};
 
     Logging->TagsDisabled = true;
 }
@@ -93,7 +94,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        std::scoped_lock locker(GetLogLocker());
+        std::scoped_lock locker {Logging->Locker};
 
         // Make message
         string result;
@@ -105,7 +106,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
             if (const auto thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
-                result += strex("[{}] ", GetThisThreadName());
+                result += strex("[{}] ", get_this_thread_name());
             }
         }
 
@@ -124,11 +125,13 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
             for (const auto& func : Logging->LogFunctions | std::views::values) {
-                func(result);
+                func(type, result);
             }
         }
 
-        Platform::InfoLog(result);
+        if constexpr (FO_DEBUG) {
+            Platform::InfoLog(result);
+        }
 
 #if FO_TRACY
         TracyMessage(result.c_str(), result.length());

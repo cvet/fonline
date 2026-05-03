@@ -11,9 +11,11 @@ namespace Gui
 ///@ Enum MessageBoxType Default
 ///@ Enum MessageBoxType All
 
-///@ Setting Client CursorType Cursor
-///@ Setting Client CursorType DraggableCursor
-///@ Setting Client bool MsgboxInvert
+///@ Setting Client bool Gui.MsgboxInvert
+
+CursorType Cursor = CursorType::Default;
+CursorType DraggableCursor = CursorType::Default;
+ident CursorData;
 
 // Anchor styles
 ///@ Enum AnchorStyle None = 0
@@ -169,8 +171,13 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
 //   void SetCropContent(bool enabled)
 //   void SetAutoScroll(bool ver, bool hor)
+//   int VerticalScrollValue
+//   int HorizontalScrollValue
+//   int VerticalScrollRange
+//   int HorizontalScrollRange
 //   void ModifyScroll(int ver, int hor)
 //   bool CanModifyScroll(int ver, int hor)
+//   void SetScrollValue(int ver, int hor)
 // Text : Object
 //   string Text (overridable)
 //   int TextFont
@@ -273,7 +280,7 @@ class Object
 {
     bool get_Active() final
     {
-        return _ActiveSelf && (_Parent != null ? _Parent.Active : true);
+        return _Active;
     }
     bool get_ActiveSelf() final
     {
@@ -365,6 +372,9 @@ class Object
     }
 
     bool _ActiveSelf;
+    bool _Active;
+    bool _HasOnDraw;
+    bool _NeedDraw;
     string _Name;
     ipos _BasePos;
     isize _BaseSize;
@@ -522,9 +532,12 @@ class Object
         if (parent != null) {
             parent._Children.insertLast(this);
         }
+        _RefreshActive();
 
         _Construct();
         OnConstruct();
+
+        _RefreshNeedDraw();
 
         Screen screen = Screen;
         if (screen != null && screen._IsRegistered) {
@@ -546,6 +559,7 @@ class Object
 
     void _Init()
     {
+        _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
         for (int i = 0; i < _Children.length(); i++) {
             _Children[i]._Init();
         }
@@ -596,6 +610,7 @@ class Object
 
     void Remove()
     {
+        Object oldParent = _Parent;
         if (_Parent != null) {
             _Parent._Children.removeAt(_Parent._Children.findByRef(this));
             _Parent = null;
@@ -604,6 +619,11 @@ class Object
         _Remove();
 
         _ActiveSelf = false;
+        _RefreshActive();
+
+        if (oldParent != null) {
+            oldParent._RefreshNeedDraw();
+        }
     }
 
     void _Remove()
@@ -643,12 +663,14 @@ class Object
         }
 
         // Common draw callback
-        OnDraw();
+        if (_HasOnDraw) {
+            OnDraw();
+        }
     }
 
     void _Draw(bool callCallback)
     {
-        if (!Active) {
+        if (!_ActiveSelf || !_NeedDraw) {
             return;
         }
 
@@ -657,15 +679,44 @@ class Object
         }
 
         // _Children
-        for (int i = 0; i < _Children.length(); i++) {
+        int childCount = _Children.length();
+        for (int i = 0; i < childCount; i++) {
             Object child = _Children[i];
-            if (child._ActiveSelf && !child._IsDragged) {
+            if (child._ActiveSelf && child._NeedDraw && !child._IsDragged) {
                 child._Draw(true);
             }
         }
 
         if (callCallback) {
             OnPostDraw();
+        }
+    }
+
+    bool _HasSelfDraw()
+    {
+        return _HasOnDraw || _Grid != null;
+    }
+
+    void _RefreshNeedDraw()
+    {
+        bool need = _HasSelfDraw();
+        if (!need) {
+            for (int i = 0; i < _Children.length(); i++) {
+                if (_Children[i]._NeedDraw) {
+                    need = true;
+                    break;
+                }
+            }
+        }
+
+        if (_NeedDraw == need) {
+            return;
+        }
+
+        _NeedDraw = need;
+
+        if (_Parent != null) {
+            _Parent._RefreshNeedDraw();
         }
     }
 
@@ -720,6 +771,11 @@ class Object
 
     Object FindHit(ipos pos)
     {
+        // Inactive subtrees can never produce a hit (IsHit walks ancestors and bails on inactive)
+        if (!_ActiveSelf) {
+            return null;
+        }
+
         // Check children
         for (int i = _Children.length() - 1; i >= 0; i--) {
             Object obj = _Children[i].FindHit(pos);
@@ -728,8 +784,7 @@ class Object
             }
         }
 
-        // Check own
-        if (IsHit(pos)) {
+        if (_IsHitSelf(pos)) {
             return this;
         }
 
@@ -744,20 +799,38 @@ class Object
 
     bool IsHit(ipos pos)
     {
-        return Active && !_IsNotHittable && _Size.width > 0 && _Size.height > 0 && Math::IsCollision(pos, _AbsolutePos, _Size) && !_IsCropped(pos);
+        if (!_IsHitSelf(pos)) {
+            return false;
+        }
+
+        Object obj = _Parent;
+        while (obj != null) {
+            if (!obj._ActiveSelf) {
+                return false;
+            }
+
+            Panel panel = cast<Panel>(obj);
+            if (panel != null && panel._CropContent &&
+                (pos.x < obj._AbsolutePos.x || pos.x >= obj._AbsolutePos.x + obj._Size.width || pos.y < obj._AbsolutePos.y ||
+                 pos.y >= obj._AbsolutePos.y + obj._Size.height)) {
+                return false;
+            }
+
+            obj = obj._Parent;
+        }
+
+        return true;
     }
 
-    bool _IsCropped(ipos pos)
+    bool _IsHitSelf(ipos pos)
     {
-        Object obj = Parent;
-        while (obj != null) {
-            Panel panel = cast<Panel>(obj);
-            if (panel != null && panel._CropContent && !Math::IsCollision(pos, obj._AbsolutePos, obj._Size)) {
-                return true;
-            }
-            obj = obj.Parent;
+        if (!_ActiveSelf || _IsNotHittable || _Size.width <= 0 || _Size.height <= 0) {
+            return false;
         }
-        return false;
+        if (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height) {
+            return false;
+        }
+        return true;
     }
 
     void _GetWholeSizeRect(int[] rect)
@@ -813,7 +886,7 @@ class Object
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MouseButton::Left) {
-            bool draggableCursor = (Settings.DraggableCursor != CursorType::Default && Settings.Cursor == Settings.DraggableCursor);
+            bool draggableCursor = (DraggableCursor != CursorType::Default && Cursor == DraggableCursor);
             if (draggableCursor) {
                 _IsDragged = true;
                 _DragChanged();
@@ -1022,9 +1095,10 @@ class Object
 
     Object _Find(const string& name, bool deepFind, int& skip)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 if (skip <= 0) {
                     return child;
                 }
@@ -1051,9 +1125,10 @@ class Object
 
     void _Count(const string& name, bool deepCount, int& result)
     {
-        for (int i = 0; i < _Children.length(); i++) {
+        int len = _Children.length();
+        for (int i = 0; i < len; i++) {
             Object child = _Children[i];
-            if (!child._Name.isEmpty() && child._Name == name) {
+            if (child._Name == name) {
                 result++;
             }
             if (deepCount) {
@@ -1072,7 +1147,7 @@ class Object
         // Base data
         _Size = _BaseSize;
         ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
-        isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+        isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.View.ScreenWidth, Settings.View.ScreenHeight);
         isize parentBaseSize = _Parent != null ? _Parent._BaseSize : _BaseSize;
 
         // Dock
@@ -1150,6 +1225,7 @@ class Object
     {
         if (_ActiveSelf != active) {
             _ActiveSelf = active;
+            _Active = _ActiveSelf && (_Parent == null || _Parent._Active);
             _ActiveChanged();
         }
     }
@@ -1158,7 +1234,20 @@ class Object
     {
         OnActiveChanged();
         for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._Active = _Children[i]._ActiveSelf && _Active;
             _Children[i]._ActiveChanged();
+        }
+    }
+
+    void _RefreshActive()
+    {
+        bool newActive = _ActiveSelf && (_Parent == null || _Parent._Active);
+        if (_Active == newActive) {
+            return;
+        }
+        _Active = newActive;
+        for (int i = 0; i < _Children.length(); i++) {
+            _Children[i]._RefreshActive();
         }
     }
 
@@ -1247,7 +1336,14 @@ class Object
     {
         _DeferredMousePressed = enabled;
     }
+
+    void SetHasOnDraw(bool enabled)
+    {
+        _HasOnDraw = enabled;
+    }
 };
+
+const int PanelScrollAnimationDurationMs = 120;
 
 class Panel : Object
 {
@@ -1275,6 +1371,28 @@ class Panel : Object
     {
         return _HorizontalScrollPercent;
     }
+    int get_VerticalScrollValue() final
+    {
+        return _VerticalScroll;
+    }
+    int get_HorizontalScrollValue() final
+    {
+        return _HorizontalScroll;
+    }
+    int get_VerticalScrollRange() final
+    {
+        int maxVerScroll = 0;
+        int maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+        return maxVerScroll;
+    }
+    int get_HorizontalScrollRange() final
+    {
+        int maxVerScroll = 0;
+        int maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+        return maxHorScroll;
+    }
 
     Sprite::Sprite _BackgroundImage;
     bool _CropContent;
@@ -1284,21 +1402,73 @@ class Panel : Object
     int _HorizontalScroll;
     int _VerticalScrollPercent;
     int _HorizontalScrollPercent;
+    Tween::ValueTween _VerticalScrollTween;
+    Tween::ValueTween _HorizontalScrollTween;
 
-    bool IsHit(ipos pos) override
+    void _Construct() override
     {
-        if (Object::IsHit(pos)) {
-            if (_CheckTransparentOnHit && _BackgroundImage != null) {
-                return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
-            }
-            return true;
+        Object::_Construct();
+        _ResetScrollTweens();
+    }
+
+    void _FixClone() override
+    {
+        Object::_FixClone();
+        _ResetScrollTweens();
+    }
+
+    void _ResetScrollTweens()
+    {
+        _VerticalScrollTween = Tween::ValueTween();
+        _HorizontalScrollTween = Tween::ValueTween();
+        _VerticalScrollTween.SnapTo(_VerticalScroll);
+        _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+    }
+
+    bool _IsHitSelf(ipos pos) override
+    {
+        if (!Object::_IsHitSelf(pos)) {
+            return false;
         }
-        return false;
+        if (_CheckTransparentOnHit && _BackgroundImage != null) {
+            return Game.IsSpriteHit(_BackgroundImage.Id, pos - _AbsolutePos);
+        }
+        return true;
+    }
+
+    Object FindHit(ipos pos) override
+    {
+        if (!_ActiveSelf) {
+            return null;
+        }
+
+        // Cropping panel outside its rect cannot contain any hittable descendant
+        if (_CropContent &&
+            (pos.x < _AbsolutePos.x || pos.x >= _AbsolutePos.x + _Size.width || pos.y < _AbsolutePos.y || pos.y >= _AbsolutePos.y + _Size.height)) {
+            return null;
+        }
+
+        for (int i = _Children.length() - 1; i >= 0; i--) {
+            Object obj = _Children[i].FindHit(pos);
+            if (obj != null) {
+                return obj;
+            }
+        }
+
+        if (_IsHitSelf(pos)) {
+            return this;
+        }
+
+        return null;
     }
 
     void _Draw(bool callCallback) override
     {
-        _ModifyScroll(0, 0);
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
+        _RefreshSmoothScroll();
 
         bool crop = _CropContent;
         if (crop) {
@@ -1325,6 +1495,11 @@ class Panel : Object
         }
     }
 
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null || _Grid != null;
+    }
+
     void _DrawImage(Sprite::Sprite image)
     {
         if (_Size != isize()) {
@@ -1344,7 +1519,7 @@ class Panel : Object
 
     void _SetImage(Sprite::Sprite& curImage, string imageName, SpriteLayout imageLayout)
     {
-        _SetImage(curImage, hstring(imageName), imageLayout);
+        _SetImage(curImage, imageName.hstr(), imageLayout);
     }
 
     void _SetImage(Sprite::Sprite& curImage, hstring imageName, SpriteLayout imageLayout)
@@ -1369,6 +1544,8 @@ class Panel : Object
         if (curImage != null && (imageLayout == SpriteLayout::None || _BaseSize == isize())) {
             SetSize(curImage.Size);
         }
+
+        _RefreshNeedDraw();
     }
 
     void _MousePressedUnder(MouseButton button) override
@@ -1384,7 +1561,7 @@ class Panel : Object
             }
 
             if (dy != 0) {
-                _ModifyScroll(dy * 10, 0);
+                _ModifyScroll(dy, 0);
             }
 
             // Stop processing
@@ -1404,6 +1581,20 @@ class Panel : Object
         return _ModifyScroll(ver, hor, true);
     }
 
+    void SetScrollValue(int ver, int hor)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        int newVer = (_IsVerticalScroll ? ver : 0);
+        int newHor = (_IsHorizontalScroll ? hor : 0);
+
+        if (newVer != _VerticalScroll || newHor != _HorizontalScroll || _VerticalScrollTween.Active || _HorizontalScrollTween.Active) {
+            _SetScrollValue(newVer, newHor, false, true);
+        }
+    }
+
     void SetScrollPercent(int verPercent, int horPercent)
     {
         if (!_IsVerticalScroll && !_IsHorizontalScroll) {
@@ -1416,52 +1607,145 @@ class Panel : Object
         int newVer = (maxVerScroll > 0 ? maxVerScroll * verPercent / 100 : 0);
         int newHor = (maxHorScroll > 0 ? maxHorScroll * horPercent / 100 : 0);
 
-        if (newVer != _VerticalScroll || newHor != _HorizontalScroll) {
-            _ModifyScroll(newVer - _VerticalScroll, newHor - _HorizontalScroll);
+        if (newVer != _VerticalScroll || newHor != _HorizontalScroll || _VerticalScrollTween.Active || _HorizontalScrollTween.Active) {
+            _SetScrollValue(newVer, newHor, false, true);
         }
     }
 
-    bool _ModifyScroll(int ver, int hor, bool onlyCheck = false)
+    int _GetAdaptiveScrollStep(int scrollRange)
+    {
+        int adaptiveStep = scrollRange / 20;
+        return Math::Clamp(adaptiveStep, 10, 120);
+    }
+
+    void _ClampScrollValue(int& ver, int& hor)
+    {
+        int maxVerScroll = 0, maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+
+        if (_IsVerticalScroll) {
+            if (ver > maxVerScroll) {
+                ver = maxVerScroll;
+            }
+            if (ver < 0) {
+                ver = 0;
+            }
+        }
+        else {
+            ver = 0;
+        }
+
+        if (_IsHorizontalScroll) {
+            if (hor > maxHorScroll) {
+                hor = maxHorScroll;
+            }
+            if (hor < 0) {
+                hor = 0;
+            }
+        }
+        else {
+            hor = 0;
+        }
+    }
+
+    void _SetScrollTarget(int ver, int hor)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        int targetVer = (_IsVerticalScroll ? ver : 0);
+        int targetHor = (_IsHorizontalScroll ? hor : 0);
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (_IsVerticalScroll) {
+            if (targetVer != _VerticalScrollTween.Target || !_VerticalScrollTween.Active) {
+                _VerticalScrollTween.MoveTo(_VerticalScroll, targetVer, PanelScrollAnimationDurationMs);
+            }
+
+            if (!_VerticalScrollTween.Active) {
+                _VerticalScrollTween.SnapTo(_VerticalScroll);
+            }
+        }
+
+        if (_IsHorizontalScroll) {
+            if (targetHor != _HorizontalScrollTween.Target || !_HorizontalScrollTween.Active) {
+                _HorizontalScrollTween.MoveTo(_HorizontalScroll, targetHor, PanelScrollAnimationDurationMs);
+            }
+
+            if (!_HorizontalScrollTween.Active) {
+                _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+            }
+        }
+    }
+
+    void _RefreshSmoothScroll()
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return;
+        }
+
+        if (!_VerticalScrollTween.Active && !_HorizontalScrollTween.Active) {
+            _SetScrollValue(_VerticalScroll, _HorizontalScroll, false, true);
+            return;
+        }
+
+        int curVer = _VerticalScroll;
+        int curHor = _HorizontalScroll;
+        int targetVer = (_VerticalScrollTween.Active ? _VerticalScrollTween.Target : _VerticalScroll);
+        int targetHor = (_HorizontalScrollTween.Active ? _HorizontalScrollTween.Target : _HorizontalScroll);
+
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (_VerticalScrollTween.Active && targetVer != _VerticalScrollTween.Target) {
+            _VerticalScrollTween.MoveTo(_VerticalScroll, targetVer, PanelScrollAnimationDurationMs);
+        }
+        if (_HorizontalScrollTween.Active && targetHor != _HorizontalScrollTween.Target) {
+            _HorizontalScrollTween.MoveTo(_HorizontalScroll, targetHor, PanelScrollAnimationDurationMs);
+        }
+
+        if (_VerticalScrollTween.Active) {
+            curVer = _VerticalScrollTween.Update();
+        }
+
+        if (_HorizontalScrollTween.Active) {
+            curHor = _HorizontalScrollTween.Update();
+        }
+
+        _SetScrollValue(curVer, curHor, false, false);
+
+        if (!_VerticalScrollTween.Active) {
+            _VerticalScrollTween.SnapTo(_VerticalScroll);
+        }
+        if (!_HorizontalScrollTween.Active) {
+            _HorizontalScrollTween.SnapTo(_HorizontalScroll);
+        }
+    }
+
+    bool _SetScrollValue(int ver, int hor, bool onlyCheck = false, bool syncTarget = true)
     {
         if (!_IsVerticalScroll && !_IsHorizontalScroll) {
             return false;
         }
 
-        int curVer = _VerticalScroll;
-        int curHor = _HorizontalScroll;
-        int oldVer = curVer;
-        int oldHor = curHor;
+        int oldVer = _VerticalScroll;
+        int oldHor = _HorizontalScroll;
+        int curVer = (_IsVerticalScroll ? ver : 0);
+        int curHor = (_IsHorizontalScroll ? hor : 0);
 
-        if (_IsVerticalScroll) {
-            curVer += ver;
-        }
-        if (_IsHorizontalScroll) {
-            curHor += hor;
-        }
+        _ClampScrollValue(curVer, curHor);
 
         int maxVerScroll = 0, maxHorScroll = 0;
         _GetScrollableSize(maxVerScroll, maxHorScroll);
 
-        if (_IsVerticalScroll) {
-            if (curVer > maxVerScroll) {
-                curVer = maxVerScroll;
-            }
-            if (curVer < 0) {
-                curVer = 0;
-            }
-        }
-        if (_IsHorizontalScroll) {
-            if (curHor > maxHorScroll) {
-                curHor = maxHorScroll;
-            }
-            if (curHor < 0) {
-                curHor = 0;
-            }
-        }
-
-        if (!onlyCheck || (ver == 0 && hor == 0)) {
+        if (!onlyCheck || (ver == _VerticalScroll && hor == _HorizontalScroll)) {
             _VerticalScrollPercent = (maxVerScroll > 0 ? curVer * 100 / maxVerScroll : 0);
             _HorizontalScrollPercent = (maxHorScroll > 0 ? curHor * 100 / maxHorScroll : 0);
+        }
+
+        if (!onlyCheck && syncTarget) {
+            _VerticalScrollTween.SnapTo(curVer);
+            _HorizontalScrollTween.SnapTo(curHor);
         }
 
         if (curVer != oldVer || curHor != oldHor) {
@@ -1473,6 +1757,43 @@ class Panel : Object
                 }
             }
 
+            return true;
+        }
+
+        return false;
+    }
+
+    bool _ModifyScroll(int ver, int hor, bool onlyCheck = false)
+    {
+        if (!_IsVerticalScroll && !_IsHorizontalScroll) {
+            return false;
+        }
+
+        int maxVerScroll = 0, maxHorScroll = 0;
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
+
+        int verStep = 0;
+        int horStep = 0;
+
+        if (_IsVerticalScroll && ver != 0) {
+            verStep = (ver < 0 ? -1 : 1) * _GetAdaptiveScrollStep(maxVerScroll);
+        }
+        if (_IsHorizontalScroll && hor != 0) {
+            horStep = (hor < 0 ? -1 : 1) * _GetAdaptiveScrollStep(maxHorScroll);
+        }
+
+        int baseVer = (_VerticalScrollTween.Active ? _VerticalScrollTween.Target : _VerticalScroll);
+        int baseHor = (_HorizontalScrollTween.Active ? _HorizontalScrollTween.Target : _HorizontalScroll);
+        int targetVer = baseVer + verStep;
+        int targetHor = baseHor + horStep;
+        _ClampScrollValue(targetVer, targetHor);
+
+        if (onlyCheck) {
+            return targetVer != baseVer || targetHor != baseHor;
+        }
+
+        if (targetVer != baseVer || targetHor != baseHor) {
+            _SetScrollTarget(targetVer, targetHor);
             return true;
         }
 
@@ -1519,7 +1840,7 @@ class Text : Object
     {
         _Text = value;
     }
-    int get_TextFont() final
+    FontType get_TextFont() final
     {
         return _TextFont;
     }
@@ -1531,27 +1852,33 @@ class Text : Object
     {
         return _TextColorFocused;
     }
-    int get_TextFlags() final
+    FontFlag get_TextFlags() final
     {
         return _TextFlags;
     }
 
     string _Text;
-    int _TextFont;
+    FontType _TextFont;
     ucolor _TextColor;
     ucolor _TextColorFocused;
-    int _TextFlags;
+    FontFlag _TextFlags;
+    int _TextSkipLines;
 
     void _Construct() override
     {
         Object::_Construct();
 
-        _TextFont = FONT_DEFAULT;
+        _TextFont = FontType::Default;
         _TextColor = COLOR_TEXT;
+        _TextFlags = FontFlag::None;
     }
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1560,7 +1887,7 @@ class Text : Object
         string text = Text;
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
         }
 
         Object::_Draw(false);
@@ -1570,7 +1897,12 @@ class Text : Object
         }
     }
 
-    void SetText(string text, int font, int flags)
+    bool _HasSelfDraw() override
+    {
+        return true;
+    }
+
+    void SetText(string text, FontType font, FontFlag flags)
     {
         if (!text.isEmpty()) {
             _Text = text;
@@ -1597,17 +1929,17 @@ class Text : Object
     {
         isize resultSize;
         int lines = 0;
-        Game.GetTextInfo(text, isize(Size.width, 1000), _TextFont, _TextFlags, resultSize, lines);
+        Game.GetTextInfo(text, isize(Size.width, 1000), TextFormat(_TextFont, _TextFlags, _TextSkipLines), resultSize, lines);
         SetSize(isize(_Size.width, resultSize.height + 5));
         SetText(text);
     }
 
-    void SetTextFont(int font)
+    void SetTextFont(FontType font)
     {
         _TextFont = font;
     }
 
-    void SetTextFlags(int flags)
+    void SetTextFlags(FontFlag flags)
     {
         _TextFlags = flags;
     }
@@ -1672,6 +2004,10 @@ class TextInput : Text
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1699,7 +2035,7 @@ class TextInput : Text
         }
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
         }
 
         Object::_Draw(false);
@@ -1731,21 +2067,6 @@ class TextInput : Text
 
                 if (key == KeyCode::X) {
                     _Text.clear();
-                }
-            }
-            else if (key == KeyCode::V) {
-                string clipboardText = Game.GetClipboardText();
-
-                if (_InputLength != 0 && _Text.length() + clipboardText.length() > _InputLength) {
-                    clipboardText = clipboardText.substr(0, _InputLength - _Text.length());
-                }
-
-                if (_CarriagePos != -1) {
-                    _Text = _Text.substr(0, _CarriagePos) + clipboardText + _Text.substr(_CarriagePos);
-                    _CarriagePos += clipboardText.length();
-                }
-                else {
-                    _Text += clipboardText;
                 }
             }
         }
@@ -1871,6 +2192,10 @@ class Button : Panel
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -1906,6 +2231,11 @@ class Button : Panel
         if (callCallback) {
             OnPostDraw();
         }
+    }
+
+    bool _HasSelfDraw() override
+    {
+        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null || _Grid != null;
     }
 
     void MouseClick(MouseButton button)
@@ -2100,7 +2430,7 @@ class Screen : Panel
 
     void _FixClone() override
     {
-        _AvailableCursors = array<CursorType>(_AvailableCursors);
+        _AvailableCursors = _AvailableCursors.clone();
 
         Panel::_FixClone();
     }
@@ -2109,6 +2439,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = true;
+        _RefreshActive();
 
         // Set default cursor
         _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
@@ -2121,6 +2452,7 @@ class Screen : Panel
     {
         // Make screen active
         _ActiveSelf = false;
+        _RefreshActive();
 
         // Base behaviour
         Panel::_Hide();
@@ -2132,7 +2464,7 @@ class Screen : Panel
         _IsOnTop = true;
 
         // Set screen cursor
-        Settings.Cursor = _Cursor;
+        Gui::Cursor = _Cursor;
 
         // Base behaviour
         Panel::_Appear();
@@ -2144,7 +2476,7 @@ class Screen : Panel
         _IsOnTop = false;
 
         // Store cursor
-        _Cursor = Settings.Cursor;
+        _Cursor = Gui::Cursor;
         if (_AvailableCursors.find(_Cursor) == -1) {
             _Cursor = _AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default;
         }
@@ -2157,14 +2489,14 @@ class Screen : Panel
     {
         if (button == MouseButton::Right) {
             if (_AvailableCursors.length() > 0) {
-                CursorType curCursor = Settings.Cursor;
+                CursorType curCursor = Gui::Cursor;
                 int curCursorIndex = _AvailableCursors.find(curCursor);
                 if (curCursorIndex != -1) {
                     curCursorIndex++;
                     if (curCursorIndex >= _AvailableCursors.length()) {
                         curCursorIndex = 0;
                     }
-                    Settings.Cursor = _AvailableCursors[curCursorIndex];
+                    Gui::Cursor = _AvailableCursors[curCursorIndex];
                 }
             }
         }
@@ -2186,7 +2518,7 @@ class Screen : Panel
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
                     ipos parentAbsolutePos = _Parent != null ? _Parent._AbsolutePos : ZERO_IPOS;
-                    isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.ScreenWidth, Settings.ScreenHeight);
+                    isize parentSize = _Parent != null ? _Parent._Size : isize(Settings.View.ScreenWidth, Settings.View.ScreenHeight);
                     ipos prevPos = newPos;
 
                     if (newPos.x < parentAbsolutePos.x) {
@@ -2296,7 +2628,7 @@ class Grid : Panel
 
     void _FixClone() override
     {
-        _Cells = array<Object>(_Cells);
+        _Cells = _Cells.clone();
 
         Panel::_FixClone();
     }
@@ -2350,6 +2682,7 @@ class Grid : Panel
 
         // Create new intsances
         cellPrototype._ActiveSelf = true;
+        cellPrototype._RefreshActive();
         Object[] cellInstances = {};
 
         for (int i = 0; i < _GridSize; i++) {
@@ -2362,6 +2695,7 @@ class Grid : Panel
         }
 
         cellPrototype._ActiveSelf = false;
+        cellPrototype._RefreshActive();
 
         // Callbacks
         for (int i = 0; i < cellInstances.length(); i++) {
@@ -2449,6 +2783,8 @@ class Grid : Panel
         for (int i = 0; i < obj._Children.length(); i++) {
             _SetCellIndex(obj._Children[i], grid, cellIndex);
         }
+
+        obj._RefreshNeedDraw();
     }
 
     void _ResizeGrid(Object obj, Object cell, int cellIndex)
@@ -2469,6 +2805,7 @@ class Grid : Panel
 
             if (cellPrototype != null) {
                 cellPrototype._ActiveSelf = false;
+                cellPrototype._RefreshActive();
             }
         }
     }
@@ -2536,19 +2873,19 @@ class MessageBox : Text
         _MessageTexts = array<string>();
         _MessageTypes = array<MessageBoxType>();
         _MessageTimes = array<string>();
-        _DisplayedMessages = array<MessageBoxType> = {MessageBoxType::All};
+        _DisplayedMessages = {MessageBoxType::All};
         _IsNotCatchable = true;
 
-        _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
-        _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
+        _ScrollUp = Sprite::Sprite("MiniArrowUp.png".hstr());
+        _ScrollDown = Sprite::Sprite("MiniArrowDown.png".hstr());
     }
 
     void _FixClone() override
     {
-        _MessageTexts = array<string>(_MessageTexts);
-        _MessageTypes = array<MessageBoxType>(_MessageTypes);
-        _MessageTimes = array<string>(_MessageTimes);
-        _DisplayedMessages = array<MessageBoxType>(_DisplayedMessages);
+        _MessageTexts = _MessageTexts.clone();
+        _MessageTypes = _MessageTypes.clone();
+        _MessageTimes = _MessageTimes.clone();
+        _DisplayedMessages = _DisplayedMessages.clone();
 
         Text::_FixClone();
     }
@@ -2557,17 +2894,23 @@ class MessageBox : Text
     {
         Text::_Show(params);
 
-        _InvertMessages = Settings.MsgboxInvert;
+        _InvertMessages = Settings.Gui.MsgboxInvert;
         _GenerateText();
     }
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (!_InvertMessages) {
-            _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END(_ScrollLines);
+            _TextFlags = FontFlag(FontFlag::KeepTail | FontFlag::AlignBottom);
+            _TextSkipLines = _ScrollLines;
         }
         else {
-            _TextFlags = FT_SKIPLINES(_ScrollLines);
+            _TextFlags = FontFlag::None;
+            _TextSkipLines = _ScrollLines;
         }
 
         Text::_Draw(callCallback);
@@ -2582,7 +2925,7 @@ class MessageBox : Text
     {
         if (_CursorHidden) {
             _CursorHidden = false;
-            Settings.HideCursor = false;
+            Settings.Gui.HideCursor = false;
         }
 
         Text::_Remove();
@@ -2592,9 +2935,9 @@ class MessageBox : Text
     {
         Text::_Hover();
 
-        if (!Settings.HideCursor) {
+        if (!Settings.Gui.HideCursor) {
             _CursorHidden = true;
-            Settings.HideCursor = true;
+            Settings.Gui.HideCursor = true;
         }
     }
 
@@ -2604,7 +2947,7 @@ class MessageBox : Text
 
         if (_CursorHidden) {
             _CursorHidden = false;
-            Settings.HideCursor = false;
+            Settings.Gui.HideCursor = false;
         }
     }
 
@@ -2717,7 +3060,7 @@ class MessageBox : Text
             int curLines = lines;
             isize resultSize;
             int skipLines = 0;
-            Game.GetTextInfo(messageText, isize(_Size.width, 1000), _TextFont, 0, resultSize, skipLines);
+            Game.GetTextInfo(messageText, isize(_Size.width, 1000), TextFormat(_TextFont, FontFlag::None, 0), resultSize, skipLines);
             lines += skipLines;
 
             if (_ScrollLines < 0) {
@@ -2748,7 +3091,7 @@ class MessageBox : Text
 
     void SetDisplayedMessages(MessageBoxType[] messageTypes)
     {
-        _DisplayedMessages = array<MessageBoxType>(messageTypes);
+        _DisplayedMessages = messageTypes.clone();
         _GenerateText();
     }
 
@@ -2825,7 +3168,7 @@ class Console : TextInput
 
     void _FixClone() override
     {
-        _History = array<string>(_History);
+        _History = _History.clone();
 
         TextInput::_FixClone();
     }
@@ -2918,7 +3261,7 @@ class Console : TextInput
         }
 
         // Trim history length
-        int historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.ConsoleHistorySize);
+        int historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.Input.ConsoleHistorySize);
         while (_History.length() > historyMaxLength) {
             _History.removeAt(0);
         }
@@ -2985,6 +3328,10 @@ class Console : TextInput
 
     void _Draw(bool callCallback) override
     {
+        if (!_ActiveSelf || !_NeedDraw) {
+            return;
+        }
+
         if (callCallback) {
             _DrawCallback();
         }
@@ -2999,7 +3346,7 @@ class Console : TextInput
         }
 
         text = text.substr(0, _CarriagePos) + (Game.FrameTime.milliseconds % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
-        Game.DrawText(text, _AbsolutePos, _Size, _TextColor, _TextFont, _TextFlags);
+        Game.DrawText(text, _AbsolutePos, _Size, _TextColor, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
 
         Object::_Draw(false);
 
@@ -3057,7 +3404,7 @@ class ItemView : Grid
 
     void _FixClone() override
     {
-        _Items = array<Item>(_Items);
+        _Items = _Items.clone();
 
         Grid::_FixClone();
     }
@@ -3092,6 +3439,37 @@ class ItemView : Grid
     Item GetItem(int cellIndex)
     {
         return _Items[cellIndex];
+    }
+
+    bool HasItemId(ident itemId)
+    {
+        for (int i = 0; i < _Items.length(); i++) {
+            Item item = _Items[i];
+
+            if (item != null && item.Id == itemId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool HasSourceItemId(ident itemId)
+    {
+        Item[] items = OnGetItems();
+        if (items == null) {
+            return false;
+        }
+
+        for (int i = 0; i < items.length(); i++) {
+            Item item = items[i];
+
+            if (item != null && item.Id == itemId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void Resort()
@@ -3206,7 +3584,7 @@ void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
         return;
     }
 
-    @ScreenCreators[screenNum] = screenFunc;
+    ScreenCreators[screenNum] = screenFunc;
 
     // Precache
     Screen screen = CreateScreen(screenNum);
@@ -3224,14 +3602,14 @@ void ShowScreen(GuiScreen screenNum)
 
 void ShowScreen(GuiScreen screenNum, dict<string, any> params)
 {
-    Settings.ScrollMouseUp = false;
-    Settings.ScrollMouseRight = false;
-    Settings.ScrollMouseDown = false;
-    Settings.ScrollMouseLeft = false;
-    Settings.ScrollKeybUp = false;
-    Settings.ScrollKeybRight = false;
-    Settings.ScrollKeybDown = false;
-    Settings.ScrollKeybLeft = false;
+    Settings.Hex.ScrollMouseUp = false;
+    Settings.Hex.ScrollMouseRight = false;
+    Settings.Hex.ScrollMouseDown = false;
+    Settings.Hex.ScrollMouseLeft = false;
+    Settings.Hex.ScrollKeybUp = false;
+    Settings.Hex.ScrollKeybRight = false;
+    Settings.Hex.ScrollKeybDown = false;
+    Settings.Hex.ScrollKeybLeft = false;
 
     // Manage multiinstance
     for (int i = Screens.length() - 1; i >= 0; i--) {
@@ -3295,6 +3673,48 @@ void HideAllScreens()
             HideScreen(screen);
         }
         else {
+            break;
+        }
+    }
+}
+
+void BringToFront(GuiScreen screenNum)
+{
+    Screen screen = GetScreen(screenNum);
+
+    if (screen != null) {
+        BringToFront(screen);
+    }
+}
+
+void BringToFront(Screen screen)
+{
+    if (!screen.Active) {
+        return;
+    }
+
+    int topmostIndex = -1;
+
+    for (int i = Screens.length() - 1; i >= 0; i--) {
+        if (!Screens[i].Active) {
+            continue;
+        }
+
+        if (topmostIndex == -1) {
+            topmostIndex = i;
+        }
+
+        if (Screens[i] is screen) {
+            if (i == topmostIndex) {
+                break; // Already topmost
+            }
+
+            Screen topmost = Screens[topmostIndex];
+            Screens.removeAt(i);
+            Screens.insertLast(screen);
+
+            topmost._Disappear();
+            screen._Appear();
             break;
         }
     }
@@ -3600,6 +4020,64 @@ void EngineCallback_Start()
     GuiScreens::InitializeScreens();
 }
 
+void CleanupObjectGraph(Object obj)
+{
+    for (int i = obj._Children.length() - 1; i >= 0; i--) {
+        CleanupObjectGraph(obj._Children[i]);
+    }
+
+    Grid grid = cast<Grid>(obj);
+    if (grid != null) {
+        grid._Cells.clear();
+    }
+
+    Screen screen = cast<Screen>(obj);
+    if (screen != null) {
+        screen._AvailableCursors.clear();
+        screen._InputKeyPressed.clear();
+        screen._InputMousePressed.clear();
+        screen._IsRegistered = false;
+    }
+
+    obj._Grid = null;
+    obj._CellIndex = 0;
+    obj._Parent = null;
+    obj._Children.clear();
+    obj._ActiveSelf = false;
+    obj._Active = false;
+}
+
+void EngineCallback_Finish()
+{
+    EngineCallback_InputLost();
+
+    HideAllScreens();
+
+    DropMenu = null;
+    CurConsole = null;
+    DragAndDropHandlers.clear();
+    ScreenCreators = {};
+
+    if (CursorScreen != null) {
+        CursorScreen.Remove();
+        CleanupObjectGraph(CursorScreen);
+        CursorScreen = null;
+    }
+
+    for (int i = Screens.length() - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        screen.Remove();
+        CleanupObjectGraph(screen);
+    }
+
+    Screens.clear();
+    FocusedObjects.clear();
+    PressedObject = null;
+    LastPressedObject = null;
+    HoveredObject = null;
+    FindNextTextInputSkipObj = null;
+}
+
 void EngineCallback_Draw()
 {
     for (int i = 0; i < Screens.length(); i++) {
@@ -3867,12 +4345,40 @@ void EngineCallback_Loop()
     }
 }
 
-void EngineCallback_ItemChanged(bool onMap)
+void RefreshItemViewsByItemId(ident itemId)
 {
-    if (!onMap) {
-        ItemView[] itemViews = {};
-        CollectItemView(itemViews);
-        for (int i = 0; i < itemViews.length(); i++) {
+    if (itemId == ZERO_IDENT) {
+        return;
+    }
+
+    ItemView[] itemViews = {};
+    CollectItemView(itemViews);
+
+    for (int i = 0; i < itemViews.length(); i++) {
+        ItemView itemView = itemViews[i];
+
+        if (itemView.HasItemId(itemId) || itemView.HasSourceItemId(itemId)) {
+            itemView.Resort();
+        }
+    }
+}
+
+void RefreshItemViewsByUserDataExt(int userDataExt)
+{
+    RefreshItemViewsByUserDataExts({userDataExt});
+}
+
+void RefreshItemViewsByUserDataExts(int[] userDataExts)
+{
+    if (userDataExts == null || userDataExts.isEmpty()) {
+        return;
+    }
+
+    ItemView[] itemViews = {};
+    CollectItemView(itemViews);
+
+    for (int i = 0; i < itemViews.length(); i++) {
+        if (userDataExts.find(itemViews[i].UserDataExt) != -1) {
             itemViews[i].Resort();
         }
     }
@@ -4070,14 +4576,15 @@ void Highlight(GuiScreen screenNum, string objName, timespan duration = Time::Se
         int count = screen != null ? screen.Count(objName) : 0;
 
         for (int i = 0; i < count; i++) {
-            Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, i});
+            Game.StartTimeEvent(Time::Asap(), HighlightProcess, {screenNum, objName, duration.milliseconds, i});
         }
     }
     else {
-        Game.StartTimeEvent(Time::Asap(), HighlightProcess, array<any> = {screenNum, objName, duration.milliseconds, skip});
+        Game.StartTimeEvent(Time::Asap(), HighlightProcess, {screenNum, objName, duration.milliseconds, skip});
     }
 }
 
+[[TimeEvent]]
 void HighlightProcess(any[] data)
 {
     GuiScreen screenNum = GuiScreen(int(data[0]));

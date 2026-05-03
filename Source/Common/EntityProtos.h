@@ -46,11 +46,6 @@ class ProtoEntity : public Entity
 public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _protoId.as_str(); }
     [[nodiscard]] auto GetProtoId() const noexcept -> hstring { return _protoId; }
-    [[nodiscard]] auto HasComponent(hstring name) const noexcept -> bool { return _components.contains(name); }
-    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const noexcept -> bool { return _componentHashes.contains(hash); }
-    [[nodiscard]] auto GetComponents() const noexcept -> const unordered_set<hstring>& { return _components; }
-
-    void EnableComponent(hstring component);
 
     string CollectionName {};
 
@@ -58,8 +53,6 @@ protected:
     ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) noexcept;
 
     const hstring _protoId;
-    unordered_set<hstring> _components {};
-    unordered_set<hstring::hash_t> _componentHashes {};
 };
 
 class EntityWithProto

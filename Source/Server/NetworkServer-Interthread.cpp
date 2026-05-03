@@ -45,7 +45,7 @@ public:
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
 
-    void Receive(const_span<uint8> buf);
+    void Receive(const_span<uint8_t> buf);
 
 private:
     void DispatchImpl() override;
@@ -68,7 +68,7 @@ public:
     void Shutdown() override;
 
 private:
-    uint16 _virtualPort;
+    uint16_t _virtualPort;
 };
 
 auto NetworkServer::StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
@@ -85,7 +85,7 @@ NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ServerN
     FO_STACK_TRACE_ENTRY();
 }
 
-void NetworkServerConnection_Interthread::Receive(const_span<uint8> buf)
+void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -104,7 +104,7 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
     const auto buf = SendCallback();
 
-    if (!buf.empty()) {
+    if (_send && !buf.empty()) {
         _send(buf);
     }
 }
@@ -120,9 +120,11 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 }
 
 InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _virtualPort {numeric_cast<uint16>(settings.ServerPort)}
+    _virtualPort {numeric_cast<uint16_t>(settings.ServerPort)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(InterthreadListenersLocker);
 
     if (InterthreadListeners.count(_virtualPort) != 0) {
         throw NetworkServerException("Port is busy", _virtualPort);
@@ -131,13 +133,15 @@ InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnect
     InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
         auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
         callback_(conn);
-        return [conn_ = conn](const_span<uint8> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
+        return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });
 }
 
 void InterthreadServer::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker(InterthreadListenersLocker);
 
     FO_RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
     InterthreadListeners.erase(_virtualPort);

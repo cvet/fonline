@@ -108,7 +108,7 @@ static bool ScriptGridTemplateCallback(asITypeInfo *ti, bool &dontGarbageCollect
 	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) )
 	{
 		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
-		asDWORD flags = subtype->GetFlags();
+		asQWORD flags = subtype->GetFlags();
 		if( (flags & asOBJ_VALUE) && !(flags & asOBJ_POD) )
 		{
 			// Verify that there is a default constructor
@@ -182,7 +182,7 @@ static bool ScriptGridTemplateCallback(asITypeInfo *ti, bool &dontGarbageCollect
 		// that can potentially form a circular reference with the array then it is not 
 		// necessary to make the array garbage collected.
 		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
-		asDWORD flags = subtype->GetFlags();
+		asQWORD flags = subtype->GetFlags();
 		if( !(flags & asOBJ_GC) )
 		{
 			if( (flags & asOBJ_SCRIPT_OBJECT) )
@@ -729,15 +729,30 @@ void CScriptGrid::EnumReferences(asIScriptEngine *engine)
 {
 	if( buffer == 0 ) return;
 
-	// If the array is holding handles, then we need to notify the GC of them
-	if( subTypeId & asTYPEID_MASK_OBJECT )
+	// If the grid is holding handles, then we need to notify the GC of them
+	if (subTypeId & asTYPEID_MASK_OBJECT)
 	{
 		asUINT numElements = buffer->width * buffer->height;
 		void **d = (void**)buffer->data;
-		for( asUINT n = 0; n < numElements; n++ )
+		asITypeInfo *subType = engine->GetTypeInfoById(subTypeId);
+		if ((subType->GetFlags() & asOBJ_REF))
 		{
-			if( d[n] )
-				engine->GCEnumCallback(d[n]);
+			// For reference types we need to notify the GC of each instance
+			for (asUINT n = 0; n < numElements; n++)
+			{
+				if (d[n])
+					engine->GCEnumCallback(d[n]);
+			}
+		}
+		else if ((subType->GetFlags() & asOBJ_VALUE) && (subType->GetFlags() & asOBJ_GC))
+		{
+			// For value types we need to forward the enum callback
+			// to the object so it can decide what to do
+			for (asUINT n = 0; n < numElements; n++)
+			{
+				if (d[n])
+					engine->ForwardGCEnumReferences(d[n], subType);
+			}
 		}
 	}
 }

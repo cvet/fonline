@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -46,7 +46,6 @@ BEGIN_AS_NAMESPACE
 
 // Singleton
 static asCThreadManager *threadManager = 0;
-thread_local asCThreadLocalData threadLocalData; // (FOnline Patch)
 
 //======================================================================
 
@@ -110,8 +109,23 @@ AS_API void asReleaseSharedLock()
 
 //======================================================================
 
-#if !defined(AS_NO_THREADS) && defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
-__declspec(thread) asCThreadLocalData *asCThreadManager::tld = 0;
+#if !defined(AS_NO_THREADS) && defined(AS_WINDOWS_THREADS)
+	#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+		__declspec(thread) asCThreadLocalData *asCThreadManager::tld = 0;
+	#else
+		#ifdef AS_WINDOWS_USEFLS
+			#define WinMTLsAlloc() (asDWORD)FlsAlloc(asCThreadManager::WinFLSCallback);
+			#define WinMTLsFree(key) FlsFree(key); 
+			#define WinMTLsSetValue(key, value) FlsSetValue(key, value);
+			#define WinMTLsGetValue(key) FlsGetValue(key);
+		#else
+			#define WinMTLsAlloc() (asDWORD)TlsAlloc();
+			#define WinMTLsFree(key) TlsFree(key);
+			#define WinMTLsSetValue(key, value) TlsSetValue(key, value);
+			#define WinMTLsGetValue(key) TlsGetValue(key);
+		#endif
+		//WinMTLs prefix for Windows Multi-Thread Local Storage. Either Threads or fibers.
+	#endif
 #endif
 
 asCThreadManager::asCThreadManager()
@@ -125,12 +139,12 @@ asCThreadManager::asCThreadManager()
 	#if defined AS_POSIX_THREADS
 		pthread_key_t pKey;
 		pthread_key_create(&pKey, 0);
-		tlsKey = (asDWORD)pKey;
+		mtlsKey = (asDWORD)pKey;
 	#elif defined AS_WINDOWS_THREADS
 		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 			tld = 0;
 		#else
-			tlsKey = (asDWORD)TlsAlloc();
+			mtlsKey = WinMTLsAlloc();
 		#endif
 	#endif
 #endif
@@ -210,12 +224,12 @@ asCThreadManager::~asCThreadManager()
 #ifndef AS_NO_THREADS
 	// Deallocate the thread local storage
 	#if defined AS_POSIX_THREADS
-		pthread_key_delete((pthread_key_t)tlsKey);
+		pthread_key_delete((pthread_key_t)mtlsKey);
 	#elif defined AS_WINDOWS_THREADS
 		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 			tld = 0;
 		#else
-			TlsFree((DWORD)tlsKey);
+			WinMTLsFree(mtlsKey);
 		#endif
 	#endif
 #else
@@ -227,19 +241,28 @@ asCThreadManager::~asCThreadManager()
 #endif
 }
 
+#ifdef AS_WINDOWS_USEFLS
+void asCThreadManager::WinFLSCallback(PVOID lpFlsData)
+{
+	asCThreadLocalData* fld = (asCThreadLocalData*)lpFlsData;
+	if ( fld )
+	{
+		asDELETE(fld, asCThreadLocalData);
+	}
+}
+#endif
+
 int asCThreadManager::CleanupLocalData()
 {
 	if( threadManager == 0 )
 		return 0;
 
-	asCThreadLocalData* tld = nullptr; // (FOnline Patch)
-
 #ifndef AS_NO_THREADS
 #if defined AS_POSIX_THREADS
-	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
+	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->mtlsKey);
 #elif defined AS_WINDOWS_THREADS
 	#if !defined(_MSC_VER) || !(WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
-		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
+		asCThreadLocalData *tld = (asCThreadLocalData*)WinMTLsGetValue((DWORD)threadManager->mtlsKey);
 	#endif
 #endif
 
@@ -250,12 +273,13 @@ int asCThreadManager::CleanupLocalData()
 	{
 		asDELETE(tld,asCThreadLocalData);
 		#if defined AS_POSIX_THREADS
-			pthread_setspecific((pthread_key_t)threadManager->tlsKey, 0);
+			pthread_setspecific((pthread_key_t)threadManager->mtlsKey, 0);
 		#elif defined AS_WINDOWS_THREADS
 			#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 				tld = 0;
 			#else
-				TlsSetValue((DWORD)threadManager->tlsKey, 0);
+				//ASDelete was called on the TLD. In case we use fibers, setting the value to 0 is necessary to prevent the fiber callback to be called, preventing a duplicate delete.
+				WinMTLsSetValue((DWORD)threadManager->mtlsKey, 0); 
 			#endif
 		#endif
 		return 0;
@@ -283,26 +307,24 @@ asCThreadLocalData *asCThreadManager::GetLocalData()
 	if( threadManager == 0 )
 		return 0;
 
-	asCThreadLocalData* tld = &threadLocalData; // (FOnline Patch)
-
 #ifndef AS_NO_THREADS
 #if defined AS_POSIX_THREADS
-	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
+	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->mtlsKey);
 	if( tld == 0 )
 	{
 		tld = asNEW(asCThreadLocalData)();
-		pthread_setspecific((pthread_key_t)threadManager->tlsKey, tld);
+		pthread_setspecific((pthread_key_t)threadManager->mtlsKey, tld);
 	}
 #elif defined AS_WINDOWS_THREADS
 	#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 		if( tld == 0 )
 			tld = asNEW(asCThreadLocalData)();
 	#else
-		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
+		asCThreadLocalData *tld = (asCThreadLocalData*)WinMTLsGetValue((DWORD)threadManager->mtlsKey);
 		if( tld == 0 )
 		{
  			tld = asNEW(asCThreadLocalData)();
-			TlsSetValue((DWORD)threadManager->tlsKey, tld);
+			WinMTLsSetValue((DWORD)threadManager->mtlsKey, tld);
  		}
 	#endif
 #endif
@@ -327,7 +349,7 @@ asCThreadLocalData::~asCThreadLocalData()
 }
 
 //=========================================================================
-#ifndef AS_CXX_THREADS // (FOnline Patch)
+
 #ifndef AS_NO_THREADS
 asCThreadCriticalSection::asCThreadCriticalSection()
 {
@@ -466,7 +488,7 @@ void asCThreadReadWriteLock::ReleaseShared()
 }
 
 #endif
-#endif // (FOnline Patch)
+
 //========================================================================
 
 END_AS_NAMESPACE

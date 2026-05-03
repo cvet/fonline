@@ -32,12 +32,14 @@
 //
 
 #include "EffectManager.h"
+#include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render) :
     _settings {&settings},
-    _resources {&resources}
+    _resources {&resources},
+    _render {&render}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -51,7 +53,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
     }
 
     // Load new
-    auto effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
+    auto effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
         if (const auto file = _resources->ReadFile(path2)) {
             return file.GetStr();
         }
@@ -82,17 +84,19 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
-        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32>() / 1000.0f;
-        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32>() / 1000.0f;
+        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32_t>() / 1000.0f;
+        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32_t>() / 1000.0f;
     }
 
     if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
-        random_value_buf->RandomValue[0] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[1] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[2] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
-        random_value_buf->RandomValue[3] = numeric_cast<float32>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        std::uniform_int_distribution<int32_t> random_distribution {0, 99999};
+
+        random_value_buf->RandomValue[0] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[1] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[2] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[3] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
     }
 
     if (effect->IsNeedScriptValueBuf()) {
@@ -128,7 +132,7 @@ void EffectManager::LoadDefaultEffects()
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32 effect_errors = 0;
+    int32_t effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

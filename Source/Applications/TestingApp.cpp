@@ -47,14 +47,16 @@
 
 FO_USING_NAMESPACE();
 
-int32 main(int32 argc, char** argv)
+int32_t main(int32_t argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
+        IsTestingInProgress = true;
         InitApp(-1, nullptr);
-        GenericUtils::SetRandomSeed(42);
-        return Catch::Session().run(argc, argv);
+        const auto result = Catch::Session().run(argc, argv);
+        IsTestingInProgress = false;
+        return result;
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

@@ -1,6 +1,15 @@
 namespace Tween
 {
 
+enum EasingType
+{
+    Linear,
+    InQuad,
+    OutQuad,
+    InOutQuad,
+    OutCubic,
+}
+
 class Tween
 {
     void Init(int beginX, int beginY, int endX, int endY, int pixelsPerSecond)
@@ -82,5 +91,141 @@ class Tween
     private
     nanotime startTick;
 };
+
+class ValueTween
+{
+    void Reset(int value)
+    {
+        _From = value;
+        _To = value;
+        _Current = value;
+        _DurationMs = 0;
+        _Easing = EasingType::OutCubic;
+        _Active = false;
+        _StartTick = nanotime();
+    }
+
+    void MoveTo(int fromValue, int toValue, int durationMs, EasingType easing = EasingType::OutCubic)
+    {
+        _From = fromValue;
+        _To = toValue;
+        _Current = fromValue;
+        _DurationMs = Math::Max(durationMs, 0);
+        _Easing = easing;
+        _StartTick = Game.FrameTime;
+        _Active = (_From != _To && _DurationMs > 0);
+
+        if (!_Active) {
+            _Current = _To;
+        }
+    }
+
+    void SnapTo(int value)
+    {
+        Reset(value);
+    }
+
+    int Update()
+    {
+        if (!_Active) {
+            return _Current;
+        }
+
+        float t = Math::ClampF(float((Game.FrameTime - _StartTick).milliseconds) / float(_DurationMs), 0.0f, 1.0f);
+        _Current = Math::Lerp(_From, _To, _ApplyEasing(t));
+
+        if (t >= 1.0f || _Current == _To) {
+            _Current = _To;
+            _Active = false;
+        }
+
+        return _Current;
+    }
+
+    bool get_Active()
+    {
+        return _Active;
+    }
+
+    int get_Current()
+    {
+        return _Current;
+    }
+
+    int get_Target()
+    {
+        return _To;
+    }
+
+    private
+    float _ApplyEasing(float t)
+    {
+        switch (_Easing) {
+        case EasingType::InQuad:
+            return InQuad(t);
+        case EasingType::OutQuad:
+            return OutQuad(t);
+        case EasingType::InOutQuad:
+            return InOutQuad(t);
+        case EasingType::OutCubic:
+            return OutCubic(t);
+        case EasingType::Linear:
+        default:
+            return Linear(t);
+        }
+    }
+
+    private
+    int _From;
+    private
+    int _To;
+    private
+    int _Current;
+    private
+    int _DurationMs;
+    private
+    EasingType _Easing;
+    private
+    bool _Active;
+    private
+    nanotime _StartTick;
+};
+
+float Linear(float t)
+{
+    return Math::ClampF(t, 0.0f, 1.0f);
+}
+
+float InQuad(float t)
+{
+    t = Linear(t);
+    return t * t;
+}
+
+float OutQuad(float t)
+{
+    t = Linear(t);
+    float inv = 1.0f - t;
+    return 1.0f - inv * inv;
+}
+
+float InOutQuad(float t)
+{
+    t = Linear(t);
+
+    if (t < 0.5f) {
+        return 2.0f * t * t;
+    }
+
+    float inv = -2.0f * t + 2.0f;
+    return 1.0f - inv * inv / 2.0f;
+}
+
+float OutCubic(float t)
+{
+    t = Linear(t);
+    float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
 
 }

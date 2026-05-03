@@ -45,8 +45,8 @@ FO_DECLARE_EXCEPTION(NetworkServerException);
 class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    using AsyncSendCallback = function<const_span<uint8>()>;
-    using AsyncReceiveCallback = function<void(const_span<uint8>)>;
+    using AsyncSendCallback = function<const_span<uint8_t>()>;
+    using AsyncReceiveCallback = function<void(const_span<uint8_t>)>;
     using DisconnectCallback = function<void()>;
 
     NetworkServerConnection(const NetworkServerConnection&) = delete;
@@ -56,7 +56,7 @@ public:
     virtual ~NetworkServerConnection() = default;
 
     [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
-    [[nodiscard]] virtual auto GetPort() const noexcept -> uint16 { return _port; }
+    [[nodiscard]] virtual auto GetPort() const noexcept -> uint16_t { return _port; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
     void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);
@@ -69,18 +69,18 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback() -> const_span<uint8>;
-    void ReceiveCallback(const_span<uint8> buf);
+    auto SendCallback() -> const_span<uint8_t>;
+    void ReceiveCallback(const_span<uint8_t> buf);
 
     ServerNetworkSettings& _settings;
     string _host {};
-    uint16 _port {};
+    uint16_t _port {};
 
 private:
     AsyncSendCallback _sendCallback {};
     std::atomic_bool _sendCallbackSet {};
     AsyncReceiveCallback _receiveCallback {};
-    vector<uint8> _initReceiveBuf {};
+    vector<uint8_t> _initReceiveBuf {};
     std::mutex _receiveLocker {};
     DisconnectCallback _disconnectCallback {};
     std::atomic_bool _disconnectCallbackSet {};
