@@ -351,15 +351,15 @@ extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTrac
     uint32_t prev_anchor = 0;
 
     for (const auto& layer : layers) {
+        for (const auto& frame : layer.ScriptFrames) {
+            frames.push_back(frame);
+        }
+
         const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
 
         if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
             ResolveNativeRange(st, prev_anchor, anchor, frames);
             prev_anchor = anchor;
-        }
-
-        for (const auto& frame : layer.ScriptFrames) {
-            frames.push_back(frame);
         }
     }
 
