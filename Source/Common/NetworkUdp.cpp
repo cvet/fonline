@@ -257,7 +257,7 @@ auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    data = _readyData;
+    data.swap(_readyData);
     _readyData.clear();
     return data.size();
 }
@@ -395,14 +395,30 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         return false;
     }
 
+    switch (type) {
+    case static_cast<uint8_t>(UdpPacketType::Connect):
+    case static_cast<uint8_t>(UdpPacketType::Accept):
+    case static_cast<uint8_t>(UdpPacketType::Payload):
+    case static_cast<uint8_t>(UdpPacketType::KeepAlive):
+    case static_cast<uint8_t>(UdpPacketType::Disconnect):
+        break;
+    default:
+        return false;
+    }
+
     if (!ReadScalar<uint32_t>(data, pos, packet.SessionId) || !ReadScalar<uint32_t>(data, pos, packet.Sequence) || !ReadScalar<uint32_t>(data, pos, packet.AckSequence) || !ReadScalar<uint32_t>(data, pos, packet.AckBits) || !ReadScalar<uint32_t>(data, pos, packet.Value) || !ReadScalar<uint16_t>(data, pos, payload_size) || !ReadScalar<uint16_t>(data, pos, reserved)) {
         return false;
     }
 
-    ignore_unused(flags);
     ignore_unused(reserved);
 
     if (pos + payload_size != data.size()) {
+        return false;
+    }
+
+    const bool payload_flag_set = (flags & 0x01) != 0;
+
+    if (payload_flag_set != (payload_size != 0)) {
         return false;
     }
 

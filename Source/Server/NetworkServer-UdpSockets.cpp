@@ -212,8 +212,8 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     FO_STACK_TRACE_ENTRY();
 
     UdpTransportOptions options;
-    options.MaxPayload = std::max<size_t>(_settings->UdpPacketSize, 256);
-    options.MaxPendingBytes = std::max<size_t>(_settings->UdpWindowSize, options.MaxPayload);
+    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 256));
+    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->UdpWindowSize, 0)), options.MaxPayload);
     options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
     options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
     options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
@@ -246,13 +246,14 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ServerNetworkSettings& settin
     if (!net_sockets::startup()) {
         throw NetworkServerException("Socket startup failed for UDP transport");
     }
-
     if (!_socket.bind("0.0.0.0", numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset))) {
         throw NetworkServerException("Can't bind UDP server socket");
     }
 
-    _packetBuf.resize(std::max<size_t>(_settings->UdpPacketSize * 2, _settings->NetBufferSize));
-    _runThread = std::thread(&NetworkServer_UdpSockets::Run, this);
+    const auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
+    const auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    _packetBuf.resize(std::max(packet_capacity, net_capacity));
+    _runThread = run_thread("Network-Udp", [this] { Run(); });
 }
 
 void NetworkServer_UdpSockets::Shutdown()
@@ -323,7 +324,6 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         if (!TryParseUdpPacket({_packetBuf.data(), numeric_cast<size_t>(received)}, packet)) {
             continue;
         }
-
         if (packet.Type == UdpPacketType::Connect) {
             HandleConnectPacket(std::move(host), port, packet);
             continue;

@@ -92,13 +92,17 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ClientNet
     _requestHost = _settings->ServerHost;
     _remoteHost = _requestHost;
     _remotePort = numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset);
+
     std::mt19937 random_generator {MakeSeededRandomGenerator()};
     std::uniform_int_distribution<int32_t> random_distribution {1, 255};
     _clientSalt = (numeric_cast<uint32_t>(random_distribution(random_generator)) << 24) | //
         (numeric_cast<uint32_t>(random_distribution(random_generator)) << 16) | //
         (numeric_cast<uint32_t>(random_distribution(random_generator)) << 8) | //
         (numeric_cast<uint32_t>(random_distribution(random_generator)) << 0);
-    _packetBuf.resize(std::max<size_t>(_settings->UdpPacketSize * 2, _settings->NetBufferSize));
+
+    const auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
+    const auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    _packetBuf.resize(std::max(packet_capacity, net_capacity));
 
     if (!_socket.bind("0.0.0.0", 0, false)) {
         throw NetworkClientException("Can't bind UDP client socket");
@@ -210,8 +214,8 @@ auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     FO_STACK_TRACE_ENTRY();
 
     UdpTransportOptions options;
-    options.MaxPayload = std::max<size_t>(_settings->UdpPacketSize, 256);
-    options.MaxPendingBytes = std::max<size_t>(_settings->UdpWindowSize, options.MaxPayload);
+    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 256));
+    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->UdpWindowSize, 0)), options.MaxPayload);
     options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
     options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
     options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
