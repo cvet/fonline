@@ -696,8 +696,7 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
     return self->GetPlayer() != nullptr;
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gag_callback_func) -> MovingContext*
 {
     auto* engine = self->GetEngine();
     auto* map = engine->EntityMngr.GetMap(self->GetMapId());
@@ -716,9 +715,9 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
 
     function<bool(const Item*)> gag_callback;
 
-    if (gagCallabck) {
+    if (gag_callback_func) {
         // Todo: use move only function
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](const Item* gag) mutable {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gag_callback_func)), self](const Item* gag) mutable {
             auto* gag_non_const = const_cast<Item*>(gag);
             return gag_cb->Call(self, gag_non_const) && gag_cb->GetResult();
         };
@@ -757,9 +756,25 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
         return failed_moving.release_ownership();
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), ipos16 {});
+    const auto clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    const auto clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    const auto clamped_offset = ipos16 {clamped_ox, clamped_oy};
+
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), clamped_offset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving.release_ownership();
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+{
+    return StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+{
+    return StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
 }
 
 ///@ ExportMethod
