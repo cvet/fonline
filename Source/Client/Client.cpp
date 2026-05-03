@@ -108,6 +108,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this]() FO_DEFERRED { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NetMessage::AddCritter, [this]() FO_DEFERRED { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NetMessage::RemoveCritter, [this]() FO_DEFERRED { Net_OnRemoveCritter(); });
+    _conn.AddMessageHandler(NetMessage::CritterVisibilityMode, [this]() FO_DEFERRED { Net_OnCritterVisibilityMode(); });
     _conn.AddMessageHandler(NetMessage::CritterAction, [this]() FO_DEFERRED { Net_OnCritterAction(); });
     _conn.AddMessageHandler(NetMessage::CritterMoveItem, [this]() FO_DEFERRED { Net_OnCritterMoveItem(); });
     _conn.AddMessageHandler(NetMessage::CritterTeleport, [this]() FO_DEFERRED { Net_OnCritterTeleport(); });
@@ -812,12 +813,8 @@ void ClientEngine::Net_OnAddCritter()
     CritterHexView* hex_cr;
 
     if (_curMap) {
-        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData);
+        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
         FO_RUNTIME_ASSERT(hex_cr);
-
-        if (_mapLoaded) {
-            hex_cr->FadeUp();
-        }
 
         cr = hex_cr;
     }
@@ -864,6 +861,10 @@ void ClientEngine::Net_OnAddCritter()
 
         ReceiveCustomEntities(item);
     }
+
+    // Visibility mode (sent regardless of context; default Full for global map)
+    const auto vis_mode = _conn.InBuf->Read<CritterVisibilityMode>();
+    cr->SetVisibilityMode(vis_mode);
 
     // Initial attachment
     const auto is_attached = _conn.InBuf->Read<bool>();
@@ -972,6 +973,24 @@ void ClientEngine::Net_OnRemoveCritter()
         }
 
         cr->DestroySelf();
+    }
+}
+
+void ClientEngine::Net_OnCritterVisibilityMode()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
+
+    if (_curMap) {
+        if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
+            cr->SetVisibilityMode(mode);
+            OnCritterVisibilityModeChanged.Fire(cr, mode);
+        }
+        else {
+            BreakIntoDebugger();
+        }
     }
 }
 
@@ -1417,14 +1436,10 @@ void ClientEngine::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
+    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
     FO_RUNTIME_ASSERT(item);
 
     ReceiveCustomEntities(item);
-
-    if (_mapLoaded) {
-        item->FadeUp();
-    }
 
     OnItemMapIn.Fire(item);
 }

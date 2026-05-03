@@ -158,6 +158,12 @@ void Player::Send_AddCritter(const Critter* cr)
         SendItem(*out_buf, item, is_chosen, true, true);
     }
 
+    {
+        const auto* receiver_cr = GetControlledCritter();
+        const auto vis_mode = receiver_cr != nullptr ? receiver_cr->GetVisibleCritterMode(cr->GetId()) : CritterVisibilityMode::Full;
+        out_buf->Write(vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full);
+    }
+
     out_buf->Write(cr->GetIsAttached());
     out_buf->Write(numeric_cast<uint16_t>(cr->GetAttachedCritters().size()));
 
@@ -183,6 +189,16 @@ void Player::Send_RemoveCritter(const Critter* cr)
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCritter);
 
     out_buf->Write(cr->GetId());
+}
+
+void Player::Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto out_buf = _connection->WriteMsg(NetMessage::CritterVisibilityMode);
+
+    out_buf->Write(cr->GetId());
+    out_buf->Write(mode);
 }
 
 void Player::Send_LoadMap(const Map* map)

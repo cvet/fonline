@@ -275,6 +275,8 @@ public:
     FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(int32_t, MovingSpeed);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
 
     // Todo: exclude critter properties from engine:
     ///@ MigrationRule Property Critter Cond Condition
