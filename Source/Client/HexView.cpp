@@ -89,10 +89,7 @@ void HexView::Finish()
     FO_STACK_TRACE_ENTRY();
 
     _targetAlpha = 0;
-
-    const auto from_alpha = std::max(_curAlpha, _defaultAlpha);
-    _curAlpha = from_alpha;
-    StartFade(from_alpha);
+    StartFade(_curAlpha);
 
     _finishing = true;
     _finishingTime = _fadingTime;

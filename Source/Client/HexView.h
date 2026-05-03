@@ -67,7 +67,7 @@ public:
     [[nodiscard]] auto GetDrawEffect() -> RenderEffect* { return _drawEffect.get(); }
     [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8_t { return _curAlpha; }
     [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _targetAlpha == 0; }
+    [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _curAlpha == 0 && !_fading; }
     [[nodiscard]] auto IsFading() const noexcept -> bool { return _fading; }
     [[nodiscard]] auto IsFinishing() const noexcept -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const noexcept -> bool;
