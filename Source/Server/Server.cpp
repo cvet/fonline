@@ -3200,7 +3200,9 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             cr->SetHexOffset(progress.HexOffset);
         }
 
-        cr->SetDir(progress.Dir);
+        if (!cr->GetControlledByPlayer()) {
+            cr->SetDir(progress.Dir);
+        }
 
         if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
