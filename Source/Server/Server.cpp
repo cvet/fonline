@@ -163,6 +163,12 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             return std::nullopt;
         }
 
+        if (Settings.EnableUdp) {
+            if (auto conn_server = NetworkServer::StartUdpSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+                _connectionServers.emplace_back(std::move(conn_server));
+            }
+        }
+
 #if FO_HAVE_ASIO
         if (auto conn_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
             _connectionServers.emplace_back(std::move(conn_server));
@@ -3194,7 +3200,9 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             cr->SetHexOffset(progress.HexOffset);
         }
 
-        cr->SetDir(progress.Dir);
+        if (!cr->GetControlledByPlayer()) {
+            cr->SetDir(progress.Dir);
+        }
 
         if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();

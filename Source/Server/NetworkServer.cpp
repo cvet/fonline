@@ -36,7 +36,7 @@
 FO_BEGIN_NAMESPACE
 
 NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 }

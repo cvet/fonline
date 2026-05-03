@@ -106,7 +106,7 @@ private:
     [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
     [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
-    ServerNetworkSettings& _settings;
+    raw_ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
     web_server_t _server {};
     std::thread _runThread {};
@@ -265,15 +265,15 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 
 template<bool Secured>
 NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {settings}
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (Secured) {
-        if (settings.WssPrivateKey.empty()) {
+        if (_settings->WssPrivateKey.empty()) {
             throw GenericException("'WssPrivateKey' not provided");
         }
-        if (settings.WssCertificate.empty()) {
+        if (_settings->WssCertificate.empty()) {
             throw GenericException("'WssCertificate' not provided");
         }
     }
@@ -331,7 +331,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, &_server, connection));
+            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(*_settings, &_server, connection));
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -378,8 +378,8 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
     auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tls_server));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
-    ctx->use_certificate_chain_file(std::string(_settings.WssCertificate));
-    ctx->use_private_key_file(std::string(_settings.WssPrivateKey), ssl_context::pem);
+    ctx->use_certificate_chain_file(std::string(_settings->WssCertificate));
+    ctx->use_private_key_file(std::string(_settings->WssPrivateKey), ssl_context::pem);
     return ctx;
 }
 

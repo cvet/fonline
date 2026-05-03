@@ -220,17 +220,47 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (!self->GetMapId()) {
-        throw ScriptException("Critter already on global");
-    }
     if (globalCr == nullptr) {
         throw ScriptException("Global critter arg is null");
     }
     if (globalCr->GetMapId()) {
         throw ScriptException("Global critter is not on global map");
     }
+    if (self == globalCr) {
+        throw ScriptException("Cannot join own group");
+    }
 
-    self->GetEngine()->MapMngr.TransferToGlobal(self, globalCr->GetId());
+    auto& map_mngr = self->GetEngine()->MapMngr;
+
+    if (self->GetMapId()) {
+        map_mngr.TransferToGlobal(self, globalCr->GetId());
+        return;
+    }
+
+    const auto& self_group = self->GetRawGlobalMapGroup();
+    const auto& target_group = globalCr->GetRawGlobalMapGroup();
+
+    if (self_group && target_group && self_group.get() == target_group.get()) {
+        return;
+    }
+
+    map_mngr.RemoveCritterFromMap(self, nullptr);
+
+    if (self->IsDestroyed()) {
+        return;
+    }
+
+    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, globalCr->GetId());
+
+    if (self->IsDestroyed()) {
+        return;
+    }
+
+    for (const auto& member : self->GetGlobalMapGroup()) {
+        if (member.get() != self) {
+            self->Send_AddCritter(member.get());
+        }
+    }
 }
 
 ///@ ExportMethod

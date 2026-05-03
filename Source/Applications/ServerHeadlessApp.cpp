@@ -57,7 +57,7 @@ int main(int argc, char** argv)
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
             refcount_ptr<ClientEngine> client;
 
-            if (App->Settings.AutoStartClientOnServer) {
+            if (App->Settings.AutoStartClientOnServer != 0) {
                 ServerWithClientLoop(server.get(), client);
             }
             else {

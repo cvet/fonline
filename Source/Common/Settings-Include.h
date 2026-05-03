@@ -62,6 +62,14 @@ SETTING_GROUP_END();
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Network, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32_t, Network, NetBufferSize, 4096); // Network buffer size
+FIXED_SETTING(int32_t, Network, UdpPortOffset, 0); // UDP port offset relative to ServerPort
+FIXED_SETTING(int32_t, Network, UdpPacketSize, 1200); // Target UDP payload budget in bytes
+FIXED_SETTING(int32_t, Network, UdpWindowSize, 65536); // Reliable UDP send window size in bytes
+FIXED_SETTING(int32_t, Network, UdpResendTimeout, 150); // UDP packet resend timeout in milliseconds
+FIXED_SETTING(int32_t, Network, UdpConnectRetry, 500); // UDP connect retry timeout in milliseconds
+FIXED_SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout in milliseconds before failing transport bootstrap
+FIXED_SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
+FIXED_SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
 FIXED_SETTING(bool, Network, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32_t, Network, UpdateFileSendSize, 1000000); // Update file send size
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
@@ -75,6 +83,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(bool, ServerNetwork, DisableNetworking, false); // If true, server networking listeners are not started
+FIXED_SETTING(bool, ServerNetwork, EnableUdp, false); // If true, UDP listener is enabled for native clients
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
@@ -85,6 +94,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(string, ClientNetwork, ServerHost, "localhost"); // Server host address
 FIXED_SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
+VARIABLE_SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 VARIABLE_SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
@@ -343,7 +353,7 @@ SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, vi
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
-FIXED_SETTING(bool, Server, AutoStartClientOnServer, false); // If true, server automatically spawns an embedded client on startup
+FIXED_SETTING(int32_t, Server, AutoStartClientOnServer, 0); // Number of embedded clients to auto-spawn on server startup; 0 disables the feature
 VARIABLE_SETTING(int32_t, Server, ServerWidth, 800); // Server window width in pixels (test bench host before any client is spawned)
 VARIABLE_SETTING(int32_t, Server, ServerHeight, 600); // Server window height in pixels (test bench host before any client is spawned)
 FIXED_SETTING(bool, Server, CollapseLogOnStart, false); // If true, log is collapsed on start

@@ -171,10 +171,13 @@ int main(int argc, char** argv) // Handled by SDL
                 start_server();
             }
 
-            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer && !start_client_triggered) {
+            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer != 0 && !start_client_triggered) {
                 start_client_triggered = true;
-                WriteLog("Auto start embedded client");
-                start_client();
+                WriteLog("Auto start embedded client(s): {}", App->Settings.AutoStartClientOnServer);
+
+                for (int32_t i = 0; i < App->Settings.AutoStartClientOnServer; i++) {
+                    start_client();
+                }
             }
 
             const auto child_count = App->GetChildWindowsCount();

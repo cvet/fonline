@@ -74,6 +74,23 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
     _handlers.emplace(msg, std::move(handler));
 }
 
+void ClientConnection::CreateNetworkConnection(bool use_udp)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_ptr<NetworkClientConnection> connection;
+
+    if (use_udp) {
+        connection = NetworkClientConnection::CreateUdpSocketsConnection(*_settings);
+    }
+    else {
+        connection = NetworkClientConnection::CreateSocketsConnection(*_settings);
+    }
+
+    _connectingOverUdp = use_udp;
+    _netConnection = std::move(connection);
+}
+
 void ClientConnection::Connect()
 {
     FO_STACK_TRACE_ENTRY();
@@ -94,9 +111,23 @@ void ClientConnection::Connect()
 
         if (has_interthread_listener) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
+            _connectingOverUdp = false;
+            _udpFallbackTried = false;
+        }
+        else if (_settings->UseUdp) {
+            try {
+                CreateNetworkConnection(true);
+                _udpFallbackTried = false;
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                _udpFallbackTried = true;
+                CreateNetworkConnection(false);
+            }
         }
         else {
-            _netConnection = NetworkClientConnection::CreateSocketsConnection(*_settings);
+            CreateNetworkConnection(false);
+            _udpFallbackTried = false;
         }
     }
     catch (const ClientConnectionException& ex) {
@@ -167,6 +198,9 @@ void ClientConnection::ProcessConnection()
         if (_netConnection->IsConnected()) {
             Net_SendHandshake();
         }
+        else if (TryFallbackToTcp()) {
+            return;
+        }
         else {
             Disconnect();
             return;
@@ -187,6 +221,9 @@ void ClientConnection::ProcessConnection()
             return;
         }
     }
+
+    _netConnection->CheckStatus(false);
+    _netConnection->CheckStatus(true);
 
     // Receive and send data
     if (ReceiveData()) {
@@ -246,7 +283,9 @@ void ClientConnection::Disconnect()
     _netConnection->Disconnect();
     _netConnection.reset();
 
+    _connectingOverUdp = false;
     _connectingHandled = false;
+    _udpFallbackTried = false;
     _netIn.ResetBuf();
     _netOut.ResetBuf();
     _decompressor.Reset();
@@ -261,6 +300,22 @@ void ClientConnection::Disconnect()
         _wasHandshake = false;
         _disconnectCallback();
     }
+}
+
+auto ClientConnection::TryFallbackToTcp() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_connectingOverUdp || _udpFallbackTried) {
+        return false;
+    }
+
+    WriteLog("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ServerHost, _settings->ServerPort);
+
+    _udpFallbackTried = true;
+    _connectingHandled = false;
+    CreateNetworkConnection(false);
+    return true;
 }
 
 void ClientConnection::SendData()
