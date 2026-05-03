@@ -237,6 +237,40 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 #endif
 }
 
+// Resolve the function-base address (the entry point of the function the IP belongs to)
+// for a single instruction pointer. Returns nullptr if symbol resolution fails.
+// Used by FindLayerNativeAnchor to compare birth and current frames by FUNCTION
+// rather than exact IP — birth IPs captured at script-launch time point to a different
+// instruction within the same C++ function than the current trace (e.g. ScriptFuncCall
+// is at "after PrepareContext call" in birth and "after RunContext call" in current).
+static auto ResolveFunctionBase(void* addr) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if HAS_NATIVE_TRACE
+    try {
+        backward::TraceResolver resolver;
+        const auto resolved = resolver.resolve(backward::Trace(addr, 0));
+        if (resolved.object_function.empty() && resolved.source.function.empty()) {
+            return addr;
+        }
+        // backward stores the function entry address in `object_base + relative offset` form
+        // on POSIX, but on Windows we approximate via the resolved.addr field which points
+        // to the IP back; for matching we collapse all IPs that resolve to the same name
+        // into a single key by hashing the function name.
+        const auto& name = !resolved.source.function.empty() ? resolved.source.function : resolved.object_function;
+        // Reinterpret the function name bytes hash as a pointer for comparison purposes.
+        size_t h = std::hash<std::string> {}(name);
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
+    }
+    catch (...) {
+        return addr;
+    }
+#else
+    return addr;
+#endif
+}
+
 static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -245,15 +279,45 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
         return st.NativeFrameCount;
     }
 
-    for (uint32_t b = 0; b < layer.BirthNativeFrameCount; b++) {
-        const void* target = layer.BirthNativeFrames[b];
+    // We want the DEEPEST birth frame that appears in the current trace — that is the
+    // closest C++ frame to the script launch site, so the script frames get inserted
+    // immediately above it. Iterate birth frames in order (deepest first) and for each
+    // try exact-IP match, then function-base match. Stop at the first match — earlier
+    // birth frames win even when later birth frames have an exact-IP match, because
+    // the script-launching frame (e.g. ScriptFuncCall) typically has a moved return
+    // address between birth and current while frames below it (InboundRemoteCallHandler,
+    // ...) keep the same return address and would otherwise hijack the anchor.
 
-        if (target == nullptr) {
+    // Lazily resolved function-base cache for the current trace.
+    std::array<const void*, STACK_TRACE_MAX_NATIVE_FRAMES> current_funcs {};
+    bool current_resolved = false;
+
+    for (uint32_t b = 0; b < layer.BirthNativeFrameCount; b++) {
+        void* birth_addr = layer.BirthNativeFrames[b];
+
+        if (birth_addr == nullptr) {
             continue;
         }
 
+        // Exact IP match.
         for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
-            if (st.NativeFrames[i] == target) {
+            if (st.NativeFrames[i] == birth_addr) {
+                return i;
+            }
+        }
+
+        // Function-base match (heavy; resolve current trace once on first use).
+        if (!current_resolved) {
+            for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
+                current_funcs[i] = st.NativeFrames[i] != nullptr ? ResolveFunctionBase(st.NativeFrames[i]) : nullptr;
+            }
+            current_resolved = true;
+        }
+
+        const void* birth_func = ResolveFunctionBase(birth_addr);
+
+        for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
+            if (current_funcs[i] != nullptr && current_funcs[i] == birth_func) {
                 return i;
             }
         }
