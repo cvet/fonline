@@ -53,7 +53,8 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _conn(*_settings),
     _gameTime(*_settings),
     _effectMngr(*_settings, _resources, window.GetRender()),
-    _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
+    _sprMngr(*_settings, window, _resources, _gameTime, _effectMngr, _hashStorage),
+    _fontMngr(_sprMngr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -81,12 +82,12 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
     }
     _sprMngr.EndScene();
 
     // Load font
-    _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
+    _fontMngr.BindFoFont(FontType::Default, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
 
     // Network handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });
@@ -179,21 +180,23 @@ auto Updater::Process() -> bool
     }
 
     {
+        _effectMngr.UpdateEffects(_gameTime);
+        _fontMngr.FrameUpdate();
         _sprMngr.BeginScene();
 
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_SPRITE);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, COLOR_NEUTRAL);
         }
 
         if (elapsed_time >= _settings->UpdaterInfoDelay) {
             if (_settings->UpdaterInfoPos < 0) {
-                _sprMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
             else if (_settings->UpdaterInfoPos == 0) {
-                _sprMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
             else {
-                _sprMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
+                _fontMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, COLOR_TEXT_WHITE, TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)});
             }
         }
 

@@ -123,8 +123,6 @@ void OnInputLost()
     InputLost();
 }
 
-// Mouse behaviours. Button states look in ClientCore.fos, Mouse buttons.
-// Return true to disable engine events.
 void MouseDown(MouseButton button) // Engine callback
 {
     if (Game.IsConnecting()) {
@@ -150,8 +148,6 @@ void MouseMove(ipos offset) // Engine callback
     Gui::EngineCallback_MouseMove(offset);
 }
 
-// Keyboard behaviours. Key codes look in ClientCore.fos, DirectInput keyboard scan codes.
-// Return true to disable engine events.
 void KeyDown(KeyCode key, string text) // Engine callback
 {
     // Avoid repeating

@@ -552,22 +552,15 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _curLang.LoadFromResources(Resources, Settings.Language);
 
     // Fonts
-    auto load_fonts_ok = true;
-
-    if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
-        !SprMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_DEFAULT, "Default", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::IfaceSprites, false, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
-        load_fonts_ok = false;
-    }
-
-    FO_RUNTIME_ASSERT(load_fonts_ok);
-    SprMngr.SetDefaultFont(FONT_DEFAULT);
+    FontMngr.BindFoFont(FONT_FO, "Fonts/OldDefault.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_NUM, "Fonts/Numbers.fofnt", AtlasType::IfaceSprites, true, true);
+    FontMngr.BindFoFont(FONT_BIG_NUM, "Fonts/BigNumbers.fofnt", AtlasType::IfaceSprites, true, true);
+    FontMngr.BindFoFont(FONT_SAND_NUM, "Fonts/SandNumbers.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_SPECIAL, "Fonts/Special.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_OLD_DEFAULT, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_THIN, "Fonts/Thin.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_FAT, "Fonts/Fat.fofnt", AtlasType::IfaceSprites, false, true);
+    FontMngr.BindFoFont(FONT_BIG, "Fonts/Big.fofnt", AtlasType::IfaceSprites, false, true);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -873,6 +866,9 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
 void MapperEngine::DrawMapperFrame()
 {
     FO_STACK_TRACE_ENTRY();
+
+    EffectMngr.UpdateEffects(GameTime);
+    FontMngr.FrameUpdate();
 
     {
         SprMngr.BeginScene();
@@ -5282,11 +5278,11 @@ void MapperEngine::DrawHistoryWindowImGui()
     ImGui::End();
 }
 
-void MapperEngine::DrawStr(const irect32& rect, string_view str, uint32_t flags, ucolor color, int32_t num_font)
+void MapperEngine::DrawStr(const irect32& rect, string_view str, ucolor color, TextFormat format)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SprMngr.DrawText(rect, str, flags, color, num_font);
+    FontMngr.DrawText(rect, str, color, format);
 }
 
 void MapperEngine::CurDraw()
@@ -5339,7 +5335,7 @@ void MapperEngine::CurDraw()
 
             const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
             const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
-            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_SPRITE);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_NEUTRAL);
         }
         return;
     }
@@ -5365,7 +5361,7 @@ void MapperEngine::CurDraw()
 
         const auto width = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width) * zoom);
         const auto height = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom);
-        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_SPRITE);
+        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_NEUTRAL);
     }
 }
 
@@ -5791,7 +5787,6 @@ void MapperEngine::ParseCommand(string_view command)
 
         if (command_ext == "new") {
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-            pmap->AddRef(); // Todo: fix memleak
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
@@ -5904,7 +5899,6 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     }
 
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    pmap->AddRef(); // Todo: fix memleak
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
@@ -6126,7 +6120,7 @@ void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string str = strex("|{} - {}\n", COLOR_TEXT, message_text);
+    const string str = strex("|{} - {}\n", COLOR_TEXT_WHITE, message_text);
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
@@ -6168,7 +6162,7 @@ void MapperEngine::MessBoxDraw()
         return;
     }
 
-    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
+    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, COLOR_TEXT_WHITE, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
 }
 
 void MapperEngine::DrawIfaceLayer(int32_t layer)

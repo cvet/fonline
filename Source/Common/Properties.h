@@ -31,9 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: don't preserve memory for not allocated components in entity
-// Todo: pack bool properties to one bit
-
 #pragma once
 
 #include "Common.h"

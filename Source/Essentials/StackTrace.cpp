@@ -53,54 +53,46 @@
 
 FO_BEGIN_NAMESPACE
 
-namespace
+struct StackTraceState
 {
-    struct StackTraceState
-    {
-        std::mutex ProviderLocker {};
-        ScriptStackTraceProvider Provider {};
-    };
-}
+    std::mutex ProviderLocker {};
+    ScriptStackTraceProvider Provider {};
+};
 
-FO_GLOBAL_DATA(StackTraceState, StackTrace);
+static auto GetStackTraceState() noexcept -> StackTraceState&
+{
+    static StackTraceState state;
+    return state;
+}
 
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (StackTrace == nullptr) {
-        return;
-    }
-
-    std::scoped_lock locker(StackTrace->ProviderLocker);
-    StackTrace->Provider = std::move(provider);
+    auto& state = GetStackTraceState();
+    std::scoped_lock locker(state.ProviderLocker);
+    state.Provider = std::move(provider);
 }
 
 extern auto HasScriptStackTraceProvider() noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (StackTrace == nullptr) {
-        return false;
-    }
-
-    std::scoped_lock locker(StackTrace->ProviderLocker);
-    return static_cast<bool>(StackTrace->Provider);
+    auto& state = GetStackTraceState();
+    std::scoped_lock locker(state.ProviderLocker);
+    return !!state.Provider;
 }
 
 static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (StackTrace == nullptr) {
-        return;
-    }
-
     ScriptStackTraceProvider provider;
 
     {
-        std::scoped_lock locker(StackTrace->ProviderLocker);
-        provider = StackTrace->Provider;
+        auto& state = GetStackTraceState();
+        std::scoped_lock locker(state.ProviderLocker);
+        provider = state.Provider;
     }
 
     if (provider) {
@@ -108,7 +100,6 @@ static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) 
             provider(out_layers);
         }
         catch (...) {
-            // Provider must be noexcept, but defend against bugs.
             BreakIntoDebugger();
         }
     }
@@ -162,7 +153,6 @@ extern auto GetStackTrace() noexcept -> StackTraceData
 
     StackTraceData st;
 
-    // Skip GetStackTrace itself so the topmost frame is its caller.
     CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, 1);
 
     try {
@@ -174,7 +164,6 @@ extern auto GetStackTrace() noexcept -> StackTraceData
         }
     }
     catch (...) {
-        // Capturing script layers must not propagate; leave ScriptLayers null on failure.
         BreakIntoDebugger();
     }
 
@@ -239,7 +228,6 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
         }
     }
     catch (...) {
-        // Best-effort: fall back to whatever we managed to resolve.
         BreakIntoDebugger();
     }
 
@@ -402,7 +390,6 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
     }
 
     if (!resolution_succeeded) {
-        // Allocation-free fallback: write any pre-resolved script frames + raw native PCs.
         if (st.ScriptLayers) {
             for (const auto& layer : *st.ScriptLayers) {
                 for (const auto& frame : layer.ScriptFrames) {

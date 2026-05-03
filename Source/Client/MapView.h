@@ -57,10 +57,14 @@ class ItemHexView;
 class CritterHexView;
 class CritterView;
 
-// Light flags
-static constexpr uint8_t LIGHT_GLOBAL = 0x40;
-static constexpr uint8_t LIGHT_INVERSE = 0x80;
-static constexpr uint32_t LIGHT_DISABLE_DIR_MASK = 0x3F;
+// Light flags. Direction mask is passed as a separate `dirs` argument; this enum only governs higher-level behavior.
+enum class LightFlag : uint8_t
+{
+    None = 0,
+    Global = 0x01,
+    Inverse = 0x02,
+    AllowedDirs = 0x04, // When set, the `Dirs` mask lists ALLOWED directions; otherwise it lists DISABLED (blocked) ones (default behavior — dirs == 0 means no restriction)
+};
 
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public RefCounted<SpritePattern>
@@ -86,7 +90,8 @@ public:
         mpos Hex {};
         ucolor Color {};
         int32_t Distance {};
-        uint8_t Flags {};
+        LightFlag Flags {};
+        uint8_t Dirs {}; // Lower 6 bits encode directions; meaning is determined by LightFlag::AllowedDirs
         int32_t Intensity {};
         raw_ptr<const ipos32> Offset {};
         bool Applied {};
@@ -322,7 +327,7 @@ private:
     void UpdateTransparentEggs();
 
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, uint8_t flags, int32_t intensity, const ipos32* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, uint8_t dirs, int32_t intensity, const ipos32* offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);

@@ -37,8 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Todo: restore supporting of the map old text format
-
 void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_STACK_TRACE_ENTRY();

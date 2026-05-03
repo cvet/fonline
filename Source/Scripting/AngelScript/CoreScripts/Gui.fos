@@ -694,7 +694,7 @@ class Object
 
     bool _HasSelfDraw()
     {
-        return _HasOnDraw;
+        return _HasOnDraw || _Grid != null;
     }
 
     void _RefreshNeedDraw()
@@ -1497,7 +1497,7 @@ class Panel : Object
 
     bool _HasSelfDraw() override
     {
-        return _HasOnDraw || _BackgroundImage != null;
+        return _HasOnDraw || _BackgroundImage != null || _Grid != null;
     }
 
     void _DrawImage(Sprite::Sprite image)
@@ -1840,7 +1840,7 @@ class Text : Object
     {
         _Text = value;
     }
-    int get_TextFont() final
+    FontType get_TextFont() final
     {
         return _TextFont;
     }
@@ -1852,23 +1852,25 @@ class Text : Object
     {
         return _TextColorFocused;
     }
-    int get_TextFlags() final
+    FontFlag get_TextFlags() final
     {
         return _TextFlags;
     }
 
     string _Text;
-    int _TextFont;
+    FontType _TextFont;
     ucolor _TextColor;
     ucolor _TextColorFocused;
-    int _TextFlags;
+    FontFlag _TextFlags;
+    int _TextSkipLines;
 
     void _Construct() override
     {
         Object::_Construct();
 
-        _TextFont = FONT_DEFAULT;
+        _TextFont = FontType::Default;
         _TextColor = COLOR_TEXT;
+        _TextFlags = FontFlag::None;
     }
 
     void _Draw(bool callCallback) override
@@ -1885,7 +1887,7 @@ class Text : Object
         string text = Text;
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
         }
 
         Object::_Draw(false);
@@ -1900,7 +1902,7 @@ class Text : Object
         return true;
     }
 
-    void SetText(string text, int font, int flags)
+    void SetText(string text, FontType font, FontFlag flags)
     {
         if (!text.isEmpty()) {
             _Text = text;
@@ -1927,17 +1929,17 @@ class Text : Object
     {
         isize resultSize;
         int lines = 0;
-        Game.GetTextInfo(text, isize(Size.width, 1000), _TextFont, _TextFlags, resultSize, lines);
+        Game.GetTextInfo(text, isize(Size.width, 1000), TextFormat(_TextFont, _TextFlags, _TextSkipLines), resultSize, lines);
         SetSize(isize(_Size.width, resultSize.height + 5));
         SetText(text);
     }
 
-    void SetTextFont(int font)
+    void SetTextFont(FontType font)
     {
         _TextFont = font;
     }
 
-    void SetTextFlags(int flags)
+    void SetTextFlags(FontFlag flags)
     {
         _TextFlags = flags;
     }
@@ -2033,7 +2035,7 @@ class TextInput : Text
         }
         if (text.length() > 0) {
             ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
-            Game.DrawText(text, _AbsolutePos, _Size, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePos, _Size, color, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
         }
 
         Object::_Draw(false);
@@ -2233,7 +2235,7 @@ class Button : Panel
 
     bool _HasSelfDraw() override
     {
-        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null;
+        return _HasOnDraw || _BackgroundImage != null || _PressedImage != null || _HoverImage != null || _DisabledImage != null || _Grid != null;
     }
 
     void MouseClick(MouseButton button)
@@ -2781,6 +2783,8 @@ class Grid : Panel
         for (int i = 0; i < obj._Children.length(); i++) {
             _SetCellIndex(obj._Children[i], grid, cellIndex);
         }
+
+        obj._RefreshNeedDraw();
     }
 
     void _ResizeGrid(Object obj, Object cell, int cellIndex)
@@ -2901,10 +2905,12 @@ class MessageBox : Text
         }
 
         if (!_InvertMessages) {
-            _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END(_ScrollLines);
+            _TextFlags = FontFlag(FontFlag::KeepTail | FontFlag::AlignBottom);
+            _TextSkipLines = _ScrollLines;
         }
         else {
-            _TextFlags = FT_SKIPLINES(_ScrollLines);
+            _TextFlags = FontFlag::None;
+            _TextSkipLines = _ScrollLines;
         }
 
         Text::_Draw(callCallback);
@@ -3054,7 +3060,7 @@ class MessageBox : Text
             int curLines = lines;
             isize resultSize;
             int skipLines = 0;
-            Game.GetTextInfo(messageText, isize(_Size.width, 1000), _TextFont, 0, resultSize, skipLines);
+            Game.GetTextInfo(messageText, isize(_Size.width, 1000), TextFormat(_TextFont, FontFlag::None, 0), resultSize, skipLines);
             lines += skipLines;
 
             if (_ScrollLines < 0) {
@@ -3340,7 +3346,7 @@ class Console : TextInput
         }
 
         text = text.substr(0, _CarriagePos) + (Game.FrameTime.milliseconds % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
-        Game.DrawText(text, _AbsolutePos, _Size, _TextColor, _TextFont, _TextFlags);
+        Game.DrawText(text, _AbsolutePos, _Size, _TextColor, TextFormat(_TextFont, _TextFlags, _TextSkipLines));
 
         Object::_Draw(false);
 

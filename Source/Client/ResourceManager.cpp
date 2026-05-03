@@ -38,8 +38,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32_t ANIM_FLAG_FIRST_FRAME = 0x01;
-static constexpr uint32_t ANIM_FLAG_LAST_FRAME = 0x02;
+enum class AnimFrameFlag : uint32_t
+{
+    None = 0,
+    FirstFrame = 0x01,
+    LastFrame = 0x02,
+};
 static constexpr isize32 DUMMY_SPRITE_SIZE {1, 1};
 static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
 
@@ -197,13 +201,15 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr->LoadSprite(anim_name, AtlasType::MapSprites, true));
 
                         // Fix by dirs
+                        const auto frame_flag = static_cast<AnimFrameFlag>(flags);
+
                         for (int32_t d = 0; anim && d < anim->_dirCount; d++) {
                             auto* dir_anim = anim->GetDir(hdir(d));
 
                             // Process flags
                             if (flags != 0) {
-                                if (IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) || IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
-                                    const auto first = IsBitSet(flags, ANIM_FLAG_FIRST_FRAME);
+                                if (IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame) || IsEnumSet(frame_flag, AnimFrameFlag::LastFrame)) {
+                                    const auto first = IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame);
 
                                     // Append offsets
                                     if (!first) {
@@ -355,25 +361,27 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         }
 
         // Clone
-        const auto frames_count = !IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->GetFramesCount() : 1;
+        const auto frame_flag = static_cast<AnimFrameFlag>(flags);
+        const auto first_or_last_mask = CombineEnum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
+        const auto frames_count = !IsEnumSet(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
         auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
             auto* anim_clone = anim_clone_base->GetDir(hdir(d));
             const auto* anim_ = anim->GetDir(hdir(d));
 
-            if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
+            if (!IsEnumSet(frame_flag, first_or_last_mask)) {
                 for (int32_t i = 0; i < anim_->GetFramesCount(); i++) {
                     anim_clone->_spr[i] = anim_->GetSpr(i)->MakeCopy();
                     anim_clone->_sprOffset[i] = anim_->_sprOffset[i];
                 }
             }
             else {
-                anim_clone->_spr[0] = anim_->GetSpr(IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->GetFramesCount() - 1)->MakeCopy();
-                anim_clone->_sprOffset[0] = anim_->_sprOffset[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->GetFramesCount() - 1];
+                anim_clone->_spr[0] = anim_->GetSpr(IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : anim_->GetFramesCount() - 1)->MakeCopy();
+                anim_clone->_sprOffset[0] = anim_->_sprOffset[IsEnumSet(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : anim_->GetFramesCount() - 1];
 
                 // Append offsets
-                if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
+                if (IsEnumSet(frame_flag, AnimFrameFlag::LastFrame)) {
                     for (int32_t i = 0; i < anim_->GetFramesCount() - 1; i++) {
                         anim_clone->_sprOffset[0].x += anim_->_sprOffset[i].x;
                         anim_clone->_sprOffset[0].y += anim_->_sprOffset[i].y;

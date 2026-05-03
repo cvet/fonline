@@ -760,12 +760,12 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (cr->LockMapTransfers != 0) {
+    if (cr->IsMapTransfersLocked()) {
         throw GenericException("Critter transfers locked");
     }
 
-    cr->LockMapTransfers++;
-    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
+    cr->LockMapTransfers();
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     const auto prev_map_id = cr->GetMapId();
     auto* prev_map = prev_map_id ? _engine->EntityMngr.GetMap(prev_map_id) : nullptr;
@@ -779,8 +779,9 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
 
     vector<raw_ptr<Critter>> attached_critters;
 
-    if (!cr->AttachedCritters.empty()) {
-        attached_critters = cr->AttachedCritters;
+    if (cr->HasAttachedCritters()) {
+        const auto attached = cr->GetAttachedCritters();
+        attached_critters.assign(attached.begin(), attached.end());
 
         for (auto& attached_cr : attached_critters) {
             attached_cr->DetachFromCritter();
@@ -900,7 +901,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
 
         if (!cr->IsDestroyed() && !cr->GetIsAttached()) {
             for (auto& attached_cr : attached_critters) {
-                if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->AttachedCritters.empty() && attached_cr->GetMapId() == cr->GetMapId()) {
+                if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && !attached_cr->HasAttachedCritters() && attached_cr->GetMapId() == cr->GetMapId()) {
                     attached_cr->AttachToCritter(cr);
                 }
             }
@@ -920,8 +921,8 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-    cr->LockMapTransfers++;
-    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
+    cr->LockMapTransfers();
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
@@ -975,8 +976,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-    cr->LockMapTransfers++;
-    auto restore_transfers = scope_exit([cr]() noexcept { cr->LockMapTransfers--; });
+    cr->LockMapTransfers();
+    auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
@@ -1066,8 +1067,8 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
 
     bool is_see = IsCritterSeeCritter(map, cr, target);
 
-    if (!is_see && !target->AttachedCritters.empty()) {
-        for (auto& attached_cr : target->AttachedCritters) {
+    if (!is_see && target->HasAttachedCritters()) {
+        for (auto& attached_cr : target->GetAttachedCritters()) {
             FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
             is_see = IsCritterSeeCritter(map, cr, attached_cr.get());

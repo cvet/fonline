@@ -136,6 +136,8 @@ AppendList(FO_COMMON_SOURCE
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
 AppendList(FO_SERVER_BASE_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.h"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Critter.h"
     "${FO_ENGINE_ROOT}/Source/Server/CritterManager.cpp"
@@ -166,8 +168,6 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/NetworkServer.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
-    "${FO_ENGINE_ROOT}/Source/Server/RemoteCallValidation.cpp"
-    "${FO_ENGINE_ROOT}/Source/Server/RemoteCallValidation.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.cpp"
@@ -203,6 +203,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/EffectManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/FogOfWar.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/FogOfWar.h"
+    "${FO_ENGINE_ROOT}/Source/Client/FontManager.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/FontManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/HexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/HexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/ItemHexView.cpp"
@@ -329,6 +331,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
+    "${FO_ENGINE_ROOT}/Source/Client/FontManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.h"
@@ -416,7 +419,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_RemoteCallValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"

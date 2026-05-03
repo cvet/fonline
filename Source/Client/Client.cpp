@@ -57,6 +57,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
     EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
+    FontMngr(SprMngr),
     ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
@@ -186,6 +187,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     BaseEngine(settings, std::move(resources), mapper_registrator),
     EffectMngr(Settings, Resources, window.GetRender()),
     SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
+    FontMngr(SprMngr),
     ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources, window.GetAudio()),
     Cache(Settings.CacheResources),
@@ -337,6 +339,7 @@ void ClientEngine::MainLoop()
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
+    FontMngr.FrameUpdate();
 
     {
         SprMngr.BeginScene();

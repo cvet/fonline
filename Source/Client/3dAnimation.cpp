@@ -428,30 +428,33 @@ void ModelAnimationController::AdvanceTime(float32_t time)
         }
     }
 
-    // Blend tracks
     for (auto& o : *_outputs) {
-        // Todo: add interpolation for tracks more than two
-        if (_tracks.size() >= 2 && o.Valid[0] && o.Valid[1]) {
-            auto factor = o.Factor[1];
-            Interpolate(o.Scale[0], o.Scale[1], factor);
-            Interpolate(o.Rotation[0], o.Rotation[1], factor);
-            Interpolate(o.Translation[0], o.Translation[1], factor);
-            const auto ms = glm::scale(mat44 {1.0f}, o.Scale[0]);
-            const auto mr = glm::mat4_cast(o.Rotation[0]);
-            const auto mt = glm::translate(mat44 {1.0f}, o.Translation[0]);
-            *o.Matrix = mt * mr * ms;
-        }
-        else {
-            for (size_t i = 0; i < _tracks.size(); i++) {
-                if (o.Valid[i]) {
-                    const auto ms = glm::scale(mat44 {1.0f}, o.Scale[i]);
-                    const auto mr = glm::mat4_cast(o.Rotation[i]);
-                    const auto mt = glm::translate(mat44 {1.0f}, o.Translation[i]);
-                    *o.Matrix = mt * mr * ms;
-                    break;
-                }
+        size_t base_idx = _tracks.size();
+
+        for (size_t i = 0; i < _tracks.size(); i++) {
+            if (o.Valid[i]) {
+                base_idx = i;
+                break;
             }
         }
+
+        if (base_idx == _tracks.size()) {
+            continue;
+        }
+
+        for (size_t i = base_idx + 1; i < _tracks.size(); i++) {
+            if (o.Valid[i]) {
+                const auto factor = o.Factor[i];
+                Interpolate(o.Scale[base_idx], o.Scale[i], factor);
+                Interpolate(o.Rotation[base_idx], o.Rotation[i], factor);
+                Interpolate(o.Translation[base_idx], o.Translation[i], factor);
+            }
+        }
+
+        const auto ms = glm::scale(mat44 {1.0f}, o.Scale[base_idx]);
+        const auto mr = glm::mat4_cast(o.Rotation[base_idx]);
+        const auto mt = glm::translate(mat44 {1.0f}, o.Translation[base_idx]);
+        *o.Matrix = mt * mr * ms;
     }
 }
 

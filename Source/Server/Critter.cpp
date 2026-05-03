@@ -185,6 +185,13 @@ void Critter::StopMoving(MovingState reason)
     SetMovingSpeed(0);
 }
 
+void Critter::SetViewMap(ViewMapContext ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _viewMap = SafeAlloc::MakeUnique<ViewMapContext>(std::move(ctx));
+}
+
 void Critter::AttachToCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -193,14 +200,14 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
     FO_RUNTIME_ASSERT(!cr->GetIsAttached());
     FO_RUNTIME_ASSERT(!GetIsAttached());
-    FO_RUNTIME_ASSERT(AttachedCritters.empty());
+    FO_RUNTIME_ASSERT(_attachedCritters.empty());
 
     if (IsMoving()) {
         StopMoving();
         SendAndBroadcast_Moving();
     }
 
-    vec_add_unique_value(cr->AttachedCritters, this);
+    vec_add_unique_value(cr->_attachedCritters, this);
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -218,7 +225,7 @@ void Critter::DetachFromCritter()
     auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    vec_remove_unique_value(cr->AttachedCritters, this);
+    vec_remove_unique_value(cr->_attachedCritters, this);
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -243,7 +250,7 @@ void Critter::MoveAttachedCritters()
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
 
-    for (auto& cr : AttachedCritters) {
+    for (auto& cr : _attachedCritters) {
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(cr->GetIsAttached());
         FO_RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());

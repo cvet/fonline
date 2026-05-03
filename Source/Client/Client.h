@@ -46,6 +46,7 @@
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
+#include "FontManager.h"
 #include "Geometry.h"
 #include "ImGuiStuff.h"
 #include "ItemHexView.h"
@@ -248,6 +249,7 @@ public:
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
+    FontManager FontMngr;
     ResourceManager ResMngr;
     SoundManager SndMngr;
     CacheStorage Cache;

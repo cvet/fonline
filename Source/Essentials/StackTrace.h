@@ -51,11 +51,8 @@ struct StackTraceFrame
     uint32_t Line {};
 };
 
-// Maximum number of native PCs captured per snapshot.
 inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
 
-// One level of script execution within the unified stack trace. The provider returns layers
-// in nesting order — innermost (active context) first, then up the parent-context chain.
 struct ScriptStackTraceLayer
 {
     std::vector<StackTraceFrame> ScriptFrames {};
@@ -79,39 +76,15 @@ struct StackTraceData
 #endif
 #define FO_NO_STACK_TRACE_ENTRY()
 
-// Provider that contributes script layers to a stack trace capture. Called synchronously
-// from GetStackTrace(). Each layer represents one script context; layers must be appended in
-// innermost-first order (active context, then its parent, then its parent's parent, ...).
 using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTraceLayer>& out_layers)>;
 
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
-[[nodiscard]] extern auto HasScriptStackTraceProvider() noexcept -> bool;
-
-// Capture the current stack trace. The result is an opaque blob of data that can be resolved.
-[[nodiscard]] extern auto GetStackTrace() noexcept -> StackTraceData;
-
-// Capture only the native call stack PCs into a fixed-size buffer. Used by higher layers
-// (e.g., AngelScript) to remember each script context's birth-time native call site so the
-// stack-trace resolver can interleave native and script frames correctly across nested
-// contexts. `skip` excludes additional caller frames on top of the capture machinery.
+extern auto HasScriptStackTraceProvider() noexcept -> bool;
+extern auto GetStackTrace() noexcept -> StackTraceData;
 extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, uint32_t skip = 0) noexcept;
-
-// Resolve the entire stack into a flat list of frames. The result interleaves layers and
-// native slices in nesting order: innermost layer's script frames, then the native frames
-// added between that layer's birth and the previous (more recent) layer's birth, then the
-// next layer's script frames, etc. Trailing native frames (from main() down to the root
-// context's birth) come last.
-[[nodiscard]] extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
-
-// Look up a single resolved frame at depth `deep` (0 = topmost). Returns nullopt if `deep`
-// is out of range.
-[[nodiscard]] extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
-
-// Format the trace as a human-readable, multi-line string.
-[[nodiscard]] extern auto FormatStackTrace(const StackTraceData& st) -> std::string;
-
-// Write the trace to the base log. Used in crash / OOM paths: tries to avoid fresh allocations
-// (resolution is best-effort and falls back to hex addresses on failure).
+extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
+extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
+extern auto FormatStackTrace(const StackTraceData& st) -> std::string;
 extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
 
 FO_END_NAMESPACE
