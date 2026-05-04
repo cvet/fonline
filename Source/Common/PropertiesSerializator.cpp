@@ -119,8 +119,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
             }
         }
         catch (const std::exception& ex) {
-            WriteLog(LogType::Warning, "Unable to load property {}", doc_key);
-            ReportExceptionAndContinue(ex);
+            WriteLog(LogType::Warning, "Unable to load property {}: {}", doc_key, ex.what());
             is_error = true;
         }
     }
