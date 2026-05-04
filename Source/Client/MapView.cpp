@@ -398,7 +398,7 @@ void MapView::Process()
 
             if (_globalDayColor != _prevGlobalDayColor) {
                 _prevGlobalDayColor = _globalDayColor;
-                _needReapplyLights = _globalLights != 0;
+                _needReapplyLights = _needReapplyLights || _globalLights != 0;
             }
         }
     }
