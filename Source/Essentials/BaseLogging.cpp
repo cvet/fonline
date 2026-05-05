@@ -146,7 +146,7 @@ extern void WriteBaseLog(string_view message) noexcept
 
 static void StartAsyncWorker()
 {
-    if constexpr (FO_WEB) {
+    if (build_condition<FO_WEB>()) {
         return;
     }
 
@@ -166,7 +166,7 @@ static void StartAsyncWorker()
 
 static void StopAsyncWorker() noexcept
 {
-    if constexpr (FO_WEB) {
+    if (build_condition<FO_WEB>()) {
         return;
     }
 
