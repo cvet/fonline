@@ -154,8 +154,10 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         WriteLog("Start networking");
 
-        if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
-            _connectionServers.emplace_back(std::move(conn_server));
+        if (!Settings.DisableInterthreadCommunication) {
+            if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+                _connectionServers.emplace_back(std::move(conn_server));
+            }
         }
 
         if (Settings.DisableNetworking) {

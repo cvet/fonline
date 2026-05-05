@@ -146,6 +146,10 @@ extern void WriteBaseLog(string_view message) noexcept
 
 static void StartAsyncWorker()
 {
+    if constexpr (FO_WEB) {
+        return;
+    }
+
     if (BaseLogging->AsyncWorker.joinable()) {
         return;
     }
@@ -162,6 +166,10 @@ static void StartAsyncWorker()
 
 static void StopAsyncWorker() noexcept
 {
+    if constexpr (FO_WEB) {
+        return;
+    }
+
     if (!BaseLogging->AsyncWorker.joinable()) {
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
         return;

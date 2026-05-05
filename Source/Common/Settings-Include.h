@@ -75,6 +75,7 @@ FIXED_SETTING(int32_t, Network, UpdateFileSendSize, 1000000); // Update file sen
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
+FIXED_SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
 FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
@@ -84,6 +85,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(bool, ServerNetwork, DisableNetworking, false); // If true, server networking listeners are not started
 FIXED_SETTING(bool, ServerNetwork, EnableUdp, false); // If true, UDP listener is enabled for native clients
+FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP listener silently drops incoming Connect packets so clients fall back to TCP (debug aid)
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key

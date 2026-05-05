@@ -107,6 +107,11 @@ auto NetworkServer::StartUdpSocketsServer(ServerNetworkSettings& settings, NewCo
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Listen UDP connections on port {}", settings.ServerPort + settings.UdpPortOffset);
+
+    if (settings.RejectUdpConnections) {
+        WriteLog(LogType::Warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
+    }
+
     return SafeAlloc::MakeUnique<NetworkServer_UdpSockets>(settings, std::move(callback));
 }
 
@@ -324,7 +329,13 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         if (!TryParseUdpPacket({_packetBuf.data(), numeric_cast<size_t>(received)}, packet)) {
             continue;
         }
+
         if (packet.Type == UdpPacketType::Connect) {
+            if (_settings->RejectUdpConnections) {
+                WriteLog("Reject UDP connect packet from {}:{}", host, port);
+                continue;
+            }
+
             HandleConnectPacket(std::move(host), port, packet);
             continue;
         }
@@ -340,7 +351,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
             }
         }
 
-        if (connection != nullptr && connection->GetHost() == host && connection->GetPort() == port) {
+        if (connection && connection->GetHost() == host && connection->GetPort() == port) {
             connection->HandlePacket(packet);
         }
     }

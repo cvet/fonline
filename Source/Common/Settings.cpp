@@ -409,11 +409,6 @@ void GlobalSettings::ApplyAutoSettings()
         const_cast<bool&>(MapZoomEnabled) = false;
     }
 
-    if constexpr (FO_WEB) {
-        const_cast<bool&>(EnableUdp) = false;
-        const_cast<bool&>(UseUdp) = false;
-    }
-
     const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
     const_cast<string&>(GitCommit) = FO_BUILD_HASH;
     const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
