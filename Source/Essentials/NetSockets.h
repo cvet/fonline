@@ -49,6 +49,7 @@ class net_sockets final
 {
 public:
     static auto startup() noexcept -> bool;
+    static auto resolve_ipv4(string_view host) noexcept -> optional<uint32_t>;
 };
 
 class tcp_socket final

@@ -40,6 +40,7 @@
 #include "WinApi-Include.h"
 #else
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -50,7 +51,6 @@ FO_BEGIN_NAMESPACE
 
 constexpr socket_t INVALID_SOCKET_VALUE = static_cast<socket_t>(-1);
 constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
-using sock_addr_t = decltype(std::declval<sockaddr_in>().sin_addr.s_addr);
 
 static void CloseSocket(socket_t sock)
 {
@@ -61,29 +61,6 @@ static void CloseSocket(socket_t sock)
 #else
     ::close(sock);
 #endif
-}
-
-static auto ResolveIpv4Address(string_view host, sock_addr_t& addr) noexcept -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (host.empty() || host == "0.0.0.0" || host == "*") {
-        addr = htonl(INADDR_ANY);
-        return true;
-    }
-
-    if (host == "127.0.0.1" || host == "localhost") {
-        addr = htonl(INADDR_LOOPBACK);
-        return true;
-    }
-
-    addr = ::inet_addr(string(host).c_str());
-
-    if (addr == INADDR_NONE) {
-        return false;
-    }
-
-    return true;
 }
 
 static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, timespan timeout) noexcept -> bool
@@ -138,6 +115,37 @@ auto net_sockets::startup() noexcept -> bool
 #endif
 }
 
+auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (host.empty() || host == "0.0.0.0" || host == "*") {
+        return numeric_cast<uint32_t>(htonl(INADDR_ANY));
+    }
+
+    if (host == "127.0.0.1" || host == "localhost") {
+        return numeric_cast<uint32_t>(htonl(INADDR_LOOPBACK));
+    }
+
+    uint32_t addr = numeric_cast<uint32_t>(::inet_addr(string(host).c_str()));
+
+    if (addr != INADDR_NONE) {
+        return addr;
+    }
+
+    static std::mutex gethostbyname_locker;
+    auto locker = std::scoped_lock {gethostbyname_locker};
+
+    const auto* h = ::gethostbyname(string(host).c_str()); // NOLINT(concurrency-mt-unsafe)
+
+    if (h == nullptr || h->h_addr == nullptr || h->h_length < numeric_cast<int32_t>(sizeof(addr))) {
+        return std::nullopt;
+    }
+
+    MemCopy(&addr, h->h_addr, sizeof(addr));
+    return addr;
+}
+
 tcp_socket::tcp_socket(socket_t sock) noexcept :
     _sock {unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
         FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
@@ -164,10 +172,14 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (!ResolveIpv4Address(host, addr.sin_addr.s_addr)) {
+    const auto resolved = net_sockets::resolve_ipv4(host);
+
+    if (!resolved.has_value()) {
         CloseSocket(sock);
         return false;
     }
+
+    addr.sin_addr.s_addr = *resolved;
 
     if (::connect(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -250,10 +262,14 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (!ResolveIpv4Address(bind_host, addr.sin_addr.s_addr)) {
+    const auto resolved = net_sockets::resolve_ipv4(bind_host);
+
+    if (!resolved.has_value()) {
         CloseSocket(sock);
         return false;
     }
+
+    addr.sin_addr.s_addr = *resolved;
 
     if (::bind(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -344,10 +360,14 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (!ResolveIpv4Address(bind_host, addr.sin_addr.s_addr)) {
+    const auto resolved = net_sockets::resolve_ipv4(bind_host);
+
+    if (!resolved.has_value()) {
         CloseSocket(sock);
         return false;
     }
+
+    addr.sin_addr.s_addr = *resolved;
 
     if (::bind(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -413,9 +433,13 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    if (!ResolveIpv4Address(host, addr.sin_addr.s_addr)) {
+    const auto resolved = net_sockets::resolve_ipv4(host);
+
+    if (!resolved.has_value()) {
         return 0;
     }
+
+    addr.sin_addr.s_addr = *resolved;
 
     return ::sendto(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32_t>(data.size()), 0, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
 }

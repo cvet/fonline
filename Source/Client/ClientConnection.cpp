@@ -161,7 +161,10 @@ void ClientConnection::Process()
     }
     catch (const NetworkClientException& ex) {
         WriteLog("Connection error: {}", ex.what());
-        Disconnect();
+
+        if (!TryFallbackToTcp()) {
+            Disconnect();
+        }
     }
     catch (const NetBufferException& ex) {
         WriteLog("Connection error: {}", ex.what());

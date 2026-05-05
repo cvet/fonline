@@ -33,13 +33,13 @@
 
 #include "NetworkClient.h"
 
+#include "NetSockets.h"
 #include "WebRelated.h"
 #include "WinApi-Include.h"
 
 #if !FO_WINDOWS
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -501,18 +501,13 @@ void NetworkClientConnection_Sockets::FillSockAddr(sockaddr_in& saddr, string_vi
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
 
-    if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == 0xFFFFFFFFu) {
-        static std::mutex gethostbyname_locker;
-        auto locker = std::scoped_lock {gethostbyname_locker};
+    const auto resolved = net_sockets::resolve_ipv4(host);
 
-        const auto* h = ::gethostbyname(string(host).c_str()); // NOLINT(concurrency-mt-unsafe)
-
-        if (h == nullptr) {
-            throw NetworkClientException("Can't resolve remote host", host, GetLastSocketError());
-        }
-
-        MemCopy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));
+    if (!resolved.has_value()) {
+        throw NetworkClientException("Can't resolve remote host", host, GetLastSocketError());
     }
+
+    saddr.sin_addr.s_addr = *resolved;
 }
 
 auto NetworkClientConnection_Sockets::GetLastSocketError() const -> string
