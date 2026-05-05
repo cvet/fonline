@@ -1414,7 +1414,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
     // Default chosen light
     if (!light_added && cr->GetIsChosen()) {
         const auto [flags, dirs] = SplitLegacyLightFlags(_engine->Settings.ChosenLightFlags);
-        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, flags, dirs, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
+        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, CombineEnum(flags, LightFlag::Global), dirs, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
         light_added = true;
     }
 
