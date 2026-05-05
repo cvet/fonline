@@ -114,7 +114,7 @@ void ClientConnection::Connect()
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
-        else if (_settings->UseUdp) {
+        else if (_settings->UseUdp && build_condition<!FO_WEB>()) {
             try {
                 CreateNetworkConnection(true);
                 _udpFallbackTried = false;

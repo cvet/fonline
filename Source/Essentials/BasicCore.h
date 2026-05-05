@@ -361,6 +361,17 @@ inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
     return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
 }
 
+template<bool Enabled>
+[[nodiscard]] bool build_condition() noexcept
+{
+    if constexpr (Enabled) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 // Stack unwind detector
 class stack_unwind_detector
 {
