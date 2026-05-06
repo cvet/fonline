@@ -72,6 +72,20 @@ void CritterView::SetName(string_view name)
     _name = name;
 }
 
+auto CritterView::IsAttachedCritter(ident_t cr_id) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::ranges::find(_attachedCritters, cr_id) != _attachedCritters.end();
+}
+
+void CritterView::SetAttachedCritters(vector<ident_t> attached_critters)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _attachedCritters = std::move(attached_critters);
+}
+
 auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();

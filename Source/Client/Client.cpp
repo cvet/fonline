@@ -878,19 +878,19 @@ void ClientEngine::Net_OnAddCritter()
     }
 
     cr->SetIsAttached(is_attached);
-    cr->AttachedCritters = std::move(attached_critters);
+    cr->SetAttachedCritters(std::move(attached_critters));
 
     if (_curMap) {
         if (is_attached) {
             for (auto& map_cr : _curMap->GetCritters()) {
-                if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
+                if (map_cr->IsAttachedCritter(cr_id)) {
                     map_cr->MoveAttachedCritters();
                     break;
                 }
             }
         }
 
-        if (!hex_cr->AttachedCritters.empty()) {
+        if (hex_cr->HasAttachedCritters()) {
             hex_cr->MoveAttachedCritters();
         }
     }
@@ -1169,7 +1169,6 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
-    // Todo: refactor critters inventory updating
     const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
@@ -1311,7 +1310,7 @@ void ClientEngine::Net_OnCritterAttachments()
 
             if (is_attached) {
                 for (auto& map_cr : _curMap->GetCritters()) {
-                    if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
+                    if (map_cr->IsAttachedCritter(cr_id)) {
                         map_cr->MoveAttachedCritters();
                         break;
                     }
@@ -1319,9 +1318,9 @@ void ClientEngine::Net_OnCritterAttachments()
             }
         }
 
-        cr->AttachedCritters = std::move(attached_critters);
+        cr->SetAttachedCritters(std::move(attached_critters));
 
-        if (!cr->AttachedCritters.empty()) {
+        if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
         }
     }
@@ -1335,7 +1334,7 @@ void ClientEngine::Net_OnCritterAttachments()
 
         cr->SetIsAttached(is_attached);
         cr->SetAttachMaster(attach_master);
-        cr->AttachedCritters = std::move(attached_critters);
+        cr->SetAttachedCritters(std::move(attached_critters));
     }
 }
 
