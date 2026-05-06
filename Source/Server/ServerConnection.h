@@ -103,7 +103,6 @@ public:
     void HardDisconnect();
     void GracefulDisconnect();
 
-    // Todo: incapsulate ServerConnection data
     bool WasHandshake {};
     nanotime PingNextTime {};
     bool PingOk {true};

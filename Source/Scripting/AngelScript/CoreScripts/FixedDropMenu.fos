@@ -55,7 +55,6 @@ class FixedDropMenu : Gui::IDropMenu
         button.NeedShow = needShow;
         button.Action = action;
         Buttons.insertLast(button);
-        // Todo: sort
     }
 
     private
@@ -71,7 +70,7 @@ class FixedDropMenu : Gui::IDropMenu
     void Draw()
     {
         if (ShowButtons.length() > 0) {
-            ipos pos = Game.MousePos + ipos(20, 20); // Todo: rework to actual cursor size
+            ipos pos = Game.MousePos + ipos(20, 20);
             int activeIndex = PressedOffsetY / ButtonHeight;
             activeIndex = Math::Clamp(activeIndex, 0, ShowButtons.length() - 1);
             for (int i = 0; i < ShowButtons.length(); i++) {

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: server logs append not rewrite (with checking of size)
-
 #include "Logging.h"
 #include "BaseLogging.h"
 #include "GlobalData.h"
@@ -136,25 +134,6 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 #if FO_TRACY
         TracyMessage(result.c_str(), result.length());
 #endif
-
-        // Todo: colorize log texts
-        const char* color = nullptr;
-
-        switch (type) {
-        case LogType::InfoSection:
-            color = "\033[32m"; // Green
-            break;
-        case LogType::Warning:
-            color = "\033[33m"; // Yellow
-            break;
-        case LogType::Error:
-            color = "\031[31m"; // Red
-            break;
-        default:
-            break;
-        }
-
-        ignore_unused(color);
     }
     catch (...) {
         BreakIntoDebugger();

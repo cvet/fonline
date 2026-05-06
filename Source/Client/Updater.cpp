@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: support restoring file downloading from interrupted position
-
 #include "Updater.h"
 #include "Application.h"
 #include "DefaultSprites.h"
@@ -267,16 +265,6 @@ void Updater::Net_OnInitData()
 
             // Check hash
             if (auto file = resources.ReadFileHeader(fname)) {
-                // Todo: add update file files checking by hashes
-                /*const auto file_hash = resources.ReadFileText(strex("{}.hash", fname));
-                if (file_hash.empty()) {
-                    // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
-                }
-
-                if (strex(file_hash).to_uint64() == hash) {
-                    continue;
-                }*/
-
                 if (file.GetSize() == size) {
                     continue;
                 }

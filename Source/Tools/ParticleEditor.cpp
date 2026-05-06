@@ -628,7 +628,6 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
             if (ImGui::Button("Add Vortex")) {
                 obj->addModifier(SPK::Vortex::create());
             }
-            // Todo: improve EmitterAttacher
             // if (ImGui::Button("Add EmitterAttacher")) {
             //    obj->addModifier(SPK::EmitterAttacher::create());
             //}
@@ -646,11 +645,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
     DrawSparkNullableField(
         "Birth action", [obj] { return obj->getBirthAction(); }, [obj] { obj->setBirthAction(SPK::Ref<SPK::Action>()); },
         [obj] {
-            // Todo: improve EmitterAttacher
             // if (ImGui::Button("Add SpawnParticlesAction")) {
             //	obj->setBirthAction(SPK::SpawnParticlesAction::create());
             // }
-            // Todo: improve ActionSet
             // else if (ImGui::Button("Add ActionSet")) {
             //	obj->setBirthAction(SPK::ActionSet::create());
             // }
@@ -1126,8 +1123,6 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>&
     // SPK_ATTRIBUTE("base emitter",ATTRIBUTE_TYPE_REF)
     DRAW_SPK_BOOL_BOOL("EmitterAttacher OrientationEnabled", "EmitterAttacher RotationEnabled", isEmitterOrientationEnabled, isEmitterRotationEnabled, enableEmitterOrientation);
     // SPK_ATTRIBUTE("target group",ATTRIBUTE_TYPE_REF)
-
-    // Todo: DrawSparkObject SPK::EmitterAttacher
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
@@ -1176,8 +1171,6 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
     FO_STACK_TRACE_ENTRY();
 
     DrawSparkAction(obj);
-
-    // Todo: DrawSparkObject SPK::ActionSet
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj)
@@ -1187,8 +1180,6 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAct
     FO_RUNTIME_ASSERT_STR(false, "Not implemented");
 
     DrawSparkAction(obj);
-
-    // Todo: DrawSparkObject SPK::SpawnParticlesAction
 }
 
 // Renderers

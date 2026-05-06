@@ -51,7 +51,6 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
-// Todo: pass name to exceptions context args
 #define FO_DECLARE_EXCEPTION_EXT(exception_name, base_exception_name) \
     class exception_name : public base_exception_name \
     { \

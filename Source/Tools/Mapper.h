@@ -132,7 +132,6 @@ public:
         string Time {};
     };
 
-    // Todo: move mapper constants to enums
     static constexpr auto FONT_FO = static_cast<FontType>(0);
     static constexpr auto FONT_NUM = static_cast<FontType>(1);
     static constexpr auto FONT_BIG_NUM = static_cast<FontType>(2);
@@ -294,8 +293,6 @@ public:
 
     void AddMess(string_view message_text);
     void MessBoxDraw();
-
-    void DrawIfaceLayer(int32_t layer);
 
     auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
     void CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity) const;

@@ -753,7 +753,6 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
 
     vector<Critter*> critters;
 
-    // Todo: optimize items radius search by checking directly hexes in radius
     for (auto& cr : _critters) {
         if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
             critters.emplace_back(cr.get());
@@ -836,7 +835,6 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
 
     vector<StaticItem*> items;
 
-    // Todo: optimize items radius search by checking directly hexes in radius
     for (auto& item : _staticMap->StaticItems) {
         if ((!pid || item->GetProtoId() == pid) && GeometryHelper::GetDistance(item->GetHex(), hex) <= radius) {
             items.emplace_back(item.get());

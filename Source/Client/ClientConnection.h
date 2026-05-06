@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: automatically reconnect on network failures
-
 #pragma once
 
 #include "Common.h"

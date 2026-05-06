@@ -2040,19 +2040,16 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             i += 2;
         }
         else if (tokens[i] == "Max") {
-            // Todo: restore property Max modifier
             FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
             FO_RUNTIME_ASSERT(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat());
             i += 2;
         }
         else if (tokens[i] == "Min") {
-            // Todo: restore property Min modifier
             FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
             FO_RUNTIME_ASSERT(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat());
             i += 2;
         }
         else if (tokens[i] == "Quest") {
-            // Todo: remove property Quest modifier
             FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
             i += 2;
         }

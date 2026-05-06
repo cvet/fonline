@@ -37,7 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Todo: make sure in debug mode ptr is not dangling
 template<typename T>
 class raw_ptr
 {
@@ -126,7 +125,7 @@ public:
         return *this;
     }
 
-#if 0 // Todo: raw_ptr maybe enable implicit conversion to pointer?
+#if 0
     // ReSharper disable once CppNonExplicitConversionOperator
     FO_FORCE_INLINE operator T*() noexcept { return _ptr; }
     // ReSharper disable once CppNonExplicitConversionOperator
@@ -648,7 +647,6 @@ private:
     T _smartPtr;
 };
 
-// Todo: apply nullable_raw_ptr to all nullable pointers
 template<typename T>
 using nullable_raw_ptr = raw_ptr<T>;
 

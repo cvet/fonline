@@ -126,7 +126,7 @@ void CritterHexView::MoveAttachedCritters()
     const auto hex = GetHex();
     const auto hex_offset = GetHexOffset();
 
-    for (const auto cr_id : AttachedCritters) {
+    for (const auto cr_id : _attachedCritters) {
         if (auto* cr = _map->GetCritter(cr_id); cr != nullptr) {
             if (cr->GetHex() != hex) {
                 _map->MoveCritter(cr, hex, false);
@@ -513,7 +513,7 @@ void CritterHexView::Process()
     }
 
     // Attachments
-    if (!AttachedCritters.empty()) {
+    if (HasAttachedCritters()) {
         MoveAttachedCritters();
     }
 

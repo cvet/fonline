@@ -114,7 +114,6 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
             else {
-                // Todo: maybe need some optional warning for unknown/wrong properties
                 // WriteLog(LogType::Warning, "Skip unknown property {}", key);
             }
         }

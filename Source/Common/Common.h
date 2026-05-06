@@ -61,7 +61,6 @@ using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag,
 static_assert(some_strong_type<ident_t>);
 
 // Custom any as string
-// Todo: export any_t with ExportValueType
 class any_t : public string
 {
 public:
@@ -242,7 +241,6 @@ public:
 
     auto operator()(Args&&... args) -> EventDispatcher&
     {
-        // Todo: recursion guard for EventDispatcher
         if (!_observer._subscriberCallbacks.empty()) {
             for (auto& cb : _observer._subscriberCallbacks) {
                 cb(std::forward<Args>(args)...);

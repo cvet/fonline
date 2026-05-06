@@ -1491,7 +1491,6 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
         break;
     }
 
-    // Todo: GetScriptObjectInfo add detailed info about object
     const auto* ctx = AngelScript::asGetActiveContext();
     FO_RUNTIME_ASSERT(ctx);
     auto* as_engine = ctx->GetEngine();

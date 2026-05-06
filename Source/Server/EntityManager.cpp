@@ -206,8 +206,6 @@ void EntityManager::LoadEntities()
         LoadLocation(loc_id, is_error);
     }
 
-    // Todo: load global map critters
-
     if (is_error) {
         throw ServerInitException("Load entities failed");
     }

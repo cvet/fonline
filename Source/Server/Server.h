@@ -294,7 +294,7 @@ private:
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     TextPack _defaultLang {Hashes};
-    vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<unique_ptr<NetworkServer>> _connectionServers {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};

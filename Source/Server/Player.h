@@ -111,7 +111,7 @@ private:
 
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
-    raw_ptr<Critter> _controlledCr {}; // Todo: allow attach many critters to sigle player
+    raw_ptr<Critter> _controlledCr {};
     raw_ptr<const Entity> _sendIgnoreEntity {};
     raw_ptr<const Property> _sendIgnoreProperty {};
 };

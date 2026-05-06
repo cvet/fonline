@@ -256,7 +256,6 @@ FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 }
 
 // Explicit copying
-// Todo: optimize copy() to pass placement storage for value
 template<typename T>
     requires(std::is_copy_constructible_v<std::remove_cvref_t<T>>)
 constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
@@ -524,7 +523,6 @@ constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
 }
 
 // Enum formatter
-// Todo: improve named enums
 FO_END_NAMESPACE
 template<typename T>
     requires(std::is_enum_v<T>)

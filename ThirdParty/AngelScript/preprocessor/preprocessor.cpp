@@ -1652,7 +1652,7 @@ char* Preprocessor::ParseLexem( char* start, char* end, Lexem& out )
     if( current_char == '\"' )
         return ParseStringLiteral( start, end, '\"', out );
     if( current_char == '\'' )
-        return ParseStringLiteral( start, end, '\'', out );  // Todo: set optional ParseCharacterLiteral?
+        return ParseStringLiteral( start, end, '\'', out );
     if( current_char == '/' )
     {
         // Need to see if it's a comment.

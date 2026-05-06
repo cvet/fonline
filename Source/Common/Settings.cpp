@@ -147,7 +147,6 @@ static void DrawEditableEntry(string_view name, T& entry)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Todo: improve editable entries
     DrawEntry(name, entry);
 }
 

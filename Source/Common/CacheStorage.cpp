@@ -112,7 +112,6 @@ private:
 CacheStorage::CacheStorage(string_view path)
 {
 #if FO_HAVE_UNQLITE
-    // Todo: add engine hook to allow user to override cache storage
     if (string_view(path).find("unqlite") != string::npos) {
         _impl = SafeAlloc::MakeUnique<UnqliteCacheStorage>(path);
     }

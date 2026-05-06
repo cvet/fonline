@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: fix soft scroll if critter teleports
-
 #pragma once
 
 #include "Common.h"
@@ -274,7 +272,6 @@ public:
 #endif
 
 protected:
-    // Todo: make IfaceAnim scriptable object
     struct IfaceAnim
     {
         hstring Name {};
@@ -293,8 +290,8 @@ protected:
     void DestroyInnerEntities();
 
     void ProcessInputEvents();
-    void ProcessScreenEffectFading(); // Todo: move screen fading to scripts
-    void ProcessScreenEffectQuake(); // Todo: move screen quake effect to scripts
+    void ProcessScreenEffectFading();
+    void ProcessScreenEffectQuake();
     void ProcessVideo();
 
     void UnloadMap();

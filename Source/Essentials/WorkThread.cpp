@@ -307,14 +307,6 @@ void WorkThread::ThreadEntry() noexcept
                             }
                         }
                     }
-
-                    // Todo: schedule job repeat with last duration?
-                    try {
-                        // AddJobInternal(next_call_duration.value(), std::move(job), true);
-                    }
-                    catch (const std::exception& ex2) {
-                        ReportExceptionAndContinue(ex2);
-                    }
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();

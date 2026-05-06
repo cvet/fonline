@@ -873,21 +873,18 @@ void MapperEngine::DrawMapperFrame()
     {
         SprMngr.BeginScene();
 
-        DrawIfaceLayer(0);
-
         if (_curMap) {
             _curMap->DrawMap();
         }
 
-        DrawIfaceLayer(1);
+        SpritesCanDraw = true;
+        OnRenderIface.Fire();
+        SpritesCanDraw = false;
+
         DrawMainPanelImGui();
         DrawConsoleImGui();
         DrawInspectorImGui();
-        DrawIfaceLayer(2);
-
-        DrawIfaceLayer(4);
         CurDraw();
-        DrawIfaceLayer(5);
 
         SprMngr.EndScene();
     }
@@ -6174,17 +6171,6 @@ void MapperEngine::MessBoxDraw()
     }
 
     DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, COLOR_TEXT_WHITE, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
-}
-
-void MapperEngine::DrawIfaceLayer(int32_t layer)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(layer);
-
-    SpritesCanDraw = true;
-    OnRenderIface.Fire(); // Todo: mapper render iface layer
-    SpritesCanDraw = false;
 }
 
 auto MapperEngine::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>

@@ -228,7 +228,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                             }
 
                             // Add offsets
-                            ox = oy = 0; // Todo: why I disable offset adding?
+                            ox = oy = 0;
 
                             if (ox != 0 || oy != 0) {
                                 for (int32_t i = 0; i < dir_anim->GetFramesCount(); i++) {

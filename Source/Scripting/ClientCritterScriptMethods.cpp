@@ -399,7 +399,6 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
     else
 #endif
     {
-        // Todo: improve run particles for 2D animations
         ignore_unused(particleName);
         ignore_unused(boneName);
         ignore_unused(moveX);
@@ -434,7 +433,6 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
     else
 #endif
     {
-        // Todo: improve animation callbacks for 2D animations
         ignore_unused(stateAnim);
         ignore_unused(actionAnim);
         ignore_unused(normalizedTime);

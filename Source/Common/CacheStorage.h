@@ -31,9 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: store Cache.bin in player local dir for Windows users?
-// Todo: add in-memory cache storage and fallback to it if can't create default
-
 #pragma once
 
 #include "Common.h"

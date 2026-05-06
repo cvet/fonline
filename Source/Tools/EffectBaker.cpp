@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: pre-compile HLSH shaders with D3DCompile
-
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
@@ -217,7 +215,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
         const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), vertex_pass_content.c_str()};
         vert.setStrings(vertext_strings, 6);
-        // vert.setAutoMapBindings(true); // Todo: enable auto map bindings
+        // vert.setAutoMapBindings(true);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse vertex shader", fname, pass, vert.getInfoLog());
         }

@@ -37,7 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Todo: make hex position customizable, to allow to add third Z coordinate
 ///@ ExportValueType Layout = int16-x+int16-y
 struct mpos : ipos<int16_t>
 {

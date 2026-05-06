@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: optimize sprite atlas filling
-
 #pragma once
 
 #include "Common.h"

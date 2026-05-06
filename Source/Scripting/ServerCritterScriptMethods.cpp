@@ -760,7 +760,6 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
     function<bool(const Item*)> gag_callback;
 
     if (gag_callback_func) {
-        // Todo: use move only function
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gag_callback_func)), self](const Item* gag) mutable {
             auto* gag_non_const = const_cast<Item*>(gag);
             return gag_cb->Call(self, gag_non_const) && gag_cb->GetResult();

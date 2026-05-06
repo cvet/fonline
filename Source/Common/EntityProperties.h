@@ -62,8 +62,6 @@ public:
     FO_ENTITY_PROPERTY(timespan, FrameDeltaTime);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(int32_t, FramesPerSecond);
-
-    // Todo: exclude player properties from engine:
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(uint32_t, LastGlobalMapTripId);
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -178,8 +176,6 @@ public:
     FO_ENTITY_PROPERTY(ucolor, LightColor);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, ColorizeColor);
-
-    // Todo: exclude item properties from engine:
     ///@ MigrationRule Property Item SceneryScript StaticScript
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemStatic
     FO_ENTITY_PROPERTY(hstring, StaticScript);
@@ -277,8 +273,6 @@ public:
     FO_ENTITY_PROPERTY(int32_t, MovingSpeed);
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
-
-    // Todo: exclude critter properties from engine:
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
@@ -324,8 +318,6 @@ public:
     FO_ENTITY_PROPERTY(ipos32, ScrollOffset);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(irect32, ScrollAxialArea);
-
-    // Todo: exclude map properties from engine:
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(float32_t, SpritesZoom);
     ///@ ExportProperty Client
@@ -351,7 +343,6 @@ public:
     }
 
     ///@ MigrationRule Property Location ScriptId InitScript
-    // Todo: implement Location InitScript
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = LocationInit
     FO_ENTITY_PROPERTY(hstring, InitScript);
     ///@ ExportProperty Server Persistent

@@ -2529,7 +2529,6 @@ void ServerEngine::Process_StopMove(Player* player)
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
 
-    // Todo: validate stop position and place critter in it
     [[maybe_unused]] const auto start_hex = in_buf->Read<mpos>();
     [[maybe_unused]] const auto hex_offset = in_buf->Read<ipos16>();
     [[maybe_unused]] const auto dir_angle = in_buf->Read<mdir>();
@@ -2618,7 +2617,6 @@ void ServerEngine::Process_Property(Player* player)
 
     const auto data_size = in_buf->Read<uint32_t>();
 
-    // Todo: control max size explicitly, add option to property registration
     if (data_size > 0xFFFF) {
         // For now 64Kb for all
         throw GenericException("Property len > 0xFFFF");
@@ -2912,8 +2910,6 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
             }
         } break;
         case ItemOwnership::ItemContainer: {
-            // Todo: add container properties changing notifications
-            // Item* cont = EntityMngr.GetItem( item->GetContainerId() );
         } break;
         }
     }
@@ -3050,7 +3046,6 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     FO_RUNTIME_ASSERT(item);
 
@@ -3058,7 +3053,6 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
         const auto* map = EntityMngr.GetMap(item->GetMapId());
 
         if (map != nullptr) {
-            // Todo: make BlockLines changable in runtime
             throw NotImplementedException(FO_LINE_STR);
         }
     }

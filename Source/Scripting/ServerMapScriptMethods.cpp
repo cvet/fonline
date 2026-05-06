@@ -842,7 +842,6 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toH
     function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
-        // Todo: use move only function
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Item*>>(std::move(gagCallabck))](const Item* gag) mutable {
             auto* gag_non_const = const_cast<Item*>(gag);
             return gag_cb->Call(gag_non_const) && gag_cb->GetResult();
@@ -872,7 +871,6 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHe
     function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
-        // Todo: use move only function
         gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), cr](const Item* gag) mutable {
             auto* gag_non_const = const_cast<Item*>(gag);
             return gag_cb->Call(cr, gag_non_const) && gag_cb->GetResult();
@@ -1068,7 +1066,6 @@ FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
     }
 
     self->SetHexManualBlock(hex, true, full);
-    // Todo: notify clients about manual hex block
 }
 
 ///@ ExportMethod

@@ -842,7 +842,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             }
         }
 
-        RemoveCritterFromMap(cr, prev_map); // Todo: callbacks may turn critter to wrong state
+        RemoveCritterFromMap(cr, prev_map);
 
         if (cr->IsDestroyed()) {
             return;
