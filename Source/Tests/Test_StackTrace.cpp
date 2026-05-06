@@ -201,21 +201,21 @@ TEST_CASE("StackTrace")
         const auto resolved = ResolveStackTrace(st);
 
         // Expected interleaving (most-recent first):
-        //   [Script] ChildScript          <- innermost layer
-        //   [Native] PC 0xA0               <- between child anchor and current top
+        //   [Native] PC 0xA0               <- deeper than the child layer (the throw chain)
         //   [Native] PC 0xA1
+        //   [Script] ChildScript          <- innermost layer (called the natives above)
+        //   [Native] PC 0xB0               <- between child anchor and parent anchor
         //   [Script] ParentScript         <- outer layer
-        //   [Native] PC 0xB0               <- between parent anchor and child anchor
-        //   [Native] PC 0xB1
-        //   [Native] PC 0x80               <- tail below outer layer's anchor
+        //   [Native] PC 0xB1               <- tail below parent anchor
+        //   [Native] PC 0x80
         REQUIRE(resolved.size() == 7);
-        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[0].Function == "ChildScript");
+        CHECK(resolved[0].Type == StackTraceFrame::FrameType::Native);
         CHECK(resolved[1].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[2].Type == StackTraceFrame::FrameType::Native);
-        CHECK(resolved[3].Type == StackTraceFrame::FrameType::Script);
-        CHECK(resolved[3].Function == "ParentScript");
-        CHECK(resolved[4].Type == StackTraceFrame::FrameType::Native);
+        CHECK(resolved[2].Type == StackTraceFrame::FrameType::Script);
+        CHECK(resolved[2].Function == "ChildScript");
+        CHECK(resolved[3].Type == StackTraceFrame::FrameType::Native);
+        CHECK(resolved[4].Type == StackTraceFrame::FrameType::Script);
+        CHECK(resolved[4].Function == "ParentScript");
         CHECK(resolved[5].Type == StackTraceFrame::FrameType::Native);
         CHECK(resolved[6].Type == StackTraceFrame::FrameType::Native);
     }
