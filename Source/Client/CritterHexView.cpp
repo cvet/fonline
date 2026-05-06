@@ -73,7 +73,7 @@ void CritterHexView::OnDestroySelf()
 
 #if FO_ENABLE_3D
     if (_model) {
-        _model->AnimationCallbacks.clear();
+        _model->ClearAnimationCallbacks();
         _model->SetAnimInitCallback({});
     }
 
@@ -390,7 +390,7 @@ void CritterHexView::RefreshModel()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto animCallbacks = _model ? std::move(_model->AnimationCallbacks) : vector<ModelAnimationCallback>();
+    auto animCallbacks = _model ? _model->TakeAnimationCallbacks() : vector<ModelAnimationCallback>();
 
     _spr = nullptr;
 
@@ -409,7 +409,7 @@ void CritterHexView::RefreshModel()
             _spr = _modelSpr.get();
 
             _model = _modelSpr->GetModel();
-            _model->AnimationCallbacks = std::move(animCallbacks);
+            _model->SetAnimationCallbacks(std::move(animCallbacks));
             _model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) FO_DEFERRED {
                 // Callback from 3d
                 _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);

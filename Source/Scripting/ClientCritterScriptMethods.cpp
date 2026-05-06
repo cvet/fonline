@@ -428,7 +428,8 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
                 animCallback->Call(self);
             }
         };
-        hex_cr->GetModel()->AnimationCallbacks.emplace_back(std::move(anim_callback));
+
+        hex_cr->GetModel()->AddAnimationCallback(std::move(anim_callback));
     }
     else
 #endif

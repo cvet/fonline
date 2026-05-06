@@ -283,8 +283,10 @@ public:
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
-    // Todo: incapsulate model animation callbacks
-    vector<ModelAnimationCallback> AnimationCallbacks {};
+    void AddAnimationCallback(ModelAnimationCallback callback);
+    void SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks);
+    auto TakeAnimationCallbacks() -> vector<ModelAnimationCallback>;
+    void ClearAnimationCallbacks();
 
 private:
     struct CombinedMesh
@@ -370,6 +372,7 @@ private:
     vec3 _moveOffset {};
     bool _forceDraw {};
     bool _nonConstHelper {};
+    vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};

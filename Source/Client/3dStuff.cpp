@@ -1113,6 +1113,34 @@ void ModelInstance::SetAnimInitCallback(function<void(CritterStateAnim&, Critter
     _animInitCallback = std::move(anim_init);
 }
 
+void ModelInstance::AddAnimationCallback(ModelAnimationCallback callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animationCallbacks.emplace_back(std::move(callback));
+}
+
+void ModelInstance::SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animationCallbacks = std::move(callbacks);
+}
+
+auto ModelInstance::TakeAnimationCallbacks() -> vector<ModelAnimationCallback>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return std::move(_animationCallbacks);
+}
+
+void ModelInstance::ClearAnimationCallbacks()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _animationCallbacks.clear();
+}
+
 auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1579,7 +1607,6 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     }
 
     // Fix texture coords
-    // Todo: move texcoord offset calculation to gpu
     if (mesh_instance->CurTexures[0]) {
         const auto* mesh_tex = mesh_instance->CurTexures[0].get();
 
@@ -2061,7 +2088,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Animation callbacks
     if (_bodyAnimController && elapsed >= 0.0f && _animDuration > 0.0f) {
-        for (auto& callback : AnimationCallbacks) {
+        for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
                 const auto fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
@@ -2107,9 +2134,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
 
-    // Todo: merge all bones in one hierarchy and disable offset copying
     auto& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
-
     auto* wm = model_buf->WorldMatrices;
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
@@ -2302,7 +2327,6 @@ auto ModelInformation::Load(string_view name) -> bool
 
         vector<AnimEntry> anim_entries;
 
-        // Todo: move fo3d parsing to baking
         while (!istr->eof()) {
             *istr >> token;
 
@@ -2915,8 +2939,6 @@ auto ModelInformation::Load(string_view name) -> bool
         // Create animation
         _fileName = name;
         _hierarchy = hierarchy;
-
-        // Todo: process default animations
     }
 
     return true;
