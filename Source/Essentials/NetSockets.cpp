@@ -40,8 +40,10 @@
 #include "WinApi-Include.h"
 #else
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -146,6 +148,54 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
     return addr;
 }
 
+auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&addr_net_order);
+
+    return strex("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]).str();
+}
+
+auto net_sockets::host_to_net_u16(uint16_t value) noexcept -> uint16_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return htons(value);
+}
+
+auto net_sockets::last_recv_was_would_block() noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return ::WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+    return errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
+}
+
+auto net_sockets::last_error_text() noexcept -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    const auto error_code = ::WSAGetLastError();
+    wchar_t* ws = nullptr;
+    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
+        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
+    auto free_ws = scope_exit([ws]() noexcept { ::LocalFree(ws); });
+    const string error_str = strex().parse_wide_char(ws).trim();
+
+    return strex("{} ({})", error_str, error_code);
+#else
+    const auto error_code = errno;
+    const string error_str = strex(::strerror(error_code)).trim();
+
+    return strex("{} ({})", error_str, error_code);
+#endif
+}
+
 tcp_socket::tcp_socket(socket_t sock) noexcept :
     _sock {unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
         FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
@@ -195,6 +245,73 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     return true;
 }
 
+auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    close();
+
+    const socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (sock == INVALID_SOCKET_VALUE) {
+        return false;
+    }
+
+    sockaddr_in addr {};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    const auto resolved = net_sockets::resolve_ipv4(host);
+
+    if (!resolved.has_value()) {
+        CloseSocket(sock);
+        return false;
+    }
+
+    addr.sin_addr.s_addr = *resolved;
+
+    // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS.
+#if FO_WINDOWS
+    u_long mode = 1;
+
+    if (::ioctlsocket(sock, FIONBIO, &mode) != 0) {
+        CloseSocket(sock);
+        return false;
+    }
+#else
+    const int32_t flags = ::fcntl(sock, F_GETFL, 0);
+
+    if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
+        CloseSocket(sock);
+        return false;
+    }
+#endif
+
+    const auto r = ::connect(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+
+    if (r == SOCKET_ERROR_VALUE) {
+#if FO_WINDOWS
+        if (::WSAGetLastError() != WSAEWOULDBLOCK) {
+            CloseSocket(sock);
+            return false;
+        }
+#else
+        if (errno != EINPROGRESS) {
+            CloseSocket(sock);
+            return false;
+        }
+#endif
+    }
+
+    _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
+        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        CloseSocket(*p);
+        delete p;
+    });
+
+    return true;
+}
+
 auto tcp_socket::can_read(timespan timeout) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -215,6 +332,41 @@ auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
     }
 
     return WaitSocketReady(*_sock, false, true, timeout);
+}
+
+auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!is_valid()) {
+        return false;
+    }
+
+    int32_t optval = enabled ? 1 : 0;
+
+    return ::setsockopt(*_sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&optval), sizeof(optval)) == 0;
+}
+
+auto tcp_socket::peek_socket_error() const noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!is_valid()) {
+        return -1;
+    }
+
+    int32_t error = 0;
+#if FO_WINDOWS
+    int32_t len = sizeof(error);
+#else
+    socklen_t len = sizeof(error);
+#endif
+
+    if (::getsockopt(*_sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len) != 0) {
+        return -1;
+    }
+
+    return error;
 }
 
 auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
