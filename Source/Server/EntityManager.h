@@ -107,7 +107,7 @@ public:
     void CallInit(Critter* cr, bool first_time);
     void CallInit(Item* item, bool first_time);
 
-    void RegisterPlayer(Player* player, ident_t id);
+    void RegisterPlayer(Player* player, ident_t id, bool persistent = true);
     void UnregisterPlayer(Player* player);
     void RegisterLocation(Location* loc);
     void UnregisterLocation(Location* loc);

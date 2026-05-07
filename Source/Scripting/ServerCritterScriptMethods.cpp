@@ -731,6 +731,29 @@ FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controllable)
+{
+    if (controllable) {
+        if (self->GetControlledByPlayer()) {
+            return;
+        }
+
+        self->MarkIsForPlayer();
+    }
+    else {
+        if (!self->GetControlledByPlayer()) {
+            return;
+        }
+
+        if (self->GetPlayer() != nullptr) {
+            self->DetachPlayer();
+        }
+
+        self->UnmarkIsForPlayer();
+    }
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
 {
     if (!self->GetControlledByPlayer()) {

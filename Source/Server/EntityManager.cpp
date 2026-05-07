@@ -836,7 +836,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     }
 }
 
-void EntityManager::RegisterPlayer(Player* player, ident_t id)
+void EntityManager::RegisterPlayer(Player* player, ident_t id, bool persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -845,7 +845,7 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id)
     }
 
     RegisterEntity(player);
-    player->SetPersistent(true);
+    player->SetPersistent(persistent);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
     FO_RUNTIME_ASSERT(inserted);
 }

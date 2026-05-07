@@ -2359,6 +2359,52 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
     return player;
 }
 
+auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+
+    auto player_holder = refcount_ptr<Player> {unlogined_player};
+
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
+
+        vec_remove_unique_value(_unloginedPlayers, unlogined_player);
+    }
+
+    auto* player = unlogined_player;
+    bool registered_player = false;
+
+    scope_fail disconnect_on_error {[&]() noexcept {
+        if (registered_player) {
+            safe_call([&] { player->DetachCritter(); });
+            safe_call([&] { player->MarkAsDestroyed(); });
+            safe_call([&] { EntityMngr.UnregisterPlayer(player); });
+        }
+        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+    }};
+
+    EntityMngr.RegisterPlayer(player, ident_t {}, false);
+    registered_player = true;
+
+    player->SetLogined(true);
+    player->Send_LoginSuccess();
+
+    if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
+        player->DetachCritter();
+        player->MarkAsDestroyed();
+        EntityMngr.UnregisterPlayer(player);
+        registered_player = false;
+        player->SetLogined(false);
+        player->GetConnection()->GracefulDisconnect();
+        return nullptr;
+    }
+
+    return player;
+}
+
 void ServerEngine::Process_Move(Player* player)
 {
     FO_STACK_TRACE_ENTRY();

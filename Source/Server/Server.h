@@ -95,6 +95,7 @@ public:
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
     auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
+    auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
 
     auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> FO_NON_NULL Item*;
 

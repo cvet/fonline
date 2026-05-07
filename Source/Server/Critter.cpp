@@ -125,6 +125,16 @@ void Critter::MarkIsForPlayer()
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
+void Critter::UnmarkIsForPlayer()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(GetControlledByPlayer());
+    FO_RUNTIME_ASSERT(!_player);
+
+    SetControlledByPlayer(false);
+}
+
 void Critter::AttachPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();

@@ -123,6 +123,7 @@ public:
     auto CanSeeItemOnMap(const Item* item) const -> bool;
 
     void MarkIsForPlayer();
+    void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(Player* player);

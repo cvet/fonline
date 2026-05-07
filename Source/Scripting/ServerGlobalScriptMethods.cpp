@@ -798,6 +798,19 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, P
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server, Player* unloginedPlayer)
+{
+    if (unloginedPlayer == nullptr) {
+        throw ScriptException("Unlogined player arg is null");
+    }
+    if (unloginedPlayer->GetLogined()) {
+        throw ScriptException("Player is already logined");
+    }
+
+    return server->LoginPlayerToTempSession(unloginedPlayer);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
 {
     if (unloginedPlayer == nullptr) {
