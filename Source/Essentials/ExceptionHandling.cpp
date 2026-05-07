@@ -163,8 +163,8 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
             callback(ex.what(), st, true);
         }
         else {
-            WriteBaseLog(strex("{}", ex.what()), &st);
-            WriteBaseLog("Shutdown!");
+            WriteBaseLog(strex("{}\n", ex.what()), &st);
+            WriteBaseLog("Shutdown!\n\n");
         }
     }
     catch (...) {
@@ -185,7 +185,8 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
             callback(ex.what(), st, false);
         }
         else {
-            WriteBaseLog(strex("{}", ex.what()), &st);
+            WriteBaseLog(strex("{}\n", ex.what()), &st);
+            WriteBaseLog("\n\n");
         }
     }
     catch (...) {

@@ -508,7 +508,10 @@ int main(int argc, char** argv) // Handled by SDL
                                         for (size_t i = 1; i < lines.size(); i++) {
                                             ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
                                         }
-                                        for (const auto& st_line : strex(FormatStackTrace(st)).split('\n')) {
+
+                                        const auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
+
+                                        for (const auto& st_line : strex(formatted).split('\n')) {
                                             ImGui::TextUnformatted(st_line.c_str(), st_line.c_str() + st_line.size());
                                         }
 

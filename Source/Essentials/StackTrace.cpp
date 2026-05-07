@@ -128,9 +128,10 @@ extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FR
 #elif HAS_NATIVE_TRACE
     try {
         backward::StackTrace native;
-        native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + 1);
+        const size_t skip_count = static_cast<size_t>(2) + skip;
+        native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + skip_count + 1);
+        native.skip_n_firsts(skip_count);
         out_truncated = native.size() > STACK_TRACE_MAX_NATIVE_FRAMES;
-        native.skip_n_firsts(static_cast<size_t>(2) + skip);
         const size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
