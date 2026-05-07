@@ -54,14 +54,14 @@ namespace SPK
 	{
 		if (min <= max)
 		{
-			this->minNb = minNb;
-			this->maxNb = maxNb;
+			this->minNb = min;
+			this->maxNb = max;
 		}
 		else
 		{
 			SPK_LOG_WARNING("SpawnParticlesAction::setNb(unsigned int,unsigned int) - min is higher than max - Values are swapped");
-			this->minNb = maxNb;
-			this->maxNb = minNb;
+			this->minNb = max;
+			this->maxNb = min;
 		}
 	}
 
