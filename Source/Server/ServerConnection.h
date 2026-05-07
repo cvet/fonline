@@ -83,6 +83,21 @@ public:
         raw_ptr<NetInBuffer> _inBuf {};
     };
 
+    struct Diagnostics
+    {
+        bool HandshakeComplete {};
+        nanotime LastActivityTime {};
+        bool PingAnswerReceived {true};
+        int32_t PendingUpdateFileIndex {-1};
+        int32_t PendingUpdateFilePortion {};
+    };
+
+    struct UpdateFilePortion
+    {
+        size_t Offset {};
+        size_t Size {};
+    };
+
     ServerConnection() = delete;
     explicit ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection);
     ServerConnection(const ServerConnection&) = delete;
@@ -95,6 +110,20 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
+    [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
+    [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
+    [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
+
+    void MarkHandshakeComplete() noexcept;
+    void EnsureActivityTime(nanotime time) noexcept;
+    void RegisterActivity(nanotime time) noexcept;
+    void RegisterPingRequest(nanotime time) noexcept;
+    void RegisterPingAnswer(nanotime time) noexcept;
+    void BeginUpdateFileTransfer(size_t file_index) noexcept;
+    auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
     auto WriteMsg(NetMessage msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
     auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
@@ -103,14 +132,21 @@ public:
     void HardDisconnect();
     void GracefulDisconnect();
 
-    bool WasHandshake {};
-    nanotime PingNextTime {};
-    bool PingOk {true};
-    nanotime LastActivityTime {};
-    int32_t UpdateFileIndex {-1};
-    int32_t UpdateFilePortion {};
-
 private:
+    struct ActivityState
+    {
+        bool HandshakeComplete {};
+        nanotime NextPingTime {};
+        bool PingAnswerReceived {true};
+        nanotime LastActivityTime {};
+    };
+
+    struct UpdateFileTransferState
+    {
+        optional<size_t> PendingFileIndex {};
+        size_t PortionIndex {};
+    };
+
     void StartAsyncSend();
     auto AsyncSendData() -> const_span<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
@@ -123,6 +159,8 @@ private:
     std::mutex _outBufLocker {};
     vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
+    ActivityState _activity {};
+    UpdateFileTransferState _updateFileTransfer {};
     bool _gracefulDisconnected {};
 };
 

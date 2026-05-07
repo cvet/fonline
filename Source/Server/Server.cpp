@@ -1107,6 +1107,8 @@ void ServerEngine::DrawGui()
                 const auto* connection = player->GetConnection();
 
                 if (begin_info_table("##PlayerSummary")) {
+                    const auto connection_diagnostics = connection->GetDiagnostics();
+
                     info_row("Id", strex("{}", player->GetId()).str());
                     info_row("Name", player->GetName());
                     info_row("Logined", strex("{}", player->GetLogined()).str());
@@ -1114,9 +1116,9 @@ void ServerEngine::DrawGui()
                     info_row("Port", strex("{}", connection->GetPort()).str());
                     info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
                     info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
-                    info_row("Was handshake", strex("{}", connection->WasHandshake).str());
-                    info_row("Last activity", strex("{}", connection->LastActivityTime).str());
-                    info_row("Ping ok", strex("{}", connection->PingOk).str());
+                    info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
+                    info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
+                    info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
                     info_row("Controlled critter id", strex("{}", player->GetControlledCritterId()).str());
                     info_row("Last controlled critter id", strex("{}", player->GetLastControlledCritterId()).str());
                     ImGui::EndTable();
@@ -1155,15 +1157,17 @@ void ServerEngine::DrawGui()
 
                 if (ImGui::TreeNode(label.c_str())) {
                     if (begin_info_table("##UnloginedSummary")) {
+                        const auto connection_diagnostics = connection->GetDiagnostics();
+
                         info_row("Host", connection->GetHost());
                         info_row("Port", strex("{}", connection->GetPort()).str());
-                        info_row("Was handshake", strex("{}", connection->WasHandshake).str());
+                        info_row("Was handshake", strex("{}", connection_diagnostics.HandshakeComplete).str());
                         info_row("Hard disconnected", strex("{}", connection->IsHardDisconnected()).str());
                         info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
-                        info_row("Last activity", strex("{}", connection->LastActivityTime).str());
-                        info_row("Ping ok", strex("{}", connection->PingOk).str());
-                        info_row("Update file index", strex("{}", connection->UpdateFileIndex).str());
-                        info_row("Update file portion", strex("{}", connection->UpdateFilePortion).str());
+                        info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
+                        info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
+                        info_row("Update file index", strex("{}", connection_diagnostics.PendingUpdateFileIndex).str());
+                        info_row("Update file portion", strex("{}", connection_diagnostics.PendingUpdateFilePortion).str());
                         ImGui::EndTable();
                     }
 
@@ -1294,7 +1298,7 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
 
         in_buf.Unlock();
 
-        if (!connection->WasHandshake) {
+        if (!connection->IsHandshakeComplete()) {
             if (msg == NetMessage::Handshake) {
                 Process_Handshake(connection);
             }
@@ -1325,7 +1329,7 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
         in_buf.Lock();
         in_buf->ShrinkReadBuf();
 
-        connection->LastActivityTime = GameTime.GetFrameTime();
+        connection->RegisterActivity(GameTime.GetFrameTime());
     }
 }
 
@@ -1397,7 +1401,7 @@ void ServerEngine::ProcessPlayer(Player* player)
         in_buf.Lock();
         in_buf->ShrinkReadBuf();
 
-        connection->LastActivityTime = GameTime.GetFrameTime();
+        connection->RegisterActivity(GameTime.GetFrameTime());
     }
 }
 
@@ -1411,18 +1415,18 @@ void ServerEngine::ProcessConnection(ServerConnection* connection)
         return;
     }
 
-    if (!connection->LastActivityTime) {
-        connection->LastActivityTime = GameTime.GetFrameTime();
-    }
+    const auto frame_time = GameTime.GetFrameTime();
 
-    if (Settings.InactivityDisconnectTime != 0 && GameTime.GetFrameTime() - connection->LastActivityTime >= std::chrono::milliseconds {Settings.InactivityDisconnectTime}) {
+    connection->EnsureActivityTime(frame_time);
+
+    if (connection->IsInactive(frame_time)) {
         WriteLog("Connection activity timeout from host '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
 
-    if (connection->WasHandshake && (!connection->PingNextTime || GameTime.GetFrameTime() >= connection->PingNextTime)) {
-        if (!connection->PingOk && !IsRunInDebugger()) {
+    if (connection->NeedPing(frame_time)) {
+        if (connection->HasPendingPing() && !IsRunInDebugger()) {
             connection->HardDisconnect();
             return;
         }
@@ -1431,8 +1435,7 @@ void ServerEngine::ProcessConnection(ServerConnection* connection)
 
         out_buf->Write(false);
 
-        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {Settings.ClientPingTime};
-        connection->PingOk = false;
+        connection->RegisterPingRequest(frame_time);
     }
 }
 
@@ -2137,7 +2140,7 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
         out_buf->Write(GameTime.GetSynchronizedTime());
     }
 
-    connection->WasHandshake = true;
+    connection->MarkHandshakeComplete();
 
     if (outdated) {
         WriteLog("Connected client {} has outdated compatibility version {}", connection->GetHost(), comp_version);
@@ -2160,8 +2163,7 @@ void ServerEngine::Process_Ping(ServerConnection* connection)
     in_buf.Unlock();
 
     if (answer) {
-        connection->PingOk = true;
-        connection->PingNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {Settings.ClientPingTime};
+        connection->RegisterPingAnswer(GameTime.GetFrameTime());
     }
     else {
         auto out_buf = connection->WriteMsg(NetMessage::Ping);
@@ -2186,8 +2188,7 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
         return;
     }
 
-    connection->UpdateFileIndex = numeric_cast<int32_t>(file_index);
-    connection->UpdateFilePortion = 0;
+    connection->BeginUpdateFileTransfer(numeric_cast<size_t>(file_index));
 
     Process_UpdateFileData(connection);
 }
@@ -2198,28 +2199,24 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (connection->UpdateFileIndex == -1) {
+    const auto file_index = connection->GetUpdateFileTransferIndex();
+
+    if (!file_index) {
         WriteLog(LogType::Warning, "Wrong update call, client host '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
 
-    const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    auto update_portion = Settings.UpdateFileSendSize;
-    const auto offset = connection->UpdateFilePortion * update_portion;
-
-    if (offset + update_portion < numeric_cast<int32_t>(update_file_data.size())) {
-        connection->UpdateFilePortion++;
-    }
-    else {
-        update_portion = numeric_cast<int32_t>(update_file_data.size()) % update_portion;
-        connection->UpdateFileIndex = -1;
-    }
+    const auto& update_file_data = _updateFilesData[*file_index];
+    const auto update_file_portion = connection->PullUpdateFilePortion(update_file_data.size(), numeric_cast<size_t>(Settings.UpdateFileSendSize));
 
     auto out_buf = connection->WriteMsg(NetMessage::UpdateFileData);
 
-    out_buf->Write(update_portion);
-    out_buf->Push(&update_file_data[offset], update_portion);
+    out_buf->Write(numeric_cast<int32_t>(update_file_portion.Size));
+
+    if (update_file_portion.Size != 0) {
+        out_buf->Push(&update_file_data[update_file_portion.Offset], update_file_portion.Size);
+    }
 }
 
 auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
