@@ -32,7 +32,6 @@
 //
 
 #include "StackTrace.h"
-#include "BaseLogging.h"
 #include "GlobalData.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
@@ -105,16 +104,19 @@ static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) 
     }
 }
 
-extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, uint32_t skip) noexcept
+extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     out_count = 0;
+    out_truncated = false;
 
 #if FO_WINDOWS
     const ULONG skip_count = 1u + skip;
-    void* raw_frames[STACK_TRACE_MAX_NATIVE_FRAMES] = {};
-    const USHORT captured = RtlCaptureStackBackTrace(skip_count, static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES), raw_frames, nullptr);
+    constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(STACK_TRACE_MAX_NATIVE_FRAMES) + 1u;
+    void* raw_frames[REQUEST_COUNT] = {};
+    const USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
+    out_truncated = captured > STACK_TRACE_MAX_NATIVE_FRAMES;
     const uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
 
     for (uint32_t i = 0; i < n; i++) {
@@ -126,9 +128,9 @@ extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FR
 #elif HAS_NATIVE_TRACE
     try {
         backward::StackTrace native;
-        native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES);
+        native.load_here(STACK_TRACE_MAX_NATIVE_FRAMES + 1);
+        out_truncated = native.size() > STACK_TRACE_MAX_NATIVE_FRAMES;
         native.skip_n_firsts(static_cast<size_t>(2) + skip);
-
         const size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
@@ -153,7 +155,7 @@ extern auto GetStackTrace() noexcept -> StackTraceData
 
     StackTraceData st;
 
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, 1);
+    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 1);
 
     try {
         std::vector<ScriptStackTraceLayer> script_layers;
@@ -237,12 +239,6 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 #endif
 }
 
-// Resolve the function-base address (the entry point of the function the IP belongs to)
-// for a single instruction pointer. Returns nullptr if symbol resolution fails.
-// Used by FindLayerNativeAnchor to compare birth and current frames by FUNCTION
-// rather than exact IP — birth IPs captured at script-launch time point to a different
-// instruction within the same C++ function than the current trace (e.g. ScriptFuncCall
-// is at "after PrepareContext call" in birth and "after RunContext call" in current).
 static auto ResolveFunctionBase(void* addr) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -251,15 +247,16 @@ static auto ResolveFunctionBase(void* addr) noexcept -> void*
     try {
         backward::TraceResolver resolver;
         const auto resolved = resolver.resolve(backward::Trace(addr, 0));
+
         if (resolved.object_function.empty() && resolved.source.function.empty()) {
             return addr;
         }
+
         // backward stores the function entry address in `object_base + relative offset` form
         // on POSIX, but on Windows we approximate via the resolved.addr field which points
         // to the IP back; for matching we collapse all IPs that resolve to the same name
         // into a single key by hashing the function name.
         const auto& name = !resolved.source.function.empty() ? resolved.source.function : resolved.object_function;
-        // Reinterpret the function name bytes hash as a pointer for comparison purposes.
         size_t h = std::hash<std::string> {}(name);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
@@ -271,6 +268,21 @@ static auto ResolveFunctionBase(void* addr) noexcept -> void*
 #endif
 }
 
+static auto SameFrameFunction(void* a, void* b) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (a == b) {
+        return true;
+    }
+
+    if (a == nullptr || b == nullptr) {
+        return false;
+    }
+
+    return ResolveFunctionBase(a) == ResolveFunctionBase(b);
+}
+
 static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -279,51 +291,33 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
         return st.NativeFrameCount;
     }
 
-    // We want the DEEPEST birth frame that appears in the current trace — that is the
-    // closest C++ frame to the script launch site, so the script frames get inserted
-    // immediately above it. Iterate birth frames in order (deepest first) and for each
-    // try exact-IP match, then function-base match. Stop at the first match — earlier
-    // birth frames win even when later birth frames have an exact-IP match, because
-    // the script-launching frame (e.g. ScriptFuncCall) typically has a moved return
-    // address between birth and current while frames below it (InboundRemoteCallHandler,
-    // ...) keep the same return address and would otherwise hijack the anchor.
+    const uint32_t birth_n = layer.BirthNativeFrameCount;
+    const uint32_t trace_n = st.NativeFrameCount;
 
-    // Lazily resolved function-base cache for the current trace.
-    std::array<const void*, STACK_TRACE_MAX_NATIVE_FRAMES> current_funcs {};
-    bool current_resolved = false;
+    uint32_t matched = 0;
 
-    for (uint32_t b = 0; b < layer.BirthNativeFrameCount; b++) {
-        void* birth_addr = layer.BirthNativeFrames[b];
+    while (matched < birth_n && matched < trace_n) {
+        void* birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
+        void* trace_addr = st.NativeFrames[trace_n - 1 - matched];
 
-        if (birth_addr == nullptr) {
-            continue;
+        if (!SameFrameFunction(birth_addr, trace_addr)) {
+            break;
         }
 
-        // Exact IP match.
-        for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
-            if (st.NativeFrames[i] == birth_addr) {
-                return i;
-            }
-        }
-
-        // Function-base match (heavy; resolve current trace once on first use).
-        if (!current_resolved) {
-            for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
-                current_funcs[i] = st.NativeFrames[i] != nullptr ? ResolveFunctionBase(st.NativeFrames[i]) : nullptr;
-            }
-            current_resolved = true;
-        }
-
-        const void* birth_func = ResolveFunctionBase(birth_addr);
-
-        for (uint32_t i = search_from; i < st.NativeFrameCount; i++) {
-            if (current_funcs[i] != nullptr && current_funcs[i] == birth_func) {
-                return i;
-            }
-        }
+        matched++;
     }
 
-    return st.NativeFrameCount;
+    if (matched == 0) {
+        return st.NativeFrameCount;
+    }
+
+    const uint32_t anchor = trace_n - matched;
+
+    if (anchor < search_from) {
+        return st.NativeFrameCount;
+    }
+
+    return anchor;
 }
 
 extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>
@@ -351,15 +345,15 @@ extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTrac
     uint32_t prev_anchor = 0;
 
     for (const auto& layer : layers) {
-        for (const auto& frame : layer.ScriptFrames) {
-            frames.push_back(frame);
-        }
-
         const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
 
         if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
             ResolveNativeRange(st, prev_anchor, anchor, frames);
             prev_anchor = anchor;
+        }
+
+        for (const auto& frame : layer.ScriptFrames) {
+            frames.push_back(frame);
         }
     }
 
@@ -388,91 +382,64 @@ extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTra
     return std::nullopt;
 }
 
-static auto ExtractFileName(std::string_view path) noexcept -> std::string_view
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (const auto pos = path.find_last_of("/\\"); pos != std::string_view::npos) {
-        return path.substr(pos + 1);
-    }
-
-    return path;
-}
-
 extern auto FormatStackTrace(const StackTraceData& st) -> std::string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     std::ostringstream ss;
-    ss << "Stack trace (most recent call first):";
+    ss << "Stack trace (most recent call first";
+
+    if (st.NativeTruncated) {
+        ss << ", truncated at " << STACK_TRACE_MAX_NATIVE_FRAMES << " frames";
+    }
+
+    ss << "):";
 
     for (const auto& frame : ResolveStackTrace(st)) {
         ss << "\n- [" << (frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native") << "] " << frame.Function;
 
         if (!frame.File.empty()) {
-            ss << " (" << ExtractFileName(frame.File) << " line " << frame.Line << ")";
+            std::string_view file_name {frame.File};
+
+            if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                file_name = file_name.substr(pos + 1);
+            }
+
+            ss << " (" << file_name << " line " << frame.Line << ")";
         }
     }
 
     return ss.str();
 }
 
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
+auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    WriteBaseLog("Stack trace (most recent call first):\n");
-
-    char itoa_buf[64] = {};
-
-    bool resolution_succeeded = false;
-
-    try {
-        const auto resolved = ResolveStackTrace(st);
-
-        for (const auto& frame : resolved) {
-            WriteBaseLog("- [");
-            WriteBaseLog(frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native");
-            WriteBaseLog("] ");
-            WriteBaseLog(frame.Function);
-
-            if (!frame.File.empty()) {
-                WriteBaseLog(" (");
-                WriteBaseLog(ExtractFileName(frame.File));
-                WriteBaseLog(" line ");
-                WriteBaseLog(ItoA(static_cast<int64_t>(frame.Line), itoa_buf, 10));
-                WriteBaseLog(")");
-            }
-
-            WriteBaseLog("\n");
-        }
-
-        resolution_succeeded = true;
-    }
-    catch (...) {
-        resolution_succeeded = false;
+    if (!st.Origin.has_value()) {
+        return "Catched at: " + FormatStackTrace(st.Catched);
     }
 
-    if (!resolution_succeeded) {
-        if (st.ScriptLayers) {
-            for (const auto& layer : *st.ScriptLayers) {
-                for (const auto& frame : layer.ScriptFrames) {
-                    WriteBaseLog("- [Script] ");
-                    WriteBaseLog(frame.Function);
-                    WriteBaseLog("\n");
-                }
-            }
-        }
+    const auto origin_formatted = FormatStackTrace(*st.Origin);
+    const auto catched_st = FormatStackTrace(st.Catched);
 
-        for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
-            WriteBaseLog("- [Native] 0x");
-            const auto addr = std::bit_cast<uintptr_t>(st.NativeFrames[i]);
-            WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
-            WriteBaseLog("\n");
-        }
+    // Skip 'Stack trace (most recent ...'
+    auto pos = catched_st.find('\n');
+
+    if (pos == std::string::npos) {
+        return origin_formatted;
     }
 
-    WriteBaseLog("\n");
+    // Find stack traces intersection
+    pos = origin_formatted.find(catched_st.substr(pos + 1));
+
+    if (pos == std::string::npos) {
+        return origin_formatted;
+    }
+
+    // Insert at end of line
+    pos = origin_formatted.find('\n', pos);
+    return origin_formatted.substr(0, pos).append(" <- Catched here").append(pos != std::string::npos ? origin_formatted.substr(pos) : "");
 }
 
 FO_END_NAMESPACE

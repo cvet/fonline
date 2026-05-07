@@ -115,11 +115,11 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetExceptionCallback([show_message_on_exception](string_view message, string_view traceback, bool fatal_error) FO_DEFERRED {
-        WriteLog(LogType::Error, "{}\n{}", message, traceback);
+    SetExceptionCallback([show_message_on_exception](string_view message, const CatchedStackTraceData& st, bool fatal_error) FO_DEFERRED {
+        WriteLogMessage(LogType::Error, message, &st);
 
         if (fatal_error) {
-            WriteLog(LogType::Error, "Shutdown!");
+            WriteLogMessage(LogType::Error, "Shutdown!");
 
 #if FO_WEB
             if (App) {
@@ -129,7 +129,7 @@ static void SetupExceptionCallback(bool show_message_on_exception)
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !App))) {
-            Application::ShowErrorMessage(message, traceback, fatal_error);
+            Application::ShowErrorMessage(message, FormatStackTrace(st), fatal_error);
         }
     });
 }

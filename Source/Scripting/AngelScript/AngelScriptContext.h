@@ -76,6 +76,7 @@ struct AngelScriptContextExtendedData
     std::exception_ptr Exception {};
     std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
+    bool BirthNativeTruncated {};
 
 #if FO_TRACY
     bool TracyExecutionActive {};

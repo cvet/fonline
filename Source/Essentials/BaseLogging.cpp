@@ -61,12 +61,18 @@ struct BaseLoggingData
 
     ~BaseLoggingData() { StopAsyncWorker(); }
 
+    struct AsyncEntry
+    {
+        std::string Message {};
+        std::optional<CatchedStackTraceData> StackTrace {};
+    };
+
     std::mutex LogLocker {};
     std::ofstream LogFileHandle {};
     std::atomic_bool AsyncEnabled {};
     std::mutex AsyncQueueMutex {};
     std::condition_variable AsyncSignal {};
-    std::deque<std::string> AsyncQueue {};
+    std::deque<AsyncEntry> AsyncQueue {};
     size_t AsyncDroppedCount {};
     bool AsyncFinish {};
     std::thread AsyncWorker {};
@@ -106,7 +112,7 @@ extern void SetAsyncLogWriting(bool enabled)
     }
 }
 
-extern void WriteBaseLog(string_view message) noexcept
+extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
 {
     try {
         if (BaseLogging->AsyncEnabled.load(std::memory_order_acquire)) {
@@ -122,7 +128,14 @@ extern void WriteBaseLog(string_view message) noexcept
                         dropped = true;
                     }
                     else {
-                        BaseLogging->AsyncQueue.emplace_back(message);
+                        BaseLoggingData::AsyncEntry entry;
+                        entry.Message.assign(message);
+
+                        if (st != nullptr) {
+                            entry.StackTrace = *st;
+                        }
+
+                        BaseLogging->AsyncQueue.emplace_back(std::move(entry));
                         enqueued = true;
                     }
                 }
@@ -137,7 +150,17 @@ extern void WriteBaseLog(string_view message) noexcept
             }
         }
 
-        WriteSync(message);
+        if (st != nullptr) {
+            std::string combined;
+            combined.reserve(message.size() + 256);
+            combined.append(message);
+            combined.append(FormatStackTrace(*st));
+            combined.append("\n");
+            WriteSync(combined);
+        }
+        else {
+            WriteSync(message);
+        }
     }
     catch (...) {
         BreakIntoDebugger();
@@ -195,7 +218,7 @@ static void StopAsyncWorker() noexcept
 static void AsyncWorkerLoop() noexcept
 {
     try {
-        std::deque<std::string> drained;
+        std::deque<BaseLoggingData::AsyncEntry> drained;
         size_t drained_drop_count = 0;
 
         while (true) {
@@ -213,8 +236,24 @@ static void AsyncWorkerLoop() noexcept
                 }
             }
 
-            for (const auto& msg : drained) {
-                WriteSync(msg);
+            for (const auto& entry : drained) {
+                if (entry.StackTrace.has_value()) {
+                    try {
+                        std::string combined;
+                        combined.reserve(entry.Message.size() + 256);
+                        combined.append(entry.Message);
+                        combined.append(FormatStackTrace(entry.StackTrace.value()));
+                        combined.append("\n");
+                        WriteSync(combined);
+                    }
+                    catch (...) {
+                        WriteSync(entry.Message);
+                        BreakIntoDebugger();
+                    }
+                }
+                else {
+                    WriteSync(entry.Message);
+                }
             }
 
             if (drained_drop_count != 0) {
@@ -266,6 +305,77 @@ static void FlushLogAtExit()
             }
         }
     }
+}
+
+extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char itoa_buf[64] = {};
+
+    if (st.NativeTruncated) {
+        WriteBaseLog("Stack trace (most recent call first, truncated at ");
+        WriteBaseLog(ItoA(static_cast<int64_t>(STACK_TRACE_MAX_NATIVE_FRAMES), itoa_buf, 10));
+        WriteBaseLog(" frames):\n");
+    }
+    else {
+        WriteBaseLog("Stack trace (most recent call first):\n");
+    }
+
+    bool resolution_succeeded = false;
+
+    try {
+        const auto resolved = ResolveStackTrace(st);
+
+        for (const auto& frame : resolved) {
+            WriteBaseLog("- [");
+            WriteBaseLog(frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native");
+            WriteBaseLog("] ");
+            WriteBaseLog(frame.Function);
+
+            if (!frame.File.empty()) {
+                std::string_view file_name {frame.File};
+
+                if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                    file_name = file_name.substr(pos + 1);
+                }
+
+                WriteBaseLog(" (");
+                WriteBaseLog(file_name);
+                WriteBaseLog(" line ");
+                WriteBaseLog(ItoA(static_cast<int64_t>(frame.Line), itoa_buf, 10));
+                WriteBaseLog(")");
+            }
+
+            WriteBaseLog("\n");
+        }
+
+        resolution_succeeded = true;
+    }
+    catch (...) {
+        resolution_succeeded = false;
+    }
+
+    if (!resolution_succeeded) {
+        if (st.ScriptLayers) {
+            for (const auto& layer : *st.ScriptLayers) {
+                for (const auto& frame : layer.ScriptFrames) {
+                    WriteBaseLog("- [Script] ");
+                    WriteBaseLog(frame.Function);
+                    WriteBaseLog("\n");
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
+            WriteBaseLog("- [Native] 0x");
+            const auto addr = std::bit_cast<uintptr_t>(st.NativeFrames[i]);
+            WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
+            WriteBaseLog("\n");
+        }
+    }
+
+    WriteBaseLog("\n");
 }
 
 FO_END_NAMESPACE

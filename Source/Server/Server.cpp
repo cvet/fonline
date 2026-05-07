@@ -1376,7 +1376,7 @@ void ServerEngine::ProcessPlayer(Player* player)
 
         case NetMessage::SendCommand:
             in_buf.Lock();
-            Process_Command(*in_buf, [player](LogType, string_view s) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
+            Process_Command(*in_buf, [player](LogType, string_view s, const CatchedStackTraceData*) { player->Send_InfoMessage(EngineInfoMessage::ServerLog, strvex(s).trim()); }, player);
             in_buf.Unlock();
             break;
         case NetMessage::SendCritterDir:
@@ -1474,7 +1474,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
 
     // Local untyped helper so the existing command-output sites stay readable; all command
     // responses are user-facing info, not warnings/errors.
-    const auto logcb = [&logcb_typed](string_view s) { logcb_typed(LogType::Info, s); };
+    const auto logcb = [&logcb_typed](string_view s) { logcb_typed(LogType::Info, s, nullptr); };
 
     const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
@@ -1715,7 +1715,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         }
 
         if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", [this](LogType, string_view str) FO_DEFERRED { LogToClients(str); });
+            SetLogCallback("LogToClients", [this](LogType, string_view str, const CatchedStackTraceData*) FO_DEFERRED { LogToClients(str); });
         }
     } break;
     default:

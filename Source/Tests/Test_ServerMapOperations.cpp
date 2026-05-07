@@ -1155,7 +1155,7 @@ namespace MapOpsTest
         REQUIRE(func); \
         const auto prev_callback = GetExceptionCallback(); \
         string message; \
-        SetExceptionCallback([&](string_view msg, string_view, bool) { message = string(msg); }); \
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
         CHECK_FALSE(func.Call()); \
         CHECK(message.find(expected_message) != string::npos); \

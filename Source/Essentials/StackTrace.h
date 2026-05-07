@@ -58,13 +58,21 @@ struct ScriptStackTraceLayer
     std::vector<StackTraceFrame> ScriptFrames {};
     std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
+    bool BirthNativeTruncated {};
 };
 
 struct StackTraceData
 {
     std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> NativeFrames {};
     uint32_t NativeFrameCount {};
+    bool NativeTruncated {};
     std::shared_ptr<const std::vector<ScriptStackTraceLayer>> ScriptLayers {};
+};
+
+struct CatchedStackTraceData
+{
+    optional<StackTraceData> Origin {};
+    StackTraceData Catched {};
 };
 
 #if FO_TRACY
@@ -81,10 +89,10 @@ using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTrace
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
 extern auto HasScriptStackTraceProvider() noexcept -> bool;
 extern auto GetStackTrace() noexcept -> StackTraceData;
-extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, uint32_t skip = 0) noexcept;
+extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
 extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
 extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
 extern auto FormatStackTrace(const StackTraceData& st) -> std::string;
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
+extern auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string;
 
 FO_END_NAMESPACE

@@ -87,7 +87,7 @@ void LogDisableTags()
     Logging->TagsDisabled = true;
 }
 
-void WriteLogMessage(LogType type, string_view message) noexcept
+void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceData* st) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -111,8 +111,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         result += message;
         result += '\n';
 
-        // Write
-        WriteBaseLog(result);
+        WriteBaseLog(result, st);
 
         if (!Logging->LogFunctions.empty()) {
             if (Logging->LogFunctionsInProcess) {
@@ -123,7 +122,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
             auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
 
             for (const auto& func : Logging->LogFunctions | std::views::values) {
-                func(type, result);
+                func(type, result, st);
             }
         }
 

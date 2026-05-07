@@ -140,29 +140,16 @@ extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::pri
 }
 FO_BEGIN_NAMESPACE
 
-static auto InsertCatchedMark(const string& st) -> string
+static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto catched_st = FormatStackTrace(GetStackTrace());
-
-    // Skip 'Stack trace (most recent ...'
-    auto pos = catched_st.find('\n');
-
-    if (pos == string::npos) {
-        return st;
+    if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
+        return CatchedStackTraceData {base_engine_ex->stack_trace(), GetStackTrace()};
     }
-
-    // Find stack traces intercection
-    pos = st.find(catched_st.substr(pos + 1));
-
-    if (pos == string::npos) {
-        return st;
+    else {
+        return CatchedStackTraceData {std::nullopt, GetStackTrace()};
     }
-
-    // Insert in end of line
-    pos = st.find('\n', pos);
-    return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
 }
 
 extern void ReportExceptionAndExit(const std::exception& ex) noexcept
@@ -170,20 +157,14 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        string traceback;
-
-        if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(string(FormatStackTrace(base_engine_ex->stack_trace())));
-        }
-        else {
-            traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
-        }
+        const auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
-            callback(ex.what(), traceback, true);
+            callback(ex.what(), st, true);
         }
         else {
-            WriteBaseLog(strex("{}\n{}\nShutdown!", ex.what(), traceback));
+            WriteBaseLog(strex("{}", ex.what()), &st);
+            WriteBaseLog("Shutdown!");
         }
     }
     catch (...) {
@@ -198,20 +179,13 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        string traceback;
-
-        if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
-            traceback = InsertCatchedMark(string(FormatStackTrace(base_engine_ex->stack_trace())));
-        }
-        else {
-            traceback = strex("Catched at: {}", FormatStackTrace(GetStackTrace()));
-        }
+        const auto st = MakeErrorStackTrace(ex);
 
         if (const auto callback = GetExceptionCallback()) {
-            callback(ex.what(), traceback, false);
+            callback(ex.what(), st, false);
         }
         else {
-            WriteBaseLog(strex("{}\n{}", ex.what(), traceback));
+            WriteBaseLog(strex("{}", ex.what()), &st);
         }
     }
     catch (...) {

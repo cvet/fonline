@@ -82,15 +82,15 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved = false;
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, StackTraceData>> log_buffer;
+        list<pair<vector<string>, CatchedStackTraceData>> log_buffer;
         std::mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](LogType type, string_view str) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](LogType type, string_view str, const CatchedStackTraceData* st) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
-            log_buffer.emplace_back(std::move(lines), GetStackTrace());
+            log_buffer.emplace_back(std::move(lines), st != nullptr ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
 
             if (log_buffer.size() > numeric_cast<size_t>(App->Settings.MaxServerLogLines)) {
                 log_buffer.pop_front();

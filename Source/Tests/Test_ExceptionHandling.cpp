@@ -56,21 +56,22 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool has_origin = false;
         bool fatal = false;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
         const auto callback = GetExceptionCallback();
         REQUIRE(callback);
-        callback("Msg", "Trace", true);
+        const CatchedStackTraceData st {std::nullopt, {}};
+        callback("Msg", st, true);
 
         CHECK(message == "Msg");
-        CHECK(traceback == "Trace");
+        CHECK_FALSE(has_origin);
         CHECK(fatal);
 
         SetExceptionCallback({});
@@ -99,9 +100,9 @@ TEST_CASE("ExceptionHandling")
         string traceback;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            traceback = FormatStackTrace(st);
             fatal = is_fatal;
         });
 
@@ -123,9 +124,9 @@ TEST_CASE("ExceptionHandling")
         string traceback;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            traceback = FormatStackTrace(st);
             fatal = is_fatal;
         });
 
@@ -136,6 +137,50 @@ TEST_CASE("ExceptionHandling")
         CHECK(message.find("- 77") != string::npos);
         CHECK_FALSE(traceback.empty());
         CHECK_FALSE(fatal);
+
+        SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("CatchedStackTraceDataIncludesOriginForEngineExceptions")
+    {
+        const auto prev_callback = GetExceptionCallback();
+
+        string traceback;
+
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+            traceback = FormatStackTrace(st);
+        });
+
+        try {
+            throw GenericException("Boom");
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        CHECK(traceback.find("Stack trace") != string::npos);
+
+        SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("CatchedStackTraceDataForNonEngineExceptionPrefixesCatchedAt")
+    {
+        const auto prev_callback = GetExceptionCallback();
+
+        string traceback;
+
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+            traceback = FormatStackTrace(st);
+        });
+
+        try {
+            throw std::runtime_error("plain");
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        CHECK(traceback.find("Catched at:") == 0);
 
         SetExceptionCallback(std::move(prev_callback));
     }
