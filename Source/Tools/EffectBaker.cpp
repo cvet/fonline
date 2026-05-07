@@ -215,7 +215,6 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
         const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), vertex_pass_content.c_str()};
         vert.setStrings(vertext_strings, 6);
-        // vert.setAutoMapBindings(true);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse vertex shader", fname, pass, vert.getInfoLog());
         }
@@ -226,7 +225,6 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
         const char* fragment_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), fragment_pass_content.c_str()};
         frag.setStrings(fragment_strings, 6);
-        // frag.setAutoMapBindings(true);
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse fragment shader", fname, pass, frag.getInfoLog());
         }
@@ -238,10 +236,6 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         if (!program.link(EShMsgDefault)) {
             throw EffectBakerException("Failed to link shader program", fname, program.getInfoLog());
         }
-
-        // if (!program.mapIO()) {
-        //    throw EffectBakerException("Failed to map IO shader program", fname, program.getInfoLog());
-        // }
 
         if (!program.buildReflection()) {
             throw EffectBakerException("Failed to build reflection shader program", fname, program.getInfoLog());
