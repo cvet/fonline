@@ -36,6 +36,78 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr string_view PREVIEW_SPRITE_SUFFIX = ".fopreview";
+
+static auto GetAtlasSpritePixelPos(const AtlasSprite* spr) -> ipos32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {
+        iround<int32>(spr->GetAtlasRect().x * numeric_cast<float32>(spr->GetAtlas()->GetSize().width)),
+        iround<int32>(spr->GetAtlasRect().y * numeric_cast<float32>(spr->GetAtlas()->GetSize().height))};
+}
+
+static auto ReplaceSpritePixels(const Sprite* from, Sprite* to, string* fail_reason = nullptr) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(from);
+    FO_RUNTIME_ASSERT(to);
+
+    const auto set_fail_reason = [fail_reason](string_view reason) {
+        if (fail_reason != nullptr) {
+            *fail_reason = reason;
+        }
+    };
+
+    const auto* from_atlas = dynamic_cast<const AtlasSprite*>(from);
+    auto* to_atlas = dynamic_cast<AtlasSprite*>(to);
+
+    if (from_atlas != nullptr || to_atlas != nullptr) {
+        if (from_atlas == nullptr || to_atlas == nullptr || from_atlas->GetSize() != to_atlas->GetSize()) {
+            set_fail_reason(from_atlas == nullptr || to_atlas == nullptr ? "atlas type mismatch" : "atlas size mismatch");
+            return false;
+        }
+
+        const auto from_pos = GetAtlasSpritePixelPos(from_atlas);
+        const auto to_pos = GetAtlasSpritePixelPos(to_atlas);
+        const auto tex_data = from_atlas->GetAtlas()->GetTexture()->GetTextureRegion(from_pos, from_atlas->GetSize());
+        to_atlas->GetAtlas()->GetTexture()->UpdateTextureRegion(to_pos, to_atlas->GetSize(), tex_data.data());
+        return true;
+    }
+
+    const auto* from_sheet = dynamic_cast<const SpriteSheet*>(from);
+    auto* to_sheet = dynamic_cast<SpriteSheet*>(to);
+
+    if (from_sheet != nullptr || to_sheet != nullptr) {
+        if (from_sheet == nullptr || to_sheet == nullptr || from_sheet->GetFramesCount() != to_sheet->GetFramesCount() || from_sheet->GetDirCount() != to_sheet->GetDirCount()) {
+            set_fail_reason(from_sheet == nullptr || to_sheet == nullptr ? "sheet type mismatch" : "sheet topology mismatch");
+            return false;
+        }
+
+        for (int32 dir = 0; dir < from_sheet->GetDirCount(); dir++) {
+            const auto* from_dir = from_sheet->GetDir(dir);
+            auto* to_dir = to_sheet->GetDir(dir);
+
+            if (from_dir == nullptr || to_dir == nullptr) {
+                set_fail_reason("sheet dir missing");
+                return false;
+            }
+
+            for (int32 frm = 0; frm < from_dir->GetFramesCount(); frm++) {
+                if (!ReplaceSpritePixels(from_dir->GetSpr(frm), to_dir->GetSpr(frm), fail_reason)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    set_fail_reason("unsupported sprite type");
+    return false;
+}
+
 Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {&spr_mngr},
     _size {size},
@@ -456,45 +528,126 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return it->second->MakeCopy();
     }
 
-    if (_nonFoundSprites.count(path) != 0) {
+    if (_nonFoundSprites.count(path) != 0 && !_streamingRequester) {
         return nullptr;
     }
+
+    bool preview_used = false;
+    auto spr = LoadSpriteImpl(path, atlas_type);
+
+    if (!spr && _streamingRequester) {
+        _streamingRequester(path, atlas_type);
+
+        const hstring preview_path = MakePreviewSpritePath(path);
+
+        if (preview_path) {
+            spr = LoadSpriteImpl(preview_path, atlas_type);
+            preview_used = spr != nullptr;
+        }
+    }
+
+    if (!spr) {
+        const string ext = strex(path).get_file_extension();
+
+        if (!no_warn_if_not_exists) {
+            BreakIntoDebugger();
+
+            if (ext.empty()) {
+                WriteLog("Extension not found, file '{}'", path);
+            }
+            else if (_spriteFactoryMap.find(ext) == _spriteFactoryMap.end()) {
+                WriteLog("Unknown extension, file '{}'", path);
+            }
+            else {
+                WriteLog("Sprite not found: '{}'", path);
+            }
+        }
+
+        if (!_streamingRequester) {
+            _nonFoundSprites.emplace(path);
+        }
+
+        return nullptr;
+    }
+
+    if (spr->IsCopyable()) {
+        _copyableSpriteCache.insert_or_assign(pair {path, atlas_type}, spr);
+    }
+
+    if (preview_used) {
+        _nonFoundSprites.erase(path);
+    }
+
+    return spr;
+}
+
+auto SpriteManager::LoadSpriteImpl(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
+{
+    FO_STACK_TRACE_ENTRY();
 
     const string ext = strex(path).get_file_extension();
 
     if (ext.empty()) {
-        BreakIntoDebugger();
-        WriteLog("Extension not found, file '{}'", path);
-        _nonFoundSprites.emplace(path);
         return nullptr;
     }
 
     const auto it = _spriteFactoryMap.find(ext);
 
     if (it == _spriteFactoryMap.end()) {
-        BreakIntoDebugger();
-        WriteLog("Unknown extension, file '{}'", path);
-        _nonFoundSprites.emplace(path);
         return nullptr;
     }
 
-    auto spr = it->second->LoadSprite(path, atlas_type);
+    return it->second->LoadSprite(path, atlas_type);
+}
 
-    if (!spr) {
-        if (!no_warn_if_not_exists) {
-            BreakIntoDebugger();
-            WriteLog("Sprite not found: '{}'", path);
-        }
+auto SpriteManager::MakePreviewSpritePath(hstring path) -> hstring
+{
+    FO_STACK_TRACE_ENTRY();
 
-        _nonFoundSprites.emplace(path);
-        return nullptr;
+    string preview_path = path.as_str();
+    const size_t dot_pos = preview_path.find_last_of('.');
+
+    if (dot_pos == string::npos) {
+        return {};
     }
 
-    if (spr->IsCopyable()) {
-        _copyableSpriteCache.emplace(pair {path, atlas_type}, spr);
+    preview_path.insert(dot_pos, PREVIEW_SPRITE_SUFFIX);
+    return _hashResolver->ToHashedString(preview_path);
+}
+
+void SpriteManager::InvalidateCachedSprite(hstring path, AtlasType atlas_type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _copyableSpriteCache.erase({path, atlas_type});
+    _nonFoundSprites.erase(path);
+}
+
+auto SpriteManager::TryUpdateStreamedSprite(hstring path, AtlasType atlas_type) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto it = _copyableSpriteCache.find({path, atlas_type});
+
+    if (it == _copyableSpriteCache.end()) {
+        return false;
     }
 
-    return spr;
+    auto real_spr = LoadSpriteImpl(path, atlas_type);
+
+    if (!real_spr) {
+        WriteLog("Streamed sprite loaded into cache but real sprite is still unavailable, path '{}'", path);
+        return false;
+    }
+
+    string fail_reason;
+
+    if (!ReplaceSpritePixels(real_spr.get(), it->second.get(), &fail_reason)) {
+        WriteLog("Unable to replace streamed preview sprite in place, path '{}', reason {}", path, fail_reason);
+        return false;
+    }
+
+    return true;
 }
 
 void SpriteManager::CleanupSpriteCache()

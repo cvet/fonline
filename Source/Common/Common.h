@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 3
+///@ MigrationRule Version 0 0 4
 
 #include "Version-Include.h"
 
@@ -395,6 +395,18 @@ enum class NetMessage : uint8
     RemoveCustomEntity = 117,
     Property = 120,
     SendProperty = 121,
+    SpriteStreamRequest = 122,
+    SpriteStreamData = 123,
+    SpriteStreamComplete = 124,
+    SpriteStreamRejected = 125,
+};
+
+enum class SpriteStreamRejectReason : uint8
+{
+    Disabled = 0,
+    InvalidRequest = 1,
+    NotFound = 2,
+    CacheFull = 3,
 };
 
 enum class EngineSideKind : uint8

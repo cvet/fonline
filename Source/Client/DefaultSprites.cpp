@@ -33,8 +33,74 @@
 
 #include "DefaultSprites.h"
 #include "Geometry.h"
+#include "SpriteMesher.h"
+
+#include <algorithm>
+#include <cmath>
 
 FO_BEGIN_NAMESPACE
+
+static auto ReadPreviewFloat(FileReader& reader) -> float32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return std::bit_cast<float32>(reader.GetLEUInt32());
+}
+
+static auto IsPreviewPointInsideTriangle(float64 px, float64 py, const SpritePreviewTriangle& triangle) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto edge_sign = [](const SpritePreviewPoint& from, const SpritePreviewPoint& to, float64 x, float64 y) -> float64 {
+        return (x - from.X) * numeric_cast<float64>(to.Y - from.Y) - (y - from.Y) * numeric_cast<float64>(to.X - from.X);
+    };
+
+    static constexpr float64 EPSILON = 0.0001;
+
+    const float64 d0 = edge_sign(triangle.Vertices[0], triangle.Vertices[1], px, py);
+    const float64 d1 = edge_sign(triangle.Vertices[1], triangle.Vertices[2], px, py);
+    const float64 d2 = edge_sign(triangle.Vertices[2], triangle.Vertices[0], px, py);
+    const bool has_negative = d0 < -EPSILON || d1 < -EPSILON || d2 < -EPSILON;
+    const bool has_positive = d0 > EPSILON || d1 > EPSILON || d2 > EPSILON;
+    return !(has_negative && has_positive);
+}
+
+static auto RasterizePreviewTriangles(isize32 size, const vector<SpritePreviewTriangle>& triangles) -> vector<ucolor>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ucolor> pixels;
+    pixels.resize(numeric_cast<size_t>(size.width) * size.height);
+
+    for (const auto& triangle : triangles) {
+        float32 min_x = triangle.Vertices[0].X;
+        float32 max_x = triangle.Vertices[0].X;
+        float32 min_y = triangle.Vertices[0].Y;
+        float32 max_y = triangle.Vertices[0].Y;
+
+        for (const auto& vertex : triangle.Vertices) {
+            min_x = std::min(min_x, vertex.X);
+            max_x = std::max(max_x, vertex.X);
+            min_y = std::min(min_y, vertex.Y);
+            max_y = std::max(max_y, vertex.Y);
+        }
+
+        const int32 left = std::max(int32 {0}, std::min(numeric_cast<int32>(std::floor(min_x)), size.width - 1));
+        const int32 right = std::max(int32 {0}, std::min(numeric_cast<int32>(std::ceil(max_x)) - 1, size.width - 1));
+        const int32 top = std::max(int32 {0}, std::min(numeric_cast<int32>(std::floor(min_y)), size.height - 1));
+        const int32 bottom = std::max(int32 {0}, std::min(numeric_cast<int32>(std::ceil(max_y)) - 1, size.height - 1));
+
+        for (int32 y = top; y <= bottom; y++) {
+            for (int32 x = left; x <= right; x++) {
+                if (IsPreviewPointInsideTriangle(numeric_cast<float64>(x) + 0.5, numeric_cast<float64>(y) + 0.5, triangle)) {
+                    pixels[numeric_cast<size_t>(y) * size.width + x] = triangle.Color;
+                }
+            }
+        }
+    }
+
+    return pixels;
+}
 
 AtlasSprite::AtlasSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
@@ -402,7 +468,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     auto reader = file.GetReader();
 
     const auto check_number = reader.GetUInt8();
-    FO_RUNTIME_ASSERT(check_number == 42);
+    FO_RUNTIME_ASSERT(check_number == BAKED_SPRITE_CHECK_NUMBER || check_number == PREVIEW_SPRITE_GEOMETRY_CHECK_NUMBER);
+    const bool preview_geometry = check_number == PREVIEW_SPRITE_GEOMETRY_CHECK_NUMBER;
     const auto frames_count = reader.GetLEUInt16();
     FO_RUNTIME_ASSERT(frames_count != 0);
     const auto ticks = reader.GetLEUInt16();
@@ -428,12 +495,39 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto height = reader.GetLEUInt16();
                     const auto nx = reader.GetLEInt16();
                     const auto ny = reader.GetLEInt16();
-                    const auto* data = reader.GetCurBuf();
 
                     dir_anim->_sprOffset[i].x = nx;
                     dir_anim->_sprOffset[i].y = ny;
 
-                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
+                    shared_ptr<AtlasSprite> spr;
+
+                    if (!preview_geometry) {
+                        const auto* data = reader.GetCurBuf();
+                        spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
+                        reader.GoForward(numeric_cast<size_t>(width) * height * 4);
+                    }
+                    else {
+                        const auto triangles_count = reader.GetLEUInt32();
+                        vector<SpritePreviewTriangle> triangles;
+                        triangles.reserve(triangles_count);
+
+                        for (const auto triangle_index : iterate_range(triangles_count)) {
+                            ignore_unused(triangle_index);
+
+                            SpritePreviewTriangle triangle;
+
+                            for (auto& vertex : triangle.Vertices) {
+                                vertex.X = ReadPreviewFloat(reader);
+                                vertex.Y = ReadPreviewFloat(reader);
+                            }
+
+                            triangle.Color = std::bit_cast<ucolor>(reader.GetLEUInt32());
+                            triangles.emplace_back(triangle);
+                        }
+
+                        const auto preview_pixels = RasterizePreviewTriangles({width, height}, triangles);
+                        spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, preview_pixels.data());
+                    }
 
                     if (i == 0) {
                         dir_anim->_size.width = width;
@@ -441,8 +535,6 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     }
 
                     dir_anim->_spr[i] = std::move(spr);
-
-                    reader.GoForward(numeric_cast<size_t>(width) * height * 4);
                 }
                 else {
                     const auto index = reader.GetLEUInt16();
@@ -469,17 +561,42 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         const auto height = reader.GetLEUInt16();
         const auto nx = reader.GetLEInt16();
         const auto ny = reader.GetLEInt16();
-        const auto* data = reader.GetCurBuf();
 
         ignore_unused(nx);
         ignore_unused(ny);
 
-        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
+        shared_ptr<AtlasSprite> spr;
 
-        reader.GoForward(numeric_cast<size_t>(width) * height * 4);
+        if (!preview_geometry) {
+            const auto* data = reader.GetCurBuf();
+            spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, reinterpret_cast<const ucolor*>(data));
+            reader.GoForward(numeric_cast<size_t>(width) * height * 4);
+        }
+        else {
+            const auto triangles_count = reader.GetLEUInt32();
+            vector<SpritePreviewTriangle> triangles;
+            triangles.reserve(triangles_count);
+
+            for (const auto triangle_index : iterate_range(triangles_count)) {
+                ignore_unused(triangle_index);
+
+                SpritePreviewTriangle triangle;
+
+                for (auto& vertex : triangle.Vertices) {
+                    vertex.X = ReadPreviewFloat(reader);
+                    vertex.Y = ReadPreviewFloat(reader);
+                }
+
+                triangle.Color = std::bit_cast<ucolor>(reader.GetLEUInt32());
+                triangles.emplace_back(triangle);
+            }
+
+            const auto preview_pixels = RasterizePreviewTriangles({width, height}, triangles);
+            spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, preview_pixels.data());
+        }
 
         const auto check_number2 = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(check_number2 == 42);
+        FO_RUNTIME_ASSERT(check_number2 == check_number);
 
         return spr;
     }

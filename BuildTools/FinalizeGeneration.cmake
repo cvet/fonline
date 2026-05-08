@@ -461,6 +461,10 @@ include_directories("${FO_ENGINE_ROOT}/ThirdParty/small_vector/source/include/gc
 # unordered_dense
 include_directories("${FO_ENGINE_ROOT}/ThirdParty/unordered_dense/include")
 
+# earcut
+set(FO_EARCUT_DIR "${FO_ENGINE_ROOT}/ThirdParty/earcut")
+include_directories("${FO_EARCUT_DIR}/include")
+
 # AngelScript scripting
 if(FO_ANGELSCRIPT_SCRIPTING)
     StatusMessage("+ AngelScript")
@@ -640,6 +644,10 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Common/SpriteMesher.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/SpriteMesher.h"
+    "${FO_ENGINE_ROOT}/Source/Common/SpriteStreamingManifest.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/SpriteStreamingManifest.h"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.cpp"
@@ -752,6 +760,8 @@ list(APPEND FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/SoundManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.h"
+    "${FO_ENGINE_ROOT}/Source/Client/SpriteStreaming.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/SpriteStreaming.h"
     "${FO_ENGINE_ROOT}/Source/Client/TextureAtlas.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/TextureAtlas.h"
     "${FO_ENGINE_ROOT}/Source/Client/Updater.cpp"
@@ -825,6 +835,8 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoTextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/SpriteStreamingBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/SpriteStreamingBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"

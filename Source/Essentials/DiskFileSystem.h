@@ -64,8 +64,10 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
 
 // Stream helpers
 [[nodiscard]] auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool;
+[[nodiscard]] auto stream_write_exact(std::ostream& stream, const void* buf, size_t len) -> bool;
 [[nodiscard]] auto stream_get_size(std::istream& stream) -> size_t;
 [[nodiscard]] auto stream_get_read_pos(std::istream& stream) -> size_t;
 [[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32 offset, std::ios_base::seekdir origin) -> bool;
+[[nodiscard]] auto stream_set_write_pos(std::ostream& stream, int32 offset, std::ios_base::seekdir origin) -> bool;
 
 FO_END_NAMESPACE

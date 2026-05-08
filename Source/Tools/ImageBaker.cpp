@@ -36,6 +36,8 @@
 #include "ConfigFile.h"
 #include "FileSystem.h"
 #include "Settings.h"
+#include "SpriteMesher.h"
+#include "SpriteStreamingManifest.h"
 
 #include "png.h"
 
@@ -43,6 +45,104 @@ FO_BEGIN_NAMESPACE
 
 [[nodiscard]] static auto PngLoad(const uint8* data, int32& result_width, int32& result_height) -> vector<uint8>;
 [[nodiscard]] static auto TgaLoad(const uint8* data, size_t data_size, int32& result_width, int32& result_height) -> vector<uint8>;
+
+static constexpr string_view PREVIEW_SPRITE_SUFFIX = ".fopreview";
+
+static void WritePreviewFloat(DataWriter& writer, float32 value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    writer.Write<uint32>(std::bit_cast<uint32>(value));
+}
+
+auto ImageBaker::MakePreviewSpritePath(string_view path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string preview_path {path};
+    const size_t dot_pos = preview_path.find_last_of('.');
+    FO_RUNTIME_ASSERT(dot_pos != string::npos);
+    preview_path.insert(dot_pos, PREVIEW_SPRITE_SUFFIX);
+    return preview_path;
+}
+
+auto ImageBaker::MakePreviewFrameData(const FrameShot& shot) -> vector<uint8>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(shot.Width > 0);
+    FO_RUNTIME_ASSERT(shot.Height > 0);
+    FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * sizeof(ucolor));
+
+    const auto preview_triangles = BuildSpritePreviewMesh(
+        {shot.Width, shot.Height},
+        {reinterpret_cast<const ucolor*>(shot.Data.data()), numeric_cast<size_t>(shot.Width) * shot.Height});
+    vector<uint8> preview_data;
+    auto writer = DataWriter(preview_data);
+    writer.Write<uint32>(numeric_cast<uint32>(preview_triangles.size()));
+
+    for (const auto& triangle : preview_triangles) {
+        for (const auto& vertex : triangle.Vertices) {
+            WritePreviewFloat(writer, vertex.X);
+            WritePreviewFloat(writer, vertex.Y);
+        }
+
+        writer.Write<uint32>(std::bit_cast<uint32>(triangle.Color));
+    }
+
+    return preview_data;
+}
+
+auto ImageBaker::BuildBakedSpriteData(const FrameCollection& collection, bool preview_mode) -> vector<uint8>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8> data;
+    auto writer = DataWriter(data);
+
+    const auto check_number = preview_mode ? PREVIEW_SPRITE_GEOMETRY_CHECK_NUMBER : BAKED_SPRITE_CHECK_NUMBER;
+    const auto dirs = numeric_cast<uint8>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
+
+    writer.Write<uint8>(check_number);
+    writer.Write<uint16>(collection.SequenceSize);
+    writer.Write<uint16>(collection.AnimTicks);
+    writer.Write<uint8>(dirs);
+
+    for (const auto dir : iterate_range(dirs)) {
+        const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        writer.Write<int16>(sequence.OffsX);
+        writer.Write<int16>(sequence.OffsY);
+
+        for (int32 i = 0; i < collection.SequenceSize; i++) {
+            const auto& shot = sequence.Frames[i];
+            writer.Write<bool>(shot.Shared);
+
+            if (!shot.Shared) {
+                writer.Write<uint16>(shot.Width);
+                writer.Write<uint16>(shot.Height);
+                writer.Write<int16>(shot.NextX);
+                writer.Write<int16>(shot.NextY);
+
+                if (!preview_mode) {
+                    writer.WritePtr(shot.Data.data(), shot.Data.size());
+                }
+                else {
+                    const auto preview_data = MakePreviewFrameData(shot);
+                    writer.WritePtr(preview_data.data(), preview_data.size());
+                }
+
+                FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4);
+            }
+            else {
+                writer.Write<uint16>(shot.SharedIndex);
+            }
+        }
+    }
+
+    writer.Write<uint8>(check_number);
+
+    return data;
+}
 
 // clang-format off
 alignas(ucolor) static uint8 FoPalette[] = {
@@ -177,7 +277,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
             const auto& path = file_to_bake.first.GetPath();
             const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
-            BakeCollection(path, collection);
+            BakeCollection(path, collection, file_to_bake.first.GetWriteTime());
         }));
     }
 
@@ -198,51 +298,27 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const
+void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection, uint64 source_write_time) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<uint8> data;
-    auto writer = DataWriter(data);
-
-    constexpr auto check_number = numeric_cast<uint8>(42);
-    const auto dirs = numeric_cast<uint8>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
-
-    writer.Write<uint8>(check_number);
-    writer.Write<uint16>(collection.SequenceSize);
-    writer.Write<uint16>(collection.AnimTicks);
-    writer.Write<uint8>(dirs);
-
-    for (const auto dir : iterate_range(dirs)) {
-        const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        writer.Write<int16>(sequence.OffsX);
-        writer.Write<int16>(sequence.OffsY);
-
-        for (int32 i = 0; i < collection.SequenceSize; i++) {
-            const auto& shot = sequence.Frames[i];
-            writer.Write<bool>(shot.Shared);
-
-            if (!shot.Shared) {
-                writer.Write<uint16>(shot.Width);
-                writer.Write<uint16>(shot.Height);
-                writer.Write<int16>(shot.NextX);
-                writer.Write<int16>(shot.NextY);
-                writer.WritePtr(shot.Data.data(), shot.Data.size());
-                FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4);
-            }
-            else {
-                writer.Write<uint16>(shot.SharedIndex);
-            }
-        }
-    }
-
-    writer.Write<uint8>(check_number);
+    const string output_path = !collection.NewName.empty() ? collection.NewName : string {fname};
+    const auto data = BuildBakedSpriteData(collection, false);
 
     if (!collection.NewName.empty()) {
         _context->WriteData(collection.NewName, data);
     }
     else {
         _context->WriteData(fname, data);
+    }
+
+    if (SpriteStreamingManifest::IsSpritePath(output_path)) {
+        const string preview_path = MakePreviewSpritePath(output_path);
+
+        if (!_context->BakeChecker || _context->BakeChecker(preview_path, source_write_time)) {
+            const auto preview_data = BuildBakedSpriteData(collection, true);
+            _context->WriteData(preview_path, preview_data);
+        }
     }
 }
 

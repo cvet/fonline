@@ -53,6 +53,7 @@
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
 #include "Settings.h"
+#include "SpriteStreamingManifest.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -222,6 +223,7 @@ private:
     void Process_Ping(ServerConnection* connection);
     void Process_UpdateFile(ServerConnection* connection);
     void Process_UpdateFileData(ServerConnection* connection);
+    void Process_SpriteStreamRequest(Player* player);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -268,6 +270,7 @@ private:
     ServerStats _stats {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
+    SpriteStreamingManifestIndex _spriteStreamingManifestIndex {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};

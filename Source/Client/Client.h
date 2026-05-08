@@ -60,6 +60,7 @@
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
+#include "SpriteStreaming.h"
 #include "TextPack.h"
 #include "VideoClip.h"
 
@@ -134,6 +135,7 @@ public:
     [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
     [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
     [[nodiscard]] auto GetCurMap() noexcept -> MapView* { return _curMap.get(); }
+    [[nodiscard]] auto GetSpriteStreaming() noexcept -> SpriteStreaming* { return _spriteStreaming.get(); }
 
     void Shutdown() override;
 
@@ -323,6 +325,9 @@ protected:
     void Net_OnSomeItems();
     void Net_OnViewMap();
     void Net_OnRemoteCall();
+    void Net_OnSpriteStreamData();
+    void Net_OnSpriteStreamComplete();
+    void Net_OnSpriteStreamRejected();
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
@@ -348,6 +353,7 @@ protected:
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
 
     ClientConnection _conn;
+    unique_ptr<SpriteStreaming> _spriteStreaming {};
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
     LanguagePack _curLang {};

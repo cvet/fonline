@@ -94,7 +94,11 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    void BakeCollection(string_view fname, const FrameCollection& collection) const;
+    [[nodiscard]] static auto MakePreviewSpritePath(string_view path) -> string;
+    [[nodiscard]] static auto MakePreviewFrameData(const FrameShot& shot) -> vector<uint8>;
+    [[nodiscard]] static auto BuildBakedSpriteData(const FrameCollection& collection, bool preview_mode) -> vector<uint8>;
+
+    void BakeCollection(string_view fname, const FrameCollection& collection, uint64 source_write_time) const;
 
     [[nodiscard]] auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection;
     [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;

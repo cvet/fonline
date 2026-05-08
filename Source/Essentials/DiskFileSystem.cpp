@@ -303,6 +303,18 @@ auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool
     return !!stream && stream.gcount() == static_cast<std::streamsize>(len);
 }
 
+auto stream_write_exact(std::ostream& stream, const void* buf, size_t len) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (len == 0) {
+        return true;
+    }
+
+    stream.write(static_cast<const char*>(buf), static_cast<std::streamsize>(len));
+    return !!stream;
+}
+
 auto stream_get_size(std::istream& stream) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -350,6 +362,16 @@ auto stream_set_read_pos(std::istream& stream, int32 offset, std::ios_base::seek
 
     stream.clear();
     stream.seekg(offset, origin);
+    return !!stream;
+}
+
+auto stream_set_write_pos(std::ostream& stream, int32 offset, std::ios_base::seekdir origin) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    stream.clear();
+    auto& io_stream = static_cast<std::ios&>(stream);
+    io_stream.seekp(offset, origin);
     return !!stream;
 }
 

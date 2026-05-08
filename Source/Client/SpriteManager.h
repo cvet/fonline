@@ -201,6 +201,9 @@ public:
     void RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory);
     auto GetSpriteFactory(std::type_index ti) -> SpriteFactory*;
     void CleanupSpriteCache();
+    void SetStreamingRequester(function<void(hstring, AtlasType)> requester) { _streamingRequester = std::move(requester); }
+    void InvalidateCachedSprite(hstring path, AtlasType atlas_type);
+    auto TryUpdateStreamedSprite(hstring path, AtlasType atlas_type) -> bool;
 
     void PushScissor(irect32 rect);
     void PopScissor();
@@ -229,6 +232,8 @@ public:
 
 private:
     [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
+    [[nodiscard]] auto LoadSpriteImpl(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>;
+    [[nodiscard]] auto MakePreviewSpritePath(hstring path) -> hstring;
 
     void RefreshScissor();
     void EnableScissor();
@@ -250,6 +255,7 @@ private:
     unordered_set<hstring> _nonFoundSprites {};
     unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
+    function<void(hstring, AtlasType)> _streamingRequester {};
 
     raw_ptr<RenderTarget> _rtMain {};
     raw_ptr<RenderTarget> _rtContours {};

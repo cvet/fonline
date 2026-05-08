@@ -51,6 +51,7 @@
 #include "RawCopyBaker.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
+#include "SpriteStreamingBaker.h"
 #include "TextBaker.h"
 
 FO_BEGIN_NAMESPACE
@@ -119,6 +120,9 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     }
     if (vec_exists(request_bakers, ProtoTextBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, SpriteStreamingBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<SpriteStreamingBaker>(ctx));
     }
 #if FO_ENABLE_3D
     if (vec_exists(request_bakers, ModelBaker::NAME)) {

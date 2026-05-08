@@ -75,6 +75,7 @@ FIXED_SETTING(string, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size
+FIXED_SETTING(int32, SpriteStreamChunkSize, 262144); // Sprite stream send chunk size
 FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, DisableZlibCompression, false); // If true, Zlib compression is disabled
@@ -207,6 +208,10 @@ FIXED_SETTING(string, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, ServerResources, "ServerResources"); // Server resources directory
 FIXED_SETTING(string, ClientResources, "Resources"); // Client resources directory
 FIXED_SETTING(string, CacheResources, "Cache"); // Cache resources directory
+FIXED_SETTING(string, SpriteCacheDir, "SpriteCache"); // Sprite streaming cache directory
+FIXED_SETTING(string, SpriteCacheDataFile, "Sprites.dat"); // Sprite streaming cache data file
+FIXED_SETTING(string, SpriteCacheIndexFile, "Sprites.idx"); // Sprite streaming cache index file
+FIXED_SETTING(int64, SpriteCacheMaxSize, 536870912); // Sprite streaming cache container size
 FIXED_SETTING(vector<string>, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, ClientResourceEntries); // Client resource entries (read only)
 FIXED_SETTING(vector<string>, MapperResourceEntries); // Mapper resource entries (read only)
@@ -290,6 +295,7 @@ FIXED_SETTING(int32, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 -
 FIXED_SETTING(string, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
+FIXED_SETTING(bool, SpriteStreamEnabled, false); // Enable runtime sprite streaming
 VARIABLE_SETTING(string, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, SoundNotify, false); // If true, sound notifications are enabled

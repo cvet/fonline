@@ -59,7 +59,8 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
     Cache(Settings.CacheResources),
-    _conn(Settings)
+    _conn(Settings),
+    _spriteStreaming {SafeAlloc::MakeUnique<SpriteStreaming>(Settings, _conn, Hashes, Resources)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,7 +73,10 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
 #endif
 
+    Resources.AddCustomSource(_spriteStreaming->MakeDataSource());
+
     SprMngr.InitializeEgg(Hashes.ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
+    SprMngr.SetStreamingRequester([this](hstring path, AtlasType atlas_type) FO_DEFERRED { _spriteStreaming->RequestSprite(path, atlas_type); });
     ResMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
@@ -126,6 +130,9 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this]() FO_DEFERRED { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this]() FO_DEFERRED { Net_OnRemoveCustomEntity(); });
+    _conn.AddMessageHandler(NetMessage::SpriteStreamData, [this]() FO_DEFERRED { Net_OnSpriteStreamData(); });
+    _conn.AddMessageHandler(NetMessage::SpriteStreamComplete, [this]() FO_DEFERRED { Net_OnSpriteStreamComplete(); });
+    _conn.AddMessageHandler(NetMessage::SpriteStreamRejected, [this]() FO_DEFERRED { Net_OnSpriteStreamRejected(); });
 
     // Properties that sending to clients
     {
@@ -187,9 +194,13 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, App
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
     Cache(Settings.CacheResources),
-    _conn(Settings)
+    _conn(Settings),
+    _spriteStreaming {SafeAlloc::MakeUnique<SpriteStreaming>(Settings, _conn, Hashes, Resources)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    Resources.AddCustomSource(_spriteStreaming->MakeDataSource());
+    SprMngr.SetStreamingRequester([this](hstring path, AtlasType atlas_type) FO_DEFERRED { _spriteStreaming->RequestSprite(path, atlas_type); });
 }
 
 ClientEngine::~ClientEngine()
@@ -322,6 +333,7 @@ void ClientEngine::MainLoop()
     }
 
     _conn.Process();
+    _spriteStreaming->Process();
     ProcessInputEvents();
     ProcessScriptEvents();
     TimeEventMngr.ProcessTimeEvents();
@@ -573,6 +585,8 @@ void ClientEngine::Net_OnDisconnect()
     }
 
     DestroyInnerEntities();
+
+    _spriteStreaming->OnDisconnected();
 
     _connectionRequest = false;
     OnDisconnected.Fire();
@@ -1684,6 +1698,49 @@ void ClientEngine::Net_OnRemoteCall()
     _conn.InBuf->Pop(_remoteCallData.data(), data_size);
 
     HandleInboundRemoteCall(remote_call_name, nullptr, _remoteCallData);
+}
+
+void ClientEngine::Net_OnSpriteStreamData()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto path = _conn.InBuf->Read<hstring>(Hashes);
+    const auto atlas_type = static_cast<AtlasType>(_conn.InBuf->Read<uint8>());
+    const auto data_offset = _conn.InBuf->Read<uint32>();
+    const auto total_size = _conn.InBuf->Read<uint32>();
+    const auto content_hash = _conn.InBuf->Read<uint32>();
+    const auto data_size = _conn.InBuf->Read<uint32>();
+
+    _remoteCallData.resize(data_size);
+    _conn.InBuf->Pop(_remoteCallData.data(), data_size);
+    _spriteStreaming->HandleData(path, atlas_type, data_offset, total_size, content_hash, _remoteCallData);
+}
+
+void ClientEngine::Net_OnSpriteStreamComplete()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto path = _conn.InBuf->Read<hstring>(Hashes);
+    const auto atlas_type = static_cast<AtlasType>(_conn.InBuf->Read<uint8>());
+    const auto total_size = _conn.InBuf->Read<uint32>();
+    const auto content_hash = _conn.InBuf->Read<uint32>();
+
+    _spriteStreaming->HandleComplete(path, atlas_type, total_size, content_hash);
+
+    if (!SprMngr.TryUpdateStreamedSprite(path, atlas_type)) {
+        SprMngr.InvalidateCachedSprite(path, atlas_type);
+    }
+}
+
+void ClientEngine::Net_OnSpriteStreamRejected()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto path = _conn.InBuf->Read<hstring>(Hashes);
+    const auto atlas_type = static_cast<AtlasType>(_conn.InBuf->Read<uint8>());
+    const auto reason = _conn.InBuf->Read<SpriteStreamRejectReason>();
+
+    _spriteStreaming->HandleRejected(path, atlas_type, reason);
 }
 
 void ClientEngine::Net_OnAddCustomEntity()

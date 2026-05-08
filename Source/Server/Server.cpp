@@ -40,6 +40,15 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto GetServerSideClientResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    return resources;
+}
+
 extern void InitServerEngine(ServerEngine*);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
@@ -59,6 +68,9 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     ItemMngr(this)
 {
     FO_STACK_TRACE_ENTRY();
+
+    _spriteStreamingManifestIndex.LoadFromResources(GetServerSideClientResources(Settings), Settings.ClientResourceEntries, Settings.CompatibilityVersion, Settings.GameVersion);
+    FO_RUNTIME_ASSERT(!Settings.SpriteStreamEnabled || _spriteStreamingManifestIndex.IsLoaded());
 
     WriteLog("Start server");
     WriteLog("Compatibility version: {}", settings.CompatibilityVersion);
@@ -1045,6 +1057,9 @@ void ServerEngine::ProcessPlayer(Player* player)
         case NetMessage::SendProperty:
             Process_Property(player);
             break;
+        case NetMessage::SpriteStreamRequest:
+            Process_SpriteStreamRequest(player);
+            break;
         default:
             throw GenericException("Unexpected player message", msg);
         }
@@ -1881,6 +1896,83 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
 
     out_buf->Write(update_portion);
     out_buf->Push(&update_file_data[offset], update_portion);
+}
+
+void ServerEngine::Process_SpriteStreamRequest(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* connection = player->GetConnection();
+    auto in_buf = connection->ReadBuf();
+
+    const auto path = in_buf->Read<hstring>(Hashes);
+    const auto atlas_type = in_buf->Read<uint8>();
+
+    in_buf.Unlock();
+
+    auto out_buf = connection->WriteMsg(NetMessage::SpriteStreamRejected);
+
+    out_buf->Write(path);
+    out_buf->Write(atlas_type);
+
+    if (!Settings.SpriteStreamEnabled) {
+        out_buf->Write(SpriteStreamRejectReason::Disabled);
+        return;
+    }
+
+    if (!path) {
+        out_buf->Write(SpriteStreamRejectReason::InvalidRequest);
+        return;
+    }
+
+    const auto* manifest_entry = _spriteStreamingManifestIndex.FindEntry(path.as_str());
+
+    if (manifest_entry == nullptr) {
+        out_buf->Write(SpriteStreamRejectReason::NotFound);
+        return;
+    }
+
+    auto client_resources = GetServerSideClientResources(Settings);
+    const auto file = client_resources.ReadFile(path);
+
+    if (!file) {
+        out_buf->Write(SpriteStreamRejectReason::NotFound);
+        return;
+    }
+
+    const auto data = file.GetData();
+    const auto total_size = numeric_cast<uint32>(data.size());
+    const auto content_hash = Hashing::MurmurHash2(data.data(), data.size());
+
+    if (manifest_entry->FileSize != total_size || manifest_entry->ContentHash != content_hash) {
+        WriteLog("Sprite streaming manifest mismatch on server, path '{}'", path);
+        out_buf->Write(SpriteStreamRejectReason::NotFound);
+        return;
+    }
+
+    const auto chunk_size = numeric_cast<uint32>(Settings.SpriteStreamChunkSize > 0 ? Settings.SpriteStreamChunkSize : Settings.UpdateFileSendSize);
+
+    FO_RUNTIME_ASSERT(chunk_size > 0);
+
+    for (uint32 offset = 0; offset < total_size; offset += chunk_size) {
+        const uint32 send_size = std::min(chunk_size, total_size - offset);
+        auto chunk_buf = connection->WriteMsg(NetMessage::SpriteStreamData);
+
+        chunk_buf->Write(path);
+        chunk_buf->Write(atlas_type);
+        chunk_buf->Write(offset);
+        chunk_buf->Write(total_size);
+        chunk_buf->Write(content_hash);
+        chunk_buf->Write(send_size);
+        chunk_buf->Push(data.data() + offset, send_size);
+    }
+
+    auto complete_buf = connection->WriteMsg(NetMessage::SpriteStreamComplete);
+
+    complete_buf->Write(path);
+    complete_buf->Write(atlas_type);
+    complete_buf->Write(total_size);
+    complete_buf->Write(content_hash);
 }
 
 auto ServerEngine::LoginPlayer(Player* unlogined_player, string_view name) -> Player*
