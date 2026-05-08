@@ -49,8 +49,6 @@ public:
     {
     }
 
-    [[nodiscard]] auto GetRemainingBytes() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
-
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     auto Read() -> T
@@ -110,8 +108,6 @@ public:
         _dataBuf {buf}
     {
     }
-
-    [[nodiscard]] auto GetRemainingBytes() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
 
     template<typename T>
         requires(std::is_standard_layout_v<T>)
