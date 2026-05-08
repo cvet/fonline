@@ -40,6 +40,28 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto MakeOrderedFastUpdateEndpoints(const ServerNetworkSettings& settings) -> vector<ContentUpdateEndpoint>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ContentUpdateEndpoint> endpoints;
+
+    for (const auto& endpoint_entry : settings.FastUpdateEndpoints) {
+        if (const auto endpoint = ParseContentUpdateEndpoint(endpoint_entry); endpoint.has_value()) {
+            endpoints.emplace_back(endpoint.value());
+        }
+        else {
+            WriteLog("Skip invalid fast updater endpoint '{}'", endpoint_entry);
+        }
+    }
+
+    std::sort(endpoints.begin(), endpoints.end(), [](const ContentUpdateEndpoint& left, const ContentUpdateEndpoint& right) {
+        return left.Priority > right.Priority;
+    });
+
+    return endpoints;
+}
+
 extern void InitServerEngine(ServerEngine*);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
@@ -299,9 +321,14 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             FileSystem client_resources;
             client_resources.AddDirSource(Settings.ClientResources, false, true, true);
 
-            auto writer = DataWriter(_updateFilesDesc);
+            _updateManifest = {};
+            _updateManifest.FastUpdateEnabled = Settings.FastUpdateEnabled;
+            _updateManifest.SelfHostedServerEnabled = Settings.FastUpdateServerEnabled;
+            _updateManifest.SessionId = NetBuffer::GenerateEncryptKey();
+            _updateManifest.ChunkSize = numeric_cast<uint32>(std::max(Settings.FastUpdateChunkSize, 1));
+            _updateManifest.Endpoints = MakeOrderedFastUpdateEndpoints(Settings);
 
-            const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
+            const auto add_sync_file = [&client_resources, this](string_view path) {
                 const auto file = client_resources.ReadFile(path);
 
                 if (!file) {
@@ -311,10 +338,23 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 const auto data = file.GetData();
                 _updateFilesData.push_back(data);
 
-                writer.Write<int16>(numeric_cast<int16>(file.GetPath().length()));
-                writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-                writer.Write<uint32>(numeric_cast<uint32>(data.size()));
-                writer.Write<uint32>(Hashing::MurmurHash2(data.data(), data.size()));
+                ContentUpdateFileInfo file_info;
+                file_info.Name = file.GetPath();
+                file_info.Size = numeric_cast<uint32>(data.size());
+                file_info.Hash = Hashing::MurmurHash2(data.data(), data.size());
+
+                const uint32 chunk_count = GetContentUpdateChunkCount(file_info.Size, _updateManifest.ChunkSize);
+                file_info.ChunkHashes.reserve(chunk_count);
+
+                for (const auto chunk_index : iterate_range(chunk_count)) {
+                    const uint32 chunk_offset = GetContentUpdateChunkOffset(_updateManifest.ChunkSize, chunk_index);
+                    const uint32 chunk_size = GetContentUpdateChunkSize(file_info.Size, _updateManifest.ChunkSize, chunk_index);
+
+                    FO_RUNTIME_ASSERT(chunk_offset + chunk_size <= data.size());
+                    file_info.ChunkHashes.emplace_back(Hashing::MurmurHash2(data.data() + chunk_offset, chunk_size));
+                }
+
+                _updateManifest.Files.emplace_back(std::move(file_info));
             };
 
             for (const auto& resource_entry : Settings.ClientResourceEntries) {
@@ -323,8 +363,22 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                 }
             }
 
-            // Complete files list
-            writer.Write<int16>(const_numeric_cast<int16>(-1));
+            if (_updateManifest.Endpoints.empty()) {
+                _updateManifest.FastUpdateEnabled = false;
+                _updateManifest.SelfHostedServerEnabled = false;
+            }
+
+            SerializeContentUpdateManifest(_updateManifest, _updateFilesDesc);
+
+            if (Settings.FastUpdateEnabled && Settings.FastUpdateServerEnabled) {
+                _fastUpdateServer = SafeAlloc::MakeUnique<UpdaterFastServer>(Settings, _updateManifest, _updateFilesData);
+
+                if (!_fastUpdateServer->Start()) {
+                    WriteLog("Fast updater UDP mirror is disabled because bind failed");
+                    _updateManifest.SelfHostedServerEnabled = false;
+                    SerializeContentUpdateManifest(_updateManifest, _updateFilesDesc);
+                }
+            }
         }
 
         return std::nullopt;
@@ -441,6 +495,14 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             FO_STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
 
             FrameAdvance();
+
+            return std::chrono::milliseconds {0};
+        });
+
+        _mainWorker.AddJob([this]() FO_DEFERRED {
+            FO_STACK_TRACE_ENTRY_NAMED("FastUpdaterJob");
+
+            PollFastUpdate();
 
             return std::chrono::milliseconds {0};
         });
@@ -652,6 +714,11 @@ void ServerEngine::Shutdown()
     _starter.Clear();
     _mainWorker.Clear();
     _healthWriter.Clear();
+
+    if (_fastUpdateServer) {
+        _fastUpdateServer->Stop();
+        _fastUpdateServer = nullptr;
+    }
 
     OnFinish.Fire();
 
@@ -915,6 +982,15 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
     std::scoped_lock locker(_newConnectionsLocker);
 
     _newConnections.emplace_back(net_connection);
+}
+
+void ServerEngine::PollFastUpdate()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_fastUpdateServer) {
+        _fastUpdateServer->Poll();
+    }
 }
 
 void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
@@ -1832,6 +1908,11 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
     auto in_buf = connection->ReadBuf();
 
     const auto file_index = in_buf->Read<uint32>();
+    uint32 start_offset = 0;
+
+    if (in_buf->GetDataSize() - in_buf->GetReadPos() >= sizeof(uint32)) {
+        start_offset = in_buf->Read<uint32>();
+    }
 
     in_buf.Unlock();
 
@@ -1841,8 +1922,14 @@ void ServerEngine::Process_UpdateFile(ServerConnection* connection)
         return;
     }
 
+    if (start_offset > _updateManifest.Files[file_index].Size) {
+        WriteLog("Wrong file byte offset {}, from host '{}'", start_offset, connection->GetHost());
+        connection->HardDisconnect();
+        return;
+    }
+
     connection->UpdateFileIndex = numeric_cast<int32>(file_index);
-    connection->UpdateFilePortion = 0;
+    connection->UpdateFileOffset = start_offset;
 
     Process_UpdateFileData(connection);
 }
@@ -1860,14 +1947,20 @@ void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
     }
 
     const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    auto update_portion = Settings.UpdateFileSendSize;
-    const auto offset = connection->UpdateFilePortion * update_portion;
+    const uint32 file_size = numeric_cast<uint32>(update_file_data.size());
+    const uint32 offset = connection->UpdateFileOffset;
 
-    if (offset + update_portion < numeric_cast<int32>(update_file_data.size())) {
-        connection->UpdateFilePortion++;
+    if (offset >= file_size) {
+        WriteLog("Wrong update byte offset {}, client host '{}'", offset, connection->GetHost());
+        connection->HardDisconnect();
+        return;
     }
-    else {
-        update_portion = numeric_cast<int32>(update_file_data.size()) % update_portion;
+
+    uint32 update_portion = numeric_cast<uint32>(std::max(Settings.UpdateFileSendSize, 1));
+    update_portion = std::min(update_portion, file_size - offset);
+    connection->UpdateFileOffset += update_portion;
+
+    if (connection->UpdateFileOffset >= file_size) {
         connection->UpdateFileIndex = -1;
     }
 

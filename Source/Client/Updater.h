@@ -36,10 +36,12 @@
 #include "Common.h"
 
 #include "ClientConnection.h"
+#include "ContentUpdater.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Settings.h"
 #include "SpriteManager.h"
+#include "UpdaterFastClient.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -64,11 +66,19 @@ private:
         size_t Size {};
         size_t RemaningSize {};
         uint32 Hash {};
+        uint32 ChunkSize {};
+        vector<uint32> ChunkHashes {};
+        bool UseFastUpdate {};
     };
 
     void AddText(string_view text);
     void Abort(string_view text);
     void GetNextFile();
+    void ProcessFastUpdate();
+
+    [[nodiscard]] auto StartLegacyDownload(UpdateFile& update_file, uint32 start_chunk_index) -> bool;
+    [[nodiscard]] auto FinalizeCompletedFile() -> bool;
+    [[nodiscard]] auto VerifyTempFileHash(const UpdateFile& update_file) -> bool;
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -86,9 +96,11 @@ private:
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};
+    ContentUpdateManifest _updateManifest {};
     vector<UpdateFile> _filesToUpdate {};
     size_t _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
+    unique_ptr<UpdaterFastClient> _fastUpdateClient {};
     vector<uint8> _updateFileBuf {};
     shared_ptr<Sprite> _splashPic {};
     vector<vector<uint8>> _globalsPropertiesData {};

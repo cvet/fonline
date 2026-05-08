@@ -37,6 +37,7 @@
 
 #include "Critter.h"
 #include "CritterManager.h"
+#include "ContentUpdater.h"
 #include "DataBase.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
@@ -53,6 +54,7 @@
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
 #include "Settings.h"
+#include "UpdaterFastServer.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -216,6 +218,7 @@ private:
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ServerConnection* connection);
+    void PollFastUpdate();
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8> data) override;
 
     void Process_Handshake(ServerConnection* connection);
@@ -266,8 +269,10 @@ private:
     std::atomic_bool _startingError {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
+    ContentUpdateManifest _updateManifest {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
+    unique_ptr<UpdaterFastServer> _fastUpdateServer {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     LanguagePack _defaultLang {};

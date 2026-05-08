@@ -207,8 +207,6 @@ Please follow these instructions to understand how to use this engine by design:
 * SpriteManager: optimize text formatting - cache previous results
 * TextureAtlas: optimize sprite atlas filling
 * TextureAtlas: incapsulate texture atlas & atlas space node data
-* Updater: support restoring file downloading from interrupted position
-* Updater: add update file files checking by hashes
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: add engine hook to allow user to override cache storage
 * CacheStorage: store Cache.bin in player local dir for Windows users?

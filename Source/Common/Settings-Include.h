@@ -75,6 +75,11 @@ FIXED_SETTING(string, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind host
 FIXED_SETTING(int32, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(bool, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32, UpdateFileSendSize, 1000000); // Update file send size
+FIXED_SETTING(bool, FastUpdateEnabled, false); // If true, content updater may use UDP fast transport
+FIXED_SETTING(int32, FastUpdateChunkSize, 262144); // Fast update chunk size in bytes
+FIXED_SETTING(int32, FastUpdateRequestTimeout, 750); // Fast update request timeout in milliseconds
+FIXED_SETTING(int32, FastUpdateMaxRetries, 2); // Fast update retries per endpoint
+FIXED_SETTING(int32, FastUpdateMaxSockets, 4); // Maximum number of UDP sockets used by fast updater
 FIXED_SETTING(bool, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, DisableZlibCompression, false); // If true, Zlib compression is disabled
@@ -88,6 +93,10 @@ SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(bool, DisableNetworking, false); // If true, server networking listeners are not started
 FIXED_SETTING(int32, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
+FIXED_SETTING(bool, FastUpdateServerEnabled, false); // If true, server shares content packs over UDP fast updater
+FIXED_SETTING(string, FastUpdateBindHost, "0.0.0.0"); // Bind host for UDP fast updater
+FIXED_SETTING(int32, FastUpdateBindPort, 0); // Bind port for UDP fast updater
+FIXED_SETTING(vector<string>, FastUpdateEndpoints); // Advertised UDP fast updater endpoints in host:port[:priority] format
 FIXED_SETTING(string, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: support restoring file downloading from interrupted position
-
 #include "Updater.h"
 #include "DefaultSprites.h"
 #include "NetCommand.h"
@@ -46,6 +44,54 @@ static auto* StrConnectionEstablished = "Connection established";
 static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
 static auto* StrClientOutdated = "Client outdated, please update it";
+static auto* StrFastUpdateStarted = "Fast updater: download from UDP mirrors";
+static auto* StrFastUpdateFallback = "Fast updater failed, fallback to game channel";
+
+static auto MakeWritePath(const ClientSettings& settings, string_view fname) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(settings.ClientResources).combine_path(fname);
+}
+
+static auto MakeTempPath(const ClientSettings& settings, string_view fname) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MakeWritePath(settings, strex("~{}", fname));
+}
+
+static auto ReadWholeDiskFile(string_view path, vector<uint8>& data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file = DiskFileSystem::OpenFile(path, false);
+
+    if (!file) {
+        return false;
+    }
+
+    const size_t file_size = file.GetSize();
+    data.resize(file_size);
+    return file.Read(data.data(), file_size);
+}
+
+static auto CheckDiskFileHash(string_view path, size_t expected_size, uint32 expected_hash) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8> data;
+
+    if (!ReadWholeDiskFile(path, data)) {
+        return false;
+    }
+
+    if (data.size() != expected_size) {
+        return false;
+    }
+
+    return Hashing::MurmurHash2(data.data(), data.size()) == expected_hash;
+}
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {&settings},
@@ -132,6 +178,8 @@ auto Updater::Process() -> bool
 
     _gameTime.FrameAdvance();
 
+    ProcessFastUpdate();
+
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
@@ -155,7 +203,10 @@ auto Updater::Process() -> bool
         for (const auto& update_file : _filesToUpdate) {
             auto cur_bytes = update_file.Size - update_file.RemaningSize;
 
-            if (&update_file == &_filesToUpdate.front()) {
+            if (&update_file == &_filesToUpdate.front() && _fastUpdateClient) {
+                cur_bytes = _fastUpdateClient->GetVerifiedBytes();
+            }
+            else if (&update_file == &_filesToUpdate.front()) {
                 cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
             }
 
@@ -224,6 +275,56 @@ void Updater::Abort(string_view text)
     }
 }
 
+void Updater::ProcessFastUpdate()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_fastUpdateClient || _filesToUpdate.empty()) {
+        return;
+    }
+
+    auto& update_file = _filesToUpdate.front();
+    _fastUpdateClient->Process();
+
+    if (_fastUpdateClient->IsFinished()) {
+        const auto temp_path = MakeTempPath(*_settings, update_file.Name);
+
+        if (!_fastUpdateClient->AssembleFile(temp_path)) {
+            Abort(StrFilesystemError);
+            return;
+        }
+
+        _fastUpdateClient = nullptr;
+        update_file.RemaningSize = 0;
+        GetNextFile();
+        return;
+    }
+
+    if (_fastUpdateClient->IsFailed()) {
+        AddText(StrFastUpdateFallback);
+
+        const uint32 start_chunk_index = _fastUpdateClient->GetContiguousChunkCount();
+        const auto resumed_bytes = numeric_cast<size_t>(GetContentUpdateChunkOffset(update_file.ChunkSize, start_chunk_index));
+        const auto temp_path = MakeTempPath(*_settings, update_file.Name);
+
+        DiskFileSystem::DeleteFile(temp_path);
+        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(temp_path, true));
+
+        if (!*_tempFile || !_fastUpdateClient->WriteContiguousData(*_tempFile)) {
+            Abort(StrFilesystemError);
+            return;
+        }
+
+        _fastUpdateClient = nullptr;
+        update_file.UseFastUpdate = false;
+        update_file.RemaningSize = update_file.Size - resumed_bytes;
+
+        if (!StartLegacyDownload(update_file, start_chunk_index)) {
+            Abort(StrFilesystemError);
+        }
+    }
+}
+
 void Updater::Net_OnInitData()
 {
     FO_STACK_TRACE_ENTRY();
@@ -243,49 +344,27 @@ void Updater::Net_OnInitData()
     _fileListReceived = true;
 
     if (!data.empty()) {
-        FileSystem resources;
-        resources.AddDirSource(_settings->ClientResources, false, true, true);
+        _updateManifest = DeserializeContentUpdateManifest(data);
 
-        auto reader = DataReader(data);
+        for (int32 file_index = 0; file_index < numeric_cast<int32>(_updateManifest.Files.size()); file_index++) {
+            const auto& file_info = _updateManifest.Files[numeric_cast<size_t>(file_index)];
+            const auto file_path = MakeWritePath(*_settings, file_info.Name);
 
-        for (int32 file_index = 0;; file_index++) {
-            const auto name_len = reader.Read<int16>();
-
-            if (name_len == -1) {
-                break;
+            if (CheckDiskFileHash(file_path, file_info.Size, file_info.Hash)) {
+                continue;
             }
 
-            FO_RUNTIME_ASSERT(name_len > 0);
-            const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint32>();
-            const auto hash = reader.Read<uint32>();
-
-            // Check hash
-            if (auto file = resources.ReadFileHeader(fname)) {
-                // Todo: add update file files checking by hashes
-                /*const auto file_hash = resources.ReadFileText(strex("{}.hash", fname));
-                if (file_hash.empty()) {
-                    // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
-                }
-
-                if (strex(file_hash).to_uint32() == hash) {
-                    continue;
-                }*/
-
-                if (file.GetSize() == size) {
-                    continue;
-                }
-            }
-
-            // Get this file
             UpdateFile update_file;
             update_file.Index = file_index;
-            update_file.Name = fname;
-            update_file.Size = size;
-            update_file.RemaningSize = size;
-            update_file.Hash = hash;
+            update_file.Name = file_info.Name;
+            update_file.Size = file_info.Size;
+            update_file.RemaningSize = file_info.Size;
+            update_file.Hash = file_info.Hash;
+            update_file.ChunkSize = _updateManifest.ChunkSize;
+            update_file.ChunkHashes = file_info.ChunkHashes;
+            update_file.UseFastUpdate = _settings->FastUpdateEnabled && _updateManifest.FastUpdateEnabled && !_updateManifest.Endpoints.empty() && !_updateManifest.Files[numeric_cast<size_t>(file_index)].ChunkHashes.empty();
             _filesToUpdate.push_back(update_file);
-            _filesWholeSize += size;
+            _filesWholeSize += file_info.Size;
         }
 
         if (!_filesToUpdate.empty()) {
@@ -329,41 +408,102 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto make_write_path = [this](string_view fname) -> string { return strex(_settings->ClientResources).combine_path(fname); };
-
-    if (_tempFile) {
-        _tempFile = nullptr;
-
-        const auto& prev_update_file = _filesToUpdate.front();
-
-        if (!DiskFileSystem::DeleteFile(make_write_path(prev_update_file.Name))) {
+    if (!_filesToUpdate.empty() && _filesToUpdate.front().RemaningSize == 0) {
+        if (!FinalizeCompletedFile()) {
             Abort(StrFilesystemError);
             return;
         }
-        if (!DiskFileSystem::RenameFile(make_write_path(strex("~{}", prev_update_file.Name)), make_write_path(prev_update_file.Name))) {
-            Abort(StrFilesystemError);
-            return;
-        }
-
-        _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
     if (!_filesToUpdate.empty()) {
-        const auto& next_update_file = _filesToUpdate.front();
+        auto& next_update_file = _filesToUpdate.front();
+        const auto temp_path = MakeTempPath(*_settings, next_update_file.Name);
 
-        _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
-        _conn.OutBuf->Write(next_update_file.Index);
-        _conn.OutBuf->EndMsg();
+        _tempFile = nullptr;
+        _fastUpdateClient = nullptr;
 
-        DiskFileSystem::DeleteFile(make_write_path(strex("~{}", next_update_file.Name)));
-        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(make_write_path(strex("~{}", next_update_file.Name)), true));
+        if (next_update_file.UseFastUpdate) {
+            AddText(StrFastUpdateStarted);
+            DiskFileSystem::DeleteFile(temp_path);
+            _fastUpdateClient = SafeAlloc::MakeUnique<UpdaterFastClient>(*_settings, _updateManifest, _updateManifest.Files[numeric_cast<size_t>(next_update_file.Index)], MakeWritePath(*_settings, next_update_file.Name));
 
-        if (!*_tempFile) {
+            if (_fastUpdateClient->IsFailed()) {
+                AddText(StrFastUpdateFallback);
+                next_update_file.UseFastUpdate = false;
+                _fastUpdateClient = nullptr;
+
+                if (!StartLegacyDownload(next_update_file, 0)) {
+                    Abort(StrFilesystemError);
+                    return;
+                }
+            }
+        }
+        else if (!StartLegacyDownload(next_update_file, 0)) {
             Abort(StrFilesystemError);
+            return;
         }
     }
 
     _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
+}
+
+auto Updater::StartLegacyDownload(UpdateFile& update_file, uint32 start_chunk_index) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto temp_path = MakeTempPath(*_settings, update_file.Name);
+    const uint32 start_offset = GetContentUpdateChunkOffset(update_file.ChunkSize, start_chunk_index);
+
+    if (!_tempFile) {
+        DiskFileSystem::DeleteFile(temp_path);
+        _tempFile = SafeAlloc::MakeUnique<DiskFile>(DiskFileSystem::OpenFile(temp_path, true));
+
+        if (!*_tempFile) {
+            return false;
+        }
+    }
+
+    _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
+    _conn.OutBuf->Write(update_file.Index);
+    _conn.OutBuf->Write(start_offset);
+    _conn.OutBuf->EndMsg();
+    _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
+    return true;
+}
+
+auto Updater::FinalizeCompletedFile() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_filesToUpdate.empty());
+
+    auto& update_file = _filesToUpdate.front();
+    const auto temp_path = MakeTempPath(*_settings, update_file.Name);
+    const auto final_path = MakeWritePath(*_settings, update_file.Name);
+
+    _tempFile = nullptr;
+
+    if (!VerifyTempFileHash(update_file)) {
+        return false;
+    }
+
+    if (!DiskFileSystem::DeleteFile(final_path)) {
+        return false;
+    }
+
+    if (!DiskFileSystem::RenameFile(temp_path, final_path)) {
+        return false;
+    }
+
+    _filesToUpdate.erase(_filesToUpdate.begin());
+    return true;
+}
+
+auto Updater::VerifyTempFileHash(const UpdateFile& update_file) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CheckDiskFileHash(MakeTempPath(*_settings, update_file.Name), update_file.Size, update_file.Hash);
 }
 
 FO_END_NAMESPACE
