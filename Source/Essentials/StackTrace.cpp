@@ -64,6 +64,37 @@ static auto GetStackTraceState() noexcept -> StackTraceState&
     return state;
 }
 
+static auto IsLowNativeAddress(void* addr) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Unit tests synthesize native frames with small integer addresses. These are not
+    // userspace instruction pointers on supported native platforms, and POSIX symbol
+    // resolvers can be extremely slow or return the same "??" symbol for all of them.
+    return reinterpret_cast<uintptr_t>(addr) < 0x10000U;
+}
+
+static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return s.empty() || s == "??" || s == "???" || s == "??:0";
+}
+
+static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    StackTraceFrame frame;
+    frame.Type = StackTraceFrame::FrameType::Native;
+
+    char hex_buf[32];
+    (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
+    frame.Function = hex_buf;
+
+    return frame;
+}
+
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -193,8 +224,6 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
         s.erase(0, first);
     };
 
-    const auto is_unresolved_name = [](const std::string& s) { return s.empty() || s == "??" || s == "???" || s == "??:0"; };
-
     try {
         backward::TraceResolver resolver;
 
@@ -202,6 +231,11 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
             void* addr = st.NativeFrames[i];
 
             if (addr == nullptr) {
+                continue;
+            }
+
+            if (IsLowNativeAddress(addr)) {
+                out.emplace_back(MakeNativeAddressFrame(addr));
                 continue;
             }
 
@@ -216,13 +250,11 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
             trim_in_place(frame.Function);
             trim_in_place(frame.File);
 
-            if (is_unresolved_name(frame.Function)) {
-                char hex_buf[32];
-                (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
-                frame.Function = hex_buf;
+            if (IsUnresolvedNativeName(frame.Function)) {
+                frame = MakeNativeAddressFrame(addr);
             }
 
-            if (is_unresolved_name(frame.File)) {
+            if (IsUnresolvedNativeName(frame.File)) {
                 frame.File.clear();
                 frame.Line = 0;
             }
@@ -244,12 +276,17 @@ static auto ResolveFunctionBase(void* addr) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    if (IsLowNativeAddress(addr)) {
+        return addr;
+    }
+
 #if HAS_NATIVE_TRACE
     try {
         backward::TraceResolver resolver;
         const auto resolved = resolver.resolve(backward::Trace(addr, 0));
+        const auto& name = !resolved.source.function.empty() ? resolved.source.function : resolved.object_function;
 
-        if (resolved.object_function.empty() && resolved.source.function.empty()) {
+        if (IsUnresolvedNativeName(name)) {
             return addr;
         }
 
@@ -257,7 +294,6 @@ static auto ResolveFunctionBase(void* addr) noexcept -> void*
         // on POSIX, but on Windows we approximate via the resolved.addr field which points
         // to the IP back; for matching we collapse all IPs that resolve to the same name
         // into a single key by hashing the function name.
-        const auto& name = !resolved.source.function.empty() ? resolved.source.function : resolved.object_function;
         size_t h = std::hash<std::string> {}(name);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
