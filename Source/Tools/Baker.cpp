@@ -365,7 +365,7 @@ void MasterBaker::BakeAllInternal()
 
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->OutputAdded && bake_context->FirstBake) {
-                baking_output.AddDirSource(bake_context->OutputDir, true);
+                baking_output.AddDirSource(bake_context->OutputDir, true, true);
                 bake_context->OutputAdded = true;
             }
             if (bake_context->BakedFiles != 0) {
