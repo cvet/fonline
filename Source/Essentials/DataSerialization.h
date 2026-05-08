@@ -48,7 +48,7 @@ public:
         _dataBuf {buf}
     {
     }
-    
+
     [[nodiscard]] auto GetRemainingBytes() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
 
     template<typename T>
