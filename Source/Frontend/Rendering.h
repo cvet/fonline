@@ -48,6 +48,7 @@ constexpr size_t EFFECT_MAX_PASSES = 6;
 constexpr size_t EFFECT_SCRIPT_VALUES = 16;
 
 #if FO_ENABLE_3D
+constexpr size_t MODEL_LAYERS_COUNT = 30;
 constexpr size_t MODEL_MAX_TEXTURES = 8;
 constexpr size_t MODEL_MAX_BONES = 54;
 constexpr size_t BONES_PER_VERTEX = 4;

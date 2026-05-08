@@ -21,7 +21,7 @@ TEST_CASE("MapBaker")
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == MapBaker::NAME);
-    CHECK(bakers.front()->GetOrder() == 6);
+    CHECK(bakers.front()->GetOrder() == 7);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), ""));
 }

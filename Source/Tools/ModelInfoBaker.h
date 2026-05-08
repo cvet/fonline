@@ -33,31 +33,33 @@
 
 #pragma once
 
-#include "Common.h"
-
 #include "Baker.h"
 #include "FileSystem.h"
 
+#if FO_ENABLE_3D
+
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(MapBakerException);
+FO_DECLARE_EXCEPTION(ModelInfoBakerException);
 
-class MapBaker final : public BaseBaker
+class ModelInfoBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Map";
+    static constexpr string_view_nt NAME = "ModelInfo";
 
-    explicit MapBaker(shared_ptr<BakingContext> ctx);
-    MapBaker(const MapBaker&) = delete;
-    MapBaker(MapBaker&&) noexcept = delete;
-    auto operator=(const MapBaker&) = delete;
-    auto operator=(MapBaker&&) noexcept = delete;
-    ~MapBaker() override;
+    explicit ModelInfoBaker(shared_ptr<BakingContext> ctx);
+    ModelInfoBaker(const ModelInfoBaker&) = delete;
+    ModelInfoBaker(ModelInfoBaker&&) noexcept = delete;
+    auto operator=(const ModelInfoBaker&) = delete;
+    auto operator=(ModelInfoBaker&&) noexcept = delete;
+    ~ModelInfoBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 7; }
+    [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 };
 
 FO_END_NAMESPACE
+
+#endif

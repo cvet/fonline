@@ -44,7 +44,8 @@
 #include "MapLoader.h"
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
-#include "ModelBaker.h"
+#include "ModelInfoBaker.h"
+#include "ModelMeshBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -121,8 +122,11 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
         bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(ctx));
     }
 #if FO_ENABLE_3D
-    if (vec_exists(request_bakers, ModelBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(ctx));
+    if (vec_exists(request_bakers, ModelMeshBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ModelMeshBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ModelInfoBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ModelInfoBaker>(ctx));
     }
 #endif
 #if FO_ANGELSCRIPT_SCRIPTING
