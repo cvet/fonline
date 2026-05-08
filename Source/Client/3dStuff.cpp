@@ -767,11 +767,13 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         }
 
                         if (!available) {
-                            if (const auto* to_bone = FindBone(link.LinkBone)) {
-                                if (auto particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName)) {
-                                    _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
-                                }
-                            }
+                            FO_RUNTIME_ASSERT_STR(link.LinkBone, "Particle model link has no target bone");
+                            const auto* to_bone = FindBone(link.LinkBone);
+                            FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Particle model link target bone not found");
+
+                            auto particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
+                            FO_RUNTIME_ASSERT_STR(particle, strex("Particle '{}' not found for model link", link.ChildName));
+                            _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -791,45 +793,44 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                             // Link to main bone
                             if (link.LinkBone) {
                                 auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
+                                FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Model link target bone not found");
 
-                                if (to_bone != nullptr) {
-                                    auto model = _modelMngr->CreateModel(link.ChildName);
+                                auto model = _modelMngr->CreateModel(link.ChildName);
+                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
 
-                                    if (model) {
-                                        mesh_changed = true;
-                                        model->_parent = this;
-                                        model->_parentBone = to_bone;
-                                        model->_animLink = link;
-                                        model->SetAnimData(link, false);
-                                        _children.emplace_back(std::move(model));
-                                    }
+                                mesh_changed = true;
+                                model->_parent = this;
+                                model->_parentBone = to_bone;
+                                model->_animLink = link;
+                                model->SetAnimData(link, false);
+                                _children.emplace_back(std::move(model));
 
-                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0) {
-                                        fast_transition_bones.emplace_back(link.LinkBone);
-                                    }
+                                if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0) {
+                                    fast_transition_bones.emplace_back(link.LinkBone);
                                 }
                             }
                             // Link all bones
                             else {
                                 auto model = _modelMngr->CreateModel(link.ChildName);
+                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
 
-                                if (model) {
-                                    for (auto& child_bone : model->_modelInfo->_hierarchy->_allBones) {
-                                        auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
+                                for (auto& child_bone : model->_modelInfo->_hierarchy->_allBones) {
+                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
 
-                                        if (root_bone != nullptr) {
-                                            model->_linkBones.emplace_back(root_bone);
-                                            model->_linkBones.emplace_back(child_bone);
-                                        }
+                                    if (root_bone != nullptr) {
+                                        model->_linkBones.emplace_back(root_bone);
+                                        model->_linkBones.emplace_back(child_bone);
                                     }
-
-                                    mesh_changed = true;
-                                    model->_parent = this;
-                                    model->_parentBone = _modelInfo->_hierarchy->_rootBone;
-                                    model->_animLink = link;
-                                    model->SetAnimData(link, false);
-                                    _children.emplace_back(std::move(model));
                                 }
+
+                                FO_RUNTIME_ASSERT_STR(!model->_linkBones.empty(), strex("Child model '{}' has no common bones for model link", link.ChildName));
+
+                                mesh_changed = true;
+                                model->_parent = this;
+                                model->_parentBone = _modelInfo->_hierarchy->_rootBone;
+                                model->_animLink = link;
+                                model->SetAnimData(link, false);
+                                _children.emplace_back(std::move(model));
                             }
                         }
                     }
@@ -1283,36 +1284,45 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     if (!data.TextureInfo.empty()) {
         for (auto&& [tex_name, mesh_name, tex_num] : data.TextureInfo) {
             MeshTexture* texture = nullptr;
+            FO_RUNTIME_ASSERT_STR(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", tex_num));
 
             // Evaluate texture
             if (strex(tex_name).starts_with("Parent")) { // Parent_MeshName
-                if (_parent) {
-                    const auto* parent_mesh_name = tex_name.c_str() + 6;
+                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent texture '{}' requested without parent model", tex_name));
 
-                    if (parent_mesh_name[0] == '_') {
-                        parent_mesh_name++;
-                    }
+                const auto* parent_mesh_name = tex_name.c_str() + 6;
 
-                    const auto parent_mesh_name_hashed = *parent_mesh_name != 0 ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
+                if (parent_mesh_name[0] == '_') {
+                    parent_mesh_name++;
+                }
 
-                    for (auto& mesh : _parent->_allMeshes) {
-                        if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
-                            texture = mesh->CurTexures[tex_num].get();
-                            break;
-                        }
+                const auto parent_mesh_name_hashed = *parent_mesh_name != 0 ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
+
+                for (auto& mesh : _parent->_allMeshes) {
+                    if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
+                        texture = mesh->CurTexures[tex_num].get();
+                        break;
                     }
                 }
+
+                FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Parent texture '{}' not found", tex_name));
             }
             else {
                 texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
+            FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Texture '{}' not loaded", tex_name));
 
             // Assign it
+            size_t assigned_meshes = 0;
+
             for (auto& mesh : _allMeshes) {
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurTexures[tex_num] = texture;
+                    assigned_meshes++;
                 }
             }
+
+            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Texture '{}' target mesh not found", tex_name));
         }
     }
 
@@ -1330,34 +1340,42 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
             // Get effect
             if (strex(std::get<0>(eff_info)).starts_with("Parent")) { // Parent_MeshName
-                if (_parent) {
-                    const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
+                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent effect '{}' requested without parent model", std::get<0>(eff_info)));
 
-                    if (mesh_name[0] == '_') {
-                        mesh_name++;
-                    }
+                const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
 
-                    const auto mesh_name_hashed = *mesh_name != 0 ? _modelMngr->GetBoneHashedString(mesh_name) : hstring();
+                if (mesh_name[0] == '_') {
+                    mesh_name++;
+                }
 
-                    for (auto& mesh : _parent->_allMeshes) {
-                        if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
-                            effect = mesh->CurEffect.get();
-                            break;
-                        }
+                const auto mesh_name_hashed = *mesh_name != 0 ? _modelMngr->GetBoneHashedString(mesh_name) : hstring();
+
+                for (auto& mesh : _parent->_allMeshes) {
+                    if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
+                        effect = mesh->CurEffect.get();
+                        break;
                     }
                 }
+
+                FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Parent effect '{}' not found", std::get<0>(eff_info)));
             }
             else {
                 effect = _modelInfo->_hierarchy->GetEffect(std::get<0>(eff_info));
             }
+            FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Effect '{}' not loaded", std::get<0>(eff_info)));
 
             // Assign it
             const auto mesh_name = std::get<1>(eff_info);
+            size_t assigned_meshes = 0;
+
             for (auto& mesh : _allMeshes) {
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurEffect = effect;
+                    assigned_meshes++;
                 }
             }
+
+            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Effect '{}' target mesh not found", std::get<0>(eff_info)));
         }
     }
 
@@ -2264,21 +2282,6 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) :
     _viewSize.height = _modelMngr->_settings->DefaultModelViewHeight != 0 ? _modelMngr->_settings->DefaultModelViewHeight : _viewSize.height / 2;
 }
 
-auto ModelInformation::ParseInt32Value(string_view value, bool* failed) const -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (strvex(value).is_explicit_bool()) {
-        return strvex(value).to_bool() ? 1 : 0;
-    }
-    if (strvex(value).is_number()) {
-        return numeric_cast<int32_t>(strvex(value).to_int64());
-    }
-
-    const auto enum_value = _modelMngr->_nameResolver->ResolveEnumValue(value, failed);
-    return enum_value;
-}
-
 auto ModelInformation::Load(string_view name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -2293,655 +2296,407 @@ auto ModelInformation::Load(string_view name) -> bool
     if (ext == "fo3d") {
         // Load main fo3d file
         const auto fo3d = _modelMngr->_resources->ReadFile(name);
-
-        if (!fo3d) {
-            return false;
-        }
-
-        // Parse
-        string file_buf = fo3d.GetStr();
-        string model;
-        string render_fname;
-        string render_anim;
-        bool disable_animation_interpolation = false;
-        bool convert_value_fail = false;
-
-        hstring mesh;
-        int32_t layer = -1;
-        int32_t layer_val = 0;
-
-        ModelAnimationData dummy_link {};
-        auto* link = &_animDataDefault;
-
-        auto istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
-        string token;
-        string buf;
-
-        struct AnimEntry
-        {
-            CritterStateAnim StateAnim;
-            CritterActionAnim ActionAnim;
-            string FileName;
-            string Name;
-        };
-
-        vector<AnimEntry> anim_entries;
-
-        while (!istr->eof()) {
-            *istr >> token;
-
-            if (istr->eof()) {
-                break;
-            }
-
-            FO_RUNTIME_ASSERT(!istr->fail());
-
-            auto comment = token.find(';');
-
-            if (comment == string::npos) {
-                comment = token.find('#');
-            }
-
-            if (comment != string::npos) {
-                token = token.substr(0, comment);
-
-                string line;
-                std::getline(*istr, line, '\n');
-                FO_RUNTIME_ASSERT(!istr->fail());
-            }
-
-            if (token.empty()) {
-                // None
-            }
-            else if (token == "Model") {
-                *istr >> buf;
-                model = strex(name).extract_dir().combine_path(buf);
-            }
-            else if (token == "Include") {
-                // Get swapped words
-                vector<string> templates;
-                string line;
-                std::getline(*istr, line, '\n');
-                FO_RUNTIME_ASSERT(!istr->fail());
-
-                templates = strex(line).trim().split(' ');
-                FO_RUNTIME_ASSERT(!templates.empty());
-
-                for (size_t i = 1; i < templates.size() - 1; i += 2) {
-                    templates[i] = strex("%{}%", templates[i]);
-                }
-
-                // Include file path
-                const string fname = strex(name).extract_dir().combine_path(templates[0]);
-                const auto fo3d_ex = _modelMngr->_resources->ReadFile(fname);
-
-                if (fo3d_ex) {
-                    string new_content = fo3d_ex.GetStr();
-
-                    for (size_t i = 1; i < templates.size() - 1; i += 2) {
-                        new_content = strex(new_content).replace(templates[i], templates[i + 1]);
-                    }
-
-                    const auto offs = numeric_cast<size_t>(static_cast<std::streamoff>(istr->tellg()));
-                    const auto rest_content = !istr->eof() ? file_buf.substr(offs) : "";
-                    file_buf = strex("{}\n{}", new_content, rest_content);
-                    istr = SafeAlloc::MakeUnique<istringstream>(file_buf);
-                }
-                else {
-                    WriteLog("Include file '{}' not found", fname);
-                }
-            }
-            else if (token == "Mesh") {
-                *istr >> buf;
-
-                if (buf != "All") {
-                    mesh = _modelMngr->GetBoneHashedString(buf);
-                }
-                else {
-                    mesh = {};
-                }
-            }
-            else if (token == "Subset") {
-                *istr >> buf;
-                WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead");
-            }
-            else if (token == "Layer" || token == "Value") {
-                *istr >> buf;
-
-                if (token == "Layer") {
-                    layer = ParseInt32Value(buf, &convert_value_fail);
-                }
-                else {
-                    layer_val = ParseInt32Value(buf, &convert_value_fail);
-                }
-
-                link = &dummy_link;
-                mesh = {};
-            }
-            else if (token == "Root") {
-                if (layer == -1) {
-                    link = &_animDataDefault;
-                }
-                else if (layer_val == 0) {
-                    WriteLog("Wrong layer '{}' zero value", layer);
-                    link = &dummy_link;
-                }
-                else {
-                    link = &_animData.emplace_back();
-                    link->Id = ++_modelMngr->_linkId;
-                    link->Layer = layer;
-                    link->LayerValue = layer_val;
-                }
-
-                mesh = {};
-            }
-            else if (token == "Attach") {
-                *istr >> buf;
-
-                if (layer >= 0 && layer_val != 0) {
-                    link = &_animData.emplace_back();
-                    link->Id = ++_modelMngr->_linkId;
-                    link->Layer = layer;
-                    link->LayerValue = layer_val;
-
-                    string fname = strex(name).extract_dir().combine_path(buf);
-                    link->ChildName = fname;
-                    link->IsParticles = false;
-                }
-
-                mesh = {};
-            }
-            else if (token == "AttachParticles") {
-                *istr >> buf;
-
-                if (layer >= 0 && layer_val != 0) {
-                    link = &_animData.emplace_back();
-                    link->Id = ++_modelMngr->_linkId;
-                    link->Layer = layer;
-                    link->LayerValue = layer_val;
-
-                    link->ChildName = buf;
-                    link->IsParticles = true;
-                }
-
-                mesh = {};
-            }
-            else if (token == "Link") {
-                *istr >> buf;
-
-                if (link->Id != 0) {
-                    link->LinkBone = _modelMngr->GetBoneHashedString(buf);
-                }
-            }
-            else if (token == "Cut") {
-                *istr >> buf;
-                string fname = strex(name).extract_dir().combine_path(buf);
-                auto* area = _modelMngr->GetHierarchy(fname);
-
-                if (area != nullptr) {
-                    // Add cut
-                    auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
-                    link->CutInfo.emplace_back(cut);
-
-                    // Layers
-                    *istr >> buf;
-                    auto cur_layer_names = strex(buf).split('-');
-
-                    for (auto& cut_layer_name : cur_layer_names) {
-                        if (cut_layer_name != "All") {
-                            const auto cut_layer = ParseInt32Value(cut_layer_name, &convert_value_fail);
-                            cut->Layers.emplace_back(cut_layer);
-                        }
-                        else {
-                            for (int32_t i = 0; i < numeric_cast<int32_t>(MODEL_LAYERS_COUNT); i++) {
-                                if (i != layer) {
-                                    cut->Layers.emplace_back(i);
-                                }
-                            }
-                        }
-                    }
-
-                    // Shapes
-                    *istr >> buf;
-                    auto shapes = strex(buf).split('-');
-
-                    // Unskin bones
-                    *istr >> buf;
-                    cut->UnskinBone1 = buf != "-" ? _modelMngr->GetBoneHashedString(buf) : hstring();
-
-                    *istr >> buf;
-                    cut->UnskinBone2 = buf != "-" ? _modelMngr->GetBoneHashedString(buf) : hstring();
-
-                    // Unskin shape
-                    *istr >> buf;
-                    hstring unskin_shape_name;
-                    cut->RevertUnskinShape = false;
-
-                    if (cut->UnskinBone1 && cut->UnskinBone2) {
-                        cut->RevertUnskinShape = !buf.empty() && buf[0] == '~';
-                        unskin_shape_name = _modelMngr->GetBoneHashedString(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
-
-                        for (auto& bone : area->_allDrawBones) {
-                            if (unskin_shape_name == bone->Name) {
-                                cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
-                            }
-                        }
-                    }
-
-                    // Parse shapes
-                    for (auto& shape : shapes) {
-                        auto shape_name = _modelMngr->GetBoneHashedString(shape);
-
-                        if (shape == "All") {
-                            shape_name = hstring();
-                        }
-
-                        for (auto& bone : area->_allDrawBones) {
-                            if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
-                                cut->Shapes.emplace_back(CreateCutShape(bone->AttachedMesh.get()));
-                            }
-                        }
-                    }
-                }
-                else {
-                    WriteLog("Cut file '{}' not found", fname);
-                    *istr >> buf;
-                    *istr >> buf;
-                    *istr >> buf;
-                    *istr >> buf;
-                    *istr >> buf;
-                }
-            }
-            else if (token == "RotX") {
-                *istr >> link->RotX;
-            }
-            else if (token == "RotY") {
-                *istr >> link->RotY;
-            }
-            else if (token == "RotZ") {
-                *istr >> link->RotZ;
-            }
-            else if (token == "MoveX") {
-                *istr >> link->MoveX;
-            }
-            else if (token == "MoveY") {
-                *istr >> link->MoveY;
-            }
-            else if (token == "MoveZ") {
-                *istr >> link->MoveZ;
-            }
-            else if (token == "ScaleX") {
-                *istr >> link->ScaleX;
-            }
-            else if (token == "ScaleY") {
-                *istr >> link->ScaleY;
-            }
-            else if (token == "ScaleZ") {
-                *istr >> link->ScaleZ;
-            }
-            else if (token == "Scale") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleX = link->ScaleY = link->ScaleZ = valuef;
-            }
-            else if (token == "Speed") {
-                *istr >> link->SpeedAjust;
-            }
-            else if (token == "RotX+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotX = (link->RotX == 0.0f ? valuef : link->RotX + valuef);
-            }
-            else if (token == "RotY+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotY = (link->RotY == 0.0f ? valuef : link->RotY + valuef);
-            }
-            else if (token == "RotZ+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ + valuef);
-            }
-            else if (token == "MoveX+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX + valuef);
-            }
-            else if (token == "MoveY+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY + valuef);
-            }
-            else if (token == "MoveZ+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ + valuef);
-            }
-            else if (token == "ScaleX+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
-            }
-            else if (token == "ScaleY+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
-            }
-            else if (token == "ScaleZ+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
-            }
-            else if (token == "Scale+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef);
-                link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef);
-                link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef);
-            }
-            else if (token == "Speed+") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
-            }
-            else if (token == "RotX*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotX = (link->RotX == 0.0f ? valuef : link->RotX * valuef);
-            }
-            else if (token == "RotY*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotY = (link->RotY == 0.0f ? valuef : link->RotY * valuef);
-            }
-            else if (token == "RotZ*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->RotZ = (link->RotZ == 0.0f ? valuef : link->RotZ * valuef);
-            }
-            else if (token == "MoveX*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveX = (link->MoveX == 0.0f ? valuef : link->MoveX * valuef);
-            }
-            else if (token == "MoveY*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveY = (link->MoveY == 0.0f ? valuef : link->MoveY * valuef);
-            }
-            else if (token == "MoveZ*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->MoveZ = (link->MoveZ == 0.0f ? valuef : link->MoveZ * valuef);
-            }
-            else if (token == "ScaleX*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
-            }
-            else if (token == "ScaleY*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
-            }
-            else if (token == "ScaleZ*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
-            }
-            else if (token == "Scale*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->ScaleX = (link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef);
-                link->ScaleY = (link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef);
-                link->ScaleZ = (link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef);
-            }
-            else if (token == "Speed*") {
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                link->SpeedAjust = (link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef);
-            }
-            else if (token == "DisableLayer") {
-                *istr >> buf;
-                const auto disabled_layers = strex(buf).split('-');
-
-                for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = ParseInt32Value(disabled_layer_name, &convert_value_fail);
-
-                    if (disabled_layer >= 0 && disabled_layer < const_numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
-                        link->DisabledLayer.emplace_back(disabled_layer);
-                    }
-                }
-            }
-            else if (token == "DisableMesh") {
-                *istr >> buf;
-                const auto disabled_mesh_names = strex(buf).split('-');
-
-                for (const auto& disabled_mesh_name : disabled_mesh_names) {
-                    hstring disabled_mesh;
-
-                    if (disabled_mesh_name != "All") {
-                        disabled_mesh = _modelMngr->GetBoneHashedString(disabled_mesh_name);
-                    }
-
-                    link->DisabledMesh.emplace_back(disabled_mesh);
-                }
-            }
-            else if (token == "Texture") {
-                *istr >> buf;
-                auto index = ParseInt32Value(buf, &convert_value_fail);
-
-                *istr >> buf;
-
-                if (index >= 0 && index < const_numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
-                    link->TextureInfo.emplace_back(buf, mesh, index);
-                }
-            }
-            else if (token == "Effect") {
-                *istr >> buf;
-
-                link->EffectInfo.emplace_back(buf, mesh);
-            }
-            else if (token == "Anim") {
-                *istr >> buf;
-                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
-
-                string a1;
-                string a2;
-                *istr >> a1 >> a2;
-                anim_entries.emplace_back(AnimEntry {.StateAnim = static_cast<CritterStateAnim>(ind1), .ActionAnim = static_cast<CritterActionAnim>(ind2), .FileName = a1, .Name = a2});
-            }
-            else if (token == "AnimSpeed") {
-                *istr >> buf;
-                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
-
-                float32_t valuef = 0.0f;
-                *istr >> valuef;
-                _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2)), valuef);
-            }
-            else if (token == "AnimLayerValue") {
-                *istr >> buf;
-                const auto ind1 = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                const auto ind2 = ParseInt32Value(buf, &convert_value_fail);
-
-                *istr >> buf;
-                const auto anim_layer = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                const auto anim_layer_value = ParseInt32Value(buf, &convert_value_fail);
-
-                const auto index = std::make_pair(static_cast<CritterStateAnim>(ind1), static_cast<CritterActionAnim>(ind2));
-
-                if (_animLayerValues.count(index) == 0) {
-                    _animLayerValues.emplace(index, vector<pair<int32_t, int32_t>>());
-                }
-
-                _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
-            }
-            else if (token == "FastTransitionBone") {
-                *istr >> buf;
-                _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(buf));
-            }
-            else if (token == "StateAnimEqual") {
-                auto ind1 = 0;
-                auto ind2 = 0;
-                *istr >> buf;
-                ind1 = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                ind2 = ParseInt32Value(buf, &convert_value_fail);
-
-                _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
-            }
-            else if (token == "ActionAnimEqual") {
-                auto ind1 = 0;
-                auto ind2 = 0;
-                *istr >> buf;
-                ind1 = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                ind2 = ParseInt32Value(buf, &convert_value_fail);
-
-                _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
-            }
-            else if (token == "DisableShadow") {
-                _shadowDisabled = true;
-            }
-            else if (token == "DrawSize") {
-                *istr >> buf;
-                _drawSize.width = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                _drawSize.height = ParseInt32Value(buf, &convert_value_fail);
-            }
-            else if (token == "ViewSize") {
-                *istr >> buf;
-                _viewSize.width = ParseInt32Value(buf, &convert_value_fail);
-                *istr >> buf;
-                _viewSize.height = ParseInt32Value(buf, &convert_value_fail);
-            }
-            else if (token == "DisableAnimationInterpolation") {
-                disable_animation_interpolation = true;
-            }
-            else if (token == "RotationBone") {
-                *istr >> buf;
-                _rotationBone = _modelMngr->GetBoneHashedString(buf);
-            }
-            else {
-                WriteLog("Unknown token '{}' in file '{}'", token, name);
-            }
-
-            if (istr->fail()) {
-                WriteLog("Failed to process token {} in file '{}'", token, name);
-                BreakIntoDebugger();
-                break;
-            }
-        }
-
-        // Process pathes
-        if (model.empty()) {
-            WriteLog("'Model' section not found in file '{}'", name);
-            return false;
-        }
-
-        // Check for correct param values
-        if (convert_value_fail) {
-            WriteLog("Invalid param values for file '{}'", name);
-            return false;
-        }
-
-        // Load x file
-        auto* hierarchy = _modelMngr->GetHierarchy(model);
-
-        if (hierarchy == nullptr) {
-            return false;
-        }
-
-        // Create animation
-        _fileName = name;
-        _hierarchy = hierarchy;
-
-        // Single frame render
-        if (!render_fname.empty() && !render_anim.empty()) {
-            anim_entries.emplace_back(AnimEntry {.StateAnim = CritterStateAnim::None, .ActionAnim = CritterActionAnim::None, .FileName = render_fname, .Name = render_anim});
-        }
-
-        // Create animation controller
-        if (!anim_entries.empty()) {
-            _animController = SafeAlloc::MakeUnique<ModelAnimationController>(2);
-        }
-
-        // Parse animations
-        if (_animController) {
-            for (const auto& anim_entry : anim_entries) {
-                string anim_path;
-
-                if (anim_entry.FileName == "ModelFile") {
-                    anim_path = model;
-                }
-                else {
-                    anim_path = strex(name).extract_dir().combine_path(anim_entry.FileName);
-                }
-
-                const auto reversed = anim_entry.Name.starts_with('~');
-                const auto anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
-                auto* anim = _modelMngr->LoadAnimation(anim_path, anim_name);
-
-                if (anim != nullptr) {
-                    const auto anim_index = _animController->RegisterAnimation(anim, reversed);
-                    _animIndexes.emplace(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim), anim_index);
-                }
-            }
-
-            const auto anim_count = _animController->GetAnimationsCount();
-
-            if (anim_count != 0) {
-                // Add animation bones, not included to base hierarchy
-                // All bones linked with animation in SetupAnimationOutput
-                for (int32_t i = 0; i < anim_count; i++) {
-                    const auto& bones_hierarchy = _animController->GetAnimationBones(i);
-
-                    for (const auto& bone_hierarchy : bones_hierarchy) {
-                        auto* bone = _hierarchy->_rootBone.get();
-
-                        for (size_t b = 1; b < bone_hierarchy.size(); b++) {
-                            auto* child = bone->Find(bone_hierarchy[b]);
-
-                            if (child == nullptr) {
-                                auto new_child = SafeAlloc::MakeUnique<ModelBone>();
-                                child = new_child.get();
-                                new_child->Name = bone_hierarchy[b];
-                                bone->Children.emplace_back(std::move(new_child));
-                            }
-
-                            bone = child;
-                        }
-                    }
-                }
-
-                _animController->SetInterpolation(!disable_animation_interpolation);
-                _hierarchy->SetupAnimationOutput(_animController.get());
-            }
-            else {
-                _animController = nullptr;
-            }
-        }
+        FO_RUNTIME_ASSERT_STR(fo3d, strex("Model description '{}' not found", name));
+
+        auto reader = DataReader({fo3d.GetBuf(), fo3d.GetSize()});
+        FO_RUNTIME_ASSERT(LoadBaked(name, reader));
+        return true;
     }
-    else {
-        // Load just model
-        auto* hierarchy = _modelMngr->GetHierarchy(name);
 
-        if (hierarchy == nullptr) {
-            return false;
+    // Load just model
+    auto* hierarchy = _modelMngr->GetHierarchy(name);
+
+    if (hierarchy == nullptr) {
+        return false;
+    }
+
+    // Create animation
+    _fileName = name;
+    _hierarchy = hierarchy;
+
+    return true;
+}
+
+auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string model = ReadBakedModelDescriptionString(reader);
+    const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
+    _shadowDisabled = reader.Read<uint8_t>() != 0;
+
+    const int32_t draw_width = reader.Read<int32_t>();
+    const int32_t draw_height = reader.Read<int32_t>();
+    const int32_t view_width = reader.Read<int32_t>();
+    const int32_t view_height = reader.Read<int32_t>();
+
+    FO_RUNTIME_ASSERT_STR((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), strex("Invalid DrawSize in baked model description '{}'", name));
+    FO_RUNTIME_ASSERT_STR((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), strex("Invalid ViewSize in baked model description '{}'", name));
+
+    if (draw_width != 0 && draw_height != 0) {
+        _drawSize.width = draw_width;
+        _drawSize.height = draw_height;
+    }
+    if (view_width != 0 && view_height != 0) {
+        _viewSize.width = view_width;
+        _viewSize.height = view_height;
+    }
+
+    const string rotation_bone = ReadBakedModelDescriptionString(reader);
+    _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
+
+    BakedModelDescriptionLink default_link = ReadBakedModelDescriptionLink(reader);
+
+    const uint32_t links_count = reader.Read<uint32_t>();
+    vector<BakedModelDescriptionLink> links;
+    links.reserve(links_count);
+
+    for (uint32_t i = 0; i < links_count; i++) {
+        BakedModelDescriptionLink link = ReadBakedModelDescriptionLink(reader);
+        FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range in baked model description '{}'", link.Data.Layer, name));
+        FO_RUNTIME_ASSERT_STR(link.Data.LayerValue != 0, strex("Model link layer value is zero in baked model description '{}'", name));
+        links.emplace_back(std::move(link));
+    }
+
+    const uint32_t anim_entries_count = reader.Read<uint32_t>();
+    vector<BakedModelDescriptionAnimEntry> anim_entries;
+    anim_entries.reserve(anim_entries_count);
+
+    for (uint32_t i = 0; i < anim_entries_count; i++) {
+        anim_entries.emplace_back(ReadBakedModelDescriptionAnimEntry(reader));
+    }
+
+    const uint32_t anim_speed_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < anim_speed_count; i++) {
+        const int32_t state_anim = reader.Read<int32_t>();
+        const int32_t action_anim = reader.Read<int32_t>();
+        const float32_t speed = reader.Read<float32_t>();
+        FO_RUNTIME_ASSERT_STR(speed > 0.0f, strex("Animation speed for ({}, {}) in baked model description '{}' must be positive", state_anim, action_anim, name));
+        _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim)), speed);
+    }
+
+    const uint32_t anim_layer_values_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < anim_layer_values_count; i++) {
+        const BakedModelDescriptionAnimLayerValue value = ReadBakedModelDescriptionAnimLayerValue(reader);
+        const auto index = std::make_pair(static_cast<CritterStateAnim>(value.StateAnim), static_cast<CritterActionAnim>(value.ActionAnim));
+        FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range in baked model description '{}'", value.Layer, name));
+
+        if (_animLayerValues.count(index) == 0) {
+            _animLayerValues.emplace(index, vector<pair<int32_t, int32_t>>());
         }
 
-        // Create animation
-        _fileName = name;
-        _hierarchy = hierarchy;
+        _animLayerValues[index].emplace_back(value.Layer, value.LayerValue);
+    }
+
+    const uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < fast_transition_bones_count; i++) {
+        const string bone_name = ReadBakedModelDescriptionString(reader);
+        _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(bone_name));
+    }
+
+    const uint32_t state_anim_equals_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < state_anim_equals_count; i++) {
+        const int32_t from = reader.Read<int32_t>();
+        const int32_t to = reader.Read<int32_t>();
+        _stateAnimEquals.emplace(static_cast<CritterStateAnim>(from), static_cast<CritterStateAnim>(to));
+    }
+
+    const uint32_t action_anim_equals_count = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < action_anim_equals_count; i++) {
+        const int32_t from = reader.Read<int32_t>();
+        const int32_t to = reader.Read<int32_t>();
+        _actionAnimEquals.emplace(static_cast<CritterActionAnim>(from), static_cast<CritterActionAnim>(to));
+    }
+
+    reader.VerifyEnd();
+
+    FO_RUNTIME_ASSERT_STR(!model.empty(), strex("'Model' section not found in baked model description '{}'", name));
+
+    ModelHierarchy* hierarchy = _modelMngr->GetHierarchy(model);
+    FO_RUNTIME_ASSERT_STR(hierarchy != nullptr, strex("Model hierarchy '{}' not found for baked model description '{}'", model, name));
+    FO_RUNTIME_ASSERT_STR(!hierarchy->_allDrawBones.empty(), strex("Model hierarchy '{}' has no drawable meshes for baked model description '{}'", model, name));
+
+    _fileName = name;
+    _hierarchy = hierarchy;
+    FO_RUNTIME_ASSERT_STR(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, strex("Rotation bone '{}' not found in baked model description '{}'", rotation_bone, name));
+
+    for (const hstring bone_name : _fastTransitionBones) {
+        FO_RUNTIME_ASSERT_STR(_hierarchy->_rootBone->Find(bone_name) != nullptr, strex("Fast transition bone not found in baked model description '{}'", name));
+    }
+
+    const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
+        ModelHierarchy* area = _modelMngr->GetHierarchy(raw_cut.FileName);
+        FO_RUNTIME_ASSERT_STR(area != nullptr, strex("Cut file '{}' not found", raw_cut.FileName));
+
+        auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
+        link.CutInfo.emplace_back(cut);
+        cut->Layers = raw_cut.Layers;
+        cut->UnskinBone1 = !raw_cut.UnskinBone1.empty() ? _modelMngr->GetBoneHashedString(raw_cut.UnskinBone1) : hstring {};
+        cut->UnskinBone2 = !raw_cut.UnskinBone2.empty() ? _modelMngr->GetBoneHashedString(raw_cut.UnskinBone2) : hstring {};
+        cut->RevertUnskinShape = raw_cut.RevertUnskinShape;
+
+        hstring unskin_shape_name;
+
+        if (cut->UnskinBone1 && cut->UnskinBone2 && !raw_cut.UnskinShape.empty()) {
+            unskin_shape_name = _modelMngr->GetBoneHashedString(raw_cut.UnskinShape);
+            bool unskin_shape_found = false;
+
+            for (raw_ptr<ModelBone> bone : area->_allDrawBones) {
+                if (unskin_shape_name == bone->Name) {
+                    cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
+                    unskin_shape_found = true;
+                    break;
+                }
+            }
+
+            FO_RUNTIME_ASSERT_STR(unskin_shape_found, strex("Unskin shape '{}' not found in cut file '{}'", raw_cut.UnskinShape, raw_cut.FileName));
+        }
+
+        for (const string& shape : raw_cut.Shapes) {
+            const hstring shape_name = !shape.empty() ? _modelMngr->GetBoneHashedString(shape) : hstring {};
+            bool shape_found = false;
+
+            for (raw_ptr<ModelBone> bone : area->_allDrawBones) {
+                if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
+                    cut->Shapes.emplace_back(CreateCutShape(bone->AttachedMesh.get()));
+                    shape_found = true;
+                }
+            }
+
+            FO_RUNTIME_ASSERT_STR(shape_found, strex("Cut shape '{}' not found in cut file '{}'", !shape.empty() ? shape : string {"All"}, raw_cut.FileName));
+        }
+
+        FO_RUNTIME_ASSERT_STR(!cut->Shapes.empty(), strex("Cut file '{}' produced no cut shapes", raw_cut.FileName));
+    };
+
+    _animDataDefault = std::move(default_link.Data);
+
+    for (const BakedModelDescriptionCutInfo& cut : default_link.CutInfo) {
+        append_cut_info(_animDataDefault, cut);
+    }
+
+    _animData.reserve(links.size());
+
+    for (BakedModelDescriptionLink& link : links) {
+        link.Data.Id = ++_modelMngr->_linkId;
+
+        for (const BakedModelDescriptionCutInfo& cut : link.CutInfo) {
+            append_cut_info(link.Data, cut);
+        }
+
+        _animData.emplace_back(std::move(link.Data));
+    }
+
+    if (!anim_entries.empty()) {
+        _animController = SafeAlloc::MakeUnique<ModelAnimationController>(2);
+    }
+
+    if (_animController) {
+        for (const BakedModelDescriptionAnimEntry& anim_entry : anim_entries) {
+            const auto anim_pair = std::make_pair(static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim));
+
+            if (_animIndexes.count(anim_pair) != 0) {
+                continue;
+            }
+
+            string anim_path;
+
+            if (anim_entry.FileName == "ModelFile") {
+                anim_path = model;
+            }
+            else {
+                anim_path = strex(name).extract_dir().combine_path(anim_entry.FileName);
+            }
+
+            const bool reversed = anim_entry.Name.starts_with('~');
+            const string anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
+            ModelAnimation* anim = _modelMngr->LoadAnimation(anim_path, anim_name);
+            FO_RUNTIME_ASSERT_STR(anim != nullptr, strex("Animation '{}' not found in '{}' for baked model description '{}'", anim_entry.Name, anim_path, name));
+
+            const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
+            _animIndexes.emplace(anim_pair, anim_index);
+        }
+
+        const int32_t anim_count = _animController->GetAnimationsCount();
+        FO_RUNTIME_ASSERT_STR(anim_count != 0, strex("No animations registered for baked model description '{}'", name));
+
+        for (int32_t i = 0; i < anim_count; i++) {
+            const vector<vector<hstring>>& bones_hierarchy = _animController->GetAnimationBones(i);
+
+            for (const vector<hstring>& bone_hierarchy : bones_hierarchy) {
+                FO_RUNTIME_ASSERT(!bone_hierarchy.empty());
+                ModelBone* bone = _hierarchy->_rootBone.get();
+
+                for (size_t b = 1; b < bone_hierarchy.size(); b++) {
+                    ModelBone* child = bone->Find(bone_hierarchy[b]);
+
+                    if (child == nullptr) {
+                        auto new_child = SafeAlloc::MakeUnique<ModelBone>();
+                        child = new_child.get();
+                        new_child->Name = bone_hierarchy[b];
+                        bone->Children.emplace_back(std::move(new_child));
+                    }
+
+                    bone = child;
+                }
+            }
+        }
+
+        _animController->SetInterpolation(!disable_animation_interpolation);
+        _hierarchy->SetupAnimationOutput(_animController.get());
     }
 
     return true;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -> ModelInformation::BakedModelDescriptionLink
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakedModelDescriptionLink link;
+    link.Data.Layer = reader.Read<int32_t>();
+    link.Data.LayerValue = reader.Read<int32_t>();
+    FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range", link.Data.Layer));
+
+    const string link_bone = ReadBakedModelDescriptionString(reader);
+    link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
+    link.Data.ChildName = ReadBakedModelDescriptionString(reader);
+    link.Data.IsParticles = reader.Read<uint8_t>() != 0;
+    link.Data.RotX = reader.Read<float32_t>();
+    link.Data.RotY = reader.Read<float32_t>();
+    link.Data.RotZ = reader.Read<float32_t>();
+    link.Data.MoveX = reader.Read<float32_t>();
+    link.Data.MoveY = reader.Read<float32_t>();
+    link.Data.MoveZ = reader.Read<float32_t>();
+    link.Data.ScaleX = reader.Read<float32_t>();
+    link.Data.ScaleY = reader.Read<float32_t>();
+    link.Data.ScaleZ = reader.Read<float32_t>();
+    link.Data.SpeedAjust = reader.Read<float32_t>();
+    FO_RUNTIME_ASSERT_STR(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
+    link.Data.DisabledLayer = ReadBakedModelDescriptionInt32Vector(reader);
+
+    for (const int32_t disabled_layer : link.Data.DisabledLayer) {
+        FO_RUNTIME_ASSERT_STR(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Disabled model layer {} is out of range", disabled_layer));
+    }
+
+    const uint32_t disabled_mesh_count = reader.Read<uint32_t>();
+    link.Data.DisabledMesh.reserve(disabled_mesh_count);
+
+    for (uint32_t i = 0; i < disabled_mesh_count; i++) {
+        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        link.Data.DisabledMesh.emplace_back(!mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
+    }
+
+    const uint32_t texture_count = reader.Read<uint32_t>();
+    link.Data.TextureInfo.reserve(texture_count);
+
+    for (uint32_t i = 0; i < texture_count; i++) {
+        string texture_name = ReadBakedModelDescriptionString(reader);
+        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        const int32_t texture_index = reader.Read<int32_t>();
+        FO_RUNTIME_ASSERT_STR(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", texture_index));
+        link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
+    }
+
+    const uint32_t effect_count = reader.Read<uint32_t>();
+    link.Data.EffectInfo.reserve(effect_count);
+
+    for (uint32_t i = 0; i < effect_count; i++) {
+        string effect_name = ReadBakedModelDescriptionString(reader);
+        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        link.Data.EffectInfo.emplace_back(std::move(effect_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
+    }
+
+    const uint32_t cut_count = reader.Read<uint32_t>();
+    link.CutInfo.reserve(cut_count);
+
+    for (uint32_t i = 0; i < cut_count; i++) {
+        link.CutInfo.emplace_back(ReadBakedModelDescriptionCutInfo(reader));
+    }
+
+    return link;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> ModelInformation::BakedModelDescriptionCutInfo
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakedModelDescriptionCutInfo cut;
+    cut.FileName = ReadBakedModelDescriptionString(reader);
+    cut.Layers = ReadBakedModelDescriptionInt32Vector(reader);
+    cut.Shapes = ReadBakedModelDescriptionStringVector(reader);
+    cut.UnskinBone1 = ReadBakedModelDescriptionString(reader);
+    cut.UnskinBone2 = ReadBakedModelDescriptionString(reader);
+    cut.UnskinShape = ReadBakedModelDescriptionString(reader);
+    cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
+    return cut;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimEntry
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakedModelDescriptionAnimEntry anim_entry;
+    anim_entry.StateAnim = reader.Read<int32_t>();
+    anim_entry.ActionAnim = reader.Read<int32_t>();
+    anim_entry.FileName = ReadBakedModelDescriptionString(reader);
+    anim_entry.Name = ReadBakedModelDescriptionString(reader);
+    return anim_entry;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> ModelInformation::BakedModelDescriptionAnimLayerValue
+{
+    FO_STACK_TRACE_ENTRY();
+
+    BakedModelDescriptionAnimLayerValue value;
+    value.StateAnim = reader.Read<int32_t>();
+    value.ActionAnim = reader.Read<int32_t>();
+    value.Layer = reader.Read<int32_t>();
+    value.LayerValue = reader.Read<int32_t>();
+    FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range", value.Layer));
+    return value;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const uint32_t count = reader.Read<uint32_t>();
+    vector<string> values;
+    values.reserve(count);
+
+    for (uint32_t i = 0; i < count; i++) {
+        values.emplace_back(ReadBakedModelDescriptionString(reader));
+    }
+
+    return values;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const uint32_t count = reader.Read<uint32_t>();
+    vector<int32_t> values;
+    values.resize(count);
+    reader.ReadPtr(values.data(), values.size() * sizeof(values[0]));
+    return values;
+}
+
+auto ModelInformation::ReadBakedModelDescriptionString(DataReader& reader) const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const uint32_t len = reader.Read<uint32_t>();
+    string value;
+    value.resize(len);
+    reader.ReadPtr(value.data(), len);
+    return value;
 }
 
 auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t
@@ -3010,6 +2765,10 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(_hierarchy != nullptr);
+    FO_RUNTIME_ASSERT_STR(_drawSize.width > 0 && _drawSize.height > 0, strex("Invalid draw size for model '{}'", _fileName));
+    FO_RUNTIME_ASSERT_STR(_viewSize.width > 0 && _viewSize.height > 0, strex("Invalid view size for model '{}'", _fileName));
+
     auto* model = SafeAlloc::MakeRaw<ModelInstance>(*_modelMngr, this);
 
     if (_animController) {
@@ -3026,6 +2785,9 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(mesh != nullptr);
+    FO_RUNTIME_ASSERT_STR(!mesh->Vertices.empty(), "Cut mesh has no vertices");
 
     ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
@@ -3136,11 +2898,9 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT_STR(!tex_name.empty(), strex("Empty texture name for model '{}'", _fileName));
     auto* texture = _modelMngr->LoadTexture(tex_name, _fileName);
-
-    if (texture == nullptr) {
-        WriteLog("Can't load texture '{}'", tex_name);
-    }
+    FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Can't load texture '{}' for model '{}'", tex_name, _fileName));
 
     return texture;
 }
@@ -3149,11 +2909,9 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT_STR(!name.empty(), strex("Empty effect name for model '{}'", _fileName));
     auto* effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
-
-    if (effect == nullptr) {
-        WriteLog("Can't load effect '{}'", name);
-    }
+    FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Can't load effect '{}' for model '{}'", name, _fileName));
 
     return effect;
 }

@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "ModelBaker.h"
+#include "ModelMeshBaker.h"
 
 #if FO_ENABLE_3D
 
@@ -214,18 +214,18 @@ struct BakerAnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(shared_ptr<BakingContext> ctx) :
+ModelMeshBaker::ModelMeshBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-ModelBaker::~ModelBaker()
+ModelMeshBaker::~ModelMeshBaker()
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path) const
+void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -236,7 +236,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
         for (const auto& file_header : files) {
             const string ext = strex(file_header.GetPath()).get_file_extension();
 
-            if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
+            if (ext != "fbx" && ext != "obj") {
                 continue;
             }
             if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
@@ -249,7 +249,7 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
     else {
         const string ext = strex(target_path).get_file_extension();
 
-        if (ext != "fo3d" && ext != "fbx" && ext != "obj") {
+        if (ext != "fbx" && ext != "obj") {
             return;
         }
 
@@ -274,13 +274,8 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (auto& file_ : filtered_files) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)]() FO_DEFERRED {
-            if (strex(file.GetPath()).get_file_extension() == "fo3d") {
-                _context->WriteData(file.GetPath(), file.GetData());
-            }
-            else {
-                auto data = BakeFbxFile(file.GetPath(), file);
-                _context->WriteData(file.GetPath(), data);
-            }
+            auto data = BakeFbxFile(file.GetPath(), file);
+            _context->WriteData(file.GetPath(), data);
         }));
     }
 
@@ -291,13 +286,13 @@ void ModelBaker::BakeFiles(const FileCollection& files, string_view target_path)
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            WriteLog("Model baking error: {}", ex.what());
+            WriteLog("Model mesh baking error: {}", ex.what());
             errors++;
         }
     }
 
     if (errors != 0) {
-        throw ModelBakerException("Errors during model baking");
+        throw ModelMeshBakerException("Errors during model mesh baking");
     }
 }
 
@@ -309,7 +304,7 @@ static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion;
 static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor;
 static auto ConvertFbxMatrix(const ufbx_matrix& m) -> mat44;
 
-auto ModelBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
+auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -326,7 +321,7 @@ auto ModelBaker::BakeFbxFile(string_view fname, const File& file) const -> vecto
     ufbx_scene* fbx_scene = ufbx_load_memory(file.GetBuf(), file.GetSize(), &opts, &fbx_error);
 
     if (fbx_scene == nullptr) {
-        throw ModelBakerException("Unable to load FBX", fbx_error.description.data);
+        throw ModelMeshBakerException("Unable to load FBX", fbx_error.description.data);
     }
 
     auto fbx_scene_cleanup = scope_exit([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });

@@ -21,7 +21,7 @@ TEST_CASE("ProtoTextBaker")
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == ProtoTextBaker::NAME);
-    CHECK(bakers.front()->GetOrder() == 5);
+    CHECK(bakers.front()->GetOrder() == 6);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
 }
 
