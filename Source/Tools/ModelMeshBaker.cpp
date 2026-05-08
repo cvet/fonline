@@ -71,6 +71,8 @@ struct BakerMeshData
     {
         FO_STACK_TRACE_ENTRY();
 
+        FO_RUNTIME_ASSERT(SkinBones.size() == SkinBoneOffsets.size());
+
         auto len = numeric_cast<uint32_t>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Vertices.data(), len * sizeof(Vertex3D));
@@ -97,7 +99,6 @@ struct BakerMeshData
     string DiffuseTexture {};
     vector<string> SkinBones {};
     vector<mat44> SkinBoneOffsets {};
-    string EffectName {};
 };
 
 struct BakerBone
@@ -192,6 +193,9 @@ struct BakerAnimSet
             len = numeric_cast<uint32_t>(o.Name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.Name.data(), len);
+            FO_RUNTIME_ASSERT(o.ScaleTime.size() == o.ScaleValue.size());
+            FO_RUNTIME_ASSERT(o.RotationTime.size() == o.RotationValue.size());
+            FO_RUNTIME_ASSERT(o.TranslationTime.size() == o.TranslationValue.size());
             len = numeric_cast<uint32_t>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
@@ -388,7 +392,6 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices.data(), triangle_indices.size(), fbx_mesh, fbx_face);
 
                 mesh_triangles_count += triangles_count;
-                FO_RUNTIME_ASSERT(mesh_triangles_count <= std::numeric_limits<vindex_t>::max());
 
                 for (size_t i = 0; i < numeric_cast<size_t>(triangles_count) * 3; i++) {
                     const uint32_t index = triangle_indices[i];
@@ -435,8 +438,19 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                             total_weight += numeric_cast<float32_t>(skin_weight.weight);
                         }
 
-                        for (size_t w = 0; w < weights_count; w++) {
-                            v.BlendWeights[w] /= total_weight;
+                        if (total_weight > 0.0f) {
+                            for (size_t w = 0; w < weights_count; w++) {
+                                v.BlendWeights[w] /= total_weight;
+                            }
+                        }
+                        else if (weights_count != 0) {
+                            v.BlendIndices[0] = 0.0f;
+                            v.BlendWeights[0] = 1.0f;
+
+                            for (size_t w = 1; w < weights_count; w++) {
+                                v.BlendIndices[w] = 0.0f;
+                                v.BlendWeights[w] = 0.0f;
+                            }
                         }
                     }
                 }
@@ -445,27 +459,28 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
             FO_RUNTIME_ASSERT(mesh_triangles_count == fbx_mesh_part.num_triangles);
         }
 
-#if 1
         vector<uint32_t> indices;
         indices.resize(mesh->Vertices.size());
 
         ufbx_error fbx_generate_indices_error;
         const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh->Vertices.data(), mesh->Vertices.size(), sizeof(Vertex3D)}};
         const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
-        FO_RUNTIME_ASSERT(fbx_generate_indices_error.type == UFBX_ERROR_NONE);
-        mesh->Vertices.resize(result_vertices);
 
+        if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
+            throw ModelMeshBakerException(strex("FBX index generation failed for mesh '{}': {}", fbx_node->name.data, fbx_generate_indices_error.description.data));
+        }
+        if (indices.size() > std::numeric_limits<vindex_t>::max()) {
+            throw ModelMeshBakerException(strex("Mesh '{}' has {} indices, exceeds vindex_t limit {}", fbx_node->name.data, indices.size(), std::numeric_limits<vindex_t>::max()));
+        }
+
+        mesh->Vertices.resize(result_vertices);
         mesh->Indices.resize(indices.size());
         std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 
-#else
-        for (size_t i = 0; i < mesh->Vertices.size(); i++) {
-            mesh->Indices.emplace_back(numeric_cast<vindex_t>(mesh->Indices.size()));
-        }
-#endif
-
         if (fbx_skin != nullptr) {
-            FO_RUNTIME_ASSERT(fbx_skin->clusters.count <= MODEL_MAX_BONES);
+            if (fbx_skin->clusters.count > MODEL_MAX_BONES) {
+                throw ModelMeshBakerException(strex("Mesh '{}' has {} skin clusters, exceeds MODEL_MAX_BONES limit {}", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES));
+            }
 
             mesh->SkinBones.reserve(fbx_skin->clusters.count);
             mesh->SkinBoneOffsets.reserve(fbx_skin->clusters.count);

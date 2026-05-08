@@ -46,8 +46,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr size_t MODEL_LAYERS_COUNT = 30;
-
 class IAppRender;
 
 enum class ModelAnimFlags : uint8_t

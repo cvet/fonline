@@ -39,8 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32_t BAKER_MODEL_LAYERS_COUNT = 30;
-
 struct BakerModelDescriptionCut
 {
     static void WriteString(DataWriter& writer, string_view value);
@@ -262,29 +260,19 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    vector<File> bake_files;
-    bake_files.reserve(filtered_files.size());
-
-    for (File& file : filtered_files) {
-        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), std::numeric_limits<uint64_t>::max())) {
-            continue;
-        }
-
-        bake_files.emplace_back(std::move(file));
-    }
-
-    if (bake_files.empty()) {
-        return;
-    }
-
     vector<std::future<void>> file_bakings;
 
-    for (File& file_ : bake_files) {
+    for (File& file_ : filtered_files) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &files, file = std::move(file_)]() FO_DEFERRED {
             const BakerClientEngine client_engine(*_context->BakedFiles);
             ModelDescriptionParser parser(files, client_engine);
             auto [description, max_write_time] = parser.Parse(file.GetPath());
-            ignore_unused(max_write_time);
+
+            // Honour incremental baking: only skip after we know the newest write-time across the
+            // .fo3d itself and every Include'd template, so an unchanged description is not re-baked.
+            if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), max_write_time)) {
+                return;
+            }
 
             ValidateModelDescription(files, *_context->BakedFiles, client_engine, description, file.GetPath());
 
@@ -491,7 +479,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
                 cut.Layers.emplace_back(cut_layer);
             }
             else {
-                for (int32_t i = 0; i < BAKER_MODEL_LAYERS_COUNT; i++) {
+                for (int32_t i = 0; i < numeric_cast<int32_t>(MODEL_LAYERS_COUNT); i++) {
                     if (i != state.Layer) {
                         cut.Layers.emplace_back(i);
                     }
@@ -837,8 +825,8 @@ static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unor
     }
 
     for (const int32_t disabled_layer : link.DisabledLayer) {
-        if (disabled_layer < 0 || disabled_layer >= BAKER_MODEL_LAYERS_COUNT) {
-            throw ModelInfoBakerException(strex("Disabled layer '{}' in '{}' is out of range [0, {})", disabled_layer, fname, BAKER_MODEL_LAYERS_COUNT));
+        if (disabled_layer < 0 || disabled_layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
+            throw ModelInfoBakerException(strex("Disabled layer '{}' in '{}' is out of range [0, {})", disabled_layer, fname, MODEL_LAYERS_COUNT));
         }
     }
 
@@ -908,7 +896,7 @@ static void ValidateModelDescriptionCut(const FileSystem& baked_files, unordered
     }
 
     for (const int32_t layer : cut.Layers) {
-        if (layer < 0 || layer >= BAKER_MODEL_LAYERS_COUNT) {
+        if (layer < 0 || layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
             throw ModelInfoBakerException(strex("Cut '{}' in '{}' has out of range layer {}", cut.FileName, fname, layer));
         }
     }
@@ -1465,8 +1453,8 @@ static void ValidateModelDescriptionLayer(int32_t layer, string_view token, stri
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (layer < 0 || layer >= BAKER_MODEL_LAYERS_COUNT) {
-        throw ModelInfoBakerException(strex("Layer value '{}' for token '{}' in '{}' at line {} is out of range [0, {})", layer, token, fname, line, BAKER_MODEL_LAYERS_COUNT));
+    if (layer < 0 || layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
+        throw ModelInfoBakerException(strex("Layer value '{}' for token '{}' in '{}' at line {} is out of range [0, {})", layer, token, fname, line, MODEL_LAYERS_COUNT));
     }
 }
 

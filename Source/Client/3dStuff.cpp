@@ -2296,7 +2296,10 @@ auto ModelInformation::Load(string_view name) -> bool
     if (ext == "fo3d") {
         // Load main fo3d file
         const auto fo3d = _modelMngr->_resources->ReadFile(name);
-        FO_RUNTIME_ASSERT_STR(fo3d, strex("Model description '{}' not found", name));
+
+        if (!fo3d) {
+            return false;
+        }
 
         auto reader = DataReader({fo3d.GetBuf(), fo3d.GetSize()});
         FO_RUNTIME_ASSERT(LoadBaked(name, reader));
@@ -2667,6 +2670,7 @@ auto ModelInformation::ReadBakedModelDescriptionStringVector(DataReader& reader)
     FO_STACK_TRACE_ENTRY();
 
     const uint32_t count = reader.Read<uint32_t>();
+    FO_RUNTIME_ASSERT_STR(numeric_cast<size_t>(count) * sizeof(uint32_t) <= reader.GetRemainingBytes(), strex("Baked model description string vector count {} exceeds remaining buffer", count));
     vector<string> values;
     values.reserve(count);
 
@@ -2682,6 +2686,7 @@ auto ModelInformation::ReadBakedModelDescriptionInt32Vector(DataReader& reader) 
     FO_STACK_TRACE_ENTRY();
 
     const uint32_t count = reader.Read<uint32_t>();
+    FO_RUNTIME_ASSERT_STR(numeric_cast<size_t>(count) * sizeof(int32_t) <= reader.GetRemainingBytes(), strex("Baked model description int32 vector count {} exceeds remaining buffer", count));
     vector<int32_t> values;
     values.resize(count);
     reader.ReadPtr(values.data(), values.size() * sizeof(values[0]));
@@ -2693,6 +2698,7 @@ auto ModelInformation::ReadBakedModelDescriptionString(DataReader& reader) const
     FO_STACK_TRACE_ENTRY();
 
     const uint32_t len = reader.Read<uint32_t>();
+    FO_RUNTIME_ASSERT_STR(numeric_cast<size_t>(len) <= reader.GetRemainingBytes(), strex("Baked model description string length {} exceeds remaining buffer", len));
     string value;
     value.resize(len);
     reader.ReadPtr(value.data(), len);
