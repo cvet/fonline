@@ -170,6 +170,8 @@ struct BakedModelMeshInfo
 };
 
 static auto IsModelDescriptionTemplateFile(string_view path) -> bool;
+static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname) -> uint64_t;
+static void UpdateModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname, const vector<pair<string, string>>& replacements, vector<string>& include_stack, uint64_t& max_write_time);
 
 static void ValidateModelDescription(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const BakerModelDescription& description, string_view fname);
 static void ValidateModelDescriptionAnimations(const NameResolver& name_resolver, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakerModelDescription& description, string_view fname);
@@ -264,15 +266,18 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (File& file_ : filtered_files) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &files, file = std::move(file_)]() FO_DEFERRED {
+            if (_context->BakeChecker) {
+                const uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, file.GetPath());
+
+                if (!_context->BakeChecker(file.GetPath(), max_write_time)) {
+                    return;
+                }
+            }
+
             const BakerClientEngine client_engine(*_context->BakedFiles);
             ModelDescriptionParser parser(files, client_engine);
             auto [description, max_write_time] = parser.Parse(file.GetPath());
-
-            // Honour incremental baking: only skip after we know the newest write-time across the
-            // .fo3d itself and every Include'd template, so an unchanged description is not re-baked.
-            if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), max_write_time)) {
-                return;
-            }
+            ignore_unused(max_write_time);
 
             ValidateModelDescription(files, *_context->BakedFiles, client_engine, description, file.GetPath());
 
@@ -305,6 +310,79 @@ static auto IsModelDescriptionTemplateFile(string_view path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     return strex(path).extract_file_name().starts_with("TEMPLATE_");
+}
+
+static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname) -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint64_t max_write_time = 0;
+    vector<string> include_stack;
+
+    UpdateModelDescriptionMaxWriteTime(files, fname, {}, include_stack, max_write_time);
+
+    return max_write_time;
+}
+
+static void UpdateModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname, const vector<pair<string, string>>& replacements, vector<string>& include_stack, uint64_t& max_write_time)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (std::ranges::find(include_stack, fname) != include_stack.end()) {
+        throw ModelInfoBakerException(strex("Recursive model description include '{}'", fname));
+    }
+
+    File file = files.FindFileByPath(fname);
+
+    if (!file) {
+        throw ModelInfoBakerException(strex("Model description file '{}' not found", fname));
+    }
+
+    max_write_time = std::max(max_write_time, file.GetWriteTime());
+    include_stack.emplace_back(fname);
+
+    const string content = ApplyModelDescriptionReplacements(file.GetStr(), replacements);
+    auto istr = istringstream(content);
+    string line_buf;
+    size_t line = 0;
+
+    while (std::getline(istr, line_buf)) {
+        line++;
+
+        const vector<string> tokens = TokenizeModelDescriptionLine(line_buf);
+        size_t index = 0;
+
+        while (index < tokens.size()) {
+            const string token = tokens[index++];
+
+            if (token != "Include") {
+                continue;
+            }
+
+            if (index >= tokens.size()) {
+                throw ModelInfoBakerException(strex("Missing include path in '{}' at line {}", fname, line));
+            }
+
+            const string include_name = tokens[index++];
+
+            if ((tokens.size() - index) % 2 != 0) {
+                throw ModelInfoBakerException(strex("Include '{}' in '{}' at line {} has unpaired template argument", include_name, fname, line));
+            }
+
+            vector<pair<string, string>> include_replacements;
+
+            while (index < tokens.size()) {
+                string name = tokens[index++];
+                string value = tokens[index++];
+                include_replacements.emplace_back(std::move(name), std::move(value));
+            }
+
+            const string include_path = strex(fname).extract_dir().combine_path(include_name);
+            UpdateModelDescriptionMaxWriteTime(files, include_path, include_replacements, include_stack, max_write_time);
+        }
+    }
+
+    include_stack.pop_back();
 }
 
 ModelDescriptionParser::ModelDescriptionParser(const FileCollection& files, const NameResolver& name_resolver) :
