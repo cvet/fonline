@@ -101,6 +101,8 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
         _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
 
+    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
+
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
     _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex2.png", AtlasType::MapSprites);
     _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex3.png", AtlasType::MapSprites);
@@ -3775,6 +3777,8 @@ void MapView::SetScreenSize(isize32 size)
     if (_rtLight && !_engine->Settings.MapDirectDraw) {
         rt_mngr.ResizeRenderTarget(_rtLight.get(), map_rt_size);
     }
+
+    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
 
     RebuildMapNow();
 }

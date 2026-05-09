@@ -107,13 +107,9 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
     _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED {
         const auto new_window_size = _window->GetSize();
-        const auto new_map_rt_size = isize32(new_window_size.width + GameSettings::MAP_HEX_WIDTH, new_window_size.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
 
         if (_rtMain) {
             _rtMngr.ResizeRenderTarget(_rtMain.get(), new_window_size);
-        }
-        if (_rtContours) {
-            _rtMngr.ResizeRenderTarget(_rtContours.get(), new_map_rt_size);
         }
     };
 }
@@ -1328,6 +1324,15 @@ void SpriteManager::DrawContours()
         _rtMngr.PopRenderTarget();
 
         _contoursAdded = false;
+    }
+}
+
+void SpriteManager::EnsureContourTargetSize(isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_rtContours && _rtContours->GetSize() != size) {
+        _rtMngr.ResizeRenderTarget(_rtContours.get(), size);
     }
 }
 
