@@ -353,24 +353,30 @@ static void AccumulateModelDescriptionMaxWriteTime(const FileCollection& files, 
 
         const vector<string> tokens = TokenizeModelDescriptionLine(line_buf);
 
-        if (tokens.empty() || tokens.front() != "Include") {
-            continue;
-        }
-        if (tokens.size() < 2) {
-            throw ModelInfoBakerException(strex("Missing include path in '{}' at line {}", fname, line));
-        }
-        if ((tokens.size() - 2) % 2 != 0) {
-            throw ModelInfoBakerException(strex("Include '{}' in '{}' at line {} has unpaired template argument", tokens[1], fname, line));
-        }
+        for (size_t i = 0; i < tokens.size(); i++) {
+            if (tokens[i] != "Include") {
+                continue;
+            }
+            if (i + 1 >= tokens.size()) {
+                throw ModelInfoBakerException(strex("Missing include path in '{}' at line {}", fname, line));
+            }
 
-        vector<pair<string, string>> include_replacements;
+            const string& include_name = tokens[i + 1];
 
-        for (size_t i = 2; i < tokens.size(); i += 2) {
-            include_replacements.emplace_back(tokens[i], tokens[i + 1]);
+            if ((tokens.size() - (i + 2)) % 2 != 0) {
+                throw ModelInfoBakerException(strex("Include '{}' in '{}' at line {} has unpaired template argument", include_name, fname, line));
+            }
+
+            vector<pair<string, string>> include_replacements;
+
+            for (size_t j = i + 2; j < tokens.size(); j += 2) {
+                include_replacements.emplace_back(tokens[j], tokens[j + 1]);
+            }
+
+            const string include_path = strex(fname).extract_dir().combine_path(include_name);
+            AccumulateModelDescriptionMaxWriteTime(files, include_path, include_replacements, include_stack, max_write_time);
+            break;
         }
-
-        const string include_path = strex(fname).extract_dir().combine_path(tokens[1]);
-        AccumulateModelDescriptionMaxWriteTime(files, include_path, include_replacements, include_stack, max_write_time);
     }
 
     include_stack.pop_back();

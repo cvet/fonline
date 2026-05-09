@@ -3742,9 +3742,14 @@ void MapView::OnScreenSizeChanged()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_rtLight && _engine->Settings.MapDirectDraw) {
+    if (_engine->Settings.MapDirectDraw) {
         const auto window_size = App->MainWindow.GetSize();
-        _engine->SprMngr.GetRtMngr().ResizeRenderTarget(_rtLight.get(), window_size);
+
+        SetScreenSize(window_size);
+
+        if (_rtLight) {
+            _engine->SprMngr.GetRtMngr().ResizeRenderTarget(_rtLight.get(), window_size);
+        }
     }
 
     RebuildMapNow();

@@ -116,6 +116,7 @@ FO_SCRIPT_API void Server_Player_UnloadMap(Player* self)
         throw ScriptException("Player controls critter");
     }
 
+    self->ResetViewMap();
     self->Send_LoadMap(nullptr);
 }
 

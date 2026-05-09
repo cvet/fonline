@@ -6091,10 +6091,12 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     SetMapDirty(map, false);
+
     if (clear_undo) {
         ClearUndoContext(map);
     }
-    map->MarkAsDestroyed();
+
+    map->DestroySelf();
     LoadedMaps.erase(it);
 }
 
