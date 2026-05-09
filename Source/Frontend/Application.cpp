@@ -1801,8 +1801,30 @@ void Application::BeginFrame()
             const bool is_main = (resized_window == static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
 
             if (is_main && (Settings.ScreenWidth != width || Settings.ScreenHeight != height)) {
+                const isize32 old_host {Settings.ScreenWidth, Settings.ScreenHeight};
+                const isize32 new_host {width, height};
+
                 Settings.ScreenWidth = width;
                 Settings.ScreenHeight = height;
+
+                if (old_host.width > 0 && old_host.height > 0) {
+                    const auto scale = [](int32_t value, int32_t old_dim, int32_t new_dim) { //
+                        return iround<int32_t>(numeric_cast<float32_t>(value) * numeric_cast<float32_t>(new_dim) / numeric_cast<float32_t>(old_dim));
+                    };
+
+                    for (auto& window : _allWindows) {
+                        if (window->_isVirtual && window->_displayRect.width > 0 && window->_displayRect.height > 0) {
+                            const auto r = window->_displayRect;
+                            window->_displayRect = irect32 {
+                                //
+                                scale(r.x, old_host.width, new_host.width), //
+                                scale(r.y, old_host.height, new_host.height), //
+                                scale(r.width, old_host.width, new_host.width), //
+                                scale(r.height, old_host.height, new_host.height),
+                            };
+                        }
+                    }
+                }
             }
 
             _ctx->ActiveRenderer->OnResizeWindow({width, height});
