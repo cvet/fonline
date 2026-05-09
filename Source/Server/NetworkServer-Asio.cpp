@@ -300,11 +300,11 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto rearm_accept = scope_success([this]() noexcept {
+    const auto rearm_accept = [this] {
         if (!_context.stopped()) {
             AcceptNext();
         }
-    });
+    };
 
     if (!error) {
         try {
@@ -312,9 +312,26 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
             _connectionCallback(std::move(connection));
         }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+        catch (const std::exception&) {
+            const auto exception = std::current_exception();
+            safe_call(rearm_accept);
+
+            run_thread("Network-Asio-Reporter", [exception = std::move(exception)] {
+                try {
+                    std::rethrow_exception(exception);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+                catch (...) {
+                    FO_UNKNOWN_EXCEPTION();
+                }
+            }).detach();
+
+            return;
         }
+
+        rearm_accept();
     }
     else {
         if (error != asio::error::operation_aborted) {
