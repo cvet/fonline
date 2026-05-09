@@ -97,12 +97,14 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = false;
         bool fatal = true;
 
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = FormatStackTrace(st);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
@@ -110,7 +112,8 @@ TEST_CASE("ExceptionHandling")
         ReportExceptionAndContinue(ex);
 
         CHECK(message == ex.what());
-        CHECK_FALSE(traceback.empty());
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
 
         SetExceptionCallback(std::move(prev_callback));
@@ -121,12 +124,14 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = false;
         bool fatal = true;
 
         SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = FormatStackTrace(st);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
@@ -135,7 +140,8 @@ TEST_CASE("ExceptionHandling")
         CHECK(message.find("VerifyFailedException: CheckInput") != string::npos);
         CHECK(message.find("- unit_test.cpp") != string::npos);
         CHECK(message.find("- 77") != string::npos);
-        CHECK_FALSE(traceback.empty());
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
 
         SetExceptionCallback(std::move(prev_callback));
@@ -145,10 +151,12 @@ TEST_CASE("ExceptionHandling")
     {
         const auto prev_callback = GetExceptionCallback();
 
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = false;
 
         SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
-            traceback = FormatStackTrace(st);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
         });
 
         try {
@@ -158,7 +166,8 @@ TEST_CASE("ExceptionHandling")
             ReportExceptionAndContinue(ex);
         }
 
-        CHECK(traceback.find("Stack trace") != string::npos);
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
 
         SetExceptionCallback(std::move(prev_callback));
     }
@@ -167,10 +176,12 @@ TEST_CASE("ExceptionHandling")
     {
         const auto prev_callback = GetExceptionCallback();
 
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = true;
 
         SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
-            traceback = FormatStackTrace(st);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
         });
 
         try {
@@ -180,7 +191,8 @@ TEST_CASE("ExceptionHandling")
             ReportExceptionAndContinue(ex);
         }
 
-        CHECK(traceback.find("Catched at:") == 0);
+        CHECK(trace_received);
+        CHECK_FALSE(trace_has_origin);
 
         SetExceptionCallback(std::move(prev_callback));
     }
