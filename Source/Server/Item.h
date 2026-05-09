@@ -57,7 +57,7 @@ public:
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
     auto operator=(Item&&) noexcept = delete;
-    ~Item() override = default;
+    ~Item() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto.get()); }

@@ -1298,7 +1298,8 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
     }
 
     if (client->OffscreenSurfaces.empty()) {
-        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Screen, {0, 0}, false);
+        const auto window_size = client->SprMngr.GetWindow().GetSize();
+        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, window_size, false);
 
         if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");

@@ -227,10 +227,10 @@ namespace
 
             auto make_route_snapshot = [this]() {
                 auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteSnapshotRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "int32[]", "Values"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Note"}));
+                (void)fields_registrator->RegisterProperty({"Common", "int32[]", "Values"});
+                (void)fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"});
+                (void)fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"});
+                (void)fields_registrator->RegisterProperty({"Common", "string", "Note"});
 
                 auto& ref_type = _ref_types["RouteSnapshot"];
                 ref_type.FieldsRegistrator = fields_registrator.get();
@@ -247,9 +247,9 @@ namespace
 
             auto make_route_envelope = [this]() {
                 auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteEnvelopeRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Title"}));
+                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"});
+                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"});
+                (void)fields_registrator->RegisterProperty({"Common", "string", "Title"});
 
                 auto& ref_type = _ref_types["RouteEnvelope"];
                 ref_type.FieldsRegistrator = fields_registrator.get();

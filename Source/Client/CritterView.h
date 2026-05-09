@@ -52,7 +52,7 @@ public:
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
     auto operator=(CritterView&&) noexcept = delete;
-    ~CritterView() override = default;
+    ~CritterView() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto IsAlive() const noexcept -> bool { return GetCondition() == CritterCondition::Alive; }

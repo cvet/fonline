@@ -157,7 +157,11 @@ private:
     if (!(expr)) [[unlikely]] { \
         throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
     }
-#define FO_RUNTIME_VERIFY(expr, ...) \
+#define FO_RUNTIME_VERIFY(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+    }
+#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...) \
     if (!(expr)) [[unlikely]] { \
         FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
         return __VA_ARGS__; \
@@ -170,6 +174,7 @@ private:
 #define FO_RUNTIME_ASSERT(expr)
 #define FO_RUNTIME_ASSERT_STR(expr, str)
 #define FO_RUNTIME_VERIFY(expr, ...)
+#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...)
 #define FO_STRONG_ASSERT(expr)
 #endif
 

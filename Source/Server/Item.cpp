@@ -46,6 +46,15 @@ Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Prope
     FO_STACK_TRACE_ENTRY();
 }
 
+Item::~Item()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(!HasInnerItems());
+    }
+}
+
 auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();

@@ -157,7 +157,7 @@ public:
         bool FollowCritter {};
     };
 
-    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
+    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -192,6 +192,7 @@ public:
     void ClearHexTrack();
     void SwitchShowTrack();
 
+    void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
     auto MapToScreenPos(ipos32 map_pos) const -> ipos32;
     auto GetScreenRawHex() const -> ipos32;

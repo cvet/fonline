@@ -208,6 +208,7 @@ public:
     void Flush();
 
     void DrawContours();
+    void EnsureContourTargetSize(isize32 size);
 
     void SetEgg(TransparentEggSlot slot, mpos hex, const MapSprite* mspr);
     void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius);

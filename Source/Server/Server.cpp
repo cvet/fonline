@@ -712,6 +712,9 @@ void ServerEngine::Shutdown()
     }
 
     TimeEventMngr.ClearTimeEvents();
+
+    _shutdownInProgress = true;
+
     EntityMngr.DestroyInnerEntities(this);
     EntityMngr.DestroyAllEntities();
     ShutdownBackends();
@@ -1345,6 +1348,7 @@ void ServerEngine::ProcessPlayer(Player* player)
         OnPlayerLogout.Fire(player);
 
         player->DetachCritter();
+        player->ResetViewMap();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         return;
@@ -1961,12 +1965,22 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     FO_RUNTIME_ASSERT(player);
     FO_RUNTIME_ASSERT(!player->IsDestroyed());
-    FO_RUNTIME_ASSERT(cr);
+
+    Critter* prev_cr = player->GetControlledCritter();
+
+    if (cr == nullptr) {
+        if (prev_cr == nullptr) {
+            return;
+        }
+
+        WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
+        player->DetachCritter();
+        return;
+    }
+
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
-
-    Critter* prev_cr = player->GetControlledCritter();
 
     if (prev_cr == cr) {
         throw GenericException("Player critter already selected");
@@ -1974,6 +1988,8 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
     if (!cr->GetControlledByPlayer()) {
         throw GenericException("Critter can't be controlled by player");
     }
+
+    player->ResetViewMap();
 
     if (prev_cr != nullptr) {
         prev_cr->DetachPlayer();
@@ -2006,20 +2022,6 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     cr->Send_TimeSync();
-
-    if (const auto* view_map = cr->GetViewMap(); view_map != nullptr) {
-        auto* map = EntityMngr.GetMap(view_map->MapId);
-
-        if (map != nullptr) {
-            MapMngr.ViewMap(cr, map, view_map->Look, view_map->Hex, view_map->Dir);
-            cr->Send_ViewMap();
-            cr->Send_TimeSync();
-            cr->ResetViewMap();
-            return;
-        }
-
-        cr->ResetViewMap();
-    }
 
     const auto* map = EntityMngr.GetMap(cr->GetMapId());
     const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
@@ -2243,6 +2245,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
         }
         if (registered_player) {
             safe_call([&] { player->DetachCritter(); });
+            safe_call([&] { player->ResetViewMap(); });
             safe_call([&] { player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(player); });
         }
@@ -2264,6 +2267,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
         player->DetachCritter();
+        player->ResetViewMap();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
@@ -2295,6 +2299,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
     scope_fail disconnect_on_error {[&]() noexcept {
         if (registered_player) {
             safe_call([&] { unlogined_player->DetachCritter(); });
+            safe_call([&] { unlogined_player->ResetViewMap(); });
             safe_call([&] { unlogined_player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(unlogined_player); });
         }
@@ -2327,6 +2332,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
 
         if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
             player->DetachCritter();
+            player->ResetViewMap();
             player->MarkAsDestroyed();
             EntityMngr.UnregisterPlayer(player);
             registered_player = false;
@@ -2607,7 +2613,7 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
-    StopCritterMoving(cr, MovingState::Stopped, [&] { cr->SendAndBroadcast(player, [&](Critter* cr2) { cr2->Send_Moving(cr); }); });
+    StopCritterMoving(cr, MovingState::Stopped, [&] { cr->SendAndBroadcast(player, [&](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); }); });
 }
 
 void ServerEngine::Process_Dir(Player* player)
@@ -2646,7 +2652,7 @@ void ServerEngine::Process_Dir(Player* player)
     }
 
     cr->ChangeDir(checked_dir);
-    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); });
+    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); }, [cr](Player* p) { p->Send_Dir(cr); });
 }
 
 void ServerEngine::Process_Property(Player* player)
@@ -3280,7 +3286,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     cr->GetMoving()->ValidateRuntimeState();
     cr->SetMovingSpeed(cr->GetMoving()->GetSpeed());
 
-    cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); });
+    cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); });
 
     OnCritterStartMoving.Fire(cr, was_moving);
 }
@@ -3339,7 +3345,7 @@ void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
     cr->GetMoving()->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
 
-    cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); });
+    cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); }, [cr](Player* p) { p->Send_MovingSpeed(cr); });
 
     OnCritterStartMoving.Fire(cr, true);
 }

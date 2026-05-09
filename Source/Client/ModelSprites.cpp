@@ -225,7 +225,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     }
 
     if (rt_model == nullptr) {
-        rt_model = _sprMngr->GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
+        rt_model = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
         _rtIntermediate.emplace_back(rt_model);
     }
 

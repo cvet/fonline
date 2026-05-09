@@ -1637,10 +1637,13 @@ void ClientEngine::Net_OnLoadMap()
         const auto* map_proto = GetProtoMap(map_pid);
         FO_RUNTIME_ASSERT(map_proto);
 
+        isize32 screen_size = {Settings.ScreenWidth, Settings.ScreenHeight};
+        OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
+
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto);
+        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto, screen_size);
         _curMap->RestoreData(_tempPropertiesData);
         _curMap->LoadStaticData();
 

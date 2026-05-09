@@ -67,7 +67,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _window {&window},
     _resources {&resources},
     _gameTimer {&game_time},
-    _rtMngr(settings, *_window, [this]() FO_DEFERRED { Flush(); }),
+    _rtMngr(_window->GetRender(), [this]() FO_DEFERRED { Flush(); }),
     _atlasMngr(settings, _rtMngr),
     _render {&_window->GetRender()},
     _input {&_window->GetInput()},
@@ -96,12 +96,22 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _contourDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _contourDrawBuf->IndCount = 6;
 
+    const auto window_size = _window->GetSize();
+    const auto map_rt_size = isize32(window_size.width + GameSettings::MAP_HEX_WIDTH, window_size.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+
 #if !FO_DIRECT_SPRITES_DRAW
-    _rtMain = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Screen, {}, true);
+    _rtMain = _rtMngr.CreateRenderTarget(false, window_size, true);
 #endif
-    _rtContours = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+    _rtContours = _rtMngr.CreateRenderTarget(false, map_rt_size, true);
 
     _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
+    _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED {
+        const auto new_window_size = _window->GetSize();
+
+        if (_rtMain) {
+            _rtMngr.ResizeRenderTarget(_rtMain.get(), new_window_size);
+        }
+    };
 }
 
 auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
@@ -1314,6 +1324,15 @@ void SpriteManager::DrawContours()
         _rtMngr.PopRenderTarget();
 
         _contoursAdded = false;
+    }
+}
+
+void SpriteManager::EnsureContourTargetSize(isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_rtContours && _rtContours->GetSize() != size) {
+        _rtMngr.ResizeRenderTarget(_rtContours.get(), size);
     }
 }
 

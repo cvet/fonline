@@ -49,6 +49,12 @@ class Map;
 class Location;
 class MapManager;
 
+struct ViewMapContext
+{
+    ident_t MapId {};
+    mpos Hex {};
+};
+
 class Player final : public ServerEntity, public PlayerProperties
 {
 public:
@@ -65,12 +71,17 @@ public:
     [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
     [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
     [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection* { return _connection.get(); }
+    [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext* { return _viewMap.get(); }
+    [[nodiscard]] auto GetViewMapTarget() const noexcept -> const Map* { return _viewMapTarget.get(); }
+    [[nodiscard]] auto GetViewMapTarget() noexcept -> Map* { return _viewMapTarget.get(); }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);
     void DetachCritter();
     void SwapConnection(Player* other) noexcept;
     void SetIgnoreSendEntityProperty(const Entity* entity, const Property* prop) noexcept;
+    void SetViewMap(Map* map, mpos hex);
+    void ResetViewMap() noexcept;
 
     void Send_LoginSuccess();
     void Send_Moving(const Critter* from_cr);
@@ -114,6 +125,8 @@ private:
     raw_ptr<Critter> _controlledCr {};
     raw_ptr<const Entity> _sendIgnoreEntity {};
     raw_ptr<const Property> _sendIgnoreProperty {};
+    unique_ptr<ViewMapContext> _viewMap {};
+    raw_ptr<Map> _viewMapTarget {};
 };
 
 FO_END_NAMESPACE

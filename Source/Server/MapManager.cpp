@@ -36,6 +36,7 @@
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
+#include "Player.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
@@ -610,6 +611,13 @@ void MapManager::DestroyMapInternal(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
+    while (map->HasSpectatorPlayers()) {
+        auto* player = map->GetSpectatorPlayers().back().get();
+        player->ResetViewMap();
+        player->Send_LoadMap(nullptr);
+    }
+
     for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems() || map->HasInnerEntities(); detector.AddLoop()) {
         try {
             if (map->HasCritters() || map->HasItems()) {
@@ -938,6 +946,13 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         }
 
         map->AddCritter(cr);
+
+        // Notify spectators
+        if (map->HasSpectatorPlayers()) {
+            for (auto* player : copy_hold_ref(map->GetSpectatorPlayers())) {
+                player->Send_AddCritter(cr);
+            }
+        }
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -994,6 +1009,14 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
 
         cr->ClearVisibleEnitites();
+
+        // Notify spectators
+        if (map->HasSpectatorPlayers()) {
+            for (auto* player : copy_hold_ref(map->GetSpectatorPlayers())) {
+                player->Send_RemoveCritter(cr);
+            }
+        }
+
         map->RemoveCritter(cr);
         cr->SetMapId({});
 
@@ -1197,37 +1220,29 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, mdir dir)
+void MapManager::ViewMap(Player* view_player, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Critters
-    ignore_unused(look);
-    ignore_unused(hex);
-    ignore_unused(dir);
+    FO_RUNTIME_ASSERT(view_player);
+    FO_RUNTIME_ASSERT(map);
 
+    // Critters: spectator sees every non-destroyed critter on the map
     for (const auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
         }
-        if (cr == view_cr) {
-            continue;
-        }
 
-        if (CheckCritterVisibilityHook(_engine.get(), map, view_cr, cr) != CritterVisibilityMode::None) {
-            view_cr->Send_AddCritter(cr);
-        }
+        view_player->Send_AddCritter(cr);
     }
 
-    // Items
+    // Items: spectator sees every non-destroyed item on the map
     for (const auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
             continue;
         }
 
-        if (view_cr->CanSeeItemOnMap(item)) {
-            view_cr->Send_AddItemOnMap(item);
-        }
+        view_player->Send_AddItemOnMap(item);
     }
 }
 

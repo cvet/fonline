@@ -154,15 +154,15 @@ namespace
 
     static void DummyEvent_Subscribe(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyEvent_Unsubscribe(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
     }
 
     static void DummyRefAddRef(void* obj)
@@ -198,74 +198,74 @@ namespace
 
     static void DummyScheduler_StartTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyScheduler_StartTimeEventRepeat(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
-        ignore_unused(gen->GetAddressOfArg(2));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
+        (void)gen->GetAddressOfArg(2);
     }
 
     static void DummyScheduler_StopTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
     }
 
     static void DummyScheduler_CountTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
         gen->SetReturnDWord(0);
     }
 
     static void DummyScheduler_RepeatTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyScheduler_SetTimeEventData(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_SetPropertyGetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_AddPropertySetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_AddPropertyDeferredSetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyCritter_AddAnimCallback(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
-        ignore_unused(gen->GetAddressOfArg(2));
-        ignore_unused(gen->GetAddressOfArg(3));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
+        (void)gen->GetAddressOfArg(2);
+        (void)gen->GetAddressOfArg(3);
     }
 
     struct ScriptMessages

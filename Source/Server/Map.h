@@ -50,6 +50,7 @@ class StaticItem;
 class Critter;
 class Map;
 class Location;
+class Player;
 
 struct StaticMap
 {
@@ -113,6 +114,9 @@ public:
     [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _playerCritters; }
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _nonPlayerCritters; }
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto HasSpectatorPlayers() const noexcept -> bool { return !_spectatorPlayers.empty(); }
+    [[nodiscard]] auto GetSpectatorPlayers() noexcept -> span<raw_ptr<Player>> { return _spectatorPlayers; }
+    [[nodiscard]] auto GetSpectatorPlayers() const noexcept -> const_span<raw_ptr<Player>> { return _spectatorPlayers; }
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>> { return _staticMap->StaticItems; }
@@ -125,6 +129,9 @@ public:
     void SetLocation(Location* loc) noexcept;
     void AddCritter(Critter* cr);
     void RemoveCritter(Critter* cr);
+    void RefreshCritterPlayerState(Critter* cr);
+    void AddSpectatorPlayer(Player* player);
+    void RemoveSpectatorPlayer(Player* player);
     void AddItem(Item* item, mpos hex, Critter* dropper);
     void SetItem(Item* item);
     void RemoveItem(ident_t item_id);
@@ -174,6 +181,7 @@ private:
     vector<raw_ptr<Item>> _items {};
     unordered_map<ident_t, raw_ptr<Item>> _itemsMap {};
     raw_ptr<Location> _mapLocation {};
+    vector<raw_ptr<Player>> _spectatorPlayers {};
 };
 
 FO_END_NAMESPACE

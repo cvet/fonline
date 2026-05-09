@@ -51,6 +51,7 @@ class ProtoManager;
 class EntityManager;
 class ItemManager;
 class CritterManager;
+class Player;
 
 struct TraceResult
 {
@@ -94,8 +95,7 @@ public:
     void TransferToGlobal(Critter* cr, ident_t global_cr_id);
     void ProcessVisibleCritters(Critter* cr);
     void ProcessVisibleItems(Critter* cr);
-    void ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, mdir dir);
-    void ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, hdir dir) { ViewMap(view_cr, map, look, hex, mdir(dir)); }
+    void ViewMap(Player* view_player, Map* map);
 
 private:
     auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> CritterVisibilityMode;

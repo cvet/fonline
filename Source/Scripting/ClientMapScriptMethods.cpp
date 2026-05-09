@@ -139,6 +139,18 @@ FO_SCRIPT_API void Client_Map_RebuildFog(MapView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API isize32 Client_Map_GetScreenSize(MapView* self)
+{
+    return self->GetScreenSize();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetScreenSize(MapView* self, isize32 size)
+{
+    self->SetScreenSize(size);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsScrollCheck(MapView* self)
 {
     return self->IsScrollCheck();

@@ -46,6 +46,13 @@ ItemView::ItemView(ClientEngine* engine, ident_t id, const ProtoItem* proto, con
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
+ItemView::~ItemView()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY(_innerItems.empty());
+}
+
 void ItemView::OnDestroySelf()
 {
     FO_STACK_TRACE_ENTRY();

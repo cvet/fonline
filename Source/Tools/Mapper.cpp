@@ -3448,7 +3448,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
             const auto new_value = InspectorSelectedLineValue;
 
             if (!ApplyEntityPropertyText(entity, prop.get(), new_value)) {
-                ignore_unused(ApplyEntityPropertyText(entity, prop.get(), old_value));
+                ApplyEntityPropertyText(entity, prop.get(), old_value);
                 return;
             }
 
@@ -5795,7 +5795,7 @@ void MapperEngine::ParseCommand(string_view command)
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
-            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
+            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get(), App->MainWindow.GetSize());
             map->EnableMapperMode();
             map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
@@ -5908,7 +5908,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
 
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get(), App->MainWindow.GetSize());
     new_map->EnableMapperMode();
     new_map->SetScrollCheck(false);
 
@@ -6091,10 +6091,12 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     SetMapDirty(map, false);
+
     if (clear_undo) {
         ClearUndoContext(map);
     }
-    map->MarkAsDestroyed();
+
+    map->DestroySelf();
     LoadedMaps.erase(it);
 }
 

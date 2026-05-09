@@ -36,6 +36,7 @@
 #include "CritterManager.h"
 #include "Item.h"
 #include "Location.h"
+#include "Player.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -65,6 +66,32 @@ Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* loca
 Map::~Map()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(_spectatorPlayers.empty());
+        FO_RUNTIME_VERIFY(_critters.empty());
+        FO_RUNTIME_VERIFY(_crittersMap.empty());
+        FO_RUNTIME_VERIFY(_playerCritters.empty());
+        FO_RUNTIME_VERIFY(_nonPlayerCritters.empty());
+        FO_RUNTIME_VERIFY(_items.empty());
+        FO_RUNTIME_VERIFY(_itemsMap.empty());
+    }
+}
+
+void Map::AddSpectatorPlayer(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(player);
+    vec_add_unique_value(_spectatorPlayers, player);
+}
+
+void Map::RemoveSpectatorPlayer(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(player);
+    vec_remove_unique_value(_spectatorPlayers, player);
 }
 
 void Map::SetLocation(Location* loc) noexcept
@@ -164,6 +191,34 @@ void Map::RemoveCritter(Critter* cr)
     }
 }
 
+void Map::RefreshCritterPlayerState(Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(_crittersMap.count(cr->GetId()));
+
+    const bool removed_from_players = vec_safe_remove_unique_value(_playerCritters, cr);
+    const bool removed_from_non_players = vec_safe_remove_unique_value(_nonPlayerCritters, cr);
+    FO_RUNTIME_ASSERT(removed_from_players || removed_from_non_players);
+
+    auto cr_ids = GetCritterIds();
+    vec_safe_remove_unique_value(cr_ids, cr->GetId());
+
+    if (!cr->GetControlledByPlayer()) {
+        vec_add_unique_value(cr_ids, cr->GetId());
+    }
+
+    SetCritterIds(cr_ids);
+
+    if (cr->GetControlledByPlayer()) {
+        vec_add_unique_value(_playerCritters, cr);
+    }
+    else {
+        vec_add_unique_value(_nonPlayerCritters, cr);
+    }
+}
+
 void Map::AddCritterToField(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -252,6 +307,11 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
+    }
+
+    // Notify spectators
+    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        player->Send_AddItemOnMap(item);
     }
 }
 
@@ -359,6 +419,11 @@ void Map::RemoveItem(ident_t item_id)
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
+
+    // Notify spectators
+    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        player->Send_RemoveItemFromMap(item);
+    }
 }
 
 void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
@@ -372,6 +437,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         for (auto& cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
         }
+
+        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+            player->Send_Property(type, prop, entity);
+        }
     }
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
@@ -382,6 +451,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
                 cr->Send_Property(type, prop, entity);
                 cr->OnItemOnMapChanged.Fire(item);
             }
+        }
+
+        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+            player->Send_Property(type, prop, entity);
         }
     }
     else {

@@ -289,30 +289,6 @@ FO_SCRIPT_API void Server_Critter_RefreshView(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32_t look, mpos hex, mdir dir)
-{
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-    if (!map->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    if (!self->GetControlledByPlayer()) {
-        return;
-    }
-
-    auto look_ = look;
-
-    if (look_ == 0) {
-        look_ = self->GetLookDistance();
-    }
-
-    self->SetViewMap({.MapId = map->GetId(), .MapPid = map->GetProtoId(), .Look = numeric_cast<uint16_t>(look_), .Hex = hex, .Dir = dir});
-    self->Send_LoadMap(map);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 {
     if (dir == self->GetDir()) {

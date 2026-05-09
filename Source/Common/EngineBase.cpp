@@ -392,7 +392,7 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<s
     auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, Hashes, *this);
 
     for (const auto& [field_name, field_type] : layout) {
-        ignore_unused(fields_registrator->RegisterProperty({"Common", field_type, field_name}));
+        fields_registrator->RegisterProperty({"Common", field_type, field_name});
     }
 
     ref_type.FieldsRegistrator = fields_registrator.get();

@@ -262,9 +262,21 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    vector<std::future<void>> file_bakings;
+    vector<File> files_to_bake;
 
     for (File& file_ : filtered_files) {
+        const uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, file_.GetPath());
+
+        if (_context->BakeChecker && !_context->BakeChecker(file_.GetPath(), max_write_time)) {
+            continue;
+        }
+
+        files_to_bake.emplace_back(std::move(file_));
+    }
+
+    vector<std::future<void>> file_bakings;
+
+    for (File& file_ : files_to_bake) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &files, file = std::move(file_)]() FO_DEFERRED {
             if (_context->BakeChecker) {
                 const uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, file.GetPath());
@@ -1069,14 +1081,14 @@ static void ValidateModelDescriptionEnumValue(const NameResolver& name_resolver,
     FO_STACK_TRACE_ENTRY();
 
     bool metadata_missing = false;
-    ignore_unused(name_resolver.ResolveEnumValueName(enum_name, 0, &metadata_missing));
+    (void)name_resolver.ResolveEnumValueName(enum_name, 0, &metadata_missing);
 
     if (metadata_missing) {
         return;
     }
 
     bool failed = false;
-    ignore_unused(name_resolver.ResolveEnumValueName(enum_name, value, &failed));
+    (void)name_resolver.ResolveEnumValueName(enum_name, value, &failed);
 
     if (failed) {
         throw ModelInfoBakerException(strex("Invalid {} value '{}' for token '{}' in '{}'", enum_name, value, token, fname));
@@ -1237,7 +1249,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(ReadBakedModelMeshString(reader)); // Animation file name
+    (void)ReadBakedModelMeshString(reader); // Animation file name
 
     const string anim_name = ReadBakedModelMeshString(reader);
 
@@ -1246,7 +1258,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     }
 
     info.AnimationNames.emplace_back(anim_name);
-    ignore_unused(reader.Read<float32_t>()); // Duration
+    (void)reader.Read<float32_t>(); // Duration
 
     const uint32_t hierarchy_count = reader.Read<uint32_t>();
 
@@ -1297,7 +1309,7 @@ static void SkipBakedModelMeshBytes(DataReader& reader, size_t size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(reader.ReadPtr<uint8_t>(size));
+    (void)reader.ReadPtr<uint8_t>(size);
 }
 
 static auto SkipBakedModelMeshFloatArray(DataReader& reader) -> uint32_t

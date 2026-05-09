@@ -88,7 +88,7 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY(spr, irect32());
+    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
 
     const ipos32 spr_offset = spr->GetOffset();
     const isize32 spr_size = spr->GetSize();
@@ -108,7 +108,7 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY(spr, irect32());
+    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
 
     auto rect = GetDrawRect();
 

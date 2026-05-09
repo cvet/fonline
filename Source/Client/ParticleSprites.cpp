@@ -196,7 +196,7 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     }
 
     if (rt_intermediate == nullptr) {
-        rt_intermediate = _sprMngr->GetRtMngr().CreateRenderTarget(true, RenderTarget::SizeKindType::Custom, frame_size, true);
+        rt_intermediate = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
         _rtIntermediate.emplace_back(rt_intermediate);
     }
 

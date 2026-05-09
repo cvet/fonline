@@ -145,7 +145,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 
     if (_channel.NeedSend(now) && _socket.can_write()) {
         vector<vector<uint8_t>> packets;
-        ignore_unused(_channel.PrepareOutput({}, packets, now));
+        _channel.PrepareOutput({}, packets, now);
         SendPackets(packets);
     }
 

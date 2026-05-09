@@ -71,7 +71,7 @@ void SpritePattern::Finish()
     }
 }
 
-MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
+MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef())
@@ -81,7 +81,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     _name = strex("{}_{}", proto->GetName(), id);
 
     _maxScroll = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
-    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    _screenSize = screen_size;
     _viewSize = fsize32(_screenSize);
     _scrollCheckEnabled = true;
 
@@ -89,15 +89,19 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     SetSpritesZoomTarget(1.0f);
     RefreshMinZoom();
 
+    const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+
     if (!_engine->Settings.MapDirectDraw) {
-        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, true);
         _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap.get());
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
-        const auto tex_size = _engine->Settings.MapDirectDraw ? RenderTarget::SizeKindType::Screen : RenderTarget::SizeKindType::Map;
-        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, tex_size, {}, true);
+        const auto rt_light_size = _engine->Settings.MapDirectDraw ? App->MainWindow.GetSize() : map_rt_size;
+        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
+
+    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
 
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
     _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex2.png", AtlasType::MapSprites);
@@ -124,15 +128,19 @@ MapView::~MapView()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& cr : _critters) {
-        cr->DestroySelf();
-    }
-    for (auto& item : _items) {
-        item->DestroySelf();
-    }
-
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap.get());
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight.get());
+    FO_RUNTIME_VERIFY(_critters.empty());
+    FO_RUNTIME_VERIFY(_crittersMap.empty());
+    FO_RUNTIME_VERIFY(_items.empty());
+    FO_RUNTIME_VERIFY(_itemsMap.empty());
+    FO_RUNTIME_VERIFY(_staticItems.empty());
+    FO_RUNTIME_VERIFY(_dynamicItems.empty());
+    FO_RUNTIME_VERIFY(_processingItems.empty());
+    FO_RUNTIME_VERIFY(_spritePatterns.empty());
+    FO_RUNTIME_VERIFY(_fogLayers.empty());
+    FO_RUNTIME_VERIFY(_visibleLightSources.empty());
+    FO_RUNTIME_VERIFY(_lightSources.empty());
+    FO_RUNTIME_VERIFY(!_rtMap);
+    FO_RUNTIME_VERIFY(!_rtLight);
 }
 
 void MapView::OnDestroySelf()
@@ -169,6 +177,15 @@ void MapView::OnDestroySelf()
     _processingItems.clear();
     _itemsMap.clear();
     _spritePatterns.clear();
+
+    if (_rtMap) {
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap.get());
+        _rtMap = nullptr;
+    }
+    if (_rtLight) {
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight.get());
+        _rtLight = nullptr;
+    }
 }
 
 void MapView::EnableMapperMode()
@@ -2519,7 +2536,7 @@ void MapView::DrawMap()
             _engine->SprMngr.DrawContours();
 
             // Fog
-            if (!_engine->Settings.DisableFog && !_mapperMode) {
+            if (!_engine->Settings.DisableFog && !_mapperMode && !_fogLayers.empty()) {
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
@@ -3727,8 +3744,41 @@ void MapView::OnScreenSizeChanged()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    if (_engine->Settings.MapDirectDraw) {
+        const auto window_size = App->MainWindow.GetSize();
+
+        SetScreenSize(window_size);
+
+        if (_rtLight) {
+            _engine->SprMngr.GetRtMngr().ResizeRenderTarget(_rtLight.get(), window_size);
+        }
+    }
+
+    RebuildMapNow();
+}
+
+void MapView::SetScreenSize(isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_screenSize == size) {
+        return;
+    }
+
+    _screenSize = size;
     _viewSize = fsize32(_screenSize) / GetSpritesZoom();
+
+    auto& rt_mngr = _engine->SprMngr.GetRtMngr();
+    const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+
+    if (_rtMap) {
+        rt_mngr.ResizeRenderTarget(_rtMap.get(), map_rt_size);
+    }
+    if (_rtLight && !_engine->Settings.MapDirectDraw) {
+        rt_mngr.ResizeRenderTarget(_rtLight.get(), map_rt_size);
+    }
+
+    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
 
     RebuildMapNow();
 }

@@ -38,17 +38,13 @@ FO_BEGIN_NAMESPACE
 
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
 
-RenderTargetManager::RenderTargetManager(RenderSettings& settings, IAppWindow& window, FlushCallback flush) :
-    _settings {&settings},
-    _window {&window},
-    _render {&window.GetRender()},
+RenderTargetManager::RenderTargetManager(IAppRender& render, FlushCallback flush) :
+    _render {&render},
     _flush {std::move(flush)}
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_flush);
-
-    _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged(); };
 }
 
 auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&
@@ -72,19 +68,18 @@ auto RenderTargetManager::GetCurrentRenderTarget() const -> const RenderTarget*
     return !_rtStack.empty() ? _rtStack.back().get() : nullptr;
 }
 
-auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*
+auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> RenderTarget*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(base_size.width >= 0);
-    FO_RUNTIME_ASSERT(base_size.height >= 0);
+    FO_RUNTIME_ASSERT(size.width >= 0);
+    FO_RUNTIME_ASSERT(size.height >= 0);
 
     _flush();
 
     auto rt = SafeAlloc::MakeUnique<RenderTarget>();
 
-    rt->_sizeKind = size_kind;
-    rt->_baseSize = base_size;
+    rt->_size = size;
     rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     AllocateRenderTargetTexture(rt.get(), linear_filtered, with_depth);
@@ -93,16 +88,22 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, RenderTarget::Size
     return _rtAll.back().get();
 }
 
-void RenderTargetManager::OnScreenSizeChanged()
+void RenderTargetManager::ResizeRenderTarget(RenderTarget* rt, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Reallocate fullscreen render targets
-    for (auto& rt : _rtAll) {
-        if (rt->_sizeKind != RenderTarget::SizeKindType::Custom) {
-            AllocateRenderTargetTexture(rt.get(), rt->_texture->LinearFiltered, rt->_texture->WithDepth);
-        }
+    FO_RUNTIME_ASSERT(rt);
+    FO_RUNTIME_ASSERT(size.width >= 0);
+    FO_RUNTIME_ASSERT(size.height >= 0);
+
+    if (rt->_size == size) {
+        return;
     }
+
+    _flush();
+
+    rt->_size = size;
+    AllocateRenderTargetTexture(rt, rt->_texture->LinearFiltered, rt->_texture->WithDepth);
 }
 
 void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
@@ -111,22 +112,9 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 
     FO_NON_CONST_METHOD_HINT();
 
-    auto tex_size = rt->_baseSize;
-
-    if (rt->_sizeKind == RenderTarget::SizeKindType::Screen) {
-        tex_size.width += _settings->ScreenWidth;
-        tex_size.height += _settings->ScreenHeight;
-    }
-    else if (rt->_sizeKind == RenderTarget::SizeKindType::Map) {
-        tex_size.width += _settings->ScreenWidth + GameSettings::MAP_HEX_WIDTH;
-        tex_size.height += _settings->ScreenHeight - _settings->ScreenHudHeight + GameSettings::MAP_HEX_LINE_HEIGHT * 2;
-    }
-
+    auto tex_size = rt->_size;
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
-
-    FO_RUNTIME_ASSERT(tex_size.width > 0);
-    FO_RUNTIME_ASSERT(tex_size.height > 0);
 
     rt->_texture = _render->CreateTexture(tex_size, linear_filtered, with_depth);
     rt->_texture->FlippedHeight = _render->IsRenderTargetFlipped();
