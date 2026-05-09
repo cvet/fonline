@@ -170,6 +170,8 @@ struct BakedModelMeshInfo
 };
 
 static auto IsModelDescriptionTemplateFile(string_view path) -> bool;
+static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname) -> uint64_t;
+static void AccumulateModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname, const vector<pair<string, string>>& replacements, vector<string>& include_stack, uint64_t& max_write_time);
 
 static void ValidateModelDescription(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const BakerModelDescription& description, string_view fname);
 static void ValidateModelDescriptionAnimations(const NameResolver& name_resolver, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakerModelDescription& description, string_view fname);
@@ -260,19 +262,26 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    vector<std::future<void>> file_bakings;
+    vector<File> files_to_bake;
 
     for (File& file_ : filtered_files) {
+        const uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, file_.GetPath());
+
+        if (_context->BakeChecker && !_context->BakeChecker(file_.GetPath(), max_write_time)) {
+            continue;
+        }
+
+        files_to_bake.emplace_back(std::move(file_));
+    }
+
+    vector<std::future<void>> file_bakings;
+
+    for (File& file_ : files_to_bake) {
         file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &files, file = std::move(file_)]() FO_DEFERRED {
             const BakerClientEngine client_engine(*_context->BakedFiles);
             ModelDescriptionParser parser(files, client_engine);
-            auto [description, max_write_time] = parser.Parse(file.GetPath());
-
-            // Honour incremental baking: only skip after we know the newest write-time across the
-            // .fo3d itself and every Include'd template, so an unchanged description is not re-baked.
-            if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), max_write_time)) {
-                return;
-            }
+            auto [description, parsed_max_write_time] = parser.Parse(file.GetPath());
+            ignore_unused(parsed_max_write_time);
 
             ValidateModelDescription(files, *_context->BakedFiles, client_engine, description, file.GetPath());
 
@@ -305,6 +314,66 @@ static auto IsModelDescriptionTemplateFile(string_view path) -> bool
     FO_STACK_TRACE_ENTRY();
 
     return strex(path).extract_file_name().starts_with("TEMPLATE_");
+}
+
+static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname) -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> include_stack;
+    uint64_t max_write_time = 0;
+    AccumulateModelDescriptionMaxWriteTime(files, fname, {}, include_stack, max_write_time);
+    return max_write_time;
+}
+
+static void AccumulateModelDescriptionMaxWriteTime(const FileCollection& files, string_view fname, const vector<pair<string, string>>& replacements, vector<string>& include_stack, uint64_t& max_write_time)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (std::ranges::find(include_stack, fname) != include_stack.end()) {
+        throw ModelInfoBakerException(strex("Recursive model description include '{}'", fname));
+    }
+
+    File file = files.FindFileByPath(fname);
+
+    if (!file) {
+        throw ModelInfoBakerException(strex("Model description file '{}' not found", fname));
+    }
+
+    max_write_time = std::max(max_write_time, file.GetWriteTime());
+    include_stack.emplace_back(fname);
+
+    const string content = ApplyModelDescriptionReplacements(file.GetStr(), replacements);
+    auto istr = istringstream(content);
+    string line_buf;
+    size_t line = 0;
+
+    while (std::getline(istr, line_buf)) {
+        line++;
+
+        const vector<string> tokens = TokenizeModelDescriptionLine(line_buf);
+
+        if (tokens.empty() || tokens.front() != "Include") {
+            continue;
+        }
+        if (tokens.size() < 2) {
+            throw ModelInfoBakerException(strex("Missing include path in '{}' at line {}", fname, line));
+        }
+        if ((tokens.size() - 2) % 2 != 0) {
+            throw ModelInfoBakerException(strex("Include '{}' in '{}' at line {} has unpaired template argument", tokens[1], fname, line));
+        }
+
+        vector<pair<string, string>> include_replacements;
+
+        for (size_t i = 2; i < tokens.size(); i += 2) {
+            include_replacements.emplace_back(tokens[i], tokens[i + 1]);
+        }
+
+        const string include_path = strex(fname).extract_dir().combine_path(tokens[1]);
+        AccumulateModelDescriptionMaxWriteTime(files, include_path, include_replacements, include_stack, max_write_time);
+    }
+
+    include_stack.pop_back();
 }
 
 ModelDescriptionParser::ModelDescriptionParser(const FileCollection& files, const NameResolver& name_resolver) :
@@ -991,14 +1060,14 @@ static void ValidateModelDescriptionEnumValue(const NameResolver& name_resolver,
     FO_STACK_TRACE_ENTRY();
 
     bool metadata_missing = false;
-    ignore_unused(name_resolver.ResolveEnumValueName(enum_name, 0, &metadata_missing));
+    (void)name_resolver.ResolveEnumValueName(enum_name, 0, &metadata_missing);
 
     if (metadata_missing) {
         return;
     }
 
     bool failed = false;
-    ignore_unused(name_resolver.ResolveEnumValueName(enum_name, value, &failed));
+    (void)name_resolver.ResolveEnumValueName(enum_name, value, &failed);
 
     if (failed) {
         throw ModelInfoBakerException(strex("Invalid {} value '{}' for token '{}' in '{}'", enum_name, value, token, fname));
@@ -1159,7 +1228,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(ReadBakedModelMeshString(reader)); // Animation file name
+    (void)ReadBakedModelMeshString(reader); // Animation file name
 
     const string anim_name = ReadBakedModelMeshString(reader);
 
@@ -1168,7 +1237,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     }
 
     info.AnimationNames.emplace_back(anim_name);
-    ignore_unused(reader.Read<float32_t>()); // Duration
+    (void)reader.Read<float32_t>(); // Duration
 
     const uint32_t hierarchy_count = reader.Read<uint32_t>();
 
@@ -1219,7 +1288,7 @@ static void SkipBakedModelMeshBytes(DataReader& reader, size_t size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(reader.ReadPtr<uint8_t>(size));
+    (void)reader.ReadPtr<uint8_t>(size);
 }
 
 static auto SkipBakedModelMeshFloatArray(DataReader& reader) -> uint32_t

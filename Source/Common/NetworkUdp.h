@@ -48,7 +48,7 @@ enum class UdpPacketType : uint8_t
     Disconnect = 5,
 };
 
-struct UdpTransportOptions final
+struct UdpTransportOptions
 {
     size_t MaxPayload {};
     size_t MaxPendingBytes {};
@@ -57,7 +57,7 @@ struct UdpTransportOptions final
     uint32_t Redundancy {};
 };
 
-struct UdpPacketInfo final
+struct UdpPacketInfo
 {
     UdpPacketType Type {};
     uint32_t SessionId {};
@@ -78,14 +78,14 @@ public:
     auto operator=(UdpOrderedChannel&&) noexcept = delete;
     ~UdpOrderedChannel() = default;
 
-    void Reset() noexcept;
-    void SetSessionId(uint32_t session_id) noexcept;
     [[nodiscard]] auto GetSessionId() const noexcept -> uint32_t;
     [[nodiscard]] auto HasSession() const noexcept -> bool;
     [[nodiscard]] auto HasReadyData() const noexcept -> bool;
     [[nodiscard]] auto CanAcceptPayload() const noexcept -> bool;
     [[nodiscard]] auto NeedSend(nanotime now) const noexcept -> bool;
 
+    void Reset() noexcept;
+    void SetSessionId(uint32_t session_id) noexcept;
     auto PrepareOutput(const_span<uint8_t> new_data, vector<vector<uint8_t>>& packets, nanotime now) -> size_t;
     void HandleIncomingPayload(const UdpPacketInfo& packet);
     auto ExtractReadyData(vector<uint8_t>& data) -> size_t;
@@ -100,13 +100,14 @@ private:
         uint32_t SendCount {};
     };
 
+    [[nodiscard]] auto IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool;
+    [[nodiscard]] auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value = 0) const -> vector<uint8_t>;
+
     void ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits);
     void EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const;
     void EmitAckPacket(vector<vector<uint8_t>>& packets) const;
     void RebuildAckBits() noexcept;
     void QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const;
-    [[nodiscard]] auto IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool;
-    [[nodiscard]] auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value = 0) const -> vector<uint8_t>;
 
     UdpTransportOptions _options {};
     uint32_t _sessionId {};

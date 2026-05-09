@@ -53,7 +53,7 @@ public:
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
     auto operator=(Location&&) noexcept = delete;
-    ~Location() override = default;
+    ~Location() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
     [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation* { return static_cast<const ProtoLocation*>(_proto.get()); }

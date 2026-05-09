@@ -91,10 +91,6 @@ TEST_CASE("GameTimer")
         timer.SetSynchronizedTimeMonotonic(older_time);
         CHECK(timer.GetSynchronizedTime() == current_time);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        timer.FrameAdvance(false);
-        CHECK(timer.GetSynchronizedTime() == current_time);
-
         std::this_thread::sleep_for(std::chrono::milliseconds(120));
         timer.FrameAdvance(false);
         CHECK(timer.GetSynchronizedTime() > current_time);

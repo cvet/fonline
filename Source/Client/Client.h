@@ -223,6 +223,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnPreLoadMap, hstring /*locPid*/, hstring /*mapPid*/, isize32& /*screenSize*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoaded);

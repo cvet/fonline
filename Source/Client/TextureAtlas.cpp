@@ -41,7 +41,7 @@ static constexpr int32_t ATLAS_SPRITES_PADDING = 1;
 TextureAtlas::TextureAtlas(AtlasType type, RenderTarget* rt) noexcept :
     _type {type},
     _rt {rt},
-    _rootNode {SafeAlloc::MakeUnique<SpaceNode>(nullptr, ipos32(), rt->GetBaseSize())}
+    _rootNode {SafeAlloc::MakeUnique<SpaceNode>(nullptr, ipos32(), rt->GetSize())}
 {
     _rt->GetTexture()->FlippedHeight = false;
 }
@@ -191,7 +191,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     FO_RUNTIME_ASSERT(result_size.width >= request_size.width);
     FO_RUNTIME_ASSERT(result_size.height >= request_size.height);
 
-    auto* rt = _rtMngr->CreateRenderTarget(false, RenderTarget::SizeKindType::Custom, result_size, _settings->AtlasLinearFiltration);
+    auto* rt = _rtMngr->CreateRenderTarget(false, result_size, _settings->AtlasLinearFiltration);
     auto atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
 
     _allAtlases.push_back(std::move(atlas));

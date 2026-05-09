@@ -77,6 +77,7 @@ public:
 
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
@@ -288,6 +289,7 @@ private:
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
+    std::atomic_bool _shutdownInProgress {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     vector<vector<uint8_t>> _updateFilesData {};

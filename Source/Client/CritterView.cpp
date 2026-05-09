@@ -54,6 +54,14 @@ CritterView::CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* p
 #endif
 }
 
+CritterView::~CritterView()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY(_invItems.empty());
+    FO_RUNTIME_VERIFY(_attachedCritters.empty());
+}
+
 void CritterView::OnDestroySelf()
 {
     FO_STACK_TRACE_ENTRY();

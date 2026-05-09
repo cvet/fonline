@@ -50,7 +50,7 @@ public:
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;
     auto operator=(ItemView&&) noexcept = delete;
-    ~ItemView() override = default;
+    ~ItemView() override;
 
     [[nodiscard]] auto GetInnerItems() const noexcept -> const vector<refcount_ptr<ItemView>>& { return _innerItems; }
     [[nodiscard]] auto GetInnerItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _innerItems; }

@@ -119,7 +119,6 @@ VARIABLE_SETTING(int32_t, View, ScreenWidth, 1024); // Screen width in pixels
 VARIABLE_SETTING(int32_t, View, ScreenHeight, 768); // Screen height in pixels
 FIXED_SETTING(int32_t, View, MonitorWidth); // Monitor width (read only)
 FIXED_SETTING(int32_t, View, MonitorHeight); // Monitor height (read only)
-VARIABLE_SETTING(int32_t, View, ScreenHudHeight, 0); // Screen HUD height in pixels
 VARIABLE_SETTING(bool, View, ShowCorners, false); // If true, corners are shown
 VARIABLE_SETTING(bool, View, ShowSpriteBorders, false); // If true, sprite borders are shown
 FIXED_SETTING(bool, View, HideNativeCursor, false); // If true, native cursor is hidden

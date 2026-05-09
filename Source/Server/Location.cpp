@@ -46,6 +46,15 @@ Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto,
     FO_STACK_TRACE_ENTRY();
 }
 
+Location::~Location()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(_locMaps.empty());
+    }
+}
+
 auto Location::GetMapByIndex(int32_t index) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();

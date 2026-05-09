@@ -432,7 +432,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
 
         if (strvex(decoded).is_number()) {
             enum_value = numeric_cast<int32_t>(strvex(decoded).to_int64());
-            ignore_unused(name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
+            (void)name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
         }
         else {
             enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);

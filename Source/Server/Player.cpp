@@ -54,6 +54,14 @@ Player::Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> co
 Player::~Player()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(!_controlledCr);
+        FO_RUNTIME_VERIFY(!_viewMap);
+        FO_RUNTIME_VERIFY(!_viewMapTarget);
+        FO_RUNTIME_VERIFY(!_sendIgnoreEntity);
+        FO_RUNTIME_VERIFY(!_sendIgnoreProperty);
+    }
 }
 
 void Player::SetName(string_view name)
@@ -95,6 +103,37 @@ void Player::SetIgnoreSendEntityProperty(const Entity* entity, const Property* p
 
     _sendIgnoreEntity = entity;
     _sendIgnoreProperty = prop;
+}
+
+void Player::SetViewMap(Map* map, mpos hex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_controlledCr);
+    FO_RUNTIME_ASSERT(map);
+
+    if (_viewMapTarget != map) {
+        if (_viewMapTarget) {
+            _viewMapTarget->RemoveSpectatorPlayer(this);
+        }
+
+        _viewMapTarget = map;
+        _viewMapTarget->AddSpectatorPlayer(this);
+    }
+
+    _viewMap = SafeAlloc::MakeUnique<ViewMapContext>(ViewMapContext {.MapId = map->GetId(), .Hex = hex});
+}
+
+void Player::ResetViewMap() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_viewMapTarget) {
+        _viewMapTarget->RemoveSpectatorPlayer(this);
+        _viewMapTarget = nullptr;
+    }
+
+    _viewMap.reset();
 }
 
 void Player::Send_LoginSuccess()
@@ -466,16 +505,11 @@ void Player::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_controlledCr);
+    FO_RUNTIME_ASSERT(_viewMap);
 
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
-    const auto* view_map = _controlledCr->GetViewMap();
-    FO_RUNTIME_ASSERT(view_map);
-
-    out_buf->Write(view_map->Hex);
-    out_buf->Write(view_map->LocId);
-    out_buf->Write(view_map->LocEnt);
+    out_buf->Write(_viewMap->Hex);
 }
 
 void Player::Send_PlaceToGameComplete()

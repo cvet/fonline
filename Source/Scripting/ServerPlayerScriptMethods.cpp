@@ -83,4 +83,40 @@ FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
     return self->GetControlledCritter();
 }
 
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
+{
+    if (map == nullptr) {
+        throw ScriptException("Map arg is null");
+    }
+    if (self->GetControlledCritter() != nullptr) {
+        throw ScriptException("Player controls critter");
+    }
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    self->SetViewMap(map, hex);
+    self->Send_LoadMap(map);
+    self->GetEngine()->MapMngr.ViewMap(self, map);
+    self->Send_ViewMap();
+    self->Send_PlaceToGameComplete();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ResetViewMap(Player* self)
+{
+    self->ResetViewMap();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_UnloadMap(Player* self)
+{
+    if (self->GetControlledCritter() != nullptr) {
+        throw ScriptException("Player controls critter");
+    }
+
+    self->Send_LoadMap(nullptr);
+}
+
 FO_END_NAMESPACE
