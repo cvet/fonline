@@ -284,7 +284,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                     const auto tex_w = numeric_cast<float32_t>(tex->Size.width);
                     const auto tex_h = numeric_cast<float32_t>(tex->Size.height);
-                    const auto scale = std::min({1.0f, region.x / tex_w, region.y / tex_h});
+                    const auto scale = std::min(region.x / tex_w, region.y / tex_h);
                     const auto img_size = ImVec2(tex_w * scale, tex_h * scale);
                     const auto cursor = ImGui::GetCursorScreenPos();
                     ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + region.x, cursor.y + region.y), IM_COL32(0, 0, 0, 255));
