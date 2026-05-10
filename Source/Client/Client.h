@@ -75,30 +75,6 @@ public:
     bool Stopped {};
 };
 
-///@ ExportEnum
-enum class EffectType : uint32_t
-{
-    None = 0,
-    GenericSprite = 0x00000001,
-    CritterSprite = 0x00000002,
-    TileSprite = 0x00000004,
-    RoofSprite = 0x00000008,
-    RainSprite = 0x00000010,
-    SkinnedMesh = 0x00000400,
-    Interface = 0x00001000,
-    Contour = 0x00002000,
-    Font = 0x00010000,
-    Primitive = 0x00100000,
-    Light = 0x00200000,
-    Fog = 0x00400000,
-    FlushRenderTarget = 0x01000000,
-    FlushPrimitive = 0x04000000,
-    FlushMap = 0x08000000,
-    FlushLight = 0x10000000,
-    FlushFog = 0x20000000,
-    Offscreen = 0x40000000,
-};
-
 auto GetClientResources(GlobalSettings& settings) -> FileSystem;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
@@ -142,6 +118,10 @@ public:
     void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int32_t noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
+    void SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath);
+    void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
+    void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
+    auto GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
     void AnimFree(uint32_t anim_id);
@@ -298,6 +278,8 @@ protected:
 
     void UnloadMap();
     void LmapPrepareMap();
+    auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
+    auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
 
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 

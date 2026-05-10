@@ -538,6 +538,9 @@ class Object
         OnConstruct();
 
         _RefreshNeedDraw();
+        if (_Parent != null) {
+            _Parent._RefreshNeedDraw();
+        }
 
         Screen screen = Screen;
         if (screen != null && screen._IsRegistered) {
@@ -1339,7 +1342,12 @@ class Object
 
     void SetHasOnDraw(bool enabled)
     {
+        if (_HasOnDraw == enabled) {
+            return;
+        }
+
         _HasOnDraw = enabled;
+        _RefreshNeedDraw();
     }
 };
 

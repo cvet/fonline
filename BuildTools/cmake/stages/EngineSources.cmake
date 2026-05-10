@@ -337,6 +337,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
+    "${FO_ENGINE_ROOT}/Source/Client/EffectManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/FontManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"

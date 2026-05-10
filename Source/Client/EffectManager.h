@@ -45,7 +45,30 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(EffectManagerException);
 
 class IAppRender;
-class ServerEngine;
+
+///@ ExportEnum
+enum class EffectType : uint32_t
+{
+    None = 0,
+    GenericSprite = 0x00000001,
+    CritterSprite = 0x00000002,
+    TileSprite = 0x00000004,
+    RoofSprite = 0x00000008,
+    RainSprite = 0x00000010,
+    SkinnedMesh = 0x00000400,
+    Interface = 0x00001000,
+    Contour = 0x00002000,
+    Font = 0x00010000,
+    Primitive = 0x00100000,
+    Light = 0x00200000,
+    Fog = 0x00400000,
+    FlushRenderTarget = 0x01000000,
+    FlushPrimitive = 0x04000000,
+    FlushMap = 0x08000000,
+    FlushLight = 0x10000000,
+    FlushFog = 0x20000000,
+    Offscreen = 0x40000000,
+};
 
 struct EffectCollection
 {
@@ -100,6 +123,11 @@ public:
     ~EffectManager() = default;
 
     auto LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*;
+    auto ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_view effectPath) -> RenderEffect*;
+    void SetEffect(raw_ptr<RenderEffect>& effect, raw_ptr<RenderEffect> defaultEffect, string_view effectPath);
+    void SetEffectScriptValue(RenderEffect* effect, int32_t valueIndex, float32_t value);
+    void ClearEffectScriptValues(RenderEffect* effect);
+    auto GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEffect::ScriptValueBuffer&;
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void UpdateEffects(const GameTimer& game_time);

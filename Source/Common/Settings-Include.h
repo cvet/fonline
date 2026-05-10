@@ -164,10 +164,11 @@ VARIABLE_SETTING(bool, Render, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, Render, ForceDirect3D, false); // If true, Direct3D is forced
 VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
+FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
+FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
-VARIABLE_SETTING(vector<float32_t>, Render, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); // Effect values
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
 VARIABLE_SETTING(int32_t, Render, Brightness, 0); // Brightness value
 VARIABLE_SETTING(int32_t, Render, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)

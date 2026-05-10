@@ -324,7 +324,9 @@ void MasterBaker::BakeAllInternal()
         vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
 
         for (const auto& res_pack : res_packs) {
-            prepare_res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { return prepare_bake_pack(res_pack, make_output_path(res_pack.Name)); }));
+            const ResourcePackInfo* res_pack_ptr = &res_pack;
+            const string output_path = make_output_path(res_pack.Name);
+            prepare_res_bakings.emplace_back(std::async(async_mode, [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
 
         for (auto& prepare_res_baking : prepare_res_bakings) {
@@ -351,7 +353,8 @@ void MasterBaker::BakeAllInternal()
 
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->Done) {
-                res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { bake_pack(bake_context.get(), bake_order); }));
+                PackBakeContext* bake_context_ptr = bake_context.get();
+                res_bakings.emplace_back(std::async(async_mode, [&bake_pack, bake_context_ptr, bake_order]() FO_DEFERRED { bake_pack(bake_context_ptr, bake_order); }));
             }
         }
 

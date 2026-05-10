@@ -2667,4 +2667,267 @@ void ClientEngine::ProcessVideo()
     }
 }
 
+void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto reload_effect = [this, effectPath](raw_ptr<RenderEffect> def_effect) -> RenderEffect* { return EffectMngr.ResolveEffect(def_effect, effectPath); };
+
+    const uint32_t eff_type = static_cast<uint32_t>(effectType);
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
+        MapView* map = GetCurMap();
+
+        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+
+            if (item != nullptr) {
+                item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic));
+            }
+        }
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
+        MapView* map = GetCurMap();
+
+        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+
+            if (cr != nullptr) {
+                cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter));
+            }
+        }
+    }
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Generic, EffectMngr.Effects.GenericDefault, effectPath);
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Critter, EffectMngr.Effects.CritterDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::TileSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Tile, EffectMngr.Effects.TileDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::RoofSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Roof, EffectMngr.Effects.RoofDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::RainSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Rain, EffectMngr.Effects.RainDefault, effectPath);
+    }
+
+#if FO_ENABLE_3D
+    if ((eff_type & static_cast<uint32_t>(EffectType::SkinnedMesh)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.SkinnedModel, EffectMngr.Effects.SkinnedModelDefault, effectPath);
+    }
+#endif
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Interface)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Iface, EffectMngr.Effects.IfaceDefault, effectPath);
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Contour)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Contour, EffectMngr.Effects.ContourDefault, effectPath);
+    }
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Font, EffectMngr.Effects.FontDefault, effectPath);
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
+        FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(EffectMngr.Effects.Font));
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Primitive, EffectMngr.Effects.PrimitiveDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::Light)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Light, EffectMngr.Effects.LightDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::Fog)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Fog, EffectMngr.Effects.FogDefault, effectPath);
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushRenderTarget)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushRenderTarget, EffectMngr.Effects.FlushRenderTargetDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushPrimitive)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushPrimitive, EffectMngr.Effects.FlushPrimitiveDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushMap)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushMap, EffectMngr.Effects.FlushMapDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushLight)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushLight, EffectMngr.Effects.FlushLightDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushFog)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushFog, EffectMngr.Effects.FlushFogDefault, effectPath);
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Offscreen)) != 0) {
+        if (effectSubtype < 0) {
+            throw ScriptException("Negative effect subtype");
+        }
+
+        OffscreenEffects.resize(numeric_cast<size_t>(effectSubtype) + 1);
+        OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
+    }
+}
+
+void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (valueIndex < 0 || valueIndex >= numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw ScriptException("Effect script value index is out of range", valueIndex);
+    }
+
+    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+
+    EffectMngr.SetEffectScriptValue(effect, valueIndex, value);
+}
+
+void ClientEngine::ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+
+    EffectMngr.ClearEffectScriptValues(effect);
+}
+
+auto ClientEngine::GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || OffscreenEffects[numeric_cast<size_t>(effectSubtype)] == nullptr) {
+        throw ScriptException("Invalid effect subtype");
+    }
+
+    return OffscreenEffects[numeric_cast<size_t>(effectSubtype)].get();
+}
+
+auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (effectType) {
+    case EffectType::GenericSprite:
+        if (effectSubtype != 0) {
+            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid generic sprite effect subtype", effectSubtype);
+            }
+
+            MapView* map = GetCurMap();
+            if (map == nullptr) {
+                throw ScriptException("Current map is not available");
+            }
+
+            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (item == nullptr) {
+                throw ScriptException("Generic sprite effect target item not found", effectSubtype);
+            }
+
+            return item->GetDrawEffect();
+        }
+
+        return EffectMngr.Effects.Generic.get();
+
+    case EffectType::CritterSprite:
+        if (effectSubtype != 0) {
+            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid critter sprite effect subtype", effectSubtype);
+            }
+
+            MapView* map = GetCurMap();
+            if (map == nullptr) {
+                throw ScriptException("Current map is not available");
+            }
+
+            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (cr == nullptr) {
+                throw ScriptException("Critter sprite effect target critter not found", effectSubtype);
+            }
+
+            return cr->GetDrawEffect();
+        }
+
+        return EffectMngr.Effects.Critter.get();
+
+    case EffectType::TileSprite:
+        return EffectMngr.Effects.Tile.get();
+
+    case EffectType::RoofSprite:
+        return EffectMngr.Effects.Roof.get();
+
+    case EffectType::RainSprite:
+        return EffectMngr.Effects.Rain.get();
+
+#if FO_ENABLE_3D
+    case EffectType::SkinnedMesh:
+        return EffectMngr.Effects.SkinnedModel.get();
+#endif
+
+    case EffectType::Interface:
+        return EffectMngr.Effects.Iface.get();
+
+    case EffectType::Contour:
+        return EffectMngr.Effects.Contour.get();
+
+    case EffectType::Font:
+        if (effectSubtype != -1) {
+            throw ScriptException("Per-font script values are not supported");
+        }
+
+        return EffectMngr.Effects.Font.get();
+
+    case EffectType::Primitive:
+        return EffectMngr.Effects.Primitive.get();
+
+    case EffectType::Light:
+        return EffectMngr.Effects.Light.get();
+
+    case EffectType::Fog:
+        return EffectMngr.Effects.Fog.get();
+
+    case EffectType::FlushRenderTarget:
+        return EffectMngr.Effects.FlushRenderTarget.get();
+
+    case EffectType::FlushPrimitive:
+        return EffectMngr.Effects.FlushPrimitive.get();
+
+    case EffectType::FlushMap:
+        return EffectMngr.Effects.FlushMap.get();
+
+    case EffectType::FlushLight:
+        return EffectMngr.Effects.FlushLight.get();
+
+    case EffectType::FlushFog:
+        return EffectMngr.Effects.FlushFog.get();
+
+    case EffectType::Offscreen:
+        if (effectSubtype < 0 || effectSubtype > std::numeric_limits<int32_t>::max()) {
+            throw ScriptException("Invalid offscreen effect subtype", effectSubtype);
+        }
+
+        return GetOffscreenEffect(numeric_cast<int32_t>(effectSubtype));
+
+    default:
+        throw ScriptException("Unsupported effect script value target", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+}
+
+auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RenderEffect* effect = ResolveEffectScriptValueTarget(effectType, effectSubtype);
+
+    if (effect == nullptr) {
+        throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+    if (!effect->IsNeedScriptValueBuf()) {
+        throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+
+    return effect;
+}
+
 FO_END_NAMESPACE

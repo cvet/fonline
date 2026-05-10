@@ -702,108 +702,25 @@ FO_SCRIPT_API void Client_Game_BindFont(ClientEngine* client, FontType font, str
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ClientEngine* client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {
-    const auto reload_effect = [&](raw_ptr<RenderEffect> def_effect) {
-        if (!effectPath.empty()) {
-            auto* effect = client->EffectMngr.LoadEffect(def_effect->GetUsage(), effectPath);
+    FO_STACK_TRACE_ENTRY();
 
-            if (effect == nullptr) {
-                throw ScriptException("Effect not found or have some errors, see log file");
-            }
+    client->SetEffect(effectType, effectSubtype, effectPath);
+}
 
-            return effect;
-        }
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetEffectScriptValue(ClientEngine* client, EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        return def_effect.get();
-    };
+    client->SetEffectScriptValue(effectType, effectSubtype, valueIndex, value);
+}
 
-    const auto eff_type = static_cast<uint32_t>(effectType);
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ClientEngine* client, EffectType effectType, int64_t effectSubtype)
+{
+    FO_STACK_TRACE_ENTRY();
 
-    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
-        auto* item = client->GetCurMap()->GetItem(ident_t {static_cast<uint32_t>(effectSubtype)});
-
-        if (item != nullptr) {
-            item->SetDrawEffect(reload_effect(client->EffectMngr.Effects.Generic));
-        }
-    }
-    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
-        auto* cr = client->GetCurMap()->GetCritter(ident_t {static_cast<uint32_t>(effectSubtype)});
-
-        if (cr != nullptr) {
-            cr->SetDrawEffect(reload_effect(client->EffectMngr.Effects.Critter));
-        }
-    }
-
-    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
-        client->EffectMngr.Effects.Generic = reload_effect(client->EffectMngr.Effects.GenericDefault);
-    }
-    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
-        client->EffectMngr.Effects.Critter = reload_effect(client->EffectMngr.Effects.CritterDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::TileSprite)) != 0) {
-        client->EffectMngr.Effects.Tile = reload_effect(client->EffectMngr.Effects.TileDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::RoofSprite)) != 0) {
-        client->EffectMngr.Effects.Roof = reload_effect(client->EffectMngr.Effects.RoofDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::RainSprite)) != 0) {
-        client->EffectMngr.Effects.Rain = reload_effect(client->EffectMngr.Effects.RainDefault);
-    }
-
-#if FO_ENABLE_3D
-    if ((eff_type & static_cast<uint32_t>(EffectType::SkinnedMesh)) != 0) {
-        client->EffectMngr.Effects.SkinnedModel = reload_effect(client->EffectMngr.Effects.SkinnedModelDefault);
-    }
-#endif
-
-    if ((eff_type & static_cast<uint32_t>(EffectType::Interface)) != 0) {
-        client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
-    }
-
-    if ((eff_type & static_cast<uint32_t>(EffectType::Contour)) != 0) {
-        client->EffectMngr.Effects.Contour = reload_effect(client->EffectMngr.Effects.ContourDefault);
-    }
-
-    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
-        client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
-    }
-    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
-        client->FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
-    }
-
-    if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
-        client->EffectMngr.Effects.Primitive = reload_effect(client->EffectMngr.Effects.PrimitiveDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::Light)) != 0) {
-        client->EffectMngr.Effects.Light = reload_effect(client->EffectMngr.Effects.LightDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::Fog)) != 0) {
-        client->EffectMngr.Effects.Fog = reload_effect(client->EffectMngr.Effects.FogDefault);
-    }
-
-    if ((eff_type & static_cast<uint32_t>(EffectType::FlushRenderTarget)) != 0) {
-        client->EffectMngr.Effects.FlushRenderTarget = reload_effect(client->EffectMngr.Effects.FlushRenderTargetDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::FlushPrimitive)) != 0) {
-        client->EffectMngr.Effects.FlushPrimitive = reload_effect(client->EffectMngr.Effects.FlushPrimitiveDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::FlushMap)) != 0) {
-        client->EffectMngr.Effects.FlushMap = reload_effect(client->EffectMngr.Effects.FlushMapDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::FlushLight)) != 0) {
-        client->EffectMngr.Effects.FlushLight = reload_effect(client->EffectMngr.Effects.FlushLightDefault);
-    }
-    if ((eff_type & static_cast<uint32_t>(EffectType::FlushFog)) != 0) {
-        client->EffectMngr.Effects.FlushFog = reload_effect(client->EffectMngr.Effects.FlushFogDefault);
-    }
-
-    if ((eff_type & static_cast<uint32_t>(EffectType::Offscreen)) != 0) {
-        if (effectSubtype < 0) {
-            throw ScriptException("Negative effect subtype");
-        }
-
-        client->OffscreenEffects.resize(static_cast<size_t>(effectSubtype) + 1);
-        client->OffscreenEffects[static_cast<size_t>(effectSubtype)] = reload_effect(client->EffectMngr.Effects.GenericDefault);
-    }
+    client->ClearEffectScriptValues(effectType, effectSubtype);
 }
 
 ///@ ExportMethod
@@ -1290,6 +1207,26 @@ FO_SCRIPT_API void Client_Game_PopDrawScissor(ClientEngine* client)
     client->SprMngr.PopScissor();
 }
 
+static auto TakeActiveOffscreenSurface(ClientEngine* client) -> raw_ptr<RenderTarget>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+    if (client->ActiveOffscreenSurfaces.empty()) {
+        throw ScriptException("No active offscreen surfaces");
+    }
+
+    raw_ptr<RenderTarget> rt = client->ActiveOffscreenSurfaces.back();
+    client->ActiveOffscreenSurfaces.pop_back();
+    client->OffscreenSurfaces.emplace_back(rt);
+
+    client->SprMngr.GetRtMngr().PopRenderTarget();
+
+    return rt;
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bool forceClear)
 {
@@ -1308,7 +1245,7 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
         client->OffscreenSurfaces.emplace_back(rt);
     }
 
-    auto& rt = client->OffscreenSurfaces.back();
+    raw_ptr<RenderTarget> rt = client->OffscreenSurfaces.back();
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.emplace_back(rt);
 
@@ -1332,24 +1269,10 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype)
 {
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-    if (client->ActiveOffscreenSurfaces.empty()) {
-        throw ScriptException("No active offscreen surfaces");
-    }
+    FO_STACK_TRACE_ENTRY();
 
-    auto& rt = client->ActiveOffscreenSurfaces.back();
-    client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.emplace_back(rt);
-
-    client->SprMngr.GetRtMngr().PopRenderTarget();
-
-    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
-        throw ScriptException("Invalid effect subtype");
-    }
-
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
+    raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
+    rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
     client->SprMngr.DrawRenderTarget(rt.get(), true);
 }
@@ -1357,24 +1280,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, ipos32 pos, isize32 size)
 {
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-    if (client->ActiveOffscreenSurfaces.empty()) {
-        throw ScriptException("No active offscreen surfaces");
-    }
+    FO_STACK_TRACE_ENTRY();
 
-    auto& rt = client->ActiveOffscreenSurfaces.back();
-    client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.emplace_back(rt);
-
-    client->SprMngr.GetRtMngr().PopRenderTarget();
-
-    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
-        throw ScriptException("Invalid effect subtype");
-    }
-
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
+    raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
+    rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
     const auto l = std::clamp(pos.x, 0, client->Settings.ScreenWidth);
     const auto t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
@@ -1387,26 +1296,41 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, ipos32 pos, isize32 size, float32_t scriptValue0, float32_t scriptValue1, float32_t scriptValue2, float32_t scriptValue3)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
+    RenderEffect* effect = client->GetOffscreenEffect(effectSubtype);
+
+    if (effect->IsNeedScriptValueBuf()) {
+        RenderEffect::ScriptValueBuffer& script_value_buf = client->EffectMngr.GetOrCreateScriptValueBuf(effect);
+
+        script_value_buf.ScriptValue[0] = scriptValue0;
+        script_value_buf.ScriptValue[1] = scriptValue1;
+        script_value_buf.ScriptValue[2] = scriptValue2;
+        script_value_buf.ScriptValue[3] = scriptValue3;
+    }
+
+    rt->SetCustomDrawEffect(effect);
+
+    const int32_t l = std::clamp(pos.x, 0, client->Settings.ScreenWidth);
+    const int32_t t = std::clamp(pos.y, 0, client->Settings.ScreenHeight);
+    const int32_t r = std::clamp(pos.x + size.width, 0, client->Settings.ScreenWidth);
+    const int32_t b = std::clamp(pos.y + size.height, 0, client->Settings.ScreenHeight);
+    const frect32 from(l, t, r - l, b - t);
+    const irect32 to(l, t, r - l, b - t);
+
+    client->SprMngr.DrawRenderTarget(rt.get(), true, &from, &to);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, int32_t fromX, int32_t fromY, int32_t fromW, int32_t fromH, int32_t toX, int32_t toY, int32_t toW, int32_t toH)
 {
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-    if (client->ActiveOffscreenSurfaces.empty()) {
-        throw ScriptException("No active offscreen surfaces");
-    }
+    FO_STACK_TRACE_ENTRY();
 
-    auto& rt = client->ActiveOffscreenSurfaces.back();
-    client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.emplace_back(rt);
-
-    client->SprMngr.GetRtMngr().PopRenderTarget();
-
-    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
-        throw ScriptException("Invalid effect subtype");
-    }
-
-    rt->SetCustomDrawEffect(client->OffscreenEffects[effectSubtype].get());
+    raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
+    rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
     const auto from = frect32(std::clamp(fromX, 0, client->Settings.ScreenWidth), //
         std::clamp(fromY, 0, client->Settings.ScreenHeight), //

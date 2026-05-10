@@ -661,7 +661,8 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                 }
             }};
 
-            const auto d3d_compile = ::D3DCompile(vertex_shader_content.c_str(), vertex_shader_content.length(), nullptr, nullptr, nullptr, "main", "vs_4_0_level_9_1", 0, 0, &vertex_shader_blob, &error_blob);
+            const char* vertex_shader_profile = _ctx->Settings->Direct3DVertexShaderProfile.c_str();
+            const auto d3d_compile = ::D3DCompile(vertex_shader_content.c_str(), vertex_shader_content.length(), nullptr, nullptr, nullptr, "main", vertex_shader_profile, 0, 0, &vertex_shader_blob, &error_blob);
 
             if (FAILED(d3d_compile)) {
                 const string error = static_cast<const char*>(error_blob->GetBufferPointer());
@@ -735,7 +736,8 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                 }
             }};
 
-            const auto d3d_compile = ::D3DCompile(pixel_shader_content.c_str(), pixel_shader_content.length(), nullptr, nullptr, nullptr, "main", "ps_4_0_level_9_1", 0, 0, &pixel_shader_blob, &error_blob);
+            const char* pixel_shader_profile = _ctx->Settings->Direct3DPixelShaderProfile.c_str();
+            const auto d3d_compile = ::D3DCompile(pixel_shader_content.c_str(), pixel_shader_content.length(), nullptr, nullptr, nullptr, "main", pixel_shader_profile, 0, 0, &pixel_shader_blob, &error_blob);
 
             if (FAILED(d3d_compile)) {
                 const string error = static_cast<const char*>(error_blob->GetBufferPointer());
@@ -1262,34 +1264,35 @@ Direct3D_Effect::~Direct3D_Effect()
 {
     FO_STACK_TRACE_ENTRY();
 
-#define SAFE_RELEASE(ptr) \
-    if (ptr) { \
-        ptr->Release(); \
-    }
+    const auto safe_release = [](auto& ptr) {
+        if (ptr) {
+            ptr->Release();
+        }
+    };
+
     for (size_t i = 0; i < EFFECT_MAX_PASSES; i++) {
-        SAFE_RELEASE(VertexShader[i]);
-        SAFE_RELEASE(InputLayout[i]);
-        SAFE_RELEASE(PixelShader[i]);
-        SAFE_RELEASE(RasterizerState[i]);
-        SAFE_RELEASE(BlendState[i]);
-        SAFE_RELEASE(DepthStencilState[i]);
+        safe_release(VertexShader[i]);
+        safe_release(InputLayout[i]);
+        safe_release(PixelShader[i]);
+        safe_release(RasterizerState[i]);
+        safe_release(BlendState[i]);
+        safe_release(DepthStencilState[i]);
 #if FO_ENABLE_3D
-        SAFE_RELEASE(RasterizerState_Culling[i]);
+        safe_release(RasterizerState_Culling[i]);
 #endif
     }
-    SAFE_RELEASE(Cb_ProjBuf);
-    SAFE_RELEASE(Cb_MainTexBuf);
-    SAFE_RELEASE(Cb_EggBuf);
-    SAFE_RELEASE(Cb_ContourBuf);
-    SAFE_RELEASE(Cb_TimeBuf);
-    SAFE_RELEASE(Cb_RandomValueBuf);
-    SAFE_RELEASE(Cb_ScriptValueBuf);
+    safe_release(Cb_ProjBuf);
+    safe_release(Cb_MainTexBuf);
+    safe_release(Cb_EggBuf);
+    safe_release(Cb_ContourBuf);
+    safe_release(Cb_TimeBuf);
+    safe_release(Cb_RandomValueBuf);
+    safe_release(Cb_ScriptValueBuf);
 #if FO_ENABLE_3D
-    SAFE_RELEASE(Cb_ModelBuf);
-    SAFE_RELEASE(Cb_ModelTexBuf);
-    SAFE_RELEASE(Cb_ModelAnimBuf);
+    safe_release(Cb_ModelBuf);
+    safe_release(Cb_ModelTexBuf);
+    safe_release(Cb_ModelAnimBuf);
 #endif
-#undef SAFE_RELEASE
 }
 
 void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex)
@@ -1369,24 +1372,30 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         MemCopy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float32_t));
     }
 
-#define CBUF_UPLOAD_BUFFER(buf) \
-    if (_need##buf && buf.has_value()) { \
-        setup_cbuffer(*buf, Cb_##buf); \
-        buf.reset(); \
-    }
-    CBUF_UPLOAD_BUFFER(ProjBuf);
-    CBUF_UPLOAD_BUFFER(MainTexBuf);
-    CBUF_UPLOAD_BUFFER(EggBuf);
-    CBUF_UPLOAD_BUFFER(ContourBuf);
-    CBUF_UPLOAD_BUFFER(TimeBuf);
-    CBUF_UPLOAD_BUFFER(RandomValueBuf);
-    CBUF_UPLOAD_BUFFER(ScriptValueBuf);
+    const auto upload_cbuffer = [&setup_cbuffer](bool need_buf, auto& buf, auto& cbuf, bool reset_buf) {
+        if (!need_buf || !buf.has_value()) {
+            return;
+        }
+
+        setup_cbuffer(*buf, cbuf);
+
+        if (reset_buf) {
+            buf.reset();
+        }
+    };
+
+    upload_cbuffer(_needProjBuf, ProjBuf, Cb_ProjBuf, true);
+    upload_cbuffer(_needMainTexBuf, MainTexBuf, Cb_MainTexBuf, true);
+    upload_cbuffer(_needEggBuf, EggBuf, Cb_EggBuf, true);
+    upload_cbuffer(_needContourBuf, ContourBuf, Cb_ContourBuf, true);
+    upload_cbuffer(_needTimeBuf, TimeBuf, Cb_TimeBuf, true);
+    upload_cbuffer(_needRandomValueBuf, RandomValueBuf, Cb_RandomValueBuf, true);
+    upload_cbuffer(_needScriptValueBuf, ScriptValueBuf, Cb_ScriptValueBuf, false);
 #if FO_ENABLE_3D
-    CBUF_UPLOAD_BUFFER(ModelBuf);
-    CBUF_UPLOAD_BUFFER(ModelTexBuf);
-    CBUF_UPLOAD_BUFFER(ModelAnimBuf);
+    upload_cbuffer(_needModelBuf, ModelBuf, Cb_ModelBuf, true);
+    upload_cbuffer(_needModelTexBuf, ModelTexBuf, Cb_ModelTexBuf, true);
+    upload_cbuffer(_needModelAnimBuf, ModelAnimBuf, Cb_ModelAnimBuf, true);
 #endif
-#undef CBUF_UPLOAD_BUFFER
 
     const auto draw_count = numeric_cast<UINT>(indices_to_draw.value_or(d3d_dbuf->IndCount));
 
@@ -1419,24 +1428,25 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         _ctx->D3DDeviceContext->VSSetShader(VertexShader[pass].get(), nullptr, 0);
         _ctx->D3DDeviceContext->PSSetShader(PixelShader[pass].get(), nullptr, 0);
 
-#define CBUF_SET_BUFFER(buf) \
-    if (_pos##buf[pass] != -1 && Cb_##buf) { \
-        _ctx->D3DDeviceContext->VSSetConstantBuffers(_pos##buf[pass], 1, Cb_##buf.get_pp()); \
-        _ctx->D3DDeviceContext->PSSetConstantBuffers(_pos##buf[pass], 1, Cb_##buf.get_pp()); \
-    }
-        CBUF_SET_BUFFER(ProjBuf);
-        CBUF_SET_BUFFER(MainTexBuf);
-        CBUF_SET_BUFFER(EggBuf);
-        CBUF_SET_BUFFER(ContourBuf);
-        CBUF_SET_BUFFER(TimeBuf);
-        CBUF_SET_BUFFER(RandomValueBuf);
-        CBUF_SET_BUFFER(ScriptValueBuf);
+        const auto set_cbuffer = [ctx = _ctx.get()](int32_t pos, auto& cbuf) {
+            if (pos != -1 && cbuf) {
+                ctx->D3DDeviceContext->VSSetConstantBuffers(pos, 1, cbuf.get_pp());
+                ctx->D3DDeviceContext->PSSetConstantBuffers(pos, 1, cbuf.get_pp());
+            }
+        };
+
+        set_cbuffer(_posProjBuf[pass], Cb_ProjBuf);
+        set_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
+        set_cbuffer(_posEggBuf[pass], Cb_EggBuf);
+        set_cbuffer(_posContourBuf[pass], Cb_ContourBuf);
+        set_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
+        set_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
+        set_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
 #if FO_ENABLE_3D
-        CBUF_SET_BUFFER(ModelBuf);
-        CBUF_SET_BUFFER(ModelTexBuf);
-        CBUF_SET_BUFFER(ModelAnimBuf);
+        set_cbuffer(_posModelBuf[pass], Cb_ModelBuf);
+        set_cbuffer(_posModelTexBuf[pass], Cb_ModelTexBuf);
+        set_cbuffer(_posModelAnimBuf[pass], Cb_ModelAnimBuf);
 #endif
-#undef CBUF_SET_BUFFER
 
         const auto find_tex_sampler = [ctx = _ctx.get()](const Direct3D_Texture* tex) {
             if (tex->LinearFiltered) {
@@ -1488,24 +1498,25 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         constexpr ID3D11ShaderResourceView* null_res = nullptr;
         constexpr ID3D11SamplerState* null_sampler = nullptr;
 
-#define CBUF_UNSET_BUFFER(buf) \
-    if (_pos##buf[pass] != -1 && Cb_##buf) { \
-        _ctx->D3DDeviceContext->VSSetConstantBuffers(_pos##buf[pass], 1, &null_buf); \
-        _ctx->D3DDeviceContext->PSSetConstantBuffers(_pos##buf[pass], 1, &null_buf); \
-    }
-        CBUF_UNSET_BUFFER(ProjBuf);
-        CBUF_UNSET_BUFFER(MainTexBuf);
-        CBUF_UNSET_BUFFER(EggBuf);
-        CBUF_UNSET_BUFFER(ContourBuf);
-        CBUF_UNSET_BUFFER(TimeBuf);
-        CBUF_UNSET_BUFFER(RandomValueBuf);
-        CBUF_UNSET_BUFFER(ScriptValueBuf);
+        const auto unset_cbuffer = [ctx = _ctx.get(), &null_buf](int32_t pos, auto& cbuf) {
+            if (pos != -1 && cbuf) {
+                ctx->D3DDeviceContext->VSSetConstantBuffers(pos, 1, &null_buf);
+                ctx->D3DDeviceContext->PSSetConstantBuffers(pos, 1, &null_buf);
+            }
+        };
+
+        unset_cbuffer(_posProjBuf[pass], Cb_ProjBuf);
+        unset_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
+        unset_cbuffer(_posEggBuf[pass], Cb_EggBuf);
+        unset_cbuffer(_posContourBuf[pass], Cb_ContourBuf);
+        unset_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
+        unset_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
+        unset_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
 #if FO_ENABLE_3D
-        CBUF_UNSET_BUFFER(ModelBuf);
-        CBUF_UNSET_BUFFER(ModelTexBuf);
-        CBUF_UNSET_BUFFER(ModelAnimBuf);
+        unset_cbuffer(_posModelBuf[pass], Cb_ModelBuf);
+        unset_cbuffer(_posModelTexBuf[pass], Cb_ModelTexBuf);
+        unset_cbuffer(_posModelAnimBuf[pass], Cb_ModelAnimBuf);
 #endif
-#undef CBUF_SET_BUFFER
 
         if (_posMainTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posMainTex[pass], 1, &null_res);
