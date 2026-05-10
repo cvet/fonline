@@ -57,8 +57,15 @@ auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexcept -> b
         return false;
     }
 
-    // Reload requires the runtime to nominate a target path; without it the host has
-    // nothing to load on the second pass.
+    switch (result.ResultKind) {
+    case ClientRuntimeResultKind::Shutdown:
+    case ClientRuntimeResultKind::ReloadRequested:
+    case ClientRuntimeResultKind::FatalError:
+        break;
+    default:
+        return false;
+    }
+
     if (result.ResultKind == ClientRuntimeResultKind::ReloadRequested && (result.RequestedRuntimePath == nullptr || result.RequestedRuntimePath[0] == '\0')) {
         return false;
     }

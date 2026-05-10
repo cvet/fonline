@@ -182,7 +182,7 @@ auto Updater::Process() -> bool
     _sprMngr.EndScene();
     _conn.Process();
 
-    return !_aborted && IsFinished();
+    return _result.has_value() || IsFinished();
 }
 
 void Updater::AddText(string_view text)
@@ -197,6 +197,10 @@ void Updater::Abort(string_view text)
     FO_STACK_TRACE_ENTRY();
 
     _aborted = true;
+
+    if (!_result.has_value()) {
+        _result = UpdaterResult::Failed;
+    }
 
     AddText(text);
     _conn.Disconnect();
@@ -241,7 +245,6 @@ void Updater::GetNextFile()
             return;
         }
 
-        _updatedAnyFile = true;
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
@@ -267,7 +270,6 @@ void Updater::GetNextFile()
                         return;
                     }
 
-                    _updatedAnyFile = true;
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
@@ -320,8 +322,6 @@ void Updater::RequestUpdateFile(const UpdateFile& update_file)
 void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     FO_STACK_TRACE_ENTRY();
-
-    _connectResult = result;
 
     if (result == ClientConnection::ConnectResult::Success) {
         AddText(StrConnectionEstablished);
@@ -393,6 +393,7 @@ void Updater::Net_OnInitData()
     }
 
     auto reader = DataReader(data);
+    const string current_runtime_name = _binariesMode ? GetCurrentClientRuntimeLibraryName() : string {};
 
     for (int32_t file_index = 0;; file_index++) {
         const auto name_len = reader.Read<int16_t>();
@@ -413,6 +414,12 @@ void Updater::Net_OnInitData()
         }
 
         if (_binariesMode) {
+            const auto runtime_name = strex(fname).extract_file_name().erase_file_extension().str();
+
+            if (runtime_name.empty() || runtime_name != current_runtime_name) {
+                continue;
+            }
+
             _hasMatchingEntries = true;
 
             const auto file_path = strex(_binaryDir).combine_path(fname).str();
@@ -446,7 +453,6 @@ void Updater::Net_OnInitData()
         update_file.RemaningSize = size;
         update_file.Hash = hash;
         _filesToUpdate.push_back(update_file);
-        _filesWholeSize += size;
     }
 
     reader.VerifyEnd();
@@ -455,7 +461,7 @@ void Updater::Net_OnInitData()
         GetNextFile();
     }
     else if (_binariesMode) {
-        _result = _hasMatchingEntries ? UpdaterResult::Failed : UpdaterResult::ServerMissingNativeUpdate;
+        _result = _hasMatchingEntries ? UpdaterResult::BinariesStaged : UpdaterResult::ServerMissingNativeUpdate;
     }
     else {
         _result = UpdaterResult::ResourcesReady;
@@ -474,18 +480,35 @@ void Updater::Net_OnUpdateFileData()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto data_size = numeric_cast<size_t>(_conn.InBuf->Read<int32_t>());
+    const auto data_size_raw = _conn.InBuf->Read<int32_t>();
+
+    if (data_size_raw < 0) {
+        Abort(StrFilesystemError);
+        return;
+    }
+
+    const auto data_size = numeric_cast<size_t>(data_size_raw);
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
+    if (_filesToUpdate.empty() || !_tempFile.is_open()) {
+        Abort(StrFilesystemError);
+        return;
+    }
+
     auto& update_file = _filesToUpdate.front();
+
+    if (numeric_cast<uint64_t>(data_size) > update_file.RemaningSize) {
+        Abort(StrFilesystemError);
+        return;
+    }
 
     // Write data to temp file
     const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), static_cast<std::streamsize>(write_size));
+        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -493,8 +516,6 @@ void Updater::Net_OnUpdateFileData()
         return;
     }
 
-    // Get next portion or finalize data
-    FO_RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
     update_file.RemaningSize -= data_size;
 
     if (update_file.RemaningSize > 0) {

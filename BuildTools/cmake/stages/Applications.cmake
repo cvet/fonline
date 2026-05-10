@@ -27,6 +27,12 @@ if(FO_BUILD_CLIENT)
             EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT}
             NO_PREFIX
             WRITE_BUILD_HASH)
+
+        add_custom_command(TARGET ${FO_DEV_NAME}_ClientLib POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:${FO_DEV_NAME}_ClientLib>"
+                "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_Client${CMAKE_SHARED_LIBRARY_SUFFIX}"
+            COMMENT "Copy client runtime library to host-derived module name")
     else()
         AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
             OUTPUT_DIR ${FO_CLIENT_OUTPUT}

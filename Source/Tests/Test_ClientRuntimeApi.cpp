@@ -106,6 +106,15 @@ TEST_CASE("ClientRuntimeApi")
         CHECK(IsValidClientRuntimeResult(result));
     }
 
+    SECTION("UnknownResultKindIsRejected")
+    {
+        ClientRuntimeResult result {};
+        result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
+        result.ResultKind = static_cast<ClientRuntimeResultKind>(42);
+
+        CHECK_FALSE(IsValidClientRuntimeResult(result));
+    }
+
     SECTION("CompatibilityMatchUsesMetadataString")
     {
         ClientRuntimeMetadata metadata {};

@@ -54,8 +54,7 @@ static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, 
         return false;
     }
 
-    const auto seek_offset = numeric_cast<int64_t>(start_offset);
-    file.seekg(static_cast<std::streamoff>(seek_offset), std::ios::beg);
+    file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
 
     if (!file) {
         return false;
@@ -238,29 +237,34 @@ void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t upd
         return;
     }
 
-    const auto offset = numeric_cast<size_t>(start_offset);
-    const auto update_portion_size = numeric_cast<size_t>(update_file_max_portion_size);
-    const auto remaining_size = numeric_cast<size_t>(file_size - start_offset);
-    const auto update_portion = std::min(update_portion_size, remaining_size);
+    const uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
+    const uint64_t remaining_size = file_size - start_offset;
+    const uint64_t update_portion = std::min(update_portion_limit, remaining_size);
+    const size_t update_portion_size = numeric_cast<size_t>(update_portion);
+
+    vector<uint8_t> disk_update_data {};
+
+    if (update_portion_size != 0 && !update_file.InMemory) {
+        disk_update_data.resize(update_portion_size);
+
+        if (!ReadUpdateFilePortion(update_file.DiskPath, start_offset, disk_update_data)) {
+            WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
+            connection->HardDisconnect();
+            return;
+        }
+    }
 
     auto out_buf = connection->WriteMsg(NetMessage::UpdateFileData);
 
-    out_buf->Write(numeric_cast<int32_t>(update_portion));
+    out_buf->Write(numeric_cast<int32_t>(update_portion_size));
 
-    if (update_portion != 0) {
+    if (update_portion_size != 0) {
         if (update_file.InMemory) {
-            out_buf->Push(update_file.MemoryData.data() + offset, update_portion);
+            const size_t offset = numeric_cast<size_t>(start_offset);
+            out_buf->Push(update_file.MemoryData.data() + offset, update_portion_size);
         }
         else {
-            auto update_data = vector<uint8_t>(update_portion);
-
-            if (!ReadUpdateFilePortion(update_file.DiskPath, start_offset, update_data)) {
-                WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
-                connection->HardDisconnect();
-                return;
-            }
-
-            out_buf->Push(update_data.data(), update_portion);
+            out_buf->Push(disk_update_data.data(), update_portion_size);
         }
     }
 }

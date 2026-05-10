@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 enum class UpdaterResult : uint8_t
 {
     ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game.
-    BinariesStaged = 1, // Gameplay compat outdated; new native modules sit next to live ones with a -staging suffix, caller must reload.
+    BinariesStaged = 1, // Gameplay compat outdated; native modules are ready on disk, caller must reload.
     PlatformUnsupported = 2, // Compat outdated and CanSelfUpdateNativeModules() == false (Web / iOS / Android).
     ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug.
     UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable.
@@ -80,7 +80,7 @@ public:
     [[nodiscard]] auto GetResult() const noexcept -> UpdaterResult { return _result.value_or(UpdaterResult::Failed); }
 
     // One iteration of network processing + UI rendering. Returns true once the updater
-    // finished successfully and the caller should advance past it.
+    // reached a terminal state and the caller should inspect GetResult().
     auto Process() -> bool;
 
 private:
@@ -116,15 +116,12 @@ private:
     ClientConnection _conn;
     CacheStorage _cache;
     string _binaryDir;
-    ClientConnection::ConnectResult _connectResult {ClientConnection::ConnectResult::Failed};
     optional<UpdaterResult> _result;
     bool _binariesMode {};
     bool _aborted {};
     bool _fileListReceived {};
     bool _hasMatchingEntries {};
-    bool _updatedAnyFile {};
     vector<UpdateFile> _filesToUpdate {};
-    uint64_t _filesWholeSize {};
     std::ofstream _tempFile {};
     vector<uint8_t> _updateFileBuf {};
     vector<string> _messages {};

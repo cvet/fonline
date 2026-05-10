@@ -46,7 +46,7 @@ UPDATER_PLATFORMS_DIR = 'UpdaterPlatforms'
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
 # in Engine/Source/Common/Common.h. Most platforms match directly; Android
 # binaries are staged with the Android ABI name (armeabi-v7a, arm64-v8a) while
-# the C++ side reports the canonical arch (arm, arm64). Keep this table in sync
+# the C++ side reports the canonical arch (arm32, arm64). Keep this table in sync
 # with GetCurrentBinaryUpdateTargetName so the server-side updater payload
 # directory and the client request name agree per platform.
 PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
@@ -242,6 +242,12 @@ class Packager:
 	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
 		return variant.output_suffix(is_windows)
 
+	def build_client_runtime_input_name(self) -> str:
+		return self.args.devname + '_ClientLib'
+
+	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
+		return self.args.devname + '_Client' + variant.role
+
 	def get_runtime_library_ext_for_platform(self, platform: str) -> str:
 		if platform == 'Windows':
 			return '.dll'
@@ -334,8 +340,8 @@ class Packager:
 				if not runtime_ext:
 					continue
 
-				runtime_input_path = os.path.join(entry_path, self.args.devname + '_ClientLib' + runtime_ext)
-				build_hash_path = os.path.join(entry_path, self.args.devname + '_ClientLib.build-hash')
+				runtime_input_path = os.path.join(entry_path, self.build_client_runtime_input_name() + runtime_ext)
+				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name() + '.build-hash')
 				if not os.path.isfile(runtime_input_path) or not os.path.isfile(build_hash_path):
 					continue
 
@@ -629,11 +635,14 @@ class Packager:
 
 				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
 				excluded_companions: set[str] = set()
+				if self.args.target == 'Client':
+					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
 
 				if self.args.target == 'Client' and not is_lib:
-					runtime_input_name = self.args.devname + '_' + self.args.target + variant.role + 'Lib'
+					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll')
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', excluded_companions={runtime_alias_name + '.dll'})
 					self.copy_optional_pdb(bin_path, runtime_input_name, runtime_out_name)
 					excluded_companions.add(runtime_input_name + '.dll')
 
@@ -654,11 +663,14 @@ class Packager:
 
 				additional_config_data = None
 				excluded_companions: set[str] = set()
+				if self.args.target == 'Client':
+					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.so')
 
 				if self.args.target == 'Client':
-					runtime_input_name = self.args.devname + '_' + self.args.target + variant.role + 'Lib'
+					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so')
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', excluded_companions={runtime_alias_name + '.so'})
 					excluded_companions.add(runtime_input_name + '.so')
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
