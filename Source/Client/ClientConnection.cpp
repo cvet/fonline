@@ -33,6 +33,7 @@
 
 #include "ClientConnection.h"
 #include "NetCommand.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -379,9 +380,13 @@ void ClientConnection::Net_SendHandshake()
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
+    const uint32_t updater_version = FO_UPDATER_VERSION;
+    const string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);
+    _netOut.Write(updater_version);
+    _netOut.Write(binary_update_target_name);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 
@@ -392,13 +397,23 @@ void ClientConnection::Net_OnHandshakeAnswer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto outdated = _netIn.Read<bool>();
+    const auto compatibility_outdated = _netIn.Read<bool>();
+    const auto updater_outdated = _netIn.Read<bool>();
     const auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
 
     _wasHandshake = true;
-    _connectCallback(outdated ? ConnectResult::Outdated : ConnectResult::Success);
+
+    if (updater_outdated) {
+        _connectCallback(ConnectResult::UpdaterOutdated);
+    }
+    else if (compatibility_outdated) {
+        _connectCallback(ConnectResult::CompatibilityOutdated);
+    }
+    else {
+        _connectCallback(ConnectResult::Success);
+    }
 }
 
 void ClientConnection::Net_OnPing()

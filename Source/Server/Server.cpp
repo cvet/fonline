@@ -64,6 +64,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Start server");
+    WriteLog("Updater version: {}", FO_UPDATER_VERSION);
     WriteLog("Compatibility version: {}", settings.CompatibilityVersion);
 
     _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
@@ -360,40 +361,17 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
     // Resource packs for client
     _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
+        FO_STACK_TRACE_ENTRY_NAMED("InitUpdaterBackendJob");
 
         if (IsPackaged()) {
-            WriteLog("Load client data packs for synchronization");
+            WriteLog("Initialize updater backend with client resources using {} storage", Settings.UpdateFilesInMemory ? "memory" : "disk");
 
-            FileSystem client_resources;
-            client_resources.AddDirSource(Settings.ClientResources, false, true, true);
-
-            auto writer = DataWriter(_updateFilesDesc);
-
-            const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
-                const auto file = client_resources.ReadFile(path);
-
-                if (!file) {
-                    throw ServerInitException("Resource pack for client not found", path);
-                }
-
-                const auto data = file.GetData();
-                _updateFilesData.push_back(data);
-
-                writer.Write<int16_t>(numeric_cast<int16_t>(file.GetPath().length()));
-                writer.WritePtr(file.GetPath().data(), file.GetPath().length());
-                writer.Write<uint32_t>(numeric_cast<uint32_t>(data.size()));
-                writer.Write<uint64_t>(hashing_ex::hash(data.data(), data.size()));
-            };
-
-            for (const auto& resource_entry : Settings.ClientResourceEntries) {
-                if (resource_entry != "Embedded") {
-                    add_sync_file(strex("{}.zip", resource_entry));
-                }
-            }
-
-            // Complete files list
-            writer.Write<int16_t>(const_numeric_cast<int16_t>(-1));
+            auto updater_backend = SafeAlloc::MakeUnique<UpdaterBackend>();
+            updater_backend->LoadFromClientResources(Settings, Settings.UpdateFilesInMemory);
+            _updaterBackend = std::move(updater_backend);
+        }
+        else {
+            WriteLog("Skip updater backend initialization in unpackaged mode");
         }
 
         return std::nullopt;
@@ -1169,8 +1147,6 @@ void ServerEngine::DrawGui()
                         info_row("Graceful disconnected", strex("{}", connection->IsGracefulDisconnected()).str());
                         info_row("Last activity", strex("{}", connection_diagnostics.LastActivityTime).str());
                         info_row("Ping ok", strex("{}", connection_diagnostics.PingAnswerReceived).str());
-                        info_row("Update file index", strex("{}", connection_diagnostics.PendingUpdateFileIndex).str());
-                        info_row("Update file portion", strex("{}", connection_diagnostics.PendingUpdateFilePortion).str());
                         ImGui::EndTable();
                     }
 
@@ -1316,10 +1292,13 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
                 unlogined_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile:
-                Process_UpdateFile(connection);
-                break;
-            case NetMessage::GetUpdateFileData:
-                Process_UpdateFileData(connection);
+                if (!_updaterBackend) {
+                    WriteLog(LogType::Warning, "Wrong update file request, updater backend disabled, client host '{}'", connection->GetHost());
+                    connection->HardDisconnect();
+                    break;
+                }
+
+                _updaterBackend->ProcessUpdateFile(connection, Settings.UpdateFileMaxPortionSize);
                 break;
             case NetMessage::RemoteCall:
                 Process_RemoteCall(unlogined_player);
@@ -2095,7 +2074,11 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
 
     // Net protocol
     const auto comp_version = in_buf->Read<string>();
-    const auto outdated = comp_version != Settings.CompatibilityVersion;
+    const auto updater_version = in_buf->Read<uint32_t>();
+    const auto requested_binary_target = in_buf->Read<string>();
+
+    const auto compatibility_outdated = comp_version != Settings.CompatibilityVersion;
+    const auto updater_outdated = updater_version != FO_UPDATER_VERSION;
 
     // Begin data encrypting
     const auto in_encrypt_key = in_buf->Read<uint32_t>();
@@ -2119,7 +2102,8 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     {
         auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
 
-        out_buf->Write(outdated);
+        out_buf->Write(compatibility_outdated);
+        out_buf->Write(updater_outdated);
         out_buf->Write(out_encrypt_key);
     }
 
@@ -2129,26 +2113,32 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
         out_buf->SetEncryptKey(out_encrypt_key);
     }
 
-    if (!outdated) {
+    if (!updater_outdated) {
         vector<const uint8_t*>* global_vars_data = nullptr;
         vector<uint32_t>* global_vars_data_sizes = nullptr;
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
+        static const vector<uint8_t> empty_update_desc;
+        const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
+
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-        out_buf->Write(numeric_cast<uint32_t>(_updateFilesDesc.size()));
-        out_buf->Push(_updateFilesDesc);
+        out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
+        out_buf->Push(update_desc);
         out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
         out_buf->Write(GameTime.GetSynchronizedTime());
     }
 
     connection->MarkHandshakeComplete();
 
-    if (outdated) {
-        WriteLog("Connected client {} has outdated compatibility version {}", connection->GetHost(), comp_version);
+    if (updater_outdated) {
+        WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
+    }
+    else if (compatibility_outdated) {
+        WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
     }
     else {
-        WriteLog("Connected client {}", connection->GetHost());
+        WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);
     }
 }
 
@@ -2171,53 +2161,6 @@ void ServerEngine::Process_Ping(ServerConnection* connection)
         auto out_buf = connection->WriteMsg(NetMessage::Ping);
 
         out_buf->Write(true);
-    }
-}
-
-void ServerEngine::Process_UpdateFile(ServerConnection* connection)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto in_buf = connection->ReadBuf();
-
-    const auto file_index = in_buf->Read<uint32_t>();
-
-    in_buf.Unlock();
-
-    if (file_index >= _updateFilesData.size()) {
-        WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
-        connection->HardDisconnect();
-        return;
-    }
-
-    connection->BeginUpdateFileTransfer(numeric_cast<size_t>(file_index));
-
-    Process_UpdateFileData(connection);
-}
-
-void ServerEngine::Process_UpdateFileData(ServerConnection* connection)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto file_index = connection->GetUpdateFileTransferIndex();
-
-    if (!file_index) {
-        WriteLog(LogType::Warning, "Wrong update call, client host '{}'", connection->GetHost());
-        connection->HardDisconnect();
-        return;
-    }
-
-    const auto& update_file_data = _updateFilesData[*file_index];
-    const auto update_file_portion = connection->PullUpdateFilePortion(update_file_data.size(), numeric_cast<size_t>(Settings.UpdateFileSendSize));
-
-    auto out_buf = connection->WriteMsg(NetMessage::UpdateFileData);
-
-    out_buf->Write(numeric_cast<int32_t>(update_file_portion.Size));
-
-    if (update_file_portion.Size != 0) {
-        out_buf->Push(&update_file_data[update_file_portion.Offset], update_file_portion.Size);
     }
 }
 
@@ -3417,13 +3360,4 @@ auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t coun
     return item;
 }
 
-auto ServerEngine::MakePlayerId(string_view player_name) const -> ident_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = static_cast<uint32_t>(hashing_ex::hash(reinterpret_cast<const uint8_t*>(player_name.data()), player_name.length()));
-    FO_RUNTIME_ASSERT(hash_value);
-    return ident_t {(1u << 31u) | hash_value};
-}
 FO_END_NAMESPACE

@@ -49,7 +49,8 @@ public:
     enum class ConnectResult : uint8_t
     {
         Success,
-        Outdated,
+        CompatibilityOutdated,
+        UpdaterOutdated,
         Failed,
     };
 

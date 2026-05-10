@@ -31,6 +31,7 @@
 // SOFTWARE.
 
 #include "DiskFileSystem.h"
+#include "SafeArithmetics.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -270,6 +271,65 @@ auto fs_open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstrea
     FO_STACK_TRACE_ENTRY();
 
     return std::ifstream {std::filesystem::path {fs_make_path(path)}, mode};
+}
+
+auto fs_hash_file(string_view path) -> optional<uint64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // FNV-1a 64.
+    constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
+    constexpr uint64_t prime = UINT64_C(0x100000001b3);
+
+    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+        for (size_t i = 0; i < count; ++i) {
+            hash = (hash ^ bytes[i]) * prime;
+        }
+        return hash;
+    };
+
+    auto stream = fs_open_ifstream(path);
+
+    if (!stream) {
+        return std::nullopt;
+    }
+
+    array<char, 0x10000> buf {};
+    uint64_t hash = offset;
+
+    while (stream) {
+        stream.read(buf.data(), numeric_cast<std::streamsize>(buf.size()));
+
+        const auto read_size = numeric_cast<size_t>(stream.gcount());
+
+        if (read_size != 0) {
+            hash = step(hash, reinterpret_cast<const uint8_t*>(buf.data()), read_size);
+        }
+
+        if (stream.bad()) {
+            return std::nullopt;
+        }
+    }
+
+    return hash;
+}
+
+auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // FNV-1a 64.
+    constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
+    constexpr uint64_t prime = UINT64_C(0x100000001b3);
+
+    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+        for (size_t i = 0; i < count; ++i) {
+            hash = (hash ^ bytes[i]) * prime;
+        }
+        return hash;
+    };
+
+    return step(offset, static_cast<const uint8_t*>(data), size);
 }
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)

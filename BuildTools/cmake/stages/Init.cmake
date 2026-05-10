@@ -415,7 +415,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
 	SetValue(FO_MONO_OS "android")
 
 	if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm")
+		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm32")
 	elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
 		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm64")
 	elseif(${ANDROID_ABI} STREQUAL "x86")

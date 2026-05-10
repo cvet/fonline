@@ -48,7 +48,7 @@ SetValue(resourceBuildHashCommand
     ${CMAKE_COMMAND}
     -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash"
     -DGIT_ROOT="${FO_GIT_ROOT}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/WriteBuildHash.cmake")
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 
 AddCommandTarget(BakeResources
     COMMAND_ARGS

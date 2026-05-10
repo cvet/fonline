@@ -46,7 +46,6 @@ extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void SetupLogging(bool disable_log_tags);
-static auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
 
@@ -81,7 +80,7 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     WriteLog("Starting {}", FO_NICE_NAME);
 
     // Load settings
-    auto settings = LoadSettings(argc, argv);
+    auto settings = LoadAppSettings(argc, argv);
     WriteLog("Version: {}", settings.GameVersion);
 
     // Switch logging to a dedicated worker thread once the user setting is known
@@ -152,7 +151,7 @@ static void SetupLogging(bool disable_log_tags)
     }
 }
 
-auto LoadSettings(int32_t argc, char** argv) -> GlobalSettings
+auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
 {
     FO_STACK_TRACE_ENTRY();
 

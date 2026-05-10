@@ -9,8 +9,6 @@ StatusMessage("Applications:")
 
 if(FO_BUILD_CLIENT)
     if(NOT FO_BUILD_LIBRARY)
-        # Todo: cmake make bundles for Mac and iOS
-        # add_executable( ${FO_DEV_NAME}_Client MACOSX_BUNDLE ... ${FO_RC_FILE} )
         AddExecutableApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
             WIN32
             OUTPUT_DIR ${FO_CLIENT_OUTPUT}
@@ -19,6 +17,15 @@ if(FO_BUILD_CLIENT)
             TESTING_APP 0
             LINK_LIBS AppFrontend ClientLib
             EXTRA_SOURCES ${FO_RC_FILE}
+            WRITE_BUILD_HASH)
+
+        AddSharedApplication(${FO_DEV_NAME}_ClientLib "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.cpp"
+            OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+            OUTPUT_NAME ${FO_DEV_NAME}_ClientLib
+            TESTING_APP 0
+            LINK_LIBS PRIVATE AppFrontend ClientLib
+            EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT}
+            NO_PREFIX
             WRITE_BUILD_HASH)
     else()
         AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"

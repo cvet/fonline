@@ -71,7 +71,7 @@ FIXED_SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout
 FIXED_SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
 FIXED_SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
 FIXED_SETTING(bool, Network, NetDebugHashes, false); // Debug network hashes resolution
-FIXED_SETTING(int32_t, Network, UpdateFileSendSize, 1000000); // Update file send size
+FIXED_SETTING(int32_t, Network, UpdateFileMaxPortionSize, 1000000); // Maximum update file portion size in bytes
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
@@ -86,6 +86,7 @@ SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(bool, ServerNetwork, DisableNetworking, false); // If true, server networking listeners are not started
 FIXED_SETTING(bool, ServerNetwork, EnableUdp, false); // If true, UDP listener is enabled for native clients
 FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP listener silently drops incoming Connect packets so clients fall back to TCP (debug aid)
+FIXED_SETTING(bool, ServerNetwork, UpdateFilesInMemory, false); // If true, updater files are served from memory, otherwise from disk
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key

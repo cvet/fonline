@@ -128,6 +128,29 @@ TEST_CASE("Settings")
         REQUIRE(it != saved.end());
         CHECK(it->second == "value");
     }
+
+    SECTION("UpdateFilesInMemoryCanBeOverriddenBySubConfigs")
+    {
+        GlobalSettings settings {false};
+        ConfigFile config {"Test.fomain",
+            "ServerNetwork.UpdateFilesInMemory = False\n"
+            "[SubConfig]\n"
+            "Name = PublicGame\n"
+            "ServerNetwork.UpdateFilesInMemory = True\n"
+            "[SubConfig]\n"
+            "Name = Staging\n"
+            "Parent = PublicGame\n"
+            "ServerNetwork.UpdateFilesInMemory = False\n"};
+
+        settings.ApplyConfigFile(config, "cfg");
+        settings.ApplySubConfigSection("PublicGame");
+
+        CHECK(settings.UpdateFilesInMemory);
+
+        settings.ApplySubConfigSection("Staging");
+
+        CHECK_FALSE(settings.UpdateFilesInMemory);
+    }
 }
 
 FO_END_NAMESPACE

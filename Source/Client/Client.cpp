@@ -579,8 +579,11 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
         _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
         OnConnected.Fire();
     }
-    else if (result == ClientConnection::ConnectResult::Outdated) {
+    else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         throw ResourcesOutdatedException("Binary outdated");
+    }
+    else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
+        throw ResourcesOutdatedException("Updater outdated");
     }
     else {
         OnConnectingFailed.Fire();
@@ -750,10 +753,17 @@ void ClientEngine::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint32_t>();
+            const auto size = reader.Read<uint64_t>();
             const auto hash = reader.Read<uint64_t>();
+            const auto target = reader.Read<UpdateFileTarget>();
+            const auto data_index = reader.Read<uint32_t>();
 
             ignore_unused(hash);
+            ignore_unused(data_index);
+
+            if (target != UpdateFileTarget::ClientResources) {
+                continue;
+            }
 
             // Check size
             if (auto file = resources.ReadFileHeader(fname)) {

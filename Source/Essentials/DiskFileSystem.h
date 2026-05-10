@@ -53,6 +53,8 @@ using FsFileVisitor = function<void(string_view, size_t, uint64_t)>;
 [[nodiscard]] auto fs_create_directories(string_view dir) noexcept -> bool;
 [[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64_t;
 [[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
+[[nodiscard]] auto fs_hash_file(string_view path) -> optional<uint64_t>;
+[[nodiscard]] auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t;
 [[nodiscard]] auto fs_read_file(string_view path) -> optional<string>;
 [[nodiscard]] auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
 [[nodiscard]] auto fs_write_file(string_view path, string_view content) -> bool;
