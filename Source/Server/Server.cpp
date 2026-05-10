@@ -2113,28 +2113,29 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
         out_buf->SetEncryptKey(out_encrypt_key);
     }
 
-    if (!updater_outdated) {
-        vector<const uint8_t*>* global_vars_data = nullptr;
-        vector<uint32_t>* global_vars_data_sizes = nullptr;
-        StoreData(false, &global_vars_data, &global_vars_data_sizes);
-
-        static const vector<uint8_t> empty_update_desc;
-        const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
-
-        auto out_buf = connection->WriteMsg(NetMessage::InitData);
-
-        out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
-        out_buf->Push(update_desc);
-        out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
-        out_buf->Write(GameTime.GetSynchronizedTime());
+    if (updater_outdated) {
+        WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
+        connection->GracefulDisconnect();
+        return;
     }
+
+    vector<const uint8_t*>* global_vars_data = nullptr;
+    vector<uint32_t>* global_vars_data_sizes = nullptr;
+    StoreData(false, &global_vars_data, &global_vars_data_sizes);
+
+    static const vector<uint8_t> empty_update_desc;
+    const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
+
+    auto out_buf = connection->WriteMsg(NetMessage::InitData);
+
+    out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
+    out_buf->Push(update_desc);
+    out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+    out_buf->Write(GameTime.GetSynchronizedTime());
 
     connection->MarkHandshakeComplete();
 
-    if (updater_outdated) {
-        WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
-    }
-    else if (compatibility_outdated) {
+    if (compatibility_outdated) {
         WriteLog("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
     }
     else {
