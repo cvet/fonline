@@ -345,10 +345,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
-	if(NOT FO_BUILD_BAKER)
-		AddLinkOptionsList(-no-pie)
-	else()
+	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 		AddCompileOptionsList(-fPIC)
+	else()
+		AddLinkOptionsList(-no-pie)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -474,6 +474,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sDEFAULT_TO_CXX=0
 		-sUSE_GLFW=0
 		-sALLOW_UNIMPLEMENTED_SYSCALLS=0
+		-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']
 		-lhtml5
 		-lGL
 		-legl.js
