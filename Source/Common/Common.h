@@ -354,6 +354,25 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
+static constexpr uint32_t FO_UPDATER_VERSION = 1;
+
+enum class UpdatePlatform : uint8_t
+{
+    Unknown = 0,
+    Windows = 1,
+    Linux = 2,
+    Android = 3,
+    MacOS = 4,
+    IOS = 5,
+    Web = 6,
+};
+
+enum class UpdateFileTarget : uint8_t
+{
+    ClientResources = 0,
+    ClientBinaries = 1,
+};
+
 // Network messages
 enum class NetMessage : uint8_t
 {
@@ -365,7 +384,6 @@ enum class NetMessage : uint8_t
     Ping = 15,
     PlaceToGameComplete = 17,
     GetUpdateFile = 19,
-    GetUpdateFileData = 21,
     UpdateFileData = 23,
     AddCritter = 25,
     RemoveCritter = 27,

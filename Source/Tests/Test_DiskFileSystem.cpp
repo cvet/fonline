@@ -33,6 +33,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "DiskFileSystem.h"
+#include "SafeArithmetics.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -120,6 +121,32 @@ TEST_CASE("DiskFileSystem")
         CHECK(stream_get_read_pos(stream) == 4);
         REQUIRE(stream_read_exact(stream, buf.data(), 2));
         CHECK(string_view {buf.data(), 2} == "ef");
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("FileHashMatchesInMemoryReference")
+    {
+        const auto temp_dir = MakeTempTestDir("diskfs_hash");
+        const auto file_path = strex(temp_dir).combine_path("hash.bin").str();
+        const auto removed_before_hash = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before_hash);
+
+        const auto check_hash = [&file_path](size_t size) {
+            vector<uint8_t> data(size);
+
+            for (size_t index = 0; index < size; index++) {
+                data[index] = numeric_cast<uint8_t>((index * 37u + 11u) & 0xFFu);
+            }
+
+            REQUIRE(fs_write_file(file_path, data));
+            REQUIRE(fs_hash_file(file_path).has_value());
+            CHECK(*fs_hash_file(file_path) == fs_hash_data(data.data(), data.size()));
+        };
+
+        for (const auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {
+            check_hash(size);
+        }
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

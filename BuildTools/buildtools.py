@@ -1426,7 +1426,11 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
-	triplet = f'{os_name}.{arch}.{config}'
+	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
+	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
+	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent.
+	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
+	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
 	runtime_root = workspace / 'runtime'
 	clone_marker = workspace / 'CLONED'
@@ -1449,7 +1453,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		build_script = resolve_runtime_build_script()
-		run([build_script, '-os', os_name, '-arch', arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
+		run([build_script, '-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)
 

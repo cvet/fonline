@@ -53,6 +53,7 @@
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
 #include "Settings.h"
+#include "UpdaterBackend.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -79,7 +80,6 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
-    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
 
     void Shutdown() override;
@@ -221,8 +221,6 @@ private:
 
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
-    void Process_UpdateFile(ServerConnection* connection);
-    void Process_UpdateFileData(ServerConnection* connection);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -292,8 +290,7 @@ private:
     std::atomic_bool _shutdownInProgress {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    vector<vector<uint8_t>> _updateFilesData {};
-    vector<uint8_t> _updateFilesDesc {};
+    unique_ptr<UpdaterBackend> _updaterBackend {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     TextPack _defaultLang {Hashes};

@@ -345,10 +345,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
-	if(NOT FO_BUILD_BAKER)
-		AddLinkOptionsList(-no-pie)
-	else()
+	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 		AddCompileOptionsList(-fPIC)
+	else()
+		AddLinkOptionsList(-no-pie)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -415,7 +415,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
 	SetValue(FO_MONO_OS "android")
 
 	if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm")
+		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm32")
 	elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
 		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm64")
 	elseif(${ANDROID_ABI} STREQUAL "x86")
@@ -474,6 +474,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sDEFAULT_TO_CXX=0
 		-sUSE_GLFW=0
 		-sALLOW_UNIMPLEMENTED_SYSCALLS=0
+		-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']
 		-lhtml5
 		-lGL
 		-legl.js

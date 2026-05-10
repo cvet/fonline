@@ -214,6 +214,7 @@ void MasterBaker::BakeAllInternal()
         FileCollection FilteredFiles {};
         vector<unique_ptr<BaseBaker>> Bakers {};
         std::atomic_int BakedFiles {};
+        std::mutex BakedFilePathsLocker {};
         unordered_set<string> BakedFilePaths {};
         bool FirstBake {};
         bool OutputAdded {};
@@ -243,7 +244,12 @@ void MasterBaker::BakeAllInternal()
         pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
 
         const auto bake_checker = [context = pack_bake_context.get(), &force_baking](string_view path, uint64_t write_time) -> bool {
-            context->BakedFilePaths.emplace(path);
+            // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
+            // to be guarded; without it concurrent emplace() races on the bucket array.
+            {
+                std::scoped_lock lock(context->BakedFilePathsLocker);
+                context->BakedFilePaths.emplace(path);
+            }
 
             if (!force_baking) {
                 const auto file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));

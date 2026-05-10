@@ -21,7 +21,7 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Single', 'Editor', 'Mapper', 'Baker']
+TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
@@ -40,6 +40,32 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+UPDATER_PLATFORMS_DIR = 'UpdaterPlatforms'
+
+# Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
+# to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
+# in Engine/Source/Common/Common.h. Most platforms match directly; Android
+# binaries are staged with the Android ABI name (armeabi-v7a, arm64-v8a) while
+# the C++ side reports the canonical arch (arm32, arm64). Keep this table in sync
+# with GetCurrentBinaryUpdateTargetName so the server-side updater payload
+# directory and the client request name agree per platform.
+PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
+	('Windows', 'win32'): 'win32',
+	('Windows', 'win64'): 'win64',
+	('Windows', 'arm64'): 'arm64',
+	('Linux', 'x64'): 'x64',
+	('Linux', 'arm64'): 'arm64',
+	('Linux', 'x86'): 'x86',
+	('Linux', 'arm'): 'arm',
+	('Android', 'armeabi-v7a'): 'arm32',
+	('Android', 'arm64-v8a'): 'arm64',
+	('Android', 'x86'): 'x86',
+	('macOS', 'arm64'): 'arm64',
+	('macOS', 'x64'): 'x64',
+	('iOS', 'arm64'): 'arm64',
+	('iOS', 'simulator'): 'simulator',
+	('Web', 'wasm'): 'wasm',
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -216,6 +242,41 @@ class Packager:
 	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
 		return variant.output_suffix(is_windows)
 
+	def build_client_runtime_input_name(self) -> str:
+		return self.args.devname + '_ClientLib'
+
+	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
+		return self.args.devname + '_Client' + variant.role
+
+	def get_runtime_library_ext_for_platform(self, platform: str) -> str:
+		if platform == 'Windows':
+			return '.dll'
+		if platform in ('Linux', 'Android'):
+			return '.so'
+		if platform in ('macOS', 'iOS'):
+			return '.dylib'
+		return ''
+
+	def build_runtime_update_target_name(self, binary_entry_name: str) -> str | None:
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		# Optional trailing suffixes (-Profiling_Total/-OnDemand, -Debug, -{binary_output_postfix})
+		# follow the platform/arch prefix, so pick the longest matching known (platform, arch).
+		best_platform: str | None = None
+		best_cxx_arch: str | None = None
+		best_prefix_len = -1
+		for (platform, arch_in_entry), cxx_arch in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_platform = platform
+					best_cxx_arch = cxx_arch
+					best_prefix_len = len(prefix)
+		if best_platform is None or best_cxx_arch is None:
+			return None
+		return best_platform + '-' + best_cxx_arch
+
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
 
@@ -227,13 +288,16 @@ class Packager:
 		else:
 			log('PDB file NOT included')
 
-	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str) -> None:
+	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
+		excluded_names = excluded_names or set()
 		for entry_name in sorted(os.listdir(bin_path)):
 			entry_path = os.path.join(bin_path, entry_name)
 			if not os.path.isfile(entry_path):
 				continue
 			if entry_name == primary_file_name:
+				continue
+			if entry_name in excluded_names:
 				continue
 			if os.path.splitext(entry_name)[1].lower() not in RUNTIME_COMPANION_EXTENSIONS:
 				continue
@@ -241,12 +305,85 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None) -> str:
+	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
 		self.patch_packaged_binary(output_file_path, additional_config_data)
-		self.copy_runtime_companions(bin_path, input_name, output_ext)
+		self.copy_runtime_companions(bin_path, input_name, output_ext, excluded_companions)
 		return output_file_path
+
+	def package_all_client_runtime_update_payloads(self) -> None:
+		copied_payloads: set[tuple[str, str]] = set()
+		client_embedded_data = self.make_embedded_data_for_target('Client')
+		_, client_config_data = self.read_config_data('Client')
+
+		for input_dir in self.args.input:
+			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
+			if not os.path.isdir(binaries_root):
+				continue
+
+			for entry_name in os.listdir(binaries_root):
+				entry_path = os.path.join(binaries_root, entry_name)
+				if not os.path.isdir(entry_path) or not entry_name.startswith('Client-'):
+					continue
+
+				request_target_name = self.build_runtime_update_target_name(entry_name)
+				if request_target_name is None:
+					continue
+
+				parts = request_target_name.split('-', 1)
+				if len(parts) != 2:
+					continue
+
+				platform = parts[0]
+				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
+				if not runtime_ext:
+					continue
+
+				runtime_input_path = os.path.join(entry_path, self.build_client_runtime_input_name() + runtime_ext)
+				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name() + '.build-hash')
+				if not os.path.isfile(runtime_input_path) or not os.path.isfile(build_hash_path):
+					continue
+
+				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
+					build_hash = file.read().strip()
+				if build_hash != self.args.buildhash:
+					continue
+
+				suffix = ''
+				if '-Profiling_' in entry_name:
+					suffix = '_Profiling'
+
+				output_names = [(self.args.nicename + suffix, None)]
+				if platform == 'Windows':
+					output_names.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1'))
+
+				for output_name, variant_config_data in output_names:
+					payload_key = (request_target_name, output_name)
+					if payload_key in copied_payloads:
+						continue
+
+					payload_dir = os.path.join(self.target_output_path, self.client_res_dir, UPDATER_PLATFORMS_DIR, request_target_name)
+					os.makedirs(payload_dir, exist_ok=True)
+					output_path = os.path.join(payload_dir, output_name + runtime_ext)
+					log('Client runtime update payload', output_path)
+					shutil.copy(runtime_input_path, output_path)
+
+					old_embedded_data = self.embedded_data
+					old_config_data = self.config_data
+					try:
+						self.embedded_data = client_embedded_data
+						self.config_data = client_config_data
+						self.patch_packaged_binary(output_path, variant_config_data)
+					finally:
+						self.embedded_data = old_embedded_data
+						self.config_data = old_config_data
+
+					copied_payloads.add(payload_key)
+
+	def merge_additional_config_data(self, *entries: str | None) -> str | None:
+		lines = [entry for entry in entries if entry]
+		return '\n'.join(lines) if lines else None
 
 	def select_platform_packager(self) -> Callable[[], None]:
 		if self.args.platform == 'Windows':
@@ -330,6 +467,23 @@ class Packager:
 		assert files, 'No files in pack ' + pack_name
 		return files
 
+	def make_embedded_data_for_target(self, target: str) -> bytes:
+		assert self.baking_path, 'Baking path is not initialized'
+		for pack_name in self.get_target_resource_packs(target):
+			if pack_name == 'Embedded':
+				files = self.collect_resource_files(pack_name, target)
+				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
+		raise AssertionError('Embedded resource pack not found for ' + target)
+
+	def read_config_data(self, target: str) -> tuple[str, bytes]:
+		assert self.baking_path, 'Baking path is not initialized'
+		config_suffix = 'client' if target == 'Client' else 'server'
+		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
+		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		assert os.path.isfile(config_path), 'Config file not found'
+		with open(config_path, 'r', encoding='utf-8-sig') as file:
+			return config_name, file.read().encode()
+
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for file_path in files:
@@ -358,14 +512,8 @@ class Packager:
 		self.write_files_zip(archive_path, base_path, files)
 
 	def load_config_data(self) -> None:
-		assert self.baking_path, 'Baking path is not initialized'
-		config_suffix = 'client' if self.args.target == 'Client' else 'server'
-		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
-		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		config_name, self.config_data = self.read_config_data(self.args.target)
 		log('Config', config_name)
-		assert os.path.isfile(config_path), 'Config file not found'
-		with open(config_path, 'r', encoding='utf-8-sig') as file:
-			self.config_data = file.read().encode()
 		log('Embedded data length', len(self.embedded_data))
 		log('Embedded config length', len(self.config_data))
 
@@ -471,6 +619,9 @@ class Packager:
 		]
 
 	def package_windows(self) -> None:
+		if self.args.target == 'Server' and not self.has_pack('NoRes'):
+			self.package_all_client_runtime_update_payloads()
+
 		for arch in self.iter_arches():
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
@@ -482,10 +633,26 @@ class Packager:
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, 'ForceOpenGL=1' if variant.graphics == 'OGL' else None)
+				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
+				excluded_companions: set[str] = set()
+				if self.args.target == 'Client':
+					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
+
+				if self.args.target == 'Client' and not is_lib:
+					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
+					runtime_out_name = bin_out_name
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', excluded_companions={runtime_alias_name + '.dll'})
+					self.copy_optional_pdb(bin_path, runtime_input_name, runtime_out_name)
+					excluded_companions.add(runtime_input_name + '.dll')
+
+				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
 				self.copy_optional_pdb(bin_path, bin_name, bin_out_name)
 
 	def package_linux(self) -> None:
+		if self.args.target == 'Server' and not self.has_pack('NoRes'):
+			self.package_all_client_runtime_update_payloads()
+
 		for arch in self.iter_arches():
 			for variant in self.iter_linux_variants():
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
@@ -494,7 +661,19 @@ class Packager:
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
 
-				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '')
+				additional_config_data = None
+				excluded_companions: set[str] = set()
+				if self.args.target == 'Client':
+					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.so')
+
+				if self.args.target == 'Client':
+					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
+					runtime_out_name = bin_out_name
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', excluded_companions={runtime_alias_name + '.so'})
+					excluded_companions.add(runtime_input_name + '.so')
+
+				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
 
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)

@@ -773,6 +773,7 @@ inline auto AppWindow::GetWindowHandleForInput() const -> WindowInternalHandle*
 }
 
 extern unique_ptr<Application> App;
+extern auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings;
 extern void InitApp(int32_t argc, char** argv, AppInitFlags flags = AppInitFlags::None);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 

@@ -346,7 +346,7 @@ macro(WriteBuildHash target)
 		${CMAKE_COMMAND}
 		-DHASH_FILE="${outputDir}/${target}.build-hash"
 		-DGIT_ROOT="${FO_GIT_ROOT}"
-		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/WriteBuildHash.cmake")
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
 		-E remove -f "${outputDir}/${target}.build-hash")
