@@ -2612,7 +2612,7 @@ auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolo
         return false;
     }
 
-    _engine->SprMngr.DrawSpriteWithEffect(mspr_rect.pos(), spr, color, effect, padding);
+    _engine->SprMngr.DrawSpriteWithEffect(spr, mspr_rect.pos(), color, effect, padding);
     return true;
 }
 
