@@ -256,6 +256,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
     parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
     parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
+    parser.add_argument('-internalcfg', dest='internalcfg', required=True, help='internal config buffer capacity')
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
     parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
@@ -334,6 +335,7 @@ assert get_hash('abcdefg') == '-106836237'
 
 # Generated file list
 generated_file_list = ['EmbeddedResources-Include.h',
+        'InternalConfig-Include.h',
         'Version-Include.h',
         'GenericCode-Common.cpp',
         'MetadataRegistration-Server.cpp',
@@ -2074,6 +2076,21 @@ def write_embedded_resources() -> None:
     run_codegen_step(write_embedded_resources_impl, 'Can\'t write embedded resources')
 
 
+def write_internal_config() -> None:
+    def write_internal_config_impl() -> None:
+        start_marker = b'###InternalConfig###1234'
+        end_marker = b'###InternalConfigEnd###'
+        capacity = int(args.internalcfg)
+        assert capacity >= len(start_marker) + len(end_marker), 'Internal config capacity must fit patch markers'
+        data = [ord('0') + i % 10 for i in range(capacity)]
+        data[:len(start_marker)] = start_marker
+        data[-len(end_marker):] = end_marker
+        generated_output.create_file('InternalConfig-Include.h', args.genoutput)
+        generated_output.write_line('FO_KEEP_DATA_SYMBOL char INTERNAL_CONFIG[' + str(capacity) + '] = {' + ','.join([str(x) for x in data]) + '};')
+
+    run_codegen_step(write_internal_config_impl, 'Can\'t write internal config')
+
+
 def try_get_git_branch() -> str:
     try:
         return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
@@ -2106,6 +2123,7 @@ def run_codegen() -> None:
     run_generic_codegen()
     run_metadata_registration_codegen()
     write_embedded_resources()
+    write_internal_config()
     write_version_info()
     flush_generated_files()
 

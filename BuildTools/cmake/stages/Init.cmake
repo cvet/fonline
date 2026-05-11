@@ -21,6 +21,7 @@ DeclareValueOptions(
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(

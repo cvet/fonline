@@ -25,6 +25,8 @@ TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
+INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
+INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -103,7 +105,7 @@ def log(*text: object) -> None:
 
 
 def patch_data(file_path: str | Path, mark: bytes, data: bytes, max_size: int) -> None:
-	assert len(data) <= max_size, 'Data size is to big ' + str(len(data)) + ' but maximum is ' + str(max_size)
+	assert len(data) <= max_size, 'Data size is too big ' + str(len(data)) + ' but maximum is ' + str(max_size)
 	with open(file_path, 'rb') as file:
 		content = file.read()
 	file_size = os.path.getsize(file_path)
@@ -122,6 +124,14 @@ def patch_file(file_path: str | Path, text_from: str, text_to: str) -> None:
 	content = content.replace(text_from.encode('utf-8'), text_to.encode('utf-8'))
 	with open(file_path, 'wb') as file:
 		file.write(content)
+
+
+def find_internal_config_capacity(content: bytes) -> int:
+	pos = content.find(INTERNAL_CONFIG_MARKER)
+	assert pos != -1, 'Internal config marker not found'
+	end_pos = content.find(INTERNAL_CONFIG_END_MARKER, pos + len(INTERNAL_CONFIG_MARKER))
+	assert end_pos != -1, 'Internal config end marker not found'
+	return end_pos + len(INTERNAL_CONFIG_END_MARKER) - pos
 
 
 def escape_groovy_string(value: str) -> str:
@@ -563,7 +573,9 @@ class Packager:
 	def patch_config(self, file_path: str, additional_config_data: str | None = None) -> None:
 		assert self.config_data, 'Embedded config is not prepared'
 		result_data = self.config_data + (('\n' + additional_config_data).encode() if additional_config_data else b'')
-		patch_data(file_path, b'###InternalConfig###1234', result_data, 10048)
+		with open(file_path, 'rb') as file:
+			content = file.read()
+		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
 
 	def patch_packaged_mark(self, file_path: str) -> None:
 		patch_data(file_path, b'###NOT_PACKAGED###', b'###XXXXXXXXXXXX###', 18)

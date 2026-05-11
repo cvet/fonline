@@ -14,6 +14,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/Gener
 AppendList(FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
+AppendList(FO_CODEGEN_COMMAND_ARGS -internalcfg "${FO_INTERNAL_CONFIG_CAPACITY}")
 
 AppendList(FO_CODEGEN_META_SOURCE
     ${FO_SOURCE_META_FILES}
@@ -31,6 +32,7 @@ AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig-Include.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp"
