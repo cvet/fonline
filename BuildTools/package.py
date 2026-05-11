@@ -642,7 +642,7 @@ class Packager:
 					runtime_input_name = self.build_client_runtime_input_name()
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', excluded_companions={runtime_alias_name + '.dll'})
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
 					self.copy_optional_pdb(bin_path, runtime_input_name, runtime_out_name)
 					excluded_companions.add(runtime_input_name + '.dll')
 
@@ -670,7 +670,7 @@ class Packager:
 					runtime_input_name = self.build_client_runtime_input_name()
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', excluded_companions={runtime_alias_name + '.so'})
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions={runtime_alias_name + '.so'})
 					excluded_companions.add(runtime_input_name + '.so')
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
@@ -911,7 +911,7 @@ class Packager:
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
 
 			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
-			result = subprocess.call([gradlew, build_task], cwd=self.target_output_path, env=gradle_env)
+			result = subprocess.call([gradlew, '--no-daemon', build_task], cwd=self.target_output_path, env=gradle_env)
 			assert result == 0, 'Gradle build failed'
 
 			build_type = 'debug' if self.has_pack('Debug') else 'release'
