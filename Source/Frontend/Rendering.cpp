@@ -184,8 +184,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _needProjBuf |= _posProjBuf[pass] != -1;
         _posMainTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);
         _needMainTexBuf |= _posMainTexBuf[pass] != -1;
-        _posContourBuf[pass] = pass_info.GetAsInt("EffectInfo", "ContourBuf", -1);
-        _needContourBuf |= _posContourBuf[pass] != -1;
+        _posSpriteBorderBuf[pass] = pass_info.GetAsInt("EffectInfo", "SpriteBorderBuf", -1);
+        _needSpriteBorderBuf |= _posSpriteBorderBuf[pass] != -1;
         _posTimeBuf[pass] = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
         _needTimeBuf |= _posTimeBuf[pass] != -1;
         _posRandomValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);

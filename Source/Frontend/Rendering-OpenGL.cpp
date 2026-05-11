@@ -284,7 +284,7 @@ public:
     GLuint Ubo_ProjBuf {};
     GLuint Ubo_MainTexBuf {};
     GLuint Ubo_EggBuf {};
-    GLuint Ubo_ContourBuf {};
+    GLuint Ubo_SpriteBorderBuf {};
     GLuint Ubo_TimeBuf {};
     GLuint Ubo_RandomValueBuf {};
     GLuint Ubo_ScriptValueBuf {};
@@ -744,7 +744,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
             bind_ubo_block("ProjBuf", opengl_effect->_posProjBuf[pass]);
             bind_ubo_block("MainTexBuf", opengl_effect->_posMainTexBuf[pass]);
-            bind_ubo_block("ContourBuf", opengl_effect->_posContourBuf[pass]);
+            bind_ubo_block("SpriteBorderBuf", opengl_effect->_posSpriteBorderBuf[pass]);
             bind_ubo_block("TimeBuf", opengl_effect->_posTimeBuf[pass]);
             bind_ubo_block("RandomValueBuf", opengl_effect->_posRandomValueBuf[pass]);
             bind_ubo_block("ScriptValueBuf", opengl_effect->_posScriptValueBuf[pass]);
@@ -1216,7 +1216,7 @@ OpenGL_Effect::~OpenGL_Effect()
         delete_ubo(Ubo_ProjBuf);
         delete_ubo(Ubo_MainTexBuf);
         delete_ubo(Ubo_EggBuf);
-        delete_ubo(Ubo_ContourBuf);
+        delete_ubo(Ubo_SpriteBorderBuf);
         delete_ubo(Ubo_TimeBuf);
         delete_ubo(Ubo_RandomValueBuf);
         delete_ubo(Ubo_ScriptValueBuf);
@@ -1317,7 +1317,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         upload_ubo(_needProjBuf, ProjBuf, Ubo_ProjBuf, true);
         upload_ubo(_needMainTexBuf, MainTexBuf, Ubo_MainTexBuf, true);
         upload_ubo(_needEggBuf, EggBuf, Ubo_EggBuf, true);
-        upload_ubo(_needContourBuf, ContourBuf, Ubo_ContourBuf, true);
+        upload_ubo(_needSpriteBorderBuf, SpriteBorderBuf, Ubo_SpriteBorderBuf, true);
         upload_ubo(_needTimeBuf, TimeBuf, Ubo_TimeBuf, true);
         upload_ubo(_needRandomValueBuf, RandomValueBuf, Ubo_RandomValueBuf, true);
         upload_ubo(_needScriptValueBuf, ScriptValueBuf, Ubo_ScriptValueBuf, false);
@@ -1348,7 +1348,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             bind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
             bind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
             bind_ubo(Ubo_EggBuf, _posEggBuf[pass]);
-            bind_ubo(Ubo_ContourBuf, _posContourBuf[pass]);
+            bind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
             bind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
             bind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
             bind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
@@ -1416,7 +1416,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 
             unbind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
             unbind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
-            unbind_ubo(Ubo_ContourBuf, _posContourBuf[pass]);
+            unbind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
             unbind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
             unbind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
             unbind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);

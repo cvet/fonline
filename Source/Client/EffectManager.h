@@ -57,7 +57,6 @@ enum class EffectType : uint32_t
     RainSprite = 0x00000010,
     SkinnedMesh = 0x00000400,
     Interface = 0x00001000,
-    Contour = 0x00002000,
     Font = 0x00010000,
     Primitive = 0x00100000,
     Light = 0x00200000,
@@ -76,8 +75,6 @@ struct EffectCollection
     raw_ptr<RenderEffect> ImGuiDefault {};
     raw_ptr<RenderEffect> Font {};
     raw_ptr<RenderEffect> FontDefault {};
-    raw_ptr<RenderEffect> Contour {};
-    raw_ptr<RenderEffect> ContourDefault {};
     raw_ptr<RenderEffect> Generic {};
     raw_ptr<RenderEffect> GenericDefault {};
     raw_ptr<RenderEffect> Critter {};

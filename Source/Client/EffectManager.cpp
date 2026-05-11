@@ -227,10 +227,6 @@ void EffectManager::LoadDefaultEffects()
     if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
-
-    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
-
-    ignore_unused(effect_errors);
 }
 
 #undef LOAD_DEFAULT_EFFECT

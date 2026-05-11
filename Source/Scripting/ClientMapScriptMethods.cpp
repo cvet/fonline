@@ -76,7 +76,6 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
     auto corner = mapSpr->Corner;
     auto disable_egg = mapSpr->DisableEgg;
-    auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
         const auto* proto = self->GetEngine()->GetProtoItem(mapSpr->ProtoId);
@@ -126,10 +125,35 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
         mspr->SetColor(ucolor {color, 0});
         mspr->SetFixedAlpha(color.comp.a);
     }
+}
 
-    if (contour_color != ucolor::clear) {
-        mspr->SetContour(contour_color);
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_DrawEntitySprite(MapView* self, ClientEntity* entity, int32_t effectSubtype, ucolor color, int32_t padding)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* engine = self->GetEngine();
+
+    if (!engine->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in render events");
     }
+    if (entity == nullptr) {
+        throw ScriptException("Entity arg is null");
+    }
+    if (padding < 0) {
+        throw ScriptException("Negative padding");
+    }
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(engine->OffscreenEffects.size())) {
+        throw ScriptException("Invalid effect subtype");
+    }
+
+    RenderEffect* effect = engine->OffscreenEffects[numeric_cast<size_t>(effectSubtype)].get();
+
+    if (effect == nullptr) {
+        throw ScriptException("Effect is null");
+    }
+
+    return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
 ///@ ExportMethod

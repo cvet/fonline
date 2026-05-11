@@ -165,6 +165,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMapStage, MapView* /*map*/, MapRenderStage /*stage*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
@@ -331,9 +333,7 @@ protected:
 
     void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
-    void OnSetCritterContour(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
-    void OnSetItemContour(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);

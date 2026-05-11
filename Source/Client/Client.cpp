@@ -163,9 +163,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContour(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemContour(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
@@ -2181,32 +2179,6 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSetCritterContour(Entity* entity, const Property* prop)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    ignore_unused(prop);
-
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsMapSpriteValid()) {
-        cr->GetMapSprite()->SetContour(cr->GetContour());
-    }
-}
-
-void ClientEngine::OnSetItemContour(Entity* entity, const Property* prop)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    ignore_unused(prop);
-
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->IsMapSpriteValid()) {
-        item->GetMapSprite()->SetContour(item->GetContour());
-    }
-}
-
 void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2724,10 +2696,6 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
         EffectMngr.SetEffect(EffectMngr.Effects.Iface, EffectMngr.Effects.IfaceDefault, effectPath);
     }
 
-    if ((eff_type & static_cast<uint32_t>(EffectType::Contour)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Contour, EffectMngr.Effects.ContourDefault, effectPath);
-    }
-
     if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
         EffectMngr.SetEffect(EffectMngr.Effects.Font, EffectMngr.Effects.FontDefault, effectPath);
     }
@@ -2867,9 +2835,6 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
 
     case EffectType::Interface:
         return EffectMngr.Effects.Iface.get();
-
-    case EffectType::Contour:
-        return EffectMngr.Effects.Contour.get();
 
     case EffectType::Font:
         if (effectSubtype != -1) {

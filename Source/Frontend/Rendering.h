@@ -227,7 +227,7 @@ public:
         float32_t EggData[12] {}; // vec4[3], center.xy radius.xy per slot + params
     };
 
-    struct ContourBuffer
+    struct SpriteBorderBuffer
     {
         float32_t SpriteBorder[4] {}; // vec4
     };
@@ -272,7 +272,7 @@ public:
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
     static_assert(sizeof(EggBuffer) % 16 == 0 && sizeof(EggBuffer) == 48);
-    static_assert(sizeof(ContourBuffer) % 16 == 0 && sizeof(ContourBuffer) == 16);
+    static_assert(sizeof(SpriteBorderBuffer) % 16 == 0 && sizeof(SpriteBorderBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 32);
     static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
     static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == 64);
@@ -298,7 +298,7 @@ public:
     [[nodiscard]] auto IsNeedProjBuf() const -> bool { return _needProjBuf; }
     [[nodiscard]] auto IsNeedMainTexBuf() const -> bool { return _needMainTexBuf; }
     [[nodiscard]] auto IsNeedEggBuf() const -> bool { return _needEggBuf; }
-    [[nodiscard]] auto IsNeedContourBuf() const -> bool { return _needContourBuf; }
+    [[nodiscard]] auto IsNeedSpriteBorderBuf() const -> bool { return _needSpriteBorderBuf; }
     [[nodiscard]] auto IsNeedTimeBuf() const -> bool { return _needTimeBuf; }
     [[nodiscard]] auto IsNeedRandomValueBuf() const -> bool { return _needRandomValueBuf; }
     [[nodiscard]] auto IsNeedScriptValueBuf() const -> bool { return _needScriptValueBuf; }
@@ -325,7 +325,7 @@ public:
     optional<ProjBuffer> ProjBuf {};
     optional<MainTexBuffer> MainTexBuf {};
     optional<EggBuffer> EggBuf {};
-    optional<ContourBuffer> ContourBuf {};
+    optional<SpriteBorderBuffer> SpriteBorderBuf {};
     optional<TimeBuffer> TimeBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
     optional<ScriptValueBuffer> ScriptValueBuf {};
@@ -347,7 +347,7 @@ protected:
     bool _needEggBuf {};
     bool _needProjBuf {};
     bool _needMainTexBuf {};
-    bool _needContourBuf {};
+    bool _needSpriteBorderBuf {};
     bool _needTimeBuf {};
     bool _needRandomValueBuf {};
     bool _needScriptValueBuf {};
@@ -372,7 +372,7 @@ protected:
     int32_t _posEggBuf[EFFECT_MAX_PASSES] {};
     int32_t _posProjBuf[EFFECT_MAX_PASSES] {};
     int32_t _posMainTexBuf[EFFECT_MAX_PASSES] {};
-    int32_t _posContourBuf[EFFECT_MAX_PASSES] {};
+    int32_t _posSpriteBorderBuf[EFFECT_MAX_PASSES] {};
     int32_t _posTimeBuf[EFFECT_MAX_PASSES] {};
     int32_t _posRandomValueBuf[EFFECT_MAX_PASSES] {};
     int32_t _posScriptValueBuf[EFFECT_MAX_PASSES] {};

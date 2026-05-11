@@ -66,6 +66,16 @@ enum class LightFlag : uint8_t
     AllowedDirs = 0x04, // When set, the `Dirs` mask lists ALLOWED directions; otherwise it lists DISABLED (blocked) ones (default behavior — dirs == 0 means no restriction)
 };
 
+///@ ExportEnum
+enum class MapRenderStage : uint8_t
+{
+    AfterTiles,
+    AfterFlatSprites,
+    AfterLighting,
+    AfterSprites,
+    AfterFog,
+};
+
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public RefCounted<SpritePattern>
 {
@@ -183,6 +193,7 @@ public:
     void Process();
 
     void DrawMap();
+    auto DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool;
 
     auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
@@ -395,6 +406,7 @@ private:
 
     raw_ptr<RenderTarget> _rtMap {};
     raw_ptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
+    optional<irect32> _currentRenderDrawArea {};
 
     isize32 _maxScroll {};
     isize32 _screenSize {};

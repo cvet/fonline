@@ -134,13 +134,6 @@ void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence) noexcept
     _eggAppearence = egg_appearence;
 }
 
-void MapSprite::SetContour(ucolor color) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    _contourColor = color;
-}
-
 void MapSprite::SetColor(ucolor color) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -279,7 +272,6 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightRight = nullptr;
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
-    mspr->_contourColor = ucolor::clear;
     mspr->_color = ucolor::clear;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;

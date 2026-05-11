@@ -90,19 +90,17 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _flushDrawBuf->VertCount = 4;
     _flushDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _flushDrawBuf->IndCount = 6;
-    _contourDrawBuf = _render->CreateDrawBuffer(false);
-    _contourDrawBuf->Vertices.resize(4);
-    _contourDrawBuf->VertCount = 4;
-    _contourDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
-    _contourDrawBuf->IndCount = 6;
+    _spriteEffectDrawBuf = _render->CreateDrawBuffer(false);
+    _spriteEffectDrawBuf->Vertices.resize(4);
+    _spriteEffectDrawBuf->VertCount = 4;
+    _spriteEffectDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
+    _spriteEffectDrawBuf->IndCount = 6;
 
     const auto window_size = _window->GetSize();
-    const auto map_rt_size = isize32(window_size.width + GameSettings::MAP_HEX_WIDTH, window_size.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
 
 #if !FO_DIRECT_SPRITES_DRAW
     _rtMain = _rtMngr.CreateRenderTarget(false, window_size, true);
 #endif
-    _rtContours = _rtMngr.CreateRenderTarget(false, map_rt_size, true);
 
     _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
     _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED {
@@ -1020,7 +1018,7 @@ auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggApp
     return false;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1168,15 +1166,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             DrawPoints(corner, RenderPrimitiveType::TriangleList);
         }
 
-        // Process contour effect
-        if (collect_contours) {
-            const auto contour_color = mspr->GetContourColor();
-
-            if (contour_color != ucolor::clear) {
-                CollectContour(mspr_rect.pos(), spr, contour_color);
-            }
-        }
-
         if (_settings->ShowSpriteBorders && mspr->GetDrawOrder() > DrawOrderType::Tile4) {
             irect32 rect = mspr->GetViewRect();
             rect.x -= draw_area.x;
@@ -1311,63 +1300,34 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     DisableScissor();
 }
 
-void SpriteManager::DrawContours()
+void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor color, RenderEffect* effect, int32_t padding)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Draw collected contours
-    if (_contoursAdded && _rtContours) {
-        DrawRenderTarget(_rtContours.get(), true);
+    FO_RUNTIME_ASSERT(spr);
+    FO_RUNTIME_ASSERT(effect);
+    FO_RUNTIME_ASSERT(padding >= 0);
+    FO_RUNTIME_ASSERT(effect->GetUsage() == EffectUsage::QuadSprite);
 
-        _rtMngr.PushRenderTarget(_rtContours.get());
-        _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
-        _rtMngr.PopRenderTarget();
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
 
-        _contoursAdded = false;
-    }
-}
-
-void SpriteManager::EnsureContourTargetSize(isize32 size)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_rtContours && _rtContours->GetSize() != size) {
-        _rtMngr.ResizeRenderTarget(_rtContours.get(), size);
-    }
-}
-
-void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_rtContours) {
+    if (atlas_spr == nullptr) {
         return;
     }
 
-    const auto* as = dynamic_cast<const AtlasSprite*>(spr);
+    Flush();
 
-    if (as == nullptr) {
-        return;
-    }
-
-    auto* contour_effect = _effectMngr->Effects.Contour.get();
-
-    if (contour_effect == nullptr) {
-        return;
-    }
-
-    const auto* texture = as->GetAtlas()->GetTexture();
-    const frect32 sr = as->GetAtlasRect();
-    const float32_t txw = texture->SizeData[2];
-    const float32_t txh = texture->SizeData[3];
+    const auto* texture = atlas_spr->GetAtlas()->GetTexture();
+    const frect32 sr = atlas_spr->GetAtlasRect();
+    const float32_t padding_f = numeric_cast<float32_t>(padding);
+    const float32_t txw = texture->SizeData[2] * padding_f;
+    const float32_t txh = texture->SizeData[3] * padding_f;
     const frect32 textureuv = frect32(sr.x - txw, sr.y - txh, sr.width + txw * 2.0f, sr.height + txh * 2.0f);
-    const frect32 borders = frect32(irect32(pos.x - 1, pos.y - 1, as->GetSize().width + 2, as->GetSize().height + 2));
+    const frect32 borders = frect32(irect32(pos.x - padding, pos.y - padding, atlas_spr->GetSize().width + padding * 2, atlas_spr->GetSize().height + padding * 2));
 
-    contour_color = ApplyColorBrightness(contour_color);
+    color = ApplyColorBrightness(color);
 
-    _rtMngr.PushRenderTarget(_rtContours.get());
-
-    auto& vbuf = _contourDrawBuf->Vertices;
+    auto& vbuf = _spriteEffectDrawBuf->Vertices;
     size_t vpos = 0;
 
     vbuf[vpos].PosX = borders.x;
@@ -1376,7 +1336,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggFlags[0] = 0.0f;
     vbuf[vpos].EggFlags[1] = 0.0f;
-    vbuf[vpos++].Color = contour_color;
+    vbuf[vpos++].Color = color;
 
     vbuf[vpos].PosX = borders.x;
     vbuf[vpos].PosY = borders.y;
@@ -1384,7 +1344,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggFlags[0] = 0.0f;
     vbuf[vpos].EggFlags[1] = 0.0f;
-    vbuf[vpos++].Color = contour_color;
+    vbuf[vpos++].Color = color;
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y;
@@ -1392,7 +1352,7 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggFlags[0] = 0.0f;
     vbuf[vpos].EggFlags[1] = 0.0f;
-    vbuf[vpos++].Color = contour_color;
+    vbuf[vpos++].Color = color;
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y + borders.height;
@@ -1400,20 +1360,19 @@ void SpriteManager::CollectContour(ipos32 pos, const Sprite* spr, ucolor contour
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggFlags[0] = 0.0f;
     vbuf[vpos].EggFlags[1] = 0.0f;
-    vbuf[vpos].Color = contour_color;
+    vbuf[vpos].Color = color;
 
-    auto& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
+    if (effect->IsNeedSpriteBorderBuf()) {
+        auto& sprite_border_buf = effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
 
-    contour_buf->SpriteBorder[0] = sr.x;
-    contour_buf->SpriteBorder[1] = sr.y;
-    contour_buf->SpriteBorder[2] = sr.x + sr.width;
-    contour_buf->SpriteBorder[3] = sr.y + sr.height;
+        sprite_border_buf->SpriteBorder[0] = sr.x;
+        sprite_border_buf->SpriteBorder[1] = sr.y;
+        sprite_border_buf->SpriteBorder[2] = sr.x + sr.width;
+        sprite_border_buf->SpriteBorder[3] = sr.y + sr.height;
+    }
 
-    _contourDrawBuf->Upload(contour_effect->GetUsage());
-    contour_effect->DrawBuffer(_contourDrawBuf.get(), 0, std::nullopt, texture);
-
-    _rtMngr.PopRenderTarget();
-    _contoursAdded = true;
+    _spriteEffectDrawBuf->Upload(effect->GetUsage());
+    effect->DrawBuffer(_spriteEffectDrawBuf.get(), 0, std::nullopt, texture);
 }
 
 auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor

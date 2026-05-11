@@ -278,7 +278,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             CHECK_BUF(ProjBuf);
             CHECK_BUF(MainTexBuf);
             CHECK_BUF(EggBuf);
-            CHECK_BUF(ContourBuf);
+            CHECK_BUF(SpriteBorderBuf);
             CHECK_BUF(TimeBuf);
             CHECK_BUF(RandomValueBuf);
             CHECK_BUF(ScriptValueBuf);

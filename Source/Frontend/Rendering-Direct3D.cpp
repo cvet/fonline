@@ -129,7 +129,7 @@ public:
     raw_ptr<ID3D11Buffer> Cb_ProjBuf {};
     raw_ptr<ID3D11Buffer> Cb_MainTexBuf {};
     raw_ptr<ID3D11Buffer> Cb_EggBuf {};
-    raw_ptr<ID3D11Buffer> Cb_ContourBuf {};
+    raw_ptr<ID3D11Buffer> Cb_SpriteBorderBuf {};
     raw_ptr<ID3D11Buffer> Cb_TimeBuf {};
     raw_ptr<ID3D11Buffer> Cb_RandomValueBuf {};
     raw_ptr<ID3D11Buffer> Cb_ScriptValueBuf {};
@@ -1284,7 +1284,7 @@ Direct3D_Effect::~Direct3D_Effect()
     safe_release(Cb_ProjBuf);
     safe_release(Cb_MainTexBuf);
     safe_release(Cb_EggBuf);
-    safe_release(Cb_ContourBuf);
+    safe_release(Cb_SpriteBorderBuf);
     safe_release(Cb_TimeBuf);
     safe_release(Cb_RandomValueBuf);
     safe_release(Cb_ScriptValueBuf);
@@ -1387,7 +1387,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     upload_cbuffer(_needProjBuf, ProjBuf, Cb_ProjBuf, true);
     upload_cbuffer(_needMainTexBuf, MainTexBuf, Cb_MainTexBuf, true);
     upload_cbuffer(_needEggBuf, EggBuf, Cb_EggBuf, true);
-    upload_cbuffer(_needContourBuf, ContourBuf, Cb_ContourBuf, true);
+    upload_cbuffer(_needSpriteBorderBuf, SpriteBorderBuf, Cb_SpriteBorderBuf, true);
     upload_cbuffer(_needTimeBuf, TimeBuf, Cb_TimeBuf, true);
     upload_cbuffer(_needRandomValueBuf, RandomValueBuf, Cb_RandomValueBuf, true);
     upload_cbuffer(_needScriptValueBuf, ScriptValueBuf, Cb_ScriptValueBuf, false);
@@ -1438,7 +1438,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         set_cbuffer(_posProjBuf[pass], Cb_ProjBuf);
         set_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
         set_cbuffer(_posEggBuf[pass], Cb_EggBuf);
-        set_cbuffer(_posContourBuf[pass], Cb_ContourBuf);
+        set_cbuffer(_posSpriteBorderBuf[pass], Cb_SpriteBorderBuf);
         set_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         set_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         set_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
@@ -1508,7 +1508,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         unset_cbuffer(_posProjBuf[pass], Cb_ProjBuf);
         unset_cbuffer(_posMainTexBuf[pass], Cb_MainTexBuf);
         unset_cbuffer(_posEggBuf[pass], Cb_EggBuf);
-        unset_cbuffer(_posContourBuf[pass], Cb_ContourBuf);
+        unset_cbuffer(_posSpriteBorderBuf[pass], Cb_SpriteBorderBuf);
         unset_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         unset_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         unset_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);

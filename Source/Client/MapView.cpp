@@ -101,8 +101,6 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
         _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
 
-    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
-
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
     _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex2.png", AtlasType::MapSprites);
     _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex3.png", AtlasType::MapSprites);
@@ -661,8 +659,6 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     else {
         mspr = item->AddExtraSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
     }
-
-    mspr->SetContour(item->GetContour());
 
     AddSpriteToChain(field, mspr);
 
@@ -2505,11 +2501,16 @@ void MapView::DrawMap()
             const int32_t target_height = iround<int32_t>(std::ceil(source_height * draw_scale.y));
             const irect32 target_rect = {target_x, target_y, target_width, target_height};
 
+            _currentRenderDrawArea = draw_area;
+            const auto reset_render_draw_area = scope_exit([this]() noexcept { _currentRenderDrawArea.reset(); });
+
             // Tiles
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
+            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterTiles);
 
             // Flat sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
+            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterFlatSprites);
 
             // Lighting
             if (!_engine->Settings.DisableLighting) {
@@ -2528,12 +2529,11 @@ void MapView::DrawMap()
                 _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
+            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterLighting);
 
             // Other sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
-
-            // Collected contours
-            _engine->SprMngr.DrawContours();
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
+            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterSprites);
 
             // Fog
             if (!_engine->Settings.DisableFog && !_mapperMode && !_fogLayers.empty()) {
@@ -2549,6 +2549,7 @@ void MapView::DrawMap()
                 _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
             }
+            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterFog);
 
             // Draw streched render target
             if (!direct_draw) {
@@ -2557,6 +2558,62 @@ void MapView::DrawMap()
             }
         }
     }
+}
+
+auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(effect);
+    FO_RUNTIME_ASSERT(padding >= 0);
+
+    if (!_currentRenderDrawArea.has_value()) {
+        throw ScriptException("Map sprite draw is available only inside map render stage events");
+    }
+
+    const MapSprite* mspr = nullptr;
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        if (cr->GetMap() != this || !cr->IsMapSpriteValid()) {
+            return false;
+        }
+
+        mspr = cr->GetMapSprite();
+    }
+    else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        if (item->GetMap() != this || !item->IsMapSpriteValid()) {
+            return false;
+        }
+
+        mspr = item->GetMapSprite();
+    }
+    else {
+        throw ScriptException("Entity has no map sprite", entity->GetId());
+    }
+
+    FO_RUNTIME_ASSERT(mspr);
+
+    if (mspr->IsHidden()) {
+        return false;
+    }
+
+    const Sprite* spr = mspr->GetSprite();
+
+    if (spr == nullptr) {
+        return false;
+    }
+
+    irect32 mspr_rect = mspr->GetDrawRect();
+    mspr_rect.x -= _currentRenderDrawArea->x;
+    mspr_rect.y -= _currentRenderDrawArea->y;
+
+    if (mspr_rect.x > _currentRenderDrawArea->width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > _currentRenderDrawArea->height || mspr_rect.y + mspr_rect.height < 0) {
+        return false;
+    }
+
+    _engine->SprMngr.DrawSpriteWithEffect(mspr_rect.pos(), spr, color, effect, padding);
+    return true;
 }
 
 void MapView::PrepareFogToDraw()
@@ -3252,7 +3309,6 @@ void MapView::DrawHexCritter(CritterHexView* cr, Field& field, mpos hex)
 
     const auto draw_order = cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
     auto* mspr = cr->AddSprite(_mapSprites, draw_order, hex, &field.Offset);
-    mspr->SetContour(cr->GetContour());
     AddSpriteToChain(field, mspr);
 }
 
@@ -3777,8 +3833,6 @@ void MapView::SetScreenSize(isize32 size)
     if (_rtLight && !_engine->Settings.MapDirectDraw) {
         rt_mngr.ResizeRenderTarget(_rtLight.get(), map_rt_size);
     }
-
-    _engine->SprMngr.EnsureContourTargetSize(map_rt_size);
 
     RebuildMapNow();
 }

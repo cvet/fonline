@@ -115,13 +115,11 @@ public:
     [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
     [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
-    [[nodiscard]] auto GetContourColor() const noexcept -> ucolor { return _contourColor; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
-    void SetContour(ucolor color) noexcept;
     void SetColor(ucolor color) noexcept;
     void SetAlpha(const uint8_t* alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
@@ -151,7 +149,6 @@ private:
     raw_ptr<const ucolor> _lightRight {};
     raw_ptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
-    ucolor _contourColor {};
     ucolor _color {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};
     raw_ptr<MapSprite*> _extraChainRoot {};
@@ -188,7 +185,7 @@ private:
     bool _needSort {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, ContourColor, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
@@ -213,7 +210,6 @@ public:
     CornerType Corner {};
     bool DisableEgg {};
     ucolor Color {};
-    ucolor ContourColor {};
     bool IsTweakOffs {};
     ipos32 TweakOffset {};
     bool IsTweakAlpha {};

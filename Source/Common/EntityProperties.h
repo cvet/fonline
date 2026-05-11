@@ -213,8 +213,6 @@ public:
     FO_ENTITY_PROPERTY(bool, Colorize);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(string, Lexems);
-    ///@ ExportProperty Client Mutable
-    FO_ENTITY_PROPERTY(ucolor, Contour);
 };
 
 class CritterProperties : public EntityProperties
@@ -285,8 +283,6 @@ public:
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(ucolor, Contour);
 };
 
 class MapProperties : public EntityProperties
