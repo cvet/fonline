@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 std::mutex InterthreadListenersLocker;
 map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
-alignas(uint32_t) static volatile constexpr char PACKAGED_MARK[] = "###NOT_PACKAGED###";
+FO_KEEP_DATA_SYMBOL char PACKAGED_MARK[] = "###NOT_PACKAGED###";
 static bool HasNotPackagedMark = strex().assignVolatile(PACKAGED_MARK, sizeof(PACKAGED_MARK)).str().find("NOT_PACKAGED") != string::npos;
 bool IsTestingInProgress {};
 

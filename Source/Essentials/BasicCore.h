@@ -156,6 +156,13 @@
 #define FO_EXPORT_FUNC extern "C"
 #endif
 
+// Keep data symbol from being eliminated by LTO (used for markers patched at packaging time)
+#if defined(__GNUC__)
+#define FO_KEEP_DATA_SYMBOL [[gnu::used]] alignas(uint32_t) static volatile
+#else
+#define FO_KEEP_DATA_SYMBOL alignas(uint32_t) static volatile
+#endif
+
 // Namespace management
 #if FO_USE_NAMESPACE
 #define FO_NAMESPACE_NAME fo

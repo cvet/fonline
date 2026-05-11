@@ -2069,13 +2069,7 @@ def write_embedded_resources() -> None:
         assert capacity >= 10000, 'Embedded capacity must be greater than or equal to 10000'
         assert capacity % 10000 == 0, 'Embedded capacity must be divisible by 10000'
         generated_output.create_file('EmbeddedResources-Include.h', args.genoutput)
-        generated_output.write_line('#if defined(__GNUC__) || defined(__clang__)')
-        generated_output.write_line('#define FO_EMBEDDED_RESOURCE_USED [[gnu::used]]')
-        generated_output.write_line('#else')
-        generated_output.write_line('#define FO_EMBEDDED_RESOURCE_USED')
-        generated_output.write_line('#endif')
-        generated_output.write_line('FO_EMBEDDED_RESOURCE_USED alignas(uint32_t) volatile uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
-        generated_output.write_line('#undef FO_EMBEDDED_RESOURCE_USED')
+        generated_output.write_line('FO_KEEP_DATA_SYMBOL uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
 
     run_codegen_step(write_embedded_resources_impl, 'Can\'t write embedded resources')
 
