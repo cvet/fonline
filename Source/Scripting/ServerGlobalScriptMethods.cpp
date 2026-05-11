@@ -1478,6 +1478,27 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEn
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ServerEngine* server, ProtoMap* proto)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(proto);
+
+    const auto* static_map = server->MapMngr.GetStaticMap(proto);
+    vector<ProtoCritter*> proto_critters;
+    proto_critters.reserve(static_map->CritterBillets.size());
+
+    for (const pair<ident_t, refcount_ptr<Critter>>& billet : static_map->CritterBillets) {
+        FO_RUNTIME_ASSERT(billet.second);
+        const auto* proto_cr = dynamic_cast<const ProtoCritter*>(billet.second->GetProto());
+        FO_RUNTIME_ASSERT(proto_cr);
+        proto_critters.emplace_back(const_cast<ProtoCritter*>(proto_cr));
+    }
+
+    return proto_critters;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey textKey)
 {
     return server->GetLangPack().IsTextPresent(textKey);
