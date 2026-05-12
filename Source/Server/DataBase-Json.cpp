@@ -23,7 +23,7 @@ public:
         _storageDir {storage_dir},
         _jsonIndent {db_settings.JsonIndent}
     {
-        (void)fs_create_directories(storage_dir);
+        fs_create_directories(storage_dir);
         StartCommitThread();
     }
 

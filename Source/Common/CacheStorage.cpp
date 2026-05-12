@@ -186,7 +186,7 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!fs_is_dir(_workPath)) {
-        (void)fs_create_directories(_workPath);
+        fs_create_directories(_workPath);
 
         if (!fs_is_dir(_workPath)) {
             WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
@@ -243,7 +243,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     if (!fs_write_file(path, str)) {
-        (void)fs_remove_file(path);
+        fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
@@ -258,7 +258,7 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     if (!fs_write_file(path, data)) {
-        (void)fs_remove_file(path);
+        fs_remove_file(path);
         WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
@@ -268,7 +268,7 @@ void FileCacheStorage::RemoveEntry(string_view entry_name)
     FO_STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
-    (void)fs_remove_file(path);
+    fs_remove_file(path);
 }
 
 #if FO_HAVE_UNQLITE
@@ -289,7 +289,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!_db) {
-        (void)fs_create_directories(strex(_workPath).extract_dir().str());
+        fs_create_directories(strex(_workPath).extract_dir().str());
 
         unqlite* db = nullptr;
 

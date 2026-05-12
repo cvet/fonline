@@ -408,7 +408,7 @@ static auto ApplyStagedBinaryUpdate() -> bool
     const auto backup_path = strex("{}.bak", final_path).str();
     const auto final_exists = fs_exists(final_path);
 
-    (void)fs_remove_file(backup_path);
+    fs_remove_file(backup_path);
 
     if (final_exists && !fs_rename(final_path, backup_path)) {
         return false;
@@ -416,14 +416,23 @@ static auto ApplyStagedBinaryUpdate() -> bool
 
     if (!fs_rename(staged_path, final_path)) {
         if (final_exists) {
-            (void)fs_rename(backup_path, final_path);
+            fs_rename(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        (void)fs_remove_file(backup_path);
+        fs_remove_file(backup_path);
+    }
+
+    // Optional pdb update. Not critical if it fails, so no need to roll back binary update.
+    const auto pdb_staged_path = GetClientRuntimePdbStagingPath();
+
+    if (fs_exists(pdb_staged_path)) {
+        const auto pdb_final_path = GetClientRuntimePdbLivePath();
+        fs_remove_file(pdb_final_path);
+        fs_rename(pdb_staged_path, pdb_final_path);
     }
 
     return true;

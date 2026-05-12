@@ -408,7 +408,7 @@ void MasterBaker::BakeAllInternal()
         ignore_unused(size, write_time);
 
         if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-            (void)fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
+            fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
             WriteLog("Delete outdated file {}", path);
         }
     });

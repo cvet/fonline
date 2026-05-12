@@ -43,33 +43,33 @@ FO_BEGIN_NAMESPACE
 using FsFileVisitor = function<void(string_view, size_t, uint64_t)>;
 
 // Filesystem helpers
-[[nodiscard]] auto fs_make_path(string_view path) -> std::u8string;
-[[nodiscard]] auto fs_path_to_string(const std::filesystem::path& path) -> string;
-[[nodiscard]] auto fs_resolve_path(string_view path) -> string;
-[[nodiscard]] auto fs_exists(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_is_dir(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_is_absolute_path(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_is_relative_path(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_create_directories(string_view dir) noexcept -> bool;
-[[nodiscard]] auto fs_last_write_time(string_view path) noexcept -> uint64_t;
-[[nodiscard]] auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
-[[nodiscard]] auto fs_hash_file(string_view path) -> optional<uint64_t>;
-[[nodiscard]] auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t;
-[[nodiscard]] auto fs_read_file(string_view path) -> optional<string>;
-[[nodiscard]] auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
-[[nodiscard]] auto fs_write_file(string_view path, string_view content) -> bool;
-[[nodiscard]] auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;
-[[nodiscard]] auto fs_remove_file(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
-[[nodiscard]] auto fs_touch_file(string_view path) noexcept -> bool;
-[[nodiscard]] auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
-[[nodiscard]] auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
+auto fs_make_path(string_view path) -> std::u8string;
+auto fs_path_to_string(const std::filesystem::path& path) -> string;
+auto fs_resolve_path(string_view path) -> string;
+auto fs_exists(string_view path) noexcept -> bool;
+auto fs_is_dir(string_view path) noexcept -> bool;
+auto fs_is_absolute_path(string_view path) noexcept -> bool;
+auto fs_is_relative_path(string_view path) noexcept -> bool;
+auto fs_create_directories(string_view dir) noexcept -> bool;
+auto fs_last_write_time(string_view path) noexcept -> uint64_t;
+auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
+auto fs_hash_file(string_view path) -> optional<uint64_t>;
+auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t;
+auto fs_read_file(string_view path) -> optional<string>;
+auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
+auto fs_write_file(string_view path, string_view content) -> bool;
+auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;
+auto fs_remove_file(string_view path) noexcept -> bool;
+auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
+auto fs_touch_file(string_view path) noexcept -> bool;
+auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
+auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
 void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor);
 
 // Stream helpers
-[[nodiscard]] auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool;
-[[nodiscard]] auto stream_get_size(std::istream& stream) -> size_t;
-[[nodiscard]] auto stream_get_read_pos(std::istream& stream) -> size_t;
-[[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
+auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool;
+auto stream_get_size(std::istream& stream) -> size_t;
+auto stream_get_read_pos(std::istream& stream) -> size_t;
+auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
 
 FO_END_NAMESPACE

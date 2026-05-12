@@ -256,12 +256,12 @@ void Updater::GetNextFile()
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
-                (void)fs_remove_file(temp_path);
+                fs_remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
-                    (void)fs_remove_file(temp_path);
+                    fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
@@ -414,9 +414,10 @@ void Updater::Net_OnInitData()
         }
 
         if (_binariesMode) {
-            const auto runtime_name = strex(fname).extract_file_name().erase_file_extension().str();
+            const auto fname_basename = strex(fname).extract_file_name().str();
+            const auto matches_runtime = fname_basename == current_runtime_name || (fname_basename.size() > current_runtime_name.size() && fname_basename.starts_with(current_runtime_name) && fname_basename[current_runtime_name.size()] == '.');
 
-            if (runtime_name.empty() || runtime_name != current_runtime_name) {
+            if (!matches_runtime) {
                 continue;
             }
 
@@ -605,7 +606,7 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
     const auto backup_path = strex("{}.bak", final_path).str();
     const auto final_exists = fs_exists(final_path);
 
-    (void)fs_remove_file(backup_path);
+    fs_remove_file(backup_path);
 
     if (final_exists && !fs_rename(final_path, backup_path)) {
         return false;
@@ -613,14 +614,14 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 
     if (!fs_rename(temp_path, final_path)) {
         if (final_exists) {
-            (void)fs_rename(backup_path, final_path);
+            fs_rename(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        (void)fs_remove_file(backup_path);
+        fs_remove_file(backup_path);
     }
 
     return true;
@@ -756,13 +757,28 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
+static auto GetClientRuntimeLibraryExtension() noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return ".dll";
+#elif FO_LINUX
+    return ".so";
+#elif FO_MAC
+    return ".dylib";
+#else
+    return {};
+#endif
+}
+
 auto GetClientRuntimeLivePath() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto exe_path = Platform::GetExePath();
     FO_RUNTIME_ASSERT(exe_path.has_value());
-    return strex(exe_path.value()).extract_dir().combine_path(GetCurrentClientRuntimeLibraryName()).str();
+    return strex("{}{}", strex(exe_path.value()).extract_dir().combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
 auto GetClientRuntimeStagingPath() -> string
@@ -770,6 +786,20 @@ auto GetClientRuntimeStagingPath() -> string
     FO_STACK_TRACE_ENTRY();
 
     return strex("{}{}", GetClientRuntimeLivePath(), ClientBinaryStagingSuffix).str();
+}
+
+auto GetClientRuntimePdbLivePath() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("{}.pdb", GetClientRuntimeLivePath()).str();
+}
+
+auto GetClientRuntimePdbStagingPath() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("{}{}", GetClientRuntimePdbLivePath(), ClientBinaryStagingSuffix).str();
 }
 
 auto GetCurrentClientRuntimeLibraryName() -> string

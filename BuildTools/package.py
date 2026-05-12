@@ -133,6 +133,62 @@ def find_internal_config_capacity(content: bytes) -> int:
 	return end_pos + len(INTERNAL_CONFIG_END_MARKER) - pos
 
 
+def patch_pe_pdb_path(file_path: str | Path, new_pdb_name: str) -> bool:
+	with open(file_path, 'rb') as file:
+		content = bytearray(file.read())
+	if content[:2] != b'MZ':
+		return False
+	pe_offset = struct.unpack_from('<I', content, 0x3C)[0]
+	if content[pe_offset:pe_offset + 4] != b'PE\x00\x00':
+		return False
+	coff_offset = pe_offset + 4
+	num_sections = struct.unpack_from('<H', content, coff_offset + 2)[0]
+	opt_header_size = struct.unpack_from('<H', content, coff_offset + 16)[0]
+	opt_header_offset = coff_offset + 20
+	magic = struct.unpack_from('<H', content, opt_header_offset)[0]
+	if magic == 0x10b:
+		data_dir_offset = opt_header_offset + 96
+	elif magic == 0x20b:
+		data_dir_offset = opt_header_offset + 112
+	else:
+		return False
+	debug_rva, debug_size = struct.unpack_from('<II', content, data_dir_offset + 6 * 8)
+	if debug_rva == 0 or debug_size == 0:
+		return False
+	section_table_offset = opt_header_offset + opt_header_size
+	debug_offset: int | None = None
+	for i in range(num_sections):
+		section_offset = section_table_offset + i * 40
+		vsize, vaddr, _, raw_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
+		if vaddr <= debug_rva < vaddr + vsize:
+			debug_offset = raw_ptr + (debug_rva - vaddr)
+			break
+	if debug_offset is None:
+		return False
+	new_path_bytes = new_pdb_name.encode('utf-8')
+	IMAGE_DEBUG_TYPE_CODEVIEW = 2
+	num_entries = debug_size // 28
+	for i in range(num_entries):
+		entry_offset = debug_offset + i * 28
+		debug_type, raw_data_size, _, raw_data_ptr = struct.unpack_from('<IIII', content, entry_offset + 12)
+		if debug_type != IMAGE_DEBUG_TYPE_CODEVIEW:
+			continue
+		if content[raw_data_ptr:raw_data_ptr + 4] != b'RSDS':
+			continue
+		path_start = raw_data_ptr + 4 + 16 + 4
+		path_end = content.find(b'\x00', path_start, raw_data_ptr + raw_data_size)
+		if path_end == -1:
+			return False
+		available = path_end - path_start
+		if len(new_path_bytes) > available:
+			return False
+		content[path_start:path_end + 1] = new_path_bytes + b'\x00' * (available - len(new_path_bytes) + 1)
+		with open(file_path, 'wb') as file:
+			file.write(bytes(content))
+		return True
+	return False
+
+
 def escape_groovy_string(value: str) -> str:
 	return value.replace('\\', '\\\\').replace("'", "\\'").replace('\r', '\\r').replace('\n', '\\n')
 
@@ -291,13 +347,20 @@ class Packager:
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
 
-	def copy_optional_pdb(self, bin_path: str, input_name: str, output_name: str) -> None:
+	def copy_pdb(self, bin_path: str, input_name: str, output_name: str) -> None:
 		pdb_path = os.path.join(bin_path, input_name + '.pdb')
-		if os.path.isfile(pdb_path):
-			log('PDB file included')
-			shutil.copy(pdb_path, os.path.join(self.target_output_path, output_name + '.pdb'))
-		else:
-			log('PDB file NOT included')
+		assert os.path.isfile(pdb_path), 'PDB file not found: ' + pdb_path
+		log('PDB file included')
+		shutil.copy(pdb_path, os.path.join(self.target_output_path, output_name + '.pdb'))
+
+	def copy_runtime_pdb(self, bin_path: str, input_name: str, dll_output_path: str) -> None:
+		pdb_path = os.path.join(bin_path, input_name + '.pdb')
+		assert os.path.isfile(pdb_path), 'Runtime PDB file not found: ' + pdb_path
+		pdb_out_name = os.path.basename(dll_output_path) + '.pdb'
+		pdb_out_path = os.path.join(os.path.dirname(dll_output_path), pdb_out_name)
+		log('Runtime PDB file included', pdb_out_path)
+		shutil.copy(pdb_path, pdb_out_path)
+		assert patch_pe_pdb_path(dll_output_path, pdb_out_name), 'Runtime DLL RSDS not patched (no CodeView entry or path too short): ' + dll_output_path
 
 	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
@@ -389,6 +452,15 @@ class Packager:
 					finally:
 						self.embedded_data = old_embedded_data
 						self.config_data = old_config_data
+
+					if platform == 'Windows':
+						pdb_input_path = os.path.join(entry_path, self.build_client_runtime_input_name() + '.pdb')
+						assert os.path.isfile(pdb_input_path), 'Client runtime update payload PDB not found: ' + pdb_input_path
+						pdb_out_name = os.path.basename(output_path) + '.pdb'
+						pdb_out_path = os.path.join(payload_dir, pdb_out_name)
+						log('Client runtime update payload PDB', pdb_out_path)
+						shutil.copy(pdb_input_path, pdb_out_path)
+						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
 
 					copied_payloads.add(payload_key)
 
@@ -655,12 +727,12 @@ class Packager:
 					runtime_input_name = self.build_client_runtime_input_name()
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
-					self.copy_optional_pdb(bin_path, runtime_input_name, runtime_out_name)
+					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
+					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
 					excluded_companions.add(runtime_input_name + '.dll')
 
 				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
-				self.copy_optional_pdb(bin_path, bin_name, bin_out_name)
+				self.copy_pdb(bin_path, bin_name, bin_out_name)
 
 	def package_linux(self) -> None:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):

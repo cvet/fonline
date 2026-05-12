@@ -61,6 +61,8 @@ extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 extern auto GetClientRuntimeLivePath() -> string;
 extern auto GetClientRuntimeStagingPath() -> string;
+extern auto GetClientRuntimePdbLivePath() -> string;
+extern auto GetClientRuntimePdbStagingPath() -> string;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
 extern void ShowUpdaterFailure(UpdaterResult result);
 
