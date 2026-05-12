@@ -367,7 +367,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             WriteLog("Initialize updater backend with client resources using {} storage", Settings.UpdateFilesInMemory ? "memory" : "disk");
 
             auto updater_backend = SafeAlloc::MakeUnique<UpdaterBackend>();
-            updater_backend->LoadFromClientResources(Settings, Settings.UpdateFilesInMemory);
+            updater_backend->LoadFromClientResources(Settings);
             _updaterBackend = std::move(updater_backend);
         }
         else {

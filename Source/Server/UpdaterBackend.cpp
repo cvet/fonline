@@ -34,15 +34,12 @@
 #include "UpdaterBackend.h"
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
-#include "FileSystem.h"
 #include "Logging.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE
-
-static constexpr string_view UpdaterPlatformsDir = "UpdaterPlatforms";
 
 static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) -> bool
 {
@@ -63,7 +60,7 @@ static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, 
     return data.empty() || stream_read_exact(file, data.data(), data.size());
 }
 
-void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, bool store_files_in_memory)
+void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,39 +72,35 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, boo
 
     WriteLog("Load client data packs for synchronization");
 
-    FileSystem client_resources;
-    client_resources.AddDirSource(settings.ClientResources, false, true, true);
-
-    const auto add_sync_file = [&client_resources, store_files_in_memory, this](string_view source_path, string_view client_path, UpdateFileTarget target, string_view binary_target_name) {
+    const auto add_sync_file = [&settings, this](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
-        if (store_files_in_memory) {
-            const auto file = client_resources.ReadFile(source_path);
+        auto file = fs_open_ifstream(disk_path);
 
-            if (!file) {
-                throw UpdaterException("Resource pack for client not found", source_path);
+        if (!file) {
+            throw UpdaterException("Resource pack for client not found", disk_path);
+        }
+
+        const size_t file_size = stream_get_size(file);
+
+        if (settings.UpdateFilesInMemory) {
+            data.InMemory = true;
+            data.MemoryData.resize(file_size);
+
+            if (file_size != 0 && !stream_read_exact(file, data.MemoryData.data(), file_size)) {
+                throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
-            data.InMemory = true;
-            data.MemoryData = file.GetData();
-            data.Size = numeric_cast<uint64_t>(data.MemoryData.size());
+            data.Size = numeric_cast<uint64_t>(file_size);
             data.Hash = fs_hash_data(data.MemoryData.data(), data.MemoryData.size());
         }
         else {
-            const auto file = client_resources.ReadFileHeader(source_path);
-
-            if (!file) {
-                throw UpdaterException("Resource pack for client not found", source_path);
-            }
-
-            FO_RUNTIME_ASSERT(file.GetDataSource()->IsDiskDir());
-
-            data.DiskPath = file.GetDiskPath();
-            data.Size = numeric_cast<uint64_t>(file.GetSize());
-            const auto file_hash = fs_hash_file(data.DiskPath);
+            data.DiskPath = string(disk_path);
+            data.Size = numeric_cast<uint64_t>(file_size);
+            const auto file_hash = fs_hash_file(disk_path);
 
             if (!file_hash.has_value()) {
-                throw UpdaterException("Can't hash resource pack for client", source_path);
+                throw UpdaterException("Can't hash resource pack for client", disk_path);
             }
 
             data.Hash = *file_hash;
@@ -119,46 +112,39 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, boo
         info.FileIndex = numeric_cast<uint32_t>(_updateFiles.size() - 1);
         info.ClientPath = string(client_path);
         info.Target = target;
-
-        if (!binary_target_name.empty()) {
-            _binaryTargetUpdateFiles[string(binary_target_name)].emplace_back(std::move(info));
-        }
-        else {
-            _commonUpdateFiles.emplace_back(std::move(info));
-        }
+        return info;
     };
+
+    const auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
 
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
             const auto pack_name = strex("{}.zip", resource_entry).str();
-            add_sync_file(pack_name, pack_name, UpdateFileTarget::ClientResources, {});
+            const auto pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
+            auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
+            _commonUpdateFiles.emplace_back(std::move(info));
         }
     }
 
-    const auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
-    const auto updater_platforms_dir = client_resources_dir / std::string {UpdaterPlatformsDir};
+    const auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
 
-    if (std::filesystem::exists(updater_platforms_dir) && std::filesystem::is_directory(updater_platforms_dir)) {
-        for (const auto& platform_entry : std::filesystem::directory_iterator {updater_platforms_dir}) {
+    if (std::filesystem::exists(platform_binaries_dir)) {
+        FO_RUNTIME_ASSERT(std::filesystem::is_directory(platform_binaries_dir));
+
+        for (const auto& platform_entry : std::filesystem::directory_iterator {platform_binaries_dir}) {
             if (!platform_entry.is_directory()) {
                 continue;
             }
 
             const auto binary_target_name = fs_path_to_string(platform_entry.path().filename());
-
-            if (binary_target_name.empty()) {
-                continue;
-            }
+            FO_RUNTIME_ASSERT(!binary_target_name.empty());
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                if (!binary_entry.is_regular_file()) {
-                    continue;
-                }
-
-                auto source_rel_path = fs_path_to_string(std::filesystem::relative(binary_entry.path(), client_resources_dir));
-                std::replace(source_rel_path.begin(), source_rel_path.end(), '\\', '/');
+                FO_RUNTIME_ASSERT(binary_entry.is_regular_file());
+                const auto disk_path = fs_path_to_string(binary_entry.path());
                 const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
-                add_sync_file(source_rel_path, client_file_name, UpdateFileTarget::ClientBinaries, binary_target_name);
+                auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
+                _binaryTargetUpdateFiles[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
     }

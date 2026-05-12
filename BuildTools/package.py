@@ -42,7 +42,6 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
-UPDATER_PLATFORMS_DIR = 'UpdaterPlatforms'
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -198,6 +197,7 @@ class Packager:
 	build_tools_path: str = field(init=False)
 	server_res_dir: str = field(init=False)
 	client_res_dir: str = field(init=False)
+	platform_binaries_dir: str = field(init=False)
 	zip_compress_level: int = field(init=False)
 	target_output_path: str = field(init=False)
 	baking_path: str | None = field(init=False, default=None)
@@ -210,6 +210,7 @@ class Packager:
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
+		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
@@ -373,7 +374,7 @@ class Packager:
 					if payload_key in copied_payloads:
 						continue
 
-					payload_dir = os.path.join(self.target_output_path, self.client_res_dir, UPDATER_PLATFORMS_DIR, request_target_name)
+					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
 					os.makedirs(payload_dir, exist_ok=True)
 					output_path = os.path.join(payload_dir, output_name + runtime_ext)
 					log('Client runtime update payload', output_path)

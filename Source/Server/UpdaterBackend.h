@@ -54,7 +54,7 @@ public:
 
     [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&;
 
-    void LoadFromClientResources(const GlobalSettings& settings, bool store_files_in_memory);
+    void LoadFromClientResources(const GlobalSettings& settings);
     void ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_portion_size);
 
 private:

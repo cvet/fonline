@@ -247,6 +247,7 @@ FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
 FIXED_SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
+FIXED_SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 FIXED_SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
 FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
