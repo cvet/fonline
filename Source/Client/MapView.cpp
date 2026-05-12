@@ -3457,20 +3457,18 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
             continue;
         }
 
-        const auto view_rect = mspr->GetViewRect();
-        const auto l = view_rect.x - extra_range;
-        const auto t = view_rect.y - extra_range;
-        const auto r = view_rect.x + view_rect.width + extra_range;
-        const auto b = view_rect.y + view_rect.height + extra_range;
+        const auto bound_rect = check_transparent ? mspr->GetDrawRect() : mspr->GetViewRect();
+        const auto l = bound_rect.x - extra_range;
+        const auto t = bound_rect.y - extra_range;
+        const auto r = bound_rect.x + bound_rect.width + extra_range;
+        const auto b = bound_rect.y + bound_rect.height + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
         }
 
         if (check_transparent) {
-            const auto draw_rect = mspr->GetDrawRect();
-
-            if (!_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - draw_rect.x, pos.y - draw_rect.y})) {
+            if (!_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - bound_rect.x, pos.y - bound_rect.y})) {
                 continue;
             }
         }

@@ -50,19 +50,15 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto&& [view_width, view_height] = _model->GetViewSize();
-
-    const auto x2 = pos.x - (_size.width - view_width) / 2;
-    const auto y2 = pos.y - (_size.height - view_height - (_offset.y - view_height / 8));
-
-    if (x2 >= 0 && y2 >= 0 && x2 < view_width && y2 < view_height) {
-        const auto atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-        const auto atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
-
-        return _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a > 0;
+    if (!_size.is_valid_pos(pos)) {
+        return false;
     }
 
-    return false;
+    const auto atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
+    const auto atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+
+    const auto alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
+    return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
