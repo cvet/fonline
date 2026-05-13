@@ -42,6 +42,8 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
+PACKAGED_BUILD_NAME_CAPACITY = 128
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -382,7 +384,7 @@ class Packager:
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
-		self.patch_packaged_binary(output_file_path, additional_config_data)
+		self.patch_packaged_binary(output_file_path, output_name, additional_config_data)
 		self.copy_runtime_companions(bin_path, input_name, output_ext, excluded_companions)
 		return output_file_path
 
@@ -448,7 +450,7 @@ class Packager:
 					try:
 						self.embedded_data = client_embedded_data
 						self.config_data = client_config_data
-						self.patch_packaged_binary(output_path, variant_config_data)
+						self.patch_packaged_binary(output_path, output_name, variant_config_data)
 					finally:
 						self.embedded_data = old_embedded_data
 						self.config_data = old_config_data
@@ -650,15 +652,17 @@ class Packager:
 			content = file.read()
 		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
 
-	def patch_packaged_mark(self, file_path: str) -> None:
-		patch_data(file_path, b'###NOT_PACKAGED###', b'###XXXXXXXXXXXX###', 18)
+	def patch_packaged_build_name(self, file_path: str, build_name: str) -> None:
+		name_bytes = build_name.encode('utf-8')
+		assert len(name_bytes) + 1 <= PACKAGED_BUILD_NAME_CAPACITY, f'Packaged build name too long ({len(name_bytes)} bytes, cap {PACKAGED_BUILD_NAME_CAPACITY - 1}): {build_name}'
+		patch_data(file_path, PACKAGED_BUILD_NAME_MARKER, name_bytes + b'\x00' * (PACKAGED_BUILD_NAME_CAPACITY - len(name_bytes)), PACKAGED_BUILD_NAME_CAPACITY)
 
-	def patch_packaged_binary(self, file_path: str, additional_config_data: str | None = None) -> None:
+	def patch_packaged_binary(self, file_path: str, build_name: str, additional_config_data: str | None = None) -> None:
 		if self.has_pack('NoRes'):
 			return
 		self.patch_embedded(file_path)
 		self.patch_config(file_path, additional_config_data)
-		self.patch_packaged_mark(file_path)
+		self.patch_packaged_build_name(file_path, build_name)
 
 	def iter_windows_variants(self) -> list[BinaryVariant]:
 		bin_roles = ['']
@@ -783,7 +787,7 @@ class Packager:
 
 		self.patch_embedded(wasm_output_path)
 		self.patch_config(wasm_output_path)
-		self.patch_packaged_mark(wasm_output_path)
+		self.patch_packaged_build_name(wasm_output_path, bin_out_name)
 
 		web_loading_image = self.fomain.mainSection().getStr('Web.LoadingImage', '')
 		web_background_color = self.fomain.mainSection().getStr('Web.BackgroundColor', 'rgb(0, 0, 0)')
@@ -911,7 +915,7 @@ class Packager:
 			log('Native library', src_so, '=>', dst_so)
 
 			# Patch the binary (embedded data, config, packaged mark)
-			self.patch_packaged_binary(dst_so)
+			self.patch_packaged_binary(dst_so, bin_name)
 
 		# Move baked resources into assets directory
 		assets_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'assets')

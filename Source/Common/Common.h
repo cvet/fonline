@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 #include "Version-Include.h"
 
 extern auto IsPackaged() -> bool;
-extern void ForcePackaged();
+extern auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper

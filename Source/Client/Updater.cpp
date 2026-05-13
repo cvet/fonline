@@ -393,11 +393,32 @@ void Updater::Net_OnInitData()
 
     auto reader = DataReader(data);
     const auto companion_resync_enabled = !_binariesMode && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-    const string current_runtime_name = (_binariesMode || companion_resync_enabled) ? GetCurrentClientRuntimeLibraryName() : string {};
-    const string runtime_primary_name = companion_resync_enabled ? strex(GetClientRuntimeLivePath()).extract_file_name().str() : string {};
+    const auto accept_binaries = _binariesMode || companion_resync_enabled;
+    const string runtime_primary_name = accept_binaries ? strex(GetClientRuntimeLivePath()).extract_file_name().str() : string {};
+    const string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
-    const auto matches_current_runtime = [&](const string& fname_basename) { //
-        return fname_basename == current_runtime_name || (fname_basename.size() > current_runtime_name.size() && fname_basename.starts_with(current_runtime_name) && fname_basename[current_runtime_name.size()] == '.');
+    string runtime_server_prefix;
+
+    if (accept_binaries) {
+        runtime_server_prefix = GetPackagedRuntimeName();
+
+        if (runtime_server_prefix.empty()) {
+            runtime_server_prefix = runtime_local_prefix;
+        }
+    }
+
+    const auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
+        if (!fname_basename.starts_with(runtime_server_prefix)) {
+            return std::nullopt;
+        }
+
+        const string_view rest = string_view(fname_basename).substr(runtime_server_prefix.size());
+
+        if (!rest.empty() && rest[0] != '.') {
+            return std::nullopt;
+        }
+
+        return strex("{}{}", runtime_local_prefix, rest).str();
     };
 
     for (int32_t file_index = 0;; file_index++) {
@@ -414,39 +435,44 @@ void Updater::Net_OnInitData()
         const auto target = reader.Read<UpdateFileTarget>();
         const auto data_index = reader.Read<uint32_t>();
 
+        string local_name = fname;
         bool is_runtime_companion = false;
 
-        if (target != our_target) {
-            if (companion_resync_enabled && target == UpdateFileTarget::ClientBinaries) {
-                const auto fname_basename = strex(fname).extract_file_name().str();
-
-                if (fname_basename != runtime_primary_name && matches_current_runtime(fname_basename)) {
-                    is_runtime_companion = true;
-                }
-            }
-
-            if (!is_runtime_companion) {
+        if (target == UpdateFileTarget::ClientBinaries) {
+            if (!accept_binaries) {
                 continue;
             }
-        }
 
-        if (_binariesMode || is_runtime_companion) {
-            if (_binariesMode) {
-                const auto fname_basename = strex(fname).extract_file_name().str();
-                if (!matches_current_runtime(fname_basename)) {
-                    continue;
-                }
+            const auto fname_basename = strex(fname).extract_file_name().str();
+            const auto remapped = remap_runtime_name(fname_basename);
 
-                _hasMatchingEntries = true;
+            if (!remapped.has_value()) {
+                continue;
             }
 
-            const auto file_path = strex(_binaryDir).combine_path(fname).str();
+            const auto remapped_basename = *remapped;
+            const auto fname_dir = strex(fname).extract_dir().str();
+            local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
+
+            const auto is_primary = remapped_basename == runtime_primary_name;
+
+            if (_binariesMode) {
+                _hasMatchingEntries = true;
+            }
+            else if (is_primary) {
+                continue;
+            }
+            else {
+                is_runtime_companion = true;
+            }
+
+            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
                 continue;
             }
         }
-        else {
+        else if (target == our_target) {
             auto file_header = resources.ReadFileHeader(fname);
 
             if (file_header) {
@@ -463,15 +489,18 @@ void Updater::Net_OnInitData()
                 }
             }
         }
+        else {
+            continue;
+        }
 
         UpdateFile update_file;
         update_file.Index = numeric_cast<int32_t>(data_index);
-        update_file.Name = fname;
+        update_file.Name = local_name;
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
         update_file.IsRuntimeCompanion = is_runtime_companion;
-        _filesToUpdate.push_back(update_file);
+        _filesToUpdate.emplace_back(std::move(update_file));
     }
 
     reader.VerifyEnd();
