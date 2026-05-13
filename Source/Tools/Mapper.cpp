@@ -5905,10 +5905,20 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
         throw MapLoaderException("Invalid map format", map_name);
     }
 
+    const auto& proto_map_section = map_data.GetSection("ProtoMap");
+    map<string, string> proto_map_header_extra_fields;
+
+    for (const auto& [key, value] : proto_map_section) {
+        if (key.starts_with("$Text")) {
+            proto_map_header_extra_fields.emplace(string {key}, string {value});
+        }
+    }
+
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
+    pmap->GetPropertiesForEdit().ApplyFromText(proto_map_section);
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get(), App->MainWindow.GetSize());
+    new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
     new_map->EnableMapperMode();
     new_map->SetScrollCheck(false);
 

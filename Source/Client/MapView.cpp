@@ -3943,6 +3943,13 @@ auto MapView::GenTempEntityId() -> ident_t
     return next_id;
 }
 
+void MapView::SetHeaderExtraFields(map<string, string> fields)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _headerExtraFields = std::move(fields);
+}
+
 auto MapView::SaveToText() const -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -3999,7 +4006,13 @@ auto MapView::SaveToText() const -> string
     };
 
     // Header
-    fill_generic_section("ProtoMap", GetProperties().SaveToText(nullptr));
+    auto proto_map_kv = GetProperties().SaveToText(nullptr);
+
+    for (const auto& [key, value] : _headerExtraFields) {
+        proto_map_kv.emplace(key, value);
+    }
+
+    fill_generic_section("ProtoMap", proto_map_kv);
 
     // Critters
     for (const auto& cr : _critters) {
