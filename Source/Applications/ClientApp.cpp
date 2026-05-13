@@ -401,6 +401,7 @@ static auto ApplyStagedBinaryUpdate() -> bool
     const auto staged_path = GetClientRuntimeStagingPath();
 
     if (!fs_exists(staged_path)) {
+        PromoteStagedRuntimeCompanions();
         return true;
     }
 
@@ -426,14 +427,7 @@ static auto ApplyStagedBinaryUpdate() -> bool
         fs_remove_file(backup_path);
     }
 
-    // Optional pdb update. Not critical if it fails, so no need to roll back binary update.
-    const auto pdb_staged_path = GetClientRuntimePdbStagingPath();
-
-    if (fs_exists(pdb_staged_path)) {
-        const auto pdb_final_path = GetClientRuntimePdbLivePath();
-        fs_remove_file(pdb_final_path);
-        fs_rename(pdb_staged_path, pdb_final_path);
-    }
+    PromoteStagedRuntimeCompanions();
 
     return true;
 }

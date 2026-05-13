@@ -214,13 +214,12 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto output_dir = _binariesMode ? _binaryDir : string(_settings->ClientResources);
-    const auto make_temp_path = [&output_dir](string_view fname) -> string { return strex(output_dir).combine_path(strex("~{}", fname)).str(); };
-    const auto make_final_path = [&](string_view fname) -> string {
-        const auto live_path = strex(output_dir).combine_path(fname).str();
-        // Binary updates land next to the live module under a -staging suffix so the host
-        // can swap them at the next boot without an extra directory.
-        return _binariesMode ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return _binariesMode || f.IsRuntimeCompanion; };
+    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
+    const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
+    const auto make_final_path = [&](const UpdateFile& f) -> string {
+        const auto live_path = strex(file_output_dir(f)).combine_path(f.Name).str();
+        return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
     };
 
     if (_tempFile.is_open()) {
@@ -232,8 +231,8 @@ void Updater::GetNextFile()
         }
 
         const auto& prev_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(prev_update_file.Name);
-        const auto temp_path_str = make_temp_path(prev_update_file.Name);
+        const auto prev_path_str = make_final_path(prev_update_file);
+        const auto temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
             Abort(StrFilesystemError);
@@ -250,8 +249,8 @@ void Updater::GetNextFile()
 
     if (!_filesToUpdate.empty()) {
         auto& next_update_file = _filesToUpdate.front();
-        const auto prev_path_str = make_final_path(next_update_file.Name);
-        const auto temp_path = make_temp_path(next_update_file.Name);
+        const auto prev_path_str = make_final_path(next_update_file);
+        const auto temp_path = make_temp_path(next_update_file);
         const auto temp_file_size = GetDiskFileSize(temp_path);
 
         if (temp_file_size.has_value()) {
@@ -393,7 +392,13 @@ void Updater::Net_OnInitData()
     }
 
     auto reader = DataReader(data);
-    const string current_runtime_name = _binariesMode ? GetCurrentClientRuntimeLibraryName() : string {};
+    const auto companion_resync_enabled = !_binariesMode && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+    const string current_runtime_name = (_binariesMode || companion_resync_enabled) ? GetCurrentClientRuntimeLibraryName() : string {};
+    const string runtime_primary_name = companion_resync_enabled ? strex(GetClientRuntimeLivePath()).extract_file_name().str() : string {};
+
+    const auto matches_current_runtime = [&](const string& fname_basename) { //
+        return fname_basename == current_runtime_name || (fname_basename.size() > current_runtime_name.size() && fname_basename.starts_with(current_runtime_name) && fname_basename[current_runtime_name.size()] == '.');
+    };
 
     for (int32_t file_index = 0;; file_index++) {
         const auto name_len = reader.Read<int16_t>();
@@ -409,19 +414,31 @@ void Updater::Net_OnInitData()
         const auto target = reader.Read<UpdateFileTarget>();
         const auto data_index = reader.Read<uint32_t>();
 
+        bool is_runtime_companion = false;
+
         if (target != our_target) {
-            continue;
-        }
+            if (companion_resync_enabled && target == UpdateFileTarget::ClientBinaries) {
+                const auto fname_basename = strex(fname).extract_file_name().str();
 
-        if (_binariesMode) {
-            const auto fname_basename = strex(fname).extract_file_name().str();
-            const auto matches_runtime = fname_basename == current_runtime_name || (fname_basename.size() > current_runtime_name.size() && fname_basename.starts_with(current_runtime_name) && fname_basename[current_runtime_name.size()] == '.');
-
-            if (!matches_runtime) {
-                continue;
+                if (fname_basename != runtime_primary_name && matches_current_runtime(fname_basename)) {
+                    is_runtime_companion = true;
+                }
             }
 
-            _hasMatchingEntries = true;
+            if (!is_runtime_companion) {
+                continue;
+            }
+        }
+
+        if (_binariesMode || is_runtime_companion) {
+            if (_binariesMode) {
+                const auto fname_basename = strex(fname).extract_file_name().str();
+                if (!matches_current_runtime(fname_basename)) {
+                    continue;
+                }
+
+                _hasMatchingEntries = true;
+            }
 
             const auto file_path = strex(_binaryDir).combine_path(fname).str();
 
@@ -453,6 +470,7 @@ void Updater::Net_OnInitData()
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
+        update_file.IsRuntimeCompanion = is_runtime_companion;
         _filesToUpdate.push_back(update_file);
     }
 
@@ -788,18 +806,48 @@ auto GetClientRuntimeStagingPath() -> string
     return strex("{}{}", GetClientRuntimeLivePath(), ClientBinaryStagingSuffix).str();
 }
 
-auto GetClientRuntimePdbLivePath() -> string
+void PromoteStagedRuntimeCompanions() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}.pdb", GetClientRuntimeLivePath()).str();
-}
+    try {
+        const auto runtime_live = GetClientRuntimeLivePath();
+        const auto binary_dir = strex(runtime_live).extract_dir().str();
+        const auto runtime_primary_name = strex(runtime_live).extract_file_name().str();
+        const auto runtime_name = GetCurrentClientRuntimeLibraryName();
 
-auto GetClientRuntimePdbStagingPath() -> string
-{
-    FO_STACK_TRACE_ENTRY();
+        vector<pair<string, string>> renames;
 
-    return strex("{}{}", GetClientRuntimePdbLivePath(), ClientBinaryStagingSuffix).str();
+        fs_iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
+            const auto file_name = strex(path).extract_file_name().str();
+
+            if (!file_name.ends_with(ClientBinaryStagingSuffix)) {
+                return;
+            }
+
+            const auto unstaged_name = file_name.substr(0, file_name.size() - ClientBinaryStagingSuffix.size());
+
+            if (unstaged_name == runtime_primary_name) {
+                return;
+            }
+
+            const bool matches_runtime = unstaged_name == runtime_name || (unstaged_name.size() > runtime_name.size() && unstaged_name.starts_with(runtime_name) && unstaged_name[runtime_name.size()] == '.');
+
+            if (!matches_runtime) {
+                return;
+            }
+
+            renames.emplace_back(string(path), strex(binary_dir).combine_path(unstaged_name).str());
+        });
+
+        for (const auto& [staged, final_path] : renames) {
+            fs_remove_file(final_path);
+            fs_rename(staged, final_path);
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 auto GetCurrentClientRuntimeLibraryName() -> string

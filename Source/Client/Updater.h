@@ -61,9 +61,8 @@ extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 extern auto GetClientRuntimeLivePath() -> string;
 extern auto GetClientRuntimeStagingPath() -> string;
-extern auto GetClientRuntimePdbLivePath() -> string;
-extern auto GetClientRuntimePdbStagingPath() -> string;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
+extern void PromoteStagedRuntimeCompanions() noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);
 
 class Updater final
@@ -93,6 +92,7 @@ private:
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
+        bool IsRuntimeCompanion {};
     };
 
     void AddText(string_view text);
