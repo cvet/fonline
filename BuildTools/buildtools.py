@@ -10,6 +10,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import urllib.request
 import zipfile
@@ -157,8 +158,8 @@ CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'8',
-		['clang', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
+		'9',
+		['clang-20', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
 		'7',
@@ -171,6 +172,10 @@ LINUX_PACKAGE_GROUPS = {
 	'android-packages': (
 		'3',
 		['openjdk-17-jdk'],
+	),
+	'windows-cross-packages': (
+		'3',
+		['lld-20', 'llvm-20', 'clang-tools-20', 'cabextract'],
 	),
 }
 
@@ -340,6 +345,33 @@ def make_windows_configure_cmd(platform_name: str, *args: object) -> list[str]:
 	return configure_cmd
 
 
+WINDOWS_CROSS_ARCH_BY_PLATFORM = {
+	'win32': 'x86',
+	'win64': 'x86_64',
+	'winarm64': 'aarch64',
+}
+
+
+def resolve_windows_cross_toolchain(env: Mapping[str, str]) -> Path:
+	return resolve_buildtools_path(env, 'cmake', 'toolchains', 'windows-cross.cmake')
+
+
+def make_windows_cross_configure_cmd(platform_name: str, env: Mapping[str, str], *args: object) -> list[str]:
+	system_processor = WINDOWS_CROSS_ARCH_BY_PLATFORM.get(platform_name)
+	if system_processor is None:
+		raise SystemExit(f'Unsupported windows-cross platform: {platform_name}')
+	if not env.get('FO_XWIN_ROOT'):
+		raise SystemExit('FO_XWIN_ROOT is not set. Run prepare-workspace.sh windows-cross to splat the Windows SDK.')
+	toolchain = resolve_windows_cross_toolchain(env)
+	return [
+		'cmake',
+		'-G', 'Ninja',
+		f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(toolchain)}',
+		f'-DCMAKE_SYSTEM_PROCESSOR={system_processor}',
+		*stringify_args(*args),
+	]
+
+
 def resolve_env() -> EnvMap:
 	script_dir = Path(__file__).resolve().parent
 	project_root = Path(os.environ.get('FO_PROJECT_ROOT') or Path.cwd()).resolve()
@@ -362,7 +394,11 @@ def resolve_env() -> EnvMap:
 		'FO_ANDROID_NATIVE_API_LEVEL_NUMBER': read_first_line(third_party / 'android-api'),
 		'FO_DOTNET_RUNTIME': read_first_line(third_party / 'dotnet-runtime'),
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
+		'FO_XWIN_VERSION': read_first_line(third_party / 'xwin'),
 	}
+
+	xwin_root = workspace / 'xwin'
+	env['FO_XWIN_ROOT'] = str(xwin_root) if xwin_root.is_dir() else os.environ.get('FO_XWIN_ROOT', '')
 
 	workspace_android_sdk = resolve_workspace_android_sdk_root(workspace)
 	if workspace_android_sdk:
@@ -414,6 +450,8 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_DOTNET_RUNTIME',
 		'FO_DOTNET_RUNTIME_ROOT',
 		'FO_IOS_SDK',
+		'FO_XWIN_VERSION',
+		'FO_XWIN_ROOT',
 	]:
 		log('-', f'{key}={env.get(key, "")}')
 
@@ -738,6 +776,13 @@ def build_dotnet_version(env: Mapping[str, str]) -> str:
 	return version
 
 
+def build_xwin_version(env: Mapping[str, str]) -> str:
+	version = env.get('FO_XWIN_VERSION', '')
+	if not version:
+		raise SystemExit('FO_XWIN_VERSION is not configured (Engine/ThirdParty/xwin missing?)')
+	return version
+
+
 def workspace_version_marker(workspace: Path, part_name: str) -> Path:
 	return workspace / f'{part_name}-version.txt'
 
@@ -799,6 +844,27 @@ def upload_codecov(build_dir: Path, token: str) -> None:
 	run([str(codecov_path), '-t', token, '--gcov'], cwd=build_dir)
 
 
+def ensure_llvm_apt_source(workspace: Path, check_only: bool) -> None:
+	# Pin the LLVM apt.llvm.org repository to the same major as the project's
+	# minimum-required Clang (currently 20). Idempotent — llvm.sh detects an
+	# existing sources.list entry and reuses it.
+	marker_version = '20-1'
+	if is_workspace_part_ready(workspace, 'llvm-apt-source', marker_version):
+		return
+	if check_only:
+		raise SystemExit(f'Workspace part llvm-apt-source is not ready ({marker_version})')
+
+	ensure_dir(workspace)
+	llvm_sh = workspace / 'llvm-installer.sh'
+	if not llvm_sh.exists():
+		download_file('https://apt.llvm.org/llvm.sh', llvm_sh, 'LLVM installer')
+		llvm_sh.chmod(llvm_sh.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+	sudo_prefix = [] if is_running_as_root() else ['sudo']
+	run([*sudo_prefix, 'bash', str(llvm_sh), '20'])
+	mark_workspace_part_ready(workspace, 'llvm-apt-source', marker_version)
+
+
 def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -> None:
 	version, packages = LINUX_PACKAGE_GROUPS[group_name]
 	if is_workspace_part_ready(workspace, group_name, version):
@@ -807,6 +873,9 @@ def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -
 
 	if check_only:
 		raise SystemExit(f'Workspace part {group_name} is not ready ({version})')
+
+	if any(_pkg_needs_llvm_apt_source(name) for name in packages):
+		ensure_llvm_apt_source(workspace, check_only)
 
 	package_manager = ['apt-get', '-qq', '-y', '-o', 'DPkg::Lock::Timeout=-1']
 	if not is_running_as_root():
@@ -817,6 +886,19 @@ def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -
 		log('Install', package_name)
 		run([*package_manager, 'install', package_name])
 	mark_workspace_part_ready(workspace, group_name, version)
+
+
+_LLVM_VERSIONED_RE = re.compile(r'-(\d+)$')
+
+
+def _pkg_needs_llvm_apt_source(package_name: str) -> bool:
+	# Any package ending in -<digits> coming from LLVM-versioned apt set
+	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org.
+	match = _LLVM_VERSIONED_RE.search(package_name)
+	if not match:
+		return False
+	major = int(match.group(1))
+	return major >= 19 and package_name.split('-')[0] in {'clang', 'clang-format', 'clang-tools', 'clang-tidy', 'lld', 'lldb', 'llvm'}
 
 
 def reset_build_dir(build_dir: Path) -> None:
@@ -952,6 +1034,40 @@ def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	clone_git_repo(dotnet_root / 'runtime', 'https://github.com/dotnet/runtime.git', branch_name=build_dotnet_version(env), depth=1)
 
 
+def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
+	workspace = Path(env['FO_WORKSPACE'])
+	version = build_xwin_version(env)
+	archive_name = f'xwin-{version}-x86_64-unknown-linux-musl.tar.gz'
+	archive_path = workspace / archive_name
+	extract_root = workspace / 'xwin-extract'
+	xwin_tool_dir = workspace / 'xwin-tool'
+	xwin_splat_dir = workspace / 'xwin'
+
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(extract_root)
+	remove_path_if_exists(xwin_tool_dir)
+	remove_path_if_exists(xwin_splat_dir)
+	ensure_dir(workspace)
+
+	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
+	download_file(url, archive_path, 'xwin')
+	log('Unpack xwin:', archive_path)
+	with tarfile.open(archive_path, 'r:gz') as archive:
+		archive.extractall(extract_root)
+	remove_path_if_exists(archive_path)
+
+	extracted_subdirs = [child for child in extract_root.iterdir() if child.is_dir()]
+	if len(extracted_subdirs) != 1:
+		raise SystemExit(f'Unexpected xwin archive layout: {extracted_subdirs}')
+	shutil.move(str(extracted_subdirs[0]), str(xwin_tool_dir))
+	remove_path_if_exists(extract_root)
+	xwin_binary = xwin_tool_dir / 'xwin'
+	xwin_binary.chmod(xwin_binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+	log('Splat MSVC SDK with xwin into:', xwin_splat_dir)
+	run([str(xwin_binary), '--accept-license', '--arch', 'x86_64', 'splat', '--output', str(xwin_splat_dir)])
+
+
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	output = Path(env['FO_OUTPUT'])
@@ -964,6 +1080,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-sdk': build_android_sdk_version(env),
 		'android-ndk': build_android_ndk_version(env),
 		'dotnet': build_dotnet_version(env),
+		'xwin': build_xwin_version(env),
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
@@ -971,6 +1088,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-sdk': prepare_android_sdk_workspace,
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
+		'xwin': prepare_xwin_workspace,
 	}
 
 	for part_name in parts:
@@ -993,7 +1111,8 @@ LINUX_FEATURE_PACKAGE_GROUPS = {
 	'android-arm32': ['android-packages'],
 	'android-arm64': ['android-packages'],
 	'android-x86': ['android-packages'],
-	'all': ['linux-packages', 'web-packages', 'android-packages'],
+	'windows-cross': ['windows-cross-packages'],
+	'all': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
 }
 
 HOST_FEATURE_WORKSPACE_PARTS = {
@@ -1004,7 +1123,8 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 		'android-arm64': ['android-sdk', 'android-ndk'],
 		'android-x86': ['android-sdk', 'android-ndk'],
 		'dotnet': ['dotnet'],
-		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet'],
+		'windows-cross': ['xwin'],
+		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'],
 	},
 	'windows': {
 		'toolset': ['toolset'],
@@ -1225,8 +1345,8 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 		build_env['CC'] = '/usr/bin/gcc'
 		build_env['CXX'] = '/usr/bin/g++'
 	else:
-		build_env['CC'] = '/usr/bin/clang'
-		build_env['CXX'] = '/usr/bin/clang++'
+		build_env['CC'] = '/usr/bin/clang-20'
+		build_env['CXX'] = '/usr/bin/clang++-20'
 	return build_env
 
 
@@ -1256,6 +1376,10 @@ def run_apple_cmake_build(cmake_bin: str, build_dir: Path, config: str) -> None:
 
 def make_platform_build_flag_args(platform_name: str, target_name: str, config: str) -> list[str]:
 	if platform_name in ('linux', 'web', *ANDROID_PLATFORMS):
+		return build_flag_args(target_name, config=config)
+	if platform_name.startswith('win') and os.name != 'nt':
+		# Cross-compile path uses the Ninja single-config generator; CMAKE_BUILD_TYPE
+		# must be set at configure time.
 		return build_flag_args(target_name, config=config)
 	return build_flag_args(target_name)
 
@@ -1303,6 +1427,8 @@ def make_platform_configure_cmd(
 		ios_toolchain = resolve_buildtools_path(env, 'cmake', 'toolchains', 'ios.toolchain.cmake')
 		return make_xcode_configure_cmd(cmake_bin, f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(ios_toolchain)}', *toolchain_settings, *configure_args, to_cmake_path(source_path))
 	if platform_name.startswith('win'):
+		if os.name != 'nt':
+			return make_windows_cross_configure_cmd(platform_name, env, *configure_args, to_cmake_path(source_path))
 		return make_windows_configure_cmd(platform_name, *configure_args, to_cmake_path(source_path))
 	raise SystemExit(f'Unsupported platform: {platform_name}')
 
@@ -1368,6 +1494,16 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	ensure_dir(workspace)
 	ensure_dir(output)
 	ensure_dir(build_dir)
+
+	# Wipe stale CMake state when the cached compiler no longer matches what
+	# make_platform_configure_env wants to inject; otherwise CMake silently keeps
+	# the old compiler (e.g. a previously-cached clang-18 after the project bumps
+	# to clang-20) and the version gate trips at configure time.
+	build_env = make_platform_configure_env(platform_name, 'clang')
+	if _cached_compiler_mismatch(build_dir, build_env):
+		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
+		reset_build_dir(build_dir)
+
 	ready_path = build_dir / 'READY'
 	reset_marker(ready_path)
 
@@ -1382,6 +1518,32 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	)
 
 	ready_path.touch()
+
+
+_CMAKE_CACHE_COMPILER_RE = re.compile(r'^(CMAKE_(?:C|CXX)_COMPILER):FILEPATH=(.+)$', re.MULTILINE)
+
+
+def _cached_compiler_mismatch(build_dir: Path, build_env: Mapping[str, str] | None) -> bool:
+	if not build_env:
+		return False
+	cache_file = build_dir / 'CMakeCache.txt'
+	if not cache_file.exists():
+		return False
+	try:
+		text = cache_file.read_text(encoding='utf-8', errors='replace')
+	except OSError:
+		return False
+	cached: dict[str, str] = {}
+	for match in _CMAKE_CACHE_COMPILER_RE.finditer(text):
+		cached[match.group(1)] = match.group(2).strip()
+	for cmake_var, env_var in (('CMAKE_C_COMPILER', 'CC'), ('CMAKE_CXX_COMPILER', 'CXX')):
+		expected = build_env.get(env_var)
+		if not expected:
+			continue
+		actual = cached.get(cmake_var)
+		if actual and actual != expected:
+			return True
+	return False
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:
@@ -1620,7 +1782,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
 	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
-	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android-arm32', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'all'])
+	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android-arm32', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'windows-cross', 'all'])
 	prepare_host_parser.add_argument('--check', action='store_true')
 
 	return parser

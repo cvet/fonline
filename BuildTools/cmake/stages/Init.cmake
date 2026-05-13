@@ -93,6 +93,26 @@ StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
 StatusMessage("Generator: ${CMAKE_GENERATOR}")
 StatusMessage("Operating system: ${CMAKE_SYSTEM_NAME}")
 
+# Minimum supported toolchains.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
+        AbortMessage("Clang ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 20.0")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    # TODO: pin AppleClang/Xcode minimum once the macOS baseline is decided.
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+        AbortMessage("GCC ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 13.0")
+    endif()
+elseif(MSVC)
+    # MSVC_VERSION 1930+ corresponds to Visual Studio 2022 (v143 toolset).
+    if(MSVC_VERSION LESS 1930)
+        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1930 (Visual Studio 2022)")
+    endif()
+else()
+    AbortMessage("Unsupported compiler '${CMAKE_CXX_COMPILER_ID}'. Supported: Clang >= 20, GCC >= 13, MSVC >= 2022, AppleClang (any).")
+endif()
+
 DetectProcessorArchitecture(FO_PROCESSOR_ARCHITECTURE CMAKE_SYSTEM_PROCESSOR)
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL FO_PROCESSOR_ARCHITECTURE)
