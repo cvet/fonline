@@ -246,7 +246,9 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    )
 endif ()
 
-include (InstallRequiredSystemLibraries)
+if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
+   include (InstallRequiredSystemLibraries)
+endif ()
 include (CMakeDependentOption)
 
 # Installation paths

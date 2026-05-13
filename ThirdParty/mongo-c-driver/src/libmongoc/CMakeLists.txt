@@ -17,7 +17,9 @@ include (CheckStructHasMember)
 include (CheckSymbolExists)
 include (CheckTypeSize)
 include (CMakePushCheckState)
-include (InstallRequiredSystemLibraries)
+if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
+   include (InstallRequiredSystemLibraries)
+endif ()
 
 message (STATUS "libmongoc version (from VERSION_CURRENT file): ${MONGOC_VERSION}")
 
