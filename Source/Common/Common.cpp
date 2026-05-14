@@ -62,7 +62,7 @@ static auto ReadPackagedBuildName() -> string
 {
     auto raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
 
-    if (raw.starts_with("###NotPackaged###")) {
+    if (raw.find("NotPackaged") != string::npos) {
         return {};
     }
 
