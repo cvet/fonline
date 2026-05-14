@@ -70,7 +70,7 @@ FO_SCRIPT_API bool Server_Critter_IsMoving(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Server_Critter_GetMovingContext(Critter* self)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Server_Critter_GetMovingContext(Critter* self)
 {
     return self->GetMovingContext();
 }
@@ -82,13 +82,13 @@ FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Critter_GetPlayer(Critter* self)
+FO_SCRIPT_API FO_NULLABLE Player* Server_Critter_GetPlayer(Critter* self)
 {
     return self->GetPlayer();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Critter_GetMap(Critter* self)
 {
     return self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
 }
@@ -301,7 +301,7 @@ FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
 {
     return self->GetCritter(id, seeType);
 }
@@ -451,7 +451,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -468,7 +468,7 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t c
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -482,7 +482,7 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int3
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
     if (!itemId) {
         return nullptr;
@@ -492,13 +492,13 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 {
     return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -508,7 +508,7 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -637,7 +637,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem)
 {
     const auto prev_cond = self->GetCondition();
 
@@ -677,7 +677,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, FO_NULLABLE AbstractItem* contextItem)
 {
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }

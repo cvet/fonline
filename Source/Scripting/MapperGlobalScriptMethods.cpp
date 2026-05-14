@@ -50,7 +50,7 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, m
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, ProtoItem* proto, mpos hex)
+FO_SCRIPT_API FO_NULLABLE ItemView* Mapper_Game_AddItem(MapperEngine* mapper, ProtoItem* proto, mpos hex)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -73,7 +73,7 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCritter* proto, mpos hex)
+FO_SCRIPT_API FO_NULLABLE CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCritter* proto, mpos hex)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -86,7 +86,7 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCri
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Mapper_Game_GetItemOnHex(MapperEngine* mapper, mpos hex)
+FO_SCRIPT_API FO_NULLABLE ItemView* Mapper_Game_GetItemOnHex(MapperEngine* mapper, mpos hex)
 {
     return mapper->GetCurMap()->GetItemOnHex(hex, hstring());
 }
@@ -112,7 +112,7 @@ FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCrittersOnHex(MapperEngine* ma
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_MoveEntity(MapperEngine* mapper, ClientEntity* entity, mpos hex)
+FO_SCRIPT_API void Mapper_Game_MoveEntity(MapperEngine* mapper, FO_NULLABLE ClientEntity* entity, mpos hex)
 {
     if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -122,7 +122,7 @@ FO_SCRIPT_API void Mapper_Game_MoveEntity(MapperEngine* mapper, ClientEntity* en
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_DeleteEntity(MapperEngine* mapper, ClientEntity* entity)
+FO_SCRIPT_API void Mapper_Game_DeleteEntity(MapperEngine* mapper, FO_NULLABLE ClientEntity* entity)
 {
     mapper->DeleteEntity(entity);
 }
@@ -187,7 +187,7 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(MapperEngine
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, mpos hex, int32_t layer, bool roof)
+FO_SCRIPT_API FO_NULLABLE ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, mpos hex, int32_t layer, bool roof)
 {
     if (mapper->GetCurMap() == nullptr) {
         throw ScriptException("Map not loaded");
@@ -208,19 +208,19 @@ FO_SCRIPT_API MapView* Mapper_Game_LoadMap(MapperEngine* mapper, string_view fil
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_UnloadMap(MapperEngine* mapper, MapView* map)
+FO_SCRIPT_API void Mapper_Game_UnloadMap(MapperEngine* mapper, FO_NULLABLE MapView* map)
 {
     mapper->UnloadMap(map);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_SaveMap(MapperEngine* mapper, MapView* map, string_view customName)
+FO_SCRIPT_API void Mapper_Game_SaveMap(MapperEngine* mapper, FO_NULLABLE MapView* map, string_view customName)
 {
     mapper->SaveMap(map, customName);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_ShowMap(MapperEngine* mapper, MapView* map)
+FO_SCRIPT_API void Mapper_Game_ShowMap(MapperEngine* mapper, FO_NULLABLE MapView* map)
 {
     mapper->ShowMap(map);
 }

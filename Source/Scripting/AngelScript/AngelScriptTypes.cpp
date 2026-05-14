@@ -965,7 +965,11 @@ static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
     const auto& mehtod = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
     FO_RUNTIME_ASSERT(mehtod.Call);
 
-    ScriptGenericCall(gen, false, [&](FuncCallData& call) { mehtod.Call(call); });
+    ScriptGenericCall(gen, false, [&](FuncCallData& call) {
+        ValidateMethodArgsNullability(mehtod, call, false);
+        mehtod.Call(call);
+        ValidateMethodReturnNullability(mehtod, call);
+    });
 }
 
 static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
@@ -975,7 +979,11 @@ static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
     const auto& mehtod = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
     FO_RUNTIME_ASSERT(mehtod.Call);
 
-    ScriptGenericCall(gen, true, [&](FuncCallData& call) { mehtod.Call(call); });
+    ScriptGenericCall(gen, true, [&](FuncCallData& call) {
+        ValidateMethodArgsNullability(mehtod, call, true);
+        mehtod.Call(call);
+        ValidateMethodReturnNullability(mehtod, call);
+    });
 }
 
 static void RefType_Equals(AngelScript::asIScriptGeneric* gen)

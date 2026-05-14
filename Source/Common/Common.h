@@ -493,6 +493,7 @@ struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
+    bool Nullable {};
 };
 
 struct FieldDesc
@@ -516,6 +517,7 @@ struct MethodDesc
     bool Getter {};
     bool Setter {};
     bool PassOwnership {};
+    bool ReturnNullable {};
 };
 
 struct StructLayoutDesc

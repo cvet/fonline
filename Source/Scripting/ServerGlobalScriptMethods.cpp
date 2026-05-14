@@ -50,7 +50,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -78,7 +78,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
     if (proto == nullptr) {
         throw ScriptException("Critter proto arg is null");
@@ -273,7 +273,7 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, It
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_GetItem(ServerEngine* server, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_GetItem(ServerEngine* server, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -288,7 +288,7 @@ FO_SCRIPT_API Item* Server_Game_GetItem(ServerEngine* server, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critter* toCr)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -301,7 +301,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critt
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -318,7 +318,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* toMap, mpos toHex)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -334,7 +334,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -354,7 +354,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -367,7 +367,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -380,7 +380,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -397,7 +397,7 @@ FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -489,7 +489,7 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ident_t id)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ServerEntity* entity)
+FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, FO_NULLABLE ServerEntity* entity)
 {
     if (entity != nullptr) {
         server->EntityMngr.DestroyEntity(entity);
@@ -517,7 +517,7 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_ve
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item)
+FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, FO_NULLABLE Item* item)
 {
     if (item != nullptr) {
         server->ItemMngr.DestroyItem(item);
@@ -717,7 +717,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, Location* loc)
+FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, FO_NULLABLE Location* loc)
 {
     if (loc != nullptr) {
         server->MapMngr.DestroyLocation(loc);
@@ -735,7 +735,7 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, ident_t loc
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, Map* map)
+FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, FO_NULLABLE Map* map)
 {
     if (map != nullptr) {
         server->MapMngr.DestroyMap(map);
@@ -753,7 +753,7 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, ident_t mapId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId)
 {
     if (!crId) {
         return nullptr;
@@ -827,7 +827,7 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* serv
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
+FO_SCRIPT_API FO_NULLABLE Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
 {
     if (!playerId) {
         return nullptr;
@@ -843,19 +843,19 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetGlobalMapCritters(ServerEngine* se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ident_t mapId)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ident_t mapId)
 {
     return server->EntityMngr.GetMap(mapId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid)
 {
     return server->MapMngr.GetMapByPid(mapPid, 0);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
 {
     if (mapProto == nullptr) {
         throw ScriptException("Map proto arg is null");
@@ -865,13 +865,13 @@ FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount)
 {
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
 {
     if (mapProto == nullptr) {
         throw ScriptException("Map proto arg is null");
@@ -930,19 +930,19 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, ProtoMap* p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ident_t locId)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ident_t locId)
 {
     return server->EntityMngr.GetLocation(locId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid)
 {
     return server->MapMngr.GetLocationByPid(locPid, 0);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto)
 {
     if (locProto == nullptr) {
         throw ScriptException("Location proto arg is null");
@@ -952,13 +952,13 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount)
 {
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
 {
     if (locProto == nullptr) {
         throw ScriptException("Location proto arg is null");
@@ -968,7 +968,7 @@ FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
 
@@ -1459,7 +1459,7 @@ FO_SCRIPT_API void Server_Game_SetSynchronizedTime(ServerEngine* server, synctim
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ServerEngine* server, Critter* cr, StaticItem* staticItem, Item* usedItem, any_t param)
+FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ServerEngine* server, FO_NULLABLE Critter* cr, StaticItem* staticItem, FO_NULLABLE Item* usedItem, any_t param)
 {
     ignore_unused(server);
 

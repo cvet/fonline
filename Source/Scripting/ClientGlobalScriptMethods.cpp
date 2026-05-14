@@ -40,19 +40,19 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API MapView* Client_Game_CurMap(ClientEngine* client)
+FO_SCRIPT_API FO_NULLABLE MapView* Client_Game_CurMap(ClientEngine* client)
 {
     return client->GetCurMap();
 }
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API LocationView* Client_Game_CurLocation(ClientEngine* client)
+FO_SCRIPT_API FO_NULLABLE LocationView* Client_Game_CurLocation(ClientEngine* client)
 {
     return client->GetCurLocation();
 }
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API PlayerView* Client_Game_CurPlayer(ClientEngine* client)
+FO_SCRIPT_API FO_NULLABLE PlayerView* Client_Game_CurPlayer(ClientEngine* client)
 {
     return client->GetCurPlayer();
 }
@@ -324,7 +324,7 @@ FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ClientEngine* client)
 }
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API CritterView* Client_Game_Chosen(ClientEngine* client)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Game_Chosen(ClientEngine* client)
 {
     return client->GetChosen();
 }
@@ -379,7 +379,7 @@ FO_SCRIPT_API ItemView* Client_Game_GetItem(ClientEngine* client, ident_t itemId
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Game_GetCritter(ClientEngine* client, ident_t crId)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Game_GetCritter(ClientEngine* client, ident_t crId)
 {
     if (!crId) {
         return nullptr;

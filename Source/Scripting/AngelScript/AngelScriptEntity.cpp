@@ -849,7 +849,11 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
     const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
     FO_RUNTIME_ASSERT(method.Call);
 
-    ScriptGenericCall(gen, true, [&](FuncCallData& call) { method.Call(call); });
+    ScriptGenericCall(gen, true, [&](FuncCallData& call) {
+        ValidateMethodArgsNullability(method, call, true);
+        method.Call(call);
+        ValidateMethodReturnNullability(method, call);
+    });
 }
 
 static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
@@ -874,7 +878,9 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
             args_data[i + 1] = base_call.ArgsData[i];
         }
 
+        ValidateMethodArgsNullability(method, call, true);
         method.Call(call);
+        ValidateMethodReturnNullability(method, call);
     });
 }
 

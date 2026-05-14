@@ -89,7 +89,7 @@ FO_SCRIPT_API bool Client_Critter_IsMoving(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Client_Critter_GetMovingContext(CritterView* self)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_GetMovingContext(CritterView* self)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -166,7 +166,7 @@ FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem)
+FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -179,7 +179,7 @@ FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim st
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem, bool append)
+FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem, bool append)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -251,13 +251,13 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
     return self->GetInvItem(itemId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
     const auto* proto = self->GetEngine()->GetProtoItem(protoId);
 
@@ -292,7 +292,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
 {
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
@@ -325,7 +325,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
@@ -475,7 +475,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
