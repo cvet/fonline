@@ -55,19 +55,25 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Collect map files
-    vector<File> filtered_files;
+    struct MapBakeEntry
+    {
+        File SourceFile {};
+        string MapName {};
+    };
 
-    const auto check_file = [&](const FileHeader& file_header) -> bool {
-        const bool server_side = _context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
-        const bool client_side = _context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
+    // Collect map files
+    vector<MapBakeEntry> filtered_files;
+
+    const auto check_file = [&](const FileHeader& file_header, string_view map_name) -> bool {
+        const bool server_side = _context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
+        const bool client_side = _context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
 
         if (server_side || client_side) {
             if (!server_side) {
-                (void)_context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-server"), file_header.GetWriteTime());
+                (void)_context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
             }
             if (!client_side) {
-                (void)_context->BakeChecker(strex(file_header.GetPath()).change_file_extension("fomap-bin-client"), file_header.GetWriteTime());
+                (void)_context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
             }
         }
 
@@ -81,11 +87,15 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             if (ext != "fomap") {
                 continue;
             }
-            if (_context->BakeChecker && !check_file(file_header)) {
+
+            File file = File::Load(file_header);
+            string map_name = ResolveMapName(file);
+
+            if (_context->BakeChecker && !check_file(file_header, map_name)) {
                 continue;
             }
 
-            filtered_files.emplace_back(File::Load(file_header));
+            filtered_files.emplace_back(MapBakeEntry {std::move(file), std::move(map_name)});
         }
     }
     else {
@@ -93,16 +103,42 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             return;
         }
 
-        auto file = files.FindFileByPath(strex(target_path).change_file_extension("fomap"));
+        File file;
+        bool file_found = false;
+        const string target_map_name = strex(target_path).extract_file_name().erase_file_extension().str();
 
-        if (!file) {
+        if (auto exact_file = files.FindFileByPath(strex(target_path).change_file_extension("fomap"))) {
+            file = std::move(exact_file);
+            file_found = true;
+        }
+        else {
+            for (const auto& file_header : files) {
+                if (strex(file_header.GetPath()).get_file_extension() != "fomap") {
+                    continue;
+                }
+
+                File candidate_file = File::Load(file_header);
+                string candidate_map_name = ResolveMapName(candidate_file);
+
+                if (candidate_map_name == target_map_name) {
+                    file = std::move(candidate_file);
+                    file_found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!file_found) {
             return;
         }
-        if (_context->BakeChecker && !check_file(file)) {
+
+        string map_name = ResolveMapName(file);
+
+        if (_context->BakeChecker && !check_file(file, map_name)) {
             return;
         }
 
-        filtered_files.emplace_back(std::move(file));
+        filtered_files.emplace_back(MapBakeEntry {std::move(file), std::move(map_name)});
     }
 
     if (filtered_files.empty()) {
@@ -130,13 +166,10 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 #endif
 
     // Bake maps
-    const auto bake_map = [&](const File& file) {
+    const auto bake_map = [&](const MapBakeEntry& entry) {
+        const File& file = entry.SourceFile;
         const string& file_content = file.GetStr();
-
-        string map_name = [&]() -> string {
-            const auto fomap = ConfigFile(file.GetPath(), file_content, ConfigFileOption::ReadFirstSection);
-            return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
-        }();
+        const string& map_name = entry.MapName;
 
         vector<uint8_t> props_data;
         uint32_t map_cr_count = 0;
@@ -248,8 +281,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     // Async baking
     vector<std::future<void>> file_bakings;
 
-    for (const auto& file : filtered_files) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { bake_map(file); }));
+    for (const auto& entry : filtered_files) {
+        const MapBakeEntry* entry_ptr = &entry;
+        file_bakings.emplace_back(std::async(GetAsyncMode(), [&, entry_ptr]() FO_DEFERRED { bake_map(*entry_ptr); }));
     }
 
     size_t errors = 0;
@@ -267,6 +301,14 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     if (errors != 0) {
         throw MapBakerException("Errors during map baking");
     }
+}
+
+auto MapBaker::ResolveMapName(const File& file) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto fomap = ConfigFile(file.GetPath(), file.GetStr(), ConfigFileOption::ReadFirstSection);
+    return string(fomap.GetAsStr("Header", "$Name", file.GetNameNoExt()));
 }
 
 FO_END_NAMESPACE

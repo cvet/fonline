@@ -58,6 +58,9 @@ public:
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 7; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
+
+private:
+    [[nodiscard]] static auto ResolveMapName(const File& file) -> string;
 };
 
 FO_END_NAMESPACE
