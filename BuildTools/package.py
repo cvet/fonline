@@ -754,8 +754,15 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		all_linux_variants = self.iter_linux_variants()
+		cross_variant_excluded: set[str] = set()
+		if self.args.target == 'Client':
+			for other_variant in all_linux_variants:
+				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
+				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
+
 		for arch in self.iter_arches():
-			for variant in self.iter_linux_variants():
+			for variant in all_linux_variants:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
 				if self.args.target == 'Client':
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
@@ -767,15 +774,14 @@ class Packager:
 				log('Binary input', bin_path)
 
 				additional_config_data = None
-				excluded_companions: set[str] = set()
-				if self.args.target == 'Client':
-					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.so')
+				excluded_companions: set[str] = set(cross_variant_excluded)
 
 				if self.args.target == 'Client':
 					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions={runtime_alias_name + '.so'})
+					runtime_excluded = set(cross_variant_excluded) | {runtime_alias_name + '.so'}
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=runtime_excluded)
 					excluded_companions.add(runtime_input_name + '.so')
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
