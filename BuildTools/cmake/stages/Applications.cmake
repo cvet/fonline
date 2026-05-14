@@ -40,6 +40,7 @@ if(FO_BUILD_CLIENT)
                 WORKING_DIRECTORY ${FO_OUTPUT_PATH}
                 OUTPUT_NAME ${FO_DEV_NAME}_ClientHeadless
                 TESTING_APP 0
+                HEADLESS_APP 1
                 LINK_LIBS AppHeadless ClientLib
                 WRITE_BUILD_HASH)
 
@@ -47,6 +48,7 @@ if(FO_BUILD_CLIENT)
                 OUTPUT_DIR ${FO_CLIENT_OUTPUT}
                 OUTPUT_NAME ${FO_DEV_NAME}_ClientLibHeadless
                 TESTING_APP 0
+                HEADLESS_APP 1
                 LINK_LIBS PRIVATE AppHeadless ClientLib
                 EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT}
                 NO_PREFIX

@@ -41,7 +41,7 @@
 #include "Updater.h"
 #include "WebRelated.h"
 
-#if !FO_TESTING_APP
+#if !FO_TESTING_APP && !FO_HEADLESS_APP
 #include "SDL3/SDL_main.h"
 #endif
 
