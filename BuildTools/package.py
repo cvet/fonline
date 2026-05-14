@@ -311,8 +311,9 @@ class Packager:
 	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
 		return variant.output_suffix(is_windows)
 
-	def build_client_runtime_input_name(self) -> str:
-		return self.args.devname + '_ClientLib'
+	def build_client_runtime_input_name(self, variant: BinaryVariant | None = None) -> str:
+		role = variant.role if variant is not None else ''
+		return self.args.devname + '_ClientLib' + role
 
 	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
 		return self.args.devname + '_Client' + variant.role
@@ -416,9 +417,11 @@ class Packager:
 				if not runtime_ext:
 					continue
 
-				runtime_input_path = os.path.join(entry_path, self.build_client_runtime_input_name() + runtime_ext)
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name() + '.build-hash')
-				if not os.path.isfile(runtime_input_path) or not os.path.isfile(build_hash_path):
+				default_runtime_variant = BinaryVariant()
+				headless_runtime_variant = BinaryVariant(role='Headless')
+
+				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				if not os.path.isfile(build_hash_path):
 					continue
 
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
@@ -430,13 +433,22 @@ class Packager:
 				if '-Profiling_' in entry_name:
 					suffix = '_Profiling'
 
-				output_names = [(self.args.nicename + suffix, None)]
+				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
+				variant_specs.append((self.args.nicename + suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					output_names.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1'))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1', default_runtime_variant))
+				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
+				if os.path.isfile(headless_runtime_path):
+					variant_specs.append((self.args.nicename + suffix + '_Headless', None, headless_runtime_variant))
 
-				for output_name, variant_config_data in output_names:
+				for output_name, variant_config_data, runtime_variant in variant_specs:
 					payload_key = (request_target_name, output_name)
 					if payload_key in copied_payloads:
+						continue
+
+					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
+					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
+					if not os.path.isfile(runtime_input_path):
 						continue
 
 					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
@@ -456,7 +468,7 @@ class Packager:
 						self.config_data = old_config_data
 
 					if platform == 'Windows':
-						pdb_input_path = os.path.join(entry_path, self.build_client_runtime_input_name() + '.pdb')
+						pdb_input_path = os.path.join(entry_path, runtime_input_name + '.pdb')
 						assert os.path.isfile(pdb_input_path), 'Client runtime update payload PDB not found: ' + pdb_input_path
 						pdb_out_name = os.path.basename(output_path) + '.pdb'
 						pdb_out_path = os.path.join(payload_dir, pdb_out_name)
@@ -745,7 +757,11 @@ class Packager:
 		for arch in self.iter_arches():
 			for variant in self.iter_linux_variants():
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=False)
+				if self.args.target == 'Client':
+					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
+				else:
+					bin_out_name_base = bin_name
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False)
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
@@ -756,7 +772,7 @@ class Packager:
 					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.so')
 
 				if self.args.target == 'Client':
-					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
 					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions={runtime_alias_name + '.so'})

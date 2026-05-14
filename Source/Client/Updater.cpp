@@ -299,8 +299,14 @@ void Updater::GetNextFile()
         RequestUpdateFile(next_update_file);
     }
     else {
-        // All queued files processed successfully; mark terminal result for the caller.
-        _result = _binariesMode ? UpdaterResult::BinariesStaged : UpdaterResult::ResourcesReady;
+        if (_binariesMode) {
+            WriteLog("Binary update staged for reload");
+            _result = UpdaterResult::BinariesStaged;
+        }
+        else {
+            WriteLog("Resources sync complete");
+            _result = UpdaterResult::ResourcesReady;
+        }
     }
 
     _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
@@ -381,7 +387,14 @@ void Updater::Net_OnInitData()
     const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
 
     if (data.empty()) {
-        _result = _binariesMode ? UpdaterResult::ServerMissingNativeUpdate : UpdaterResult::ResourcesReady;
+        if (_binariesMode) {
+            WriteLog("Server returned empty native update list for this target");
+            _result = UpdaterResult::ServerMissingNativeUpdate;
+        }
+        else {
+            WriteLog("Resources sync complete");
+            _result = UpdaterResult::ResourcesReady;
+        }
         return;
     }
 
@@ -509,9 +522,17 @@ void Updater::Net_OnInitData()
         GetNextFile();
     }
     else if (_binariesMode) {
-        _result = _hasMatchingEntries ? UpdaterResult::BinariesStaged : UpdaterResult::ServerMissingNativeUpdate;
+        if (_hasMatchingEntries) {
+            WriteLog("Binary update staged for reload");
+            _result = UpdaterResult::BinariesStaged;
+        }
+        else {
+            WriteLog("Server has no native update payload for this target");
+            _result = UpdaterResult::ServerMissingNativeUpdate;
+        }
     }
     else {
+        WriteLog("Resources sync complete");
         _result = UpdaterResult::ResourcesReady;
     }
 }
