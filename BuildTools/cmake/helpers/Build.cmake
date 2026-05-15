@@ -490,7 +490,7 @@ endmacro()
 
 macro(SetupApplicationTarget target)
 	set(options WRITE_BUILD_HASH)
-	set(oneValueArgs OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs PROPERTIES LINK_LIBS DEPENDS)
 	ParseArguments(APP_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -510,9 +510,15 @@ macro(SetupApplicationTarget target)
 		SetTargetProperties(${target} OUTPUT_NAME "${APP_TARGET_OUTPUT_NAME}")
 	endif()
 
-	if(DEFINED APP_TARGET_TESTING_APP)
-		SetTargetProperties(${target} COMPILE_DEFINITIONS "FO_TESTING_APP=${APP_TARGET_TESTING_APP}")
+	if(NOT APP_TARGET_TESTING_APP)
+		set(APP_TARGET_TESTING_APP 0)
 	endif()
+	if(NOT APP_TARGET_HEADLESS_APP)
+		set(APP_TARGET_HEADLESS_APP 0)
+	endif()
+	TargetCompileDefinitions(${target} PRIVATE
+		"FO_TESTING_APP=${APP_TARGET_TESTING_APP}"
+		"FO_HEADLESS_APP=${APP_TARGET_HEADLESS_APP}")
 
 	if(APP_TARGET_LINK_LIBS)
 		TargetLinkLibraries(${target} ${APP_TARGET_LINK_LIBS})
@@ -525,7 +531,7 @@ endmacro()
 
 macro(AddExecutableApplication target sourceFile)
 	set(options WIN32 WRITE_BUILD_HASH)
-	set(oneValueArgs OUTPUT_DIR WORKING_DIRECTORY OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_DIR WORKING_DIRECTORY OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_SOURCES)
 	ParseArguments(APP_EXEC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -546,6 +552,7 @@ macro(AddExecutableApplication target sourceFile)
 		VS_DEBUGGER_WORKING_DIRECTORY ${APP_EXEC_WORKING_DIRECTORY}
 		OUTPUT_NAME ${APP_EXEC_OUTPUT_NAME}
 		TESTING_APP ${APP_EXEC_TESTING_APP}
+		HEADLESS_APP ${APP_EXEC_HEADLESS_APP}
 		LINK_LIBS ${APP_EXEC_LINK_LIBS}
 		DEPENDS ${APP_EXEC_DEPENDS})
 
@@ -558,7 +565,7 @@ endmacro()
 
 macro(AddSharedApplication target sourceFile)
 	set(options WRITE_BUILD_HASH NO_PREFIX)
-	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_PROPERTIES)
 	ParseArguments(APP_SHARED "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -578,6 +585,7 @@ macro(AddSharedApplication target sourceFile)
 		PROPERTIES ${appSharedProperties}
 		OUTPUT_NAME ${APP_SHARED_OUTPUT_NAME}
 		TESTING_APP ${APP_SHARED_TESTING_APP}
+		HEADLESS_APP ${APP_SHARED_HEADLESS_APP}
 		LINK_LIBS ${APP_SHARED_LINK_LIBS}
 		DEPENDS ${APP_SHARED_DEPENDS})
 

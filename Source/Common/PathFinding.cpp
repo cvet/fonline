@@ -95,7 +95,10 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
         for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, cw_dir);
-            FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
+
+            if (!map_size.is_valid_pos(raw_hex)) {
+                return HexBlockResult::Blocked;
+            }
 
             if (update_worst(check_hex(map_size.from_raw_pos(raw_hex)))) {
                 return worst;
@@ -122,7 +125,10 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
         for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, ccw_dir);
-            FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
+
+            if (!map_size.is_valid_pos(raw_hex)) {
+                return HexBlockResult::Blocked;
+            }
 
             if (update_worst(check_hex(map_size.from_raw_pos(raw_hex)))) {
                 return worst;

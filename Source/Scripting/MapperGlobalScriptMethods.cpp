@@ -237,11 +237,11 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(MapperEngine* mapper, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(MapperEngine* mapper, string_view dir)
+FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(MapperEngine* mapper, string_view dir, bool recursive)
 {
     vector<string> names;
 
-    auto map_files = mapper->MapsFileSys.FilterFiles("fomap", dir, false);
+    auto map_files = mapper->MapsFileSys.FilterFiles("fomap", dir, recursive);
 
     for (const auto& map_file_header : map_files) {
         names.emplace_back(map_file_header.GetNameNoExt());

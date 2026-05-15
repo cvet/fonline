@@ -289,6 +289,7 @@ public:
     void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
 
+    void SetHeaderExtraFields(map<string, string> fields);
     auto SaveToText() const -> string;
 
 private:
@@ -365,6 +366,7 @@ private:
     bool _mapLoading {};
     msize _mapSize {};
     ident_t _workEntityId {};
+    map<string, string> _headerExtraFields {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
     unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};

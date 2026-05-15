@@ -347,6 +347,13 @@ TEST_CASE("PathFinding::FindPath")
         CHECK((output.Result == FindPathOutput::ResultType::Ok || output.Result == FindPathOutput::ResultType::NoWay || output.Result == FindPathOutput::ResultType::TooFar));
     }
 
+    SECTION("MultihexPerimeterOutsideMapReturnsBlocked")
+    {
+        const auto result = PathFinding::CheckHexWithMultihex(mpos {0, 0}, hdir::SouthEast, 1, TEST_MAP_SIZE, [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; });
+
+        CHECK(result == HexBlockResult::Blocked);
+    }
+
     SECTION("MultihexPerimeterDeferCritter")
     {
         // Critter on a perimeter hex — multihex should aggregate DeferCritter

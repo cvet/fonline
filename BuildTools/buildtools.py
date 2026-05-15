@@ -158,8 +158,8 @@ CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'9',
-		['clang-20', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'wget', 'unzip', 'binutils-dev'],
+		'10',
+		['clang-20', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'python3-pytest', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
 		'7',
