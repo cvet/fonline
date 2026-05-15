@@ -50,7 +50,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
 {
     return server->CreateCritter(proto->GetProtoId(), forPlayer);
 }
@@ -74,7 +74,7 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
     Properties props_ = proto->GetProperties().Copy();
 

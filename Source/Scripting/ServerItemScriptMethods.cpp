@@ -63,40 +63,40 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, {});
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
+FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);

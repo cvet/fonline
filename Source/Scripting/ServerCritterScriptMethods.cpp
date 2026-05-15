@@ -408,7 +408,7 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, i
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
+FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -416,19 +416,18 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_AddItem(Critter* self, hstring pi
     if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid proto", pid);
     }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
+FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
