@@ -4488,11 +4488,11 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
     FO_RUNTIME_ASSERT(_curMap);
 
     if (!_curMap->GetSize().is_valid_pos(hex)) {
-        return nullptr;
+        throw GenericException("Invalid hex for critter spawn", pid, hex.x, hex.y);
     }
 
     if (_curMap->GetNonDeadCritter(hex) != nullptr) {
-        return nullptr;
+        throw GenericException("Hex is already occupied by a non-dead critter", pid, hex.x, hex.y);
     }
 
     SelectClear();
@@ -4533,7 +4533,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     const auto* proto = GetProtoItem(pid);
 
     if (proto == nullptr) {
-        return nullptr;
+        throw GenericException("Invalid item proto", pid);
     }
 
     mpos corrected_hex = hex;
@@ -4543,7 +4543,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     }
 
     if (owner == nullptr && (!_curMap->GetSize().is_valid_pos(corrected_hex))) {
-        return nullptr;
+        throw GenericException("Invalid hex for item spawn", pid, hex.x, hex.y);
     }
 
     if (owner == nullptr) {
@@ -4567,6 +4567,10 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
     }
 
+    if (item == nullptr) {
+        throw GenericException("Failed to create item", pid);
+    }
+
     if (owner == nullptr) {
         SelectAdd(item, corrected_hex);
         SetCurMode(CUR_MODE_DEFAULT);
@@ -4578,11 +4582,12 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
     SetMapDirty(_curMap.get());
 
-    if (item != nullptr) {
+    {
         EntityBuf entity_buf;
         CaptureEntityBuf(entity_buf, item);
         auto item_ownership = item->GetOwnership();
         ident_t owner_id {};
+
         if (item_ownership == ItemOwnership::CritterInventory) {
             owner_id = item->GetCritterId();
         }

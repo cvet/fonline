@@ -712,7 +712,7 @@ FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
 {
     auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 

@@ -79,7 +79,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
         throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, nullptr);
+    return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
 }
 
 ///@ ExportMethod
@@ -93,7 +93,7 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, in
         throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
 }
 
 ///@ ExportMethod
@@ -120,10 +120,10 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, &props_);
+        return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, &props_);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hex, protoId, count, nullptr);
+    return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
 }
 
 ///@ ExportMethod
@@ -144,10 +144,10 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, in
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
+        return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    return self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
 }
 
 ///@ ExportMethod
@@ -582,7 +582,7 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Map_GetCritter(Map* self, ident_t crid
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Map_GetCritterOnHex(Map* self, mpos hex)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Map_GetCritterOnHex(Map* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");

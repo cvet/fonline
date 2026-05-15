@@ -75,16 +75,16 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> FO_NON_NULL StaticMap*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> StaticMap*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> Location*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> Map*;
     [[nodiscard]] auto FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, function<bool(const Item*)> gag_callback = {}) const -> FindPathOutput;
     [[nodiscard]] auto TracePath(const Map* map, mpos start_hex, mpos target_hex, int32_t max_dist = 0, float32_t angle = 0.0f, const Critter* find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> FO_NON_NULL Location*;
+    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> Location*;
     void DestroyLocation(Location* loc);
-    auto CreateMap(hstring proto_id, Location* loc) -> FO_NON_NULL Map*;
+    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
     void DestroyMap(Map* map);
     void RegenerateMap(Map* map);
     void AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, ident_t global_cr_id);

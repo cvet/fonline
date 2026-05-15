@@ -285,23 +285,8 @@ static void StripNullableTypeSuffix(Preprocessor::LexemList& lexems)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Strip the `?` suffix from type positions in function signatures and
-    // top-level declarations.
-    const auto prev_significant = [&lexems](Preprocessor::LexemList::iterator pos) {
-        while (pos != lexems.begin()) {
-            --pos;
-
-            if (!IsWhitespaceLexem(*pos) && pos->Type != Preprocessor::COMMENT) {
-                return pos;
-            }
-        }
-
-        return lexems.end();
-    };
-
-    // Walk back past trailing modifier keywords (override/final/const) and
-    // whitespace/comments to find the structural token that decides whether
-    // a `{` opens a function/control body or a scope (namespace/class/etc.).
+    // This function disambiguates nullable type suffix `?` from ternary operator `? :`
+    // and replaces the former with whitespace so that it does not interfere with further parsing.
     const auto prev_structural = [&lexems](Preprocessor::LexemList::iterator pos) {
         while (pos != lexems.begin()) {
             --pos;
@@ -328,11 +313,16 @@ static void StripNullableTypeSuffix(Preprocessor::LexemList& lexems)
 
     for (auto it = lexems.begin(); it != lexems.end(); ++it) {
         if (IsLexem(*it, Preprocessor::OPEN, "{")) {
-            const auto prev = prev_structural(it);
-            const bool is_body_brace = prev != lexems.end() && (IsLexem(*prev, Preprocessor::CLOSE, ")") || (prev->Type == Preprocessor::IDENTIFIER && (string_view(prev->Value) == "else" || string_view(prev->Value) == "do" || string_view(prev->Value) == "try" || string_view(prev->Value) == "catch")));
-
-            if (is_body_brace) {
+            if (body_depth > 0) {
                 body_depth++;
+            }
+            else {
+                const auto prev = prev_structural(it);
+                const bool is_body_brace = prev != lexems.end() && (IsLexem(*prev, Preprocessor::CLOSE, ")") || (prev->Type == Preprocessor::IDENTIFIER && (string_view(prev->Value) == "else" || string_view(prev->Value) == "do" || string_view(prev->Value) == "try" || string_view(prev->Value) == "catch")));
+
+                if (is_body_brace) {
+                    body_depth = 1;
+                }
             }
 
             continue;

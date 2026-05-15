@@ -53,7 +53,6 @@ extern bool IsTestingInProgress;
 
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define FO_NON_NULL // Pointer annotation
 #define FO_DEFERRED // Lambda annotation
 
 ///@ ExportValueType Name = ident Layout = int64-value

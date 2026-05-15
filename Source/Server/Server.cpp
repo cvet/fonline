@@ -1587,7 +1587,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
             return;
         }
 
-        CreateItemOnHex(map, hex, pid, count, nullptr);
+        ItemMngr.CreateItemOnHex(map, hex, pid, count, nullptr);
         logcb("Item(s) added");
     } break;
     case CMD_ADDITEM_SELF: {
@@ -3323,42 +3323,6 @@ void ServerEngine::Process_RemoteCall(Player* player)
 
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
-}
-
-auto ServerEngine::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> Item*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (count <= 0) {
-        throw GenericException("Invalid items cound");
-    }
-
-    const auto* proto = GetProtoItem(pid);
-
-    if (proto == nullptr) {
-        throw GenericException("Item proto not found", pid);
-    }
-
-    const auto add_item = [&]() -> Item* {
-        auto* item = ItemMngr.CreateItem(pid, proto->GetStackable() ? count : 1, props);
-        map->AddItem(item, hex, nullptr);
-        return item;
-    };
-
-    auto* item = add_item();
-
-    // Non-stacked items
-    if (item != nullptr && !proto->GetStackable() && count > 1) {
-        const auto fixed_count = std::min(count, Settings.MaxAddUnstackableItems);
-
-        for (int32_t i = 0; i < fixed_count; i++) {
-            if (add_item() == nullptr) {
-                break;
-            }
-        }
-    }
-
-    return item;
 }
 
 FO_END_NAMESPACE

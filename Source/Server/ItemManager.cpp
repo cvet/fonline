@@ -151,6 +151,42 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
     return item.get();
 }
 
+auto ItemManager::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> Item*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (count <= 0) {
+        throw GenericException("Invalid items cound");
+    }
+
+    const auto* proto = _engine->GetProtoItem(pid);
+
+    if (proto == nullptr) {
+        throw GenericException("Item proto not found", pid);
+    }
+
+    const auto add_item = [&]() -> Item* {
+        auto* item = CreateItem(pid, proto->GetStackable() ? count : 1, props);
+        map->AddItem(item, hex, nullptr);
+        return item;
+    };
+
+    auto* item = add_item();
+
+    // Non-stacked items
+    if (item != nullptr && !proto->GetStackable() && count > 1) {
+        const auto fixed_count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+
+        for (int32_t i = 0; i < fixed_count; i++) {
+            if (add_item() == nullptr) {
+                break;
+            }
+        }
+    }
+
+    return item;
+}
+
 void ItemManager::DestroyItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
