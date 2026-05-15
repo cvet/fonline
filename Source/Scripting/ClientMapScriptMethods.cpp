@@ -52,10 +52,6 @@ FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapSpr)
 {
-    if (mapSpr == nullptr) {
-        throw ScriptException("Map sprite arg is null");
-    }
-
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
         return;
     }
@@ -136,9 +132,6 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(MapView* self, ClientEntity* enti
 
     if (!engine->CanDrawInScripts) {
         throw ScriptException("You can use this function only in render events");
-    }
-    if (entity == nullptr) {
-        throw ScriptException("Entity arg is null");
     }
     if (padding < 0) {
         throw ScriptException("Negative padding");

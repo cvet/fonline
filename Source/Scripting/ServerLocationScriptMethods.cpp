@@ -71,10 +71,6 @@ FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, ProtoMap* mapProto)
 {
-    if (mapProto == nullptr) {
-        throw ScriptException("Map proto arg is null");
-    }
-
     Map* map = self->GetEngine()->MapMngr.CreateMap(mapProto->GetProtoId(), self);
     return map;
 }
@@ -100,10 +96,6 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, hstring ma
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, ProtoMap* mapProto)
 {
-    if (mapProto == nullptr) {
-        throw ScriptException("Map proto arg is null");
-    }
-
     for (auto& map : self->GetMaps()) {
         if (map->GetProtoId() == mapProto->GetProtoId()) {
             return map.get();

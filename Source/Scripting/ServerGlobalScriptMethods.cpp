@@ -52,10 +52,6 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Critter proto arg is null");
-    }
-
     return server->CreateCritter(proto->GetProtoId(), forPlayer);
 }
 
@@ -80,10 +76,6 @@ FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring p
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Critter proto arg is null");
-    }
-
     Properties props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
@@ -102,10 +94,6 @@ FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crI
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_UnloadCritter(ServerEngine* server, Critter* cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     server->UnloadCritter(cr);
 }
 
@@ -120,12 +108,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1
 {
     ignore_unused(server);
 
-    if (cr1 == nullptr) {
-        throw ScriptException("Critter 1 arg is null");
-    }
-    if (cr2 == nullptr) {
-        throw ScriptException("Critter 2 arg is null");
-    }
     if (cr1->GetMapId() != cr2->GetMapId()) {
         throw ScriptException("Critters different maps");
     }
@@ -143,12 +125,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1,
 {
     ignore_unused(server);
 
-    if (item1 == nullptr) {
-        throw ScriptException("Item 1 arg is null");
-    }
-    if (item2 == nullptr) {
-        throw ScriptException("Item 2 arg is null");
-    }
     if (item1->GetMapId() != item2->GetMapId()) {
         throw ScriptException("Items different maps");
     }
@@ -165,12 +141,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
 {
     ignore_unused(server);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Critter/Item different maps");
     }
@@ -188,12 +158,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
 {
     ignore_unused(server);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Item/Critter different maps");
     }
@@ -211,9 +175,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
 {
     ignore_unused(server);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
     }
@@ -228,9 +189,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Cr
 {
     ignore_unused(server);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
     }
@@ -245,9 +203,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
 {
     ignore_unused(server);
 
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
@@ -261,9 +216,6 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, It
 {
     ignore_unused(server);
 
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
@@ -290,26 +242,12 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_GetItem(ServerEngine* server, ident_
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critter* toCr)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (count <= 0) {
         return nullptr;
     }
@@ -320,12 +258,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* toMap, mpos toHex)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toMap == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -336,12 +268,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toMap == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -356,39 +282,18 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, {});
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     if (count <= 0) {
         return nullptr;
     }
@@ -399,13 +304,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     if (count <= 0) {
         return nullptr;
     }
@@ -416,10 +314,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Critter* toCr)
 {
-    if (toCr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
             continue;
@@ -432,9 +326,6 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Map* toMap, mpos toHex)
 {
-    if (toMap == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -451,10 +342,6 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont)
 {
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
             continue;
@@ -467,10 +354,6 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont, any_t stackId)
 {
-    if (toCont == nullptr) {
-        throw ScriptException("Container arg is null");
-    }
-
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
             continue;
@@ -641,10 +524,6 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Location proto arg is null");
-    }
-
     auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId());
     FO_RUNTIME_ASSERT(loc);
     return loc;
@@ -681,10 +560,6 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 ///@ ExportMethod
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto, readonly_map<LocationProperty, any_t> props)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Location proto arg is null");
-    }
-
     auto props_ = proto->GetProperties().Copy();
 
     for (const auto& [key, value] : props) {
@@ -787,9 +662,6 @@ FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, Player* unloginedPlayer)
 {
-    if (unloginedPlayer == nullptr) {
-        throw ScriptException("Unlogined player arg is null");
-    }
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -800,9 +672,6 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, P
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server, Player* unloginedPlayer)
 {
-    if (unloginedPlayer == nullptr) {
-        throw ScriptException("Unlogined player arg is null");
-    }
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -813,9 +682,6 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server,
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
 {
-    if (unloginedPlayer == nullptr) {
-        throw ScriptException("Unlogined player arg is null");
-    }
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -857,10 +723,6 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
 {
-    if (mapProto == nullptr) {
-        throw ScriptException("Map proto arg is null");
-    }
-
     return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), 0);
 }
 
@@ -873,10 +735,6 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
 {
-    if (mapProto == nullptr) {
-        throw ScriptException("Map proto arg is null");
-    }
-
     return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
 }
 
@@ -944,10 +802,6 @@ FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto)
 {
-    if (locProto == nullptr) {
-        throw ScriptException("Location proto arg is null");
-    }
-
     return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), 0);
 }
 
@@ -960,10 +814,6 @@ FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
 {
-    if (locProto == nullptr) {
-        throw ScriptException("Location proto arg is null");
-    }
-
     return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
 }
 
@@ -1134,10 +984,6 @@ FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
 {
-    if (entity == nullptr) {
-        throw ScriptException("Entity arg is null");
-    }
-
     return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
 }
 

@@ -52,9 +52,6 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, m
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE ItemView* Mapper_Game_AddItem(MapperEngine* mapper, ProtoItem* proto, mpos hex)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
     if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
@@ -75,9 +72,6 @@ FO_SCRIPT_API CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE CritterView* Mapper_Game_AddCritter(MapperEngine* mapper, ProtoCritter* proto, mpos hex)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Critter proto arg is null");
-    }
     if (!mapper->GetCurMap()->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
@@ -140,10 +134,6 @@ FO_SCRIPT_API void Mapper_Game_DeleteEntities(MapperEngine* mapper, readonly_vec
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SelectEntity(MapperEngine* mapper, ClientEntity* entity, bool set)
 {
-    if (entity == nullptr) {
-        throw ScriptException("Entity arg is null");
-    }
-
     if (set) {
         mapper->SelectAdd(entity);
     }

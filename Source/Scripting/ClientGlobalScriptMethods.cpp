@@ -110,13 +110,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, CritterView*
 {
     ignore_unused(client);
 
-    if (cr1 == nullptr) {
-        throw ScriptException("Critter 1 arg is null");
-    }
-    if (cr2 == nullptr) {
-        throw ScriptException("Critter 2 arg is null");
-    }
-
     const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
     const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
 
@@ -135,13 +128,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, ItemView* it
 {
     ignore_unused(client);
 
-    if (item1 == nullptr) {
-        throw ScriptException("Item 1 arg is null");
-    }
-    if (item2 == nullptr) {
-        throw ScriptException("Item 2 arg is null");
-    }
-
     const auto* hex_item1 = dynamic_cast<ItemHexView*>(item1);
     const auto* hex_item2 = dynamic_cast<ItemHexView*>(item2);
 
@@ -158,13 +144,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, ItemView* it
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, CritterView* cr, ItemView* item)
 {
     ignore_unused(client);
-
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
 
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
@@ -184,13 +163,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, ItemView* it
 {
     ignore_unused(client);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
@@ -209,10 +181,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, CritterView*
 {
     ignore_unused(client);
 
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
 
     if (hex_cr != nullptr) {
@@ -229,10 +197,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, CritterView*
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, mpos hex, CritterView* cr)
 {
     ignore_unused(client);
-
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
 
     const auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
 
@@ -251,10 +215,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, mpos hex, It
 {
     ignore_unused(client);
 
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
-
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 
     if (hex_item != nullptr) {
@@ -270,10 +230,6 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, mpos hex, It
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ClientEngine* client, ItemView* item, mpos hex)
 {
     ignore_unused(client);
-
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
-    }
 
     const auto* hex_item = dynamic_cast<ItemHexView*>(item);
 

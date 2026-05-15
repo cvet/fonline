@@ -75,10 +75,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, hstring pid, int
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
         return nullptr;
     }
@@ -99,10 +95,6 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, hstring pid, int
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
         return nullptr;
     }

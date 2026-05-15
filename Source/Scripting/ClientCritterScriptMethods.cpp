@@ -235,10 +235,6 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, hstring protoI
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     int32_t result = 0;
 
     for (const auto& item : self->GetInvItems()) {
@@ -294,10 +290,6 @@ FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, hs
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (proto->GetStackable()) {
         for (auto& item : self->GetInvItems()) {
             if (item->GetProtoId() == proto->GetProtoId()) {

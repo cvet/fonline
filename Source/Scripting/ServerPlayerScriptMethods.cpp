@@ -86,9 +86,6 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* se
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 {
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
     if (self->GetControlledCritter() != nullptr) {
         throw ScriptException("Player controls critter");
     }
