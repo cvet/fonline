@@ -1946,8 +1946,16 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     '.Call = [](FuncCallData& call) {']
             if not is_stub:
                 method_body_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                for arg_index, p in enumerate(method_tag.args):
+                    if p.nullable:
+                        continue
+                    if p.arg_type not in game_entities and p.arg_type != 'Entity':
+                        continue
+                    method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                if not method_tag.ret_nullable and method_tag.ret != 'void' and (method_tag.ret in game_entities or method_tag.ret == 'Entity'):
+                    method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
                 method_body_lines.append('    ignore_unused(call);')
             method_body_lines.append('}' +

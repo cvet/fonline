@@ -332,6 +332,23 @@ private:
     std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
 };
 
+namespace NativeDataProvider
+{
+    inline void CheckArgNotNull(const FuncCallData& call, size_t arg_index, string_view method_name, string_view arg_name, string_view type_name)
+    {
+        if (*static_cast<Entity**>(call.ArgsData[arg_index]) == nullptr) {
+            throw ScriptException("Null passed to non-nullable parameter", method_name, arg_name, type_name);
+        }
+    }
+
+    inline void CheckReturnNotNull(const FuncCallData& call, string_view method_name, string_view type_name)
+    {
+        if (*static_cast<Entity**>(call.RetData) == nullptr) {
+            throw ScriptException("Non-nullable method returned null", method_name, type_name);
+        }
+    }
+}
+
 namespace NativeDataCaller
 {
     template<typename Fn>

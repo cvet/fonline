@@ -67,8 +67,6 @@ static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;
 auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*;
 void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const function<void(FuncCallData&)>& callback);
 void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call);
-void ValidateMethodArgsNullability(const MethodDesc& method, const FuncCallData& call, bool has_self);
-void ValidateMethodReturnNullability(const MethodDesc& method, const FuncCallData& call);
 
 FO_END_NAMESPACE
 
