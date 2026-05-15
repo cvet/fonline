@@ -1021,6 +1021,17 @@ def engine_type_to_meta_type(engine_type: str, valid_types: set[str]) -> str:
     return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types), valid_types)
 
 
+def is_validated_pointer_meta_type(meta_type: str) -> bool:
+    # Codegen emits CheckArgNotNull / CheckReturnNotNull for every meta-type
+    # whose runtime representation is a script handle to a heap object: game
+    # entities, the generic `Entity` base, entity relatives (Abstract*,
+    # Proto*, Static*) and user-declared `///@ ExportRefType` classes.
+    return (meta_type in game_entities
+            or meta_type == 'Entity'
+            or meta_type in entity_relatives
+            or meta_type in ref_types)
+
+
 def find_next_enum_value(key_values: list[EnumKeyValue]) -> str:
     result = 0
     for key_value in key_values:
@@ -1949,12 +1960,12 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                 for arg_index, p in enumerate(method_tag.args):
                     if p.nullable:
                         continue
-                    if p.arg_type not in game_entities and p.arg_type != 'Entity':
+                    if not is_validated_pointer_meta_type(p.arg_type):
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
-                if not method_tag.ret_nullable and method_tag.ret != 'void' and (method_tag.ret in game_entities or method_tag.ret == 'Entity'):
+                if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
                 method_body_lines.append('    ignore_unused(call);')
