@@ -560,7 +560,7 @@ class Packager:
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
 		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = [file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path)]
+		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
 		assert files, 'No files in pack ' + pack_name
 		return files
 
