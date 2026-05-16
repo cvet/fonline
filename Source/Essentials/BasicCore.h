@@ -295,6 +295,7 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
+#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)

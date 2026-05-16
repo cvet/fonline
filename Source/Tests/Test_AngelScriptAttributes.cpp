@@ -379,7 +379,13 @@ namespace
         auto* mod = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
         REQUIRE(mod != nullptr);
         REQUIRE(mod->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        REQUIRE(mod->Build() >= 0);
+        const auto build_result = mod->Build();
+        if (build_result < 0) {
+            for (const auto& entry : messages.Entries) {
+                INFO("AS message: " << entry);
+            }
+        }
+        REQUIRE(build_result >= 0);
         if (!messages.Entries.empty()) {
             INFO(messages.Entries.front());
         }
@@ -630,6 +636,43 @@ namespace AttrTest
 [[Primary(2)]][[Secondary]]
 void WithPriority()
 {
+}
+}
+)";
+
+    static constexpr string_view NullableStripScript = R"(
+namespace AttrTest
+{
+int? Returns(int? a, int? b)
+{
+    return a + b;
+}
+
+[[Primary]]
+void Mixed(int? arg)
+{
+}
+
+void Plain(int? x)
+{
+}
+
+int TernaryStaysIntact(int cond, int a, int b)
+{
+    return cond > 0 ? a : b;
+}
+
+[[Primary]]
+void RequestTargetInfo(int player, int targetCritterId)
+{
+    int crBool = 1;
+    int x = crBool > 0 ? player : targetCritterId;
+}
+
+int TernaryNestedInsideBody(int v)
+{
+    int s = v > 0 ? 1 : (v < 0 ? 2 : 3);
+    return s;
 }
 }
 )";
@@ -1404,6 +1447,35 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(!parsed.Errors.empty());
         CHECK(parsed.Errors.find("Function attribute must be placed directly before a function declaration") != string::npos);
         CHECK(parsed.Errors.find("AttributesInvalidPlacement.fos") != string::npos);
+    }
+
+    SECTION("StripsNullableTypeSuffix")
+    {
+        auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
+
+        INFO(parsed.Errors);
+        CHECK(parsed.Errors.empty());
+        // The `?` type suffix must not survive into the source fed to AngelScript.
+        // Strip whitespace-around-`?` to compare reliably.
+        CHECK(parsed.Source.find("int?") == string::npos);
+        // The ternary `cond > 0 ? a : b` must survive intact.
+        CHECK(parsed.Source.find("? a") != string::npos);
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::Returns(int, int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Mixed(int)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Plain(int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryStaysIntact(int, int, int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::RequestTargetInfo(int, int)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryNestedInsideBody(int)"), {});
     }
 
     SECTION("RejectsInvalidModuleInitPriorityArgument")

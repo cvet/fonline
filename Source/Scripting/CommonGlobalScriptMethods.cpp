@@ -379,7 +379,7 @@ FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API FO_NULLABLE ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
 {
     return const_cast<ProtoItem*>(engine->GetProtoItem(pid));
 }
@@ -418,7 +418,7 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API FO_NULLABLE ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
 {
     return const_cast<ProtoCritter*>(engine->GetProtoCritter(pid));
 }
@@ -457,7 +457,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API FO_NULLABLE ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
 {
     return const_cast<ProtoMap*>(engine->GetProtoMap(pid));
 }
@@ -496,7 +496,7 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
+FO_SCRIPT_API FO_NULLABLE ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
 {
     return const_cast<ProtoLocation*>(engine->GetProtoLocation(pid));
 }

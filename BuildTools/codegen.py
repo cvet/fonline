@@ -36,6 +36,7 @@ class TagMetaRecord:
 class MethodArg:
     arg_type: str
     name: str
+    nullable: bool = False
 
 
 @dataclass(slots=True)
@@ -125,6 +126,7 @@ class ExportMethodTag:
     args: list[MethodArg]
     flags: list[str]
     comment: CommentLines
+    ret_nullable: bool = False
 
 
 @dataclass(slots=True)
@@ -706,14 +708,18 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
     raw_args = split_engine_args(args_text)
     for arg in raw_args[1:] if skip_first_arg else raw_args:
         arg = arg.strip()
+        nullable = False
+        if arg.startswith('FO_NULLABLE'):
+            nullable = True
+            arg = arg[len('FO_NULLABLE'):].lstrip()
         separator = arg.rfind(' ')
         arg_type = engine_type_to_meta_type(arg[:separator].rstrip(), valid_types)
         arg_name = arg[separator + 1:]
-        result_args.append(MethodArg(arg_type, arg_name))
+        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable))
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg]]:
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = tag_context.rfind(')')
@@ -722,7 +728,12 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     function_token_index = find_token_index(line_tokens, '(')
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
-    ret = engine_type_to_meta_type(''.join(line_tokens[1:function_token_index - 1]), valid_types)
+    return_tokens = line_tokens[1:function_token_index - 1]
+    ret_nullable = False
+    if return_tokens and return_tokens[0] == 'FO_NULLABLE':
+        ret_nullable = True
+        return_tokens = return_tokens[1:]
+    ret = engine_type_to_meta_type(''.join(return_tokens), valid_types)
 
     function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
@@ -732,7 +743,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     entity = function_tokens[1]
     assert entity in game_entities + ['Entity'], entity
     name = function_tokens[2]
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True)
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -1010,6 +1021,17 @@ def engine_type_to_meta_type(engine_type: str, valid_types: set[str]) -> str:
     return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types), valid_types)
 
 
+def is_validated_pointer_meta_type(meta_type: str) -> bool:
+    # Codegen emits CheckArgNotNull / CheckReturnNotNull for every meta-type
+    # whose runtime representation is a script handle to a heap object: game
+    # entities, the generic `Entity` base, entity relatives (Abstract*,
+    # Proto*, Static*) and user-declared `///@ ExportRefType` classes.
+    return (meta_type in game_entities
+            or meta_type == 'Entity'
+            or meta_type in entity_relatives
+            or meta_type in ref_types)
+
+
 def find_next_enum_value(key_values: list[EnumKeyValue]) -> str:
     result = 0
     for key_value in key_values:
@@ -1250,10 +1272,10 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment))
-            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable))
+            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags, ret_nullable))
 
         except Exception as ex:
             show_error('Invalid tag ExportMethod', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
@@ -1930,13 +1952,21 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ');')
 
             method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
-                    '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in method_tag.args) + '}, ' +
+                    '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '"), ' + ('true' if p.nullable else 'false') + '}' for p in method_tag.args) + '}, ' +
                     '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
                     '.Call = [](FuncCallData& call) {']
             if not is_stub:
                 method_body_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                for arg_index, p in enumerate(method_tag.args):
+                    if p.nullable:
+                        continue
+                    if not is_validated_pointer_meta_type(p.arg_type):
+                        continue
+                    method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
+                    method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
                 method_body_lines.append('    ignore_unused(call);')
             method_body_lines.append('}' +
@@ -1944,6 +1974,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .Getter = true' if 'Getter' in method_tag.flags or 'GlobalGetter' in method_tag.flags else '') +
                     (', .Setter = true' if 'Setter' in method_tag.flags else '') +
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
+                    (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 
@@ -1980,7 +2011,7 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
 
         for event_tag in codegen_tags['ExportEvent']:
             if event_tag.target in allowed_targets and event_tag.entity == entity:
-                resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
+                resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '"), ' + ('true' if p.nullable else 'false') + '}' for p in event_tag.args)
                 body_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
                         '.Args = {' + resolved_args + '}, .Exported = true });')
 

@@ -1339,7 +1339,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #endif
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo = [](GLuint ubo, int32_t pos) {
+            const auto bind_ubo = [this](GLuint ubo, int32_t pos) {
                 if (ubo != 0 && pos != -1) {
                     GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, ubo));
                 }
@@ -1408,7 +1408,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto unbind_ubo = [](GLuint ubo, int32_t pos) {
+            const auto unbind_ubo = [this](GLuint ubo, int32_t pos) {
                 if (ubo != 0 && pos != -1) {
                     GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, 0));
                 }
