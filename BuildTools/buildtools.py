@@ -287,20 +287,32 @@ def resolve_apple_cmake() -> str:
 	return shutil.which('cmake') or '/Applications/CMake.app/Contents/bin/cmake'
 
 
-def make_cmake_build_cmd(config: str, target_name: str | None = None, cmake_bin: str = 'cmake') -> list[str]:
+def make_cmake_build_cmd(
+	config: str,
+	target_name: str | None = None,
+	cmake_bin: str = 'cmake',
+	env: Mapping[str, str] | None = None,
+) -> list[str]:
 	command = [cmake_bin, '--build', '.', '--config', config]
 	if target_name is not None:
 		command.extend(['--target', target_name])
-	command.append('--parallel')
+	# CMake `--parallel` without a value translates to `make -j` (unbounded) for the Unix Makefiles
+	# generator and ignores CMAKE_BUILD_PARALLEL_LEVEL. Always pick an explicit number so callers
+	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env.
+	env_for_lookup = env if env is not None else os.environ
+	parallel_jobs = env_for_lookup.get('CMAKE_BUILD_PARALLEL_LEVEL')
+	if not parallel_jobs:
+		parallel_jobs = str(os.cpu_count() or 1)
+	command.extend(['--parallel', parallel_jobs])
 	return command
 
 
 def run_cmake_build(build_dir: Path, config: str, env: Mapping[str, str] | None = None) -> None:
-	run(make_cmake_build_cmd(config), cwd=build_dir, env=env)
+	run(make_cmake_build_cmd(config, env=env), cwd=build_dir, env=env)
 
 
 def run_cmake_target(build_dir: Path, config: str, target_name: str, env: Mapping[str, str] | None = None) -> None:
-	run(make_cmake_build_cmd(config, target_name=target_name), cwd=build_dir, env=env)
+	run(make_cmake_build_cmd(config, target_name=target_name, env=env), cwd=build_dir, env=env)
 
 
 def run_emsdk_cmake_build(workspace: Path, build_dir: Path, config: str) -> None:
@@ -1347,6 +1359,13 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	else:
 		build_env['CC'] = '/usr/bin/clang-20'
 		build_env['CXX'] = '/usr/bin/clang++-20'
+	# Debug builds of the engine peak at ~3-4 GB resident per cc1plus/clang++ instance plus a
+	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
+	# value trips the cgroup OOM killer for the heavier targets (linux-editor, all linux-gcc-*
+	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
+	# plenty of headroom and benefit from full parallelism.
+	if build_env.get('GITHUB_ACTIONS') == 'true':
+		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	return build_env
 
 

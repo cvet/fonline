@@ -110,6 +110,15 @@ private:
     void NextAnim();
     void SetAnimSpr(const SpriteSheet* anim, int32_t frm_index);
 
+    // Integer-pixel displacement from the current MovingContext's start hex/offset to the critter's
+    // current linear position. Continuous through hex snaps because cur_hex and hex_offset jump in
+    // opposite directions by exactly one step vector.
+    [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
+
+    // Picks the walk/run frame whose accumulated root motion sits closest (along T) to the current
+    // anchor-relative cycle position.
+    [[nodiscard]] auto EvaluateMovementFrameIndex(const SpriteSheet* anim) const -> int32_t;
+
     refcount_ptr<MovingContext> _moving {};
 
     bool _needReset {};
@@ -124,6 +133,21 @@ private:
     fpos32 _offsExt {};
     fpos32 _offsExtSpeed {};
     nanotime _offsExtNextTime {};
+
+    // Walk-cycle anchor used to align the per-frame root motion (NextX/NextY baked into each frame
+    // of the walk/run anim) with the engine's linear hex interpolation.
+    //
+    // The cycle's spatial reference is rel = pos - _walkAnchorDisp, where pos is the integer-pixel
+    // displacement from the start of the current MovingContext. Projecting rel onto the anim's T
+    // (sum of all per-frame deltas) gives the cycle phase used both to pick the current frame and
+    // to compute _offsAnim, so the sprite snaps to the frame's authored position while the engine
+    // tracks the actual hex motion underneath.
+    //
+    // On a direction change inside one MovingContext the anchor is shifted so the new direction's T
+    // continues at the same cycle phase as the previous one - the leg keeps walking through turns.
+    // On SetMoving / StopMoving the anchor is cleared so a fresh movement starts the cycle anew.
+    raw_ptr<const SpriteSheet> _walkAnchorAnim {};
+    ipos32 _walkAnchorDisp {};
 
 #if FO_ENABLE_3D
     shared_ptr<ModelSprite> _modelSpr {};

@@ -111,9 +111,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         AbortMessage("GCC ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 13.0")
     endif()
 elseif(MSVC)
-    # MSVC_VERSION 1930+ corresponds to Visual Studio 2022 (v143 toolset).
-    if(MSVC_VERSION LESS 1930)
-        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1930 (Visual Studio 2022)")
+    if(MSVC_VERSION LESS 1944)
+        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1944 (toolset 14.44 / Visual Studio 2022 17.14).")
     endif()
 else()
     AbortMessage("Unsupported compiler '${CMAKE_CXX_COMPILER_ID}'. Supported: Clang >= 20, GCC >= 13, MSVC >= 2022, AppleClang (any).")
@@ -329,13 +328,11 @@ if(WIN32)
 	AddCompileOptionsList(
 		/permissive-
 		/Zc:__cplusplus
-		/Zc:preprocessor
 		$<${expr_DebugBuild}:/RTC1>
 		$<${expr_DebugBuild}:/GS>
 		$<$<OR:${expr_DebugBuild},$<CONFIG:RelWithDebInfo>>:/JMC>
 		$<$<NOT:${expr_DebugBuild}>:/sdl->
 		/W4
-		/MP
 		/EHsc
 		/utf-8
 		/volatile:iso
@@ -344,6 +341,11 @@ if(WIN32)
 		/fp:fast
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		AddCompileOptionsList(/MP /Zc:preprocessor)
+	endif()
+
 	AddLinkOptionsList(
 		/INCREMENTAL:NO
 		/OPT:REF

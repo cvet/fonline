@@ -72,13 +72,13 @@ FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* self)
 {
     return self->GetControlledCritter();
 }
@@ -86,9 +86,6 @@ FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 {
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
     if (self->GetControlledCritter() != nullptr) {
         throw ScriptException("Player controls critter");
     }

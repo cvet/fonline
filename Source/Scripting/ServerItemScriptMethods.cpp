@@ -66,7 +66,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, {});
@@ -75,12 +75,8 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, {});
@@ -90,7 +86,7 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t co
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId)
 {
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
@@ -99,12 +95,8 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, 
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
@@ -123,7 +115,7 @@ FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
 {
     Map* map;
 
@@ -173,7 +165,7 @@ FO_SCRIPT_API Map* Server_Item_GetMap(Item* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
     Map* map;
 

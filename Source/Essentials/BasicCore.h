@@ -127,12 +127,15 @@
 #endif
 
 // Compiler warnings disable helper
-#if defined(_MSC_VER)
-#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
-#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
+#if defined(__clang__) && defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0)) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop") __pragma(warning(pop))
 #elif defined(__clang__)
 #define FO_DISABLE_WARNINGS_PUSH() _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
 #define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#elif defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
+#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
 #else
 #define FO_DISABLE_WARNINGS_PUSH()
 #define FO_DISABLE_WARNINGS_POP()
@@ -295,6 +298,7 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
+#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)

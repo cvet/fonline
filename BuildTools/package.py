@@ -560,7 +560,7 @@ class Packager:
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
 		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = [file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path)]
+		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
 		assert files, 'No files in pack ' + pack_name
 		return files
 
@@ -590,7 +590,13 @@ class Packager:
 		embedded_buffer = io.BytesIO()
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+				# Pin date_time/mode: this blob is patched into binaries that the updater compares byte-wise across separate Server/Client package runs.
+				info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
+				info.compress_type = zipfile.ZIP_DEFLATED
+				info.external_attr = 0o644 << 16
+				with open(file_path, 'rb') as src, archive.open(info, 'w') as dst:
+					shutil.copyfileobj(src, dst)
 		data = embedded_buffer.getvalue()
 		return struct.pack('I', len(data)) + data
 

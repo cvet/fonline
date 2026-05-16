@@ -1114,6 +1114,29 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     ctx.ResultTags["Property"] = std::move(result_tag_property);
 }
 
+// Split any tag token whose last character is '?' into two tokens:
+// the original token without the trailing '?' followed by a literal "?".
+// This lets `///@ Event` / `///@ RemoteCall` declarations carry per-arg
+// nullable markers (`Type? name`) without requiring `?` to be a token
+// separator globally in strvex::tokenize.
+static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector<string_view>
+{
+    vector<string_view> result;
+    result.reserve(tokens.size());
+
+    for (string_view tok : tokens) {
+        if (tok.size() > 1 && tok.back() == '?') {
+            result.emplace_back(tok.substr(0, tok.size() - 1));
+            result.emplace_back(tok.substr(tok.size() - 1));
+        }
+        else {
+            result.emplace_back(tok);
+        }
+    }
+
+    return result;
+}
+
 void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 {
     FO_STACK_TRACE_ENTRY();
@@ -1121,17 +1144,19 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_event;
 
     for (const auto& tag_desc : ctx.CodeGenTags["Event"]) {
-        if (tag_desc.Tokens.size() < 5) {
+        const auto tokens = SplitTrailingQuestionMarks(tag_desc.Tokens);
+
+        if (tokens.size() < 5) {
             throw MetadataBakerException("Invalid Event codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        const auto target = tokens[0];
 
         if (!(ctx.Target == "Common" || target == "Common" || target == ctx.Target)) {
             continue;
         }
 
-        const auto entity_name = tag_desc.Tokens[1];
+        const auto entity_name = tokens[1];
         const auto entity_hname = ctx.Meta->Hashes.ToHashedString(entity_name);
 
         if (!ctx.Meta->IsValidEntityType(entity_hname)) {
@@ -1139,21 +1164,21 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
         }
 
         EntityEventDesc event_desc;
-        const auto event_name = tag_desc.Tokens[2];
+        const auto event_name = tokens[2];
         event_desc.Name = ctx.Meta->Hashes.ToHashedString(event_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(entity_name);
         tag_tokens.emplace_back(event_name);
 
-        if (tag_desc.Tokens[3] != "(") {
+        if (tokens[3] != "(") {
             throw MetadataBakerException("Invalid Event codegen tag: expected '(' after event name", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
         size_t cur_token = 4;
 
         while (true) {
-            if (cur_token == 4 && tag_desc.Tokens[cur_token] == ")") {
+            if (cur_token == 4 && tokens[cur_token] == ")") {
                 cur_token++;
                 break;
             }
@@ -1162,33 +1187,42 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
             try {
                 size_t type_tokens = 0;
-                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(cur_token));
-                tag_tokens.emplace_back(strex(" ").join(span(tag_desc.Tokens).subspan(cur_token, type_tokens)));
+                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tokens).subspan(cur_token));
+                tag_tokens.emplace_back(strex(" ").join(span(tokens).subspan(cur_token, type_tokens)));
                 cur_token += type_tokens;
             }
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid Event codegen tag: cannot resolve arg type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
             }
 
-            if (cur_token == tag_desc.Tokens.size()) {
+            bool nullable = false;
+
+            if (cur_token < tokens.size() && tokens[cur_token] == "?") {
+                nullable = true;
+                cur_token++;
+            }
+
+            tag_tokens.emplace_back(nullable ? "?" : "");
+
+            if (cur_token == tokens.size()) {
                 throw MetadataBakerException("Invalid Event codegen tag: expected arg name after it's type", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            const auto name = tag_desc.Tokens[cur_token];
+            const auto name = tokens[cur_token];
             tag_tokens.emplace_back(name);
-            event_desc.Args.emplace_back(string(name), std::move(type));
+            event_desc.Args.emplace_back(string(name), std::move(type), nullable);
             cur_token++;
 
-            if (cur_token == tag_desc.Tokens.size() || (tag_desc.Tokens[cur_token] != "," && tag_desc.Tokens[cur_token] != ")")) {
+            if (cur_token == tokens.size() || (tokens[cur_token] != "," && tokens[cur_token] != ")")) {
                 throw MetadataBakerException("Invalid Event codegen tag: expected ')' or ',' after arg", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            if (tag_desc.Tokens[cur_token++] == ")") {
+            if (tokens[cur_token++] == ")") {
                 break;
             }
         }
 
-        if (cur_token < tag_desc.Tokens.size()) {
+        if (cur_token < tokens.size()) {
             throw MetadataBakerException("Invalid Event codegen tag: unexpected tokens after ')'", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
@@ -1205,20 +1239,22 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_remote_call;
 
     for (const auto& tag_desc : ctx.CodeGenTags["RemoteCall"]) {
-        if (tag_desc.Tokens.size() < 4) {
+        const auto tokens = SplitTrailingQuestionMarks(tag_desc.Tokens);
+
+        if (tokens.size() < 4) {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        const auto target = tag_desc.Tokens[0];
+        const auto target = tokens[0];
 
         if (target != "Server" && target != "Client") {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: expected 'Server' or 'Client' as target", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
         const bool inbound = target == ctx.Target;
-        const auto remote_call_name = tag_desc.Tokens[1];
+        const auto remote_call_name = tokens[1];
 
-        if (tag_desc.Tokens[2] != "(") {
+        if (tokens[2] != "(") {
             throw MetadataBakerException("Invalid RemoteCall codegen tag: expected '(' after remote call name", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
@@ -1233,7 +1269,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
         size_t cur_token = 3;
 
         while (true) {
-            if (cur_token == 3 && tag_desc.Tokens[cur_token] == ")") {
+            if (cur_token == 3 && tokens[cur_token] == ")") {
                 break;
             }
 
@@ -1241,28 +1277,37 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 
             try {
                 size_t type_tokens = 0;
-                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tag_desc.Tokens).subspan(cur_token));
-                tag_tokens.emplace_back(strex(" ").join(span(tag_desc.Tokens).subspan(cur_token, type_tokens)));
+                std::tie(type, type_tokens) = ctx.Meta->ResolveComplexType(span(tokens).subspan(cur_token));
+                tag_tokens.emplace_back(strex(" ").join(span(tokens).subspan(cur_token, type_tokens)));
                 cur_token += type_tokens;
             }
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: cannot resolve arg type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
             }
 
-            if (cur_token == tag_desc.Tokens.size()) {
+            bool nullable = false;
+
+            if (cur_token < tokens.size() && tokens[cur_token] == "?") {
+                nullable = true;
+                cur_token++;
+            }
+
+            tag_tokens.emplace_back(nullable ? "?" : "");
+
+            if (cur_token == tokens.size()) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: expected arg name after it's type", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            const auto name = tag_desc.Tokens[cur_token];
+            const auto name = tokens[cur_token];
             tag_tokens.emplace_back(name);
-            recote_call_desc.Args.emplace_back(string(name), std::move(type));
+            recote_call_desc.Args.emplace_back(string(name), std::move(type), nullable);
             cur_token++;
 
-            if (cur_token == tag_desc.Tokens.size() || (tag_desc.Tokens[cur_token] != "," && tag_desc.Tokens[cur_token] != ")")) {
+            if (cur_token == tokens.size() || (tokens[cur_token] != "," && tokens[cur_token] != ")")) {
                 throw MetadataBakerException("Invalid RemoteCall codegen tag: expected ')' or ',' after arg", tag_desc.SourceFile, tag_desc.LineNumber);
             }
 
-            if (tag_desc.Tokens[cur_token++] == ")") {
+            if (tokens[cur_token++] == ")") {
                 break;
             }
         }

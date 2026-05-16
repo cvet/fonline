@@ -570,8 +570,8 @@ void MapManager::DestroyLocation(Location* loc)
     }
 
     for (auto* map : copy_hold_ref(loc->GetMaps())) {
-        loc->RemoveMap(map);
         DestroyMapInternal(map);
+        loc->RemoveMap(map);
     }
 
     for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {
@@ -602,9 +602,8 @@ void MapManager::DestroyMap(Map* map)
 
     refcount_ptr loc = map->GetLocation();
     loc->OnMapRemoved.Fire(map);
-    loc->RemoveMap(map);
-
     DestroyMapInternal(map);
+    loc->RemoveMap(map);
 }
 
 void MapManager::DestroyMapInternal(Map* map)

@@ -52,10 +52,6 @@ FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapSpr)
 {
-    if (mapSpr == nullptr) {
-        throw ScriptException("Map sprite arg is null");
-    }
-
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
         return;
     }
@@ -137,9 +133,6 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(MapView* self, ClientEntity* enti
     if (!engine->CanDrawInScripts) {
         throw ScriptException("You can use this function only in render events");
     }
-    if (entity == nullptr) {
-        throw ScriptException("Entity arg is null");
-    }
     if (padding < 0) {
         throw ScriptException("Negative padding");
     }
@@ -193,7 +186,7 @@ FO_SCRIPT_API void Client_Map_SetScrollCheck(MapView* self, bool enabled)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -203,7 +196,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -229,7 +222,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(MapView* self, mpos hex
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
     if (!critterId) {
         return nullptr;
@@ -604,7 +597,7 @@ FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, FO_NULLABLE CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
 {
     self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
 }
@@ -703,7 +696,7 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, CritterView* cr)
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, FO_NULLABLE CritterView* cr)
 {
     const auto* cr_hex = dynamic_cast<CritterHexView*>(cr);
 
@@ -725,20 +718,20 @@ FO_SCRIPT_API void Client_Map_ClearTransparentEgg(MapView* self, TransparentEggS
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;
     return self->GetItemAtScreen(pos, item_egg, 0, true).first;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetCritterAtScreen(pos, false, 0, true).first;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
 {
     auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
@@ -750,7 +743,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
+FO_SCRIPT_API FO_NULLABLE ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetEntityAtScreen(pos, 0, true).first;
 }
@@ -802,7 +795,7 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, FO_NULLABLE CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
 {
     self->SetFogOfWar(fogId, cr, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
 }

@@ -52,7 +52,7 @@ struct ClientAppData
     bool ResourcesSynced {};
     bool ReloadRequested {};
     string StagedRuntimePath;
-    unique_ptr<Updater> Updater {};
+    unique_ptr<Updater> ResourceUpdater {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
 
@@ -169,16 +169,16 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    if (!Data->Updater) {
-                        Data->Updater = SafeAlloc::MakeUnique<class Updater>(App->Settings, App->MainWindow);
+                    if (!Data->ResourceUpdater) {
+                        Data->ResourceUpdater = SafeAlloc::MakeUnique<Updater>(App->Settings, App->MainWindow);
                     }
 
-                    if (!Data->Updater->Process()) {
+                    if (!Data->ResourceUpdater->Process()) {
                         return;
                     }
 
-                    const auto result = Data->Updater->GetResult();
-                    Data->Updater.reset();
+                    const auto result = Data->ResourceUpdater->GetResult();
+                    Data->ResourceUpdater.reset();
 
                     switch (result) {
                     case UpdaterResult::ResourcesReady:
@@ -232,7 +232,7 @@ static void CleanupClientApp() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    Data->Updater.reset();
+    Data->ResourceUpdater.reset();
 
     if (Data->Client) {
         Data->Client->Shutdown();
