@@ -1344,6 +1344,11 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	if compiler_name == 'gcc':
 		build_env['CC'] = '/usr/bin/gcc'
 		build_env['CXX'] = '/usr/bin/g++'
+		# GCC Debug builds of the engine peak at ~3-4 GB resident per cc1plus instance; on the standard
+		# GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the unbounded `--parallel` value collides with
+		# the kernel OOM killer for the heavier targets (server, editor, mapper, code-coverage). Cap the
+		# concurrency for GCC unless the caller explicitly overrides it.
+		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	else:
 		build_env['CC'] = '/usr/bin/clang-20'
 		build_env['CXX'] = '/usr/bin/clang++-20'
