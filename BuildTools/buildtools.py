@@ -1362,8 +1362,10 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	# Debug builds of the engine peak at ~3-4 GB resident per cc1plus/clang++ instance plus a
 	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
 	# value trips the cgroup OOM killer for the heavier targets (linux-editor, all linux-gcc-*
-	# heavy variants, code-coverage). Cap concurrency unless the caller explicitly overrides it.
-	build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
+	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
+	# plenty of headroom and benefit from full parallelism.
+	if build_env.get('GITHUB_ACTIONS') == 'true':
+		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	return build_env
 
 
