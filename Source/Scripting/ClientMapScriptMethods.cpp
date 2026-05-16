@@ -163,6 +163,12 @@ FO_SCRIPT_API void Client_Map_RebuildFog(MapView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetDayColors(MapView* self, ucolor mapDayColor, int32_t mapLightCapacity, ucolor globalDayColor, int32_t globalLightCapacity)
+{
+    self->SetDayColors(mapDayColor, mapLightCapacity, globalDayColor, globalLightCapacity);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API isize32 Client_Map_GetScreenSize(MapView* self)
 {
     return self->GetScreenSize();
@@ -663,6 +669,19 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
     const auto hex_pos = self->GetHexMapPos(hex);
     const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     return self->MapToScreenPos(hex_pos + hex_center);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(MapView* self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex provided");
+    }
+
+    const auto hex_pos = self->GetHexMapPos(hex);
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    const ipos32 map_pos = hex_pos + hex_center;
+    return (fpos32(map_pos) - self->GetScrollOffset()) * self->GetSpritesZoom();
 }
 
 ///@ ExportMethod

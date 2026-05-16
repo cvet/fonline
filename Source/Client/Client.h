@@ -163,9 +163,31 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap);
+    FO_ENTITY_EVENT(OnRenderMap_Rebuild, MapView* /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMapStage, MapView* /*map*/, MapRenderStage /*stage*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent

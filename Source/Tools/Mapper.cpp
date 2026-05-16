@@ -1196,9 +1196,6 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
             _curMap->MarkBlockedHexes();
         }
         break;
-    case KeyCode::Q:
-        Settings.ShowCorners = !Settings.ShowCorners;
-        break;
     default:
         break;
     }
@@ -2718,7 +2715,6 @@ void MapperEngine::DrawMapWindowImGui()
         }
     }
 
-    ImGui::Checkbox("Show corners", &Settings.ShowCorners);
     ImGui::Checkbox("Roof preview", &PreviewRoofTiles);
 
     const auto rotate_preview_dir_label = strex("Rotate preview dir ({})", CritterDir).str();

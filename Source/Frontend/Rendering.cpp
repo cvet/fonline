@@ -178,6 +178,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
+        _posIndoorMaskTex[pass] = pass_info.GetAsInt("EffectInfo", "IndoorMaskTex", -1);
+        _needIndoorMaskTex |= _posIndoorMaskTex[pass] != -1;
         _posEggBuf[pass] = pass_info.GetAsInt("EffectInfo", "EggBuf", -1);
         _needEggBuf |= _posEggBuf[pass] != -1;
         _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
@@ -192,6 +194,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _needRandomValueBuf |= _posRandomValueBuf[pass] != -1;
         _posScriptValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "ScriptValueBuf", -1);
         _needScriptValueBuf |= _posScriptValueBuf[pass] != -1;
+        _posCameraBuf[pass] = pass_info.GetAsInt("EffectInfo", "CameraBuf", -1);
+        _needCameraBuf |= _posCameraBuf[pass] != -1;
 
 #if FO_ENABLE_3D
         _posModelBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);

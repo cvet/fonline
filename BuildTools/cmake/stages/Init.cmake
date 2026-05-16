@@ -22,6 +22,12 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
+	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
+	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
+	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
+	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
+	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
+	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -222,6 +228,12 @@ AddCompileDefinitionsList(
 	FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}
 	FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}
 	FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}
+	FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}
+	FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}
+	FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}
+	FO_MODEL_MAX_TEXTURES=${FO_MODEL_MAX_TEXTURES}
+	FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}
+	FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}
 	FO_NO_EXTRA_ASSERTS=0
 	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.

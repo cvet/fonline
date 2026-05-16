@@ -327,6 +327,7 @@ void MapSpriteList::SortIfNeeded() noexcept
         if (mspr1->_drawOrderPos == mspr2->_drawOrderPos) [[unlikely]] {
             return mspr1->_globalPos < mspr2->_globalPos;
         }
+
         return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
     });
 
@@ -336,7 +337,29 @@ void MapSpriteList::SortIfNeeded() noexcept
         mspr->_index = index++;
     }
 
+    uint32_t pos = 0;
+
+    for (uint32_t order = 0; order < DrawOrderRangeSize - 1; order++) {
+        while (pos < _activeSprites.size() && static_cast<uint32_t>(_activeSprites[pos]->GetDrawOrder()) < order) {
+            pos++;
+        }
+
+        _drawOrderRangeBegin[order] = pos;
+    }
+
+    _drawOrderRangeBegin[DrawOrderRangeSize - 1] = numeric_cast<uint32_t>(_activeSprites.size());
+
     _needSort = false;
+}
+
+auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const noexcept -> pair<uint32_t, uint32_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_needSort);
+    FO_RUNTIME_ASSERT(static_cast<uint32_t>(from) <= static_cast<uint32_t>(to));
+
+    return {_drawOrderRangeBegin[static_cast<size_t>(from)], _drawOrderRangeBegin[static_cast<size_t>(to) + 1]};
 }
 
 MapSpriteHolder::~MapSpriteHolder()

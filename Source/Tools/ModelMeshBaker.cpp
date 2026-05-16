@@ -425,7 +425,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     if (fbx_skin != nullptr) {
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
-                        const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), BONES_PER_VERTEX);
+                        const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), MODEL_BONES_PER_VERTEX);
 
                         float32_t total_weight = 0.0f;
 

@@ -1022,21 +1022,17 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<PrimitivePoint> debug_borders;
-
     for (auto& egg : _eggSlots) {
         egg.DrawOffset = {numeric_cast<float32_t>(draw_area.x), numeric_cast<float32_t>(draw_area.y)};
     }
 
-    for (const auto& mspr : mspr_list.GetActiveSprites()) {
+    const auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
+    const auto& sprites = mspr_list.GetActiveSprites();
+
+    for (uint32_t i = range_begin; i < range_end; i++) {
+        const auto& mspr = sprites[i];
         FO_RUNTIME_ASSERT(mspr->IsValid());
 
-        if (mspr->GetDrawOrder() < draw_oder_from) {
-            continue;
-        }
-        if (mspr->GetDrawOrder() > draw_oder_to) {
-            continue;
-        }
         if (mspr->IsHidden()) {
             continue;
         }
@@ -1135,50 +1131,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
                 Flush();
             }
         }
-
-        // Corners indication
-        if (_settings->ShowCorners && mspr->GetEggAppearence() != EggAppearenceType::None) {
-            vector<PrimitivePoint> corner;
-            const float32_t cx = wf / 2.0f;
-
-            switch (mspr->GetEggAppearence()) {
-            case EggAppearenceType::Always:
-                PrepareSquare(corner, irect32(iround<int32_t>(xf + cx - 2.0f), iround<int32_t>(yf + hf - 50.0f), 4, 50), ucolor {0x5F00FFFF});
-                break;
-            case EggAppearenceType::ByX:
-                PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 55.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 45.0f}, fpos32 {xf + cx - 5.0f, yf + hf - 5.0f}, fpos32 {xf + cx + 5.0f, yf + hf + 5.0f}, ucolor {0x5F00AF00});
-                break;
-            case EggAppearenceType::ByY:
-                PrepareSquare(corner, fpos32 {xf + cx - 5.0f, yf + hf - 49.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 52.0f}, fpos32 {xf + cx - 5.0f, yf + hf + 1.0f}, fpos32 {xf + cx + 5.0f, yf + hf - 2.0f}, ucolor {0x5F00FF00});
-                break;
-            case EggAppearenceType::ByXAndY:
-                PrepareSquare(corner, fpos32 {xf + cx - 10.0f, yf + hf - 49.0f}, fpos32 {xf + cx, yf + hf - 52.0f}, fpos32 {xf + cx - 10.0f, yf + hf + 1.0f}, fpos32 {xf + cx, yf + hf - 2.0f}, ucolor {0x5F0000FF});
-                PrepareSquare(corner, fpos32 {xf + cx, yf + hf - 55.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 45.0f}, fpos32 {xf + cx, yf + hf - 5.0f}, fpos32 {xf + cx + 10.0f, yf + hf + 5.0f}, ucolor {0x5F0000FF});
-                break;
-            case EggAppearenceType::ByXOrY:
-                PrepareSquare(corner, fpos32 {xf + cx, yf + hf - 49.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 52.0f}, fpos32 {xf + cx, yf + hf + 1.0f}, fpos32 {xf + cx + 10.0f, yf + hf - 2.0f}, ucolor {0x5F0000AF});
-                PrepareSquare(corner, fpos32 {xf + cx - 10.0f, yf + hf - 55.0f}, fpos32 {xf + cx, yf + hf - 45.0f}, fpos32 {xf + cx - 10.0f, yf + hf - 5.0f}, fpos32 {xf + cx, yf + hf + 5.0f}, ucolor {0x5F0000AF});
-                break;
-            default:
-                break;
-            }
-
-            DrawPoints(corner, RenderPrimitiveType::TriangleList);
-        }
-
-        if (_settings->ShowSpriteBorders && mspr->GetDrawOrder() > DrawOrderType::Tile4) {
-            irect32 rect = mspr->GetViewRect();
-            rect.x -= draw_area.x;
-            rect.y -= draw_area.y;
-            PrepareSquare(debug_borders, rect, ucolor {0, 0, 255, 50});
-        }
     }
 
     Flush();
-
-    if (_settings->ShowSpriteBorders) {
-        DrawPoints(debug_borders, RenderPrimitiveType::TriangleList);
-    }
 }
 
 auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool
