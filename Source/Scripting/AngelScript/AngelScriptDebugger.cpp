@@ -39,8 +39,10 @@
 #include "AngelScriptHelpers.h"
 
 #include <angelscript.h>
-#include <json.hpp>
 #include <preprocessor.h>
+FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 

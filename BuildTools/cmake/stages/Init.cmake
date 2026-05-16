@@ -316,13 +316,11 @@ if(WIN32)
 	AddCompileOptionsList(
 		/permissive-
 		/Zc:__cplusplus
-		/Zc:preprocessor
 		$<${expr_DebugBuild}:/RTC1>
 		$<${expr_DebugBuild}:/GS>
 		$<$<OR:${expr_DebugBuild},$<CONFIG:RelWithDebInfo>>:/JMC>
 		$<$<NOT:${expr_DebugBuild}>:/sdl->
 		/W4
-		/MP
 		/EHsc
 		/utf-8
 		/volatile:iso
@@ -331,6 +329,11 @@ if(WIN32)
 		/fp:fast
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		AddCompileOptionsList(/MP /Zc:preprocessor)
+	endif()
+
 	AddLinkOptionsList(
 		/INCREMENTAL:NO
 		/OPT:REF

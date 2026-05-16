@@ -42,7 +42,7 @@ protected:
         vector<DataBaseKey> ids;
         ids.reserve(collection.size());
 
-        for (const auto key : collection | std::views::keys) {
+        for (const auto& key : collection | std::views::keys) {
             ids.emplace_back(key);
         }
 

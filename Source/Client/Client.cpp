@@ -636,7 +636,7 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
     auto* moving = cr->GetMoving();
     FO_RUNTIME_ASSERT(moving);
 
-    if (moving->GetSteps().size() > Settings.MaxPathFindLength) {
+    if (std::cmp_greater(moving->GetSteps().size(), Settings.MaxPathFindLength)) {
         BreakIntoDebugger();
         cr->StopMoving();
         return;

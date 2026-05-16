@@ -666,9 +666,9 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
         //   |dx * hq + dy * half_w| <= limit
         // where hq = MAP_HEX_HEIGHT / 4, limit = 2 * half_w * hq
         constexpr int32_t hq = GameSettings::MAP_HEX_HEIGHT / 4;
-        const int32_t limit = 2 * half_w * hq;
+        constexpr int32_t limit = 2 * half_w * hq;
 
-        const auto is_inside_hex = [half_w, hq, limit](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
+        const auto is_inside_hex = [](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
 
         if (!is_inside_hex(dx, dy)) {
             // Check 6 neighbors in lattice space: (±1,0), (0,±1), (+1,-1), (-1,+1)

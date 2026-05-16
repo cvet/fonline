@@ -568,7 +568,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     TargetCompileDefinitions(
         AngelScriptCore PUBLIC
         $<$<OR:$<BOOL:${FO_WEB}>,$<BOOL:${FO_MAC}>,$<BOOL:${FO_IOS}>,$<BOOL:${FO_ANDROID}>>:AS_MAX_PORTABILITY>)
-    TargetIncludeDirectories(AngelScriptCore PUBLIC
+    TargetIncludeDirectories(AngelScriptCore SYSTEM PUBLIC
         "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/include"
         "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source")
     AppendList(FO_COMMON_LIBS AngelScriptCore)
@@ -582,7 +582,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     AddStaticThirdPartyLibrary(AngelScriptPreprocessor
         SOURCE_LIST FO_ANGELSCRIPT_PREPROCESSOR_SOURCE
         APPEND_TO FO_COMMON_LIBS)
-    TargetIncludeDirectories(AngelScriptCore PUBLIC
+    TargetIncludeDirectories(AngelScriptCore SYSTEM PUBLIC
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 

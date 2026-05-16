@@ -1989,7 +1989,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                 chunk_body_lines.extend(method_block)
 
             chunk_function_name = make_unique_cpp_identifier(used_names, 'AddMethods_' + entity + '_', 'Chunk_' + str(chunk_index // method_chunk_size + 1))
-            append_static_function(helper_lines, 'static void ' + chunk_function_name + '(vector<MethodDesc>& methods, EngineMetadata* meta)', chunk_body_lines)
+            append_static_function(helper_lines, 'static void ' + chunk_function_name + '(vector<MethodDesc>& methods, [[maybe_unused]] EngineMetadata* meta)', chunk_body_lines)
             chunk_function_names.append(chunk_function_name)
 
         for chunk_function_name in chunk_function_names:

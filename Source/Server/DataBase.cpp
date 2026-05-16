@@ -46,9 +46,8 @@
 
 FO_DISABLE_WARNINGS_PUSH()
 #include <bson/bson.h>
-FO_DISABLE_WARNINGS_POP()
-
 #include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
 

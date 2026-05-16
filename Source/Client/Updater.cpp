@@ -434,7 +434,7 @@ void Updater::Net_OnInitData()
         return strex("{}{}", runtime_local_prefix, rest).str();
     };
 
-    for (int32_t file_index = 0;; file_index++) {
+    while (true) {
         const auto name_len = reader.Read<int16_t>();
 
         if (name_len == -1) {

@@ -736,7 +736,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         opengl_effect->Program[pass] = program;
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo_block = [program, this](const char* block_name, int32_t block_pos) {
+            const auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
                 if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
                     GL(glUniformBlockBinding(program, index, block_pos));
                 }
@@ -1297,7 +1297,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     }
 
     if (GL_HAS(uniform_buffer_object)) {
-        const auto upload_ubo = [this](bool need_buf, auto& buf, GLuint& ubo, bool reset_buf) {
+        const auto upload_ubo = [&](bool need_buf, auto& buf, GLuint& ubo, bool reset_buf) {
             if (!need_buf || !buf.has_value()) {
                 return;
             }
@@ -1305,6 +1305,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             if (ubo == 0) {
                 GL(glGenBuffers(1, &ubo));
             }
+
             GL(glBindBuffer(GL_UNIFORM_BUFFER, ubo));
             GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(*buf), &buf.value(), GL_DYNAMIC_DRAW));
             GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));

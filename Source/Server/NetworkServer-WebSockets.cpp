@@ -45,8 +45,10 @@
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
+FO_DISABLE_WARNINGS_PUSH()
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
+FO_DISABLE_WARNINGS_POP()
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
