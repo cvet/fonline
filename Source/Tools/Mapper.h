@@ -184,6 +184,7 @@ public:
 
     void InitIface();
     auto GetPreviewSprite(hstring fname) -> Sprite*;
+    void SetInputLocked(bool locked) noexcept;
     void MapperMainLoop();
     auto BeginMapperFrameInput() -> bool;
     void ProcessMapperInputEvent(const InputEvent& ev);
@@ -319,6 +320,7 @@ public:
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unordered_set<raw_ptr<MapView>> DirtyMaps {};
+    unordered_map<raw_ptr<MapView>, int32_t> MapperMapDayTimes {};
     unordered_map<raw_ptr<MapView>, UndoContext> UndoContexts {};
     vector<raw_ptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};
@@ -348,6 +350,7 @@ public:
     bool HistoryWindowVisible {};
     bool SettingsWindowVisible {};
     bool ResetImGuiSettingsRequested {};
+    bool InputLocked {};
     irect32 MainPanelWindowRect {};
     irect32 MainPanelContentRect {};
     map<string, SubTab> Tabs[TAB_COUNT] {};

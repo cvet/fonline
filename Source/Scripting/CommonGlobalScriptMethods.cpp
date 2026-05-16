@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "ConfigFile.h"
 #include "EngineBase.h"
 #include "Geometry.h"
 #include "LineTracer.h"
@@ -172,6 +173,27 @@ FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view re
     ignore_unused(engine);
 
     return engine->Resources.ReadFileText(resourcePath);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(BaseEngine* engine, string_view resourcePath, string_view sectionName)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string content = engine->Resources.ReadFileText(resourcePath);
+    ConfigFile config(resourcePath, std::move(content));
+
+    map<string, string> result;
+
+    if (!config.HasSection(sectionName)) {
+        return result;
+    }
+
+    for (const auto& [key, value] : config.GetSection(sectionName)) {
+        result.emplace(string(key), string(value));
+    }
+
+    return result;
 }
 
 ///@ ExportMethod

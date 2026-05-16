@@ -176,6 +176,8 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto IsShowMapperOverlay() const noexcept -> bool { return _isShowMapperOverlay; }
+    [[nodiscard]] auto IsShowMapperHiddenSprites() const noexcept -> bool { return _isShowMapperHiddenSprites; }
     [[nodiscard]] auto IsScrollCheck() const noexcept -> bool { return _scrollCheckEnabled; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
@@ -202,6 +204,9 @@ public:
 
     void ClearHexTrack();
     void SwitchShowTrack();
+    void SetShowMapperOverlay(bool show);
+    void SetShowMapperHiddenSprites(bool show);
+    void SetMapperDayTimeOverride(optional<int32_t> day_time);
 
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
@@ -405,6 +410,8 @@ private:
     shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
+    bool _isShowMapperOverlay {true};
+    bool _isShowMapperHiddenSprites {true};
 
     raw_ptr<RenderTarget> _rtMap {};
     raw_ptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
@@ -430,6 +437,7 @@ private:
 
     int32_t _prevMapDayTime {-1};
     int32_t _prevGlobalDayTime {-1};
+    optional<int32_t> _mapperDayTimeOverride {};
     ucolor _prevMapDayColor {};
     ucolor _prevGlobalDayColor {};
     ucolor _mapDayColor {};
