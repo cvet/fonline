@@ -321,8 +321,10 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     auto* arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
     arr->Reserve(numeric_cast<int32_t>(vec.size()));
 
-    for (const auto& elem : vec) {
-        arr->InsertLast(cast_to_void(const_cast<T*>(&elem)));
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    for (size_t i = 0; i < vec.size(); i++) {
+        T value = vec[i];
+        arr->InsertLast(cast_to_void(&value));
     }
 
     new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
