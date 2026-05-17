@@ -87,7 +87,10 @@ protected:
         auto& collection = _collections.at(collection_name);
 
         const auto it_collection = collection.find(id);
-        FO_RUNTIME_ASSERT(it_collection != collection.end());
+
+        if (it_collection == collection.end()) {
+            throw DataBaseException("DbMemory Document not found for update", collection_name, id);
+        }
 
         for (auto&& [doc_key, doc_value] : doc) {
             it_collection->second.Assign(doc_key, doc_value.Copy());
@@ -103,7 +106,10 @@ protected:
         auto& collection = _collections.at(collection_name);
 
         const auto it = collection.find(id);
-        FO_RUNTIME_ASSERT(it != collection.end());
+
+        if (it == collection.end()) {
+            throw DataBaseException("DbMemory Document not found for delete", collection_name, id);
+        }
 
         collection.erase(it);
     }

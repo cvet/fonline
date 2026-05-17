@@ -2779,6 +2779,10 @@ void ServerEngine::OnSaveEntityValue(Entity* entity, const Property* prop)
             return;
         }
 
+        if (server_entity->IsDestroying() || server_entity->IsDestroyed()) {
+            return;
+        }
+
         entry_id = server_entity->GetId();
 
         if (!entry_id) {
