@@ -1113,9 +1113,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         if (use_first_egg || use_second_egg) {
             auto& vbuf = _spritesDrawBuf->Vertices;
 
-            for (size_t i = start_vpos; i < _spritesDrawBuf->VertCount; i++) {
-                vbuf[i].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
-                vbuf[i].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
+            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
+                vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
             }
         }
 
