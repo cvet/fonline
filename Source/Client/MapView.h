@@ -175,6 +175,7 @@ public:
     [[nodiscard]] auto GetHexTrack(mpos hex) noexcept -> int8_t& { return _hexTrack[static_cast<size_t>(hex.y) * _mapSize.width + hex.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
+    [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
@@ -223,7 +224,6 @@ public:
     void SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity);
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
-    void LockScreenScroll(CritterView* cr, int32_t speed, bool soft_lock, bool unlock_if_same);
     void SetExtraScrollOffset(fpos32 offset);
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
@@ -390,11 +390,6 @@ private:
     bool _autoScrollCanStop {};
     fpos32 _autoScrollOffset {};
     int32_t _autoScrollSpeed {};
-    ident_t _autoScrollHardLockedCritter {};
-    ident_t _autoScrollSoftLockedCritter {};
-    mpos _autoScrollCritterLastHex {};
-    ipos16 _autoScrollCritterLastHexOffset {};
-    int32_t _autoScrollLockSpeed {};
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
