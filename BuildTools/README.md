@@ -1,4 +1,4 @@
-# FOnline Engine : Build tools
+﻿# FOnline Engine : Build tools
 
 ## Build scripts
 
@@ -15,7 +15,7 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.
-The public entry points kept at the `Engine/BuildTools` root are `Init.cmake`, `StartGeneration.cmake`, and `FinalizeGeneration.cmake`.
+The public entry point kept at the `Engine/BuildTools` root is `Init.cmake`; staged CMake implementation lives under `Engine/BuildTools/cmake/stages/` and helpers under `Engine/BuildTools/cmake/helpers/`.
 The validation project scaffold continues to live under `Engine/BuildTools/validation-project`.
 
 ## Build environment variables
