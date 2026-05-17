@@ -1933,7 +1933,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     }
 
                     // Check influences
-                    for (size_t b = 0; b < BONES_PER_VERTEX; b++) {
+                    for (size_t b = 0; b < MODEL_BONES_PER_VERTEX; b++) {
                         // No influence
                         auto w = v.BlendWeights[b];
 

@@ -133,6 +133,7 @@ public:
     raw_ptr<ID3D11Buffer> Cb_TimeBuf {};
     raw_ptr<ID3D11Buffer> Cb_RandomValueBuf {};
     raw_ptr<ID3D11Buffer> Cb_ScriptValueBuf {};
+    raw_ptr<ID3D11Buffer> Cb_CameraBuf {};
 #if FO_ENABLE_3D
     raw_ptr<ID3D11Buffer> Cb_ModelBuf {};
     raw_ptr<ID3D11Buffer> Cb_ModelTexBuf {};
@@ -678,7 +679,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             // Create the input layout
 #if FO_ENABLE_3D
             if (usage == EffectUsage::Model) {
-                static_assert(BONES_PER_VERTEX == 4);
+                static_assert(MODEL_BONES_PER_VERTEX == 4);
 
                 constexpr D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex3D, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -1288,6 +1289,7 @@ Direct3D_Effect::~Direct3D_Effect()
     safe_release(Cb_TimeBuf);
     safe_release(Cb_RandomValueBuf);
     safe_release(Cb_ScriptValueBuf);
+    safe_release(Cb_CameraBuf);
 #if FO_ENABLE_3D
     safe_release(Cb_ModelBuf);
     safe_release(Cb_ModelTexBuf);
@@ -1391,6 +1393,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
     upload_cbuffer(_needTimeBuf, TimeBuf, Cb_TimeBuf, true);
     upload_cbuffer(_needRandomValueBuf, RandomValueBuf, Cb_RandomValueBuf, true);
     upload_cbuffer(_needScriptValueBuf, ScriptValueBuf, Cb_ScriptValueBuf, false);
+    upload_cbuffer(_needCameraBuf, CameraBuf, Cb_CameraBuf, true);
 #if FO_ENABLE_3D
     upload_cbuffer(_needModelBuf, ModelBuf, Cb_ModelBuf, true);
     upload_cbuffer(_needModelTexBuf, ModelTexBuf, Cb_ModelTexBuf, true);
@@ -1442,6 +1445,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         set_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         set_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         set_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
+        set_cbuffer(_posCameraBuf[pass], Cb_CameraBuf);
 #if FO_ENABLE_3D
         set_cbuffer(_posModelBuf[pass], Cb_ModelBuf);
         set_cbuffer(_posModelTexBuf[pass], Cb_ModelTexBuf);
@@ -1460,6 +1464,12 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         if (_posMainTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posMainTex[pass], 1, main_tex->ShaderTexView.get_pp());
             _ctx->D3DDeviceContext->PSSetSamplers(_posMainTex[pass], 1, find_tex_sampler(main_tex));
+        }
+
+        if (_posIndoorMaskTex[pass] != -1) {
+            const auto* indoor_tex = static_cast<const Direct3D_Texture*>(IndoorMaskTex ? IndoorMaskTex.get() : _ctx->DummyTexture.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
+            _ctx->D3DDeviceContext->PSSetShaderResources(_posIndoorMaskTex[pass], 1, indoor_tex->ShaderTexView.get_pp());
+            _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, find_tex_sampler(indoor_tex));
         }
 
 #if FO_ENABLE_3D
@@ -1512,6 +1522,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         unset_cbuffer(_posTimeBuf[pass], Cb_TimeBuf);
         unset_cbuffer(_posRandomValueBuf[pass], Cb_RandomValueBuf);
         unset_cbuffer(_posScriptValueBuf[pass], Cb_ScriptValueBuf);
+        unset_cbuffer(_posCameraBuf[pass], Cb_CameraBuf);
 #if FO_ENABLE_3D
         unset_cbuffer(_posModelBuf[pass], Cb_ModelBuf);
         unset_cbuffer(_posModelTexBuf[pass], Cb_ModelTexBuf);
@@ -1521,6 +1532,11 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
         if (_posMainTex[pass] != -1) {
             _ctx->D3DDeviceContext->PSSetShaderResources(_posMainTex[pass], 1, &null_res);
             _ctx->D3DDeviceContext->PSSetSamplers(_posMainTex[pass], 1, &null_sampler);
+        }
+
+        if (_posIndoorMaskTex[pass] != -1) {
+            _ctx->D3DDeviceContext->PSSetShaderResources(_posIndoorMaskTex[pass], 1, &null_res);
+            _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, &null_sampler);
         }
 
 #if FO_ENABLE_3D

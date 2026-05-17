@@ -414,8 +414,8 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
         }
 
         if (!resolved_value) {
-            if (prop == nullptr || !prop->IsMaybeNull()) {
-                throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
+            if (prop == nullptr || !prop->IsNullable()) {
+                throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
             }
         }
         else if (proto == nullptr) {
@@ -1447,8 +1447,8 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
             }
 
             if (!resolved_value) {
-                if (!prop->IsMaybeNull()) {
-                    throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+                if (!prop->IsNullable()) {
+                    throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
                 }
             }
             else if (proto == nullptr) {

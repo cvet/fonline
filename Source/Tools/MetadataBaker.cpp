@@ -1059,7 +1059,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         const bool is_modifiable_by_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByClient"; });
         const bool is_modifiable_by_any_client = std::ranges::any_of(flags, [](auto&& f) { return f == "ModifiableByAnyClient"; });
         const bool is_null_getter_for_proto = std::ranges::any_of(flags, [](auto&& f) { return f == "NullGetterForProto"; });
-        const bool is_maybe_null = std::ranges::any_of(flags, [](auto&& f) { return f == "MaybeNull"; });
+        const bool is_nullable = std::ranges::any_of(flags, [](auto&& f) { return f == "Nullable"; });
         const bool is_synced = is_common && is_mutable && (is_owner_sync || is_public_sync);
 
         if (is_mutable && is_common && !is_virtual && !is_owner_sync && !is_public_sync && !is_no_sync) {
@@ -1089,8 +1089,8 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         if (is_null_getter_for_proto && !is_virtual) {
             throw MetadataBakerException("Invalid Property codegen tag: null getter can only be on virtual property", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
-        if (is_maybe_null && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
-            throw MetadataBakerException("Invalid Property codegen tag: MaybeNull can only be used on FixedType or Proto entity properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
+        if (is_nullable && !type.BaseType.IsFixedType && !type.BaseType.IsEntityProto) {
+            throw MetadataBakerException("Invalid Property codegen tag: Nullable can only be used on FixedType or Proto entity properties", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
         if (is_persistent && is_client_only) {
             throw MetadataBakerException("Invalid Property codegen tag: persistent property can't be client only", tag_desc.SourceFile, tag_desc.LineNumber, name);

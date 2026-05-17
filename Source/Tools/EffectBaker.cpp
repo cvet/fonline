@@ -255,6 +255,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         continue; \
     }
                 CHECK_TEX("MainTex");
+                CHECK_TEX("IndoorMaskTex");
 #if FO_ENABLE_3D
                 for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
                     CHECK_TEX(strex("ModelTex{}", j).strv());
@@ -282,6 +283,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             CHECK_BUF(TimeBuf);
             CHECK_BUF(RandomValueBuf);
             CHECK_BUF(ScriptValueBuf);
+            CHECK_BUF(CameraBuf);
 #if FO_ENABLE_3D
             CHECK_BUF(ModelBuf);
             CHECK_BUF(ModelTexBuf);

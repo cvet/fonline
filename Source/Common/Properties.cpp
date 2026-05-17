@@ -2057,9 +2057,9 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto);
             prop->_isNullGetterForProto = true;
         }
-        else if (tokens[i] == "MaybeNull") {
-            FO_RUNTIME_ASSERT(!prop->_isMaybeNull);
-            prop->_isMaybeNull = true;
+        else if (tokens[i] == "Nullable") {
+            FO_RUNTIME_ASSERT(!prop->_isNullable);
+            prop->_isNullable = true;
         }
         else if (tokens[i] == "SharedProperty") {
             // For internal use, skip
@@ -2089,7 +2089,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
     FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
     FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
-    FO_RUNTIME_ASSERT(!prop->_isMaybeNull || prop->IsBaseTypeProtoReference());
+    FO_RUNTIME_ASSERT(!prop->_isNullable || prop->IsBaseTypeProtoReference());
 
     const auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
 

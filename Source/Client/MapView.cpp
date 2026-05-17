@@ -89,11 +89,18 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
     SetSpritesZoomTarget(1.0f);
     RefreshMinZoom();
 
+    SetMapDayColor(ucolor {255, 255, 255, 255});
+    SetGlobalDayColor(ucolor {255, 255, 255, 255});
+
     const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
 
     if (!_engine->Settings.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, true);
         _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap.get());
+
+        if (!_engine->Settings.DisableIndoorMask) {
+            _rtIndoorMask = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, false);
+        }
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
@@ -157,6 +164,7 @@ void MapView::OnDestroySelf()
     }
 
     _mapSprites.InvalidateAll();
+    _indoorMaskSprites.InvalidateAll();
     _hexField.reset();
     _viewField.clear();
     for (auto& fog_layer : _fogLayers) {
@@ -385,35 +393,6 @@ void MapView::Process()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Map time and color
-    {
-        const int32_t global_day_time = _engine->GetGlobalDayTime();
-        const int32_t fixed_map_day_time = GetFixedDayTime();
-        const int32_t default_map_day_time = fixed_map_day_time != 0 ? fixed_map_day_time : global_day_time;
-        const int32_t map_day_time = _mapperDayTimeOverride.value_or(default_map_day_time);
-
-        if (map_day_time != _prevMapDayTime || global_day_time != _prevGlobalDayTime) {
-            _prevMapDayTime = map_day_time;
-            _prevGlobalDayTime = global_day_time;
-
-            const auto day_color_time = IsNonEmptyDayColorTime() ? GetDayColorTime() : vector<int32_t> {300, 600, 1140, 1380};
-            const auto day_color = IsNonEmptyDayColor() ? GetDayColor() : vector<uint8_t> {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-
-            _mapDayColor = GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
-            _globalDayColor = GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
-
-            if (_mapDayColor != _prevMapDayColor) {
-                _prevMapDayColor = _mapDayColor;
-                _needReapplyLights = true;
-            }
-
-            if (_globalDayColor != _prevGlobalDayColor) {
-                _prevGlobalDayColor = _globalDayColor;
-                _needReapplyLights = _needReapplyLights || _globalLights != 0;
-            }
-        }
-    }
-
     // Critters
     {
         vector<CritterHexView*> critter_to_delete;
@@ -627,10 +606,8 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     }
 
     const bool is_roof = item->GetIsTile() && item->GetIsRoofTile();
-
-    if (is_roof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
-        return;
-    }
+    const bool hidden_roof_for_indoor_mask = is_roof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum;
+    MapSpriteList& target_sprites = hidden_roof_for_indoor_mask ? _indoorMaskSprites : _mapSprites;
 
     DrawOrderType draw_order;
 
@@ -653,10 +630,10 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     MapSprite* mspr;
 
     if (!extra_draw) {
-        mspr = item->AddSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
+        mspr = item->AddSprite(target_sprites, draw_order, draw_hex, &field.Offset);
     }
     else {
-        mspr = item->AddExtraSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
+        mspr = item->AddExtraSprite(target_sprites, draw_order, draw_hex, &field.Offset);
     }
 
     AddSpriteToChain(field, mspr);
@@ -1001,6 +978,7 @@ void MapView::RebuildMapNow()
 
     HideHexLines(0, _hVisible);
     FO_RUNTIME_ASSERT(!_mapSprites.HasActiveSprites());
+    FO_RUNTIME_ASSERT(!_indoorMaskSprites.HasActiveSprites());
     FO_RUNTIME_ASSERT(_visibleLightSources.empty());
 
     InitView();
@@ -1011,7 +989,7 @@ void MapView::RebuildMapNow()
     _engine->SprMngr.InvalidateEgg();
     _needRebuildLightPrimitives = true;
     _needReapplyLights = true;
-    _engine->OnRenderMap.Fire();
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
@@ -1086,7 +1064,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     }
 
     _needRebuildLightPrimitives = true;
-    _engine->OnRenderMap.Fire();
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::ShowHexLines(int ox, int oy)
@@ -1571,10 +1549,10 @@ void MapView::ApplyLightFan(LightSource* ls)
     }
 
     if (IsEnumSet(ls->Flags, LightFlag::Global)) {
-        ls->Capacity = _globalDayLightCapacity;
+        ls->Capacity = GetGlobalDayLightCapacity();
     }
     else if (ls->Intensity >= 0) {
-        ls->Capacity = _mapDayLightCapacity;
+        ls->Capacity = GetMapDayLightCapacity();
     }
     else {
         ls->Capacity = 100;
@@ -2275,21 +2253,6 @@ void MapView::SetShowMapperHiddenSprites(bool show)
     RebuildMap();
 }
 
-void MapView::SetMapperDayTimeOverride(optional<int32_t> day_time)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    if (_mapperDayTimeOverride == day_time) {
-        return;
-    }
-
-    _mapperDayTimeOverride = day_time;
-    _prevMapDayTime = -1;
-    _prevGlobalDayTime = -1;
-}
-
 void MapView::SwitchShowTrack()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2501,6 +2464,7 @@ void MapView::DrawMap()
     ProcessLighting();
     PrepareFogToDraw();
     _mapSprites.SortIfNeeded();
+    _indoorMaskSprites.SortIfNeeded();
 
     // Draw by parts if view size too big
     const fsize32 screen_size = fsize32(_screenSize);
@@ -2547,15 +2511,18 @@ void MapView::DrawMap()
             const auto reset_render_draw_area = scope_exit([this]() noexcept { _currentRenderDrawArea.reset(); });
 
             // Tiles
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
-            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterTiles);
+            _engine->OnRenderMap_BeforeTiles.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::Tile4, GetMapDayColor());
+            _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
 
             // Flat sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
-            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterFlatSprites);
+            _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, GetMapDayColor());
+            _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Lighting
             if (!_engine->Settings.DisableLighting) {
+                _engine->OnRenderMap_BeforeLighting.Fire(this, draw_area);
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
@@ -2570,15 +2537,17 @@ void MapView::DrawMap()
 
                 _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+                _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
-            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterLighting);
 
             // Other sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
-            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterSprites);
+            _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, GetMapDayColor());
+            _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
 
             // Fog
             if (!_engine->Settings.DisableFog && !_mapperMode && !_fogLayers.empty()) {
+                _engine->OnRenderMap_BeforeFog.Fire(this, draw_area);
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
@@ -2590,13 +2559,70 @@ void MapView::DrawMap()
 
                 _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+                _engine->OnRenderMap_AfterFog.Fire(this, draw_area);
             }
-            _engine->OnRenderMapStage.Fire(this, MapRenderStage::AfterFog);
 
             // Draw streched render target
             if (!direct_draw) {
+                _engine->OnRenderMap_BeforeFlushMap.Fire(this, draw_area);
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
+                auto* flush_map = _engine->EffectMngr.Effects.FlushMap.get();
+                _rtMap->SetCustomDrawEffect(flush_map);
+
+                if (flush_map->IsNeedIndoorMaskTex()) {
+                    if (_rtIndoorMask && !_engine->Settings.DisableIndoorMask) {
+                        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtIndoorMask.get());
+                        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor());
+                        _engine->SprMngr.GetRtMngr().PopRenderTarget();
+                        flush_map->IndoorMaskTex = _rtIndoorMask->GetTexture();
+                    }
+                    else {
+                        flush_map->IndoorMaskTex = nullptr;
+                    }
+                }
+
+                if (flush_map->IsNeedCameraBuf()) {
+                    // World-anchored UV affine basis: world_uv = .xy + TexCoord * .zw, where
+                    //   .xy = world UV at TexCoord(0,0) for this chunk
+                    //   .zw = world UV per TexCoord unit
+                    // The shader's TexCoord does NOT span [0,1] across the chunk — `_rtMap` is
+                    // sized (screen_w + MAP_HEX_WIDTH, screen_h + 2*MAP_HEX_LINE_HEIGHT) so
+                    // sprites that overlap the screen edge render fully, while the FlushMap
+                    // source_rect samples only the screen_w × screen_h content region. So
+                    // TexCoord ranges roughly [source_x/rt_w, (source_x+screen_w)/rt_w], with
+                    // max ~screen_w/rt_w (~0.95 with default hex padding), not 1.0. An affine
+                    // basis `anchor + TexCoord * (rt_size/screen_size)` cancels the rt/screen
+                    // and sub-pixel discrepancies, so adjacent chunks emit a continuous ps at
+                    // the seam (older `ps = TexCoord - anchor` form had a hex-sized gap there).
+                    // Pre-zoom anchor (no GetSpritesZoom() multiply) keeps ps zoom-invariant: a
+                    // fixed world position produces the same ps at any zoom, so noise patterns
+                    // stay pinned to the world during zoom in/out instead of drifting.
+                    const ipos32 anchor_hex_pos = GetHexMapPos(mpos(0, 0));
+                    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+                    const fpos32 anchor_world = fpos32(anchor_hex_pos + hex_center) - _scrollOffset;
+                    const auto rt_size = _rtMap->GetTexture()->Size;
+                    const float32_t sw_f = numeric_cast<float32_t>(_screenSize.width);
+                    const float32_t sh_f = numeric_cast<float32_t>(_screenSize.height);
+                    auto& cam_buf = flush_map->CameraBuf = RenderEffect::CameraBuffer();
+                    cam_buf->MapAnchorScreenPos[0] = step_xf - (anchor_world.x + source_x) / sw_f;
+                    cam_buf->MapAnchorScreenPos[1] = step_yf - (anchor_world.y + source_y) / sh_f;
+                    cam_buf->MapAnchorScreenPos[2] = numeric_cast<float32_t>(rt_size.width) / sw_f;
+                    cam_buf->MapAnchorScreenPos[3] = numeric_cast<float32_t>(rt_size.height) / sh_f;
+                    // Screen-anchored basis: screen_uv = .xy + TexCoord * .zw — UV continuous
+                    // across the full screen (regardless of chunking) for effects that must
+                    // stay attached to the screen frame (vignette, sun bleach, grain). Same
+                    // rt-vs-screen scaling correction as MapAnchorScreenPos: TexCoord max is
+                    // ~sw/rt_w not 1.0, so the per-TexCoord screen UV step is
+                    // `(rt_w/sw) * draw_scale`, and the chunk anchor backs out source_x.
+                    cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
+                    cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
+                }
+
                 _engine->SprMngr.DrawRenderTarget(_rtMap.get(), false, &source_rect, &target_rect);
+                _engine->OnRenderMap_AfterFlushMap.Fire(this, draw_area);
             }
         }
     }
@@ -3008,7 +3034,7 @@ void MapView::ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_s
 
     const ipos32 hex_pos = GeometryHelper::GetHexOffset(GetCenterRawHex(), ipos32(hex));
     _autoScrollActive = false;
-    ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset(), speed, can_stop);
+    ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset().round<int32_t>(), speed, can_stop);
 }
 
 void MapView::ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop)
@@ -4077,67 +4103,22 @@ auto MapView::SaveToText() const -> string
     return fomap;
 }
 
-auto MapView::GetColorDay(const vector<int32_t>& day_time, const vector<uint8_t>& colors, int32_t game_time, int32_t* light) -> ucolor
+void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(day_time.size() == 4);
-    FO_RUNTIME_ASSERT(colors.size() == 12);
-
-    uint8_t result[3];
-    const int32_t color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
-    const int32_t color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
-    const int32_t color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
-
-    game_time %= 1440;
-    int32_t time;
-    int32_t duration;
-    if (game_time >= day_time[0] && game_time < day_time[1]) {
-        time = 0;
-        game_time -= day_time[0];
-        duration = day_time[1] - day_time[0];
-    }
-    else if (game_time >= day_time[1] && game_time < day_time[2]) {
-        time = 1;
-        game_time -= day_time[1];
-        duration = day_time[2] - day_time[1];
-    }
-    else if (game_time >= day_time[2] && game_time < day_time[3]) {
-        time = 2;
-        game_time -= day_time[2];
-        duration = day_time[3] - day_time[2];
-    }
-    else {
-        time = 3;
-        if (game_time >= day_time[3]) {
-            game_time -= day_time[3];
-        }
-        else {
-            game_time += 1440 - day_time[3];
-        }
-        duration = 1440 - day_time[3] + day_time[0];
+    if (GetMapDayColor() != map_color) {
+        SetMapDayColor(map_color);
+        _needReapplyLights = true;
     }
 
-    if (duration == 0) {
-        duration = 1;
+    if (GetGlobalDayColor() != global_color) {
+        SetGlobalDayColor(global_color);
+        _needReapplyLights = _needReapplyLights || _globalLights != 0;
     }
 
-    result[0] = numeric_cast<uint8_t>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
-    result[1] = numeric_cast<uint8_t>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
-    result[2] = numeric_cast<uint8_t>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
-
-    if (light != nullptr) {
-        const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
-        const auto min_light = (std::min({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::min({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::min({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
-        const auto cur_light = (result[0] + result[1] + result[2]) / 3;
-        const int32_t light_full = max_light - min_light;
-        const int32_t light_part = max_light - cur_light;
-
-        *light = light_full == 0 ? 0 : std::clamp(light_part * 100 / light_full, 0, 100);
-        *light = std::clamp(*light, 0, 100);
-    }
-
-    return ucolor {result[0], result[1], result[2], 255};
+    SetMapDayLightCapacity(std::clamp(map_light_capacity, 0, 100));
+    SetGlobalDayLightCapacity(std::clamp(global_light_capacity, 0, 100));
 }
 
 FO_END_NAMESPACE

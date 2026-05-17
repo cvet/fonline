@@ -234,6 +234,102 @@ static void Setting_SetEngineValue(AngelScript::asIScriptGeneric* gen)
     value = new_value;
 }
 
+template<typename T>
+struct SettingScalarTypeNames
+{
+    static constexpr const char* ScalarName = nullptr;
+    static constexpr const char* ArrayName = nullptr;
+};
+template<>
+struct SettingScalarTypeNames<int32_t>
+{
+    static constexpr const char* ScalarName = "int";
+    static constexpr const char* ArrayName = "array<int>";
+};
+template<>
+struct SettingScalarTypeNames<int64_t>
+{
+    static constexpr const char* ScalarName = "int64";
+    static constexpr const char* ArrayName = "array<int64>";
+};
+template<>
+struct SettingScalarTypeNames<int8_t>
+{
+    static constexpr const char* ScalarName = "int8";
+    static constexpr const char* ArrayName = "array<int8>";
+};
+template<>
+struct SettingScalarTypeNames<uint8_t>
+{
+    static constexpr const char* ScalarName = "uint8";
+    static constexpr const char* ArrayName = "array<uint8>";
+};
+template<>
+struct SettingScalarTypeNames<int16_t>
+{
+    static constexpr const char* ScalarName = "int16";
+    static constexpr const char* ArrayName = "array<int16>";
+};
+template<>
+struct SettingScalarTypeNames<uint16_t>
+{
+    static constexpr const char* ScalarName = "uint16";
+    static constexpr const char* ArrayName = "array<uint16>";
+};
+template<>
+struct SettingScalarTypeNames<float32_t>
+{
+    static constexpr const char* ScalarName = "float";
+    static constexpr const char* ArrayName = "array<float>";
+};
+template<>
+struct SettingScalarTypeNames<float64_t>
+{
+    static constexpr const char* ScalarName = "double";
+    static constexpr const char* ArrayName = "array<double>";
+};
+template<>
+struct SettingScalarTypeNames<bool>
+{
+    static constexpr const char* ScalarName = "bool";
+    static constexpr const char* ArrayName = "array<bool>";
+};
+template<>
+struct SettingScalarTypeNames<string>
+{
+    static constexpr const char* ScalarName = "string";
+    static constexpr const char* ArrayName = "array<string>";
+};
+
+template<typename>
+struct IsVectorSetting : std::false_type
+{
+};
+template<typename U>
+struct IsVectorSetting<vector<U>> : std::true_type
+{
+};
+
+template<typename T>
+static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& vec = *cast_from_void<const vector<T>*>(gen->GetAuxiliary());
+    auto* as_engine = gen->GetEngine();
+
+    auto* arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
+    arr->Reserve(numeric_cast<int32_t>(vec.size()));
+
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    for (size_t i = 0; i < vec.size(); i++) {
+        T value = vec[i];
+        arr->InsertLast(cast_to_void(&value));
+    }
+
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
+}
+
 static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -532,32 +628,20 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     };
 
     const auto register_engine_setting = [&]<typename T>(const char* owner_type, const char* name, T& data, bool writeble) {
-        string type_str;
-
-        if constexpr (std::is_same_v<T, int32_t>) {
-            type_str = "int";
-        }
-        else if constexpr (std::is_same_v<T, int64_t>) {
-            type_str = "int64";
-        }
-        else if constexpr (std::is_same_v<T, float32_t>) {
-            type_str = "float";
-        }
-        else if constexpr (std::is_same_v<T, float64_t>) {
-            type_str = "double";
-        }
-        else if constexpr (std::is_same_v<T, bool>) {
-            type_str = "bool";
-        }
-        else if constexpr (std::is_same_v<T, string>) {
-            type_str = "string";
-        }
-
-        if (!type_str.empty()) {
+        if constexpr (SettingScalarTypeNames<T>::ScalarName != nullptr) {
+            constexpr const char* type_str = SettingScalarTypeNames<T>::ScalarName;
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
 
             if (writeble) {
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+            }
+        }
+        else if constexpr (IsVectorSetting<T>::value) {
+            using Elem = typename T::value_type;
+            ignore_unused(writeble);
+
+            if constexpr (SettingScalarTypeNames<Elem>::ArrayName != nullptr) {
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{}@ get_{}()", SettingScalarTypeNames<Elem>::ArrayName, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineVectorValue<Elem>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
             }
         }
     };

@@ -44,14 +44,14 @@ FO_DECLARE_EXCEPTION(RenderingException);
 
 using WindowInternalHandle = void;
 
-constexpr size_t EFFECT_MAX_PASSES = 6;
-constexpr size_t EFFECT_SCRIPT_VALUES = 16;
+constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;
+constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;
 
 #if FO_ENABLE_3D
-constexpr size_t MODEL_LAYERS_COUNT = 30;
-constexpr size_t MODEL_MAX_TEXTURES = 8;
-constexpr size_t MODEL_MAX_BONES = 54;
-constexpr size_t BONES_PER_VERTEX = 4;
+constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;
+constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;
+constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;
+constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;
 #endif
 
 #if FO_RENDER_32BIT_INDEX
@@ -147,12 +147,12 @@ struct Vertex3D
     float32_t TexCoordBase[2] {};
     vec3 Tangent {};
     vec3 Bitangent {};
-    float32_t BlendWeights[BONES_PER_VERTEX] {};
-    float32_t BlendIndices[BONES_PER_VERTEX] {};
+    float32_t BlendWeights[MODEL_BONES_PER_VERTEX] {};
+    float32_t BlendIndices[MODEL_BONES_PER_VERTEX] {};
     ucolor Color {};
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
-static_assert(sizeof(Vertex3D) == 100);
+static_assert(sizeof(Vertex3D) == 68 + 8 * MODEL_BONES_PER_VERTEX);
 #endif
 
 class RenderTexture
@@ -212,60 +212,137 @@ protected:
 class RenderEffect
 {
 public:
+    // Uniform-buffer payloads consumed by the per-effect GLSL/HLSL/MSL passes.
+    // All members are float32 in std140 layout (vec4-aligned). For each buffer
+    // the comment lists the corresponding GLSL declaration and which channel
+    // holds what; producers cited in parentheses.
+
+    // GLSL: uniform ProjBuf { mat4 ProjectionMatrix; };
+    // Column-major 4x4 view-projection matrix.
+    // (Renderer::ProjectionMatrixColMaj for 2D, 3dStuff::_frameProjColMaj for 3D.)
     struct ProjBuffer
     {
-        float32_t ProjMatrix[16] {}; // mat44
+        float32_t ProjMatrix[16] {};
     };
 
+    // GLSL: uniform MainTexBuf { vec4 MainTexSize; };
+    //   .x = width px, .y = height px, .z = 1/width, .w = 1/height.
+    // (RenderTexture::SizeData, copied per-draw.)
     struct MainTexBuffer
     {
-        float32_t MainTexSize[4] {}; // vec4
+        float32_t MainTexSize[4] {};
     };
 
+    // GLSL: uniform EggBuf { vec4 EggData[3]; };
+    // Two transparent-egg slots + global parameters:
+    //   EggData[0] = slot 0: .xy = center - drawOffset (px), .zw = radius (px, 0 = inactive)
+    //   EggData[1] = slot 1: same layout
+    //   EggData[2].x = EggTransparencyTransitionFactor (0..0.9999)
+    //   EggData[2].yzw reserved.
+    // (SpriteManager::DrawWithEgg.)
     struct EggBuffer
     {
-        float32_t EggData[12] {}; // vec4[3], center.xy radius.xy per slot + params
+        float32_t EggData[12] {};
     };
 
+    // GLSL: uniform SpriteBorderBuf { vec4 SpriteBorder; };
+    //   .x = left, .y = top, .z = right, .w = bottom (atlas UV rect of the sprite).
+    // (SpriteManager fills from the current draw item's atlas rect.)
     struct SpriteBorderBuffer
     {
-        float32_t SpriteBorder[4] {}; // vec4
+        float32_t SpriteBorder[4] {};
     };
 
+    // GLSL: uniform TimeBuf { vec4 FrameTime; vec4 GameTime; };
+    //   FrameTime.x = real-frame time in seconds (continuously increasing).
+    //   GameTime.x  = game-frame time in seconds (same source today, may diverge).
+    //   Both .yzw are reserved (zero).
+    // (EffectManager::PerFrameEffectUpdate.)
     struct TimeBuffer
     {
-        float32_t FrameTime[4] {}; // vec4
-        float32_t GameTime[4] {}; // vec4
+        float32_t FrameTime[4] {};
+        float32_t GameTime[4] {};
     };
 
+    // GLSL: uniform RandomValueBuf { vec4 RandomValue; };
+    //   .xyzw = four independent random floats in [0,1], refreshed each frame.
+    // (EffectManager::PerFrameEffectUpdate.)
     struct RandomValueBuffer
     {
-        float32_t RandomValue[4] {}; // vec4
+        float32_t RandomValue[4] {};
     };
 
+    // GLSL: uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };
+    // Flat float pool indexed by ExportMethod Game.SetEffectScriptValue(idx, value).
+    // Slot meanings are project-defined; see Scripts/EffectSlots.fos in this game.
     struct ScriptValueBuffer
     {
-        float32_t ScriptValue[EFFECT_SCRIPT_VALUES] {}; // float32
+        float32_t ScriptValue[EFFECT_SCRIPT_VALUES] {};
+    };
+
+    // GLSL: uniform CameraBuf { vec4 MapAnchorScreenPos; vec4 ChunkScreenAnchor; };
+    // Both fields are an **affine basis** for converting the shader's `TexCoord` into a
+    // semantic UV, evaluated as `uv = .xy + TexCoord * .zw`. The scale `.zw` is needed
+    // because `_rtMap` is allocated larger than `_screenSize` (one hex of padding so
+    // sprites that overlap screen edges still render fully), and the FlushMap blit's
+    // `source_rect` samples only the screen-sized content region, so `TexCoord` does not
+    // reach 1.0 at the chunk's right edge — it tops out at `~screen_w/rt_w` (~0.95 with
+    // default hex padding). A `TexCoord - anchor` form would therefore leave a hex-sized
+    // gap between adjacent chunks' world UV at the seam; the affine form cancels both the
+    // rt-vs-screen scale mismatch and the sub-pixel `source_x = fmod(scrollOffset, 1.0)`
+    // offset, so adjacent chunks land on identical UV at the boundary (no seam).
+    //   MapAnchorScreenPos = world-anchored basis.  .xy uses the **pre-zoom** anchor
+    //                        (`anchor_hex - scrollOffset`, no zoom multiply), which makes
+    //                        the resulting `world_uv` **zoom-invariant**: the same world
+    //                        position produces the same UV at every zoom, so weather noise
+    //                        stays pinned to the world during zoom in/out instead of
+    //                        drifting (older screen-anchor form scaled with zoom and
+    //                        visibly slid the noise pattern on zoom). .zw = rt/screen
+    //                        size ratio. Used by snow/rain/fog/dust noise.
+    //   ChunkScreenAnchor  = screen-anchored basis. `screen_uv` stays continuous across
+    //                        the **full screen** regardless of chunking — required for
+    //                        effects pinned to the screen frame (vignette, sun bleach,
+    //                        film grain, heat warp). .xy + .zw = (step_xy + 1) * draw_scale.
+    // Populated by MapView::DrawMap right before the FlushMap pass so weather/dust/rain
+    // shaders can sample world-anchored coords without per-frame scripts.
+    struct CameraBuffer
+    {
+        float32_t MapAnchorScreenPos[4] {};
+        float32_t ChunkScreenAnchor[4] {};
     };
 
 #if FO_ENABLE_3D
+    // GLSL: uniform ModelBuf { vec4 LightColor; vec4 GroundPosition; mat4 WorldMatrices[MAX_BONES]; };
+    //   LightColor       = RGBA tint of the current map light.
+    //   GroundPosition.xyz = world-space ground position; .w reserved (0).
+    //   WorldMatrices    = per-bone skinning matrices, count == effect->MatrixCount.
+    // (3dStuff::Combined3dMeshDraw.)
     struct ModelBuffer
     {
-        float32_t LightColor[4] {}; // vec4
-        float32_t GroundPosition[4] {}; // vec4
-        float32_t WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
+        float32_t LightColor[4] {};
+        float32_t GroundPosition[4] {};
+        float32_t WorldMatrices[16 * MODEL_MAX_BONES] {};
     };
 
+    // GLSL: uniform ModelTexBuf { vec4 TexAtlasOffset[MAX_TEXTURES]; vec4 TexSize[MAX_TEXTURES]; };
+    //   TexAtlasOffset[i] = .xy atlas UV origin, .zw atlas UV scale of texture i.
+    //   TexSize[i]        = .xy width/height px, .zw 1/width 1/height (matches MainTexBuf format).
+    // Used by 3D shaders that sample multiple model textures (normal map etc.).
     struct ModelTexBuffer
     {
-        float32_t TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {}; // vec4
-        float32_t TexSize[4 * MODEL_MAX_TEXTURES] {}; // vec4
+        float32_t TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {};
+        float32_t TexSize[4 * MODEL_MAX_TEXTURES] {};
     };
 
+    // GLSL: uniform ModelAnimBuf { vec4 AnimNormalizedTime; vec4 AnimAbsoluteTime; };
+    //   AnimNormalizedTime.x = current anim progress in [0,1].
+    //   AnimAbsoluteTime.x   = absolute anim time in seconds (looped).
+    //   Both .yzw reserved.
+    // (3dStuff sets these when an effect declares ModelAnimBuf.)
     struct ModelAnimBuffer
     {
-        float32_t AnimNormalizedTime[4] {}; // vec4
-        float32_t AnimAbsoluteTime[4] {}; // vec4
+        float32_t AnimNormalizedTime[4] {};
+        float32_t AnimAbsoluteTime[4] {};
     };
 #endif
 
@@ -275,14 +352,13 @@ public:
     static_assert(sizeof(SpriteBorderBuffer) % 16 == 0 && sizeof(SpriteBorderBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 32);
     static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
-    static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == 64);
+    static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == EFFECT_SCRIPT_VALUES * sizeof(float32_t));
+    static_assert(sizeof(CameraBuffer) % 16 == 0 && sizeof(CameraBuffer) == 32);
 #if FO_ENABLE_3D
-    static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 3488);
-    static_assert(sizeof(ModelTexBuffer) % 16 == 0 && sizeof(ModelTexBuffer) == 256);
+    static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 32 + 64 * MODEL_MAX_BONES);
+    static_assert(sizeof(ModelTexBuffer) % 16 == 0 && sizeof(ModelTexBuffer) == 32 * MODEL_MAX_TEXTURES);
     static_assert(sizeof(ModelAnimBuffer) % 16 == 0 && sizeof(ModelAnimBuffer) == 32);
 #endif
-    // Total size: 4000
-    // Need fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float32))
 
     RenderEffect(const RenderEffect&) = delete;
     RenderEffect(RenderEffect&&) noexcept = delete;
@@ -295,6 +371,7 @@ public:
     [[nodiscard]] auto GetPassCount() const -> size_t { return _passCount; }
 
     [[nodiscard]] auto IsNeedMainTex() const -> bool { return _needMainTex; }
+    [[nodiscard]] auto IsNeedIndoorMaskTex() const -> bool { return _needIndoorMaskTex; }
     [[nodiscard]] auto IsNeedProjBuf() const -> bool { return _needProjBuf; }
     [[nodiscard]] auto IsNeedMainTexBuf() const -> bool { return _needMainTexBuf; }
     [[nodiscard]] auto IsNeedEggBuf() const -> bool { return _needEggBuf; }
@@ -302,6 +379,7 @@ public:
     [[nodiscard]] auto IsNeedTimeBuf() const -> bool { return _needTimeBuf; }
     [[nodiscard]] auto IsNeedRandomValueBuf() const -> bool { return _needRandomValueBuf; }
     [[nodiscard]] auto IsNeedScriptValueBuf() const -> bool { return _needScriptValueBuf; }
+    [[nodiscard]] auto IsNeedCameraBuf() const -> bool { return _needCameraBuf; }
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsNeedModelBuf() const -> bool { return _needModelBuf; }
     [[nodiscard]] auto IsNeedAnyModelTex() const -> bool { return _needAnyModelTex; }
@@ -314,6 +392,7 @@ public:
 
     // Input data
     raw_ptr<const RenderTexture> MainTex {};
+    raw_ptr<const RenderTexture> IndoorMaskTex {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
     raw_ptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
@@ -329,6 +408,7 @@ public:
     optional<TimeBuffer> TimeBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
     optional<ScriptValueBuffer> ScriptValueBuf {};
+    optional<CameraBuffer> CameraBuf {};
 #if FO_ENABLE_3D
     optional<ModelBuffer> ModelBuf {};
     optional<ModelTexBuffer> ModelTexBuf {};
@@ -344,6 +424,7 @@ protected:
     EffectUsage _usage;
 
     bool _needMainTex {};
+    bool _needIndoorMaskTex {};
     bool _needEggBuf {};
     bool _needProjBuf {};
     bool _needMainTexBuf {};
@@ -351,6 +432,7 @@ protected:
     bool _needTimeBuf {};
     bool _needRandomValueBuf {};
     bool _needScriptValueBuf {};
+    bool _needCameraBuf {};
 #if FO_ENABLE_3D
     bool _needModelBuf {};
     bool _needAnyModelTex {};
@@ -369,6 +451,7 @@ protected:
 #endif
 
     int32_t _posMainTex[EFFECT_MAX_PASSES] {};
+    int32_t _posIndoorMaskTex[EFFECT_MAX_PASSES] {};
     int32_t _posEggBuf[EFFECT_MAX_PASSES] {};
     int32_t _posProjBuf[EFFECT_MAX_PASSES] {};
     int32_t _posMainTexBuf[EFFECT_MAX_PASSES] {};
@@ -376,6 +459,7 @@ protected:
     int32_t _posTimeBuf[EFFECT_MAX_PASSES] {};
     int32_t _posRandomValueBuf[EFFECT_MAX_PASSES] {};
     int32_t _posScriptValueBuf[EFFECT_MAX_PASSES] {};
+    int32_t _posCameraBuf[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
     int32_t _posModelBuf[EFFECT_MAX_PASSES] {};
     int32_t _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};

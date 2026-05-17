@@ -326,6 +326,14 @@ public:
     FO_ENTITY_PROPERTY(vector<int32_t>, DayColorTime);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(vector<uint8_t>, DayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, MapDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, GlobalDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, MapDayLightCapacity);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, GlobalDayLightCapacity);
 };
 
 class LocationProperties : public EntityProperties

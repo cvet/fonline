@@ -170,6 +170,7 @@ public:
 
     [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
     [[nodiscard]] auto GetActiveSprites() noexcept -> const vector<unique_ptr<MapSprite>>& { return _activeSprites; }
+    [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const noexcept -> pair<uint32_t, uint32_t>;
 
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8_t* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*;
     void InvalidateAll() noexcept;
@@ -183,6 +184,8 @@ private:
     vector<unique_ptr<MapSprite>> _spritesPool {};
     uint32_t _globalCounter {};
     bool _needSort {};
+    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw

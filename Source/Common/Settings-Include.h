@@ -120,14 +120,15 @@ VARIABLE_SETTING(int32_t, View, ScreenWidth, 1024); // Screen width in pixels
 VARIABLE_SETTING(int32_t, View, ScreenHeight, 768); // Screen height in pixels
 FIXED_SETTING(int32_t, View, MonitorWidth); // Monitor width (read only)
 FIXED_SETTING(int32_t, View, MonitorHeight); // Monitor height (read only)
-VARIABLE_SETTING(bool, View, ShowCorners, false); // If true, corners are shown
-VARIABLE_SETTING(bool, View, ShowSpriteBorders, false); // If true, sprite borders are shown
 FIXED_SETTING(bool, View, HideNativeCursor, false); // If true, native cursor is hidden
 FIXED_SETTING(int32_t, View, FadingDuration, 1000); // Fading duration in milliseconds
 FIXED_SETTING(bool, View, MapZoomEnabled); // Map view zooming
 FIXED_SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)
 FIXED_SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 FIXED_SETTING(bool, View, DisableFog); // Disables fog for more performance
+FIXED_SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
+FIXED_SETTING(vector<uint8_t>, View, GlobalDayColor, 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29); // Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor
+FIXED_SETTING(bool, View, DisableIndoorMask, false); // If true, MapView skips the _rtIndoorMask render pass (saves a sprite-draw + RT swap per frame). Use for projects without weather, or to debug-see weather through hidden roofs.
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

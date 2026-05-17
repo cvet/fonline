@@ -66,16 +66,6 @@ enum class LightFlag : uint8_t
     AllowedDirs = 0x04, // When set, the `Dirs` mask lists ALLOWED directions; otherwise it lists DISABLED (blocked) ones (default behavior — dirs == 0 means no restriction)
 };
 
-///@ ExportEnum
-enum class MapRenderStage : uint8_t
-{
-    AfterTiles,
-    AfterFlatSprites,
-    AfterLighting,
-    AfterSprites,
-    AfterFog,
-};
-
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public RefCounted<SpritePattern>
 {
@@ -206,7 +196,6 @@ public:
     void SwitchShowTrack();
     void SetShowMapperOverlay(bool show);
     void SetShowMapperHiddenSprites(bool show);
-    void SetMapperDayTimeOverride(optional<int32_t> day_time);
 
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
@@ -230,6 +219,8 @@ public:
     void ChangeZoom(float32_t new_zoom, fpos32 anchor);
     void InstantZoom(float32_t new_zoom, fpos32 anchor);
 
+    auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
+    void SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity);
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
     void LockScreenScroll(CritterView* cr, int32_t speed, bool soft_lock, bool unlock_if_same);
@@ -363,8 +354,6 @@ private:
     void OnDestroySelf() override;
     void OnScreenSizeChanged();
 
-    static auto GetColorDay(const vector<int32_t>& day_time, const vector<uint8_t>& colors, int32_t game_time, int32_t* light) -> ucolor;
-
     EventUnsubscriber _eventUnsubscriber {};
 
     bool _mapperMode {};
@@ -386,6 +375,7 @@ private:
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};
+    MapSpriteList _indoorMaskSprites {};
 
     fpos32 _zoomAnchor {};
     float32_t _minZoomScroll {};
@@ -414,6 +404,7 @@ private:
     bool _isShowMapperHiddenSprites {true};
 
     raw_ptr<RenderTarget> _rtMap {};
+    raw_ptr<RenderTarget> _rtIndoorMask {}; // Currently-hidden-roof alpha mask; tells the weather shader where the player can see inside and should not be visually obstructed by snow/rain/dust
     raw_ptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
     optional<irect32> _currentRenderDrawArea {};
 
@@ -434,16 +425,6 @@ private:
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
-
-    int32_t _prevMapDayTime {-1};
-    int32_t _prevGlobalDayTime {-1};
-    optional<int32_t> _mapperDayTimeOverride {};
-    ucolor _prevMapDayColor {};
-    ucolor _prevGlobalDayColor {};
-    ucolor _mapDayColor {};
-    ucolor _globalDayColor {};
-    int32_t _mapDayLightCapacity {};
-    int32_t _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};

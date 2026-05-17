@@ -288,6 +288,7 @@ public:
     GLuint Ubo_TimeBuf {};
     GLuint Ubo_RandomValueBuf {};
     GLuint Ubo_ScriptValueBuf {};
+    GLuint Ubo_CameraBuf {};
 #if FO_ENABLE_3D
     GLuint Ubo_ModelBuf {};
     GLuint Ubo_ModelTexBuf {};
@@ -748,6 +749,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             bind_ubo_block("TimeBuf", opengl_effect->_posTimeBuf[pass]);
             bind_ubo_block("RandomValueBuf", opengl_effect->_posRandomValueBuf[pass]);
             bind_ubo_block("ScriptValueBuf", opengl_effect->_posScriptValueBuf[pass]);
+            bind_ubo_block("CameraBuf", opengl_effect->_posCameraBuf[pass]);
 #if FO_ENABLE_3D
             bind_ubo_block("ModelBuf", opengl_effect->_posModelBuf[pass]);
             bind_ubo_block("ModelTexBuf", opengl_effect->_posModelTexBuf[pass]);
@@ -1220,6 +1222,7 @@ OpenGL_Effect::~OpenGL_Effect()
         delete_ubo(Ubo_TimeBuf);
         delete_ubo(Ubo_RandomValueBuf);
         delete_ubo(Ubo_ScriptValueBuf);
+        delete_ubo(Ubo_CameraBuf);
 #if FO_ENABLE_3D
         delete_ubo(Ubo_ModelBuf);
         delete_ubo(Ubo_ModelTexBuf);
@@ -1322,6 +1325,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         upload_ubo(_needTimeBuf, TimeBuf, Ubo_TimeBuf, true);
         upload_ubo(_needRandomValueBuf, RandomValueBuf, Ubo_RandomValueBuf, true);
         upload_ubo(_needScriptValueBuf, ScriptValueBuf, Ubo_ScriptValueBuf, false);
+        upload_ubo(_needCameraBuf, CameraBuf, Ubo_CameraBuf, true);
 #if FO_ENABLE_3D
         upload_ubo(_needModelBuf, ModelBuf, Ubo_ModelBuf, true);
         upload_ubo(_needModelTexBuf, ModelTexBuf, Ubo_ModelTexBuf, true);
@@ -1353,6 +1357,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             bind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
             bind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
             bind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            bind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
 #if FO_ENABLE_3D
             bind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
             bind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
@@ -1365,6 +1370,13 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (_posMainTex[pass] != -1) {
             GL(glActiveTexture(GL_TEXTURE0 + _posMainTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
+        }
+
+        if (_posIndoorMaskTex[pass] != -1) {
+            const auto* indoor_tex = static_cast<const OpenGL_Texture*>(IndoorMaskTex ? IndoorMaskTex.get() : _ctx->DummyTexture.get());
+            GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));
             GL(glActiveTexture(GL_TEXTURE0));
         }
 
@@ -1421,6 +1433,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             unbind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
             unbind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
             unbind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            unbind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
 #if FO_ENABLE_3D
             unbind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
             unbind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
