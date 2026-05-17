@@ -47,6 +47,7 @@ static constexpr ipos32 MAPPER_CONSOLE_WINDOW_OFFSET = {0, 6};
 static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.ini";
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
+static constexpr int32_t MAPPER_OUTDOOR_DAY_TIME = 12 * 60;
 
 static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) -> irect32
 {
@@ -70,6 +71,23 @@ static auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) -> int
     }
 
     return day_time;
+}
+
+static auto ResolveMapperMapDayTime(const ConfigFile& map_data) -> optional<int32_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const int32_t fixed_day_time = map_data.GetAsInt("ProtoMap", "FixedDayTime", 0);
+
+    if (map_data.GetAsInt("ProtoMap", "FixedTime", 0) != 0 && fixed_day_time > 0) {
+        return fixed_day_time;
+    }
+
+    if (map_data.GetAsInt("ProtoMap", "Outside", 0) != 0) {
+        return MAPPER_OUTDOOR_DAY_TIME;
+    }
+
+    return std::nullopt;
 }
 
 static auto ScaleZoomValue(float32_t current_zoom, float32_t factor) -> float32_t
@@ -521,7 +539,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     for (const auto& res_pack : settings.GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir, false, true, true);
+            MapsFileSys.AddDirSource(dir, res_pack.RecursiveInput, true, true);
         }
     }
 
@@ -727,6 +745,13 @@ auto MapperEngine::GetPreviewSprite(hstring fname) -> Sprite*
     return PreviewSprites.emplace(fname, std::move(spr)).first->second.get();
 }
 
+void MapperEngine::SetInputLocked(bool locked) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    InputLocked = locked;
+}
+
 void MapperEngine::MapperMainLoop()
 {
     FO_STACK_TRACE_ENTRY();
@@ -763,11 +788,29 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (InputLocked) {
+        Settings.ScrollMouseRight = false;
+        Settings.ScrollMouseLeft = false;
+        Settings.ScrollMouseDown = false;
+        Settings.ScrollMouseUp = false;
+        Settings.ScrollKeybRight = false;
+        Settings.ScrollKeybLeft = false;
+        Settings.ScrollKeybDown = false;
+        Settings.ScrollKeybUp = false;
+        MouseHoldMode = INT_NONE;
+        RightMouseDragged = false;
+        RightMouseInertia = {};
+        RightMouseVelocityAccum = {};
+        RightMouseVelocityTime = {};
+    }
+
     if (const bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings.FullscreenMouseScroll) || (!is_fullscreen && Settings.WindowedMouseScroll)) {
-        Settings.ScrollMouseRight = MousePos.x >= Settings.ScreenWidth - 1;
-        Settings.ScrollMouseLeft = MousePos.x <= 0;
-        Settings.ScrollMouseDown = MousePos.y >= Settings.ScreenHeight - 1;
-        Settings.ScrollMouseUp = MousePos.y <= 0;
+        if (!InputLocked) {
+            Settings.ScrollMouseRight = MousePos.x >= Settings.ScreenWidth - 1;
+            Settings.ScrollMouseLeft = MousePos.x <= 0;
+            Settings.ScrollMouseDown = MousePos.y >= Settings.ScreenHeight - 1;
+            Settings.ScrollMouseUp = MousePos.y <= 0;
+        }
     }
 
     if (!SprMngr.IsWindowFocused()) {
@@ -783,7 +826,10 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         ProcessInputEvent(ev);
-        ProcessMapperInputEvent(ev);
+
+        if (!InputLocked) {
+            ProcessMapperInputEvent(ev);
+        }
     }
 
     return true;
@@ -894,7 +940,7 @@ void MapperEngine::ProcessRightMouseInertia()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr || MouseHoldMode == INT_PAN) {
+    if (InputLocked || _curMap == nullptr || MouseHoldMode == INT_PAN) {
         return;
     }
 
@@ -5915,6 +5961,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
         }
     }
 
+    const auto mapper_day_time = ResolveMapperMapDayTime(map_data);
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(proto_map_section);
 
@@ -5937,10 +5984,16 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
     LoadedMaps.emplace_back(std::move(new_map));
-    GetUndoContext(LoadedMaps.back().get(), true)->CleanUndoDepth = 0;
-    SetMapDirty(LoadedMaps.back().get(), false);
+    auto* loaded_map = LoadedMaps.back().get();
 
-    return LoadedMaps.back().get();
+    if (mapper_day_time.has_value()) {
+        MapperMapDayTimes.emplace(loaded_map, mapper_day_time.value());
+    }
+
+    GetUndoContext(loaded_map, true)->CleanUndoDepth = 0;
+    SetMapDirty(loaded_map, false);
+
+    return loaded_map;
 }
 
 auto MapperEngine::LoadMap(string_view map_name) -> MapView*
@@ -5948,7 +6001,18 @@ auto MapperEngine::LoadMap(string_view map_name) -> MapView*
     FO_STACK_TRACE_ENTRY();
 
     const auto map_files = MapsFileSys.FilterFiles("fomap");
-    const auto map_file = map_files.FindFileByName(map_name);
+    File map_file = map_files.FindFileByName(map_name);
+
+    if (!map_file) {
+        string map_path = string(map_name);
+
+        if (!strvex(map_path).ends_with(".fomap")) {
+            map_path = strex("{}.fomap", map_path).str();
+        }
+
+        map_path = strex(map_path).format_path().str();
+        map_file = map_files.FindFileByPath(map_path);
+    }
 
     if (!map_file) {
         AddMess("Map file not found");
@@ -5977,6 +6041,14 @@ void MapperEngine::ShowMap(MapView* map)
 
         _curMap = map;
         RefreshActiveProtoLists();
+    }
+
+    if (const auto day_time_it = MapperMapDayTimes.find(map); day_time_it != MapperMapDayTimes.end()) {
+        map->SetMapperDayTimeOverride(day_time_it->second);
+        SetGlobalDayTime(day_time_it->second);
+    }
+    else {
+        map->SetMapperDayTimeOverride(std::nullopt);
     }
 }
 
@@ -6102,6 +6174,7 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     SetMapDirty(map, false);
+    MapperMapDayTimes.erase(map);
 
     if (clear_undo) {
         ClearUndoContext(map);

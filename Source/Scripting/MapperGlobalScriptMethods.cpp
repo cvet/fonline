@@ -33,11 +33,48 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "FileSystem.h"
 #include "Geometry.h"
 #include "Mapper.h"
+#include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
+
+static void CenterMapperViewOnHex(MapView* map, mpos hex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    map->InstantScrollTo(hex);
+
+    constexpr ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    const ipos32 hex_screen_pos = map->MapToScreenPos(map->GetHexMapPos(hex) + hex_center);
+    const isize32 screen_size = map->GetScreenSize();
+    const ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
+    const fpos32 correction = fpos32(hex_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f);
+
+    map->InstantScroll(correction);
+    map->RebuildMap();
+}
+
+static void CenterMapperViewOnRawHex(MapView* map, ipos32 rawHex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ipos32 new_screen_hex = map->ConvertToScreenRawHex(rawHex);
+    const ipos32 offset_to_new_pos = GeometryHelper::GetHexOffset(map->GetScreenRawHex(), new_screen_hex);
+    map->InstantScroll(fpos32(offset_to_new_pos));
+
+    constexpr ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    const ipos32 raw_hex_pos = GeometryHelper::GetHexOffset(map->GetScreenRawHex(), rawHex);
+    const ipos32 center_screen_pos = map->MapToScreenPos(raw_hex_pos + hex_center);
+    const isize32 screen_size = map->GetScreenSize();
+    const ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
+    const fpos32 correction = fpos32(center_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f);
+
+    map->InstantScroll(correction);
+    map->RebuildMap();
+}
 
 ///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_AddItem(MapperEngine* mapper, hstring pid, mpos hex)
@@ -469,6 +506,280 @@ FO_SCRIPT_API void Mapper_Game_TabSetName(MapperEngine* mapper, int32_t tab, str
 FO_SCRIPT_API void Mapper_Game_AddMessage(MapperEngine* mapper, string_view message)
 {
     mapper->AddMess(message);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    return map->GetSize();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    const auto hex_size = map->GetSize();
+    const auto width = numeric_cast<int32_t>(hex_size.width) * GameSettings::MAP_HEX_WIDTH;
+    const auto height = numeric_cast<int32_t>(hex_size.height) * GameSettings::MAP_HEX_LINE_HEIGHT + (GameSettings::MAP_HEX_HEIGHT - GameSettings::MAP_HEX_LINE_HEIGHT);
+    return {width, height};
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(MapperEngine* mapper, isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (size.width <= 0 || size.height <= 0) {
+        throw ScriptException("View size must be positive", size.width, size.height);
+    }
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    map->SetScreenSize(size);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    if (const irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
+        // Axial -> pixel center, then resolve back to a raw hex without clamping to the
+        // authored map rectangle. ScrollAxialArea may intentionally extend into negative
+        // axial space, and preview captures need to align to that editor boundary.
+        const int32_t axial_cx = area.x + area.width / 2;
+        const int32_t axial_cy = area.y + area.height / 2;
+        const ipos32 pixel_center {axial_cx * (GameSettings::MAP_HEX_WIDTH / 2), axial_cy * GameSettings::MAP_HEX_LINE_HEIGHT};
+        const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(pixel_center);
+        CenterMapperViewOnRawHex(map, raw_hex);
+    }
+    else {
+        const auto map_size = map->GetSize();
+        const mpos center_hex {numeric_cast<int16_t>(map_size.width / 2), numeric_cast<int16_t>(map_size.height / 2)};
+        CenterMapperViewOnHex(map, center_hex);
+    }
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(MapperEngine* mapper, mpos hex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Hex is outside the map", hex.x, hex.y);
+    }
+
+    CenterMapperViewOnHex(map, hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(MapperEngine* mapper, ipos32 rawHex)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    CenterMapperViewOnRawHex(map, rawHex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(MapperEngine* mapper, bool visible)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    map->SetShowMapperOverlay(visible);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(MapperEngine* mapper, bool visible)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    map->SetShowMapperHiddenSprites(visible);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(MapperEngine* mapper, readonly_vector<hstring> itemPids)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    for (const hstring item_pid : itemPids) {
+        map->AddIgnorePid(item_pid);
+    }
+
+    map->RebuildMap();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(MapperEngine* mapper, bool enabled)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    map->SetScrollCheck(enabled);
+    map->RebuildMap();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(MapperEngine* mapper, isize32 viewportSize)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+        throw ScriptException("Viewport size must be positive", viewportSize.width, viewportSize.height);
+    }
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    // Pixel extents of the playable area: ScrollAxialArea (in axial coordinates) maps to
+    // (axial_w * MAP_HEX_WIDTH/2) x (axial_h * MAP_HEX_LINE_HEIGHT) — same basis as the
+    // engine's RefreshMinZoom. For maps without an explicit axial area fall back to the
+    // map's hex bounding box.
+    int32_t pixel_w;
+    int32_t pixel_h;
+
+    if (const irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
+        pixel_w = area.width * (GameSettings::MAP_HEX_WIDTH / 2);
+        pixel_h = area.height * GameSettings::MAP_HEX_LINE_HEIGHT;
+    }
+    else {
+        const auto hex_size = map->GetSize();
+        pixel_w = numeric_cast<int32_t>(hex_size.width) * GameSettings::MAP_HEX_WIDTH;
+        pixel_h = numeric_cast<int32_t>(hex_size.height) * GameSettings::MAP_HEX_LINE_HEIGHT + (GameSettings::MAP_HEX_HEIGHT - GameSettings::MAP_HEX_LINE_HEIGHT);
+    }
+
+    const float32_t zoom_x = numeric_cast<float32_t>(viewportSize.width) / numeric_cast<float32_t>(pixel_w);
+    const float32_t zoom_y = numeric_cast<float32_t>(viewportSize.height) / numeric_cast<float32_t>(pixel_h);
+    return std::min(zoom_x, zoom_y);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperZoom(MapperEngine* mapper, float32_t zoom)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!(zoom > 0.0f)) {
+        throw ScriptException("Zoom must be positive", zoom);
+    }
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    map->SetSpritesZoomTarget(zoom);
+    map->InstantZoom(zoom, fpos32(0.0f, 0.0f));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(MapperEngine* mapper, string_view filePath)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (filePath.empty()) {
+        throw ScriptException("Screenshot file path is empty");
+    }
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    // The mapper's main window paints into the swap-chain backbuffer (no virtual RT) but
+    // SpriteManager keeps an intermediate _rtMain that holds the full frame just before it
+    // is blit out. Re-run the mapper's draw routine to refresh _rtMain, then read pixels
+    // from there. Two paints per save is acceptable for batch tooling.
+    mapper->DrawMapperFrame();
+
+    auto* main_rt = mapper->SprMngr.GetMainRenderTarget();
+
+    if (main_rt == nullptr) {
+        throw ScriptException("SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
+    }
+
+    auto* texture = main_rt->GetTexture();
+    const auto size = texture->Size;
+    auto pixels = texture->GetTextureRegion({0, 0}, size);
+    const bool flipped = texture->FlippedHeight;
+
+    if (flipped) {
+        const auto width = numeric_cast<size_t>(size.width);
+        vector<ucolor> row_buf(width);
+
+        for (int32_t y = 0; y < size.height / 2; y++) {
+            const auto top = numeric_cast<size_t>(y) * width;
+            const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
+            MemCopy(row_buf.data(), pixels.data() + top, width * sizeof(ucolor));
+            MemCopy(pixels.data() + top, pixels.data() + bottom, width * sizeof(ucolor));
+            MemCopy(pixels.data() + bottom, row_buf.data(), width * sizeof(ucolor));
+        }
+    }
+
+    WriteSimpleTga(filePath, size, std::move(pixels));
 }
 
 FO_END_NAMESPACE

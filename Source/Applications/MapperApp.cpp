@@ -67,6 +67,7 @@ static void MapperEntry([[maybe_unused]] void* data)
         if (!Data->Mapper) {
             try {
                 Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), App->MainWindow);
+                Data->Mapper->SetInputLocked(App->Settings.HeadlessWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

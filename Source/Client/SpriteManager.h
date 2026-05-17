@@ -159,6 +159,8 @@ public:
     [[nodiscard]] auto GetResources() noexcept -> FileSystem& { return *_resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
+    [[nodiscard]] auto GetMainRenderTarget() noexcept -> RenderTarget* { return _rtMain.get(); }
+    [[nodiscard]] auto GetMainRenderTarget() const noexcept -> const RenderTarget* { return _rtMain.get(); }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> TextureAtlasManager& { return _atlasMngr; }
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
     [[nodiscard]] auto GetWindow() noexcept -> IAppWindow& { return *_window; }

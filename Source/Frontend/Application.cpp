@@ -905,9 +905,13 @@ auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
     }
 #endif
 
-    if (_isTablet) {
+    if (_isTablet && !Settings.HeadlessWindow) {
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, 1);
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, 1);
+    }
+
+    if (Settings.HeadlessWindow) {
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, 1);
     }
 
     if (Settings.WindowCentered) {

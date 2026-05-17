@@ -83,6 +83,11 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     auto settings = LoadAppSettings(argc, argv);
     WriteLog("Version: {}", settings.GameVersion);
 
+    // Disable message box on exception if headless window is used
+    if (IsEnumSet(flags, AppInitFlags::ShowMessageOnException) && settings.HeadlessWindow) {
+        SetupExceptionCallback(false);
+    }
+
     // Switch logging to a dedicated worker thread once the user setting is known
     if (settings.AsyncLogWrite) {
         SetAsyncLogWriting(true);

@@ -160,6 +160,7 @@ FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone 
 FIXED_SETTING(vector<string>, Render, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
 VARIABLE_SETTING(bool, Render, WindowCentered, true); // If true, window is centered
 VARIABLE_SETTING(bool, Render, WindowResizable, false); // If true, window is resizable
+VARIABLE_SETTING(bool, Render, HeadlessWindow, false); // If true, window is created hidden for off-screen rendering
 VARIABLE_SETTING(bool, Render, NullRenderer, false); // If true, null renderer is used
 VARIABLE_SETTING(bool, Render, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, Render, ForceDirect3D, false); // If true, Direct3D is forced

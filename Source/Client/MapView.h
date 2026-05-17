@@ -166,6 +166,8 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto IsShowMapperOverlay() const noexcept -> bool { return _isShowMapperOverlay; }
+    [[nodiscard]] auto IsShowMapperHiddenSprites() const noexcept -> bool { return _isShowMapperHiddenSprites; }
     [[nodiscard]] auto IsScrollCheck() const noexcept -> bool { return _scrollCheckEnabled; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
@@ -192,6 +194,9 @@ public:
 
     void ClearHexTrack();
     void SwitchShowTrack();
+    void SetShowMapperOverlay(bool show);
+    void SetShowMapperHiddenSprites(bool show);
+    void SetMapperDayTimeOverride(optional<int32_t> day_time);
 
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
@@ -396,6 +401,8 @@ private:
     shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
+    bool _isShowMapperOverlay {true};
+    bool _isShowMapperHiddenSprites {true};
 
     raw_ptr<RenderTarget> _rtMap {};
     raw_ptr<RenderTarget> _rtIndoorMask {}; // Currently-hidden-roof alpha mask; tells the weather shader where the player can see inside and should not be visually obstructed by snow/rain/dust
@@ -419,6 +426,15 @@ private:
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
+
+    int32_t _prevMapDayTime {-1};
+    int32_t _prevGlobalDayTime {-1};
+    ucolor _prevMapDayColor {};
+    ucolor _prevGlobalDayColor {};
+    ucolor _mapDayColor {};
+    ucolor _globalDayColor {};
+    int32_t _mapDayLightCapacity {};
+    int32_t _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};

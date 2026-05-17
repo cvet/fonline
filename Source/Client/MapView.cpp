@@ -574,6 +574,9 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     if (_mapperMode) {
         const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
 
+        if (!_isShowMapperHiddenSprites && item->GetAlwaysHideSprite()) {
+            return;
+        }
         if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
             return;
         }
@@ -1244,7 +1247,7 @@ void MapView::ShowHex(const ViewField& vf)
     }
 
     // Scroll block
-    if (_mapperMode) {
+    if (_mapperMode && _isShowMapperOverlay) {
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {
@@ -2220,6 +2223,49 @@ void MapView::ClearHexTrack()
     FO_RUNTIME_ASSERT(_mapperMode);
 
     MemFill(_hexTrack.data(), 0, _hexTrack.size() * sizeof(char));
+}
+
+void MapView::SetShowMapperOverlay(bool show)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_mapperMode);
+
+    if (_isShowMapperOverlay == show) {
+        return;
+    }
+
+    _isShowMapperOverlay = show;
+    RebuildMap();
+}
+
+void MapView::SetShowMapperHiddenSprites(bool show)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_mapperMode);
+
+    if (_isShowMapperHiddenSprites == show) {
+        return;
+    }
+
+    _isShowMapperHiddenSprites = show;
+    RebuildMap();
+}
+
+void MapView::SetMapperDayTimeOverride(optional<int32_t> day_time)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_mapperMode);
+
+    if (_mapperDayTimeOverride == day_time) {
+        return;
+    }
+
+    _mapperDayTimeOverride = day_time;
+    _prevMapDayTime = -1;
+    _prevGlobalDayTime = -1;
 }
 
 void MapView::SwitchShowTrack()
