@@ -2253,21 +2253,6 @@ void MapView::SetShowMapperHiddenSprites(bool show)
     RebuildMap();
 }
 
-void MapView::SetMapperDayTimeOverride(optional<int32_t> day_time)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    if (_mapperDayTimeOverride == day_time) {
-        return;
-    }
-
-    _mapperDayTimeOverride = day_time;
-    _prevMapDayTime = -1;
-    _prevGlobalDayTime = -1;
-}
-
 void MapView::SwitchShowTrack()
 {
     FO_STACK_TRACE_ENTRY();

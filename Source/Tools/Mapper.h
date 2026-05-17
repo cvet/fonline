@@ -320,7 +320,6 @@ public:
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unordered_set<raw_ptr<MapView>> DirtyMaps {};
-    unordered_map<raw_ptr<MapView>, int32_t> MapperMapDayTimes {};
     unordered_map<raw_ptr<MapView>, UndoContext> UndoContexts {};
     vector<raw_ptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};

@@ -196,7 +196,6 @@ public:
     void SwitchShowTrack();
     void SetShowMapperOverlay(bool show);
     void SetShowMapperHiddenSprites(bool show);
-    void SetMapperDayTimeOverride(optional<int32_t> day_time);
 
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
@@ -426,15 +425,6 @@ private:
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
-
-    int32_t _prevMapDayTime {-1};
-    int32_t _prevGlobalDayTime {-1};
-    ucolor _prevMapDayColor {};
-    ucolor _prevGlobalDayColor {};
-    ucolor _mapDayColor {};
-    ucolor _globalDayColor {};
-    int32_t _mapDayLightCapacity {};
-    int32_t _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};

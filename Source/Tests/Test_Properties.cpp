@@ -2128,13 +2128,13 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
 
     const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
 
     CHECK(item_prop->GetBaseType().IsEntity);
     CHECK(item_prop->IsBaseTypeEntityProto());
     CHECK(item_prop->IsBaseTypeProtoReference());
-    CHECK(map_prop->IsMaybeNull());
+    CHECK(map_prop->IsNullable());
     CHECK(loot_sets_prop->IsDictOfArray());
     CHECK(loot_sets_prop->IsBaseTypeEntityProto());
     CHECK(loot_sets_prop->IsBaseTypeProtoReference());
@@ -2195,7 +2195,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
     const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
     const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
     const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
     const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
@@ -3033,7 +3033,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
     PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
     const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;

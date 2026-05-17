@@ -47,7 +47,6 @@ static constexpr ipos32 MAPPER_CONSOLE_WINDOW_OFFSET = {0, 6};
 static constexpr string_view MAPPER_IMGUI_SETTINGS_CACHE_ENTRY = "MapperImGui.ini";
 static constexpr int32_t DAY_TIME_WRAP_MINUTES = 1440;
 static constexpr int32_t DAY_TIME_VISIBLE_UPPER_BOUND = DAY_TIME_WRAP_MINUTES * 2;
-static constexpr int32_t MAPPER_OUTDOOR_DAY_TIME = 12 * 60;
 
 static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) -> irect32
 {
@@ -71,23 +70,6 @@ static auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) -> int
     }
 
     return day_time;
-}
-
-static auto ResolveMapperMapDayTime(const ConfigFile& map_data) -> optional<int32_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const int32_t fixed_day_time = map_data.GetAsInt("ProtoMap", "FixedDayTime", 0);
-
-    if (map_data.GetAsInt("ProtoMap", "FixedTime", 0) != 0 && fixed_day_time > 0) {
-        return fixed_day_time;
-    }
-
-    if (map_data.GetAsInt("ProtoMap", "Outside", 0) != 0) {
-        return MAPPER_OUTDOOR_DAY_TIME;
-    }
-
-    return std::nullopt;
 }
 
 static auto ScaleZoomValue(float32_t current_zoom, float32_t factor) -> float32_t
@@ -5961,7 +5943,6 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
         }
     }
 
-    const auto mapper_day_time = ResolveMapperMapDayTime(map_data);
     auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
     pmap->GetPropertiesForEdit().ApplyFromText(proto_map_section);
 
@@ -5985,10 +5966,6 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     OnEditMapLoad.Fire(new_map.get());
     LoadedMaps.emplace_back(std::move(new_map));
     auto* loaded_map = LoadedMaps.back().get();
-
-    if (mapper_day_time.has_value()) {
-        MapperMapDayTimes.emplace(loaded_map, mapper_day_time.value());
-    }
 
     GetUndoContext(loaded_map, true)->CleanUndoDepth = 0;
     SetMapDirty(loaded_map, false);
@@ -6041,14 +6018,6 @@ void MapperEngine::ShowMap(MapView* map)
 
         _curMap = map;
         RefreshActiveProtoLists();
-    }
-
-    if (const auto day_time_it = MapperMapDayTimes.find(map); day_time_it != MapperMapDayTimes.end()) {
-        map->SetMapperDayTimeOverride(day_time_it->second);
-        SetGlobalDayTime(day_time_it->second);
-    }
-    else {
-        map->SetMapperDayTimeOverride(std::nullopt);
     }
 }
 
@@ -6174,7 +6143,6 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     SetMapDirty(map, false);
-    MapperMapDayTimes.erase(map);
 
     if (clear_undo) {
         ClearUndoContext(map);
