@@ -286,7 +286,7 @@ FO_SCRIPT_API FO_NULLABLE CritterView* Client_Game_Chosen(ClientEngine* client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Game_GetItem(ClientEngine* client, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Game_GetItem(ClientEngine* client, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
