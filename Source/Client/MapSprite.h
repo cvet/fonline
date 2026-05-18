@@ -117,6 +117,8 @@ public:
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
+    [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
+    [[nodiscard]] auto GetMapProjection() const noexcept -> bool { return _mapProjection; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
@@ -125,6 +127,8 @@ public:
     void SetFixedAlpha(uint8_t alpha) noexcept;
     void SetLight(CornerType corner, const ucolor* light, msize size) noexcept;
     void SetHidden(bool hidden) noexcept;
+    void SetAngle(int16_t angle) noexcept;
+    void SetMapProjection(bool map_projection) noexcept;
     void CreateExtraChain(MapSprite** mspr);
     void AddToExtraChain(MapSprite* mspr);
 
@@ -150,6 +154,8 @@ private:
     raw_ptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
     ucolor _color {};
+    int16_t _angle {};
+    bool _mapProjection {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};
     raw_ptr<MapSprite*> _extraChainRoot {};
     raw_ptr<MapSprite> _extraChainParent {};
@@ -189,7 +195,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjection, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
@@ -218,6 +224,8 @@ public:
     ipos32 TweakOffset {};
     bool IsTweakAlpha {};
     uint8_t TweakAlpha {};
+    int16_t Angle {};
+    bool MapProjection {};
     raw_ptr<MapSprite> MSpr {};
 };
 

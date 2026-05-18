@@ -263,6 +263,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
+    [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
     void SetupFrame(isize32 draw_size);
     void StartMeshGeneration();

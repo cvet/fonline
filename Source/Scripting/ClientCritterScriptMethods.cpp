@@ -481,6 +481,27 @@ FO_SCRIPT_API void Client_Critter_StopMove(CritterView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(CritterView* self)
+{
+#if FO_ENABLE_3D
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr != nullptr && hex_cr->IsModel()) {
+        float32_t a = 180.0f - hex_cr->GetModel()->GetMoveDirAngle();
+        a = std::fmod(a, 360.0f);
+
+        if (a < 0.0f) {
+            a += 360.0f;
+        }
+
+        return iround<int16_t>(a);
+    }
+#endif
+
+    return self->GetDir().angle();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, mdir dir)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);

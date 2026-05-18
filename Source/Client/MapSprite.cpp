@@ -199,6 +199,20 @@ void MapSprite::SetHidden(bool hidden) noexcept
     _hidden = hidden;
 }
 
+void MapSprite::SetAngle(int16_t angle) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _angle = angle;
+}
+
+void MapSprite::SetMapProjection(bool map_projection) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _mapProjection = map_projection;
+}
+
 void MapSprite::CreateExtraChain(MapSprite** mspr)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -273,6 +287,8 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
     mspr->_color = ucolor::clear;
+    mspr->_angle = 0;
+    mspr->_mapProjection = false;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
 

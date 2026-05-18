@@ -91,6 +91,12 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
 
     mapSpr->MSpr = mspr;
 
+    if (mapSpr->Angle != 0) {
+        mspr->SetAngle(mapSpr->Angle);
+    }
+    if (mapSpr->MapProjection) {
+        mspr->SetMapProjection(true);
+    }
     if (!no_light) {
         mspr->SetLight(corner, self->GetLightData(), self->GetSize());
     }

@@ -1109,7 +1109,28 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const auto start_vpos = _spritesDrawBuf->VertCount;
         const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
-        // Setup egg
+        // Rotation and map projection.
+        const int16_t angle_deg = mspr->GetAngle();
+        const bool map_proj = mspr->GetMapProjection();
+
+        if (angle_deg != 0 || map_proj) {
+            const float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
+            const float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
+            const float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
+            const float32_t y_scale = map_proj ? std::cos(_settings->MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
+            const float32_t cx = xf + wf * 0.5f;
+            const float32_t cy = yf + hf * 0.5f;
+            auto& vbuf = _spritesDrawBuf->Vertices;
+
+            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                const float32_t dx = vbuf[j].PosX - cx;
+                const float32_t dy = vbuf[j].PosY - cy;
+                vbuf[j].PosX = cx + dx * cs - dy * sn;
+                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
+            }
+        }
+
+        // Setup eggs
         const bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr->GetHex(), mspr->GetEggAppearence());
         const bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr->GetHex(), mspr->GetEggAppearence());
 
