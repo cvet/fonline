@@ -519,6 +519,18 @@ class Packager:
 						shutil.copy(pdb_input_path, pdb_out_path)
 						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
 
+						# Stage the host executable's PDB next to the runtime DLL's PDB
+						# (`<name>.pdb` vs `<name>.dll.pdb`). Without this a client that ships
+						# with only `LastFrontier.exe` cannot resolve host stack traces after
+						# the updater drops a fresh runtime — the host PDB was never on disk.
+						# Updater.cpp::remap_runtime_name accepts any `<runtime_server_prefix><.suffix>`
+						# entry, so `<name>.pdb` is grabbed as a runtime companion automatically.
+						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
+						if os.path.isfile(host_pdb_input):
+							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
+							log('Client host PDB included', host_pdb_out)
+							shutil.copy(host_pdb_input, host_pdb_out)
+
 					copied_payloads.add(payload_key)
 
 	def merge_additional_config_data(self, *entries: str | None) -> str | None:
