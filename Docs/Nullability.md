@@ -1,8 +1,8 @@
-﻿# Nullability
+# Nullability
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
-Convention and runtime enforcement for nullable values across AngelScript and the native engine boundary.
+Convention and runtime enforcement for nullable values across AngelScript and the native engine boundary. For the broader scripting runtime, see [Scripting.md](Scripting.md); for exported native method ownership, see [ScriptMethodsMap.md](ScriptMethodsMap.md).
 
 ## Core principle
 
@@ -66,7 +66,7 @@ Because the AngelScript preprocessor strips `?` before AS sees the source, the A
 
 ## Engine side: `FO_NULLABLE` macro
 
-Native methods declared with `///@ ExportMethod` in [../Source/Scripting/](../Source/Scripting/) use the inverse-of-pointer-default macro `FO_NULLABLE`. Defined as empty in [../Source/Essentials/BasicCore.h](../Source/Essentials/BasicCore.h), it documents the nullability contract that codegen emits into the AS-side metadata.
+Native methods declared with `///@ ExportMethod` in [../Source/Scripting/](../Source/Scripting/) use the inverse-of-pointer-default macro `FO_NULLABLE`. The owning method files are mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md). Defined as empty in [../Source/Essentials/BasicCore.h](../Source/Essentials/BasicCore.h), it documents the nullability contract that codegen emits into the AS-side metadata.
 
 ```cpp
 ///@ ExportMethod
@@ -173,3 +173,7 @@ When the analyzer's heuristic gets it wrong (saw it with `dynamic_cast<X*>(param
 - [Scripts.md](../../Docs/Scripts.md) â€” overall AngelScript module organization and conventions.
 - [NativeExtensions.md](../../Docs/NativeExtensions.md) â€” `///@ ExportMethod` codegen pipeline and engine source layout.
 - [Testing.md](../../Docs/Testing.md) â€” running unit and gameplay tests that exercise the runtime check.
+
+## Related engine docs
+
+- [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — generated metadata/API flow that must stay aligned with script-visible contracts.

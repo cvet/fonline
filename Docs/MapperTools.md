@@ -1,11 +1,33 @@
-﻿# Mapper Tools
+# Mapper Tools
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
-Project-side automation built on top of `LF_Mapper` for content tooling. Currently covers two pipelines:
+This page documents mapper-specific engine behavior and known mapper automation workflows. For the broader tool map, see [Tools.md](Tools.md); for native mapper script methods, see [ScriptMethodsMap.md](ScriptMethodsMap.md).
 
-1. [Headless Map Render](#headless-map-render) â€” load a list of maps in one mapper invocation and dump each rendered view to a TGA file. First step of the chain that feeds the AI checkpoint-schema generator.
-2. [Map Entrance Preview](#map-entrance-preview) â€” wraps the headless render and emits PNG previews plus `MapEntrancePreviews.fopro` fixed-type data listing every `MapEntry` item with its button pixel position, then links each authored map through `MapEntrancePreview = <MapName>`. Consumed by the in-game checkpoint UI.
+## Mapper lifecycle and source ownership
+
+`Source/Applications/MapperApp.cpp` is the application entry point. It initializes the application/frontend layer, waits for persistent data readiness on Web builds, constructs `MapperEngine`, locks input when `HeadlessWindow` is active, calls `MapperMainLoop()` every frame, and calls `Shutdown()` before exit.
+
+`Source/Tools/Mapper.h` / `Source/Tools/Mapper.cpp` own the reusable mapper runtime. `MapperEngine` is client-like: it uses the client/view/rendering side of the engine, registers mapper metadata, creates sprite factories, processes input, draws editor UI, and loads/saves maps without connecting to a game server.
+
+Important source areas:
+
+- `MapperEngine::MapperMainLoop()` — per-frame mapper execution.
+- `MapperEngine::DrawMapperFrame()` — map/editor frame drawing.
+- `MapperEngine::ProcessMapperInputEvent()` and cursor helpers — input-to-map interactions.
+- `DrawMainPanelImGui()`, `DrawWorkspaceWindowImGui()`, `DrawContentWindowImGui()`, `DrawMapListWindowImGui()`, `DrawMapWindowImGui()`, `DrawInspectorImGui()`, `DrawHistoryWindowImGui()`, `DrawSettingsWindowImGui()`, and `DrawConsoleImGui()` — major ImGui UI panels.
+- `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()` — map file lifecycle.
+- `Source/Scripting/MapperGlobalScriptMethods.cpp` — mapper-side native script helpers exposed through `Mapper_Game_*` methods.
+
+## Extension points and boundaries
+
+Use mapper script methods for editor automation that acts on mapper-owned state: adding/deleting/moving/selecting entities, adding tiles, loading/unloading/saving/showing maps, resizing maps, and managing mapper tabs. The current method group is mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md).
+
+Do not put authoritative gameplay policy in mapper helpers. The mapper can inspect and author map content, but server runtime rules, persistence authority, and gameplay validation remain server-side; see [ServerRuntime.md](ServerRuntime.md) and [EntityModel.md](EntityModel.md).
+
+Do not document one game's mapper binary name or content pipeline as universal engine behavior. The sections below include Last Frontier examples because this repository is currently embedded there; reusable mechanics are the `MapperEngine` lifecycle, mapper script helper surface, and headless render capability.
+
+## Existing project workflows
 
 ## Headless Map Render
 

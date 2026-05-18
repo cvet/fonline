@@ -95,7 +95,7 @@ For an optimized browser build use:
 
 - `buildtools.py build web client Release`
 
-The packaged browser build is emitted into `Workspace/web-debug/LF-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.
+The packaged browser build is emitted into `Workspace/web-debug/<ProjectDevName>-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.
 
 ## Android debug workflow
 
@@ -114,20 +114,20 @@ The Android SDK and NDK workspace parts must be prepared first:
 
 - `bash Engine/BuildTools/prepare-workspace.sh android-arm64`
 
-The packaged Android build is emitted into `Workspace/android-debug/LF-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
+The packaged Android build is emitted into `Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
 
 ```bash
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace connect
-cd Workspace/android-debug/LF-Client-LocalTest-Android
+cd Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android
 ./gradlew assembleDebug
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch --activity com.example.game/.FOnlineActivity
 
 # Remote scene launch from host to Android device
 python3 Engine/BuildTools/buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch
-cd Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android
+cd Workspace/android-debug/<ProjectDevName>-Client-RemoteSceneLaunch-Android
 ./gradlew assembleDebug
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/<ProjectDevName>-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-game --activity com.example.game/.FOnlineActivity
 ```
 
@@ -144,3 +144,7 @@ The Gradle project template lives in `Engine/BuildTools/android-project/` and us
 Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. If they are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
+
+## Pipeline documentation
+
+For the maintained staged CMake pipeline guide, see [../Docs/BuildToolsPipeline.md](../Docs/BuildToolsPipeline.md).

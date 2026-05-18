@@ -1,4 +1,4 @@
-﻿# Debugging
+# Debugging
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
@@ -9,6 +9,25 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 `essentials.natvis` covers Essentials smart pointers, stack traces, exceptions, hashed strings, and compact helper value types.
 
 `unordered_dense.natvis` covers `ankerl::unordered_dense` containers.
+
+## Source paths inspected
+
+- `../BuildTools/natvis/essentials.natvis`
+- `../BuildTools/natvis/unordered_dense.natvis`
+- `../BuildTools/cmake/stages/Finalize.cmake`
+- `../BuildTools/cmake/helpers/Build.cmake`
+- `../Source/Essentials/StackTrace.h`
+- `../Source/Essentials/StackTrace.cpp`
+- `../Source/Essentials/BaseLogging.h`
+- `../Source/Essentials/BaseLogging.cpp`
+- `../Source/Essentials/ExceptionHandling.h`
+- `../Source/Essentials/ExceptionHandling.cpp`
+- `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
+- `../Source/Frontend/ApplicationInit.cpp`
+- `../Source/Tests/Test_StackTrace.cpp`
+- `../Source/Tests/Test_ExceptionHandling.cpp`
+- `../../.vscode/launch.json`
+- `../../.vscode/tasks.json`
 
 ## Stack Trace Architecture
 
@@ -21,7 +40,7 @@ Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFram
 
 ### AngelScript bridge
 
-[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) registers `CollectScriptStackFrames` from `AngelScriptContextManager`'s constructor. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
+[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) installs `CollectScriptStackLayers` through the AngelScript stack-trace installer. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
 
 The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
 
@@ -60,32 +79,13 @@ The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, 
 
 ### Exception reporting and deferred formatting
 
-The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) do **not** resolve symbols on the throwing thread. They build an `ErrorContext` (defined in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h)) that owns:
+The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) create a `CatchedStackTraceData` value with `MakeErrorStackTrace()`. That value contains the origin trace from `BaseEngineException::stack_trace()` when the exception type carries one, plus a fresh catch-site trace from `GetStackTrace()`. `FormatStackTrace(const CatchedStackTraceData&)` formats the origin trace when present, otherwise it prefixes the catch-site trace with `Catched at:`.
 
-- `OriginStackTrace()` â€” the throw-site `StackTraceData` taken from `BaseEngineException::stack_trace()` (or empty for non-engine `std::exception` subclasses).
-- `CatchStackTrace()` â€” captured at the catch site via `GetStackTrace()`.
-- `HasOrigin()` â€” `true` when the origin trace was populated.
-- `IsFatal()` â€” `true` for `ReportExceptionAndExit` callers, `false` for `ReportExceptionAndContinue`. Carried inside `ErrorContext` so callbacks see a single unified value.
+The exception callback receives the already-captured `CatchedStackTraceData` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `ExceptionCallback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `ReportExceptionAndExit` / `ReportExceptionAndContinue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
 
-`ErrorContext::FormatTraceback()` is the heavy operation: it resolves the origin trace (or, when no origin is available, the catch trace prefixed with `Catched at:`) and walks the catch trace into it to drop the `<- Catched here` annotation at the deepest matching frame. Because resolution is `backward::TraceResolver` work, callers are expected to invoke `FormatTraceback()` from a worker thread.
+### Logging and crash-path primitives
 
-`ExceptionCallback` is `function<void(string_view message, const ErrorContext& ctx)>`. Callbacks decide when (and whether) to format. The default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) takes two paths:
-
-- **Common path (non-fatal, no message dialog):** offloads formatting to the asynchronous log writer thread via `WriteLogMessageDeferred`. The throwing thread returns from `Report*` immediately after capturing addresses.
-- **Dialog path (`ShowMessageOnException` flag, packaged fatal, or no `App` yet):** formats synchronously because `Application::ShowErrorMessage` needs the resolved string and the program is exiting anyway.
-
-### Deferred logging primitive
-
-[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/Logging.h](../Source/Essentials/Logging.h) expose two layers:
-
-| Function | Purpose |
-|----------|---------|
-| `WriteBaseLogDeferred(producer)` | Enqueue a `function<std::string()>` whose result is written to the file/cout sink. The producer runs on the async writer thread (or immediately when async is disabled). |
-| `WriteLogMessageDeferred(type, producer)` | Capture the `[date] [time] [thread]` prefix eagerly so the timestamp matches the call site, then defer the body. Sinks registered through `SetLogCallback` (and `Platform::InfoLog` / `TracyMessage`) fire on the writer thread for these entries. |
-
-The async queue in `BaseLogging.cpp` holds either an eager `std::string` payload or a deferred `function<std::string()>`; the worker thread invokes the producer just before `WriteSync`, keeping format work off the throwing thread.
-
-`SetAsyncLogWriting(true)` (called once `settings.AsyncLogWrite` is known) is what activates the deferred path. Until then, both `WriteBaseLogDeferred` and `WriteLogMessageDeferred` invoke the producer synchronously on the calling thread â€” the same lag returns, but only during the few milliseconds of startup before the writer is up.
+[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
 
 ### Coverage
 
@@ -112,7 +112,7 @@ For the MSVC CMake generators, solution-folder grouping is only reliable when a 
 1. Regenerate or open the MSVC solution.
 2. Start a debugger session and inspect `fo::raw_ptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
 3. Confirm that expanding the smart pointer opens the pointed object directly.
-4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through the `ScriptFrames` shared pointer.
+4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
 5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.
 
 ## VS Code Debug Configurations

@@ -1,4 +1,4 @@
-﻿# Client Runtime Split and Updater
+# Client Runtime Split and Updater
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
@@ -12,6 +12,39 @@ The host loads the runtime through a stable C ABI ([../Source/Client/ClientRunti
 **Platform support.** The host + runtime split is built only on Windows, Linux and macOS â€” that is the set of platforms where `CanSelfUpdateNativeModules()` returns `true` and where the static_assert at the top of `ClientLib.cpp` accepts the build. Web, iOS and Android ship a single self-contained `LF_Client` binary instead: the engine code is statically linked into the executable and the runtime-loading branch in `RunEmbeddedOrLoadedClient()` is never taken. The CMake gate that enforces this lives in [../BuildTools/cmake/stages/Applications.cmake](../BuildTools/cmake/stages/Applications.cmake) (`if(FO_WINDOWS OR FO_LINUX OR FO_MAC)`), and Android additionally takes the `FO_BUILD_LIBRARY` branch which produces only the shared `LF_Client` artifact required by the SDL Android Java loader.
 
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
+
+
+## Server-side updater backend
+
+The client updater is served by the authoritative server runtime. `ServerEngine` wires an `UpdaterBackend` from `Source/Server/UpdaterBackend.*` during server startup when client packs/resources are prepared. The backend scans client resources and native runtime artifacts, builds target-specific update descriptors, and answers file-portion requests with `NetMessage::UpdateFileData`.
+
+Runtime ownership is split deliberately:
+
+- [ServerRuntime.md](ServerRuntime.md) documents where `UpdaterBackend` is hosted and how it fits into server startup/connection processing.
+- This page documents the client host/runtime ABI, staging/reload flow, compatibility checks, and updater protocol behavior visible to the client.
+
+Keep long protocol and host-runtime details here; keep server lifecycle and manager ownership in [ServerRuntime.md](ServerRuntime.md).
+
+## Source paths inspected
+
+- `Source/Applications/ClientApp.cpp`
+- `Source/Applications/ClientLib.cpp`
+- `Source/Client/ClientRuntimeApi.h`
+- `Source/Client/ClientRuntimeApi.cpp`
+- `Source/Client/Updater.h`
+- `Source/Client/Updater.cpp`
+- `Source/Server/UpdaterBackend.h`
+- `Source/Server/UpdaterBackend.cpp`
+- `Source/Server/Server.cpp`
+- `Source/Common/Common.h`
+- `Source/Common/Settings-Include.h`
+- `BuildTools/cmake/stages/Applications.cmake`
+- `BuildTools/package.py`
+- `Source/Tests/Test_ClientRuntimeApi.cpp`
+- `../Tools/PipelineTests/test_updater_binary_update.py`
+- `../Tools/PipelineTests/test_updater_staging_promotion.py`
+- `../Tools/PipelineTests/test_updater_resource_pack.py`
+- `../Tools/PipelineTests/test_updater_compat_outdated.py`
 
 ## Two-layer client startup
 
@@ -188,7 +221,7 @@ Both the bundled runtime library in client packages and the runtime libraries st
 
 The internal config patch area is generated from the CMake `FO_INTERNAL_CONFIG_CAPACITY` option, next to `FO_EMBEDDED_DATA_CAPACITY`; `package.py` discovers the actual reserved size from the generated binary markers before writing config data.
 
-Naming convention from `BuildBinaryEntry` / `build_runtime_update_target_name`:
+Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
 - The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
