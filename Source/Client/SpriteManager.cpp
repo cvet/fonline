@@ -1028,6 +1028,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     const auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
     const auto& sprites = mspr_list.GetActiveSprites();
+    const bool apply_brightness = _settings->Brightness != 0;
 
     for (uint32_t i = range_begin; i < range_end; i++) {
         const auto& mspr = sprites[i];
@@ -1087,8 +1088,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Fix color
-        color_r = ApplyColorBrightness(color_r);
-        color_l = ApplyColorBrightness(color_l);
+        if (apply_brightness) {
+            color_r = ApplyColorBrightness(color_r);
+            color_l = ApplyColorBrightness(color_l);
+        }
 
         // Choose effect
         auto* spr_effect = mspr->GetDrawEffect();
