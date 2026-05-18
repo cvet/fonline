@@ -126,7 +126,6 @@ void Location::RemoveMap(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
-    
 
     vec_remove_unique_value(_locMaps, map);
 
