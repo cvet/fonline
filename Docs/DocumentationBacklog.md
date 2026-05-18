@@ -27,14 +27,14 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 
 ## Build, generation, and resources
 
-- `drafted` — [BuildWorkflow.md](BuildWorkflow.md)
-  - Inspect: `BuildTools/cmake/`, embedding project presets, platform package folders.
-- `drafted` — [BuildToolsPipeline.md](BuildToolsPipeline.md)
-  - Inspect: `BuildTools/cmake/stages/*.cmake`, `BuildTools/cmake/helpers/*.cmake`.
-- `drafted` — [BakingPipeline.md](BakingPipeline.md)
-  - Inspect: `Source/Tools/Baker.*`, `Source/Tools/*Baker.*`, `Source/Applications/BakerApp.cpp`, `BuildTools/cmake/stages/ScriptsAndBaking.cmake`, `Source/Tests/Test_*Baker*.cpp`.
-- `drafted` — [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md)
-  - Inspect: `Source/Common/MetadataRegistration.*`, `Source/Common/GenericCode-Template.cpp`, `Source/Common/Properties.*`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `PUBLIC_API.md`.
+- `verified` — [BuildWorkflow.md](BuildWorkflow.md)
+  - Verified against engine CMake/BuildTools entry points, staged CMake build/test/package wiring, validators, `Source/Applications/TestingApp.cpp`, and test docs on 2026-05-18.
+- `verified` — [BuildToolsPipeline.md](BuildToolsPipeline.md)
+  - Verified against `BuildTools/Init.cmake`, current staged CMake files, helpers, codegen/package scripts, and build-generation ownership boundaries on 2026-05-18.
+- `verified` — [BakingPipeline.md](BakingPipeline.md)
+  - Verified against `BuildTools/cmake/stages/ScriptsAndBaking.cmake`, build-hash helper, baker apps/library entry points, all current `Source/Tools/*Baker.*` implementations, and baker tests on 2026-05-18.
+- `verified` — [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md)
+  - Verified against `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, metadata registration templates/runtime, property/entity model owners, `MetadataBaker`, and metadata/property tests on 2026-05-18.
 
 ## Runtime model
 
@@ -62,28 +62,28 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 
 ## Scripting and tools
 
-- `drafted` — [Scripting.md](Scripting.md)
-  - Inspect: `Source/Common/ScriptSystem.*`, `Source/Scripting/AngelScript/`, `Source/Scripting/Native/`, `Source/Scripting/Mono/`, `Source/Scripting/*ScriptMethods.cpp`, AngelScript tests.
-- `drafted` — [ScriptMethodsMap.md](ScriptMethodsMap.md)
-  - Inspect: all `Source/Scripting/*ScriptMethods.cpp` files.
-- `drafted` — [Nullability.md](Nullability.md)
-  - Inspect: nullable annotations in native/script boundary code and analyzers.
-- `drafted` — [Tools.md](Tools.md)
-  - Inspect: `Source/Tools/*.h`, `Source/Tools/*.cpp`, tool app entry points.
-- `drafted` — [MapperTools.md](MapperTools.md)
-  - Inspect: `Source/Tools/Mapper.*`, `Source/Applications/MapperApp.cpp`, mapper script methods.
+- `verified` — [Scripting.md](Scripting.md)
+  - Verified against `Source/Common/ScriptSystem.*`, AngelScript backend/runtime/compiler files, core scripts, native script method files, build script-compilation wiring, and scripting tests on 2026-05-18.
+- `verified` — [ScriptMethodsMap.md](ScriptMethodsMap.md)
+  - Verified against all 18 current `Source/Scripting/*ScriptMethods.cpp` files and 996 current `///@ ExportMethod` declarations on 2026-05-18.
+- `verified` — [Nullability.md](Nullability.md)
+  - Verified against AngelScript nullable suffix parsing, `FO_NULLABLE`, codegen runtime checks, nullable analyzer tools, parent VS Code/CI task wiring, and nullable/script tests on 2026-05-18.
+- `verified` — [Tools.md](Tools.md)
+  - Verified against current `Source/Tools/*.h`, `Source/Tools/*.cpp`, tool application entry points, baker tests, mapper/editor/asset/particle owners, and tool/build routing docs on 2026-05-18.
+- `verified` — [MapperTools.md](MapperTools.md)
+  - Verified against `Source/Applications/MapperApp.cpp`, `Source/Tools/Mapper.*`, mapper/common script methods, client map-view helpers, geometry transforms, and the current embedding-project mapper-render/map-preview scripts on 2026-05-18.
 
 ## Essentials, infrastructure, and tests
 
-- `planned` — Docs/Essentials.md
-  - Inspect: `Source/Essentials/*.h`, `Source/Essentials/*.cpp`, essentials tests.
-- `planned` — Docs/ConfigurationAndDataSources.md
-  - Inspect: `Source/Common/ConfigFile.*`, `Source/Common/DataSource.*`, `Source/Common/FileSystem.*`, `Source/Common/CacheStorage.*`, `Source/Essentials/DiskFileSystem.*`.
-- `planned` — Docs/Testing.md
-  - Inspect: `Source/Tests/Test_*.cpp`, `Source/Applications/TestingApp.cpp`, BuildTools test target generation.
-- `planned` — Docs/DocumentationMaintenance.md
-  - Inspect: [AGENTS.md](../AGENTS.md), this backlog, [DocumentationExpansionPlan.md](DocumentationExpansionPlan.md).
+- `verified` — [Essentials.md](Essentials.md)
+  - Created and verified against `Source/Essentials/*.h`, `Source/Essentials/*.cpp`, `BuildTools/cmake/stages/EngineSources.cmake`, and essentials tests on 2026-05-18.
+- `verified` — [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md)
+  - Created and verified against `Source/Common/ConfigFile.*`, `Settings.*`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`, `Source/Essentials/DiskFileSystem.*`, resource/baker consumers, and focused tests on 2026-05-18.
+- `verified` — [Testing.md](Testing.md)
+  - Created and verified against `Source/Applications/TestingApp.cpp`, all 79 current `Source/Tests/Test_*.cpp` files, `FO_TESTS_SOURCE`, generated test/coverage target wiring, and `Source/Tests/README.md` on 2026-05-18.
+- `verified` — [DocumentationMaintenance.md](DocumentationMaintenance.md)
+  - Created and verified against `../AGENTS.md`, the docs hub, backlog, expansion plan, research template, verification report, and current source-grounded doc conventions on 2026-05-18.
 
 ## Next recommended slice
 
-The next high-value verification slice is `Docs/BuildToolsPipeline.md`, `Docs/BakingPipeline.md`, and `Docs/GeneratedApiAndMetadata.md`, because the architecture/application overview is now source-checked and the remaining drafted build/generation slice shares CMake/codegen/baker ownership.
+The documentation backlog plan is complete as of the 2026-05-18 planned-docs slice. Future work should start from new source changes, stale findings, or explicitly requested docs rather than this initial backlog.

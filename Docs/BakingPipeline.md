@@ -4,6 +4,51 @@ This document explains the engine resource baking pipeline: where it is wired, w
 
 Use this for reusable engine behavior. Game-specific content folder rules and product package policy belong in the embedding project's docs.
 
+## Source paths inspected
+
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/helpers/WriteBuildHash.cmake`
+- `Source/Applications/BakerApp.cpp`
+- `Source/Applications/BakerLib.cpp`
+- `Source/Tools/Baker.h`
+- `Source/Tools/Baker.cpp`
+- `Source/Tools/MetadataBaker.h`
+- `Source/Tools/MetadataBaker.cpp`
+- `Source/Tools/ConfigBaker.h`
+- `Source/Tools/ConfigBaker.cpp`
+- `Source/Tools/RawCopyBaker.h`
+- `Source/Tools/RawCopyBaker.cpp`
+- `Source/Tools/ImageBaker.h`
+- `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/EffectBaker.h`
+- `Source/Tools/EffectBaker.cpp`
+- `Source/Tools/ProtoBaker.h`
+- `Source/Tools/ProtoBaker.cpp`
+- `Source/Tools/MapBaker.h`
+- `Source/Tools/MapBaker.cpp`
+- `Source/Tools/TextBaker.h`
+- `Source/Tools/TextBaker.cpp`
+- `Source/Tools/ProtoTextBaker.h`
+- `Source/Tools/ProtoTextBaker.cpp`
+- `Source/Tools/ModelMeshBaker.h`
+- `Source/Tools/ModelMeshBaker.cpp`
+- `Source/Tools/ModelInfoBaker.h`
+- `Source/Tools/ModelInfoBaker.cpp`
+- `Source/Tools/AngelScriptBaker.h`
+- `Source/Tools/AngelScriptBaker.cpp`
+- `Source/Tests/Test_BakerSetup.cpp`
+- `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ConfigBaker.cpp`
+- `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_EffectBaker.cpp`
+- `Source/Tests/Test_ProtoBaker.cpp`
+- `Source/Tests/Test_ProtoTextBaker.cpp`
+- `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_TextBaker.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_AngelScriptBaker.cpp`
+
 ## What baking does
 
 Baking turns project resources and configuration into runtime-ready output. The build pipeline creates `BakeResources` and `ForceBakeResources` command targets in `BuildTools/cmake/stages/ScriptsAndBaking.cmake`. Those targets run the project baker application with the embedding project's main config applied.

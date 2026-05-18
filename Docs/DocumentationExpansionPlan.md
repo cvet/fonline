@@ -31,6 +31,7 @@ Existing docs:
 - `Docs/BuildToolsPipeline.md` — BuildTools CMake stage map.
 - `Docs/BakingPipeline.md` — resource baking and baker ownership.
 - `Docs/GeneratedApiAndMetadata.md` — codegen and metadata registration.
+- `Docs/ConfigurationAndDataSources.md` — config parsing, settings, data sources, file lookup, and caches.
 - `Docs/EntityModel.md` — entity/property/prototype runtime model.
 - `Docs/MapsMovementGeometry.md` — map coordinates, path finding, movement, and loading.
 - `Docs/Networking.md` — network buffers, commands, transports, and UDP ordering.
@@ -45,6 +46,8 @@ Existing docs:
 - `Docs/Nullability.md` — script/native nullability.
 - `Docs/Tools.md` — engine tools map: bakers, mapper, editor, asset explorer, particle editor, and application entry points.
 - `Docs/MapperTools.md` — mapper lifecycle, native helper boundaries, and mapper automation.
+- `Docs/Testing.md` — test-suite inventory, generated test targets, coverage, and validation routing.
+- `Docs/DocumentationMaintenance.md` — source-grounded docs maintenance workflow.
 - `Docs/WebDebugging.md` — Web debugging.
 - `Docs/AndroidDebugging.md` — Android debugging.
 

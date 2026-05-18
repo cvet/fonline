@@ -4,6 +4,21 @@
 
 This page documents mapper-specific engine behavior and known mapper automation workflows. For the broader tool map, see [Tools.md](Tools.md); for native mapper script methods, see [ScriptMethodsMap.md](ScriptMethodsMap.md).
 
+## Source paths inspected
+
+- `Source/Applications/MapperApp.cpp`
+- `Source/Tools/Mapper.h`
+- `Source/Tools/Mapper.cpp`
+- `Source/Scripting/MapperGlobalScriptMethods.cpp`
+- `Source/Scripting/CommonGlobalScriptMethods.cpp`
+- `Source/Client/MapView.h`
+- `Source/Client/MapView.cpp`
+- `Source/Common/Geometry.cpp`
+- `../../Scripts/MapperRender.fos`
+- `../../Tools/MapPreview/generate_map_preview.py`
+- `../../Tools/MapPreview/map_preview_overrides.ini`
+- `../../LastFrontier.fomain`
+
 ## Mapper lifecycle and source ownership
 
 `Source/Applications/MapperApp.cpp` is the application entry point. It initializes the application/frontend layer, waits for persistent data readiness on Web builds, constructs `MapperEngine`, locks input when `HeadlessWindow` is active, calls `MapperMainLoop()` every frame, and calls `Shutdown()` before exit.
@@ -228,7 +243,7 @@ For full-map batches, prefer `--skip-existing` while tuning so interrupted or co
 
 ## See Also
 
-- [Architecture.md](../../Docs/Architecture.md) â€” repository layout, where mapper sources live
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” building `LF_Mapper`
-- [Checkpoints.md](../../Docs/Checkpoints.md) â€” consumer of the rendered map schemas and the entrance previews
-- [Scripts.md](../../Docs/Scripts.md) â€” AS module conventions, where mapper-side scripts live
+- [Architecture.md](Architecture.md) — repository layout and engine layer ownership
+- `../../Docs/BuildAndLaunch.md` — embedding-project build route for `LF_Mapper`
+- `../../Docs/Checkpoints.md` — embedding-project consumer of rendered map schemas and entrance previews
+- [Scripting.md](Scripting.md) — engine scripting runtime and mapper-side script method ownership

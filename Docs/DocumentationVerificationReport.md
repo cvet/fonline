@@ -164,4 +164,140 @@ Results:
 
 Follow-up:
 
-- Continue with semantic verification of `Docs/BuildToolsPipeline.md`, `Docs/BakingPipeline.md`, and `Docs/GeneratedApiAndMetadata.md`.
+- Completed by the later 2026-05-18 build/generation slice below; continue next with the script-boundary slice.
+
+## 2026-05-18 — build/generation slice
+
+Scope:
+
+- `Docs/BuildToolsPipeline.md`
+- `Docs/BakingPipeline.md`
+- `Docs/GeneratedApiAndMetadata.md`
+- `Docs/DocumentationBacklog.md`
+
+Source areas checked:
+
+- `BuildTools/Init.cmake`, all current `BuildTools/cmake/stages/*.cmake`, `BuildTools/cmake/helpers/*.cmake`, `BuildTools/codegen.py`, and `BuildTools/package.py` for staged build/generation/package ownership.
+- `Source/Applications/BakerApp.cpp`, `Source/Applications/BakerLib.cpp`, `Source/Tools/Baker.*`, all current `Source/Tools/*Baker.*` implementations, `BuildTools/cmake/stages/ScriptsAndBaking.cmake`, and baker tests for baking behavior.
+- `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/cmake/stages/EngineSources.cmake`, metadata helpers/state, `BuildTools/codegen.py`, `Source/Common/MetadataRegistration.*`, `Source/Common/MetadataRegistration-Template.cpp`, `Source/Common/GenericCode-Template.cpp`, `Source/Common/Properties.*`, `Source/Common/Entity.*`, `Source/Tools/MetadataBaker.*`, metadata/property tests, and `PUBLIC_API.md` for generated API and metadata behavior.
+
+Results:
+
+- Added `Source paths inspected` sections to the BuildTools, baking, and generated API/metadata docs.
+- Replaced remaining future-script-doc wording in build routing with a real link to the present `Scripting.md` page.
+- Confirmed current built-in baker owners include `ModelMeshBaker` / `ModelInfoBaker` under `Source/Tools/` and current model-baker coverage in `Source/Tests/Test_ModelBaker.cpp`.
+- Backticked source/build/doc path checks for this slice: no missing paths.
+- Symbol spot checks found the documented owners and APIs in current source, including `AddStageHook`, `AddExecutableApplication`, `AddSharedApplication`, `BakeResources`, `ForceBakeResources`, `CompileAngelScript`, `CompileMonoScripts`, `BaseBaker`, `SetupBakers`, `MasterBaker`, `MetadataBaker`, `CodeGeneration`, `ForceCodeGeneration`, `FO_SOURCE_META_FILES`, `FO_MONO_SOURCE`, `FO_ADDED_COMMON_HEADERS`, `FO_EMBEDDED_DATA_CAPACITY`, `FO_INTERNAL_CONFIG_CAPACITY`, `RegisterDynamicMetadata`, `MetadataRegistration` templates, `GenericCode-Template`, and `PropertyRegistrator`.
+- Promoted in `Docs/DocumentationBacklog.md`: `BuildToolsPipeline.md`, `BakingPipeline.md`, and `GeneratedApiAndMetadata.md` from `drafted` to `verified`.
+
+Follow-up:
+
+- Completed by the later 2026-05-18 scripting/nullability slice below; continue next with the tools/mapper slice.
+
+## 2026-05-18 — scripting/nullability slice
+
+Scope:
+
+- `Docs/Scripting.md`
+- `Docs/ScriptMethodsMap.md`
+- `Docs/Nullability.md`
+- `Docs/DocumentationBacklog.md`
+
+Source areas checked:
+
+- `Source/Common/ScriptSystem.*`, `Source/Scripting/AngelScript/AngelScriptScripting.*`, `AngelScriptBackend.*`, `AngelScriptAttributes.cpp`, `AngelScriptCall.cpp`, `AngelScriptEntity.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptRemoteCalls.cpp`, `AngelScriptReflection.cpp`, engine core scripts, Mono/Native roots, and `BuildTools/cmake/stages/ScriptsAndBaking.cmake` for scripting runtime/build flow.
+- All 18 current `Source/Scripting/*ScriptMethods.cpp` files for native exported method ownership and current export counts.
+- `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`, `Source/Tools/MetadataBaker.cpp`, `BuildTools/codegen.py`, `Source/Common/ScriptSystem.h`, `Source/Essentials/BasicCore.h`, nullable analyzer tools under `../Tools/NullableEstimate/`, parent VS Code/CI task wiring, and nullable/script tests for nullability contracts.
+
+Results:
+
+- Confirmed the current native script method map: 996 `///@ ExportMethod` declarations across 18 script method files.
+- Corrected stale nullability workflow wording: current nullable appliers preserve author-chosen markers and remove redundant guards; they do not own automatic contract inference.
+- Replaced stale parent docs routes in `Nullability.md` with current engine docs and the current `Source/Tests/README.md` testing source of truth.
+- Backticked source/build/doc path checks for this slice: no missing paths.
+- Symbol spot checks found the documented owners and APIs in current source, including `ScriptSystem`, `ScriptSystemBackend`, `RegisterBackend`, `MapScriptTypes`, `InitModules`, `FindFunc`, `CheckFunc`, `CallFunc`, `CallAdminFunc`, `NativeDataProvider`, `CheckArgNotNull`, `CheckReturnNotNull`, `InitAngelScriptScripting`, `CompileAngelScript`, `AngelScriptBackend`, `RegisterMetadata`, `CompileTextScripts`, `LoadBinaryScripts`, `StripNullableTypeSuffix`, `FO_NULLABLE`, and `is_validated_pointer_meta_type`.
+- Promoted in `Docs/DocumentationBacklog.md`: `Scripting.md`, `ScriptMethodsMap.md`, and `Nullability.md` from `drafted` to `verified`.
+
+Follow-up:
+
+- Completed by the later 2026-05-18 tools/mapper slice below; continue next with the planned docs set.
+
+## 2026-05-18 — tools/mapper slice
+
+Scope:
+
+- `Docs/Tools.md`
+- `Docs/MapperTools.md`
+- `Docs/DocumentationBacklog.md`
+
+Source areas checked:
+
+- All current `Source/Tools/*.h` and `Source/Tools/*.cpp` files, tool application entry points under `Source/Applications/`, and focused baker tests for reusable tool ownership.
+- `Source/Applications/MapperApp.cpp`, `Source/Tools/Mapper.*`, `Source/Scripting/MapperGlobalScriptMethods.cpp`, `Source/Scripting/CommonGlobalScriptMethods.cpp`, `Source/Client/MapView.*`, and `Source/Common/Geometry.cpp` for mapper lifecycle, mapper automation helpers, screenshot/readback flow, and map/camera transform claims.
+- Embedding-project examples explicitly marked as examples: `../../Scripts/MapperRender.fos`, `../../Tools/MapPreview/generate_map_preview.py`, `../../Tools/MapPreview/map_preview_overrides.ini`, and `../../LastFrontier.fomain`.
+
+Results:
+
+- Added `Source paths inspected` to `Docs/MapperTools.md` and kept project-specific map-preview/checkpoint details explicitly routed through `../../...` embedding-project paths.
+- Replaced stale parent-doc links in `MapperTools.md` with engine-local `Architecture.md` / `Scripting.md` links where the owner now exists in engine docs; project-only build/checkpoint routes remain plain embedding-project paths.
+- Backticked source/build/doc path checks for this slice: no missing paths.
+- Symbol spot checks found the documented owners and APIs in current source, including `MasterBaker`, `BaseBaker`, `SetupBakers`, `MapperEngine`, `MapperMainLoop`, `DrawMapperFrame`, `ProcessMapperInputEvent`, `LoadMapFromText`, `LoadMap`, `ShowMap`, `SaveCurrentMap`, `SaveMap`, `Mapper_Game_*` exports, `Common_Game_RequestQuit`, `MapView::SetScreenSize`, `MapView::InstantScrollTo`, `MapView::InstantZoom`, `WriteSimpleTga`, and `GetHexOffset`.
+- Promoted in `Docs/DocumentationBacklog.md`: `Tools.md` and `MapperTools.md` from `drafted` to `verified`.
+
+Follow-up:
+
+- Completed by the later 2026-05-18 planned-docs completion slice below; the initial documentation backlog is now complete.
+## 2026-05-18 — planned-docs completion slice
+
+Scope:
+
+- `Docs/Essentials.md`
+- `Docs/ConfigurationAndDataSources.md`
+- `Docs/Testing.md`
+- `Docs/DocumentationMaintenance.md`
+- `Docs/README.md`
+- `Source/Tests/README.md`
+- `AGENTS.md`
+- `Docs/DocumentationBacklog.md`
+
+Source areas checked:
+
+- `Source/Essentials/*.h`, `Source/Essentials/*.cpp`, `BuildTools/cmake/stages/EngineSources.cmake`, and essentials tests for the low-level foundation page.
+- `Source/Common/ConfigFile.*`, `Settings.*`, `Settings-Include.h`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`, `Source/Essentials/DiskFileSystem.*`, `Source/Client/ResourceManager.*`, baker/config consumers, BuildTools generation/baking/package stages, and focused config/data-source/cache/filesystem tests for configuration/data-source routing.
+- `Source/Applications/TestingApp.cpp`, all 79 current `Source/Tests/Test_*.cpp` files, `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`, generated test/coverage target wiring in `BuildTools/cmake/stages/Applications.cmake`, coverage setup in `BuildTools/cmake/stages/Init.cmake`, `BuildTools/codecoverage.py`, and validator wrappers for the test-suite page.
+- `../AGENTS.md`, `README.md`, `Docs/README.md`, `Docs/DocumentationBacklog.md`, `Docs/DocumentationExpansionPlan.md`, `Docs/DocumentationResearchTemplate.md`, and this report for documentation-maintenance workflow.
+
+Results:
+
+- Created the final four planned docs and linked them from `Docs/README.md` and `AGENTS.md` where appropriate.
+- Updated `Source/Tests/README.md` from a partial stale inventory to a complete short source-tree entry point linked to `Docs/Testing.md`.
+- Confirmed the current test inventory is 79 `Source/Tests/Test_*.cpp` suites and listed every suite in `Docs/Testing.md` and `Source/Tests/README.md`.
+- Promoted in `Docs/DocumentationBacklog.md`: `Essentials.md`, `ConfigurationAndDataSources.md`, `Testing.md`, and `DocumentationMaintenance.md` from `planned` to `verified`.
+- Marked the initial documentation backlog plan complete. Future doc work should be driven by new source changes, stale findings, or explicit requests.
+
+Follow-up:
+
+- No backlog-planned docs remain. Re-run the documented checks whenever source or docs change.
+## 2026-05-18 — build workflow completion slice
+
+Scope:
+
+- `Docs/BuildWorkflow.md`
+- `README.md`
+- `Docs/DocumentationExpansionPlan.md`
+- `Docs/DocumentationBacklog.md`
+
+Source areas checked:
+
+- `../CMakeLists.txt`, `../BuildTools/README.md`, `../BuildTools/Init.cmake`, `../BuildTools/validate.sh`, `../BuildTools/validate.cmd`, `../BuildTools/buildtools.py`, staged CMake files under `../BuildTools/cmake/stages/`, helpers under `../BuildTools/cmake/helpers/`, `../Source/Applications/TestingApp.cpp`, and `../Source/Tests/README.md`.
+
+Results:
+
+- Added source-inspection provenance and validation checklist to `BuildWorkflow.md`.
+- Routed build validation to the newly created `Testing.md`, `Essentials.md`, and `ConfigurationAndDataSources.md` where appropriate.
+- Added the final planned docs to the root `README.md` documentation index and refreshed `DocumentationExpansionPlan.md` current-baseline list.
+- Promoted `BuildWorkflow.md` from `drafted` to `verified`; no non-legend `planned`, `researching`, or `drafted` backlog entries remain.
+
+Follow-up:
+
+- The initial documentation backlog remains complete; future work should be driven by source changes, stale findings, or new requested topics.

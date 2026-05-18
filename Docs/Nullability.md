@@ -125,7 +125,7 @@ Four Python tools in [Tools/NullableEstimate/](../../Tools/NullableEstimate/):
 
 The applier tools accept `--check` (exit non-zero if dead defensive guards still exist) or `--dry-run` (preview without writing). `validate_nullable.py` is always read-only. CI uses these check modes to fail PRs that drift.
 
-### Why the appliers don't auto-add markers
+### Why marker placement stays explicit
 
 Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere â†’ mark return; no defensive throw + no dereference â†’ mark param). The heuristics produced churn against a curated codebase: a one-liner `void TransferToMap(Critter* self, Map* map, mpos hex) { ... transfer(self, map, hex, ...); }` would round-trip to `FO_NULLABLE Map* map` because the body only forwards the pointer â€” but the contract is non-null. Author intent is the source of truth; the analyzer's job is now only to delete dead guards that codegen has made redundant.
 
@@ -162,18 +162,17 @@ Append `--check` to either applier to verify idempotency without writing files.
 
 ## Adding / editing markers
 
-When you write a new script function or native export, you can either:
-1. Write it however you want and run `Generate :: Nullable Markers` â€” the analyzer fills in the markers per the rule above and strips any dead defensive code.
-2. Write the marker yourself if you know better than the heuristic (e.g. user-facing API where you want to lock the contract). The analyzer is idempotent: it won't re-introduce dead checks once stripped, and respects existing markers when their pattern matches the rule.
+When you write a new script function or native export:
 
-When the analyzer's heuristic gets it wrong (saw it with `dynamic_cast<X*>(param)` paths where param is genuinely nullable), prefer extending the heuristic in [apply_native_nullable.py](../../Tools/NullableEstimate/apply_native_nullable.py) over a one-off manual edit â€” the next CI check will revert manual edits otherwise.
+1. Choose the nullable contract explicitly in the declaration (`T?` for script, `FO_NULLABLE` for native exported pointers) when the function meaningfully accepts or returns null.
+2. Run the nullable applier/check tasks to remove dead defensive guards for non-null contracts and to verify idempotency.
+3. Run `validate_nullable.py` to catch misplaced markers or primitive/value-type misuse.
+
+The current appliers do not own contract inference: they preserve author-chosen markers and remove guard code made redundant by generated runtime checks. If a nullable case is real (for example a `dynamic_cast<X*>(param)` path where null is meaningful), keep the marker in the signature and update the analyzer only when its guard-removal pattern is wrong.
 
 ## See also
 
-- [Scripts.md](../../Docs/Scripts.md) â€” overall AngelScript module organization and conventions.
-- [NativeExtensions.md](../../Docs/NativeExtensions.md) â€” `///@ ExportMethod` codegen pipeline and engine source layout.
-- [Testing.md](../../Docs/Testing.md) â€” running unit and gameplay tests that exercise the runtime check.
-
-## Related engine docs
-
+- [Scripting.md](Scripting.md) — overall engine scripting runtime, AngelScript backend, and method-export organization.
+- [ScriptMethodsMap.md](ScriptMethodsMap.md) — current `///@ ExportMethod` file map and ownership boundaries.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — generated metadata/API flow that must stay aligned with script-visible contracts.
+- [../Source/Tests/README.md](../Source/Tests/README.md) — current test-suite source of truth until a dedicated engine `Docs/Testing.md` page exists.

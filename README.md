@@ -60,6 +60,7 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/BuildToolsPipeline.md](Docs/BuildToolsPipeline.md) — staged CMake pipeline and BuildTools change routing.
 - [Docs/BakingPipeline.md](Docs/BakingPipeline.md) — resource baking pipeline and baker validation.
 - [Docs/GeneratedApiAndMetadata.md](Docs/GeneratedApiAndMetadata.md) — codegen and metadata registration flow.
+- [Docs/ConfigurationAndDataSources.md](Docs/ConfigurationAndDataSources.md) — config parsing, settings, resource-pack data sources, file lookup, and caches.
 - [Docs/EntityModel.md](Docs/EntityModel.md) — entity/property/prototype runtime model.
 - [Docs/MapsMovementGeometry.md](Docs/MapsMovementGeometry.md) — map coordinates, path finding, line tracing, movement contexts, and map loading.
 - [Docs/Networking.md](Docs/Networking.md) — network buffers, commands, transports, and ordered UDP.
@@ -70,6 +71,7 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/Architecture.md](Docs/Architecture.md) — high-level engine architecture and layer ownership.
 - [Docs/SourceTree.md](Docs/SourceTree.md) — source-tree navigation for maintainers.
 - [Docs/Applications.md](Docs/Applications.md) — application entry points and target ownership notes.
+- [Docs/Essentials.md](Docs/Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
 - [Docs/ClientUpdater.md](Docs/ClientUpdater.md) — client host/runtime split, runtime ABI, update manifests, and server-side update backend.
 - [Docs/Debugging.md](Docs/Debugging.md) — native debugging, stack traces, Visual Studio helpers, and validation notes.
 - [Docs/Scripting.md](Docs/Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
@@ -79,6 +81,8 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/MapperTools.md](Docs/MapperTools.md) — mapper lifecycle, automation, native mapper helpers, and known headless-render workflows.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) — WebAssembly target preparation and debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) — Android target preparation, package layout, ADB workflow, and remote-scene debugging.
+- [Docs/Testing.md](Docs/Testing.md) — test-suite inventory, generated test targets, coverage, and validation routing.
+- [Docs/DocumentationMaintenance.md](Docs/DocumentationMaintenance.md) — source-grounded docs maintenance workflow.
 
 ## Development and validation
 

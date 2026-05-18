@@ -11,6 +11,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [DocumentationBacklog.md](DocumentationBacklog.md) — planned and verified documentation slices.
 - [DocumentationVerificationReport.md](DocumentationVerificationReport.md) — source-check reports for recently verified slices.
 - [DocumentationResearchTemplate.md](DocumentationResearchTemplate.md) — checklist/template for source-grounded doc slices.
+- [DocumentationMaintenance.md](DocumentationMaintenance.md) — maintainer workflow for source-grounded docs, backlog/report updates, and validation.
 - [../README.md](../README.md) — polished repository landing page.
 - [../AGENTS.md](../AGENTS.md) — AI-maintainer entry point and working conventions.
 
@@ -19,6 +20,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [Architecture.md](Architecture.md) — engine layer map and runtime/build composition overview.
 - [SourceTree.md](SourceTree.md) — source-directory guide for maintainers.
 - [Applications.md](Applications.md) — executable/library entry points and CMake target ownership notes.
+- [Essentials.md](Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
 
 ## Build and generation
 
@@ -26,6 +28,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [BuildToolsPipeline.md](BuildToolsPipeline.md) — staged CMake pipeline, hooks, helpers, and change routing.
 - [BakingPipeline.md](BakingPipeline.md) — resource baking, baker classes, script compile adjacency, and validation.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — codegen, metadata registration, generated files, and property contracts.
+- [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) — config parsing, settings application, resource-pack data sources, file lookup, and caches.
 
 ## Runtime model
 
@@ -52,7 +55,8 @@ This directory contains maintained documentation for reusable engine behavior. I
 ## Source and tooling references
 
 - [../Source/README.md](../Source/README.md) — source-tree overview.
-- [../Source/Tests/README.md](../Source/Tests/README.md) — engine unit-test suites.
+- [Testing.md](Testing.md) — maintained full test-suite map, generated test targets, coverage routing, and validation ownership.
+- [../Source/Tests/README.md](../Source/Tests/README.md) — short source-tree entry point for engine unit-test suites.
 - [../BuildTools/README.md](../BuildTools/README.md) — build tooling notes.
 - [../PUBLIC_API.md](../PUBLIC_API.md) — public native API notes.
 - [../TUTORIAL.md](../TUTORIAL.md) — tutorial material.

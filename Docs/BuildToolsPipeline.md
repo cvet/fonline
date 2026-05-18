@@ -6,6 +6,28 @@ This document explains the staged CMake pipeline under `BuildTools/cmake/`. It i
 
 FOnline is normally configured from an embedding game project. The engine supplies CMake stages and helpers; the game project supplies values such as product names, main config, enabled targets, output paths, packages, scripts, and platform choices.
 
+
+## Source paths inspected
+
+- `BuildTools/Init.cmake`
+- `BuildTools/cmake/stages/Init.cmake`
+- `BuildTools/cmake/stages/ProjectOptions.cmake`
+- `BuildTools/cmake/stages/ThirdParty.cmake`
+- `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/cmake/stages/Codegen.cmake`
+- `BuildTools/cmake/stages/CoreLibs.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/stages/Packages.cmake`
+- `BuildTools/cmake/stages/Finalize.cmake`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/helpers/Commands.cmake`
+- `BuildTools/cmake/helpers/Options.cmake`
+- `BuildTools/cmake/helpers/State.cmake`
+- `BuildTools/cmake/helpers/WriteBuildHash.cmake`
+- `BuildTools/codegen.py`
+- `BuildTools/package.py`
+
 Important consequences:
 
 - Do not document one game's final target list as universal engine behavior.
@@ -72,7 +94,7 @@ Creates custom targets for script compilation and resource baking. Current respo
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
 
-Related docs: [BakingPipeline.md](BakingPipeline.md) and future `Docs/Scripting.md`.
+Related docs: [BakingPipeline.md](BakingPipeline.md) and [Scripting.md](Scripting.md).
 
 ### `Applications.cmake`
 
@@ -122,7 +144,7 @@ Use hooks when an embedding project or a later refactor needs to extend stage be
 - New vendored dependency: `ThirdParty.cmake`.
 - New engine source file: `EngineSources.cmake` and maybe `CoreLibs.cmake`.
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
-- New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and future `Scripting.md`.
+- New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and [Scripting.md](Scripting.md).
 - New executable/tool entry point: `Applications.cmake` and [Applications.md](Applications.md).
 - New package layout: `Packages.cmake` plus platform docs.
 - Final target organization or verbose diagnostics: `Finalize.cmake`.

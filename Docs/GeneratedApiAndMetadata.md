@@ -8,6 +8,28 @@ The engine owns the reusable metadata/codegen machinery. An embedding project su
 
 Generated files are build artifacts. Document the source annotations, templates, generator inputs, and validation flow; do not treat generated output as hand-authored engine source.
 
+## Source paths inspected
+
+- `BuildTools/cmake/stages/Codegen.cmake`
+- `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/helpers/State.cmake`
+- `BuildTools/codegen.py`
+- `Source/Common/MetadataRegistration.h`
+- `Source/Common/MetadataRegistration.cpp`
+- `Source/Common/MetadataRegistration-Template.cpp`
+- `Source/Common/GenericCode-Template.cpp`
+- `Source/Common/Properties.h`
+- `Source/Common/Properties.cpp`
+- `Source/Common/Entity.h`
+- `Source/Common/Entity.cpp`
+- `Source/Tools/MetadataBaker.h`
+- `Source/Tools/MetadataBaker.cpp`
+- `Source/Tests/Test_EngineMetadata.cpp`
+- `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_Properties.cpp`
+- `PUBLIC_API.md`
+
 ## CMake codegen stage
 
 `BuildTools/cmake/stages/Codegen.cmake` constructs the generator command and output list.
