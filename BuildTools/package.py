@@ -347,6 +347,34 @@ class Packager:
 			return None
 		return best_platform + '-' + best_cxx_arch
 
+	def extract_binary_entry_postfix(self, binary_entry_name: str) -> str | None:
+		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
+		# Used to skip entries whose FO_BINARY_OUTPUT_POSTFIX differs from the current packager,
+		# otherwise variants like Client-Linux-x64-Steam clobber Client-Linux-x64 in the same
+		# PlatformBinaries/Linux-x64/ slot under package_all_client_runtime_update_payloads.
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		best_prefix_len = -1
+		for (platform, arch_in_entry), _ in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_prefix_len = len(prefix)
+		if best_prefix_len < 0:
+			return None
+		remainder = after_client[best_prefix_len:]
+		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
+			if remainder.startswith(opt):
+				remainder = remainder[len(opt):]
+				break
+		if remainder.startswith('-Debug'):
+			remainder = remainder[len('-Debug'):]
+		if not remainder:
+			return ''
+		assert remainder.startswith('-'), 'Unexpected binary entry layout: ' + binary_entry_name
+		return remainder[1:]
+
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
 
@@ -406,6 +434,10 @@ class Packager:
 
 				request_target_name = self.build_runtime_update_target_name(entry_name)
 				if request_target_name is None:
+					continue
+
+				entry_postfix = self.extract_binary_entry_postfix(entry_name)
+				if entry_postfix != self.args.binary_output_postfix:
 					continue
 
 				parts = request_target_name.split('-', 1)

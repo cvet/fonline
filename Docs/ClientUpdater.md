@@ -191,6 +191,7 @@ Naming convention from `BuildBinaryEntry` / `build_runtime_update_target_name`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
 - The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
+- Entries tagged with a `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) only feed into a Server package whose own `binary_output_postfix` matches; otherwise two variants would collapse onto the same `PlatformBinaries/<target>/` slot. `package_all_client_runtime_update_payloads` derives each entry's postfix via `extract_binary_entry_postfix` and skips mismatches.
 
 ## Lifecycle
 
