@@ -160,18 +160,21 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     // Prepare grid
     const auto max_len = input.MaxLength;
     const auto grid_side = numeric_cast<size_t>(max_len * 2 + 2);
-    vector<int16_t> grid_buffer;
+    thread_local vector<int16_t> grid_buffer;
+    thread_local vector<mpos> next_hexes;
+    thread_local vector<mpos> gag_hexes;
+    thread_local vector<mpos> cr_hexes;
     grid_buffer.assign(grid_side * grid_side, 0);
+    next_hexes.clear();
+    gag_hexes.clear();
+    cr_hexes.clear();
 
     const auto grid_offset = input.FromHex;
     const auto grid_at = [&](mpos hex) -> int16_t& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
 
-    vector<mpos> next_hexes;
-    vector<mpos> gag_hexes;
-    vector<mpos> cr_hexes;
-    next_hexes.reserve(1024);
-    gag_hexes.reserve(64);
-    cr_hexes.reserve(64);
+    size_t next_hexes_read = 0;
+    size_t gag_hexes_read = 0;
+    size_t cr_hexes_read = 0;
 
     // Begin BFS
     auto to_hex = input.ToHex;
@@ -180,10 +183,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     while (true) {
         bool find_ok = false;
-        const auto next_hexes_round = next_hexes.size();
-        FO_RUNTIME_ASSERT(next_hexes_round != 0);
+        const auto round_begin = next_hexes_read;
+        const auto round_end = next_hexes.size();
+        FO_RUNTIME_ASSERT(round_end > round_begin);
 
-        for (size_t i = 0; i < next_hexes_round; i++) {
+        for (size_t i = round_begin; i < round_end; i++) {
             const auto cur_hex = next_hexes[i];
 
             if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
@@ -238,38 +242,39 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             break;
         }
 
-        next_hexes.erase(next_hexes.begin(), next_hexes.begin() + static_cast<ptrdiff_t>(next_hexes_round));
+        // Consume the round's prefix without shifting the vector.
+        next_hexes_read = round_end;
 
         // Add gag hex after some distance
-        if (!gag_hexes.empty() && !next_hexes.empty()) {
+        if (gag_hexes_read < gag_hexes.size() && next_hexes_read < next_hexes.size()) {
             const auto last_index = grid_at(next_hexes.back());
-            const auto& gag_hex = gag_hexes.front();
+            const auto& gag_hex = gag_hexes[gag_hexes_read];
             const auto gag_index = numeric_cast<int16_t>(grid_at(gag_hex) ^ 0x4000);
 
             if (gag_index + 10 < last_index) {
                 grid_at(gag_hex) = gag_index;
                 next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
+                gag_hexes_read++;
             }
         }
 
         // If no way then route through gag/critter
-        if (next_hexes.empty()) {
-            if (!gag_hexes.empty()) {
-                auto& gag_hex = gag_hexes.front();
+        if (next_hexes_read >= next_hexes.size()) {
+            if (gag_hexes_read < gag_hexes.size()) {
+                auto& gag_hex = gag_hexes[gag_hexes_read];
                 grid_at(gag_hex) ^= 0x4000;
                 next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
+                gag_hexes_read++;
             }
-            else if (!cr_hexes.empty()) {
-                auto& cr_hex = cr_hexes.front();
+            else if (cr_hexes_read < cr_hexes.size()) {
+                auto& cr_hex = cr_hexes[cr_hexes_read];
                 grid_at(cr_hex) ^= 0x4000;
                 next_hexes.emplace_back(cr_hex);
-                cr_hexes.erase(cr_hexes.begin());
+                cr_hexes_read++;
             }
         }
 
-        if (next_hexes.empty()) {
+        if (next_hexes_read >= next_hexes.size()) {
             output.Result = FindPathOutput::ResultType::NoWay;
             return output;
         }
