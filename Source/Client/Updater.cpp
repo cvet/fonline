@@ -620,9 +620,10 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
     const auto local_mtime = fs_last_write_time(file_path);
+    const auto cache_key = strex("{}.hash", strex(file_path).extract_file_name()).str();
 
-    if (_cache.HasEntry(file_path)) {
-        const auto data = _cache.GetData(file_path);
+    if (_cache.HasEntry(cache_key)) {
+        const auto data = _cache.GetData(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached;
@@ -641,7 +642,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(file_path, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
+    _cache.SetData(cache_key, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
 
     return *local_hash == expected_hash;
 }
