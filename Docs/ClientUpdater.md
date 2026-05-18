@@ -191,7 +191,7 @@ Naming convention from `BuildBinaryEntry` / `build_runtime_update_target_name`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
 - The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
-- Entries tagged with a `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) only feed into a Server package whose own `binary_output_postfix` matches; otherwise two variants would collapse onto the same `PlatformBinaries/<target>/` slot. `package_all_client_runtime_update_payloads` derives each entry's postfix via `extract_binary_entry_postfix` and skips mismatches.
+- Entries tagged with a `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`LastFrontier_Steam.so`, `LastFrontier_Headless_Steam.so`, …) so the variants don't clobber each other. `extract_binary_entry_postfix` parses the postfix out of `Client-<platform>-<arch>[-Profiling_X][-Debug][-<postfix>]`. The matching Client package builds with the same `FO_BINARY_OUTPUT_POSTFIX` and the client-side packager mirrors the suffix in `bin_out_name` so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name — that's what `Updater.cpp::remap_runtime_name` keys on (`runtime_server_prefix = GetPackagedRuntimeName()`).
 
 ## Lifecycle
 

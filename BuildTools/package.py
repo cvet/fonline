@@ -347,11 +347,14 @@ class Packager:
 			return None
 		return best_platform + '-' + best_cxx_arch
 
-	def extract_binary_entry_postfix(self, binary_entry_name: str) -> str | None:
+	@staticmethod
+	def extract_binary_entry_postfix(binary_entry_name: str) -> str | None:
 		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
-		# Used to skip entries whose FO_BINARY_OUTPUT_POSTFIX differs from the current packager,
-		# otherwise variants like Client-Linux-x64-Steam clobber Client-Linux-x64 in the same
-		# PlatformBinaries/Linux-x64/ slot under package_all_client_runtime_update_payloads.
+		# Returns the FO_BINARY_OUTPUT_POSTFIX segment (empty if absent), or None when the entry
+		# doesn't match any known platform/arch. The server-side runtime payload packager uses
+		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
+		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
 		if not binary_entry_name.startswith('Client-'):
 			return None
 		after_client = binary_entry_name[len('Client-'):]
@@ -437,7 +440,7 @@ class Packager:
 					continue
 
 				entry_postfix = self.extract_binary_entry_postfix(entry_name)
-				if entry_postfix != self.args.binary_output_postfix:
+				if entry_postfix is None:
 					continue
 
 				parts = request_target_name.split('-', 1)
@@ -465,13 +468,21 @@ class Packager:
 				if '-Profiling_' in entry_name:
 					suffix = '_Profiling'
 
+				# binary_output_postfix is appended to the staged payload name so two
+				# binary entries that map to the same request_target_name (e.g.
+				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
+				# client variant patches its own PACKAGED_BUILD_NAME to match the
+				# resulting suffixed payload, so updater's remap_runtime_name picks
+				# the right file.
+				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
+
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
-				variant_specs.append((self.args.nicename + suffix, None, default_runtime_variant))
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1', default_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
-					variant_specs.append((self.args.nicename + suffix + '_Headless', None, headless_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
 
 				for output_name, variant_config_data, runtime_variant in variant_specs:
 					payload_key = (request_target_name, output_name)
@@ -761,13 +772,19 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		# Mirror of the suffix appended to server-side payloads in
+		# package_all_client_runtime_update_payloads: tagging the client output
+		# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
+		# under PlatformBinaries/<target>/<name>.dll for this variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=True)
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
@@ -799,6 +816,11 @@ class Packager:
 				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
 				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
 
+		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
+		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
+		# for this binary_output_postfix variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in all_linux_variants:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
@@ -806,7 +828,7 @@ class Packager:
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
 				else:
 					bin_out_name_base = bin_name
-				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False)
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
