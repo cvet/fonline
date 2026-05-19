@@ -65,6 +65,7 @@ At the moment the shared flow covers:
 - `emscripten`
 - `android-ndk`
 - `dotnet`
+- `xwin`
 
 Host prerequisite checks are also available through the main tool:
 
@@ -89,6 +90,16 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web dotnet
 ```
+
+Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
+
+```bash
+bash Engine/BuildTools/prepare-workspace.sh windows-cross
+python3 Engine/BuildTools/buildtools.py build win64 client Release
+python3 Engine/BuildTools/buildtools.py build win32 client Release
+```
+
+The `windows-cross` feature uses the xwin version pinned in `Engine/ThirdParty/xwin` and splats both `x86` and `x86_64` SDK/CRT trees into `Workspace/xwin`.
 
 ## Windows web debug workflow
 

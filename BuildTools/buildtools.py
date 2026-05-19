@@ -155,6 +155,7 @@ FORMAT_PATTERNS = [
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
+XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
@@ -795,6 +796,10 @@ def build_xwin_version(env: Mapping[str, str]) -> str:
 	return version
 
 
+def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
+	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
+
+
 def workspace_version_marker(workspace: Path, part_name: str) -> Path:
 	return workspace / f'{part_name}-version.txt'
 
@@ -1077,7 +1082,8 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	xwin_binary.chmod(xwin_binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 	log('Splat MSVC SDK with xwin into:', xwin_splat_dir)
-	run([str(xwin_binary), '--accept-license', '--arch', 'x86_64', 'splat', '--output', str(xwin_splat_dir)])
+	xwin_arch_args = [arg for arch in XWIN_SPLAT_ARCHES for arg in ('--arch', arch)]
+	run([str(xwin_binary), '--accept-license', *xwin_arch_args, 'splat', '--output', str(xwin_splat_dir)])
 
 
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
@@ -1092,7 +1098,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-sdk': build_android_sdk_version(env),
 		'android-ndk': build_android_ndk_version(env),
 		'dotnet': build_dotnet_version(env),
-		'xwin': build_xwin_version(env),
+		'xwin': build_xwin_workspace_version(env),
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
