@@ -434,6 +434,12 @@ private:
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
 
+    // Reused per-frame scratch buffers for Process() / ProcessLighting()
+    vector<CritterHexView*> _critterToDeleteScratch {};
+    vector<ItemHexView*> _itemToDeleteScratch {};
+    vector<LightSource*> _reapplyLightSourcesScratch {};
+    vector<LightSource*> _removeLightSourcesScratch {};
+
     int32_t _hiddenRoofNum {};
 
     array<TransparentEggInfo, SpriteManager::EGG_SLOT_COUNT> _transparentEggs {};

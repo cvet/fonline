@@ -395,24 +395,26 @@ void MapView::Process()
 
     // Critters
     {
-        vector<CritterHexView*> critter_to_delete;
+        _critterToDeleteScratch.clear();
 
         for (auto& cr : _critters) {
             cr->Process();
 
             if (cr->IsFinished()) {
-                critter_to_delete.emplace_back(cr.get());
+                _critterToDeleteScratch.emplace_back(cr.get());
             }
         }
 
-        for (auto* cr : critter_to_delete) {
+        for (auto* cr : _critterToDeleteScratch) {
             DestroyCritter(cr);
         }
+
+        _critterToDeleteScratch.clear();
     }
 
     // Items
     {
-        vector<ItemHexView*> item_to_delete;
+        _itemToDeleteScratch.clear();
 
         for (auto& item : _processingItems) {
             if (item->IsNeedProcess()) {
@@ -420,13 +422,15 @@ void MapView::Process()
             }
 
             if (item->IsFinished()) {
-                item_to_delete.emplace_back(item.get());
+                _itemToDeleteScratch.emplace_back(item.get());
             }
         }
 
-        for (auto* item : item_to_delete) {
+        for (auto* item : _itemToDeleteScratch) {
             DestroyItem(item);
         }
+
+        _itemToDeleteScratch.clear();
     }
 
     // Scroll and zoom
@@ -1317,8 +1321,8 @@ void MapView::ProcessLighting()
         }
     }
 
-    vector<LightSource*> reapply_sources;
-    vector<LightSource*> remove_sources;
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     for (auto* ls : _visibleLightSources | std::views::keys) {
         const auto prev_intensity = ls->CurIntensity;
@@ -1329,23 +1333,26 @@ void MapView::ProcessLighting()
         }
 
         if (ls->Finishing && ls->CurIntensity == 0) {
-            remove_sources.emplace_back(ls);
+            _removeLightSourcesScratch.emplace_back(ls);
         }
         else if (ls->CurIntensity != prev_intensity || ls->NeedReapply) {
-            reapply_sources.emplace_back(ls);
+            _reapplyLightSourcesScratch.emplace_back(ls);
         }
     }
 
-    for (auto* ls : reapply_sources) {
+    for (auto* ls : _reapplyLightSourcesScratch) {
         ApplyLightFan(ls);
     }
 
-    for (auto* ls : remove_sources) {
+    for (auto* ls : _removeLightSourcesScratch) {
         FO_RUNTIME_ASSERT(_lightSources.count(ls->Id) != 0);
 
         CleanLightFan(ls);
         _lightSources.erase(ls->Id);
     }
+
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     if (_needRebuildLightPrimitives) {
         _needRebuildLightPrimitives = false;
