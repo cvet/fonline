@@ -525,10 +525,6 @@ def has_windows_build_tools() -> bool:
 
 def check_linux_host_tools() -> list[str]:
 	issues: list[str] = []
-	if not shutil.which('apt-get'):
-		issues.append('Please use a Debian/Ubuntu host with apt-get available')
-	if not is_running_as_root() and not shutil.which('sudo'):
-		issues.append('Please install sudo or run the preparation script as root')
 	if not shutil.which('cmake'):
 		issues.append('Please install CMake')
 	return issues
@@ -891,6 +887,11 @@ def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -
 	if check_only:
 		raise SystemExit(f'Workspace part {group_name} is not ready ({version})')
 
+	if not shutil.which('apt-get'):
+		raise SystemExit('Please use a Debian/Ubuntu host with apt-get available')
+	if not is_running_as_root() and not shutil.which('sudo'):
+		raise SystemExit('Please install sudo or run the preparation script as root')
+
 	if any(_pkg_needs_llvm_apt_source(name) for name in packages):
 		ensure_llvm_apt_source(workspace, check_only)
 
@@ -1124,13 +1125,12 @@ HOST_DEFAULT_FEATURES = {
 }
 
 LINUX_FEATURE_PACKAGE_GROUPS = {
-	'linux': ['linux-packages'],
-	'web': ['web-packages'],
-	'android-arm32': ['android-packages'],
-	'android-arm64': ['android-packages'],
-	'android-x86': ['android-packages'],
-	'windows-cross': ['windows-cross-packages'],
-	'all': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
+	'common-packages': ['common-packages'],
+	'linux-packages': ['linux-packages'],
+	'web-packages': ['web-packages'],
+	'android-packages': ['android-packages'],
+	'windows-cross-packages': ['windows-cross-packages'],
+	'all-packages': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
 }
 
 HOST_FEATURE_WORKSPACE_PARTS = {
@@ -1179,10 +1179,11 @@ def resolve_feature_values(selected: Sequence[str], feature_map: Mapping[str, Se
 
 def prepare_linux_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
 	package_groups = resolve_feature_values(selected, LINUX_FEATURE_PACKAGE_GROUPS)
-	if has_feature(selected, 'packages', 'all') or package_groups:
+	if package_groups:
 		install_linux_packages('common-packages', workspace, check_only)
 		for package_group in package_groups:
-			install_linux_packages(package_group, workspace, check_only)
+			if package_group != 'common-packages':
+				install_linux_packages(package_group, workspace, check_only)
 
 	parts = resolve_feature_values(selected, HOST_FEATURE_WORKSPACE_PARTS['linux'])
 	if parts:
@@ -1790,7 +1791,7 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser.add_argument('target')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
@@ -1807,7 +1808,27 @@ def create_parser() -> argparse.ArgumentParser:
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
 	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
-	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android-arm32', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'windows-cross', 'all'])
+	prepare_host_parser.add_argument(
+		'features',
+		nargs='*',
+		choices=[
+			'common-packages',
+			'linux-packages',
+			'web-packages',
+			'android-packages',
+			'windows-cross-packages',
+			'all-packages',
+			'linux',
+			'web',
+			'android-arm32',
+			'android-arm64',
+			'android-x86',
+			'toolset',
+			'dotnet',
+			'windows-cross',
+			'all',
+		],
+	)
 	prepare_host_parser.add_argument('--check', action='store_true')
 
 	return parser

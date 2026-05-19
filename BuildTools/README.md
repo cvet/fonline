@@ -67,6 +67,17 @@ At the moment the shared flow covers:
 - `dotnet`
 - `xwin`
 
+Linux system package installation is explicit and separate from workspace preparation:
+
+- `common-packages`
+- `linux-packages`
+- `web-packages`
+- `android-packages`
+- `windows-cross-packages`
+- `all-packages`
+
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first.
+
 Host prerequisite checks are also available through the main tool:
 
 - `buildtools.py host-check linux`
@@ -88,18 +99,20 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
-python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web dotnet
+python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 
 ```bash
+bash Engine/BuildTools/prepare-workspace.sh windows-cross-packages windows-cross
 bash Engine/BuildTools/prepare-workspace.sh windows-cross
+python3 Engine/BuildTools/buildtools.py prepare-workspace xwin
 python3 Engine/BuildTools/buildtools.py build win64 client Release
 python3 Engine/BuildTools/buildtools.py build win32 client Release
 ```
 
-The `windows-cross` feature uses the xwin version pinned in `Engine/ThirdParty/xwin` and splats both `x86` and `x86_64` SDK/CRT trees into `Workspace/xwin`.
+The `windows-cross-packages` feature installs/checks Linux prerequisites. The `windows-cross` wrapper feature and direct `prepare-workspace xwin` command are workspace-only: they use the xwin version pinned in `Engine/ThirdParty/xwin`, splat both `x86` and `x86_64` SDK/CRT trees into `Workspace/xwin`, and intentionally skip system package installation for pre-provisioned CI hosts.
 
 ## Windows web debug workflow
 
@@ -127,9 +140,10 @@ Device deployment is built around ADB over Wi-Fi. The target device must have wi
 - `buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch`
 - `android_device.py --workspace-root Workspace connect`
 
-The Android SDK and NDK workspace parts must be prepared first:
+The Android SDK and NDK workspace parts must be prepared first. Use `android-packages` only on a fresh Linux host that still needs system packages:
 
 - `bash Engine/BuildTools/prepare-workspace.sh android-arm64`
+- `bash Engine/BuildTools/prepare-workspace.sh android-packages android-arm64`
 
 The packaged Android build is emitted into `Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
 

@@ -6,7 +6,7 @@
 
 The current web-debug flow is task-driven, but the tasks are thin wrappers around the shared BuildTools layer.
 
-- on Linux, `../BuildTools/prepare-workspace.sh web` delegates to `buildtools.py prepare-host-workspace linux web`
+- on Linux, `../BuildTools/prepare-workspace.sh web` delegates to `buildtools.py prepare-host-workspace linux web` and prepares only workspace-local web parts; use `web-packages` explicitly on a fresh host that still needs system packages
 - on Windows, `../BuildTools/prepare-win-workspace.ps1 web` delegates to `buildtools.py prepare-host-workspace windows web`
 - web client builds go through `buildtools.py build web client <Config>`
 - browser packaging goes through `buildtools.py package-web-debug LF RemoteSceneLaunch LocalTest`
@@ -27,10 +27,16 @@ Prepare the shared web workspace parts directly through BuildTools:
 py -3 ../BuildTools/buildtools.py prepare-host-workspace windows web
 ```
 
-Linux wrapper equivalent:
+Linux wrapper equivalent on a provisioned host:
 
 ```bash
 bash ../BuildTools/prepare-workspace.sh web
+```
+
+Fresh Linux host with web system packages:
+
+```bash
+bash ../BuildTools/prepare-workspace.sh web-packages web
 ```
 
 Build the web client for the local debug workflow:

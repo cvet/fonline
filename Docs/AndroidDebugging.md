@@ -18,6 +18,8 @@ The current supported platform identifiers are `android-arm32`, `android-arm64`,
 The high-level command flow from the repo root is:
 
 ```bash
+bash ../BuildTools/prepare-workspace.sh android-packages android-arm64 # fresh Linux host
+# or, when system packages are already present:
 bash ../BuildTools/prepare-workspace.sh android-arm64
 python3 ../BuildTools/buildtools.py build android-arm64 client RelWithDebInfo
 python3 ../BuildTools/buildtools.py package-android-debug LF android-arm64 LocalTest
