@@ -40,11 +40,8 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Common/Settings-Include.h`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/package.py`
+- `BuildTools/tests/test_package_zip_determinism.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
-- `../Tools/PipelineTests/test_updater_binary_update.py`
-- `../Tools/PipelineTests/test_updater_staging_promotion.py`
-- `../Tools/PipelineTests/test_updater_resource_pack.py`
-- `../Tools/PipelineTests/test_updater_compat_outdated.py`
 
 ## Two-layer client startup
 
@@ -217,7 +214,9 @@ There is no auto-detection of memory vs disk mode in C++. Choose explicitly per 
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the renamed DLL's CodeView (`RSDS`) record in place to point at the new PDB filename, so DbgHelp / `backward-cpp` resolve symbols automatically when the runtime is loaded. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
 - **Host PDBs are also staged server-side.** Alongside `<name>.dll.pdb`, `package_all_client_runtime_update_payloads` copies `<name>.pdb` (the host's own PDB, sourced from `LF_Client.pdb` / `LF_ClientHeadless.pdb`) into `PlatformBinaries/<target>/`. Without this a client that shipped with only the host exe (e.g. an install that lost its sibling files) would never receive its host PDB through the updater, since the client's `remap_runtime_name` filter only accepts files whose basename starts with the host's `PACKAGED_BUILD_NAME`. The runtime DLL filename ends with `.dll.pdb`, the host filename ends with `.pdb` — both pass the filter, both land next to the exe.
 
-Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across the two separate package runs (this is what `../../Tools/PipelineTests/test_updater_binary_update.py` asserts before corrupting the client copy).
+Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
+
+Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order invariant.
 
 The internal config patch area is generated from the CMake `FO_INTERNAL_CONFIG_CAPACITY` option, next to `FO_EMBEDDED_DATA_CAPACITY`; `package.py` discovers the actual reserved size from the generated binary markers before writing config data.
 

@@ -67,4 +67,6 @@ Use engine docs for reusable engine mechanics: runtime behavior, tool contracts,
 
 Use the embedding project's docs for concrete game content, product rules, quests, balance, text, maps, release policy, and project-specific commands.
 
-Some docs intentionally reference `../../...` paths. Those paths point from `Engine/Docs/` back into the embedding project, for example Last Frontier.
+Engine docs must not depend on embedding-project files, scripts, tests, CI, or generated artifacts as the proof of engine behavior. If a reusable helper or regression test is cited from an engine doc, it belongs in the engine repository.
+
+Some docs may mention `../../...` paths only as explicitly labelled embedding-project examples, for example Last Frontier. The owning procedure, validation, and source-of-truth documentation stay in the repository that owns the files.

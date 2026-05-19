@@ -36,7 +36,11 @@ Embedding-project docs should own:
 - exact binary names/presets unless explicitly shown as examples;
 - product-specific generated outputs and downstream pipelines.
 
-When an engine doc intentionally references the embedding project, use an explicit `../../...` path and label it as an example.
+Engine docs must not depend on embedding-project scripts, tests, tools, CI jobs, or generated artifacts as normative validation for engine behavior. If a reusable validation helper is important enough to cite from an engine doc, keep that helper in the engine repository. If a project-specific helper is useful, cite it from that project's docs instead.
+
+Engine documentation now lives in `Engine/Docs/`. Do not maintain parallel engine-owned explanations in an embedding project's docs; route project docs back to the engine page and keep only project-specific wrappers, commands, and policy there.
+
+When an engine doc intentionally references the embedding project, use an explicit `../../...` path and label it as a non-normative example.
 
 ## Standard doc slice workflow
 

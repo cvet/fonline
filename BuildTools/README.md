@@ -12,6 +12,12 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
+
+```bash
+pytest -q Engine/BuildTools/tests
+```
+
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.

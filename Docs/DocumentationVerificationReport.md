@@ -97,7 +97,7 @@ Source areas checked:
 - `Source/Client/ClientRuntimeApi.*`, `Source/Client/Updater.*`, `Source/Common/Common.h`, and `Source/Common/Settings-Include.h` for runtime ABI, updater protocol versioning, update targets, disk hashing/cache behavior, and updater settings.
 - `Source/Server/UpdaterBackend.*` and `Source/Server/Server.cpp` for server-side descriptor generation, file serving, target-specific binaries, and `UpdateFileMaxPortionSize` use.
 - `BuildTools/cmake/stages/Applications.cmake` and `BuildTools/package.py` for client host/library build gates and runtime binary packaging/staging.
-- `Source/Tests/Test_ClientRuntimeApi.cpp` plus updater pipeline tests under `../Tools/PipelineTests/` for runtime ABI, binary update, staging promotion, resource pack, compatibility-outdated, updater-outdated, missing-payload, and smoke coverage.
+- `Source/Tests/Test_ClientRuntimeApi.cpp` for runtime ABI coverage. Embedding-project updater pipeline tests are project-owned supplemental checks and are not engine documentation dependencies.
 
 Results:
 

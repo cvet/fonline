@@ -43,5 +43,5 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
-- Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example.
+- Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
 - Keep `README.md` human-oriented and `AGENTS.md` AI-oriented. `CLAUDE.md` is intentionally only a pointer to `@AGENTS.md`.
