@@ -1097,6 +1097,15 @@ class Packager:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
 
+			gradle_user_home = os.path.join(
+				os.path.dirname(self.output_path),
+				'.gradle-user-home',
+				os.path.basename(self.target_output_path),
+			)
+			os.makedirs(gradle_user_home, exist_ok=True)
+			gradle_env['GRADLE_USER_HOME'] = gradle_user_home
+			log('Android Gradle user home', gradle_user_home)
+
 			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
 			result = subprocess.call([gradlew, '--no-daemon', build_task], cwd=self.target_output_path, env=gradle_env)
 			assert result == 0, 'Gradle build failed'
