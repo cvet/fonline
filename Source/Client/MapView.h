@@ -237,6 +237,7 @@ public:
     auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
+    auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
     void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);

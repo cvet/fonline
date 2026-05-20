@@ -3313,6 +3313,37 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vec
     return critters;
 }
 
+auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<CritterHexView*> critters;
+
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<const CritterHexView*> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(cur_hex);
+
+            if (field.Critters.empty()) {
+                continue;
+            }
+
+            auto& field2 = _hexField->GetCellForWriting(cur_hex);
+
+            for (auto& cr : field2.Critters) {
+                if (seen.insert(cr.get()).second && cr->CheckFind(find_type)) {
+                    critters.emplace_back(cr.get());
+                }
+            }
+        }
+    }
+
+    return critters;
+}
+
 void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
 {
     FO_STACK_TRACE_ENTRY();

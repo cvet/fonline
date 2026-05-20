@@ -826,9 +826,25 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
 
     vector<Critter*> critters;
 
-    for (auto& cr : _critters) {
-        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<ident_t> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(cur_hex);
+
+            if (!field.HasCritter) {
+                continue;
+            }
+
+            auto& field2 = _hexField->GetCellForWriting(cur_hex);
+
+            for (auto& cr : field2.Critters) {
+                if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
+                    critters.emplace_back(cr.get());
+                }
+            }
         }
     }
 
@@ -908,9 +924,25 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
 
     vector<StaticItem*> items;
 
-    for (auto& item : _staticMap->StaticItems) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::GetDistance(item->GetHex(), hex) <= radius) {
-            items.emplace_back(item.get());
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<const StaticItem*> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& static_field = _staticMap->HexField->GetCellForReading(cur_hex);
+
+            if (static_field.StaticItems.empty()) {
+                continue;
+            }
+
+            auto& static_field2 = _staticMap->HexField->GetCellForWriting(cur_hex);
+
+            for (auto& item : static_field2.StaticItems) {
+                if (seen.insert(item.get()).second && (!pid || item->GetProtoId() == pid)) {
+                    items.emplace_back(item.get());
+                }
+            }
         }
     }
 
