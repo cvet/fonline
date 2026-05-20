@@ -217,9 +217,15 @@ void Updater::GetNextFile()
     const auto file_uses_binary_dir = [&](const UpdateFile& f) { return _binariesMode || f.IsRuntimeCompanion; };
     const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
     const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
+    const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
     const auto make_final_path = [&](const UpdateFile& f) -> string {
-        const auto live_path = strex(file_output_dir(f)).combine_path(f.Name).str();
+        const auto live_path = make_live_path(f);
         return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+    };
+    const auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
+        if (file_uses_binary_dir(f)) {
+            ReplaceFileSafely(staged_path, make_live_path(f));
+        }
     };
 
     if (_tempFile.is_open()) {
@@ -244,6 +250,7 @@ void Updater::GetNextFile()
             return;
         }
 
+        try_promote_staged_binary(prev_update_file, prev_path_str);
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
@@ -269,6 +276,7 @@ void Updater::GetNextFile()
                         return;
                     }
 
+                    try_promote_staged_binary(next_update_file, prev_path_str);
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
