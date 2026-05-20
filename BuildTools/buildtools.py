@@ -157,6 +157,7 @@ UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
+XWIN_HTTP_RETRY_COUNT = '5'
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
@@ -1055,7 +1056,14 @@ def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 
 def run_xwin_splat(xwin_binary: Path, arch: str, output_dir: Path) -> None:
 	log(f'Splat MSVC SDK with xwin ({arch}) into:', output_dir)
-	run([str(xwin_binary), '--accept-license', '--arch', arch, 'splat', '--output', str(output_dir)])
+	run([
+		str(xwin_binary),
+		'--accept-license',
+		'--http-retry', XWIN_HTTP_RETRY_COUNT,
+		'--arch', arch,
+		'splat',
+		'--output', str(output_dir),
+	])
 
 
 def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) -> None:
