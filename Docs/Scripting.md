@@ -80,7 +80,7 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 - `BindRequiredStuff()` registers arrays, dictionaries, strings, math/value types, globals, entity wrappers, remote callers, reflection helpers, and backend helpers.
 - `CompileTextScripts()` preprocesses script source, adds script sections to a module, resolves includes, builds the module, and serializes bytecode.
 - `LoadBinaryScripts()` loads compiled bytecode from resources at runtime.
-- `SetMessageCallback()` / `SendMessage()` route compiler/runtime diagnostics to the caller.
+- `SetMessageCallback()` / `SendMessage()` route compiler/runtime diagnostics to the caller. AngelScript diagnostic locations keep the original script line but format only the source file name, not the full source path, so logs remain stable across local and CI workspaces.
 - cleanup callbacks and post-cleanup callbacks release backend-owned resources in a controlled order.
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
