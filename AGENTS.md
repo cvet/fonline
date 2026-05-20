@@ -43,5 +43,6 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
+- Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.
 - Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
 - Keep `README.md` human-oriented and `AGENTS.md` AI-oriented. `CLAUDE.md` is intentionally only a pointer to `@AGENTS.md`.
