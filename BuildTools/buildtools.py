@@ -156,6 +156,7 @@ FORMAT_PATTERNS = [
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
+XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
@@ -1052,6 +1053,23 @@ def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	clone_git_repo(dotnet_root / 'runtime', 'https://github.com/dotnet/runtime.git', branch_name=build_dotnet_version(env), depth=1)
 
 
+def run_xwin_splat(xwin_binary: Path, arch: str, output_dir: Path) -> None:
+	log(f'Splat MSVC SDK with xwin ({arch}) into:', output_dir)
+	run([str(xwin_binary), '--accept-license', '--arch', arch, 'splat', '--output', str(output_dir)])
+
+
+def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) -> None:
+	for lib_parent_dir in XWIN_ARCH_LIB_PARENT_DIRS:
+		source_dir = source_root / lib_parent_dir / arch
+		if not source_dir.is_dir():
+			raise SystemExit(f'xwin splat output for {arch} is missing {source_dir.relative_to(source_root)}')
+
+		target_dir = target_root / lib_parent_dir / arch
+		remove_path_if_exists(target_dir)
+		ensure_dir(target_dir.parent)
+		shutil.copytree(source_dir, target_dir, symlinks=True)
+
+
 def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_xwin_version(env)
@@ -1060,11 +1078,13 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	extract_root = workspace / 'xwin-extract'
 	xwin_tool_dir = workspace / 'xwin-tool'
 	xwin_splat_dir = workspace / 'xwin'
+	xwin_extra_splat_dir = workspace / 'xwin-extra'
 
 	remove_path_if_exists(archive_path)
 	remove_path_if_exists(extract_root)
 	remove_path_if_exists(xwin_tool_dir)
 	remove_path_if_exists(xwin_splat_dir)
+	remove_path_if_exists(xwin_extra_splat_dir)
 	ensure_dir(workspace)
 
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
@@ -1082,9 +1102,12 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	xwin_binary = xwin_tool_dir / 'xwin'
 	xwin_binary.chmod(xwin_binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-	log('Splat MSVC SDK with xwin into:', xwin_splat_dir)
-	xwin_arch_args = [arg for arch in XWIN_SPLAT_ARCHES for arg in ('--arch', arch)]
-	run([str(xwin_binary), '--accept-license', *xwin_arch_args, 'splat', '--output', str(xwin_splat_dir)])
+	run_xwin_splat(xwin_binary, XWIN_SPLAT_ARCHES[0], xwin_splat_dir)
+	for arch in XWIN_SPLAT_ARCHES[1:]:
+		arch_splat_dir = xwin_extra_splat_dir / arch
+		run_xwin_splat(xwin_binary, arch, arch_splat_dir)
+		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
+	remove_path_if_exists(xwin_extra_splat_dir)
 
 
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
