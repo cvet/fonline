@@ -237,6 +237,7 @@ public:
     auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
+    auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
     void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);
@@ -433,6 +434,12 @@ private:
     size_t _globalLights {};
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
+
+    // Reused per-frame scratch buffers for Process() / ProcessLighting()
+    vector<CritterHexView*> _critterToDeleteScratch {};
+    vector<ItemHexView*> _itemToDeleteScratch {};
+    vector<LightSource*> _reapplyLightSourcesScratch {};
+    vector<LightSource*> _removeLightSourcesScratch {};
 
     int32_t _hiddenRoofNum {};
 
