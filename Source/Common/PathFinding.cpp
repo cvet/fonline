@@ -160,14 +160,14 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     // Prepare grid
     const auto max_len = input.MaxLength;
     const auto grid_side = numeric_cast<size_t>(max_len * 2 + 2);
-    thread_local vector<int16_t> grid_buffer;
-    thread_local vector<mpos> next_hexes;
-    thread_local vector<mpos> gag_hexes;
-    thread_local vector<mpos> cr_hexes;
+    vector<int16_t> grid_buffer;
+    vector<mpos> next_hexes;
+    vector<mpos> gag_hexes;
+    vector<mpos> cr_hexes;
     grid_buffer.assign(grid_side * grid_side, 0);
-    next_hexes.clear();
-    gag_hexes.clear();
-    cr_hexes.clear();
+    next_hexes.reserve(1024);
+    gag_hexes.reserve(128);
+    cr_hexes.reserve(128);
 
     const auto grid_offset = input.FromHex;
     const auto grid_at = [&](mpos hex) -> int16_t& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
