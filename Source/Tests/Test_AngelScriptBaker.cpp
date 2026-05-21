@@ -36,9 +36,7 @@ TEST_CASE("AngelScriptBaker")
         const vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
         vector<string> messages;
 
-        CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) {
-            messages.emplace_back(message);
-        }), ScriptCompilerException);
+        CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) { messages.emplace_back(message); }), ScriptCompilerException);
 
         REQUIRE(!messages.empty());
 
