@@ -217,9 +217,15 @@ void Updater::GetNextFile()
     const auto file_uses_binary_dir = [&](const UpdateFile& f) { return _binariesMode || f.IsRuntimeCompanion; };
     const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
     const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
+    const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
     const auto make_final_path = [&](const UpdateFile& f) -> string {
-        const auto live_path = strex(file_output_dir(f)).combine_path(f.Name).str();
+        const auto live_path = make_live_path(f);
         return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+    };
+    const auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
+        if (file_uses_binary_dir(f)) {
+            ReplaceFileSafely(staged_path, make_live_path(f));
+        }
     };
 
     if (_tempFile.is_open()) {
@@ -244,6 +250,7 @@ void Updater::GetNextFile()
             return;
         }
 
+        try_promote_staged_binary(prev_update_file, prev_path_str);
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
@@ -269,6 +276,7 @@ void Updater::GetNextFile()
                         return;
                     }
 
+                    try_promote_staged_binary(next_update_file, prev_path_str);
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
@@ -620,9 +628,10 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
     const auto local_mtime = fs_last_write_time(file_path);
+    const auto cache_key = strex("{}.hash", strex(file_path).extract_file_name()).str();
 
-    if (_cache.HasEntry(file_path)) {
-        const auto data = _cache.GetData(file_path);
+    if (_cache.HasEntry(cache_key)) {
+        const auto data = _cache.GetData(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached;
@@ -641,7 +650,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(file_path, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
+    _cache.SetData(cache_key, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
 
     return *local_hash == expected_hash;
 }

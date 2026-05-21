@@ -1,4 +1,4 @@
-﻿# Android Debugging
+# Android Debugging
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
@@ -18,6 +18,8 @@ The current supported platform identifiers are `android-arm32`, `android-arm64`,
 The high-level command flow from the repo root is:
 
 ```bash
+bash ../BuildTools/prepare-workspace.sh android-packages android-arm64 # fresh Linux host
+# or, when system packages are already present:
 bash ../BuildTools/prepare-workspace.sh android-arm64
 python3 ../BuildTools/buildtools.py build android-arm64 client RelWithDebInfo
 python3 ../BuildTools/buildtools.py package-android-debug LF android-arm64 LocalTest
@@ -65,6 +67,21 @@ Use `Android :: Launch Remote Scene [linux]` after compatibility-affecting chang
 The local debug flow above uses `package-android-debug` and then Gradle `assembleDebug` from `Workspace/android-debug/...`. The CI/release package flow is different: `MakePackage-Daily`, `MakePackage-Staging`, and `MakePackage-Prod` are generated from `../../CMakeLists.txt` `DefinePackage(...)` entries and include `BINARY Client Android arm64 Apk` alongside the Windows, Web, and Linux server artifacts.
 
 CI prepares Android prerequisites only for those three package types before running the matching `../BuildTools/toolset.sh MakePackage-<type>` target. The generated package lands under `Workspace/output/LF-<type>` and includes the installable Android arm64 APK produced through the shared `../BuildTools/package.py` Android packager. The official packager invokes Gradle with `--no-daemon` so concurrent package jobs on the same self-hosted runner do not reuse or kill each other's Gradle daemon.
+
+
+## Source paths inspected
+
+- `../BuildTools/buildtools.py`
+- `../BuildTools/android_device.py`
+- `../BuildTools/package.py`
+- `../BuildTools/android-project/`
+- `../BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java`
+- `../ThirdParty/android-sdk`
+- `../ThirdParty/android-ndk`
+- `../../.vscode/tasks.json`
+- `../../CMakeLists.txt`
+- `../../.github/workflows/ci.yml`
+- `../../LastFrontier.fomain`
 
 Use this split when debugging Android output:
 

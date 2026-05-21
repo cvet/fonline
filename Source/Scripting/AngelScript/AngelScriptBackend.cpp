@@ -72,9 +72,10 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     auto* as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
     const auto* backend = GetScriptBackend(as_engine);
     const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
-    const auto& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
-    const auto orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
-    const auto formatted_message = strex("{}({},{}): {} : {}", orig_file, orig_line, msg->col, type, msg->message).str();
+    const std::string& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
+    const uint32_t orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
+    const string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
+    const string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, msg->col, type, msg->message).str();
 
     backend->SendMessage(formatted_message);
 }

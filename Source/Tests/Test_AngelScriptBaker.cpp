@@ -26,6 +26,28 @@ TEST_CASE("AngelScriptBaker")
     CHECK(bakers.front()->GetName() == AngelScriptBaker::NAME);
     CHECK(bakers.front()->GetOrder() == 4);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
+
+    SECTION("CompilerDiagnosticsUseSourceFileNameOnly")
+    {
+        TestRig local_rig;
+        local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+
+        BakerServerEngine compiler_engine {local_rig.BakedFiles};
+        const vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
+        vector<string> messages;
+
+        CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) {
+            messages.emplace_back(message);
+        }), ScriptCompilerException);
+
+        REQUIRE(!messages.empty());
+
+        const auto first_error = std::ranges::find_if(messages, [](const string& message) { return message.find("error") != string::npos; });
+
+        REQUIRE(first_error != messages.end());
+        CHECK(first_error->starts_with("BrokenScript.fos("));
+        CHECK(first_error->find("Scripts/Nested/") == string::npos);
+    }
 #endif
 }
 

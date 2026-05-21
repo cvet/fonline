@@ -17,6 +17,10 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 
 ## Documentation Map
 
+- [Docs/Essentials.md](Docs/Essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, and utilities.
+- [Docs/ConfigurationAndDataSources.md](Docs/ConfigurationAndDataSources.md) - config parsing, settings, data sources, file lookup, and caches.
+- [Docs/Testing.md](Docs/Testing.md) - test-suite inventory, generated test targets, coverage, and validation routing.
+- [Docs/DocumentationMaintenance.md](Docs/DocumentationMaintenance.md) - source-grounded docs maintenance workflow.
 - [Docs/ClientUpdater.md](Docs/ClientUpdater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
 - [Docs/Debugging.md](Docs/Debugging.md) - stack traces, debugger helpers, native debugging, and validation notes.
 - [Docs/Nullability.md](Docs/Nullability.md) - `T?` / `FO_NULLABLE` script/native boundary contract.
@@ -39,5 +43,6 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
-- Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example.
+- Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.
+- Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
 - Keep `README.md` human-oriented and `AGENTS.md` AI-oriented. `CLAUDE.md` is intentionally only a pointer to `@AGENTS.md`.
