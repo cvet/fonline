@@ -138,6 +138,8 @@ Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/
 
 `updater_outdated == true` is fatal to the connection â€” the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 
+Malformed pre-handshake payloads that fail buffer decoding are treated as invalid handshake data: the server logs a warning with the remote endpoint and hard-disconnects without reporting an exception stack trace. Post-handshake decode failures still go through the normal exception reporting path.
+
 ### Init data
 
 Sent once after a non-outdated handshake. Contains the descriptor of files the server is offering for this binary target plus initial gameplay state (global properties, synchronized time).
