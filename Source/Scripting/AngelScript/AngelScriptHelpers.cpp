@@ -238,6 +238,11 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
         result += MakeScriptArgName(arg.Type);
         result += " ";
         result += arg.Name;
+
+        if (!arg.DefaultValue.empty()) {
+            result += " = ";
+            result += arg.DefaultValue;
+        }
     }
 
     return result;

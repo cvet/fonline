@@ -34,6 +34,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptAttributes.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptRemoteCalls.h"
 #include "Common.h"
 #include "EngineBase.h"
@@ -1282,6 +1283,17 @@ void Activate(Player@+ player, int value)
 TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 {
 #if FO_ANGELSCRIPT_SCRIPTING
+    SECTION("RendersDefaultValuesForMetadataArgs")
+    {
+        EngineMetadata meta {[] { }};
+        const vector<ArgDesc> args = {
+            {.Name = "value", .Type = meta.ResolveComplexType("int32"), .DefaultValue = "42"},
+            {.Name = "label", .Type = meta.ResolveComplexType("string"), .DefaultValue = "\"fresh\""},
+        };
+
+        CHECK(MakeScriptArgsName(args) == "int value = 42, string label = \"fresh\"");
+    }
+
     SECTION("BindsAndStripsAttributes")
     {
         auto parsed = ParseScript("AttributesPositive.fos", PositiveScript);

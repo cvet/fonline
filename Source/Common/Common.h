@@ -493,6 +493,7 @@ struct ArgDesc
     string Name {};
     ComplexTypeDesc Type {};
     bool Nullable {};
+    string DefaultValue {};
 };
 
 struct FieldDesc

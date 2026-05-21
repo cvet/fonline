@@ -211,7 +211,7 @@ Source areas checked:
 
 Results:
 
-- Confirmed the current native script method map: 996 `///@ ExportMethod` declarations across 18 script method files.
+- Confirmed the current native script method map: 874 `///@ ExportMethod` declarations across 18 script method files after the 2026-05-21 default-argument overload collapse.
 - Corrected stale nullability workflow wording: current nullable appliers preserve author-chosen markers and remove redundant guards; they do not own automatic contract inference.
 - Replaced stale parent docs routes in `Nullability.md` with current engine docs and the current `Source/Tests/README.md` testing source of truth.
 - Backticked source/build/doc path checks for this slice: no missing paths.
