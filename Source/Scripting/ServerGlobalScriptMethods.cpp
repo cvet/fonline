@@ -280,29 +280,13 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont)
-{
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId = any_t {})
 {
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont)
-{
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    return server->ItemMngr.MoveItem(item, count, toCont, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId = any_t {})
 {
     if (count <= 0) {
         return nullptr;
@@ -340,19 +324,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont)
-{
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
-            continue;
-        }
-
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, {});
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont, any_t stackId)
+FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont, any_t stackId = any_t {})
 {
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
@@ -715,25 +687,13 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ident_t 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid)
-{
-    return server->MapMngr.GetMapByPid(mapPid, 0);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto)
-{
-    return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), 0);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount = 0)
 {
     return server->MapMngr.GetMapByPid(mapPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount = 0)
 {
     return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
 }
@@ -794,25 +754,13 @@ FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid)
-{
-    return server->MapMngr.GetLocationByPid(locPid, 0);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto)
-{
-    return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), 0);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount = 0)
 {
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount)
+FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount = 0)
 {
     return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
 }

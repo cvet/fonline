@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **996** `///@ ExportMethod` declarations across these files.
+The current set contains **874** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -52,7 +52,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonGlobalScriptMethods.cpp`
 
-- Exported methods: 75
+- Exported methods: 73
 - Prefix: `Common_Game_*`
 - Ownership: cross-side global helpers that do not require authoritative server-only state or client-only rendering state.
 - Typical responsibilities:
@@ -66,7 +66,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonImGuiScriptMethods.cpp`
 
-- Exported methods: 331
+- Exported methods: 235
 - Prefixes: `Common_Game_ImGui`, `Common_ImGui_*`
 - Ownership: script-visible ImGui wrappers shared by tools/frontends that expose ImGui.
 - Typical responsibilities:
@@ -80,7 +80,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerGlobalScriptMethods.cpp`
 
-- Exported methods: 112
+- Exported methods: 105
 - Prefix: `Server_Game_*`
 - Ownership: authoritative game/server global operations.
 - Typical responsibilities:
@@ -103,7 +103,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerCritterScriptMethods.cpp`
 
-- Exported methods: 61
+- Exported methods: 59
 - Prefix: `Server_Critter_*`
 - Ownership: authoritative critter operations.
 - Typical responsibilities:
@@ -129,7 +129,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerItemScriptMethods.cpp`
 
-- Exported methods: 12
+- Exported methods: 9
 - Prefix: `Server_Item_*`
 - Ownership: authoritative item operations.
 - Typical responsibilities:
@@ -166,7 +166,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 107
+- Exported methods: 101
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -190,7 +190,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientCritterScriptMethods.cpp`
 
-- Exported methods: 36
+- Exported methods: 34
 - Prefix: `Client_Critter_*`
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
@@ -203,7 +203,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientMapScriptMethods.cpp`
 
-- Exported methods: 61
+- Exported methods: 59
 - Prefix: `Client_Map_*`
 - Ownership: client-side map/view/rendering operations.
 - Typical responsibilities:
@@ -229,7 +229,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientImGuiScriptMethods.cpp`
 
-- Exported methods: 4
+- Exported methods: 2
 - Prefix: `Client_ImGui_*`
 - Ownership: client-specific ImGui image/image-button helpers.
 - Typical responsibilities:
@@ -270,7 +270,7 @@ Use this checklist before editing a `*ScriptMethods.cpp` file:
 
 1. Identify the side that owns the state: common utility, server authority, client view/frontend, or mapper editor.
 2. Identify the receiver family: global/game, entity, critter, map, item, location, player, ImGui, or another registered type.
-3. Add `///@ ExportMethod` and `FO_SCRIPT_API` in the owning file.
+3. Add `///@ ExportMethod` and `FO_SCRIPT_API` in the owning file. Use trailing C++ default parameters for optional suffix arguments instead of duplicating overloads whose bodies only supply fallback values. Codegen normalizes engine value-type defaults such as `isize32 {}` or `ucolor {}` into AngelScript defaults such as `isize()` or `ucolor()`.
 4. Apply `FO_NULLABLE` only when a pointer parameter/return genuinely accepts or returns null; see [Nullability.md](Nullability.md).
 5. Regenerate code so method descriptors and wrappers reflect the new signature.
 6. Add or update the smallest relevant script method tests.

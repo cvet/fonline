@@ -280,13 +280,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterInRadius(MapView* self, mpos hex
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self)
-{
-    return vec_transform(self->GetCritters(), [](auto&& cr) -> CritterView* { return cr.get(); });
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType = CritterFindType::Any)
 {
     const auto map_critters = self->GetCritters();
 
@@ -725,13 +719,7 @@ FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItemAtScreenPos(MapView* self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
-{
-    return self->GetCritterAtScreen(pos, false, 0, true).first;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange = 0)
 {
     auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
