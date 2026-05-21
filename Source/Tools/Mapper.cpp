@@ -6183,7 +6183,7 @@ void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string str = strex("@color {}@ - {}\n", Color::TextWhite, message_text);
+    const string str = strex("- {}\n", message_text);
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
