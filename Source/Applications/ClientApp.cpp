@@ -101,9 +101,8 @@ static auto RunEmbeddedOrLoadedClient(int32_t argc, char** argv) -> bool
     FO_STACK_TRACE_ENTRY();
 
     const auto requested_runtime = ResolveRequestedClientRuntime(argc, argv);
-    const bool can_load_bundled_runtime = requested_runtime.ExplicitPath || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
 
-    if (can_load_bundled_runtime) {
+    if (requested_runtime.ExplicitPath) {
         const auto loaded = RunClientFromLibrary(argc, argv, requested_runtime);
 
         if (loaded.has_value()) {
