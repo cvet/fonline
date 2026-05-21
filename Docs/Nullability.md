@@ -84,6 +84,8 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter
 
 The `self` (first parameter â€” `this` receiver) and the implicit `engine` parameter for global methods are **never** marked: AS validates `this` before dispatch.
 
+If an exported method gives a pointer argument the default value `nullptr`, mark that argument `FO_NULLABLE`; codegen records the default as script `null`, and the nullability marker keeps the generated native-call validation aligned with the callable signature.
+
 ## Runtime enforcement
 
 Runtime validation is plumbed through codegen-generated `MethodDesc::Call` lambdas, **not** the AS-to-native bridge. [../BuildTools/codegen.py](../BuildTools/codegen.py) emits per-method calls to `NativeDataProvider::CheckArgNotNull` / `CheckReturnNotNull` (defined in [../Source/Common/ScriptSystem.h](../Source/Common/ScriptSystem.h)) right before/after the native invocation:

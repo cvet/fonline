@@ -484,13 +484,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ClientEngine* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(ClientEngine* client, ucolor fromColor, ucolor toColor, timespan duration)
-{
-    client->ScreenFade(duration, fromColor, toColor, false);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(ClientEngine* client, ucolor fromColor, ucolor toColor, timespan duration, bool appendEffect)
+FO_SCRIPT_API void Client_Game_FadeScreen(ClientEngine* client, ucolor fromColor, ucolor toColor, timespan duration, bool appendEffect = false)
 {
     client->ScreenFade(duration, fromColor, toColor, appendEffect);
 }
@@ -579,19 +573,13 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ClientEngine* client, VideoPlay
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey)
-{
-    return client->GetCurLang().GetText(textKey);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, string_view langName, TextPackKey textKey)
 {
     return client->GetLangPack(langName).GetText(textKey);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32_t skipCount)
+FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32_t skipCount = 0)
 {
     return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));
 }
@@ -838,39 +826,7 @@ FO_SCRIPT_API int32_t Client_Game_GetTextLines(ClientEngine* client, isize32 siz
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos)
-{
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    const auto* spr = client->AnimGetSpr(sprId);
-
-    if (spr == nullptr) {
-        return;
-    }
-
-    client->SprMngr.DrawSprite(spr, pos, Color::Neutral);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, ucolor color)
-{
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    const auto* spr = client->AnimGetSpr(sprId);
-
-    if (spr == nullptr) {
-        return;
-    }
-
-    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : Color::Neutral);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, ucolor color, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, ucolor color = ucolor {}, bool offs = false)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -891,38 +847,6 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
     }
 
     client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : Color::Neutral);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, isize32 size)
-{
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    const auto* spr = client->AnimGetSpr(sprId);
-
-    if (spr == nullptr) {
-        return;
-    }
-
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, Color::Neutral);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, isize32 size, ucolor color)
-{
-    if (!client->CanDrawInScripts) {
-        throw ScriptException("You can use this function only in RenderIface event");
-    }
-
-    const auto* spr = client->AnimGetSpr(sprId);
-
-    if (spr == nullptr) {
-        return;
-    }
-
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -958,7 +882,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, isize32 size, ucolor color, bool fit, bool offs)
+FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, ipos32 pos, isize32 size, ucolor color = ucolor {}, bool fit = true, bool offs = false)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");

@@ -150,16 +150,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir)
-{
-    if (self->IsMapTransfersLocked()) {
-        throw ScriptException("Transfers locked");
-    }
-    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, 2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex = false)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
@@ -631,13 +622,7 @@ FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items)
-{
-    self->Send_SomeItems(items, false, false, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned, bool withInnerEntities, any_t contextParam)
+FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
 {
     self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }
