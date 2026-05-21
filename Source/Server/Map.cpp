@@ -604,10 +604,12 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
-
     vector<raw_ptr<Item>> items;
-    items.reserve(numeric_cast<size_t>(hexes_around) * 2);
+
+    const int32_t hexes_around = GeometryHelper::HexesInRadius(radius);
+    unordered_set<ident_t> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_around));
+    items.reserve(numeric_cast<size_t>(hexes_around));
 
     for (int32_t i = 0; i < hexes_around; i++) {
         if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
@@ -617,7 +619,9 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
                 auto& field2 = _hexField->GetCellForWriting(hex_around);
 
                 for (auto& item : field2.Items) {
-                    vec_safe_add_unique_value(items, item.get());
+                    if (seen.insert(item->GetId()).second) {
+                        items.emplace_back(item.get());
+                    }
                 }
             }
         }
