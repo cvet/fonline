@@ -1,8 +1,6 @@
-#Scripting
+# Scripting
 
-> Engine - owned documentation.This page describes reusable scripting runtime
-                   behavior in `Source /
-               Common / ScriptSystem.*` and `Source / Scripting /`; concrete game scripts, quests, rules, and content policy belong to the embedding project.
+> Engine-owned documentation. This page describes reusable scripting runtime behavior in `Source/Common/ScriptSystem.*` and `Source/Scripting/`; concrete game scripts, quests, rules, and content policy belong to the embedding project.
 
 ## Purpose
 
@@ -142,7 +140,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Core.fos`
 - `Math.fos`
 - `Time.fos`
-- `Colors.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
+- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
 - `Input.fos`
 - `Gui.fos`
 - `Sprite.fos`
