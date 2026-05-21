@@ -532,7 +532,13 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                     connection->HardDisconnect();
                 }
                 catch (const NetBufferException& ex) {
-                    ReportExceptionAndContinue(ex);
+                    if (!connection->IsHandshakeComplete()) {
+                        WriteLog(LogType::Warning, "Invalid handshake data from host {}:{}: {}", connection->GetHost(), connection->GetPort(), ex.what());
+                    }
+                    else {
+                        ReportExceptionAndContinue(ex);
+                    }
+
                     connection->HardDisconnect();
                 }
                 catch (const std::exception& ex) {
