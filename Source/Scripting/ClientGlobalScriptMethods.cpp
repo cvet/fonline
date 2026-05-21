@@ -850,7 +850,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, pos, COLOR_NEUTRAL);
+    client->SprMngr.DrawSprite(spr, pos, Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -866,7 +866,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSprite(spr, pos, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -890,7 +890,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         y += -spr->GetSize().height + spr->GetOffset().y;
     }
 
-    client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSprite(spr, {x, y}, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -906,7 +906,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, COLOR_NEUTRAL);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -922,7 +922,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), true, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -938,7 +938,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->GetSize()), false, false, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, fsize32(spr->GetSize()), false, false, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -954,7 +954,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, false, false, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSpriteSizeExt(spr, pos, size, false, false, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -971,7 +971,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ClientEngine* client, uint32_t sprId, 
     }
 
     const fpos32 draw_pos = fpos32(pos + (offs ? spr->GetOffset() : ipos32()));
-    client->SprMngr.DrawSpriteSizeExt(spr, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSpriteSizeExt(spr, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -987,7 +987,7 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(ClientEngine* client, uint32_t 
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(spr, pos, size, sprSize, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSpritePattern(spr, pos, size, sprSize, color != ucolor::clear ? color : Color::Neutral);
 }
 
 ///@ ExportMethod
@@ -1014,7 +1014,7 @@ FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, 
         y -= height;
     }
 
-    client->FontMngr.DrawText(irect32 {x, y, width, height}, text, color != ucolor::clear ? color : COLOR_TEXT_WHITE, format);
+    client->FontMngr.DrawText(irect32 {x, y, width, height}, text, color != ucolor::clear ? color : Color::TextWhite, format);
 }
 
 ///@ ExportMethod
@@ -1044,7 +1044,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ClientEngine* client, hstring model
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
     if (frames != nullptr) {
-        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : COLOR_NEUTRAL);
+        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : Color::Neutral);
     }
 }
 
@@ -1131,7 +1131,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ClientEngine* client, uint32_t inst
     const auto result_x = iround<int32_t>(x) - model_spr->GetSize().width / 2 + model_spr->GetOffset().x;
     const auto result_y = iround<int32_t>(y) - model_spr->GetSize().height + model_spr->GetOffset().y;
 
-    client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : COLOR_NEUTRAL);
+    client->SprMngr.DrawSprite(model_spr.get(), {result_x, result_y}, color != ucolor::clear ? color : Color::Neutral);
 
     if (count > 13) {
         client->SprMngr.PopScissor();

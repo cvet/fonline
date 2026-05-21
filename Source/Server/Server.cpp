@@ -1474,7 +1474,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         logcb("Done");
     } break;
     case CMD_MYINFO: {
-        string istr = strex("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}", player_cr->GetName(), player_cr->GetId());
+        string istr = strex("Name: {}, Id: {}", player_cr->GetName(), player_cr->GetId());
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {

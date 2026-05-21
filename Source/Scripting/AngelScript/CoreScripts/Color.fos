@@ -1,0 +1,33 @@
+namespace Color // Sort -6
+{
+
+const ucolor Neutral = ucolor(128, 128, 128);
+const ucolor Text = ucolor(80, 255, 0);           // Default text color
+const ucolor TextFocused = ucolor(20, 190, 20);   // Default focused text color
+const ucolor CritterName = ucolor(193, 193, 205); // Default critter nickname color
+const ucolor ContourRed = ucolor(170, 20, 20);
+const ucolor ContourYellow = ucolor(170, 170, 20);
+const ucolor ContourGreen = ucolor(20, 170, 20);
+const ucolor LGray = ucolor(191, 191, 191);
+const ucolor Gray = ucolor(147, 147, 147);
+const ucolor White = ucolor(255, 255, 255);
+const ucolor Red = ucolor(220, 20, 20);
+const ucolor DRed = ucolor(190, 20, 20);
+const ucolor DDRed = ucolor(122, 20, 20);
+const ucolor LRed = ucolor(255, 20, 20);
+const ucolor Blue = ucolor(20, 20, 220);
+const ucolor DBlue = ucolor(20, 20, 190);
+const ucolor LBlue = ucolor(20, 20, 255);
+const ucolor Green = ucolor(20, 220, 20);
+const ucolor DGreen = ucolor(20, 190, 20);
+const ucolor DDGreen = ucolor(20, 122, 20);
+const ucolor LGreen = ucolor(20, 255, 20);
+const ucolor Black = ucolor(20, 20, 20);
+const ucolor SBlack = ucolor(36, 36, 36);
+const ucolor Dark = ucolor(68, 68, 68);
+const ucolor GreenRed = ucolor(20, 220, 220);
+const ucolor Sand = ucolor(163, 131, 20);
+const ucolor Lemon = ucolor(255, 255, 20);
+const ucolor Yellow = ucolor(220, 220, 20);
+
+}
