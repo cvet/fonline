@@ -15,19 +15,22 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, NotRequired, Sequence, TypedDict
+from typing import Callable, Dict, Iterable, Mapping, Sequence, TypedDict
 
 
-EnvMap = dict[str, str]
-FlagMap = dict[str, int]
+EnvMap = Dict[str, str]
+FlagMap = Dict[str, int]
 
 
-class ValidationTarget(TypedDict):
+class RequiredValidationTarget(TypedDict):
 	platform: str
 	target: str
 	config: str
-	compiler: NotRequired[str]
-	run_target: NotRequired[str]
+
+
+class ValidationTarget(RequiredValidationTarget, total=False):
+	compiler: str
+	run_target: str
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
