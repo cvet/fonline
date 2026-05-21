@@ -22,6 +22,8 @@ Read this page together with:
 - `Source/Client/ClientConnection.cpp`
 - `Source/Client/ResourceManager.h`
 - `Source/Client/ResourceManager.cpp`
+- `Source/Client/FontManager.h`
+- `Source/Client/FontManager.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Client/CritterView.h`
@@ -137,9 +139,14 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 - `ModelSpriteFactory` turns model resources into atlas-backed sprites by rendering model frames into a render target.
 - `ParticleSpriteFactory` does the same for particle resources.
 - `EffectManager` loads default/minimal effects, resolves script-selected effects, and updates per-frame effect buffers.
+- `FontManager` loads fonts and formats/draws text, including inline color tags.
 - `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen render targets.
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
+
+### Fonts and Inline Color Tags
+
+`FontManager::FormatText()` strips `@color 0xBBGGRR@` / `@color 0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 
 ## Input and script-facing hooks
 

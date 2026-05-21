@@ -5370,7 +5370,7 @@ void MapperEngine::CurDraw()
 
             const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
             const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
-            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_NEUTRAL);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, Color::Neutral);
         }
         return;
     }
@@ -5396,7 +5396,7 @@ void MapperEngine::CurDraw()
 
         const auto width = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width) * zoom);
         const auto height = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom);
-        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_NEUTRAL);
+        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, Color::Neutral);
     }
 }
 
@@ -6173,6 +6173,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
     SetMapDirty(map);
 
     const auto after_snapshot = CaptureMapSnapshot(map);
+
     if (!before_snapshot.empty() && before_snapshot != after_snapshot) {
         PushUndoOp(map, UndoOp {"Resize map", [map_name = string(map->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(map->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
     }
@@ -6182,7 +6183,7 @@ void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string str = strex("|{} - {}\n", COLOR_TEXT_WHITE, message_text);
+    const string str = strex("- {}\n", message_text);
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
@@ -6224,7 +6225,7 @@ void MapperEngine::MessBoxDraw()
         return;
     }
 
-    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, COLOR_TEXT_WHITE, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
+    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, Color::TextWhite, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
 }
 
 auto MapperEngine::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>

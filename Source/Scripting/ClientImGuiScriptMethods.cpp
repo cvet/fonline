@@ -71,7 +71,7 @@ static auto ResolveTintColor(ucolor tint_color) noexcept -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    return tint_color == ucolor::clear ? COLOR_NEUTRAL : tint_color;
+    return tint_color == ucolor::clear ? Color::Neutral : tint_color;
 }
 
 static auto ToImU32(ucolor color) -> ImU32

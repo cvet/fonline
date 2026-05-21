@@ -48,6 +48,11 @@ FO_DECLARE_EXCEPTION(FontManagerException);
 class SpriteManager;
 class AtlasSprite;
 
+namespace Color
+{
+    static constexpr auto TextDefault = ucolor {60, 248, 0};
+}
+
 // Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation.
 ///@ ExportEnum
 enum class FontType : int32_t
@@ -67,7 +72,7 @@ enum class FontFlag : uint32_t
     AlignRight = 0x0010, // Right-align each line within the rect
     AlignBottom = 0x0020, // Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from "skip from top" to "skip from bottom"
     KeepTail = 0x0040, // When the text block is taller than the rect, render its tail (skip the leading overflowing lines)
-    NoColorize = 0x0080, // Skip parsing of inline color tokens (|c... / |xRRGGBB), render text with the base color as-is
+    NoColorize = 0x0080, // Strip inline color tags (@color 0x...@ / @color@), but render text with the base color as-is
     Justify = 0x0100, // Justify each line: distribute extra spaces between words to fill the rect width
     Bordered = 0x0200, // Render glyphs from the bordered/outlined font texture variant instead of the regular one
 };
@@ -116,8 +121,6 @@ private:
         LineCount,
     };
 
-    static constexpr auto COLOR_TEXT_DEFAULT = ucolor {60, 248, 0};
-
     struct FontData
     {
         struct Letter
@@ -157,7 +160,7 @@ private:
         vector<int32_t> LineWidth {};
         vector<int32_t> LineSpaceWidth {};
         int32_t ColorOffset {};
-        ucolor Color {COLOR_TEXT_DEFAULT};
+        ucolor Color {Color::TextDefault};
         vector<string> Lines {};
         uint64_t LastUsedFrame {};
     };
@@ -167,7 +170,11 @@ private:
 
     void BuildFont(int32_t index);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
+    [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
+    [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> const FontFormatInfo*;
+
+    static constexpr string_view InlineColorTagPrefix = "@color";
 
     raw_ptr<SpriteManager> _sprMngr;
     vector<unique_ptr<FontData>> _allFonts {};

@@ -140,7 +140,7 @@ The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript
 - `Core.fos`
 - `Math.fos`
 - `Time.fos`
-- `Colors.fos`
+- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
 - `Input.fos`
 - `Gui.fos`
 - `Sprite.fos`
