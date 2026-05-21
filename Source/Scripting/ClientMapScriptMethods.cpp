@@ -238,13 +238,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterOnHex(MapView* self, mpos hex, C
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -262,13 +256,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterInRadius(MapView* self, mpos hex
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex() + radius)) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -335,13 +323,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(MapView* self, mp
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -349,7 +331,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(MapView* self, mp
         return dist1 < dist2;
     });
 
-    return critters;
+    return vec_transform(critters, [](auto* cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -359,13 +341,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(MapView* self,
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -373,7 +349,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(MapView* self,
         return dist1 < dist2;
     });
 
-    return critters;
+    return vec_transform(critters, [](auto* cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod

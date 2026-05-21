@@ -395,24 +395,26 @@ void MapView::Process()
 
     // Critters
     {
-        vector<CritterHexView*> critter_to_delete;
+        _critterToDeleteScratch.clear();
 
         for (auto& cr : _critters) {
             cr->Process();
 
             if (cr->IsFinished()) {
-                critter_to_delete.emplace_back(cr.get());
+                _critterToDeleteScratch.emplace_back(cr.get());
             }
         }
 
-        for (auto* cr : critter_to_delete) {
+        for (auto* cr : _critterToDeleteScratch) {
             DestroyCritter(cr);
         }
+
+        _critterToDeleteScratch.clear();
     }
 
     // Items
     {
-        vector<ItemHexView*> item_to_delete;
+        _itemToDeleteScratch.clear();
 
         for (auto& item : _processingItems) {
             if (item->IsNeedProcess()) {
@@ -420,13 +422,15 @@ void MapView::Process()
             }
 
             if (item->IsFinished()) {
-                item_to_delete.emplace_back(item.get());
+                _itemToDeleteScratch.emplace_back(item.get());
             }
         }
 
-        for (auto* item : item_to_delete) {
+        for (auto* item : _itemToDeleteScratch) {
             DestroyItem(item);
         }
+
+        _itemToDeleteScratch.clear();
     }
 
     // Scroll and zoom
@@ -1317,8 +1321,8 @@ void MapView::ProcessLighting()
         }
     }
 
-    vector<LightSource*> reapply_sources;
-    vector<LightSource*> remove_sources;
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     for (auto* ls : _visibleLightSources | std::views::keys) {
         const auto prev_intensity = ls->CurIntensity;
@@ -1329,23 +1333,26 @@ void MapView::ProcessLighting()
         }
 
         if (ls->Finishing && ls->CurIntensity == 0) {
-            remove_sources.emplace_back(ls);
+            _removeLightSourcesScratch.emplace_back(ls);
         }
         else if (ls->CurIntensity != prev_intensity || ls->NeedReapply) {
-            reapply_sources.emplace_back(ls);
+            _reapplyLightSourcesScratch.emplace_back(ls);
         }
     }
 
-    for (auto* ls : reapply_sources) {
+    for (auto* ls : _reapplyLightSourcesScratch) {
         ApplyLightFan(ls);
     }
 
-    for (auto* ls : remove_sources) {
+    for (auto* ls : _removeLightSourcesScratch) {
         FO_RUNTIME_ASSERT(_lightSources.count(ls->Id) != 0);
 
         CleanLightFan(ls);
         _lightSources.erase(ls->Id);
     }
+
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     if (_needRebuildLightPrimitives) {
         _needRebuildLightPrimitives = false;
@@ -3300,6 +3307,37 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vec
     for (const auto& cr : field.Critters) {
         if (cr->CheckFind(find_type)) {
             critters.emplace_back(cr.get());
+        }
+    }
+
+    return critters;
+}
+
+auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<CritterHexView*> critters;
+
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<const CritterHexView*> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(cur_hex);
+
+            if (field.Critters.empty()) {
+                continue;
+            }
+
+            auto& field2 = _hexField->GetCellForWriting(cur_hex);
+
+            for (auto& cr : field2.Critters) {
+                if (seen.insert(cr.get()).second && cr->CheckFind(find_type)) {
+                    critters.emplace_back(cr.get());
+                }
+            }
         }
     }
 

@@ -322,6 +322,8 @@ public:
 
     auto FindOverlayEntry(const Property* prop) const noexcept -> const OverlayEntry*;
     auto FindOverlayEntry(const Property* prop) noexcept -> OverlayEntry*;
+    void EnsureOverlayEntryIndex() noexcept;
+    void RebuildOverlayEntryIndex() noexcept;
     auto IsOverlayPropertyIncluded(const Property* prop, bool with_protected) const noexcept -> bool;
     void CloneOwnDataFrom(const Properties& other) noexcept;
     void RebuildOverlayFromFullData(const Properties& other) noexcept;
@@ -388,6 +390,7 @@ private:
     unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};
 
     vector<OverlayEntry> _overlayEntries {};
+    vector<int32_t> _overlayEntryIndex {};
     unique_arr_ptr<uint8_t> _overlayData {};
     size_t _overlayDataSize {};
     size_t _overlayDataCapacity {};
