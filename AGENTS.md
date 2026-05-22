@@ -39,6 +39,12 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 - Build-system changes: validate the affected CMake preset or BuildTools command in the embedding project that exercises it.
 - Platform-packaging changes: validate the relevant package path (`Raw`, `Raw+WebServer`, Android package, etc.) and update the platform doc.
 - Script/native API boundary changes: update nullability/API docs and run the smallest test target that covers the changed binding.
+- Engine changes that affect network interaction or are otherwise substantial enough to matter for client/server runtime compatibility must force a compatibility-version change by bumping the central marker in `Source/Common/Common.h`:
+
+  ```cpp
+  // Force change of compatability version
+  ///@ MigrationRule Version 0 0 5
+  ```
 
 ## Style Notes
 
