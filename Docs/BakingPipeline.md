@@ -123,6 +123,8 @@ The abstract base for individual baker implementations. Each baker provides:
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
+
 ## Script compilation relationship
 
 `ScriptsAndBaking.cmake` also creates script compilation commands:

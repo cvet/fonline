@@ -217,19 +217,23 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 const auto is_static = proto->GetStatic();
                 const auto is_hidden = proto->GetHidden();
 
-                if (is_static && !is_hidden) {
+                if (is_static) {
                     const auto* client_proto = client_engine.GetProtoItem(proto->GetProtoId());
                     FO_RUNTIME_ASSERT(client_proto);
 
                     auto client_props = client_proto->GetProperties().Copy();
                     client_props.ApplyFromText(kv);
 
-                    map_client_item_count++;
-                    map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
-                    map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                    // For hidden items keep only string hashes for client
                     client_props.StoreAllData(props_data, client_str_hashes);
-                    map_client_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-                    map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
+
+                    if (!is_hidden) {
+                        map_client_item_count++;
+                        map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
+                        map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                        map_client_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+                        map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
+                    }
                 }
             });
 
