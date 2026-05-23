@@ -120,6 +120,26 @@ TEST_CASE("ProtoManager")
         CHECK(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid) == location_proto.get());
     }
 
+    SECTION("MigrationRuleRemoveResolvesToSentinel")
+    {
+        EngineMetadata meta {[] { }};
+        InitProtoTestMetadata(meta);
+
+        const hstring proto_rule = meta.Hashes.ToHashedString("Proto");
+        const hstring item_type = meta.Hashes.ToHashedString("Item");
+        const hstring removed_pid = meta.Hashes.ToHashedString("RemovedKnife");
+        const hstring remove_sentinel = meta.Hashes.ToHashedString("Remove");
+
+        meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "Remove");
+
+        // A deleted proto resolves to the "Remove" sentinel; EntityManager keys its clean entity drop
+        // on exactly this. The proto itself is gone, so lookups still return null.
+        const auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
+        CHECK(resolved.has_value());
+        CHECK(resolved.value() == remove_sentinel);
+        CHECK(meta.GetProtoItem(removed_pid) == nullptr);
+    }
+
     SECTION("UnknownTypeCollectionReturnsEmptyReference")
     {
         EngineMetadata meta {[] { }};

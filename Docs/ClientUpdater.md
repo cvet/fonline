@@ -45,8 +45,13 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 
 ## Two-layer client startup
 
-The host always tries to load the bundled runtime first; whichever module ends up running
-the game (DLL or embedded host) drives a uniform two-stage updater UI:
+The host tries to load the bundled runtime DLL first on self-update platforms; the **embedded** engine
+(statically linked into the host) is the fallback when no sibling DLL is present or it fails to load.
+This is uniform across the regular and headless clients — a standalone headless client with no sibling
+DLL simply lands on the embedded fallback. Setting `Client.ForceEmbeddedRuntime` (read from the command
+line at host startup) forces the embedded path and skips the implicit bundled-DLL load; an explicit
+`--ClientLibPath` still loads a DLL. Whichever module ends up running the game (loaded DLL or embedded
+host) drives a uniform two-stage updater UI:
 
 ```
 LF_Client.exe (host)
@@ -58,7 +63,7 @@ LF_Client.exe (host)
     â”‚  4. Validate ClientRuntimeExports.Metadata (ABI, compatibility version)
     â”‚
     â–¼
-<live runtime module>                 â”€â”€â”€ Case 2 (optimistic, common path)
+<live runtime module>                 â”€â”€â”€ the running module (loaded DLL by default; host module on fallback / ForceEmbeddedRuntime)
     â”‚
     â”‚  RunClientRuntime: InitApp â†’ resource Updater (UI) â†’ ClientEngine â†’ MainLoop
     â”‚  If resource updater reports compat outdated and platform supports self-update:
@@ -67,7 +72,7 @@ LF_Client.exe (host)
     â”‚
     â””â”€â–º returns ClientRuntimeResult (Shutdown / ReloadRequested / FatalError)
 
-If LoadModule failed (no DLL on disk yet):    â”€â”€â”€ Case 1 (cold install / fallback)
+No sibling DLL / LoadModule fails, or ForceEmbeddedRuntime is set:    â”€â”€â”€ embedded fallback
     Embedded client runs the same RunClientRuntime in the host module. After it
     signals ReloadRequested, the host tears down its own Application instance and goes
     to the reload step below.
@@ -84,8 +89,21 @@ Reload step (taken on either Case after ReloadRequested):
 in-process reload path use the same code.
 
 The embedded client (host module hosts the game and the updater itself) runs when:
-- the requested runtime path could not be loaded **and**
-- the requested compatibility version equals the host's built-in `FO_COMPATIBILITY_VERSION`.
+- the bundled runtime DLL could not be loaded (cold install / missing or invalid DLL) **and** the
+  requested compatibility version equals the host's built-in `FO_COMPATIBILITY_VERSION`, **or**
+- `Client.ForceEmbeddedRuntime` is set and no explicit `--ClientLibPath` was given — the host skips the
+  implicit bundled-DLL load and goes straight to embedded.
+
+`RunEmbeddedOrLoadedClient` gates the bundled-DLL-first path on `requested_runtime.ExplicitPath ||
+(!ForceEmbedded && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()))`, identically for the regular
+and headless clients. `Client.ForceEmbeddedRuntime` is honored from the command line
+(`--ForceEmbeddedRuntime`) because the host picks the runtime before settings are otherwise resolved;
+a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
+embedded on a standalone client pass it on the command line.
+
+Because the regular client loads the `<live>` DLL into its own process, a self-update must reload that
+same path after staging the new module — see "Reload must map a fresh module" below for how the host
+keeps that reload from re-initializing a stale module.
 
 If `--ClientLibCompatibilityVersion <version>` is passed and differs from the host's compatibility, the host **does not** fall back â€” failure means "wrong runtime, refuse to run" rather than "silently downgrade to host code".
 
@@ -94,6 +112,32 @@ is destroyed (`App.reset()` in `RunClientRuntime`) before the host loads the fre
 downloaded DLL. This keeps a single SDL window alive at any one time â€” the host's window
 disappears, then the DLL's `InitApp` creates a fresh one. Without this teardown the two
 modules' independent `unique_ptr<Application> App` statics would briefly co-exist.
+
+### Reload must map a fresh module
+
+`InitApp` ([../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp)) is
+guarded by a module-static `std::once_flag` + `FO_STRONG_ASSERT(first_call)`: it must run exactly once
+per *loaded module*. A reload therefore must execute in a **different** module than the one that asked
+for it.
+
+When the host loaded the bundled DLL first, a self-update reloads the **same** `<live>` path after
+staging the new module. If `Platform::UnloadModule` did not bring the previous module's OS refcount to
+zero (Windows `LoadLibrary` dedup, glibc keeping a `.so` resident), the reload's `LoadModule` returns
+the **still-resident previous module** instead of the freshly-swapped file. Running it re-enters
+`InitApp` whose `once_flag` is already consumed → fatal `StrongAssertionException: first_call`, and the
+runtime never actually updates. (Runs that started embedded — cold install or `ForceEmbeddedRuntime` —
+sidestep this because their first-stage module is the host, not the `<live>` DLL.)
+
+`RunClientFromLibrary` guards against this: it threads the requesting module's `BuildHash` into the
+reload pass (`RequestedClientRuntime::PreviousBuildHash`) and, after `LoadModule`, aborts the reload
+with a clear log line if the loaded module's `BuildHash` is unchanged — instead of running it into the
+opaque assert. The next process launch starts clean (a fresh process resets the `once_flag`) and
+`ApplyStagedBinaryUpdate` has already promoted the staged file, so it loads the new module normally.
+
+> **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
+> DLL is). A client built before this reload guard (the host loaded the bundled DLL first and crashed on
+> the same-path reload) cannot be fixed in place by any server or DLL update — it needs a one-time
+> manual reinstall of a client carrying the fix, after which in-place self-updates work again.
 
 ## Host CLI surface
 
@@ -287,6 +331,7 @@ instead of looping back to the game which would only reject the connection again
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
+| Reload loaded an unchanged module | client log `Runtime reload loaded an unchanged module (build hash '...'); aborting reload to avoid double initialization` — the OS handed back the still-resident previous module; the reload aborts cleanly and the next launch loads the already-swapped module fresh (replaces the historical opaque `StrongAssertionException: first_call`) |
 | Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), `dbghelp`/`backward-cpp` cannot find the PDB and frames in the runtime resolve to addresses only |
 
 Local validation steps:

@@ -124,6 +124,8 @@ It owns:
 
 Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializator`. The database facade and backends are documented in [Persistence.md](Persistence.md).
 
+A persisted entity whose proto resolves through a `Proto <Type> <Name> Remove` migration rule is **dropped** on load: `LoadEntityDoc()` detects that the proto migration rule maps the saved proto to the `Remove` sentinel and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A removed proto on a player's main critter is not silently dropped — `ServerEngine::LoadCritter()` raises so the login fails loudly rather than discarding the character.
+
 ## Player and connection flow
 
 A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateUnloginedPlayer()`.

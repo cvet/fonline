@@ -347,6 +347,7 @@ FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
+FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled

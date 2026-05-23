@@ -1817,7 +1817,9 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         throw GenericException("Critter data base loading error");
     }
 
-    FO_RUNTIME_ASSERT(cr);
+    if (cr == nullptr) {
+        throw GenericException("Critter proto removed by migration rule", cr_id);
+    }
 
     if (for_player) {
         cr->MarkIsForPlayer();

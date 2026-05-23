@@ -165,7 +165,8 @@ private:
     const hstring _mapCollectionName {};
     const hstring _critterCollectionName {};
     const hstring _itemCollectionName {};
-    const hstring _removeMigrationRuleName {};
+    const hstring _protoMigrationRuleName {};
+    const hstring _removeMigrationReplacement {};
 };
 
 FO_END_NAMESPACE
