@@ -186,6 +186,12 @@ FO_SCRIPT_API void Client_Map_SetScrollCheck(MapView* self, bool enabled)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(MapView* self, fpos32 offset)
+{
+    self->SetExtraScrollOffset(offset);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {

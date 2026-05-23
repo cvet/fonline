@@ -123,6 +123,7 @@ public:
     auto ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_view effectPath) -> RenderEffect*;
     void SetEffect(raw_ptr<RenderEffect>& effect, raw_ptr<RenderEffect> defaultEffect, string_view effectPath);
     void SetEffectScriptValue(RenderEffect* effect, int32_t valueIndex, float32_t value);
+    void SetEffectScriptValues(RenderEffect* effect, int32_t valueStartIndex, const_span<float32_t> values);
     void ClearEffectScriptValues(RenderEffect* effect);
     auto GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEffect::ScriptValueBuffer&;
     void LoadMinimalEffects();
