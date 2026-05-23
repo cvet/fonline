@@ -1208,6 +1208,7 @@ void asCScriptFunction::AddReferences()
 			case asBC_OBJTYPE:
 			case asBC_FREE:
 			case asBC_REFCPY:
+			case asBC_RefCpyChk: // (FOnline Patch)
 			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
@@ -1368,6 +1369,7 @@ void asCScriptFunction::ReleaseReferences()
 			case asBC_OBJTYPE:
 			case asBC_FREE:
 			case asBC_REFCPY:
+			case asBC_RefCpyChk: // (FOnline Patch)
 			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
@@ -1877,6 +1879,22 @@ bool asCScriptFunction::IsProperty() const
 bool asCScriptFunction::IsVariadic() const
 {
 	return traits.GetTrait(asTRAIT_VARIADIC);
+}
+
+// interface
+// (FOnline Patch) A no-return function never returns normally (it always throws
+// or exits). The compiler treats a statement ending in such a call as a control
+// flow terminator, enabling narrowing without an explicit `return`.
+bool asCScriptFunction::IsNoReturn() const
+{
+	return traits.GetTrait(asTRAIT_NORETURN);
+}
+
+// interface
+// (FOnline Patch)
+void asCScriptFunction::SetNoReturn()
+{
+	traits.SetTrait(asTRAIT_NORETURN, true);
 }
 
 // internal

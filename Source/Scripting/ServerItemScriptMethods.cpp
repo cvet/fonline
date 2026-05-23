@@ -220,7 +220,7 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Item_GetCritter(Item* self)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
 {
     Critter* cr;
 

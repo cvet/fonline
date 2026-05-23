@@ -2568,7 +2568,7 @@ void asCReader::ReadByteCode(asCScriptFunction *func)
 
 		// (FOnline Patch)
 		if(
-			(b == asBC_REFCPY || b == asBC_OBJTYPE || b == asBC_JitEntry || b == asBC_FuncPtr || b == asBC_PGA || b == asBC_PshGPtr || b == asBC_LDG || b == asBC_PshG4))
+			(b == asBC_REFCPY || b == asBC_RefCpyChk || b == asBC_OBJTYPE || b == asBC_JitEntry || b == asBC_FuncPtr || b == asBC_PGA || b == asBC_PshGPtr || b == asBC_LDG || b == asBC_PshG4))
 		{
 			memset(bc, 0, len * sizeof(asDWORD));
 			*(asBYTE*)(bc) = b;
@@ -3001,6 +3001,7 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 	{
 		int c = *(asBYTE*)&bc[n];
 		if( c == asBC_REFCPY ||
+			c == asBC_RefCpyChk || // (FOnline Patch)
 			c == asBC_RefCpyV ||
 			c == asBC_OBJTYPE )
 		{
@@ -3892,7 +3893,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			calledFunc = func->GetCalledFunction(n);
 			break;
 		}
-		else if( (bc == asBC_REFCPY || bc == asBC_COPY) && offset == 1 ) // (FOnline Patch)
+		else if( (bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY) && offset == 1 ) // (FOnline Patch)
 		{
 			// Simple case: exactly 1 pointer on the stack above
 			return offset - (1 - AS_PTR_SIZE);
@@ -5171,7 +5172,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			}
 			break;
 		}
-		else if( (bc == asBC_REFCPY || bc == asBC_COPY) && offset == AS_PTR_SIZE ) // (FOnline Patch)
+		else if( (bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY) && offset == AS_PTR_SIZE ) // (FOnline Patch)
 		{
 			// Simple case: exactly 1 pointer on the stack above
 			return offset + (1 - AS_PTR_SIZE);
@@ -5296,6 +5297,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 			}
 		}
 		else if( c == asBC_REFCPY  || // PTR_ARG
+				 c == asBC_RefCpyChk || // (FOnline Patch) PTR_ARG
 				 c == asBC_RefCpyV || // wW_PTR_ARG
 				 c == asBC_OBJTYPE )  // PTR_ARG
 		{
@@ -5556,7 +5558,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 
 		// (FOnline Patch)
 		if(
-			(c == asBC_REFCPY || c == asBC_OBJTYPE || c == asBC_JitEntry || c == asBC_FuncPtr || c == asBC_PGA || c == asBC_PshGPtr || c == asBC_LDG || c == asBC_PshG4))
+			(c == asBC_REFCPY || c == asBC_RefCpyChk || c == asBC_OBJTYPE || c == asBC_JitEntry || c == asBC_FuncPtr || c == asBC_PGA || c == asBC_PshGPtr || c == asBC_LDG || c == asBC_PshG4))
 		{
 			asBYTE b = (asBYTE)c;
 			WriteData(&b, 1);

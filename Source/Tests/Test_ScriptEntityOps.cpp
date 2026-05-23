@@ -67,19 +67,19 @@ namespace EntityOps
 
     int TestEntityEquality()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // Same entity reference should be equal
-        Critter@ cr1ref = cr1;
+        Critter? cr1ref = cr1;
         if (cr1 !is cr1ref) return -2;
 
         // Different entities should not be equal
         if (cr1 is cr2) return -3;
 
         // Null checks
-        Critter@ nullCr = null;
+        Critter? nullCr = null;
         if (cr1 is nullCr) return -4;
 
         Game.DestroyCritter(cr1);
@@ -89,7 +89,7 @@ namespace EntityOps
 
     int TestEntityDestroyState()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         if (cr.IsDestroyed) return -2;
@@ -101,7 +101,7 @@ namespace EntityOps
 
     int TestEntityName()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Entity should have a name
@@ -114,23 +114,23 @@ namespace EntityOps
 
     int TestItemContainerOps()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr(), 1);
+        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
         if (item1 is null || item2 is null) return -2;
 
         // Both items should be in critter's inventory
-        array<Item@> items = cr.GetItems();
+        array<Item> items = cr.GetItems();
         if (items.length() < 2) return -3;
 
         // Item should know its owner
-        Critter@ owner1 = item1.GetCritter();
+        Critter? owner1 = item1.GetCritter();
         if (owner1 is null) return -4;
         if (owner1.Id != cr.Id) return -5;
 
-        Critter@ owner2 = item2.GetCritter();
+        Critter? owner2 = item2.GetCritter();
         if (owner2 is null) return -6;
         if (owner2.Id != cr.Id) return -7;
 
@@ -158,11 +158,11 @@ namespace EntityOps
     int TestReflectionEnums()
     {
         // Get global enums
-        array<reflection::type@> globalEnums = reflection::getGlobalEnums();
+        array<reflection::type> globalEnums = reflection::getGlobalEnums();
         if (globalEnums.isEmpty()) return -1;
 
         // Verify at least one enum exists
-        reflection::type@ firstEnum = globalEnums[0];
+        reflection::type firstEnum = globalEnums[0];
         if (firstEnum is null) return -2;
 
         string enumName = firstEnum.name;
@@ -216,7 +216,7 @@ namespace EntityOps
     int TestDatabaseHasRecord()
     {
         // Create a critter to get a valid ident
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Check for record - critter should be in DB since it's persistent
@@ -248,7 +248,7 @@ namespace EntityOps
 
     int TestTimeEventCreation()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Start a time event (60 seconds delay, place=3 means seconds)
@@ -272,7 +272,7 @@ namespace EntityOps
 
     int TestTimeEventByFunction()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Start by function ref
@@ -569,12 +569,12 @@ namespace EntityOps
 
     int TestMultipleCritterLifecycle()
     {
-        array<Critter@> critters = {};
+        array<Critter> critters = {};
 
         // Create 10 critters
         for (int i = 0; i < 10; i++)
         {
-            Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+            Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
             if (cr is null) return -(i + 1);
             critters.insertLast(cr);
         }
@@ -589,7 +589,7 @@ namespace EntityOps
         }
 
         // GetAllNpc should include them
-        array<Critter@> allNpc = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> allNpc = Game.GetAllNpc("TestCritter".hstr());
         if (allNpc.length() < 10) return -30;
 
         // Destroy all
@@ -602,7 +602,7 @@ namespace EntityOps
 
     int TestCritterPropertyAccess()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Access Id
@@ -625,34 +625,34 @@ namespace EntityOps
 
     int TestGameGetCrittersVariants()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
         // Get by NonDead type
-        array<Critter@> nonDead = Game.GetCritters(CritterFindType::NonDead);
+        array<Critter> nonDead = Game.GetCritters(CritterFindType::NonDead);
         if (nonDead.length() < 3) return -2;
 
         // Get NPCs
-        array<Critter@> npcs = Game.GetCritters(CritterFindType::Npc);
+        array<Critter> npcs = Game.GetCritters(CritterFindType::Npc);
         if (npcs.length() < 3) return -3;
 
         // Get by Any
-        array<Critter@> all = Game.GetCritters(CritterFindType::Any);
+        array<Critter> all = Game.GetCritters(CritterFindType::Any);
         if (all.length() < 3) return -4;
 
         // Kill one and check dead queries
         cr1.SetCondition(CritterCondition::Dead, CritterActionAnim::None, null);
 
-        array<Critter@> dead = Game.GetCritters(CritterFindType::Dead);
+        array<Critter> dead = Game.GetCritters(CritterFindType::Dead);
         if (dead.isEmpty()) return -5;
 
         // NonDead should have fewer
-        array<Critter@> nonDead2 = Game.GetCritters(CritterFindType::NonDead);
+        array<Critter> nonDead2 = Game.GetCritters(CritterFindType::NonDead);
         if (nonDead2.length() >= nonDead.length()) return -6;
 
-        array<Critter@> toDestroy = {cr1, cr2, cr3};
+        array<Critter> toDestroy = {cr1, cr2, cr3};
         Game.DestroyCritters(toDestroy);
         return 0;
     }
@@ -661,26 +661,26 @@ namespace EntityOps
 
     int TestItemMultipleTypes()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Add items of different types
-        Item@ item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr(), 1);
+        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
         if (item1 is null || item2 is null) return -2;
 
         // Items should have different proto ids
         if (item1.ProtoId == item2.ProtoId) return -3;
 
         // Get all items on critter
-        array<Item@> allItems = cr.GetItems();
+        array<Item> allItems = cr.GetItems();
         if (allItems.length() < 2) return -4;
 
         // Destroy one type
         cr.DestroyItem("TestItem".hstr());
 
         // Check remaining
-        array<Item@> remaining = cr.GetItems();
+        array<Item> remaining = cr.GetItems();
         // Should still have TestItem2
         bool hasItem2 = false;
         for (int i = 0; i < remaining.length(); i++)

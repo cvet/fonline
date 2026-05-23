@@ -154,7 +154,7 @@ namespace CommonMethods
 
     int TestGetProtoItems()
     {
-        array<ProtoItem@>@ protos = Game.GetProtoItems();
+        array<ProtoItem> protos = Game.GetProtoItems();
         if (protos is null) return -1;
         if (protos.length() == 0) return -2;
         return 0;
@@ -162,7 +162,7 @@ namespace CommonMethods
 
     int TestGetProtoCritters()
     {
-        array<ProtoCritter@>@ protos = Game.GetProtoCritters();
+        array<ProtoCritter> protos = Game.GetProtoCritters();
         if (protos is null) return -1;
         if (protos.length() == 0) return -2;
         return 0;
@@ -170,7 +170,7 @@ namespace CommonMethods
 
     int TestGetProtoMaps()
     {
-        array<ProtoMap@>@ protos = Game.GetProtoMaps();
+        array<ProtoMap> protos = Game.GetProtoMaps();
         if (protos is null) return -1;
         // Maps may be 0 if none defined in test setup - just verify no crash
         return 0;
@@ -178,7 +178,7 @@ namespace CommonMethods
 
     int TestGetProtoLocations()
     {
-        array<ProtoLocation@>@ protos = Game.GetProtoLocations();
+        array<ProtoLocation> protos = Game.GetProtoLocations();
         if (protos is null) return -1;
         if (protos.length() == 0) return -2;
         return 0;
@@ -424,7 +424,7 @@ namespace CommonMethods
 
     int TestEntityTimeEventCount()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         uint32 eventId = cr.StartTimeEvent(timespan(60, 3), OnCritterTimeEvent);
@@ -445,7 +445,7 @@ namespace CommonMethods
 
     int TestEntityTimeEventRepeat()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         uint32 eventId = cr.StartTimeEvent(timespan(60, 3), OnCritterTimeEvent);
@@ -464,7 +464,7 @@ namespace CommonMethods
 
     int TestEntityTimeEventSetData()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         any initData = 1;
@@ -486,7 +486,7 @@ namespace CommonMethods
 
     int TestEntityTimeEventStopByFunction()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.StartTimeEvent(timespan(60, 3), OnCritterTimeEvent);
@@ -509,27 +509,27 @@ namespace CommonMethods
 
     int TestItemContainerAddGetItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Add a container item
-        Item@ container = cr.AddItem("TestContainer".hstr(), 1);
+        Item container = cr.AddItem("TestContainer".hstr(), 1);
         if (container is null) return -2;
 
         // Add items to the container
-        Item@ subItem1 = container.AddItem("TestItem".hstr(), 3);
+        Item subItem1 = container.AddItem("TestItem".hstr(), 3);
         if (subItem1 is null) return -3;
 
-        Item@ subItem2 = container.AddItem("TestItem".hstr(), 5);
+        Item subItem2 = container.AddItem("TestItem".hstr(), 5);
         if (subItem2 is null) return -4;
 
         // Get items from container
-        array<Item@>@ contents = container.GetItems();
+        array<Item> contents = container.GetItems();
         if (contents is null) return -5;
         if (contents.length() == 0) return -6;
 
         // Container's GetCritter should return the owning critter
-        Critter@ owner = container.GetCritter();
+        Critter? owner = container.GetCritter();
         if (owner is null) return -7;
         if (owner.Id != cr.Id) return -8;
 
@@ -539,14 +539,14 @@ namespace CommonMethods
 
     int TestItemGetMap()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         // Item is in critter inventory, not on a map
-        Map@ m = item.GetMap();
+        Map? m = item.GetMap();
         // Should be null since item is not on a map
         if (m !is null) return -3;
 
@@ -558,7 +558,7 @@ namespace CommonMethods
 
     int TestCritterGetPlayerOfflineTime()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // NPC has no player, GetPlayerOfflineTime should throw
@@ -572,18 +572,18 @@ namespace CommonMethods
 
     int TestCritterGetItemByProperty()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 5);
 
         // Get items by property: CritterSlot == Inventory (0)
-        array<Item@>@ items = cr.GetItems(ItemProperty::CritterSlot, CritterItemSlot::Inventory);
+        array<Item> items = cr.GetItems(ItemProperty::CritterSlot, CritterItemSlot::Inventory);
         if (items is null) return -2;
         if (items.length() == 0) return -3;
 
         // Get single item by property
-        Item@ found = cr.GetItem(ItemProperty::CritterSlot, CritterItemSlot::Inventory);
+        Item? found = cr.GetItem(ItemProperty::CritterSlot, CritterItemSlot::Inventory);
         if (found is null) return -4;
 
         Game.DestroyCritter(cr);
@@ -592,14 +592,14 @@ namespace CommonMethods
 
     int TestCritterGetItemsByProto()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 3);
         cr.AddItem("TestItem".hstr(), 7);
 
         // Get items by proto hstring
-        array<Item@>@ items = cr.GetItems("TestItem".hstr());
+        array<Item> items = cr.GetItems("TestItem".hstr());
         if (items is null) return -2;
         if (items.length() == 0) return -3;
 
@@ -609,7 +609,7 @@ namespace CommonMethods
 
     int TestCritterDestroyItemByCount()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 10);
@@ -638,17 +638,17 @@ namespace CommonMethods
 
     int TestGetLocationsOverloads()
     {
-        Location@ loc1 = Game.CreateLocation("TestLocation".hstr());
-        Location@ loc2 = Game.CreateLocation("TestLocation".hstr());
+        Location loc1 = Game.CreateLocation("TestLocation".hstr());
+        Location loc2 = Game.CreateLocation("TestLocation".hstr());
         if (loc1 is null || loc2 is null) return -1;
 
         // Get all locations
-        array<Location@>@ locs = Game.GetLocations();
+        array<Location> locs = Game.GetLocations();
         if (locs is null) return -2;
         if (locs.length() < 2) return -3;
 
         // Get locations by pid
-        array<Location@>@ byPid = Game.GetLocations("TestLocation".hstr());
+        array<Location> byPid = Game.GetLocations("TestLocation".hstr());
         if (byPid is null) return -4;
         if (byPid.length() < 2) return -5;
 
@@ -659,17 +659,17 @@ namespace CommonMethods
 
     int TestGetCrittersOverloads()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // Get all NPCs
-        array<Critter@>@ npcs = Game.GetAllNpc();
+        array<Critter> npcs = Game.GetAllNpc();
         if (npcs is null) return -2;
         if (npcs.length() < 2) return -3;
 
         // Get NPCs by PID
-        array<Critter@>@ byPid = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> byPid = Game.GetAllNpc("TestCritter".hstr());
         if (byPid is null) return -4;
         if (byPid.length() < 2) return -5;
 
@@ -704,7 +704,7 @@ namespace CommonMethods
 
     int TestLocationTimeEvents()
     {
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -1;
 
         uint32 eventId = loc.StartTimeEvent(timespan(60, 3), OnLocationTimeEvent);
@@ -740,10 +740,10 @@ namespace CommonMethods
 
     int TestItemTimeEvents()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         uint32 eventId = item.StartTimeEvent(timespan(60, 3), OnItemTimeEvent);
@@ -765,10 +765,10 @@ namespace CommonMethods
 
     int TestItemTimeEventWithData()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         any initData = 42;
@@ -818,7 +818,7 @@ namespace CommonMethods
 
     int TestEntityTimeEventWithArrayData()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         array<any> data = {10, 20};

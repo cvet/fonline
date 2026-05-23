@@ -192,7 +192,7 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
     return result;
 }
 
-auto MakeScriptArgName(const ComplexTypeDesc& type) -> string
+auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -207,13 +207,23 @@ auto MakeScriptArgName(const ComplexTypeDesc& type) -> string
     }
     else if (type.Kind == ComplexTypeKind::Simple && type.BaseType.IsGlobalEntity) {
         result += "@";
+
+        if (nullable) {
+            result += "?";
+        }
     }
     else {
+        result += "@";
+
+        if (nullable) {
+            result += "?";
+        }
+
         if (type.IsMutable) {
-            result += "@&";
+            result += "&";
         }
         else {
-            result += "@+";
+            result += "+";
         }
     }
 
@@ -234,7 +244,7 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
             result += ", ";
         }
 
-        result += MakeScriptArgName(arg.Type);
+        result += MakeScriptArgName(arg.Type, arg.Nullable);
         result += " ";
         result += arg.Name;
     }
@@ -242,7 +252,7 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
     return result;
 }
 
-auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership) -> string
+auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool nullable) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -250,7 +260,7 @@ auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership) -> s
         return "void";
     }
 
-    string result = MakeScriptArgName(type);
+    string result = MakeScriptArgName(type, nullable);
 
     if (type.Kind == ComplexTypeKind::Simple) {
         if ((type.BaseType.IsEntity && !type.BaseType.IsGlobalEntity) || type.BaseType.IsRefType) {

@@ -184,7 +184,11 @@ namespace
 
     static void RegisterDummyCritterType(asIScriptEngine* engine)
     {
-        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF) >= 0);
+        // Critter is registered as an implicit-handle ref type so the
+        // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
+        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
+        CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
     }
@@ -640,20 +644,24 @@ void WithPriority()
 }
 )";
 
+    // `?` is no longer stripped by the preprocessor — AngelScript itself
+    // parses the suffix on handle types. The script uses the project's implicit-handle
+    // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
+    // ternary uses inside function bodies stay disambiguated by the AS parser.
     static constexpr string_view NullableStripScript = R"(
 namespace AttrTest
 {
-int? Returns(int? a, int? b)
+Critter? Returns(Critter? a, Critter? b)
 {
-    return a + b;
+    return a;
 }
 
 [[Primary]]
-void Mixed(int? arg)
+void Mixed(Critter? arg)
 {
 }
 
-void Plain(int? x)
+void Plain(Critter? x)
 {
 }
 
@@ -961,7 +969,7 @@ void OnAnim(Critter@+ cr)
 
 void StoreHandler()
 {
-    AnimCallbackFunc@ fn = @OnAnim;
+    AnimCallbackFunc fn = @OnAnim;
 }
 )";
 
@@ -1449,33 +1457,69 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(parsed.Errors.find("AttributesInvalidPlacement.fos") != string::npos);
     }
 
-    SECTION("StripsNullableTypeSuffix")
+    SECTION("ParsesNullableTypeSuffix")
     {
+        // `?` now passes through the preprocessor untouched and is parsed
+        // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
+        // must survive into the AS source; ternary `cond ? a : b` inside function bodies
+        // must continue to parse normally.
         auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
 
         INFO(parsed.Errors);
         CHECK(parsed.Errors.empty());
-        // The `?` type suffix must not survive into the source fed to AngelScript.
-        // Strip whitespace-around-`?` to compare reliably.
-        CHECK(parsed.Source.find("int?") == string::npos);
-        // The ternary `cond > 0 ? a : b` must survive intact.
+        CHECK(parsed.Source.find("Critter?") != string::npos);
         CHECK(parsed.Source.find("? a") != string::npos);
 
         ScriptMessages messages;
         auto* engine = MakeEngine(messages);
         auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyCritterType(engine);
 
         auto* mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        CheckAttributes(FindScriptFunction(mod, "int AttrTest::Returns(int, int)"), {});
-        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Mixed(int)"), {"Primary"});
-        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Plain(int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "Critter@? AttrTest::Returns(Critter@?, Critter@?)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Mixed(Critter@?)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Plain(Critter@?)"), {});
         CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryStaysIntact(int, int, int)"), {});
         CheckAttributes(FindScriptFunction(mod, "void AttrTest::RequestTargetInfo(int, int)"), {"Primary"});
         CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryNestedInsideBody(int)"), {});
+    }
+
+    SECTION("RejectsNullableSuffixOnPrimitive")
+    {
+        // `?` is only meaningful on handle types — applying it to a
+        // primitive must produce a parse / type-check error.
+        static constexpr string_view PrimitiveNullableScript = R"(
+namespace AttrTest
+{
+void TakesIntPlease(int? value)
+{
+}
+}
+)";
+        auto parsed = ParseScript("AttributesNullablePrimitive.fos", PrimitiveNullableScript);
+        CHECK(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = engine->GetModule("AttrNullablePrimitive", asGM_ALWAYS_CREATE);
+        REQUIRE(mod != nullptr);
+        REQUIRE(mod->AddScriptSection("AttrNullablePrimitive", parsed.Source.data(), parsed.Source.length()) >= 0);
+        CHECK(mod->Build() < 0);
+
+        bool found_message = false;
+        for (const auto& entry : messages.Entries) {
+            if (entry.find("Nullable marker '?' is only allowed on handle types") != string::npos) {
+                found_message = true;
+                break;
+            }
+        }
+        CHECK(found_message);
     }
 
     SECTION("RejectsInvalidModuleInitPriorityArgument")

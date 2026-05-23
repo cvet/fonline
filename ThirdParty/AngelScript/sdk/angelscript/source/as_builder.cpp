@@ -6689,6 +6689,46 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			}
 			else
 			{
+				// (FOnline Patch) Reject explicit `@` on types registered as
+				// `asOBJ_IMPLICIT_HANDLE`. The convention is that those types are spelled
+				// without `@` everywhere â€” `Critter`, `array<Item>`, `Map?` â€” because the
+				// handle nature is part of the type registration. The guard `module && !silent`
+				// keeps the rejection limited to actual script compilation: native API
+				// registration uses a builder without a module, and `GetFunctionByDecl`
+				// silently re-parses decl strings emitted by the engine itself (which may
+				// still include the explicit form for backward compat with AS's Format()).
+				//
+				// Exception: the funcdef-parameter form `Type@+` (handle with auto-add-ref)
+				// is allowed even on implicit-handle types because the trailing `+` modifier
+				// is parsed by ParseTypeMod into a separate sibling snDataType node, and
+				// the bare `Type+` form is not a valid signature in AS.
+				bool followedByPlusModifier = false;
+				if( node->next != 0 && node->next->nodeType == snDataType )
+				{
+					for( asCScriptNode* c = node->next->firstChild; c != 0; c = c->next )
+					{
+						if( c->tokenType == ttPlus )
+						{
+							followedByPlusModifier = true;
+							break;
+						}
+					}
+				}
+
+				// (FOnline Patch)
+				if( module && !silent && isImplicitHandle && !followedByPlusModifier )
+				{
+					if( reportError )
+					{
+						asCString msg;
+						msg.Format("Explicit handle '@' is not allowed on implicit-handle type '%s'", dt.GetTypeInfo() ? dt.GetTypeInfo()->name.AddressOf() : "<unknown>");
+						WriteError(msg, file, n);
+					}
+					if (isValid)
+						*isValid = false;
+					return asCDataType::CreatePrimitive(ttInt, false);
+				}
+
 				if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
 				{
 					if( reportError )
@@ -6699,7 +6739,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 					// Return a dummy
 					return asCDataType::CreatePrimitive(ttInt, false);
 				}
-				
+
 				// Check if the handle should be read-only
 				if( n && n->next && n->next->tokenType == ttConst )
 					dt.MakeReadOnly(true);
@@ -6721,6 +6761,26 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			// Return a dummy
 			return asCDataType::CreatePrimitive(ttInt, false);
 		}
+	}
+
+	// (FOnline Patch) Apply the optional `?` nullable suffix. The parser emits a trailing
+	// ttQuestion child only when it actually saw `?` after the type; here we promote it
+	// onto the data type and reject misplacements (e.g. `int?`) where the marker has no
+	// runtime meaning.
+	if( n && n->tokenType == ttQuestion )
+	{
+		if( !dt.IsObjectHandle() )
+		{
+			if( reportError )
+				WriteError("Nullable marker '?' is only allowed on handle types", file, n);
+			if( isValid )
+				*isValid = false;
+		}
+		else
+		{
+			dt.MakeNullable(true);
+		}
+		n = n->next;
 	}
 
 	return dt;

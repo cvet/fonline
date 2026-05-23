@@ -80,6 +80,7 @@ public:
 	int MakeReference(bool b);
 	int MakeReadOnly(bool b);
 	int MakeHandleToConst(bool b);
+	int MakeNullable(bool b); // (FOnline Patch) `T?` nullable marker on script handles
 	void SetIfHandleThenConst(bool b) { ifHandleThenConst = b; }
 	bool HasIfHandleThenConst() const { return ifHandleThenConst; }
 
@@ -99,6 +100,7 @@ public:
 	bool IsObjectHandle()         const {return isObjectHandle;}
 	bool IsHandleToAuto()         const {return isAuto && isObjectHandle;}
 	bool IsHandleToConst()        const;
+	bool IsNullable()             const {return isNullable;} // (FOnline Patch)
 	bool IsArrayType()            const;
 	bool IsEnumType()             const;
 	bool IsAnyType()              const {return tokenType == ttQuestion;}
@@ -151,7 +153,7 @@ protected:
 	bool isAuto : 1;
 	bool isHandleToAsHandleType : 1; // Used by the compiler to know how to initialize the object
 	bool ifHandleThenConst : 1; // Used when creating template instances to determine if a handle should be const or not
-	char dummy : 1;
+	bool isNullable : 1; // (FOnline Patch) `T?` allows null; bare `T` rejects null writes at runtime
 
 	// Behaviour type
 	asCTypeInfo *typeInfo;

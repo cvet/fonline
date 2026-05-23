@@ -498,6 +498,14 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 		tok.InitJumpTable();
 		break;
 
+	// (FOnline Patch) opt-in stricter null-handling: reject implicit
+	// `T x = nullableExpr;` at compile time.
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		if (value > 1)
+			return asINVALID_ARG;
+		ep.disallowNullableToNonNullable = value ? true : false;
+		break;
+
 	default:
 		return asINVALID_ARG;
 	}
@@ -630,6 +638,10 @@ asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property) const
 	case asEP_FOREACH_SUPPORT:
 		return ep.foreachSupport;
 
+	// (FOnline Patch)
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		return ep.disallowNullableToNonNullable;
+
 	default:
 		return 0;
 	}
@@ -708,6 +720,7 @@ asCScriptEngine::asCScriptEngine()
 		ep.memberInitMode                = 1;         // 0 = pre 2.38.0, members with init expr in declaration are initialized after super(), 1 = all members initialized in beginning, except if explicitly initialized in body
 		ep.boolConversionMode            = 0;         // 0 = only do use opImplConv for registered value type, 1 = use also opConv in contextual conversion even for reference types
 		ep.foreachSupport                = true;
+		ep.disallowNullableToNonNullable = false; // (FOnline Patch) opt-in stricter null check
 	}
 
 	gc.engine = this;

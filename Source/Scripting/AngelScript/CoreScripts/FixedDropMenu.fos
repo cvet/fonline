@@ -23,12 +23,12 @@ class FixedDropMenu : Gui::IDropMenu
     int ButtonHeight;
     string ArtDir;
     string OpenSound;
-    DropButton[] Buttons;
-    DropButton[] ShowButtons;
+    DropButton[] Buttons = {};
+    DropButton[] ShowButtons = {};
     bool Pressed;
     int PressedOffsetY;
     nanotime MouseStayTick;
-    Entity SelectedEntity;
+    Entity? SelectedEntity;
 
     FixedDropMenu(MouseButton mouseButton, CursorType cursor, timespan showTime, int buttonHeight, string artDir, string openSound)
     {
@@ -58,10 +58,11 @@ class FixedDropMenu : Gui::IDropMenu
     }
 
     private
-    Entity get_SafeSelectedEntity()
+    Entity? get_SafeSelectedEntity()
     {
         // Simulate entity weak reference
-        if (SelectedEntity != null && SelectedEntity.IsDestroyed) {
+        Entity? selectedEntity = SelectedEntity;
+        if (selectedEntity != null && selectedEntity.IsDestroyed) {
             SelectedEntity = null;
         }
         return SelectedEntity;
@@ -105,12 +106,12 @@ class FixedDropMenu : Gui::IDropMenu
             DropButton dropButton = ShowButtons[activeIndex];
             ShowButtons.clear();
 
-            Entity entity = SafeSelectedEntity;
+            Entity? entity = SafeSelectedEntity;
             SelectedEntity = null;
 
-            if (!entity.IsDestroyed) {
-                Critter cr = cast<Critter>(entity);
-                Item item = cast<Item>(entity);
+            if (entity != null && !entity.IsDestroyed) {
+                Critter? cr = cast<Critter>(entity);
+                Item? item = cast<Item>(entity);
                 if (dropButton.NeedShow(cr, item)) {
                     dropButton.Action(cr, item);
                 }
@@ -133,24 +134,24 @@ class FixedDropMenu : Gui::IDropMenu
     void PostMouseMove(ipos offset)
     {
         if (Cursor == Gui::Cursor) {
-            Entity prevEntity = SafeSelectedEntity;
+            Entity? prevEntity = SafeSelectedEntity;
             SelectedEntity = null;
 
-            Gui::Object hoveredObj = Gui::GetHoveredObject();
-            Gui::Screen screen = Gui::GetActiveScreen();
+            Gui::Object? hoveredObj = Gui::GetHoveredObject();
+            Gui::Screen? screen = Gui::GetActiveScreen();
             if (hoveredObj != null) {
                 if (hoveredObj.Grid != null && cast<Gui::ItemView>(hoveredObj.Grid) != null) {
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
                 }
             }
             else if (CurMap != null && (screen == null || !screen.IsModal)) {
-                Entity entity = CurMap.GetEntityAtScreenPos(Game.MousePos);
+                Entity? entity = CurMap.GetEntityAtScreenPos(Game.MousePos);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null)) {
                     SelectedEntity = entity;
                 }
             }
 
-            if (prevEntity !is SafeSelectedEntity || offset != ZERO_IPOS) {
+            if (prevEntity != SafeSelectedEntity || offset != ZERO_IPOS) {
                 MouseStayTick = Game.FrameTime;
                 ShowButtons.clear();
             }
@@ -189,8 +190,8 @@ class FixedDropMenu : Gui::IDropMenu
     void CollectShowButtons(bool onlyFirst)
     {
         ShowButtons.clear();
-        Critter cr = cast<Critter>(SafeSelectedEntity);
-        Item item = cast<Item>(SafeSelectedEntity);
+        Critter? cr = cast<Critter>(SafeSelectedEntity);
+        Item? item = cast<Item>(SafeSelectedEntity);
         for (int i = 0; i < Buttons.length(); i++) {
             if (Buttons[i].NeedShow(cr, item)) {
                 ShowButtons.insertLast(Buttons[i]);

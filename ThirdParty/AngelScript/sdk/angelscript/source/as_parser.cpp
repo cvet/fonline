@@ -568,6 +568,15 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType, boo
 		RewindTo(&t);
 	}
 
+	// (FOnline Patch) Optional `?` nullable suffix. Bare handle types are non-null by
+	// default; `T?` opts back into nullability. The validity of `?` (only on handle /
+	// implicit-handle types) is checked in the builder so we can report it with the full
+	// resolved type info. We peek the next token and rewind so ParseToken can re-read it.
+	GetToken(&t);
+	RewindTo(&t);
+	if( t.type == ttQuestion )
+		node->AddChildLast(ParseToken(ttQuestion));
+
 	return node;
 }
 
@@ -1431,6 +1440,12 @@ bool asCParser::FindTokenAfterType(sToken &nextToken)
 
 		GetToken(&t2);
 	}
+
+	// (FOnline Patch) Skip optional `?` nullable suffix so `T? name` is recognized as a
+	// variable / property declaration. The IsVarDecl probe shouldn't accidentally treat
+	// `T?` as a partial ternary.
+	if( t2.type == ttQuestion )
+		GetToken(&t2);
 
 	// Return the next token so the caller can jump directly to it if desired
 	nextToken = t2;
