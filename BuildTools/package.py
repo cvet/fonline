@@ -347,6 +347,37 @@ class Packager:
 			return None
 		return best_platform + '-' + best_cxx_arch
 
+	@staticmethod
+	def extract_binary_entry_postfix(binary_entry_name: str) -> str | None:
+		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
+		# Returns the FO_BINARY_OUTPUT_POSTFIX segment (empty if absent), or None when the entry
+		# doesn't match any known platform/arch. The server-side runtime payload packager uses
+		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
+		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		best_prefix_len = -1
+		for (platform, arch_in_entry), _ in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_prefix_len = len(prefix)
+		if best_prefix_len < 0:
+			return None
+		remainder = after_client[best_prefix_len:]
+		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
+			if remainder.startswith(opt):
+				remainder = remainder[len(opt):]
+				break
+		if remainder.startswith('-Debug'):
+			remainder = remainder[len('-Debug'):]
+		if not remainder:
+			return ''
+		assert remainder.startswith('-'), 'Unexpected binary entry layout: ' + binary_entry_name
+		return remainder[1:]
+
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
 
@@ -408,6 +439,10 @@ class Packager:
 				if request_target_name is None:
 					continue
 
+				entry_postfix = self.extract_binary_entry_postfix(entry_name)
+				if entry_postfix is None:
+					continue
+
 				parts = request_target_name.split('-', 1)
 				if len(parts) != 2:
 					continue
@@ -433,13 +468,21 @@ class Packager:
 				if '-Profiling_' in entry_name:
 					suffix = '_Profiling'
 
+				# binary_output_postfix is appended to the staged payload name so two
+				# binary entries that map to the same request_target_name (e.g.
+				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
+				# client variant patches its own PACKAGED_BUILD_NAME to match the
+				# resulting suffixed payload, so updater's remap_runtime_name picks
+				# the right file.
+				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
+
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
-				variant_specs.append((self.args.nicename + suffix, None, default_runtime_variant))
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL', 'ForceOpenGL=1', default_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
-					variant_specs.append((self.args.nicename + suffix + '_Headless', None, headless_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
 
 				for output_name, variant_config_data, runtime_variant in variant_specs:
 					payload_key = (request_target_name, output_name)
@@ -475,6 +518,18 @@ class Packager:
 						log('Client runtime update payload PDB', pdb_out_path)
 						shutil.copy(pdb_input_path, pdb_out_path)
 						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
+
+						# Stage the host executable's PDB next to the runtime DLL's PDB
+						# (`<name>.pdb` vs `<name>.dll.pdb`). Without this a client that ships
+						# with only `LastFrontier.exe` cannot resolve host stack traces after
+						# the updater drops a fresh runtime — the host PDB was never on disk.
+						# Updater.cpp::remap_runtime_name accepts any `<runtime_server_prefix><.suffix>`
+						# entry, so `<name>.pdb` is grabbed as a runtime companion automatically.
+						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
+						if os.path.isfile(host_pdb_input):
+							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
+							log('Client host PDB included', host_pdb_out)
+							shutil.copy(host_pdb_input, host_pdb_out)
 
 					copied_payloads.add(payload_key)
 
@@ -583,20 +638,24 @@ class Packager:
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+			for arcname, file_path in zip_entries:
+				self.write_stable_zip_entry(archive, file_path, arcname)
+
+	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
+		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
+		info.create_system = 3
+		info.compress_type = zipfile.ZIP_DEFLATED
+		info.external_attr = 0o644 << 16
+		with open(file_path, 'rb') as src, archive.open(info, 'w') as dst:
+			shutil.copyfileobj(src, dst)
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for file_path in files:
 				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
-				# Pin date_time/mode: this blob is patched into binaries that the updater compares byte-wise across separate Server/Client package runs.
-				info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
-				info.compress_type = zipfile.ZIP_DEFLATED
-				info.external_attr = 0o644 << 16
-				with open(file_path, 'rb') as src, archive.open(info, 'w') as dst:
-					shutil.copyfileobj(src, dst)
+				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
 		return struct.pack('I', len(data)) + data
 
@@ -729,13 +788,19 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		# Mirror of the suffix appended to server-side payloads in
+		# package_all_client_runtime_update_payloads: tagging the client output
+		# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
+		# under PlatformBinaries/<target>/<name>.dll for this variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=True)
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
@@ -767,6 +832,11 @@ class Packager:
 				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
 				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
 
+		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
+		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
+		# for this binary_output_postfix variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in all_linux_variants:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
@@ -774,7 +844,7 @@ class Packager:
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
 				else:
 					bin_out_name_base = bin_name
-				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False)
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
@@ -1026,6 +1096,15 @@ class Packager:
 			if android_home:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
+
+			gradle_user_home = os.path.join(
+				os.path.dirname(self.output_path),
+				'.gradle-user-home',
+				os.path.basename(self.target_output_path),
+			)
+			os.makedirs(gradle_user_home, exist_ok=True)
+			gradle_env['GRADLE_USER_HOME'] = gradle_user_home
+			log('Android Gradle user home', gradle_user_home)
 
 			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
 			result = subprocess.call([gradlew, '--no-daemon', build_task], cwd=self.target_output_path, env=gradle_env)

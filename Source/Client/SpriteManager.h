@@ -47,9 +47,11 @@
 
 FO_BEGIN_NAMESPACE
 
-// Colors
-static constexpr auto COLOR_NEUTRAL = ucolor {128, 128, 128};
-static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
+namespace Color
+{
+    static constexpr auto Neutral = ucolor {128, 128, 128};
+    static constexpr auto TextWhite = ucolor {255, 255, 255};
+}
 
 class IAppWindow;
 class IAppRender;

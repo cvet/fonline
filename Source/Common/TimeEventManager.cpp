@@ -262,9 +262,13 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
         }
         else {
             // Remove event
-            const auto it = std::ranges::find_if(*timeEvents, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
-            FO_RUNTIME_ASSERT(it != timeEvents->end());
-            const auto actual_index = numeric_cast<size_t>(std::distance(timeEvents->begin(), it));
+            size_t actual_index = i;
+
+            if (actual_index >= timeEvents->size() || (*timeEvents)[actual_index] != te) {
+                const auto it = std::ranges::find_if(*timeEvents, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
+                FO_RUNTIME_ASSERT(it != timeEvents->end());
+                actual_index = numeric_cast<size_t>(std::distance(timeEvents->begin(), it));
+            }
 
             timeEvents->erase(timeEvents->begin() + numeric_cast<ptrdiff_t>(actual_index));
             te->Id = 0;

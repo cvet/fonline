@@ -60,15 +60,7 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
-{
-    ignore_unused(engine);
-
-    App->RequestQuit();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
+FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success = true)
 {
     ignore_unused(engine);
 
@@ -249,15 +241,7 @@ FO_SCRIPT_API int32_t Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
-{
-    ignore_unused(engine);
-
-    return mdir(iround<int32_t>(GeometryHelper::GetDirAngle(fromHex, toHex)));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32_t offset)
+FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32_t offset = 0.0f)
 {
     ignore_unused(engine);
 

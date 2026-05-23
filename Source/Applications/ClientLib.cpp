@@ -197,6 +197,9 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
+#if FO_HEADLESS_APP
+                Data->Client->Connect();
+#endif
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

@@ -98,6 +98,7 @@ static void ServerWithClientLoop(ServerEngine* server, refcount_ptr<ClientEngine
 
         if (server->IsStarted() && !client) {
             client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
+            client->Connect();
         }
 
         if (client) {

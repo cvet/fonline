@@ -179,7 +179,7 @@ class Sprite
     int Ticks = 0;
     bool Hidden = false;
     hstring LoadedName;
-    ucolor Color = COLOR_NEUTRAL;
+    ucolor Color = Color::Neutral;
 };
 
 #endif

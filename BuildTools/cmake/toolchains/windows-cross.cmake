@@ -65,8 +65,8 @@ set(CMAKE_MT "${_fo_llvm_mt}")
 set(CMAKE_AR "${_fo_llvm_lib}")
 set(CMAKE_LINKER "${_fo_lld_link}")
 set(CMAKE_ASM_MASM_COMPILER "${_fo_llvm_ml}")
-set(CMAKE_C_COMPILER_TARGET "${_fo_xwin_target_triple}")
-set(CMAKE_CXX_COMPILER_TARGET "${_fo_xwin_target_triple}")
+set(CMAKE_C_COMPILER_TARGET "${_fo_xwin_target_triple}" CACHE STRING "clang-cl Windows target triple" FORCE)
+set(CMAKE_CXX_COMPILER_TARGET "${_fo_xwin_target_triple}" CACHE STRING "clang-cl Windows target triple" FORCE)
 
 # xwin ships only Release CRTs; MSVC Debug CRTs are not redistributable, so all
 # configurations link the Release dynamic CRT.
@@ -81,8 +81,11 @@ set(_fo_xwin_includes
     "/imsvc${_fo_xwin_root}/sdk/include/winrt")
 list(JOIN _fo_xwin_includes " " _fo_xwin_includes_flag)
 
-set(CMAKE_C_FLAGS_INIT "${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS")
-set(CMAKE_CXX_FLAGS_INIT "${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS /EHsc")
+# clang-cl on a Linux host can otherwise keep its x86_64 Windows default even
+# when CMake's processor/linker settings select the x86 SDK and /machine:X86.
+set(_fo_xwin_target_flag "--target=${_fo_xwin_target_triple}")
+set(CMAKE_C_FLAGS_INIT "${_fo_xwin_target_flag} ${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS")
+set(CMAKE_CXX_FLAGS_INIT "${_fo_xwin_target_flag} ${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS /EHsc")
 
 set(_fo_xwin_libpaths
     "/libpath:${_fo_xwin_root}/crt/lib/${_fo_xwin_arch_dir}"

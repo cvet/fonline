@@ -155,6 +155,9 @@ FORMAT_PATTERNS = [
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
+XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
+XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
+XWIN_HTTP_RETRY_COUNT = '5'
 
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
@@ -547,10 +550,6 @@ def has_windows_build_tools() -> bool:
 
 def check_linux_host_tools() -> list[str]:
 	issues: list[str] = []
-	if not shutil.which('apt-get'):
-		issues.append('Please use a Debian/Ubuntu host with apt-get available')
-	if not is_running_as_root() and not shutil.which('sudo'):
-		issues.append('Please install sudo or run the preparation script as root')
 	if not shutil.which('cmake'):
 		issues.append('Please install CMake')
 	return issues
@@ -818,6 +817,10 @@ def build_xwin_version(env: Mapping[str, str]) -> str:
 	return version
 
 
+def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
+	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
+
+
 def workspace_version_marker(workspace: Path, part_name: str) -> Path:
 	return workspace / f'{part_name}-version.txt'
 
@@ -908,6 +911,11 @@ def install_linux_packages(group_name: str, workspace: Path, check_only: bool) -
 
 	if check_only:
 		raise SystemExit(f'Workspace part {group_name} is not ready ({version})')
+
+	if not shutil.which('apt-get'):
+		raise SystemExit('Please use a Debian/Ubuntu host with apt-get available')
+	if not is_running_as_root() and not shutil.which('sudo'):
+		raise SystemExit('Please install sudo or run the preparation script as root')
 
 	if any(_pkg_needs_llvm_apt_source(name) for name in packages):
 		ensure_llvm_apt_source(workspace, check_only)
@@ -1069,6 +1077,30 @@ def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	clone_git_repo(dotnet_root / 'runtime', 'https://github.com/dotnet/runtime.git', branch_name=build_dotnet_version(env), depth=1)
 
 
+def run_xwin_splat(xwin_binary: Path, arch: str, output_dir: Path) -> None:
+	log(f'Splat MSVC SDK with xwin ({arch}) into:', output_dir)
+	run([
+		str(xwin_binary),
+		'--accept-license',
+		'--http-retry', XWIN_HTTP_RETRY_COUNT,
+		'--arch', arch,
+		'splat',
+		'--output', str(output_dir),
+	])
+
+
+def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) -> None:
+	for lib_parent_dir in XWIN_ARCH_LIB_PARENT_DIRS:
+		source_dir = source_root / lib_parent_dir / arch
+		if not source_dir.is_dir():
+			raise SystemExit(f'xwin splat output for {arch} is missing {source_dir.relative_to(source_root)}')
+
+		target_dir = target_root / lib_parent_dir / arch
+		remove_path_if_exists(target_dir)
+		ensure_dir(target_dir.parent)
+		shutil.copytree(source_dir, target_dir, symlinks=True)
+
+
 def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_xwin_version(env)
@@ -1077,11 +1109,13 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	extract_root = workspace / 'xwin-extract'
 	xwin_tool_dir = workspace / 'xwin-tool'
 	xwin_splat_dir = workspace / 'xwin'
+	xwin_extra_splat_dir = workspace / 'xwin-extra'
 
 	remove_path_if_exists(archive_path)
 	remove_path_if_exists(extract_root)
 	remove_path_if_exists(xwin_tool_dir)
 	remove_path_if_exists(xwin_splat_dir)
+	remove_path_if_exists(xwin_extra_splat_dir)
 	ensure_dir(workspace)
 
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
@@ -1099,8 +1133,12 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	xwin_binary = xwin_tool_dir / 'xwin'
 	xwin_binary.chmod(xwin_binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-	log('Splat MSVC SDK with xwin into:', xwin_splat_dir)
-	run([str(xwin_binary), '--accept-license', '--arch', 'x86_64', 'splat', '--output', str(xwin_splat_dir)])
+	run_xwin_splat(xwin_binary, XWIN_SPLAT_ARCHES[0], xwin_splat_dir)
+	for arch in XWIN_SPLAT_ARCHES[1:]:
+		arch_splat_dir = xwin_extra_splat_dir / arch
+		run_xwin_splat(xwin_binary, arch, arch_splat_dir)
+		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
+	remove_path_if_exists(xwin_extra_splat_dir)
 
 
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
@@ -1115,7 +1153,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-sdk': build_android_sdk_version(env),
 		'android-ndk': build_android_ndk_version(env),
 		'dotnet': build_dotnet_version(env),
-		'xwin': build_xwin_version(env),
+		'xwin': build_xwin_workspace_version(env),
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
@@ -1141,13 +1179,12 @@ HOST_DEFAULT_FEATURES = {
 }
 
 LINUX_FEATURE_PACKAGE_GROUPS = {
-	'linux': ['linux-packages'],
-	'web': ['web-packages'],
-	'android-arm32': ['android-packages'],
-	'android-arm64': ['android-packages'],
-	'android-x86': ['android-packages'],
-	'windows-cross': ['windows-cross-packages'],
-	'all': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
+	'common-packages': ['common-packages'],
+	'linux-packages': ['linux-packages'],
+	'web-packages': ['web-packages'],
+	'android-packages': ['android-packages'],
+	'windows-cross-packages': ['windows-cross-packages'],
+	'all-packages': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
 }
 
 HOST_FEATURE_WORKSPACE_PARTS = {
@@ -1196,10 +1233,11 @@ def resolve_feature_values(selected: Sequence[str], feature_map: Mapping[str, Se
 
 def prepare_linux_host_workspace(selected: Sequence[str], workspace: Path, check_only: bool, env: Mapping[str, str]) -> None:
 	package_groups = resolve_feature_values(selected, LINUX_FEATURE_PACKAGE_GROUPS)
-	if has_feature(selected, 'packages', 'all') or package_groups:
+	if package_groups:
 		install_linux_packages('common-packages', workspace, check_only)
 		for package_group in package_groups:
-			install_linux_packages(package_group, workspace, check_only)
+			if package_group != 'common-packages':
+				install_linux_packages(package_group, workspace, check_only)
 
 	parts = resolve_feature_values(selected, HOST_FEATURE_WORKSPACE_PARTS['linux'])
 	if parts:
@@ -1917,7 +1955,7 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser.add_argument('target')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
@@ -1934,7 +1972,27 @@ def create_parser() -> argparse.ArgumentParser:
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
 	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
-	prepare_host_parser.add_argument('features', nargs='*', choices=['packages', 'linux', 'web', 'android-arm32', 'android-arm64', 'android-x86', 'toolset', 'dotnet', 'windows-cross', 'all'])
+	prepare_host_parser.add_argument(
+		'features',
+		nargs='*',
+		choices=[
+			'common-packages',
+			'linux-packages',
+			'web-packages',
+			'android-packages',
+			'windows-cross-packages',
+			'all-packages',
+			'linux',
+			'web',
+			'android-arm32',
+			'android-arm64',
+			'android-x86',
+			'toolset',
+			'dotnet',
+			'windows-cross',
+			'all',
+		],
+	)
 	prepare_host_parser.add_argument('--check', action='store_true')
 
 	return parser

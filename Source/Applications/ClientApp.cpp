@@ -62,6 +62,8 @@ struct RequestedClientRuntime
     string Path {};
     string CompatibilityVersion {};
     bool ExplicitPath {};
+    bool ForceEmbedded {}; // ForceEmbeddedRuntime setting (command-line form): skip the implicit bundled-DLL load
+    string PreviousBuildHash {}; // Set only on a reload pass: build hash of the module that requested it
 };
 
 struct HostClientRuntimeResult
@@ -69,6 +71,7 @@ struct HostClientRuntimeResult
     ClientRuntimeResult Result {};
     string RequestedRuntimePath {};
     string RequestedCompatibilityVersion {};
+    string LoadedBuildHash {}; // Build hash of the runtime module that actually ran
 };
 
 static auto RunEmbeddedOrLoadedClient(int32_t argc, char** argv) -> bool;
@@ -101,7 +104,11 @@ static auto RunEmbeddedOrLoadedClient(int32_t argc, char** argv) -> bool
     FO_STACK_TRACE_ENTRY();
 
     const auto requested_runtime = ResolveRequestedClientRuntime(argc, argv);
-    const bool can_load_bundled_runtime = requested_runtime.ExplicitPath || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+
+    // Try the bundled runtime DLL first on self-update platforms (the DLL is the authoritative
+    // runtime); if it is absent or fails to load, RunClientFromLibrary falls back to the embedded
+    // engine. ForceEmbeddedRuntime skips the implicit DLL load; an explicit --ClientLibPath still loads.
+    const bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()));
 
     if (can_load_bundled_runtime) {
         const auto loaded = RunClientFromLibrary(argc, argv, requested_runtime);
@@ -147,8 +154,21 @@ static auto RunClientFromLibrary(int32_t argc, char** argv, const RequestedClien
 
     const auto unload_runtime = scope_exit([&]() noexcept { Platform::UnloadModule(runtime_module); });
 
+    string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
+
+    // A reload must map a different module than the one that asked for it. If LoadModule returned a
+    // still-resident copy of the previous runtime (same live path, not fully unloaded by the OS),
+    // running it would re-enter InitApp in an already-initialized module and trip its once-guard with
+    // an opaque StrongAssertionException. Abort the reload cleanly; the next launch maps the swapped
+    // module from a fresh process.
+    if (!requested_runtime.PreviousBuildHash.empty() && requested_runtime.PreviousBuildHash == loaded_build_hash) {
+        WriteLog("Runtime reload loaded an unchanged module (build hash '{}'); aborting reload to avoid double initialization", loaded_build_hash);
+        return std::nullopt;
+    }
+
     HostClientRuntimeResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
+    runtime_result.LoadedBuildHash = loaded_build_hash;
 
     exports.Run(argc, argv, &runtime_result.Result);
     CaptureRuntimeResultStrings(runtime_result);
@@ -170,6 +190,7 @@ static auto RunReloadedRuntime(int32_t argc, char** argv, const HostClientRuntim
     reloaded_runtime.Path = previous.RequestedRuntimePath;
     reloaded_runtime.CompatibilityVersion = previous.RequestedCompatibilityVersion;
     reloaded_runtime.ExplicitPath = true;
+    reloaded_runtime.PreviousBuildHash = previous.LoadedBuildHash;
 
     return RunClientFromLibrary(argc, argv, reloaded_runtime);
 }
@@ -179,6 +200,7 @@ static auto RunEmbeddedClient(int32_t argc, char** argv) -> HostClientRuntimeRes
     FO_STACK_TRACE_ENTRY();
 
     HostClientRuntimeResult runtime_result {};
+    runtime_result.LoadedBuildHash = FO_BUILD_HASH;
     runtime_result.Result = RunClientRuntime(argc, argv);
     CaptureRuntimeResultStrings(runtime_result);
     return runtime_result;
@@ -315,6 +337,9 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
+#if FO_HEADLESS_APP
+                Data->Client->Connect();
+#endif
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -440,14 +465,22 @@ static auto ResolveRequestedClientRuntime(int32_t argc, char** argv) -> Requeste
     requested_runtime.Path = ResolveBundledRuntimePath();
     requested_runtime.CompatibilityVersion = FO_COMPATIBILITY_VERSION;
 
-    for (int32_t index = 1; index < argc - 1; index++) {
-        if (string_view(argv[index]) == "--ClientLibPath") {
+    for (int32_t index = 1; index < argc; index++) {
+        const string_view arg = argv[index];
+        const bool has_value = index + 1 < argc;
+
+        if (arg == "--ClientLibPath" && has_value) {
             requested_runtime.ExplicitPath = true;
             requested_runtime.Path = argv[index + 1];
         }
 
-        if (string_view(argv[index]) == "--ClientLibCompatibilityVersion") {
+        if (arg == "--ClientLibCompatibilityVersion" && has_value) {
             requested_runtime.CompatibilityVersion = argv[index + 1];
+        }
+
+        if (arg == "--ForceEmbeddedRuntime" || arg == "-ForceEmbeddedRuntime") {
+            const string_view value = has_value && argv[index + 1][0] != '-' ? string_view(argv[index + 1]) : string_view("1");
+            requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
         }
     }
 

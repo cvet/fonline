@@ -180,30 +180,58 @@ void Properties::AllocData() noexcept
     }
 }
 
+void Properties::EnsureOverlayEntryIndex() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_overlayEntryIndex.empty()) {
+        _overlayEntryIndex.assign(_registrator->_registeredProperties.size(), -1);
+    }
+}
+
+void Properties::RebuildOverlayEntryIndex() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_overlayEntries.empty()) {
+        if (!_overlayEntryIndex.empty()) {
+            std::fill(_overlayEntryIndex.begin(), _overlayEntryIndex.end(), int32_t {-1});
+        }
+    }
+    else {
+        EnsureOverlayEntryIndex();
+        std::fill(_overlayEntryIndex.begin(), _overlayEntryIndex.end(), int32_t {-1});
+
+        for (size_t i = 0; i < _overlayEntries.size(); i++) {
+            _overlayEntryIndex[_overlayEntries[i].PropRegIndex] = numeric_cast<int32_t>(i);
+        }
+    }
+}
+
 auto Properties::FindOverlayEntry(const Property* prop) const noexcept -> const OverlayEntry*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!_baseProps || _overlayEntries.empty()) {
+    if (_overlayEntryIndex.empty()) {
         return nullptr;
     }
 
     const auto reg_index = prop->GetRegIndex();
-    const auto it = std::ranges::lower_bound(_overlayEntries, reg_index, std::ranges::less {}, &OverlayEntry::PropRegIndex);
-    return it != _overlayEntries.end() && it->PropRegIndex == reg_index ? &*it : nullptr;
+    const auto entries_index = _overlayEntryIndex[reg_index];
+    return entries_index >= 0 ? &_overlayEntries[numeric_cast<size_t>(entries_index)] : nullptr;
 }
 
 auto Properties::FindOverlayEntry(const Property* prop) noexcept -> OverlayEntry*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!_baseProps || _overlayEntries.empty()) {
+    if (_overlayEntryIndex.empty()) {
         return nullptr;
     }
 
     const auto reg_index = prop->GetRegIndex();
-    const auto it = std::ranges::lower_bound(_overlayEntries, reg_index, std::ranges::less {}, &OverlayEntry::PropRegIndex);
-    return it != _overlayEntries.end() && it->PropRegIndex == reg_index ? &*it : nullptr;
+    const auto entries_index = _overlayEntryIndex[reg_index];
+    return entries_index >= 0 ? &_overlayEntries[numeric_cast<size_t>(entries_index)] : nullptr;
 }
 
 auto Properties::IsOverlayPropertyIncluded(const Property* prop, bool with_protected) const noexcept -> bool
@@ -300,8 +328,18 @@ void Properties::RemoveOverlayEntry(const Property* prop) noexcept
     if (entry != nullptr) {
         _overlayGarbageSize += entry->DataSize;
 
-        const auto index = static_cast<ptrdiff_t>(entry - _overlayEntries.data());
-        _overlayEntries.erase(_overlayEntries.begin() + index);
+        const auto index = static_cast<size_t>(entry - _overlayEntries.data());
+        const auto removed_reg_index = _overlayEntries[index].PropRegIndex;
+        _overlayEntries.erase(_overlayEntries.begin() + numeric_cast<ptrdiff_t>(index));
+
+        // Maintain the dense index: clear the removed slot and decrement entries that shifted left.
+        if (!_overlayEntryIndex.empty()) {
+            _overlayEntryIndex[removed_reg_index] = -1;
+
+            for (size_t i = index; i < _overlayEntries.size(); i++) {
+                _overlayEntryIndex[_overlayEntries[i].PropRegIndex] = numeric_cast<int32_t>(i);
+            }
+        }
 
         if (_overlayEntries.empty()) {
             ResetOverlayData();
@@ -319,6 +357,11 @@ void Properties::ResetOverlayData() noexcept
     FO_STACK_TRACE_ENTRY();
 
     _overlayEntries.clear();
+
+    if (!_overlayEntryIndex.empty()) {
+        std::fill(_overlayEntryIndex.begin(), _overlayEntryIndex.end(), int32_t {-1});
+    }
+
     _overlayData.reset();
     _overlayDataSize = 0;
     _overlayDataCapacity = 0;
@@ -380,6 +423,8 @@ void Properties::RemoveSyncedOverlayEntries() noexcept
     _overlayEntries.resize(write_pos);
     _overlayGarbageSize += removed_data_size;
 
+    RebuildOverlayEntryIndex();
+
     if (_overlayEntries.empty()) {
         ResetOverlayData();
     }
@@ -402,6 +447,8 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
         _overlayDataSize = other._overlayDataSize;
         _overlayDataCapacity = other._overlayDataSize;
         _overlayGarbageSize = 0;
+
+        RebuildOverlayEntryIndex();
 
         if (_overlayDataSize != 0) {
             _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(_overlayDataSize);
@@ -489,6 +536,8 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
         FO_STRONG_ASSERT(overlay_index == _overlayEntries.size());
     }
+
+    RebuildOverlayEntryIndex();
 
     _storeDataRevision++;
 }
@@ -1252,7 +1301,16 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
             }
 
             const auto it = std::ranges::lower_bound(_overlayEntries, new_entry.PropRegIndex, std::ranges::less {}, &OverlayEntry::PropRegIndex);
+            const auto insert_pos = numeric_cast<size_t>(std::distance(_overlayEntries.begin(), it));
             _overlayEntries.emplace(it, new_entry);
+
+            // Maintain the dense index: assign the new slot and bump entries that shifted right.
+            EnsureOverlayEntryIndex();
+            _overlayEntryIndex[new_entry.PropRegIndex] = numeric_cast<int32_t>(insert_pos);
+
+            for (size_t i = insert_pos + 1; i < _overlayEntries.size(); i++) {
+                _overlayEntryIndex[_overlayEntries[i].PropRegIndex] = numeric_cast<int32_t>(i);
+            }
         }
 
         if (_overlayGarbageSize > (_overlayDataCapacity / 2)) {

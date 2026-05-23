@@ -282,6 +282,16 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
 
     _activeSprites.emplace_back(std::move(mspr));
     _needSort = true;
+
+    if (!_orderBroken && _activeSprites.size() >= 2) {
+        const auto& tail = *_activeSprites.back();
+        const auto& prev = *_activeSprites[_activeSprites.size() - 2];
+
+        if (tail._drawOrderPos < prev._drawOrderPos) {
+            _orderBroken = true;
+        }
+    }
+
     return _activeSprites.back().get();
 }
 
@@ -310,6 +320,7 @@ void MapSpriteList::Invalidate(MapSprite* mspr) noexcept
         _activeSprites[index] = std::move(_activeSprites.back());
         _activeSprites[index]->_index = index;
         _needSort = true;
+        _orderBroken = true;
     }
 
     _activeSprites.pop_back();
@@ -323,13 +334,15 @@ void MapSpriteList::SortIfNeeded() noexcept
         return;
     }
 
-    std::ranges::sort(_activeSprites, [](auto&& mspr1, auto&& mspr2) -> bool {
-        if (mspr1->_drawOrderPos == mspr2->_drawOrderPos) [[unlikely]] {
-            return mspr1->_globalPos < mspr2->_globalPos;
-        }
+    if (_orderBroken) {
+        std::ranges::sort(_activeSprites, [](auto&& mspr1, auto&& mspr2) -> bool {
+            if (mspr1->_drawOrderPos == mspr2->_drawOrderPos) [[unlikely]] {
+                return mspr1->_globalPos < mspr2->_globalPos;
+            }
 
-        return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
-    });
+            return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
+        });
+    }
 
     uint32_t index = 0;
 
@@ -350,6 +363,7 @@ void MapSpriteList::SortIfNeeded() noexcept
     _drawOrderRangeBegin[DrawOrderRangeSize - 1] = numeric_cast<uint32_t>(_activeSprites.size());
 
     _needSort = false;
+    _orderBroken = false;
 }
 
 auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const noexcept -> pair<uint32_t, uint32_t>

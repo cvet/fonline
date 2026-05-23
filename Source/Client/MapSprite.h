@@ -184,6 +184,7 @@ private:
     vector<unique_ptr<MapSprite>> _spritesPool {};
     uint32_t _globalCounter {};
     bool _needSort {};
+    bool _orderBroken {};
     static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };

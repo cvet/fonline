@@ -532,7 +532,13 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
                     connection->HardDisconnect();
                 }
                 catch (const NetBufferException& ex) {
-                    ReportExceptionAndContinue(ex);
+                    if (!connection->IsHandshakeComplete()) {
+                        WriteLog(LogType::Warning, "Invalid handshake data from host {}:{}: {}", connection->GetHost(), connection->GetPort(), ex.what());
+                    }
+                    else {
+                        ReportExceptionAndContinue(ex);
+                    }
+
                     connection->HardDisconnect();
                 }
                 catch (const std::exception& ex) {
@@ -1474,7 +1480,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         logcb("Done");
     } break;
     case CMD_MYINFO: {
-        string istr = strex("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}", player_cr->GetName(), player_cr->GetId());
+        string istr = strex("Name: {}, Id: {}", player_cr->GetName(), player_cr->GetId());
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
@@ -1811,7 +1817,9 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         throw GenericException("Critter data base loading error");
     }
 
-    FO_RUNTIME_ASSERT(cr);
+    if (cr == nullptr) {
+        throw GenericException("Critter proto removed by migration rule", cr_id);
+    }
 
     if (for_player) {
         cr->MarkIsForPlayer();

@@ -532,10 +532,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     auto cury = 0;
     auto& color_offset = fi.ColorOffset;
 
-    // Colorize: walk the input string segment-by-segment, splitting on `|color ` markers,
-    // accumulating de-marked text into `buf` and writing the parsed colors into TextColor.
+    // Colorize: strip `@color ...@` markers and write parsed colors into TextColor.
     ucolor* dots = nullptr;
-    int32_t d_offs = 0;
     string buf;
     buf.reserve(str.size());
 
@@ -550,50 +548,39 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     size_t pos = 0;
 
     while (pos < str.size()) {
-        const auto pipe = str.find('|', pos);
+        const size_t marker_pos = str.find(InlineColorTagPrefix, pos);
 
-        if (pipe == string::npos) {
+        if (marker_pos == string::npos) {
             buf.append(str, pos, string::npos);
             break;
         }
 
-        // Append the prefix before the marker.
-        buf.append(str, pos, pipe - pos);
+        buf.append(str, pos, marker_pos - pos);
 
-        const auto space = str.find(' ', pipe);
-        const auto marker_end = (space == string::npos) ? str.size() : space;
+        size_t tag_end = 0;
+        ucolor d;
+        bool reset = false;
+
+        if (!ParseInlineColorTag(str, marker_pos, tag_end, d, reset)) {
+            buf.append(str, marker_pos, 1);
+            pos = marker_pos + 1;
+            continue;
+        }
 
         if (dots != nullptr) {
-            const auto d_len = numeric_cast<int32_t>(marker_end - pipe) + 1;
-            ucolor d;
-
-            if (d_len == 2) {
+            if (reset) {
                 d = (dots_history_cur > 0) ? dots_history[--dots_history_cur] : fi.Color;
             }
             else {
-                const char* arg = str.c_str() + pipe + 1;
-
-                if (*arg == 'x') {
-                    d = ucolor {numeric_cast<uint32_t>(std::strtoul(arg + 1, nullptr, 16))};
-                }
-                else {
-                    d = ucolor {numeric_cast<uint32_t>(std::strtoul(arg, nullptr, 0))};
-                }
-
                 if (dots_history_cur < dots_history_len - 1) {
                     dots_history[++dots_history_cur] = d;
                 }
             }
 
-            dots[numeric_cast<int32_t>(pipe) - d_offs] = d;
-            d_offs += d_len;
+            dots[numeric_cast<int32_t>(buf.size())] = d;
         }
 
-        if (space == string::npos) {
-            break;
-        }
-
-        pos = space + 1;
+        pos = tag_end;
     }
 
     str = std::move(buf);
@@ -924,6 +911,71 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     else if (IsEnumSet(flags, FontFlag::AlignBottom)) {
         fi.CurY = (r.y + r.height) - (fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
     }
+}
+
+auto FontManager::IsInlineColorHex(string_view value) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (value.size() >= 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
+        value.remove_prefix(2);
+    }
+
+    if (value.size() != 6 && value.size() != 8) {
+        return false;
+    }
+
+    return std::ranges::all_of(value, [](char ch) { return std::isxdigit(static_cast<unsigned char>(ch)) != 0; });
+}
+
+auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (marker_pos + InlineColorTagPrefix.size() >= str.size()) {
+        return false;
+    }
+    if (str.compare(marker_pos, InlineColorTagPrefix.size(), InlineColorTagPrefix) != 0) {
+        return false;
+    }
+
+    const size_t close_pos = str.find('@', marker_pos + InlineColorTagPrefix.size());
+
+    if (close_pos == string_view::npos) {
+        return false;
+    }
+
+    string_view value = str.substr(marker_pos + InlineColorTagPrefix.size(), close_pos - marker_pos - InlineColorTagPrefix.size());
+
+    if (value.empty()) {
+        tag_end = close_pos + 1;
+        reset = true;
+        return true;
+    }
+    if (value.front() != ' ' && value.front() != '\t') {
+        return false;
+    }
+
+    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) {
+        value.remove_prefix(1);
+    }
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\t')) {
+        value.remove_suffix(1);
+    }
+
+    if (!IsInlineColorHex(value)) {
+        return false;
+    }
+
+    if (value.size() >= 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
+        value.remove_prefix(2);
+    }
+
+    string value_str {value};
+    color = ucolor {numeric_cast<uint32_t>(std::strtoul(value_str.c_str(), nullptr, 16))};
+    tag_end = close_pos + 1;
+    reset = false;
+    return true;
 }
 
 auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> const FontFormatInfo*

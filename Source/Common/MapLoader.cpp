@@ -81,14 +81,17 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     for (const auto& pkv : map_data.GetSections("Critter")) {
         auto& kv = *pkv;
 
-        if (kv.count("$Proto") == 0) {
+        const auto proto_it = kv.find("$Proto");
+
+        if (proto_it == kv.end()) {
             WriteLog(LogType::Warning, "Proto critter invalid data");
             errors++;
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
-        const auto& proto_name = kv["$Proto"];
+        const auto id_it = kv.find("$Id");
+        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
+        const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = meta.GetProtoCritter(hashed_proto_name);
 
@@ -112,14 +115,17 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     for (const auto& pkv : map_data.GetSections("Item")) {
         auto& kv = *pkv;
 
-        if (kv.count("$Proto") == 0) {
+        const auto proto_it = kv.find("$Proto");
+
+        if (proto_it == kv.end()) {
             WriteLog(LogType::Warning, "Proto item invalid data");
             errors++;
             continue;
         }
 
-        const auto id = process_id(kv.count("$Id") != 0 ? strex(kv["$Id"]).to_int64() : 0);
-        const auto& proto_name = kv["$Proto"];
+        const auto id_it = kv.find("$Id");
+        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
+        const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
         const auto* proto = meta.GetProtoItem(hashed_proto_name);
 

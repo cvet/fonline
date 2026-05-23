@@ -164,12 +164,7 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
         throw NetBufferException("Invalid discard length", len, _bufEndPos);
     }
 
-    auto* buf = _bufData.data();
-
-    for (size_t i = 0; i + len < _bufEndPos; i++) {
-        buf[i] = buf[i + len];
-    }
-
+    MemMove(_bufData.data(), _bufData.data() + len, _bufEndPos - len);
     _bufEndPos -= len;
 }
 
@@ -309,9 +304,7 @@ void NetInBuffer::ShrinkReadBuf()
         }
     }
     else if (_bufReadPos != 0) {
-        for (size_t i = _bufReadPos; i < _bufEndPos; i++) {
-            _bufData[i - _bufReadPos] = _bufData[i];
-        }
+        MemMove(_bufData.data(), _bufData.data() + _bufReadPos, _bufEndPos - _bufReadPos);
 
         _bufEndPos -= _bufReadPos;
         _bufReadPos = 0;
