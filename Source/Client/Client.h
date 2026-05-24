@@ -115,11 +115,10 @@ public:
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
-    void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
-    void ScreenQuake(int32_t noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
     void SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath);
     void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
+    void SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1);
     void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
     auto GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*;
 
@@ -284,20 +283,10 @@ protected:
         shared_ptr<Sprite> Anim {};
     };
 
-    struct ScreenFadingData
-    {
-        nanotime BeginTime {};
-        timespan Duration {};
-        ucolor StartColor {};
-        ucolor EndColor {};
-    };
-
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
     void ProcessInputEvents();
-    void ProcessScreenEffectFading();
-    void ProcessScreenEffectQuake();
     void ProcessVideo();
 
     void UnloadMap();
@@ -392,13 +381,6 @@ protected:
     uint32_t _ifaceAnimCounter {};
     unordered_map<uint32_t, unique_ptr<IfaceAnim>> _ifaceAnimations {};
     unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
-
-    vector<ScreenFadingData> _screenFadingEffects {};
-
-    float32_t _quakeScreenOffsX {};
-    float32_t _quakeScreenOffsY {};
-    float32_t _quakeScreenOffsStep {};
-    nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     irect32 _lmapWMap {};

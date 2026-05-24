@@ -532,18 +532,6 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ClientEngine* 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_FadeScreen(ClientEngine* client, ucolor fromColor, ucolor toColor, timespan duration, bool appendEffect = false)
-{
-    client->ScreenFade(duration, fromColor, toColor, appendEffect);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_QuakeScreen(ClientEngine* client, int32_t noise, timespan duration)
-{
-    client->ScreenQuake(noise, duration);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlaySound(ClientEngine* client, string_view soundName)
 {
     return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
@@ -705,6 +693,14 @@ FO_SCRIPT_API void Client_Game_SetEffectScriptValue(ClientEngine* client, Effect
     FO_STACK_TRACE_ENTRY();
 
     client->SetEffectScriptValue(effectType, effectSubtype, valueIndex, value);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetEffectScriptValues(ClientEngine* client, EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, readonly_vector<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    client->SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, const_span<float32_t> {values.data(), values.size()}, valuesOffset, valuesCount);
 }
 
 ///@ ExportMethod
