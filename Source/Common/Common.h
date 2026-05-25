@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 7
+///@ MigrationRule Version 0 0 8
 
 #include "Version-Include.h"
 

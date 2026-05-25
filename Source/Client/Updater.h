@@ -92,7 +92,7 @@ private:
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
-        bool IsRuntimeCompanion {};
+        bool IsClientBinary {};
     };
 
     void AddText(string_view text);

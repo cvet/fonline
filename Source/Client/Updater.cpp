@@ -214,7 +214,7 @@ void Updater::GetNextFile()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return _binariesMode || f.IsRuntimeCompanion; };
+    const auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
     const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
     const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
     const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
@@ -413,9 +413,7 @@ void Updater::Net_OnInitData()
     }
 
     auto reader = DataReader(data);
-    const auto companion_resync_enabled = !_binariesMode && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-    const auto accept_binaries = _binariesMode || companion_resync_enabled;
-    const string runtime_primary_name = accept_binaries ? strex(GetClientRuntimeLivePath()).extract_file_name().str() : string {};
+    const auto accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
     const string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
     string runtime_server_prefix;
@@ -457,7 +455,7 @@ void Updater::Net_OnInitData()
         const auto data_index = reader.Read<uint32_t>();
 
         string local_name = fname;
-        bool is_runtime_companion = false;
+        bool is_client_binary = false;
 
         if (target == UpdateFileTarget::ClientBinaries) {
             if (!accept_binaries) {
@@ -475,19 +473,22 @@ void Updater::Net_OnInitData()
             const auto fname_dir = strex(fname).extract_dir().str();
             local_name = fname_dir.empty() ? remapped_basename : strex(fname_dir).combine_path(remapped_basename).str();
 
-            const auto is_primary = remapped_basename == runtime_primary_name;
+            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
 
-            if (_binariesMode) {
-                _hasMatchingEntries = true;
-            }
-            else if (is_primary) {
-                continue;
+            if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
+                if (fs_exists(file_path)) {
+                    continue;
+                }
             }
             else {
-                is_runtime_companion = true;
+                if (!_binariesMode) {
+                    continue;
+                }
+
+                _hasMatchingEntries = true;
             }
 
-            const auto file_path = strex(_binaryDir).combine_path(local_name).str();
+            is_client_binary = true;
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
                 continue;
@@ -520,7 +521,7 @@ void Updater::Net_OnInitData()
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
-        update_file.IsRuntimeCompanion = is_runtime_companion;
+        update_file.IsClientBinary = is_client_binary;
         _filesToUpdate.emplace_back(std::move(update_file));
     }
 

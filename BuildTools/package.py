@@ -519,12 +519,10 @@ class Packager:
 						shutil.copy(pdb_input_path, pdb_out_path)
 						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
 
-						# Stage the host executable's PDB next to the runtime DLL's PDB
-						# (`<name>.pdb` vs `<name>.dll.pdb`). Without this a client that ships
-						# with only `LastFrontier.exe` cannot resolve host stack traces after
-						# the updater drops a fresh runtime — the host PDB was never on disk.
-						# Updater.cpp::remap_runtime_name accepts any `<runtime_server_prefix><.suffix>`
-						# entry, so `<name>.pdb` is grabbed as a runtime companion automatically.
+						# Stage the host executable's PDB (`<name>.pdb`) so a client that lost it can
+						# re-download it. The client fetches it only when its local copy is missing and
+						# never overwrites a present one (see Updater.cpp): an up-to-date host recovers a
+						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered.
 						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
 						if os.path.isfile(host_pdb_input):
 							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
@@ -818,8 +816,14 @@ class Packager:
 					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
 					excluded_companions.add(runtime_input_name + '.dll')
 
-				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
+				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
 				self.copy_pdb(bin_path, bin_name, bin_out_name)
+				if bin_ext == '.exe':
+					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
+					# build's `<bin_name>.pdb`). Otherwise the exe keeps the build-machine
+					# CodeView path and only resolves symbols via a debugger's module-adjacent
+					# basename heuristic.
+					assert patch_pe_pdb_path(main_binary_path, bin_out_name + '.pdb'), 'Host exe RSDS not patched: ' + main_binary_path
 
 	def package_linux(self) -> None:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
