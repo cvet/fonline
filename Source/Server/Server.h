@@ -182,6 +182,7 @@ public:
     const hstring GameCollectionName = Hashes.ToHashedString("Game");
     const hstring HistoryCollectionName = Hashes.ToHashedString("History");
     const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
+    const hstring HashReportsCollectionName = Hashes.ToHashedString("HashReports");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -217,8 +218,14 @@ private:
     void ProcessConnection(ServerConnection* connection);
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 
+    void LoadReportedHashes();
+    void RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash);
+    void SendAllReportedHashes(ServerConnection* connection);
+    void BroadcastReportedString(string_view reported_string);
+
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
+    void Process_UnresolvedHash(ServerConnection* connection);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -295,6 +302,14 @@ private:
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};
+
+    // Strings behind hashes that clients reported as unresolvable. Stored raw (not registered) and broadcast
+    // to all clients so they can resolve these hashes too. Accessed only from the main worker (handshake
+    // processing) plus one-time load at init, so it needs no extra locking.
+    unordered_set<string> _reportedStrings {};
+    // Reported hashes the server itself can't resolve either; kept in memory to log each one once per session.
+    unordered_set<hstring::hash_t> _unresolvableReportedHashes {};
+
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

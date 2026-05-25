@@ -39,13 +39,17 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetBufferException);
 FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
+// Thrown when an incoming hashed string can't be resolved against the local hash storage.
+// Convention: pass the unresolved hash as the second constructor argument (right after the message),
+// so it is recoverable as the first exception param — params().front() — formatted as an unsigned
+// decimal, without a dedicated field. See NetInBuffer::ReadHashedString and the client report flow.
+FO_DECLARE_EXCEPTION_EXT(UnresolvedHashException, NetBufferException);
 
 class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
     static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
-    static constexpr hstring::hash_t DEBUG_HASH_VALUE = static_cast<hstring::hash_t>(~0);
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -76,9 +80,8 @@ protected:
 class NetOutBuffer final : public NetBuffer
 {
 public:
-    explicit NetOutBuffer(size_t buf_len, bool debug_hashes) :
-        NetBuffer(buf_len),
-        _debugHashes {debug_hashes}
+    explicit NetOutBuffer(size_t buf_len) :
+        NetBuffer(buf_len)
     {
     }
     NetOutBuffer(const NetOutBuffer&) = delete;
@@ -124,7 +127,6 @@ public:
 private:
     void WriteHashedString(hstring value);
 
-    bool _debugHashes;
     bool _msgStarted {};
     size_t _startedBufPos {};
 };

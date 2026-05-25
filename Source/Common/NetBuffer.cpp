@@ -230,11 +230,6 @@ void NetOutBuffer::WriteHashedString(hstring value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_debugHashes) {
-        Push(&DEBUG_HASH_VALUE, sizeof(DEBUG_HASH_VALUE));
-        Write(value.as_str());
-    }
-
     const auto hash = value.as_hash();
     Push(&hash, sizeof(hash));
 }
@@ -354,34 +349,17 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto hash = Read<hstring::hash_t>();
+    const auto hash = Read<hstring::hash_t>();
 
-    if (hash == DEBUG_HASH_VALUE) {
-        const auto real_value = Read<string>();
-        hash = Read<hstring::hash_t>();
+    bool failed = false;
+    const auto result = hash_resolver.ResolveHash(hash, &failed);
 
-        bool failed = false;
-        const auto result = hash_resolver.ResolveHash(hash, &failed);
-
-        if (failed) {
-            ResetBuf();
-            throw NetBufferException("Can't resolve received hash", hash, real_value);
-        }
-
-        FO_RUNTIME_ASSERT(result.as_str() == real_value);
-        return result;
+    if (failed) {
+        ResetBuf();
+        throw UnresolvedHashException("Can't resolve received hash", hash);
     }
-    else {
-        bool failed = false;
-        const auto result = hash_resolver.ResolveHash(hash, &failed);
 
-        if (failed) {
-            ResetBuf();
-            throw NetBufferException("Can't resolve received hash", hash);
-        }
-
-        return result;
-    }
+    return result;
 }
 
 auto NetInBuffer::NeedProcess() -> bool

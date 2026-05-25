@@ -131,6 +131,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this]() FO_DEFERRED { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this]() FO_DEFERRED { Net_OnRemoveCustomEntity(); });
+    _conn.AddMessageHandler(NetMessage::HashList, [this]() FO_DEFERRED { Net_OnHashList(); });
 
     // Properties that sending to clients
     {
@@ -776,6 +777,24 @@ void ClientEngine::Net_OnInitData()
         }
 
         reader.VerifyEnd();
+    }
+}
+
+void ClientEngine::Net_OnHashList()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto count = _conn.InBuf->Read<uint32_t>();
+
+    for (uint32_t i = 0; i < count; i++) {
+        const auto str = _conn.InBuf->Read<string>();
+
+        // Learn the string locally so the matching hash now resolves; same hash function as the server
+        Hashes.ToHashedString(str);
+    }
+
+    if (count != 0) {
+        WriteLog("Learned {} previously unresolved hash(es) from server", count);
     }
 }
 

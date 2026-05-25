@@ -70,7 +70,6 @@ FIXED_SETTING(int32_t, Network, UdpConnectRetry, 500); // UDP connect retry time
 FIXED_SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout in milliseconds before failing transport bootstrap
 FIXED_SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
 FIXED_SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
-FIXED_SETTING(bool, Network, NetDebugHashes, false); // Debug network hashes resolution
 FIXED_SETTING(int32_t, Network, UpdateFileMaxPortionSize, 1000000); // Maximum update file portion size in bytes
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled

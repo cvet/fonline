@@ -4,6 +4,9 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(ExceptionHandlingTestBaseException);
+FO_DECLARE_EXCEPTION_EXT(ExceptionHandlingTestDerivedException, ExceptionHandlingTestBaseException);
+
 TEST_CASE("ExceptionHandling")
 {
     SECTION("BaseEngineExceptionCapturesMessageAndParams")
@@ -78,6 +81,26 @@ TEST_CASE("ExceptionHandling")
         CHECK_FALSE(GetExceptionCallback());
 
         SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
+    {
+        // Regression: a macro exception derived from another macro exception (not BaseEngineException
+        // directly) must still report its own name/message/params, with no stray null pushed into params.
+        static_assert(std::is_base_of_v<ExceptionHandlingTestBaseException, ExceptionHandlingTestDerivedException>);
+        static_assert(std::is_base_of_v<BaseEngineException, ExceptionHandlingTestDerivedException>);
+
+        const ExceptionHandlingTestDerivedException ex {"Derived failure", 7, "extra"};
+
+        CHECK(string_view {ex.name()} == "ExceptionHandlingTestDerivedException");
+        CHECK(ex.message() == "Derived failure");
+        REQUIRE(ex.params().size() == 2);
+        CHECK(ex.params()[0] == "7");
+        CHECK(ex.params()[1] == "extra");
+        CHECK(string_view {ex.what()}.find("ExceptionHandlingTestDerivedException: Derived failure") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- 7") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- extra") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("0x0") == string_view::npos);
     }
 
     SECTION("BaseEngineExceptionCopyPreservesPayload")

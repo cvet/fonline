@@ -10,7 +10,7 @@ TEST_CASE("NetCommand")
     SECTION("UnknownCommandReturnsFalse")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         const auto result = PackNetCommand("unknown 1 2 3", &out_buf, [](string_view) { }, hashes);
 
@@ -21,7 +21,7 @@ TEST_CASE("NetCommand")
     SECTION("ExitCommandSerializesWithoutArguments")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("exit", &out_buf, [](string_view) { }, hashes));
 
@@ -36,7 +36,7 @@ TEST_CASE("NetCommand")
     SECTION("MoveCommandSerializesCritterAndHex")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("move 42 17 23", &out_buf, [](string_view) { }, hashes));
 
@@ -54,7 +54,7 @@ TEST_CASE("NetCommand")
     SECTION("AliasesAndHashedPayloadAreSerialized")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("ais ammo_10mm 5", &out_buf, [](string_view) { }, hashes));
 
@@ -71,8 +71,8 @@ TEST_CASE("NetCommand")
     SECTION("AddNpcAndAddLocSerializeHashedProtos")
     {
         HashStorage hashes {};
-        NetOutBuffer npc_buf {8, true};
-        NetOutBuffer loc_buf {8, true};
+        NetOutBuffer npc_buf {8};
+        NetOutBuffer loc_buf {8};
 
         REQUIRE(PackNetCommand("addnpc 3 4 5 critter_proto", &npc_buf, [](string_view) { }, hashes));
         REQUIRE(PackNetCommand("addloc town_proto", &loc_buf, [](string_view) { }, hashes));
@@ -97,7 +97,7 @@ TEST_CASE("NetCommand")
     SECTION("PropertyCommandMarksSetValueAndTrimsWhitespace")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("prop 77 Health   150   ", &out_buf, [](string_view) { }, hashes));
 
@@ -116,7 +116,7 @@ TEST_CASE("NetCommand")
     SECTION("PropertyCommandWithoutValueMarksQuery")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("prop 88 Stamina", &out_buf, [](string_view) { }, hashes));
 
@@ -135,7 +135,7 @@ TEST_CASE("NetCommand")
     SECTION("RunAliasSerializesFunctionAndOptionalParameters")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("run module::Func alpha beta gamma", &out_buf, [](string_view) { }, hashes));
 
@@ -154,7 +154,7 @@ TEST_CASE("NetCommand")
     SECTION("LogCommandSerializesFlags")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
 
         REQUIRE(PackNetCommand("log --", &out_buf, [](string_view) { }, hashes));
 
@@ -170,7 +170,7 @@ TEST_CASE("NetCommand")
     SECTION("InvalidArgumentsLogAndDoNotWriteMessage")
     {
         HashStorage hashes {};
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
         string log_message;
 
         REQUIRE(PackNetCommand("move 12 34", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
@@ -185,14 +185,14 @@ TEST_CASE("NetCommand")
         string log_message;
 
         {
-            NetOutBuffer out_buf {8, true};
+            NetOutBuffer out_buf {8};
             REQUIRE(PackNetCommand("runscript", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
             CHECK(log_message == "No function name provided. Example: runscript module::func param0 param1 param2");
             CHECK(out_buf.GetDataSize() == 0);
         }
 
         {
-            NetOutBuffer out_buf {8, true};
+            NetOutBuffer out_buf {8};
             log_message.clear();
             REQUIRE(PackNetCommand("log +++", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
             CHECK(log_message == "Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all");

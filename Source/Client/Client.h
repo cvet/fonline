@@ -315,6 +315,7 @@ protected:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
+    void Net_OnHashList();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
