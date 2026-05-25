@@ -1432,7 +1432,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
             }
             else if (!strvex(method.Name).starts_with("__")) {
                 const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), getset, method.Name, MakeScriptArgsName(method.Args));
+                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), getset, method.Name, MakeScriptArgsName(method.Args));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
             }
         }

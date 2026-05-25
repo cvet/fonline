@@ -97,7 +97,7 @@ namespace ServerItemsTest
 
     int64 GetCritterItemCount(Critter cr)
     {
-        array<Item@> items = cr.GetItems();
+        array<Item> items = cr.GetItems();
         return items.length();
     }
 

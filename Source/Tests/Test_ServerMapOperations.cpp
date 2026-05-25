@@ -62,7 +62,7 @@ namespace
 
 namespace MapOpsTest
 {
-    Location@ CreateTestLocation()
+    Location CreateTestLocation()
     {
         array<hstring> mapPids = {"TestMap".hstr()};
         return Game.CreateLocation("TestLocation".hstr(), mapPids);
@@ -72,18 +72,18 @@ namespace MapOpsTest
 
     int TestMapAddItemByPid()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(10, 10);
-        Item@ item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
         if (item is null) return -3;
 
         // Verify item exists on map
-        Item@ found = map.GetItem(item.Id);
+        Item? found = map.GetItem(item.Id);
         if (found is null) return -4;
         if (found.Id != item.Id) return -5;
 
@@ -93,24 +93,24 @@ namespace MapOpsTest
 
     int TestMapAddItemMultiple()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex1(10, 10);
         mpos hex2(20, 20);
-        Item@ item1 = map.AddItem(hex1, "TestItem".hstr(), 3);
-        Item@ item2 = map.AddItem(hex2, "TestItem".hstr(), 5);
+        Item item1 = map.AddItem(hex1, "TestItem".hstr(), 3);
+        Item item2 = map.AddItem(hex2, "TestItem".hstr(), 5);
         if (item1 is null || item2 is null) return -3;
 
         // Query all items on map
-        array<Item@> allItems = map.GetItems();
+        array<Item> allItems = map.GetItems();
         if (allItems.length() < 2) return -4;
 
         // Query items by pid
-        array<Item@> byPid = map.GetItems("TestItem".hstr());
+        array<Item> byPid = map.GetItems("TestItem".hstr());
         if (byPid.length() < 2) return -5;
 
         Game.DestroyLocation(loc);
@@ -119,22 +119,22 @@ namespace MapOpsTest
 
     int TestMapGetItemOnHex()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(15, 15);
-        Item@ item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
         if (item is null) return -3;
 
         // Get item on hex by pid
-        Item@ onHex = map.GetItemOnHex(hex, "TestItem".hstr());
+        Item? onHex = map.GetItemOnHex(hex, "TestItem".hstr());
         if (onHex is null) return -4;
 
         // Get items on hex (list)
-        array<Item@> hexItems = map.GetItemsOnHex(hex);
+        array<Item> hexItems = map.GetItemsOnHex(hex);
         if (hexItems.length() < 1) return -5;
 
         Game.DestroyLocation(loc);
@@ -143,12 +143,12 @@ namespace MapOpsTest
 
     void TestMapGetItemOnHexInvalidHexThrows()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) {
             return;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             return;
         }
@@ -158,27 +158,27 @@ namespace MapOpsTest
 
     int TestMapGetItemInRadius()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos center(50, 50);
         mpos nearby(51, 50);
-        Item@ item = map.AddItem(nearby, "TestItem".hstr(), 1);
+        Item item = map.AddItem(nearby, "TestItem".hstr(), 1);
         if (item is null) return -3;
 
         // Search in radius
-        Item@ found = map.GetItemInRadius(center, 5, "TestItem".hstr());
+        Item? found = map.GetItemInRadius(center, 5, "TestItem".hstr());
         if (found is null) return -4;
 
         // Get items in radius (list)
-        array<Item@> inRadius = map.GetItemsInRadius(center, 5);
+        array<Item> inRadius = map.GetItemsInRadius(center, 5);
         if (inRadius.length() < 1) return -5;
 
         // Get items in radius by pid
-        array<Item@> inRadiusByPid = map.GetItemsInRadius(center, 5, "TestItem".hstr());
+        array<Item> inRadiusByPid = map.GetItemsInRadius(center, 5, "TestItem".hstr());
         if (inRadiusByPid.length() < 1) return -6;
 
         Game.DestroyLocation(loc);
@@ -189,18 +189,18 @@ namespace MapOpsTest
 
     int TestMapAddCritter()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(30, 30);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Critter should be on the map
-        Critter@ found = map.GetCritter(cr.Id);
+        Critter? found = map.GetCritter(cr.Id);
         if (found is null) return -4;
 
         Game.DestroyLocation(loc);
@@ -209,12 +209,12 @@ namespace MapOpsTest
 
     void TestMapAddCritterInvalidHexThrows()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) {
             return;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             return;
         }
@@ -224,18 +224,18 @@ namespace MapOpsTest
 
     int TestMapGetCritterOnHex()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(40, 40);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
-        array<Critter@> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
+        array<Critter> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (nearby.length() < 1) return -4;
 
         bool found = false;
@@ -253,12 +253,12 @@ namespace MapOpsTest
 
     void TestMapGetCritterOnHexInvalidHexThrows()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) {
             return;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             return;
         }
@@ -268,39 +268,39 @@ namespace MapOpsTest
 
     int TestMapGetCrittersByFindType()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex1(30, 30);
         mpos hex2(31, 30);
-        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0));
-        Critter@ cr2 = map.AddCritter("TestCritter".hstr(), hex2, mdir(0));
+        Critter cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0));
+        Critter cr2 = map.AddCritter("TestCritter".hstr(), hex2, mdir(0));
         if (cr1 is null || cr2 is null) return -3;
 
         // Get all critters
-        array<Critter@> all = map.GetCritters(CritterFindType::Any);
+        array<Critter> all = map.GetCritters(CritterFindType::Any);
         if (all.length() < 2) return -4;
 
         // Get non-dead critters
-        array<Critter@> alive = map.GetCritters(CritterFindType::NonDead);
+        array<Critter> alive = map.GetCritters(CritterFindType::NonDead);
         if (alive.length() < 2) return -5;
 
         // Kill one critter
         cr1.SetCondition(CritterCondition::Dead, CritterActionAnim::None, null);
 
         // Get dead critters
-        array<Critter@> dead = map.GetCritters(CritterFindType::Dead);
+        array<Critter> dead = map.GetCritters(CritterFindType::Dead);
         if (dead.isEmpty()) return -6;
 
         // Get non-dead should be fewer
-        array<Critter@> aliveNow = map.GetCritters(CritterFindType::NonDead);
+        array<Critter> aliveNow = map.GetCritters(CritterFindType::NonDead);
         if (aliveNow.length() >= all.length()) return -7;
 
         // Get by pid and find type
-        array<Critter@> byPid = map.GetCritters("TestCritter".hstr(), CritterFindType::Any);
+        array<Critter> byPid = map.GetCritters("TestCritter".hstr(), CritterFindType::Any);
         if (byPid.length() < 2) return -8;
 
         Game.DestroyLocation(loc);
@@ -309,18 +309,18 @@ namespace MapOpsTest
 
     int TestMapGetCrittersOnHex()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(35, 35);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
-        array<Critter@> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
+        array<Critter> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (onHex.length() < 1) return -4;
 
         bool found = false;
@@ -333,7 +333,7 @@ namespace MapOpsTest
         if (!found) return -5;
 
         // Get critters in radius
-        array<Critter@> inRadius = map.GetCrittersInRadius(hex, 5, CritterFindType::Any);
+        array<Critter> inRadius = map.GetCrittersInRadius(hex, 5, CritterFindType::Any);
         if (inRadius.length() < 1) return -6;
 
         Game.DestroyLocation(loc);
@@ -342,24 +342,24 @@ namespace MapOpsTest
 
     int TestMapGetCrittersWhoSeeHex()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos critterHex(50, 50);
         mpos targetHex(52, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
         if (cr is null) return -3;
 
         // Get critters who can see target hex
-        array<Critter@> canSee = map.GetCrittersWhoSeeHex(targetHex, CritterFindType::Any);
+        array<Critter> canSee = map.GetCrittersWhoSeeHex(targetHex, CritterFindType::Any);
         // Critter at (50,50) should see hex (52,50) if look dist is sufficient
         // May or may not be in list depending on look distance
 
         // Get critters who see hex with radius bonus
-        array<Critter@> canSeeRadius = map.GetCrittersWhoSeeHex(targetHex, 10, CritterFindType::Any);
+        array<Critter> canSeeRadius = map.GetCrittersWhoSeeHex(targetHex, 10, CritterFindType::Any);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -367,19 +367,19 @@ namespace MapOpsTest
 
     int TestMapGetCrittersWhoSeePath()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos critterHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), critterHex, mdir(0));
         if (cr is null) return -3;
 
         mpos from(48, 50);
         mpos to(52, 50);
-        array<Critter@> whoSeePath = map.GetCrittersWhoSeePath(from, to, CritterFindType::Any);
+        array<Critter> whoSeePath = map.GetCrittersWhoSeePath(from, to, CritterFindType::Any);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -390,10 +390,10 @@ namespace MapOpsTest
 
     int TestMapHexMovable()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(10, 10);
@@ -427,12 +427,12 @@ namespace MapOpsTest
 
     void TestMapIsHexMovableInvalidHexThrows()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) {
             return;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             return;
         }
@@ -442,10 +442,10 @@ namespace MapOpsTest
 
     int TestMapBlockUnblock()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(20, 20);
@@ -465,10 +465,10 @@ namespace MapOpsTest
 
     int TestMapMoveHexByDir()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(50, 50);
@@ -490,10 +490,10 @@ namespace MapOpsTest
 
     int TestMapCheckPlaceForItem()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(25, 25);
@@ -507,10 +507,10 @@ namespace MapOpsTest
 
     int TestMapPathLength()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos from(10, 10);
@@ -521,7 +521,7 @@ namespace MapOpsTest
 
         // Path with critter
         mpos crHex(20, 20);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -4;
 
         mpos dest(25, 25);
@@ -534,10 +534,10 @@ namespace MapOpsTest
 
     int TestMapGetHexInPath()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos from(50, 50);
@@ -554,26 +554,26 @@ namespace MapOpsTest
 
     int TestMapGetCrittersInPath()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos crHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -3;
 
         mpos from(48, 50);
         mpos to(52, 50);
 
         // Get critters in path (simple)
-        array<Critter@> inPath = map.GetCrittersInPath(from, to, 0.0f, 10, CritterFindType::Any);
+        array<Critter> inPath = map.GetCrittersInPath(from, to, 0.0f, 10, CritterFindType::Any);
 
         // Get critters in path (with block hexes)
         mpos preBlock(0, 0);
         mpos block(0, 0);
-        array<Critter@> inPath2 = map.GetCrittersInPath(from, to, 0.0f, 10, CritterFindType::Any, preBlock, block);
+        array<Critter> inPath2 = map.GetCrittersInPath(from, to, 0.0f, 10, CritterFindType::Any, preBlock, block);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -583,21 +583,21 @@ namespace MapOpsTest
 
     int TestMapGetStaticItems()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         // Empty map has no static items, but we can still call the functions
-        array<StaticItem@> allStatic = map.GetStaticItems();
+        array<StaticItem> allStatic = map.GetStaticItems();
 
         mpos hex(10, 10);
-        array<StaticItem@> onHex = map.GetStaticItemsOnHex(hex);
+        array<StaticItem> onHex = map.GetStaticItemsOnHex(hex);
 
-        array<StaticItem@> byPid = map.GetStaticItems("TestItem".hstr());
+        array<StaticItem> byPid = map.GetStaticItems("TestItem".hstr());
 
-        array<StaticItem@> inRadius = map.GetStaticItemsInRadius(hex, 5, "TestItem".hstr());
+        array<StaticItem> inRadius = map.GetStaticItemsInRadius(hex, 5, "TestItem".hstr());
 
         Game.DestroyLocation(loc);
         return 0;
@@ -605,12 +605,12 @@ namespace MapOpsTest
 
     void TestMapGetStaticItemsOnHexInvalidHexThrows()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) {
             return;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             return;
         }
@@ -623,14 +623,14 @@ namespace MapOpsTest
 
     int TestMapLocationRelationship()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         // Map should know its location
-        Location@ mapLoc = map.GetLocation();
+        Location? mapLoc = map.GetLocation();
         if (mapLoc is null) return -3;
         if (mapLoc.Id != loc.Id) return -4;
 
@@ -638,10 +638,10 @@ namespace MapOpsTest
         int mapCount = loc.GetMapCount();
         if (mapCount != 1) return -5;
 
-        Map@ byPid = loc.GetMap("TestMap".hstr());
+        Map? byPid = loc.GetMap("TestMap".hstr());
         if (byPid is null) return -6;
 
-        array<Map@> allMaps = loc.GetMaps();
+        array<Map> allMaps = loc.GetMaps();
         if (allMaps.length() != 1) return -7;
 
         Game.DestroyLocation(loc);
@@ -652,10 +652,10 @@ namespace MapOpsTest
 
     int TestMapRegenerate()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         // Add some items
@@ -673,14 +673,14 @@ namespace MapOpsTest
 
     int TestMapVerifyTrigger()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos crHex(50, 50);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), crHex, mdir(0));
         if (cr is null) return -3;
 
         mpos triggerHex(51, 50);
@@ -696,12 +696,12 @@ namespace MapOpsTest
     {
         // Create location with map list
         array<hstring> mapPids = {"TestMap".hstr()};
-        Location@ loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
         if (loc is null) return -1;
 
         if (loc.GetMapCount() != 1) return -2;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -3;
 
         // Verify map size is as configured
@@ -716,20 +716,20 @@ namespace MapOpsTest
 
     int TestGameGetLocations()
     {
-        Location@ loc1 = CreateTestLocation();
-        Location@ loc2 = CreateTestLocation();
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
         if (loc1 is null || loc2 is null) return -1;
 
         // Get all locations
-        array<Location@> allLocs = Game.GetLocations();
+        array<Location> allLocs = Game.GetLocations();
         if (allLocs.length() < 2) return -2;
 
         // Get locations by proto
-        array<Location@> byPid = Game.GetLocations("TestLocation".hstr());
+        array<Location> byPid = Game.GetLocations("TestLocation".hstr());
         if (byPid.length() < 2) return -3;
 
         // Get location by id
-        Location@ found = Game.GetLocation(loc1.Id);
+        Location? found = Game.GetLocation(loc1.Id);
         if (found is null) return -4;
         if (found.Id != loc1.Id) return -5;
 
@@ -742,11 +742,11 @@ namespace MapOpsTest
 
     int TestGameGetGlobalMapCritters()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Global map critters (no map assigned)
-        array<Critter@> globalCritters = Game.GetGlobalMapCritters(CritterFindType::Any);
+        array<Critter> globalCritters = Game.GetGlobalMapCritters(CritterFindType::Any);
         // NPC critters without a map should be on global map
         if (globalCritters.isEmpty()) return -2;
 
@@ -759,33 +759,33 @@ namespace MapOpsTest
 
     int TestMapAddItemByProto()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
-        ProtoItem@ proto = Game.GetProtoItem("TestItem".hstr());
+        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -3;
 
         mpos hex(12, 12);
-        Item@ item = map.AddItem(hex, proto, 2);
+        Item item = map.AddItem(hex, proto, 2);
         if (item is null) return -4;
 
         // Get by proto
-        Item@ onHex = map.GetItemOnHex(hex, proto);
+        Item? onHex = map.GetItemOnHex(hex, proto);
         if (onHex is null) return -5;
 
         // Get in radius by proto
-        Item@ inRadius = map.GetItemInRadius(hex, 3, proto);
+        Item? inRadius = map.GetItemInRadius(hex, 3, proto);
         if (inRadius is null) return -6;
 
         // Get items list by proto
-        array<Item@> byProto = map.GetItems(proto);
+        array<Item> byProto = map.GetItems(proto);
         if (byProto.isEmpty()) return -7;
 
         // GetItemsInRadius by proto
-        array<Item@> inRadiusList = map.GetItemsInRadius(hex, 3, proto);
+        array<Item> inRadiusList = map.GetItemsInRadius(hex, 3, proto);
         if (inRadiusList.isEmpty()) return -8;
 
         Game.DestroyLocation(loc);
@@ -794,24 +794,24 @@ namespace MapOpsTest
 
     int TestMapAddCritterByProto()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
-        ProtoCritter@ proto = Game.GetProtoCritter("TestCritter".hstr());
+        ProtoCritter? proto = Game.GetProtoCritter("TestCritter".hstr());
         if (proto is null) return -3;
 
         mpos hex(33, 33);
-        Critter@ cr = map.AddCritter(proto, hex, mdir(0));
+        Critter cr = map.AddCritter(proto, hex, mdir(0));
         if (cr is null) return -4;
 
-        Critter@ found = map.GetCritter(cr.Id);
+        Critter? found = map.GetCritter(cr.Id);
         if (found is null) return -5;
 
         // Get critters by proto + find type
-        array<Critter@> byProto = map.GetCritters(proto, CritterFindType::Any);
+        array<Critter> byProto = map.GetCritters(proto, CritterFindType::Any);
         if (byProto.isEmpty()) return -6;
 
         Game.DestroyLocation(loc);
@@ -822,30 +822,30 @@ namespace MapOpsTest
 
     int TestMapGetItemByProperty()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(14, 14);
-        Item@ item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
         if (item is null) return -3;
 
         // Get item on hex by property (Count is a common int32 property)
-        Item@ byProp = map.GetItemOnHex(hex, ItemProperty::Count, item.Count);
+        Item? byProp = map.GetItemOnHex(hex, ItemProperty::Count, item.Count);
 
         // Get item in radius by property
-        Item@ inRadiusProp = map.GetItemInRadius(hex, 3, ItemProperty::Count, item.Count);
+        Item? inRadiusProp = map.GetItemInRadius(hex, 3, ItemProperty::Count, item.Count);
 
         // Get items list by property
-        array<Item@> listByProp = map.GetItems(ItemProperty::Count, item.Count);
+        array<Item> listByProp = map.GetItems(ItemProperty::Count, item.Count);
 
         // GetItemsOnHex by property
-        array<Item@> onHexProp = map.GetItemsOnHex(hex, ItemProperty::Count, item.Count);
+        array<Item> onHexProp = map.GetItemsOnHex(hex, ItemProperty::Count, item.Count);
 
         // GetItemsInRadius by property
-        array<Item@> inRadiusListProp = map.GetItemsInRadius(hex, 3, ItemProperty::Count, item.Count);
+        array<Item> inRadiusListProp = map.GetItemsInRadius(hex, 3, ItemProperty::Count, item.Count);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -853,21 +853,21 @@ namespace MapOpsTest
 
     int TestMapGetCritterByProperty()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(36, 36);
-        Critter@ cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
+        Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
         // Get critter by property
-        Critter@ byProp = map.GetCritter(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
+        Critter? byProp = map.GetCritter(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
 
         // Get critters list by property
-        array<Critter@> listByProp = map.GetCritters(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
+        array<Critter> listByProp = map.GetCritters(CritterProperty::Dir, cr.Dir.angle, CritterFindType::Any);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -878,35 +878,35 @@ namespace MapOpsTest
 
     int TestMapGetStaticItemOverloads()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(10, 10);
 
         // GetStaticItem by hex + pid
-        StaticItem@ byHexPid = map.GetStaticItemOnHex(hex, "TestItem".hstr());
+        StaticItem? byHexPid = map.GetStaticItemOnHex(hex, "TestItem".hstr());
 
         // GetStaticItem by hex + proto
-        ProtoItem@ proto = Game.GetProtoItem("TestItem".hstr());
-        StaticItem@ byHexProto = map.GetStaticItemOnHex(hex, proto);
+        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
+        StaticItem? byHexProto = map.GetStaticItemOnHex(hex, proto);
 
         // GetStaticItems by hex + proto + radius
-        array<StaticItem@> byRadiusProto = map.GetStaticItemsInRadius(hex, 5, proto);
+        array<StaticItem> byRadiusProto = map.GetStaticItemsInRadius(hex, 5, proto);
 
         // GetStaticItems by hex + property
-        array<StaticItem@> byHexProp = map.GetStaticItemsOnHex(hex, ItemProperty::Count, 0);
+        array<StaticItem> byHexProp = map.GetStaticItemsOnHex(hex, ItemProperty::Count, 0);
 
         // GetStaticItems by hex + radius + property
-        array<StaticItem@> byRadiusProp = map.GetStaticItemsInRadius(hex, 5, ItemProperty::Count, 0);
+        array<StaticItem> byRadiusProp = map.GetStaticItemsInRadius(hex, 5, ItemProperty::Count, 0);
 
         // GetStaticItems by proto
-        array<StaticItem@> byProto = map.GetStaticItems(proto);
+        array<StaticItem> byProto = map.GetStaticItems(proto);
 
         // GetStaticItems by property
-        array<StaticItem@> byProp = map.GetStaticItems(ItemProperty::Count, 0);
+        array<StaticItem> byProp = map.GetStaticItems(ItemProperty::Count, 0);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -914,17 +914,17 @@ namespace MapOpsTest
 
     // ========== SetupScript ==========
 
-    void OnMapInit(Map@ map, bool firstTime)
+    void OnMapInit(Map map, bool firstTime)
     {
         // Just a stub init function
     }
 
     int TestMapSetupScriptEx()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         map.SetupScriptEx("MapOpsTest::OnMapInit".hstr());
@@ -935,10 +935,10 @@ namespace MapOpsTest
 
     int TestMapSetupScript()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         // Use SetupScriptEx with hstring (both SetupScript and SetupScriptEx eventually call the same path)
@@ -953,24 +953,24 @@ namespace MapOpsTest
 
     int TestMapAddItemWithProperties()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
         mpos hex(16, 16);
 
         // AddItem with hstring + properties map
         dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        Item@ item1 = map.AddItem(hex, "TestItem".hstr(), 1, props);
+        Item item1 = map.AddItem(hex, "TestItem".hstr(), 1, props);
         if (item1 is null) return -3;
 
         // AddItem with proto + properties map
-        ProtoItem@ proto = Game.GetProtoItem("TestItem".hstr());
+        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -31;
         mpos hex2(17, 17);
-        Item@ item2 = map.AddItem(hex2, proto, 1, props);
+        Item item2 = map.AddItem(hex2, proto, 1, props);
         if (item2 is null) return -4;
 
         Game.DestroyLocation(loc);
@@ -981,35 +981,35 @@ namespace MapOpsTest
 
     int TestMapAddCritterWithProperties()
     {
-        Location@ loc = CreateTestLocation();
+        Location loc = CreateTestLocation();
         if (loc is null) return -1;
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) return -2;
 
-        ProtoCritter@ proto = Game.GetProtoCritter("TestCritter".hstr());
+        ProtoCritter? proto = Game.GetProtoCritter("TestCritter".hstr());
         if (proto is null) return -3;
 
         // AddCritter with hstring + int properties
         dict<CritterProperty, int> intProps = {};
         mpos hex1(38, 38);
-        Critter@ cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0), intProps);
+        Critter cr1 = map.AddCritter("TestCritter".hstr(), hex1, mdir(0), intProps);
         if (cr1 is null) return -4;
 
         // AddCritter with proto + int properties
         mpos hex2(39, 39);
-        Critter@ cr2 = map.AddCritter(proto, hex2, mdir(0), intProps);
+        Critter cr2 = map.AddCritter(proto, hex2, mdir(0), intProps);
         if (cr2 is null) return -5;
 
         // AddCritter with hstring + any properties
         dict<CritterProperty, any> anyProps = {};
         mpos hex3(40, 40);
-        Critter@ cr3 = map.AddCritter("TestCritter".hstr(), hex3, mdir(0), anyProps);
+        Critter cr3 = map.AddCritter("TestCritter".hstr(), hex3, mdir(0), anyProps);
         if (cr3 is null) return -6;
 
         // AddCritter with proto + any properties
         mpos hex4(41, 41);
-        Critter@ cr4 = map.AddCritter(proto, hex4, mdir(0), anyProps);
+        Critter cr4 = map.AddCritter(proto, hex4, mdir(0), anyProps);
         if (cr4 is null) return -7;
 
         Game.DestroyLocation(loc);

@@ -498,6 +498,14 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 		tok.InitJumpTable();
 		break;
 
+	// (FOnline Patch) opt-in stricter null-handling: reject implicit
+	// `T x = nullableExpr;` at compile time.
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		if (value > 1)
+			return asINVALID_ARG;
+		ep.disallowNullableToNonNullable = value ? true : false;
+		break;
+
 	default:
 		return asINVALID_ARG;
 	}
@@ -630,6 +638,10 @@ asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property) const
 	case asEP_FOREACH_SUPPORT:
 		return ep.foreachSupport;
 
+	// (FOnline Patch)
+	case asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE:
+		return ep.disallowNullableToNonNullable;
+
 	default:
 		return 0;
 	}
@@ -708,6 +720,7 @@ asCScriptEngine::asCScriptEngine()
 		ep.memberInitMode                = 1;         // 0 = pre 2.38.0, members with init expr in declaration are initialized after super(), 1 = all members initialized in beginning, except if explicitly initialized in body
 		ep.boolConversionMode            = 0;         // 0 = only do use opImplConv for registered value type, 1 = use also opConv in contextual conversion even for reference types
 		ep.foreachSupport                = true;
+		ep.disallowNullableToNonNullable = false; // (FOnline Patch) opt-in stricter null check
 	}
 
 	gc.engine = this;
@@ -3657,6 +3670,21 @@ void asCScriptEngine::RemoveTemplateInstanceType(asCObjectType *t)
 }
 
 // internal
+// (FOnline Patch) Template instances must distinguish nullable element subtypes, e.g. array<T?> from
+// array<T>. asCDataType::operator== intentionally ignores isNullable (so T and T? stay compatible for
+// overload matching and assignment); instance identity, however, must keep them apart so element access
+// on array<T?> yields T? while array<T> stays non-null. This mirrors how const subtypes already form
+// distinct instances via operator==.
+static bool TemplateSubTypesNullableMatch(const asCArray<asCDataType> &a, const asCArray<asCDataType> &b)
+{
+	if( a.GetLength() != b.GetLength() )
+		return false;
+	for( asUINT n = 0; n < a.GetLength(); n++ )
+		if( a[n].IsNullable() != b[n].IsNullable() )
+			return false;
+	return true;
+}
+
 asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateType, asCArray<asCDataType> &subTypes, asCModule *requestingModule)
 {
 	asUINT n;
@@ -3668,7 +3696,8 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		if( type &&
 			type->name == templateType->name &&
 			type->nameSpace == templateType->nameSpace &&
-			type->templateSubTypes == subTypes )
+			type->templateSubTypes == subTypes &&
+			TemplateSubTypesNullableMatch(type->templateSubTypes, subTypes) ) // (FOnline Patch) keep array<T?> distinct
 		{
 			// If the template instance is generated, then the module should hold a reference
 			// to it so the config group can determine see that the template type is in use.

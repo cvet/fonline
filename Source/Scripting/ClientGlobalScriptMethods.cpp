@@ -40,21 +40,75 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API FO_NULLABLE MapView* Client_Game_CurMap(ClientEngine* client)
+FO_SCRIPT_API bool Client_Game_HasChosen(ClientEngine* client)
 {
-    return client->GetCurMap();
+    return client->GetChosen() != nullptr;
 }
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API FO_NULLABLE LocationView* Client_Game_CurLocation(ClientEngine* client)
+FO_SCRIPT_API CritterView* Client_Game_Chosen(ClientEngine* client)
 {
-    return client->GetCurLocation();
+    CritterView* chosen = client->GetChosen();
+
+    if (chosen == nullptr) {
+        throw ScriptException("No chosen critter (check HasChosen first)");
+    }
+
+    return chosen;
 }
 
 ///@ ExportMethod GlobalGetter
-FO_SCRIPT_API FO_NULLABLE PlayerView* Client_Game_CurPlayer(ClientEngine* client)
+FO_SCRIPT_API bool Client_Game_HasCurPlayer(ClientEngine* client)
 {
-    return client->GetCurPlayer();
+    return client->GetCurPlayer() != nullptr;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API PlayerView* Client_Game_CurPlayer(ClientEngine* client)
+{
+    PlayerView* curPlayer = client->GetCurPlayer();
+
+    if (curPlayer == nullptr) {
+        throw ScriptException("No current player (check HasCurPlayer first)");
+    }
+
+    return curPlayer;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Client_Game_HasCurLocation(ClientEngine* client)
+{
+    return client->GetCurLocation() != nullptr;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API LocationView* Client_Game_CurLocation(ClientEngine* client)
+{
+    LocationView* curLocation = client->GetCurLocation();
+
+    if (curLocation == nullptr) {
+        throw ScriptException("No current location (check HasCurLocation first)");
+    }
+
+    return curLocation;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Client_Game_HasCurMap(ClientEngine* client)
+{
+    return client->GetCurMap() != nullptr;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API MapView* Client_Game_CurMap(ClientEngine* client)
+{
+    MapView* curMap = client->GetCurMap();
+
+    if (curMap == nullptr) {
+        throw ScriptException("No current map (check HasCurMap first)");
+    }
+
+    return curMap;
 }
 
 ///@ ExportMethod Getter
@@ -277,12 +331,6 @@ FO_SCRIPT_API uint32_t Client_Game_BytesSend(ClientEngine* client)
 FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ClientEngine* client)
 {
     return numeric_cast<uint32_t>(client->GetConnection().GetBytesReceived());
-}
-
-///@ ExportMethod GlobalGetter
-FO_SCRIPT_API FO_NULLABLE CritterView* Client_Game_Chosen(ClientEngine* client)
-{
-    return client->GetChosen();
 }
 
 ///@ ExportMethod
