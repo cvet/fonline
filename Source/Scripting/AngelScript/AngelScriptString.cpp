@@ -306,6 +306,13 @@ static auto StringEquals(const string& str, const string& other) -> bool
     return str == other;
 }
 
+static auto StringFastCompare(const void* a, const void* b) -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return StringCmp(*static_cast<const string*>(a), *static_cast<const string*>(b));
+}
+
 static auto IndexUtf8ToRaw(const string& str, int32_t& index, int32_t* length = nullptr, int32_t offset = 0) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -861,6 +868,8 @@ void RegisterAngelScriptString(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "bool opEquals(const string &in) const", FO_SCRIPT_FUNC_THIS(StringEquals), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", FO_SCRIPT_FUNC_THIS(StringCmp), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", FO_SCRIPT_FUNC_THIS(AddStringToString), FO_SCRIPT_FUNC_THIS_CONV));
+
+    SetScriptTypeFastCompare(as_engine->GetTypeInfoByName("string"), &StringFastCompare);
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAssign(double)", FO_SCRIPT_FUNC_THIS(AssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string &opAddAssign(double)", FO_SCRIPT_FUNC_THIS(AddAssignDoubleToString), FO_SCRIPT_FUNC_THIS_CONV));
