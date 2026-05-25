@@ -47,12 +47,28 @@
 FO_BEGIN_NAMESPACE
 
 constexpr AngelScript::asPWORD AS_TYPE_INFO_CACHE_USER_DATA = 1100;
+constexpr AngelScript::asPWORD AS_TYPE_FAST_COMPARE_USER_DATA = 1101;
 
 struct ScriptTypeInfoCache
 {
     unordered_map<string, AngelScript::asITypeInfo*> Map {};
     unordered_map<const Property*, AngelScript::asITypeInfo*> ByProperty {};
 };
+
+void SetScriptTypeFastCompare(AngelScript::asITypeInfo* type, ScriptFastCompareFunc func)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(type);
+    type->SetUserData(reinterpret_cast<void*>(func), AS_TYPE_FAST_COMPARE_USER_DATA);
+}
+
+auto GetScriptTypeFastCompare(const AngelScript::asITypeInfo* type) -> ScriptFastCompareFunc
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return reinterpret_cast<ScriptFastCompareFunc>(type->GetUserData(AS_TYPE_FAST_COMPARE_USER_DATA));
+}
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {

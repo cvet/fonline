@@ -11124,6 +11124,16 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 			if (ProcessPropertyGetAccessor(&re, cexpr->next->next) < 0)
 				return -1;
 
+			// (FOnline Patch) A conditional evaluates to whichever branch is taken, so it
+			// can be null if EITHER branch is nullable (or a null literal). Capture this now,
+			// before the branch-type-unifying conversions below can drop the flag, then
+			// re-apply it to the result type at the end of this block so the front-end
+			// nullability checks (assignment #2, deref, comparison) treat `cond ? a? : b`
+			// as T? instead of relying solely on the runtime asBC_RefCpyChk safety net.
+			const bool ternaryResultNullable =
+				le.type.dataType.IsNullable() || re.type.dataType.IsNullable() ||
+				le.type.IsNullConstant() || re.type.IsNullConstant();
+
 			bool isExplicitHandle = le.type.isExplicitHandle || re.type.isExplicitHandle;
 
 			// Allow an anonymous initialization list to be converted to the type in the other condition
@@ -11475,6 +11485,12 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 					ctx->type.isConstant = false;
 				}
 			}
+
+			// (FOnline Patch) Re-apply the conditional's nullability captured above (before
+			// the branch-type merge) so `cond ? a? : b` is seen as T? by the assignment,
+			// deref and null-comparison checks, not only the runtime asBC_RefCpyChk.
+			if( ternaryResultNullable && ctx->type.dataType.IsObjectHandle() )
+				ctx->type.dataType.MakeNullable(true);
 		}
 		else
 		{
