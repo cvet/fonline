@@ -423,18 +423,7 @@ void ClientConnection::Net_SendUnresolvedHash(hstring::hash_t hash)
         _netOut.Write(hash);
         _netOut.EndMsg();
 
-        const auto flush_deadline = nanotime::now() + std::chrono::seconds {5};
-
         SendData();
-
-        while (!_netOut.IsEmpty()) {
-            if (nanotime::now() >= flush_deadline) {
-                break;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {1});
-            SendData();
-        }
 
         if (!_netOut.IsEmpty()) {
             WriteLog("Couldn't flush unresolved hash {} report before disconnect", hash);
