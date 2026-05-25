@@ -344,7 +344,9 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 
 	isObjectHandle = (at->flags & asOBJ_IMPLICIT_HANDLE) != 0; // (FOnline Patch) isObjectHandle = false;
 	isConstHandle = false;
-	
+	isNullable = false; // (FOnline Patch) the new array handle is non-null by default; the element's
+	                    // nullability (e.g. `Item?[]`) was already captured in the subtype pushed above
+
 	typeInfo = at;
 	tokenType = ttIdentifier;
 

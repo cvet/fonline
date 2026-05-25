@@ -2183,36 +2183,39 @@ class Button : Panel
     {
         return _IsSwitched;
     }
-    Sprite::Sprite get_PressedImage() final
+    Sprite::Sprite? get_PressedImage() final
     {
         return _PressedImage;
     }
     SpriteLayout get_PressedImageLayout() final
     {
-        return _PressedImage != null ? _PressedImage.Layout : SpriteLayout::None;
+        Sprite::Sprite? image = _PressedImage;
+        return image != null ? image.Layout : SpriteLayout::None;
     }
-    Sprite::Sprite get_HoverImage() final
+    Sprite::Sprite? get_HoverImage() final
     {
         return _HoverImage;
     }
     SpriteLayout get_HoverImageLayout() final
     {
-        return _HoverImage != null ? _HoverImage.Layout : SpriteLayout::None;
+        Sprite::Sprite? image = _HoverImage;
+        return image != null ? image.Layout : SpriteLayout::None;
     }
-    Sprite::Sprite get_DisabledImage() final
+    Sprite::Sprite? get_DisabledImage() final
     {
         return _DisabledImage;
     }
     SpriteLayout get_DisabledImageLayout() final
     {
-        return _DisabledImage != null ? _DisabledImage.Layout : SpriteLayout::None;
+        Sprite::Sprite? image = _DisabledImage;
+        return image != null ? image.Layout : SpriteLayout::None;
     }
 
     bool _IsDisabled;
     bool _IsSwitched;
-    Sprite::Sprite _PressedImage;
-    Sprite::Sprite _HoverImage;
-    Sprite::Sprite _DisabledImage;
+    Sprite::Sprite? _PressedImage;
+    Sprite::Sprite? _HoverImage;
+    Sprite::Sprite? _DisabledImage;
 
     void _Construct() override
     {
@@ -3440,7 +3443,7 @@ class ItemView : Grid
     int _UserData;
     int _UserDataExt;
     bool _UseSorting;
-    Item[] _Items;
+    Item?[] _Items;
     int _ItemsGridSize;
     bool _Dirty;
 
@@ -3448,7 +3451,7 @@ class ItemView : Grid
     {
         Grid::_Construct();
 
-        _Items = array<Item>();
+        _Items = {};
         _IsNotCatchable = true;
     }
 
@@ -3495,7 +3498,6 @@ class ItemView : Grid
     {
         for (int i = 0; i < _Items.length(); i++) {
             Item? item = _Items[i];
-
             if (item != null && item.Id == itemId) {
                 return true;
             }
@@ -3534,7 +3536,7 @@ class ItemView : Grid
 
     void ResizeGrid(int size) override
     {
-        Item[] newItems = {};
+        Item?[] newItems = {};
 
         Item[]? maybeItems = OnGetItems();
         Item[] items = maybeItems != null ? maybeItems : array<Item>();
@@ -4663,7 +4665,7 @@ void HighlightProcess(any[] data)
         return;
     }
 
-    Object? obj = screen.Find(objName, skip : skip);
+    Object? obj = screen.Find(objName, skip: skip);
     Panel? panel = cast<Panel>(obj);
     Text? text = cast<Text>(obj);
 

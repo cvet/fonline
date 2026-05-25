@@ -56,10 +56,8 @@ class Serializator
     {
         Clear();
         dataArray = Game.GetCacheData(name);
-        if (dataArray != null) {
-            bufSize = dataArray.length();
-            dataSize = bufSize;
-        }
+        bufSize = dataArray.length();
+        dataSize = bufSize;
         return bufSize;
     }
 #endif

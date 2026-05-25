@@ -106,17 +106,27 @@ static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Maybe called in script object destructors during backend destruction
     const auto* as_engine = gen->GetEngine();
     auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
 
-    if (backend != nullptr && backend->HasGameEngine()) {
-        auto* engine = static_cast<Entity*>(backend->GetGameEngine());
-        new (gen->GetAddressOfReturnLocation()) Entity*(engine);
+    if (!backend->HasGameEngine()) {
+        throw ScriptException("Game engine is not available");
     }
-    else {
-        new (gen->GetAddressOfReturnLocation()) Entity*(nullptr);
-    }
+
+    auto* engine = static_cast<Entity*>(backend->GetGameEngine());
+    new (gen->GetAddressOfReturnLocation()) Entity*(engine);
+}
+
+static void Global_IsGameDestroying(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // True once the game engine is gone, e.g. in script object destructors during backend destruction (when Game is null)
+    const auto* as_engine = gen->GetEngine();
+    auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
+
+    const bool destroying = backend == nullptr || !backend->HasGameEngine();
+    new (gen->GetAddressOfReturnLocation()) bool(destroying);
 }
 
 static void Global_GetPropertyGroup(AngelScript::asIScriptGeneric* gen)
@@ -533,6 +543,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {

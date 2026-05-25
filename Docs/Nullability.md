@@ -8,7 +8,7 @@ Convention and runtime enforcement for nullable values across AngelScript and th
 
 > Better to not pass `null` at all than to defensively check inside and bail out.
 >
-> A parameter or return may be marked nullable **only when the function meaningfully handles both null and non-null cases**. Early-exit-on-null guards are a code smell â€” the contract should be non-null and the caller fixed instead.
+> A parameter or return may be marked nullable **only when the function meaningfully handles both null and non-null cases**. Early-exit-on-null guards are a code smell — the contract should be non-null and the caller fixed instead.
 
 This applies symmetrically on both sides of the script-engine boundary.
 
@@ -27,7 +27,7 @@ Location? GetCritterLocation(Critter cr)
     return map != null ? map.GetLocation() : null;
 }
 
-// Parameter may be null â€” body handles both cases
+// Parameter may be null — body handles both cases
 void OnCritterUseWeapon(Critter cr, WeaponUseMode useMode, HitLocation aim, Critter? target, mpos targetHex)
 {
     mpos resolvedTargetHex = target != null ? target.Hex : targetHex;
@@ -35,7 +35,7 @@ void OnCritterUseWeapon(Critter cr, WeaponUseMode useMode, HitLocation aim, Crit
 }
 ```
 
-`?` is parsed by the **AngelScript front-end itself** (see `ParseType` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_parser.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_parser.cpp), `MakeNullable`/`isNullable` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_datatype.h](../ThirdParty/AngelScript/sdk/angelscript/source/as_datatype.h), and the `CreateDataTypeFromNode` consumer in [../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp)). The marker is no longer rewritten by the preprocessor â€” the `StripNullableTypeSuffix` pass was removed once the engine learned the suffix directly. Misplaced markers (e.g. `int?`) produce a compile-time error: *"Nullable marker '?' is only allowed on handle types"*.
+`?` is parsed by the **AngelScript front-end itself** (see `ParseType` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_parser.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_parser.cpp), `MakeNullable`/`isNullable` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_datatype.h](../ThirdParty/AngelScript/sdk/angelscript/source/as_datatype.h), and the `CreateDataTypeFromNode` consumer in [../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp)). The marker is no longer rewritten by the preprocessor — the `StripNullableTypeSuffix` pass was removed once the engine learned the suffix directly. Misplaced markers (e.g. `int?`) produce a compile-time error: *"Nullable marker '?' is only allowed on handle types"*.
 
 The AS parser disambiguates the type-suffix `?` from the ternary `?` by only consuming it inside `ParseType`. Inside expressions, `cond ? a : b` continues to parse as the conditional operator.
 
@@ -56,13 +56,13 @@ The declaration is the contract. Every `[[Event]]` subscriber and every `[[Serve
 [[Event]]
 void OnCritterDamaged(Critter cr, Critter? attacker, int32 damage) { ... }
 
-// Would be rejected by validate_nullable.py â€” declaration has `Critter?`,
+// Would be rejected by validate_nullable.py — declaration has `Critter?`,
 // handler drops the `?`:
 [[Event]]
 void OnCritterDamaged(Critter cr, Critter attacker, int32 damage) { ... }
 ```
 
-Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see Â«Runtime enforcementÂ» below). `validate_nullable.py` still enforces the static convention that an `[[Event]]` / `[[*RemoteCall]]` handler matches its declaration argument-by-argument â€” the AS engine has no way to know two unrelated declarations are supposed to share a contract.
+Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see «Runtime enforcement» below). `validate_nullable.py` still enforces the static convention that an `[[Event]]` / `[[*RemoteCall]]` handler matches its declaration argument-by-argument — the AS engine has no way to know two unrelated declarations are supposed to share a contract.
 
 ## Engine side: `FO_NULLABLE` macro
 
@@ -82,16 +82,16 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter
 }
 ```
 
-The `self` (first parameter â€” `this` receiver) and the implicit `engine` parameter for global methods are **never** marked: AS validates `this` before dispatch.
+The `self` (first parameter — `this` receiver) and the implicit `engine` parameter for global methods are **never** marked: AS validates `this` before dispatch.
 
 If an exported method gives a pointer argument the default value `nullptr`, mark that argument `FO_NULLABLE`; codegen records the default as script `null`, and the nullability marker keeps the generated native-call validation aligned with the callable signature.
 
 ### Component accessors are non-nullable and throw; probe with `Has<Component>`
 
-An entity component getter (`item.Weapon`, `item.MapExit`, `cr.DialogContext`, `item.Locker`, â€¦ â€” every property declared `///@ Property <Entity> ... <Name> Component`) is **non-nullable** and **throws** when the component is absent. `Entity_GetComponent` in [../Source/Scripting/AngelScript/AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp) raises a `ScriptException` unless the presence bool is set, so the getter is registered as `{}@ get_{}() const` (no `?`). Alongside each component getter a `bool get_Has<Component>() const` accessor is registered for presence probes.
+An entity component getter (`item.Weapon`, `item.MapExit`, `cr.DialogContext`, `item.Locker`, … — every property declared `///@ Property <Entity> ... <Name> Component`) is **non-nullable** and **throws** when the component is absent. `Entity_GetComponent` in [../Source/Scripting/AngelScript/AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp) raises a `ScriptException` unless the presence bool is set, so the getter is registered as `{}@ get_{}() const` (no `?`). Alongside each component getter a `bool get_Has<Component>() const` accessor is registered for presence probes.
 
 ```angelscript
-// item.Weapon is ItemWeaponComponent (non-nullable) â€” access directly
+// item.Weapon is ItemWeaponComponent (non-nullable) — access directly
 int dist = item.Weapon.MaxDist;        // OK; throws iff the item is not a weapon
 
 // probe presence with Has<Component>, never `== null`
@@ -101,7 +101,7 @@ if (item.HasWeapon) {
 verify(item.HasWeapon, "Item must be a weapon");
 ```
 
-This mirrors the throwing global getters below (`Chosen` / `CurMap` / â€¦): a missing component in code that already assumes it is present is an **invariant violation**, not a recoverable null. Do **not** write `item.Weapon == null` / `!= null` â€” the getter would throw at the access; write `!item.HasWeapon` / `item.HasWeapon`. The four entity flavors (concrete / `Abstract` / `Proto` / `Static`) and fixed types all share this registration, so `proto.HasWeapon`, `abstractItem.HasWeapon`, etc. are all available. (One name clash to keep in mind: `Ammo` is both an Item component and a nullable *property* of the weapon component â€” `item.Weapon.Ammo` is the loaded ammo item and remains a normal nullable `== null` check.)
+This mirrors the throwing global getters below (`Chosen` / `CurMap` / …): a missing component in code that already assumes it is present is an **invariant violation**, not a recoverable null. Do **not** write `item.Weapon == null` / `!= null` — the getter would throw at the access; write `!item.HasWeapon` / `item.HasWeapon`. The four entity flavors (concrete / `Abstract` / `Proto` / `Static`) and fixed types all share this registration, so `proto.HasWeapon`, `abstractItem.HasWeapon`, etc. are all available. (One name clash to keep in mind: `Ammo` is both an Item component and a nullable *property* of the weapon component — `item.Weapon.Ammo` is the loaded ammo item and remains a normal nullable `== null` check.)
 
 ### Throwing global getters: `Chosen` / `CurMap` / `CurLocation` / `CurPlayer`
 
@@ -115,6 +115,24 @@ Critter cr = Chosen;   // OK - non-nullable, guaranteed present here
 ```
 
 `HasChosen` / `HasCurMap` / `HasCurLocation` / `HasCurPlayer` are the presence checks. Do **not** write `Chosen == null` / `Chosen != null`: comparing a non-nullable handle to null both trips the redundant-comparison warning (#5) and *throws* (evaluating `Chosen` when absent), so it is doubly wrong - use `!HasChosen` / `HasChosen` instead.
+
+### `Game` during shutdown: `IsGameDestroying`
+
+`Game` is a **non-nullable** global handle (`GameSingleton@`), so script code reads `Game.X` directly without a null dance. But the game engine is genuinely absent in one window: **script-object destructors that run while the scripting backend is being torn down**. The AngelScript GC runs object destructors from inside `~AngelScriptBackend` *after* the engine pointer has already been reset ([../Source/Scripting/AngelScript/AngelScriptBackend.cpp](../Source/Scripting/AngelScript/AngelScriptBackend.cpp)), and `get_Game` is a **throwing getter** — it raises *"Game engine is not available"* when the backend has no engine. So a `~T()` that touches `Game.*` during shutdown throws from the destructor, and `Game != null` cannot guard it either (same double-wrong as `Chosen != null`: redundant-comparison warning #5, plus `Game` throwing as it is evaluated).
+
+The `bool IsGameDestroying` global getter (registered next to `get_Game()` in [../Source/Scripting/AngelScript/AngelScriptGlobals.cpp](../Source/Scripting/AngelScript/AngelScriptGlobals.cpp)) is the probe for exactly this case: it is `true` precisely when `Game` is unavailable (the backend's `HasGameEngine()` is false — the same condition under which `get_Game` throws), and reading it never evaluates the `Game` getter. Use it to skip engine-dependent cleanup in destructors:
+
+```angelscript
+~Sprite()
+{
+    // Game engine may already be gone during shutdown; freeing the sprite then is both impossible and unnecessary
+    if (!IsGameDestroying) {
+        Unload();   // calls Game.FreeSprite(...)
+    }
+}
+```
+
+Reach for `IsGameDestroying` only in destructors (or other teardown paths that can run during backend destruction). Everywhere else `Game` is guaranteed present — read it directly.
 
 ### Throwing proto getters: `Game.GetProtoItem/Critter/Map/Location` + `CheckProtoX`
 
@@ -143,9 +161,9 @@ There are now two complementary runtime gates:
 
 ### Script-side: `asBC_RefCpyChk` on handle assignments
 
-The AngelScript compiler emits a new `asBC_RefCpyChk` bytecode (defined in [../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h](../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h), handler in [../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp)) whenever the destination of a handle write is **non-nullable** (`T` without `?`) and the destination is **user-declared** (not a compiler-generated temporary). It is a drop-in REFCPY variant that raises a *Null pointer access* exception when the source handle is null. Emission sites are `PerformAssignment` and `CompileInitializationWithAssignment` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp); `T?` declarations fall back to the original `asBC_REFCPY` and accept null silently.
+The AngelScript compiler emits a new `asBC_RefCpyChk` bytecode (defined in [../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h](../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h), handler in [../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp)) whenever the destination of a handle write is **non-nullable** (`T` without `?`) and the destination is **user-declared** (not a compiler-generated temporary). It is a drop-in REFCPY variant that raises a *Null assignment to non-nullable handle* exception when the source handle is null. Emission sites are `PerformAssignment` and `CompileInitializationWithAssignment` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp); `T?` declarations fall back to the original `asBC_REFCPY` and accept null silently.
 
-The temp guard matters because `PerformAssignment` is reused for argument-setup slots whose type is inherited from a native parameter (no `?` syntax on the AS side). Nullability of those slots is owned by the native-boundary check below â€” letting the AS-level check skip temporaries keeps `func(null)` working for `FO_NULLABLE` natives.
+The temp guard matters because `PerformAssignment` is reused for argument-setup slots whose type is inherited from a native parameter (no `?` syntax on the AS side). Nullability of those slots is owned by the native-boundary check below — letting the AS-level check skip temporaries keeps `func(null)` working for `FO_NULLABLE` natives.
 
 This means **script-to-script assignments** of null to a non-nullable handle still throw, even when the value originates from another script function rather than a native call.
 
@@ -155,17 +173,17 @@ Native validation continues to be plumbed through codegen-generated `MethodDesc:
 
 ```
 MethodDesc::Call(call)
-  â†’ NativeDataProvider::CheckArgNotNull(call, i, "Server_Player_SetCritter", "cr", "Critter")   // for each non-nullable entity arg
-  â†’ native invocation
-  â†’ NativeDataProvider::CheckReturnNotNull(call, "...", "...")                                  // for non-nullable entity return
+  → NativeDataProvider::CheckArgNotNull(call, i, "Server_Player_SetCritter", "cr", "Critter")   // for each non-nullable entity arg
+  → native invocation
+  → NativeDataProvider::CheckReturnNotNull(call, "...", "...")                                  // for non-nullable entity return
 ```
 
-Doing it at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered â€” the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. The check has no per-call lookup cost beyond a single pointer compare.
+Doing it at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered — the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. The check has no per-call lookup cost beyond a single pointer compare.
 
 Violation surface: `ScriptException`, propagated to the calling AngelScript context. Three distinct messages:
 
-- *"Null assignment to non-nullable handle"* â€” raised by `asBC_RefCpyChk` (the new AS-side check on bare-handle writes). Distinct from the generic null-deref so stack traces clearly point at the bad assignment rather than a downstream method call.
-- *"Null pointer access"* â€” the original AS message, raised by `asBC_CHKREF` / `asBC_ChkRefS` / `asBC_ChkNullV` / `asBC_ChkNullS` for dereferences, indexing, and method calls on a null handle.
+- *"Null assignment to non-nullable handle"* — raised by `asBC_RefCpyChk` (the new AS-side check on bare-handle writes). Distinct from the generic null-deref so stack traces clearly point at the bad assignment rather than a downstream method call.
+- *"Null pointer access"* — the original AS message, raised by `asBC_CHKREF` / `asBC_ChkRefS` / `asBC_ChkNullV` / `asBC_ChkNullS` for dereferences, indexing, and method calls on a null handle.
 - Native-boundary checks emit the method name, parameter name, and type via the codegen-generated `NativeDataProvider::Check{Arg,Return}NotNull`.
 
 ### Compile-time guarantees
@@ -181,15 +199,23 @@ In addition to the runtime `asBC_RefCpyChk`, the AS front-end raises two compile
 
 3. **Redundant `?` on local initializer is warned about.** When the destination is declared `T?` but the initializer is statically a non-nullable handle (the source type cannot produce `null`), the front-end emits:
    *"Redundant '?': initializer of type 'T' cannot be null; declare destination as 'T' instead"*.
-   This catches stale `T?` annotations left behind after an API tightened its return type (e.g. `FO_NULLABLE Critter*` â†’ `Critter*`), and the `if (cr == null)` dead branch that usually follows. The diagnostic is a *warning* (compilation succeeds) so existing scripts keep building while authors clean up; the message names both the current source type and the bare destination spelling so the fix is a one-character drop.
+   This catches stale `T?` annotations left behind after an API tightened its return type (e.g. `FO_NULLABLE Critter*` → `Critter*`), and the `if (cr == null)` dead branch that usually follows. Emitted from `CompileInitialization` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). The diagnostic is a *warning* (compilation succeeds) so existing scripts keep building while authors clean up; the message names both the current source type and the bare destination spelling so the fix is a one-character drop. Like the deref (#4) and redundant-comparison (#5) checks it **trusts the static non-nullability of the source**, including a *non-const handle reference*: reading an `arr[i]` cell of a non-nullable element array, or a non-nullable `T` field/local by reference, aliases storage whose non-null invariant is enforced on every write, so `T? x = arr[i]` is flagged exactly as `arr[i] != null` is by #5. Two source shapes are exempted, because a non-null static type does **not** guarantee a non-null value there:
+   - `cast<T>(...)` and `cond ? a : b` — a failed reference cast yields null, and ternary branch types may differ (use `cast<T?>` when the cast can fail).
+   - a **const handle reference `T@const&`** — `dict.get(key, default)` substitutes its (possibly null) default and yields null on a missing key, so the `?` on `T? v = someDict.get(k, null)` is genuinely needed, not redundant.
 
 4. **Dereferencing an un-narrowed nullable handle is warned about.** When a `T?` value is dereferenced (`x.Member`, `x[i]`, `x.Method()`) without first narrowing it to non-null, the front-end emits:
    *"Dereference of nullable handle 'T?' without a null-check; narrow it first (e.g. `if (x == null) return;`) so it becomes 'T'"*.
-   Emitted from the `ttDot` branch of `CompileExpressionPostOp` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). It is a *warning*, not an error â€” the runtime null-deref check (`asBC_CHKREF` etc.) is still the safety net â€” so authors clean up at their own pace. Narrowing only tracks **named locals/params**: `x.Method() == null || x.Method().Foo` still warns on the second call because each getter call is a fresh expression; bind to a local (`auto v = x.Method(); if (v == null) return; v.Foo`) to narrow.
+   Emitted from the `ttDot` branch of `CompileExpressionPostOp` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). It is a *warning*, not an error — the runtime null-deref check (`asBC_CHKREF` etc.) is still the safety net — so authors clean up at their own pace. Narrowing only tracks **named locals/params**: `x.Method() == null || x.Method().Foo` still warns on the second call because each getter call is a fresh expression; bind to a local (`auto v = x.Method(); if (v == null) return; v.Foo`) to narrow.
 
-5. **Redundant null comparison against a non-nullable handle is warned about.** When one operand of `==` / `!=` is `null` and the other is a statically non-nullable **named** handle (a non-nullable local/param, or a local already narrowed to non-null), the comparison has a constant result and the guarded branch is dead. The front-end emits:
+5. **Redundant null comparison against a non-nullable handle is warned about.** When one operand of `==` / `!=` is `null` and the other is a statically non-nullable handle — **a named local/param *or* a temporary** (e.g. a property/getter call result) — the comparison has a constant result and the guarded branch is dead. The front-end emits:
    *"Redundant null comparison: 'T' is a non-nullable handle and can never be null; remove the check (or make the source nullable if it actually can be null)"*.
-   Emitted from `CompileOperatorOnHandles` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). This is the inverse of the deref warning (#4): together they push every nullable value toward exactly one null-check at the point it is introduced. Like #3/#4 it is a *warning*. The "or make the source nullable" hint matters â€” a hit often means the **source** is mis-modeled as non-nullable (e.g. a native return missing `FO_NULLABLE`), not that the check is truly dead. **Only named operands warn:** a *temporary* with a non-nullable static type is excluded, because it can still be null at runtime â€” most importantly `cast<T>(x)`, which yields null on a failed cast, so `cast<T>(x) != null` is a genuine, non-redundant check (the same applies to a call result like `GetThing() != null`). Bind such a value to a local and check the local if you want the redundancy tracked.
+   Emitted from `CompileOperatorOnHandles` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). This is the inverse of the deref warning (#4): together they push every nullable value toward exactly one null-check at the point it is introduced. Like #3/#4 it is a *warning*. The "or make the source nullable" hint matters — a hit usually means the **source** is mis-modeled as non-nullable, and the fix is to spell it nullable rather than delete the check. The common cases:
+   - A **throwing getter** (`Chosen`, `CurMap`, a `item.Weapon` component getter, `Game.GetProtoModifier(...)`) returns non-null and *throws* when absent, so `getter() != null` is a footgun — it throws before the comparison. Use the matching `Has*` / `Check*` probe (`HasChosen`, `item.HasWeapon`, `Game.CheckProtoModifier(...)`).
+   - A **fallible reference cast** `cast<T>(x)` is non-null-typed but yields null on a failed downcast — write `cast<T?>(x)` so the result is `T?` and the `!= null` is a legitimate check (see [Reference casts](#reference-casts-castx)).
+   - A **proto / fixed-type property handle** that may be unset (`UsableOn.TargetItem`, `Harvested.SmallBag`, `Weapon.Ammo`) — declare the `///@ Property` with the `Nullable` flag so its getter is registered `@?` (see [Nullable property handles](#nullable-property-handles)).
+   - A native return that can be null but is missing `FO_NULLABLE`, or a genuinely-non-null source where the check is truly dead — add `FO_NULLABLE` / remove the check respectively.
+
+   Both named operands and temporaries are checked, so binding a fallible value to a local does **not** silence the warning — only spelling the source nullable (`cast<T?>`, `Nullable` flag, `FO_NULLABLE`) does. That is deliberate: it forces the *type* to tell the truth instead of relying on a hidden runtime-null.
 
 The runtime `asBC_RefCpyChk` is still the safety net underneath both errors: even when the compile-time pass accepts an assignment (e.g. through a `dict<K, V>.get(key, null)` that returns a statically-non-nullable reference bound to null at runtime), the bytecode still throws on null write.
 
@@ -216,17 +242,17 @@ Supported patterns:
 // 1) `if (x != null) { ... }` narrows in the then-branch
 Item? maybeItem = GetMaybeItem();
 if (maybeItem != null) {
-    Item item = maybeItem;        // OK â€” compiler treats maybeItem as Item here
+    Item item = maybeItem;        // OK — compiler treats maybeItem as Item here
     item.Use();
 }
 
-// 2) `if (x == null) { <recover>; return; } <code>` â€” early-exit narrows after the if
+// 2) `if (x == null) { <recover>; return; } <code>` — early-exit narrows after the if
 Critter? maybeCr = GetMaybeCr();
 if (maybeCr == null) {
     Logging::Warning("CharacterRoster", "main_critter_missing player=" + player.Name);
     return null;
 }
-Critter cr = maybeCr;             // OK â€” the early return rules out null
+Critter cr = maybeCr;             // OK — the early return rules out null
 
 // 2b) break / continue guards narrow the same way (loop bodies)
 for (int i = 0; i < ids.length(); i++) {
@@ -234,17 +260,17 @@ for (int i = 0; i < ids.length(); i++) {
     if (probe == null) {
         continue;                 // bails this iteration
     }
-    probe.Use();                  // OK â€” narrowed for the rest of the loop body
+    probe.Use();                  // OK — narrowed for the rest of the loop body
 }
 
 // 3) Compound `&&` / `||` shapes narrow every recognised atom
 if (a != null && b != null && c != null) {
-    Item ai = a; Item bi = b; Item ci = c;   // OK â€” all three narrowed
+    Item ai = a; Item bi = b; Item ci = c;   // OK — all three narrowed
 }
 if (a == null || b == null) {
     return;
 }
-Item ai = a; Item bi = b;                    // OK â€” both narrowed after early return
+Item ai = a; Item bi = b;                    // OK — both narrowed after early return
 
 // 4) Assignment invalidates the narrowing on that local
 if (x != null) {
@@ -276,11 +302,33 @@ int m = maybeItem == null ? 0 : maybeItem.Count;         // else-branch narrowed
 Smart-cast deliberately does **not** narrow:
 - Class fields or globals (`obj.Field`, `g_Var`). Snapshot to a local first.
 - Method return values (`GetMaybe()`). Bind to a local.
-- The result of `cast<T>(...)`. Bind to a local.
+- The result of `cast<T>(...)`. A bare `cast<T>` is non-nullable-typed but can fail at runtime — see [Reference casts](#reference-casts-castx) for the `cast<T?>` form and binding to a local.
 - Conditions with mixed `&&` / `||` at the same precedence level inside an `if`. Split the `if`.
 - A local **reassigned** inside one of the chain's operands (rare): the chain narrowing follows the immediate-narrowing contract and does not re-track the new value.
 
 When smart-cast can't see through the shape, the established fallbacks are: bind the expression to a local, change the destination to `T?`, or wrap the use in `if (x == null) { <recover>; return ...; }`.
+
+### Reference casts: `cast<T?>(x)`
+
+A reference cast can fail at runtime: `cast<T>(expr)` yields `null` when `expr` is not a `T`. Spell the fallible form **`cast<T?>(x)`** so the result type is `T?` and the engine treats it honestly:
+- `cast<T?>(x) != null` / `== null` is a legitimate null-check (no redundant-comparison warning, #5).
+- `cast<T?>(x).Member` requires narrowing first (bind to a local, then `if (v == null) ...`).
+
+A bare `cast<T>(x)` keeps the non-nullable "this cast is known to succeed" contract (like a `static_cast`): you may chain `cast<T>(x).Member` directly, but `cast<T>(x) != null` is flagged redundant (#5) — switch to `cast<T?>(x)` there. The `?` is honored by `CompileConversion` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp), which applies `to.IsNullable()` to the cast result (including the early-return path where an implicit conversion already produced the target type).
+
+`cast<T?>(x)` also covers a **same-type** read that is statically non-null but can be null at runtime: a member field declared `array<T>` keeps the element type `T`, yet `resize`/grid growth default-initializes new cells to **null**. Reading such a cell into a non-nullable `T` (`T v = field[i];`) throws `Null pointer access`, and writing `T? v = field[i];` is flagged a redundant widening (#3) because the element type is non-null. Spell the read `cast<T?>(field[i])` — it is both null-safe and exempt from #3. (A nullable-element field `array<T?>` / `T?[]` does **not** parse as a member field in this fork, so the cast at the read site is the working pattern; a single `T?` field such as `Critter? Target` is fine.)
+
+### Nullable property handles
+
+A `///@ Property` whose type is a proto or fixed-type **handle** (`ProtoItem`, `ItemBag`, `ProtoMap`, …) is non-nullable by default but returns `null` when the field is unset. When that "unset → null" state is legitimate, add the **`Nullable`** flag to the property tag so its AS getter is registered as `@?`:
+
+```angelscript
+///@ Property Item Server ProtoItem UsableOn.TargetItem Nullable
+///@ Property Item Common ItemBag Harvested.SmallBag Nullable
+///@ Property Critter Server ProtoItem StartWeapon Nullable
+```
+
+The flag is parsed in [../Source/Common/Properties.cpp](../Source/Common/Properties.cpp) (`_isNullable`) and consumed by the entity getter registration in [../Source/Scripting/AngelScript/AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp) (`@?`); [`MetadataBaker`](../Source/Tools/MetadataBaker.cpp) accepts `Nullable` only on FixedType / Proto entity properties. Without it, `proto.Field != null` is flagged redundant (#5) even though the field can legitimately be unset — reach for the flag rather than deleting the check. (Spelling the type `ItemBag?` in the tag does **not** work — nullability of a stored property is a flag, not a `?` suffix.)
 
 ### The `verify` macro
 
@@ -314,26 +362,26 @@ A hacked client can of course send anything - but because these checks always ex
 
 The macro is **variadic**: `verify(cond, message, ctx...)` forwards `message` and any trailing context values straight to `throw`, so a verify carries the same diagnostic context a bare `throw` would (e.g. `verify(trader != null, "Barter target not exists", player, traderId)`). Author the `message` as a readable sentence (`"No current player"`, not `"Expected: CurPlayer != null"`), and pass the entities / ids / values you'd want in the exception as extra arguments.
 
-**Scope of enforcement:** every **script handle** crossing the script â†” native boundary is validated. Concretely codegen emits the check when the meta-type is one of:
+**Scope of enforcement:** every **script handle** crossing the script ↔ native boundary is validated. Concretely codegen emits the check when the meta-type is one of:
 - a `///@ ExportEntity` name (`Critter`, `Item`, `Map`, `Location`, `Player`, `Game`, `ImGui`) or the generic `Entity`,
-- an entity relative (`Abstract<Entity>`, `Proto<Entity>`, `Static<Entity>` â€” currently `AbstractItem`, `ProtoCritter`, `ProtoItem`, `ProtoLocation`, `ProtoMap`, `StaticItem`),
+- an entity relative (`Abstract<Entity>`, `Proto<Entity>`, `Static<Entity>` — currently `AbstractItem`, `ProtoCritter`, `ProtoItem`, `ProtoLocation`, `ProtoMap`, `StaticItem`),
 - a `///@ ExportRefType` class (`MovingContext`, `MapSpriteHolder`, `SpritePattern`, `VideoPlayback`, `ScriptImGui`).
 
-On the C++ engine side the matching pointer spellings (`Critter*`/`CritterView*`, `Map*`/`MapView*`, `ProtoItem*`, `StaticItem*`, `MovingContext*`, â€¦) are all in scope. The membership test lives in `is_validated_pointer_meta_type(...)` in [../BuildTools/codegen.py](../BuildTools/codegen.py); the [validate_nullable.py](#tooling) walker mirrors it by parsing `///@ ExportEntity` / `///@ ExportRefType` headers at runtime.
+On the C++ engine side the matching pointer spellings (`Critter*`/`CritterView*`, `Map*`/`MapView*`, `ProtoItem*`, `StaticItem*`, `MovingContext*`, …) are all in scope. The membership test lives in `is_validated_pointer_meta_type(...)` in [../BuildTools/codegen.py](../BuildTools/codegen.py); the [validate_nullable.py](#tooling) walker mirrors it by parsing `///@ ExportEntity` / `///@ ExportRefType` headers at runtime.
 
-Marking `?` / `FO_NULLABLE` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, â€¦) is the only misuse [validate_nullable.py](#tooling) flags â€” those types have no `null` representation, so the marker is meaningless.
+Marking `?` / `FO_NULLABLE` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, …) is the only misuse [validate_nullable.py](#tooling) flags — those types have no `null` representation, so the marker is meaningless.
 
 **Out of scope:** script-to-script parameter passing. The `asBC_RefCpyChk` instruction covers handle **assignments** and **initializations**; AS argument passing typically uses copy-on-call patterns that bypass REFCPY. Static analysis (`validate_nullable.py`) plus the native-boundary check still cover the common case where a script value flows through an engine call.
 
 ### Migration note
 
-The change is **source-incompatible** for any AS code that assigned `null` â€” or a value that might be null at runtime â€” to a bare handle. After this change, those scripts must mark the destination `T?`. The convention in `Scripts/` already follows this rule (`validate_nullable.py` would have flagged drift), and inline test scripts embedded in `Engine/Source/Tests/Test_*.cpp` were updated in lock-step so the whole `LF_UnitTests` suite passes again.
+The change is **source-incompatible** for any AS code that assigned `null` — or a value that might be null at runtime — to a bare handle. After this change, those scripts must mark the destination `T?`. The convention in `Scripts/` already follows this rule (`validate_nullable.py` would have flagged drift), and inline test scripts embedded in `Engine/Source/Tests/Test_*.cpp` were updated in lock-step so the whole `LF_UnitTests` suite passes again.
 
-The strict compile-time variant (`asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE`) catches more shapes at build time. Last Frontier enables it by default and the `Scripts/` migration to use `T?` on `T x = expr.get(key, null);` / `T field = null;` / `T x = maybeNull();` style patterns is tracked through the gameplay-test runs â€” any remaining runtime *"Null assignment to non-nullable handle"* is a still-needed marker fix-up. Common shapes that the smart-cast or compile-time checker cannot see through (and therefore require an explicit `T?` on the destination or an `if (x == null) { <recover>; return null; }` guard before the use): `dict<K,V>.get(key, null)`, output-reference parameters (`Map& out`), and class fields assigned across method boundaries.
+The strict compile-time variant (`asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE`) catches more shapes at build time. Last Frontier enables it by default and the `Scripts/` migration to use `T?` on `T x = expr.get(key, null);` / `T field = null;` / `T x = maybeNull();` style patterns is tracked through the gameplay-test runs — any remaining runtime *"Null assignment to non-nullable handle"* is a still-needed marker fix-up. Common shapes that the smart-cast or compile-time checker cannot see through (and therefore require an explicit `T?` on the destination or an `if (x == null) { <recover>; return null; }` guard before the use): `dict<K,V>.get(key, null)`, output-reference parameters (`Map& out`), and class fields assigned across method boundaries.
 
-Style note for this codebase: the engine runs with `asEP_ALLOW_IMPLICIT_HANDLE_TYPES`, so script code must use the implicit-handle form (`Critter`, `Item?`, `array<Critter>`) rather than the explicit `@` form (`Critter@`, `Item@?`, `array<Critter@>`) â€” the implicit form is the project's convention everywhere the type is itself a ref class. The builder rejects an explicit `@` on `asOBJ_IMPLICIT_HANDLE` types when compiling a user-authored script section with the error *"Explicit handle '@' is not allowed on implicit-handle type 'X'"*. Funcdef parameters keep the `Type@+` form (handle with auto-add-ref) because the trailing `+` modifier is semantically required and the bare `Type+` form is not a valid AS signature.
+Style note for this codebase: the engine runs with `asEP_ALLOW_IMPLICIT_HANDLE_TYPES`, so script code must use the implicit-handle form (`Critter`, `Item?`, `array<Critter>`) rather than the explicit `@` form (`Critter@`, `Item@?`, `array<Critter@>`) — the implicit form is the project's convention everywhere the type is itself a ref class. The builder rejects an explicit `@` on `asOBJ_IMPLICIT_HANDLE` types when compiling a user-authored script section with the error *"Explicit handle '@' is not allowed on implicit-handle type 'X'"*. Funcdef parameters keep the `Type@+` form (handle with auto-add-ref) because the trailing `+` modifier is semantically required and the bare `Type+` form is not a valid AS signature.
 
-Native API registrations (`RegisterObjectType`, `RegisterFuncdef`, `RegisterObjectMethod`, `GetFunctionByDecl`) and engine-generated declaration strings continue to accept the explicit `@`. The rejection only fires when there is a script module being built (`module != 0`) and the builder is not in silent lookup mode â€” see `CreateDataTypeFromNode` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp).
+Native API registrations (`RegisterObjectType`, `RegisterFuncdef`, `RegisterObjectMethod`, `GetFunctionByDecl`) and engine-generated declaration strings continue to accept the explicit `@`. The rejection only fires when there is a script module being built (`module != 0`) and the builder is not in silent lookup mode — see `CreateDataTypeFromNode` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_builder.cpp).
 
 ## Tooling
 
@@ -341,33 +389,33 @@ Five Python tools in [Tools/NullableEstimate/](../../Tools/NullableEstimate/):
 
 | Tool | Purpose |
 |------|---------|
-| `apply_nullables.py` | Scans `.fos` and strips dead defensive null guards on entity-pointer params that are NOT marked `?` â€” codegen / convention guarantees them non-null. Does **not** add or remove `?` markers; the author owns placement. Idempotent. |
-| `apply_native_nullable.py` | Walks `///@ ExportMethod` declarations in `../Source/Scripting/*ScriptMethods.cpp` and strips dead defensive `if (param == nullptr) throw ...;` guards on entity-pointer params that are NOT marked `FO_NULLABLE` â€” codegen emits `NativeDataProvider::CheckArgNotNull` for those. Does **not** add or remove `FO_NULLABLE` markers; the author owns placement. Idempotent. |
-| `apply_local_nullables.py` | Promotes local variable declarations `T name = expr;` â€” where `name` is later null-checked in the same function body â€” to `T? name = expr;`. The author already proves intent with the null-check; the type just needs to agree. Idempotent. Skips primitives and enums. |
-| `validate_nullable.py` | Read-only placement check. Five layers: (1) `FO_NULLABLE` must sit inside an `///@ ExportMethod` signature and target a pointer, (2) script `?` must target a handle-able ref type, (3) explicit `@` on `asOBJ_IMPLICIT_HANDLE` types is rejected because the engine will reject the build anyway, (4) a local declaration whose name is null-checked below must already be `?`, (5) a `T?` local must not be dereferenced (`name.X` / `name[i]`) before *some* null-check â€” crashes at runtime with *"Null pointer access"* otherwise. |
-| `estimate_nullables.py` | Read-only coverage report â€” counts function/parameter/return shapes across `.fos`. |
+| `apply_nullables.py` | Scans `.fos` and strips dead defensive null guards on entity-pointer params that are NOT marked `?` — codegen / convention guarantees them non-null. Does **not** add or remove `?` markers; the author owns placement. Idempotent. |
+| `apply_native_nullable.py` | Walks `///@ ExportMethod` declarations in `../Source/Scripting/*ScriptMethods.cpp` and strips dead defensive `if (param == nullptr) throw ...;` guards on entity-pointer params that are NOT marked `FO_NULLABLE` — codegen emits `NativeDataProvider::CheckArgNotNull` for those. Does **not** add or remove `FO_NULLABLE` markers; the author owns placement. Idempotent. |
+| `apply_local_nullables.py` | Promotes local variable declarations `T name = expr;` — where `name` is later null-checked in the same function body — to `T? name = expr;`. The author already proves intent with the null-check; the type just needs to agree. Idempotent. Skips primitives and enums. |
+| `validate_nullable.py` | Read-only placement check. Five layers: (1) `FO_NULLABLE` must sit inside an `///@ ExportMethod` signature and target a pointer, (2) script `?` must target a handle-able ref type, (3) explicit `@` on `asOBJ_IMPLICIT_HANDLE` types is rejected because the engine will reject the build anyway, (4) a local declaration whose name is null-checked below must already be `?`, (5) a `T?` local must not be dereferenced (`name.X` / `name[i]`) before *some* null-check — crashes at runtime with *"Null pointer access"* otherwise. |
+| `estimate_nullables.py` | Read-only coverage report — counts function/parameter/return shapes across `.fos`. |
 
 The applier tools accept `--check` (exit non-zero if dead defensive guards still exist) or `--dry-run` (preview without writing). `validate_nullable.py` is always read-only. CI uses these check modes to fail PRs that drift.
 
 ### Why marker placement stays explicit
 
-Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere â†’ mark return; no defensive throw + no dereference â†’ mark param). The heuristics produced churn against a curated codebase: a one-liner `void TransferToMap(Critter* self, Map* map, mpos hex) { ... transfer(self, map, hex, ...); }` would round-trip to `FO_NULLABLE Map* map` because the body only forwards the pointer â€” but the contract is non-null. Author intent is the source of truth; the analyzer's job is now only to delete dead guards that codegen has made redundant.
+Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere → mark return; no defensive throw + no dereference → mark param). The heuristics produced churn against a curated codebase: a one-liner `void TransferToMap(Critter* self, Map* map, mpos hex) { ... transfer(self, map, hex, ...); }` would round-trip to `FO_NULLABLE Map* map` because the body only forwards the pointer — but the contract is non-null. Author intent is the source of truth; the analyzer's job is now only to delete dead guards that codegen has made redundant.
 
 ## Workflows
 
 ### VS Code tasks ([.vscode/tasks.json](../../.vscode/tasks.json))
 
-Generators (modify code) â€” run after editing scripts or native exports:
-- `Generate :: Nullable Markers (Scripts)` â†’ `apply_nullables.py`
-- `Generate :: Nullable Markers (Engine)` â†’ `apply_native_nullable.py`
-- `Generate and Format All` â†’ bundles both, then formatter pass
+Generators (modify code) — run after editing scripts or native exports:
+- `Generate :: Nullable Markers (Scripts)` → `apply_nullables.py`
+- `Generate :: Nullable Markers (Engine)` → `apply_native_nullable.py`
+- `Generate and Format All` → bundles both, then formatter pass
 
-Analyzers (check-only, exit non-zero on drift) â€” run before committing or in CI:
-- `Analyze :: Nullable Markers (Scripts)` â†’ `apply_nullables.py --check`
-- `Analyze :: Nullable Markers (Engine)` â†’ `apply_native_nullable.py --check`
-- `Analyze :: Nullable Placement` â†’ `validate_nullable.py`
-- `Analyze :: Nullable Coverage` â†’ `estimate_nullables.py`
-- `Analyze All` â†’ bundles all four
+Analyzers (check-only, exit non-zero on drift) — run before committing or in CI:
+- `Analyze :: Nullable Markers (Scripts)` → `apply_nullables.py --check`
+- `Analyze :: Nullable Markers (Engine)` → `apply_native_nullable.py --check`
+- `Analyze :: Nullable Placement` → `validate_nullable.py`
+- `Analyze :: Nullable Coverage` → `estimate_nullables.py`
+- `Analyze All` → bundles all four
 
 ### CI
 

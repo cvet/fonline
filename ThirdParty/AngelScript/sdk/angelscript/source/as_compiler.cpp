@@ -3871,23 +3871,29 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		// Catches stale `T?` declarations left behind after an API tightened
 		// its return type from `FO_NULLABLE T*` to `T*`, or after a refactor
 		// extracted a previously-nullable expression into a non-nullable one.
-		// Skip the warning in two cases where the static type can't model the
-		// runtime nullability:
-		//   * `cast<T>(...)` and `cond ? a : b` — see IsRhsACastOrTernary.
-		//   * a non-temporary handle reference `T@&` — the `dict.get(key,
-		//     defVal)`, `array[i]`, and similar container-access pattern: the
-		//     cell stored inside the collection can hold null even though the
-		//     static type of the reference is non-null. We require the
-		//     reference to be non-temporary so that a plain function call
-		//     returning a handle by value (a temporary) is still flagged.
-		const bool rhsIsContainerHandleRef = expr->type.dataType.IsObjectHandle() &&
+		// This trusts the static nullability of the source much like the deref
+		// (ttDot) and redundant-null-comparison checks do: reading a non-const
+		// handle reference (`arr[i]` of a non-nullable element type, or a `T`
+		// field/local reached by reference) yields storage whose non-null
+		// invariant is enforced on every write, so `T? x = arr[i]` is redundant.
+		// Two source shapes are skipped because their non-null static type does
+		// NOT guarantee a non-null value:
+		//   * `cast<T>(...)` / `cond ? a : b` (see IsRhsACastOrTernary): a failed
+		//     reference cast yields null and ternary branch types may differ.
+		//   * a const handle reference `T@const&` (`dict.get(key, default)`): the
+		//     lookup substitutes its (possibly null) default and yields null on a
+		//     missing key, so its non-null element type does not make the read
+		//     non-null. A genuinely-non-null source must instead spell itself so
+		//     (`cast<T?>`, the `Nullable` property flag, `FO_NULLABLE`, ...).
+		const bool rhsIsConstHandleRef = expr->type.dataType.IsObjectHandle() &&
 			expr->type.dataType.IsReference() &&
+			expr->type.dataType.IsReadOnly() &&
 			!expr->type.isTemporary;
 		if (type.IsObjectHandle() && type.IsNullable() &&
 			expr->type.dataType.IsObjectHandle() && !expr->type.dataType.IsNullable() &&
 			!expr->type.IsNullConstant() &&
 			!IsRhsACastOrTernary(node) &&
-			!rhsIsContainerHandleRef)
+			!rhsIsConstHandleRef)
 		{
 			asCDataType bareDest = type;
 			bareDest.MakeNullable(false);
@@ -13469,6 +13475,10 @@ int asCCompiler::CompileConversion(asCScriptNode *node, asCExprContext *ctx)
 		// This will keep information about constant type
 		MergeExprBytecode(ctx, &expr);
 		ctx->type = expr.type;
+		// (FOnline Patch) Honor `cast<T?>(x)` even when the (possibly implicit) conversion already
+		// produced the target type: datatype equality ignores the nullable bit, so re-apply it here.
+		if( convType == asIC_EXPLICIT_REF_CAST && ctx->type.dataType.IsObjectHandle() )
+			ctx->type.dataType.MakeNullable(to.IsNullable());
 		return 0;
 	}
 
@@ -13497,6 +13507,13 @@ int asCCompiler::CompileConversion(asCScriptNode *node, asCExprContext *ctx)
 
 			MergeExprBytecode(ctx, &expr);
 			ctx->type = expr.type;
+
+			// (FOnline Patch) Honor an explicit `cast<T?>(x)`: a reference cast can fail at
+			// runtime and yield null, so when the target type is spelled nullable the result
+			// handle is nullable too. `cast<T>(x)` (no `?`) keeps the non-nullable "assume the
+			// cast succeeds" contract and so still warns on a redundant `!= null` check.
+			if( conversionOK && ctx->type.dataType.IsObjectHandle() )
+				ctx->type.dataType.MakeNullable(to.IsNullable());
 		}
 	}
 
@@ -18508,11 +18525,12 @@ void asCCompiler::CompileOperatorOnHandles(asCScriptNode *node, asCExprContext *
 		opToken = node->tokenType;
 
 	// (FOnline Patch)
-	// Only a *named* operand (local / parameter / narrowed local - `isVariable`
-	// and not a temporary) is reported. Temporaries carry a non-nullable static
-	// type but can still be null at runtime - most importantly `cast<T>(x)`,
-	// which yields null when the cast fails - so `cast<T>(x) != null` is a
-	// genuine, non-redundant check and must not warn.
+	// A redundant null comparison on any non-nullable handle operand is reported - named
+	// variables and temporaries alike (e.g. throwing global/component getter results, which
+	// return non-null so `getter() != null` is a footgun: the getter throws instead of returning
+	// null). Operands that can genuinely be null at runtime despite a non-nullable static type
+	// must be spelled nullable so they are not flagged: a fallible reference cast is `cast<T?>(x)`,
+	// and proto/fixed-type property handles that may be unset use the `Nullable` property flag.
 	if( opToken == ttEqual || opToken == ttNotEqual || opToken == ttIs || opToken == ttNotIs )
 	{
 		asCExprContext *nonNull = 0;
@@ -18522,7 +18540,6 @@ void asCCompiler::CompileOperatorOnHandles(asCScriptNode *node, asCExprContext *
 			nonNull = lctx;
 
 		if( nonNull &&
-			nonNull->type.isVariable && !nonNull->type.isTemporary &&
 			nonNull->type.dataType.IsObjectHandle() && !nonNull->type.dataType.IsNullable() )
 		{
 			asCString msg;

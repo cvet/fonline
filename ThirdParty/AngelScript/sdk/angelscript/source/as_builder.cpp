@@ -6610,8 +6610,44 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 	// Determine array dimensions and object handles
 	n = n->next;
-	while( n && (n->tokenType == ttOpenBracket || n->tokenType == ttHandle) )
+	while( n && (n->tokenType == ttOpenBracket || n->tokenType == ttHandle || n->tokenType == ttQuestion) ) // (FOnline Patch) || n->tokenType == ttQuestion
 	{
+		// (FOnline Patch) `?` nullable marker, applied in source order: `Item?[]` marks the element
+		// nullable (array<Item?>); `Item[]?` / `Item?` mark the handle itself nullable. Implicit-handle
+		// types are promoted to a handle first (mirroring the `[` case) so `?` has a handle to mark.
+		if( n->tokenType == ttQuestion )
+		{
+			if( isImplicitHandle )
+			{
+				if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
+				{
+					if( reportError )
+						WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+					if( isValid )
+						*isValid = false;
+
+					// Return a dummy
+					return asCDataType::CreatePrimitive(ttInt, false);
+				}
+				isImplicitHandle = false;
+			}
+
+			if( !dt.IsObjectHandle() )
+			{
+				if( reportError )
+					WriteError("Nullable marker '?' is only allowed on handle types", file, n);
+				if( isValid )
+					*isValid = false;
+			}
+			else
+			{
+				dt.MakeNullable(true);
+			}
+
+			n = n->next;
+			continue;
+		}
+
 		if( n->tokenType == ttOpenBracket )
 		{
 			if (isImplicitHandle)
@@ -6674,7 +6710,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				return asCDataType::CreatePrimitive(ttInt, false);
 			}
 		}
-		else
+		else if( n->tokenType == ttHandle ) // (FOnline Patch) if( n->tokenType == ttHandle )
 		{
 			// Make the type a handle
 			if( dt.IsObjectHandle() )
@@ -6761,26 +6797,6 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			// Return a dummy
 			return asCDataType::CreatePrimitive(ttInt, false);
 		}
-	}
-
-	// (FOnline Patch) Apply the optional `?` nullable suffix. The parser emits a trailing
-	// ttQuestion child only when it actually saw `?` after the type; here we promote it
-	// onto the data type and reject misplacements (e.g. `int?`) where the marker has no
-	// runtime meaning.
-	if( n && n->tokenType == ttQuestion )
-	{
-		if( !dt.IsObjectHandle() )
-		{
-			if( reportError )
-				WriteError("Nullable marker '?' is only allowed on handle types", file, n);
-			if( isValid )
-				*isValid = false;
-		}
-		else
-		{
-			dt.MakeNullable(true);
-		}
-		n = n->next;
 	}
 
 	return dt;

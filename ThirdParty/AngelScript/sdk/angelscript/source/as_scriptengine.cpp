@@ -3670,6 +3670,21 @@ void asCScriptEngine::RemoveTemplateInstanceType(asCObjectType *t)
 }
 
 // internal
+// (FOnline Patch) Template instances must distinguish nullable element subtypes, e.g. array<T?> from
+// array<T>. asCDataType::operator== intentionally ignores isNullable (so T and T? stay compatible for
+// overload matching and assignment); instance identity, however, must keep them apart so element access
+// on array<T?> yields T? while array<T> stays non-null. This mirrors how const subtypes already form
+// distinct instances via operator==.
+static bool TemplateSubTypesNullableMatch(const asCArray<asCDataType> &a, const asCArray<asCDataType> &b)
+{
+	if( a.GetLength() != b.GetLength() )
+		return false;
+	for( asUINT n = 0; n < a.GetLength(); n++ )
+		if( a[n].IsNullable() != b[n].IsNullable() )
+			return false;
+	return true;
+}
+
 asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateType, asCArray<asCDataType> &subTypes, asCModule *requestingModule)
 {
 	asUINT n;
@@ -3681,7 +3696,8 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		if( type &&
 			type->name == templateType->name &&
 			type->nameSpace == templateType->nameSpace &&
-			type->templateSubTypes == subTypes )
+			type->templateSubTypes == subTypes &&
+			TemplateSubTypesNullableMatch(type->templateSubTypes, subTypes) ) // (FOnline Patch) keep array<T?> distinct
 		{
 			// If the template instance is generated, then the module should hold a reference
 			// to it so the config group can determine see that the template type is in use.

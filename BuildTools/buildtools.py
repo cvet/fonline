@@ -182,6 +182,32 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
 
+# clang-format also mangles the nullable marker inside template / cast angle
+# brackets (`cast<MovePlan?>(x)` -> `cast < MovePlan ? > (x)`), the bracket
+# nullable-element array (`Item?[]` -> `Item ? []`), and named call arguments
+# (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
+# `[]`, and a `:` whose left side is an argument-position identifier, are all
+# unambiguous markers, so the inserted spacing is collapsed back. String / char
+# literals and comments are masked first so literal text is never rewritten. Kept
+# in sync with `Tools/Formatter/format_project.py` in the embedding project.
+_FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
+_FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
+FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
+	r'\b(' + _FOS_ANGLE_NAME + r')\s*<\s*(' + _FOS_ANGLE_SUBTYPE + r')\s*\?\s*>\s*\('
+)
+FOS_NULLABLE_ANGLE_RE = re.compile(
+	r'\b(' + _FOS_ANGLE_NAME + r')\s*<\s*(' + _FOS_ANGLE_SUBTYPE + r')\s*\?\s*>'
+)
+FOS_NULLABLE_BRACKET_RE = re.compile(r'\b([A-Z][\w:]*)\s*\?\s*\[\s*\]')
+FOS_NAMED_ARG_RE = re.compile(r'([(,]\s*[A-Za-z_]\w*)\s+:(?!:)')
+FOS_LITERAL_OR_COMMENT_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/', re.DOTALL)
+FOS_STASH_RE = re.compile('\x00(\\d+)\x00')
+
+
+def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
+	return match.group(1) + '<' + re.sub(r'\s+', '', match.group(2)) + '?>' + suffix
+
+
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
 		'10',
@@ -1861,6 +1887,16 @@ def _split_outside_function_bodies(text: str) -> list[tuple[int, int, bool]]:
 
 
 def fix_fos_nullable_suffix(text: str) -> str:
+	# Mask string/char literals and comments so none of the repairs below touch
+	# literal text (e.g. a UI string that happens to contain `(name : value)`).
+	stash: list[str] = []
+
+	def _stash(match: 're.Match[str]') -> str:
+		stash.append(match.group(0))
+		return f'\x00{len(stash) - 1}\x00'
+
+	text = FOS_LITERAL_OR_COMMENT_RE.sub(_stash, text)
+
 	spans = _split_outside_function_bodies(text)
 	out: list[str] = []
 	for start, end, inside_body in spans:
@@ -1870,7 +1906,18 @@ def fix_fos_nullable_suffix(text: str) -> str:
 		else:
 			chunk = FOS_NULLABLE_SUFFIX_RE.sub(r'\1? \2\3', chunk)
 		out.append(chunk)
-	return ''.join(out)
+	result = ''.join(out)
+	# Repair nullable markers inside template / cast angle brackets (call form first
+	# so the space before a call's `(` is removed, then the bare declaration form).
+	result = FOS_NULLABLE_ANGLE_CALL_RE.sub(lambda m: _fos_collapse_nullable_angle(m, '('), result)
+	result = FOS_NULLABLE_ANGLE_RE.sub(lambda m: _fos_collapse_nullable_angle(m, ''), result)
+	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`).
+	result = FOS_NULLABLE_BRACKET_RE.sub(r'\1?[]', result)
+	# Drop the space clang-format inserts before a named call argument's `:`.
+	result = FOS_NAMED_ARG_RE.sub(r'\1:', result)
+	# Restore the masked literals/comments.
+	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
+	return result
 
 
 def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:

@@ -36,6 +36,9 @@
 
 #include "angelscript.h"
 
+#include "AngelScriptArray.h"
+#include "AngelScriptDict.h"
+
 FO_BEGIN_NAMESPACE
 
 namespace
@@ -907,25 +910,27 @@ void AssignNullToNonNullable()
     {
         // The redundant-? warning must NOT fire for RHS shapes
         // whose static type is non-null but whose runtime value can still be
-        // null. Three shapes are exempt:
+        // null. The exempt shapes are:
         //   * `cast<T>(...)`            - a failed downcast yields null.
         //   * `cond ? a : b`            - AS picks the non-null branch as the
         //                                 common type, dropping nullability.
-        //   * `const T@&` / `T@&` ref   - container element access (dict.get,
-        //                                 array[i]) returns a reference into
-        //                                 storage that may hold null.
-        // The distinction for the reference case rests on the result being a
-        // NON-temporary reference; a plain function returning a handle by value
-        // (a temporary) must still be flagged - that is the regression anchor
-        // guarding the `!isTemporary` condition.
+        //   * `const T@&` ref           - `dict.get(key, default)` substitutes a
+        //                                 (possibly null) default and yields null
+        //                                 on a missing key, so the const ref it
+        //                                 returns may hold null.
+        // A NON-const handle reference is NOT exempt: `array[i]` of a
+        // non-nullable element type (and a non-nullable field/local reached by
+        // reference) aliases storage whose non-null invariant is enforced on
+        // every write, so widening it to `T?` IS redundant and must warn - just
+        // like a handle returned by value (a temporary).
         struct MsgCapture
         {
             vector<string> Errors;
             vector<string> Warnings;
         };
-        // Backing slot for the `const Resource@& GetByRef()` accessor. The
-        // function is never executed (these are build-only fixtures), so the
-        // stored handle value is irrelevant - only the AS signature matters.
+        // Backing slot for the `GetByRef()` accessor. The function is never
+        // executed (these are build-only fixtures), so the stored handle value
+        // is irrelevant - only the AS signature matters.
         static void* g_resourceCell = nullptr;
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
@@ -942,9 +947,17 @@ void AssignNullToNonNullable()
             }),
                 asCALL_CDECL);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            // Mimics `array[i]`: returns a (non-temporary) reference to a
-            // handle cell, not a value. The cell can hold null at runtime.
+            // Mimics `array[i]`: returns a (non-temporary) NON-const reference to
+            // a handle cell of a non-nullable element type - enforced non-null,
+            // so widening it to `T?` is redundant.
             engine->RegisterGlobalFunction("Resource@& GetByRef()", asFUNCTION(+[]() -> void* { return &g_resourceCell; }), asCALL_CDECL);
+            // Real array+dict so the const-handle-reference shape can be tested
+            // faithfully: `dict<K,V>` is registered `const T2& get(...)`, which
+            // for a handle value type yields a const ref to a *mutable* handle -
+            // a shape that cannot be spelled via a raw RegisterGlobalFunction
+            // decl (there `const T@` means handle-to-const, a different type).
+            RegisterAngelScriptArray(engine.get());
+            RegisterAngelScriptDict(engine.get());
             engine->RegisterGlobalFunction("bool Cond()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
             engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
                 auto* self = static_cast<MsgCapture*>(param);
@@ -1012,20 +1025,38 @@ void AssignNullToNonNullable()
             CHECK_FALSE(hasRedundantWarning(cap));
         }
 
-        // 3) `const T@&` - container element access (dict.get / array[i]).
-        //    The reference may point at a null-holding cell.
+        // 3) `const T@&` - `dict.get` returns `const T2& get(...)`, so for a
+        //    handle value type it yields a const ref to a *mutable* handle whose
+        //    looked-up-or-default value can be null at runtime. Must NOT warn.
         {
             MsgCapture cap;
             const auto r = buildScript(R"(
-                void ContainerRefCase()
+                void ConstContainerRefCase()
+                {
+                    dict<int, Resource> d;
+                    Resource? x = d.get(0, null);
+                }
+            )",
+                cap);
+            INFO("const-container-ref build errors: " << dumpErrors(cap));
+            CHECK(r >= 0);
+            CHECK_FALSE(hasRedundantWarning(cap));
+        }
+
+        // 3b) `T@&` - array[i]-style NON-const reference into a non-nullable
+        //     element cell (enforced non-null). The `?` is redundant; must warn.
+        {
+            MsgCapture cap;
+            const auto r = buildScript(R"(
+                void NonConstContainerRefCase()
                 {
                     Resource? x = GetByRef();
                 }
             )",
                 cap);
-            INFO("container-ref build errors: " << dumpErrors(cap));
+            INFO("non-const-container-ref build errors: " << dumpErrors(cap));
             CHECK(r >= 0);
-            CHECK_FALSE(hasRedundantWarning(cap));
+            CHECK(hasRedundantWarning(cap));
         }
 
         // 4) Regression anchor: a handle returned BY VALUE (a temporary) is
@@ -1597,11 +1628,11 @@ void AssignNullToNonNullable()
             CHECK(hasRedundantCmpWarning(cap));
         }
 
-        // 5) A non-nullable-typed temporary (a call result, like `cast<T>(x)`)
-        //    compared to null - the static type is non-nullable but the value can
-        //    still be null at runtime, so this is a legitimate, non-redundant
-        //    check. Only *named* operands (locals/params) are reported; a
-        //    temporary must NOT warn.
+        // 5) A non-nullable-typed temporary (a call result) compared to null.
+        //    The static type is non-nullable, so the check is redundant and must
+        //    warn for temporaries too - not just named locals/params. A source
+        //    that can genuinely be null must spell itself nullable (`cast<T?>`,
+        //    a `Resource@?` return, the `Nullable` property flag) instead.
         {
             MsgCapture cap;
             const auto r = buildScript(R"(
@@ -1613,7 +1644,7 @@ void AssignNullToNonNullable()
             )",
                 cap);
             CHECK(r >= 0);
-            CHECK_FALSE(hasRedundantCmpWarning(cap));
+            CHECK(hasRedundantCmpWarning(cap));
         }
     }
 
