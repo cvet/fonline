@@ -211,8 +211,6 @@ public:
     ///@ MigrationRule Property Item IsColorize Colorize
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, Colorize);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
 };
 
 class CritterProperties : public EntityProperties
@@ -278,8 +276,6 @@ public:
     FO_ENTITY_PROPERTY(int16_t, NameOffset);
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);

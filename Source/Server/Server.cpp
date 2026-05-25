@@ -1002,7 +1002,6 @@ void ServerEngine::DrawGui()
                 info_row("Attach master", strex("{}", cr->GetAttachMaster()).str());
                 info_row("Look distance", strex("{}", cr->GetLookDistance()).str());
                 info_row("Multihex", strex("{}", cr->GetMultihex()).str());
-                info_row("Lexems", cr->GetLexems());
                 info_row("Inventory items", strex("{}", cr->GetInvItems().size()).str());
                 info_row("Visible items", strex("{}", cr->GetVisibleItems().size()).str());
                 info_row("Attached critters", strex("{}", cr->GetAttachedCritters().size()).str());
