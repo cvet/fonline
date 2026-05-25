@@ -789,6 +789,67 @@ void AssignNullToNonNullable()
             }
             CHECK(r >= 0);
         }
+
+        // 4) Conditional with a nullable branch assigned to non-nullable - reject.
+        //    (FOnline) `cond ? a : b` is nullable when either branch is nullable.
+        {
+            MsgCapture cap;
+            const auto r = buildScript(R"(
+                Resource? GetMaybe() { return null; }
+                void TernaryNullableToNonNullable(bool c)
+                {
+                    Resource x = c ? GetMaybe() : GetMaybe();
+                }
+            )",
+                cap);
+            CHECK(r < 0);
+            bool found = false;
+            for (const auto& e : cap.Errors) {
+                if (e.find("Cannot assign nullable") != string::npos) {
+                    found = true;
+                    break;
+                }
+            }
+            CHECK(found);
+        }
+
+        // 5) Conditional with a `null` literal branch assigned to non-nullable - reject.
+        {
+            MsgCapture cap;
+            const auto r = buildScript(R"(
+                void TernaryNullLiteralToNonNullable(bool c, Resource res)
+                {
+                    Resource x = c ? res : null;
+                }
+            )",
+                cap);
+            CHECK(r < 0);
+            bool found = false;
+            for (const auto& e : cap.Errors) {
+                if (e.find("Cannot assign nullable") != string::npos) {
+                    found = true;
+                    break;
+                }
+            }
+            CHECK(found);
+        }
+
+        // 6) Conditional with a nullable branch assigned to a nullable destination - allowed.
+        {
+            MsgCapture cap;
+            const auto r = buildScript(R"(
+                Resource? GetMaybe() { return null; }
+                void TernaryNullableToNullable(bool c)
+                {
+                    Resource? x = c ? GetMaybe() : GetMaybe();
+                }
+            )",
+                cap);
+            if (!cap.Errors.empty()) {
+                INFO(cap.Errors.front());
+            }
+            CHECK(r >= 0);
+        }
     }
 
     SECTION("WarnsOnRedundantNullableOnLocalInit")
