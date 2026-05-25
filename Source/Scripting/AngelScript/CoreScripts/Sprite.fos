@@ -19,18 +19,19 @@ class Sprite
     Sprite(string name)
     {
         bool ok = Load(name);
-        Assert(ok, name);
+        verify(ok, "Failed to load sprite", name);
     }
 
     Sprite(hstring name)
     {
         bool ok = Load(name);
-        Assert(ok, name);
+        verify(ok, "Failed to load sprite", name);
     }
 
     ~Sprite()
     {
-        if (Game != null) {
+        // Game engine may already be gone during shutdown; freeing the sprite then is both impossible and unnecessary
+        if (!IsGameDestroying) {
             Unload();
         }
     }

@@ -26,6 +26,7 @@ Read this page together with:
 - `Source/Client/FontManager.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
+- `Source/Scripting/ClientMapScriptMethods.cpp`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`
@@ -70,7 +71,7 @@ A typical client lifetime has these phases:
 2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers.
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
 4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
-5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, screen fade/quake, map processing, and rendering-facing updates.
+5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
 6. **Network connection** starts with `Connect()`, which delegates transport setup and handshake work to `ClientConnection`.
 7. **Map and entity state** arrive through network messages, are represented as client view entities, and are updated through property sync and movement/action packets.
 8. **Shutdown** disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
@@ -128,6 +129,8 @@ Primary view types:
 - mapper mode helpers used by engine tools.
 
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [MapsMovementGeometry.md](MapsMovementGeometry.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [FrontendAndRendering.md](FrontendAndRendering.md).
+
+The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets
 

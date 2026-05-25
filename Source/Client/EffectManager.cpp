@@ -102,19 +102,32 @@ void EffectManager::SetEffectScriptValue(RenderEffect* effect, int32_t valueInde
 {
     FO_STACK_TRACE_ENTRY();
 
+    SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
+}
+
+void EffectManager::SetEffectScriptValues(RenderEffect* effect, int32_t valueStartIndex, const_span<float32_t> values)
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (effect == nullptr) {
         throw EffectManagerException("Effect script value target is not loaded");
     }
-    if (valueIndex < 0 || valueIndex >= numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
-        throw EffectManagerException("Effect script value index is out of range", valueIndex);
+    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw EffectManagerException("Effect script value index is out of range", valueStartIndex);
+    }
+    if (values.size() > numeric_cast<size_t>(EFFECT_SCRIPT_VALUES - valueStartIndex)) {
+        throw EffectManagerException("Effect script value range is out of range", valueStartIndex, values.size());
     }
     if (!effect->IsNeedScriptValueBuf()) {
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
     RenderEffect::ScriptValueBuffer& script_value_buf = GetOrCreateScriptValueBuf(effect);
+    const size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
 
-    script_value_buf.ScriptValue[numeric_cast<size_t>(valueIndex)] = value;
+    for (size_t i = 0; i < values.size(); i++) {
+        script_value_buf.ScriptValue[value_start_index + i] = values[i];
+    }
 }
 
 void EffectManager::ClearEffectScriptValues(RenderEffect* effect)

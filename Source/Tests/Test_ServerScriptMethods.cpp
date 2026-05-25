@@ -68,17 +68,17 @@ namespace ScriptMethodsTest
 
     int TestCritterAddAndCountItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 5);
+        Item item = cr.AddItem("TestItem".hstr(), 5);
         if (item is null) return -2;
 
         int count = cr.CountItem("TestItem".hstr());
         if (count != 5) return -3;
 
         // Add more of the same item
-        Item@ item2 = cr.AddItem("TestItem".hstr(), 3);
+        Item item2 = cr.AddItem("TestItem".hstr(), 3);
         if (item2 is null) return -4;
 
         count = cr.CountItem("TestItem".hstr());
@@ -90,20 +90,20 @@ namespace ScriptMethodsTest
 
     int TestCritterGetItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 2);
         cr.AddItem("TestItem2".hstr(), 3);
 
-        array<Item@> items = cr.GetItems();
+        array<Item> items = cr.GetItems();
         if (items.length() < 2) return -2;
 
         // Get items by pid
-        array<Item@> test_items = cr.GetItems("TestItem".hstr());
+        array<Item> test_items = cr.GetItems("TestItem".hstr());
         if (test_items.length() < 1) return -3;
 
-        array<Item@> test_items2 = cr.GetItems("TestItem2".hstr());
+        array<Item> test_items2 = cr.GetItems("TestItem2".hstr());
         if (test_items2.length() < 1) return -4;
 
         Game.DestroyCritter(cr);
@@ -112,21 +112,21 @@ namespace ScriptMethodsTest
 
     int TestCritterGetItemById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ added = cr.AddItem("TestItem".hstr(), 1);
+        Item added = cr.AddItem("TestItem".hstr(), 1);
         if (added is null) return -2;
 
         ident item_id = added.Id;
 
         // Get by id
-        Item@ found = cr.GetItem(item_id);
+        Item? found = cr.GetItem(item_id);
         if (found is null) return -3;
         if (found.Id != item_id) return -4;
 
         // Get by proto id
-        Item@ found_by_pid = cr.GetItem("TestItem".hstr());
+        Item? found_by_pid = cr.GetItem("TestItem".hstr());
         if (found_by_pid is null) return -5;
 
         Game.DestroyCritter(cr);
@@ -135,7 +135,7 @@ namespace ScriptMethodsTest
 
     int TestCritterDestroyItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.AddItem("TestItem".hstr(), 10);
@@ -156,7 +156,7 @@ namespace ScriptMethodsTest
 
     int TestCritterStateQueries()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         if (!cr.IsAlive()) return -2;
@@ -175,7 +175,7 @@ namespace ScriptMethodsTest
 
     int TestCritterConditionChange()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         if (!cr.IsAlive()) return -2;
@@ -205,19 +205,19 @@ namespace ScriptMethodsTest
 
     int TestGameGetCritter()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         ident cr_id = cr.Id;
 
-        Critter@ found = Game.GetCritter(cr_id);
+        Critter? found = Game.GetCritter(cr_id);
         if (found is null) return -2;
         if (found.Id != cr_id) return -3;
 
         Game.DestroyCritter(cr);
 
         // After destroy, should not be found
-        Critter@ gone = Game.GetCritter(cr_id);
+        Critter? gone = Game.GetCritter(cr_id);
         if (gone !is null) return -4;
 
         return 0;
@@ -225,16 +225,16 @@ namespace ScriptMethodsTest
 
     int TestGameGetAllNpc()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // Get all NPCs
-        array<Critter@> all_npc = Game.GetAllNpc();
+        array<Critter> all_npc = Game.GetAllNpc();
         if (all_npc.length() < 2) return -2;
 
         // Get NPCs by proto
-        array<Critter@> by_pid = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> by_pid = Game.GetAllNpc("TestCritter".hstr());
         if (by_pid.length() < 2) return -3;
 
         Game.DestroyCritter(cr1);
@@ -244,27 +244,27 @@ namespace ScriptMethodsTest
 
     int TestGameGetCrittersByFindType()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // All critters
-        array<Critter@> any_cr = Game.GetCritters(CritterFindType::Any);
+        array<Critter> any_cr = Game.GetCritters(CritterFindType::Any);
         if (any_cr.length() < 2) return -2;
 
         // Non-dead
-        array<Critter@> non_dead = Game.GetCritters(CritterFindType::NonDead);
+        array<Critter> non_dead = Game.GetCritters(CritterFindType::NonDead);
         if (non_dead.length() < 2) return -3;
 
         // NPC only
-        array<Critter@> npcs = Game.GetCritters(CritterFindType::Npc);
+        array<Critter> npcs = Game.GetCritters(CritterFindType::Npc);
         if (npcs.length() < 2) return -4;
 
         // Kill one
         cr1.SetCondition(CritterCondition::Dead, CritterActionAnim::None, null);
 
         // Dead critters
-        array<Critter@> dead = Game.GetCritters(CritterFindType::Dead);
+        array<Critter> dead = Game.GetCritters(CritterFindType::Dead);
         if (dead.isEmpty()) return -5;
 
         Game.DestroyCritter(cr1);
@@ -276,19 +276,19 @@ namespace ScriptMethodsTest
 
     int TestGameItemQueries()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 5);
+        Item item = cr.AddItem("TestItem".hstr(), 5);
         if (item is null) return -2;
 
         // Global item lookup by id
-        Item@ found = Game.GetItem(item.Id);
+        Item? found = Game.GetItem(item.Id);
         if (found is null) return -3;
         if (found.Id != item.Id) return -4;
 
         // Get all items by pid
-        array<Item@> all_items = Game.GetAllItems("TestItem".hstr());
+        array<Item> all_items = Game.GetAllItems("TestItem".hstr());
         if (all_items.isEmpty()) return -5;
 
         Game.DestroyCritter(cr);
@@ -297,25 +297,25 @@ namespace ScriptMethodsTest
 
     int TestGameMoveItemBetweenCritters()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 1);
+        Item item = cr1.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident item_id = item.Id;
 
         // Move item to cr2
-        Item@ moved = Game.MoveItem(item, cr2);
+        Item? moved = Game.MoveItem(item, cr2);
         if (moved is null) return -3;
 
         // cr2 should have the item by id lookup
-        Item@ found = Game.GetItem(item_id);
+        Item? found = Game.GetItem(item_id);
         if (found is null) return -4;
 
         // Item should now belong to cr2
-        Critter@ owner = found.GetCritter();
+        Critter? owner = found.GetCritter();
         if (owner is null) return -5;
         if (owner.Id != cr2.Id) return -6;
 
@@ -326,25 +326,25 @@ namespace ScriptMethodsTest
 
     int TestGameMoveItemPartial()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 1);
+        Item item = cr1.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident orig_id = item.Id;
 
         // Move item to cr2 (full, since count=1)
-        Item@ moved = Game.MoveItem(item, 1, cr2);
+        Item? moved = Game.MoveItem(item, 1, cr2);
         if (moved is null) return -3;
 
         // Verify item moved - lookup by original id
-        Item@ found = Game.GetItem(orig_id);
+        Item? found = Game.GetItem(orig_id);
         if (found is null) return -4;
 
         // Verify new owner is cr2
-        Critter@ owner = found.GetCritter();
+        Critter? owner = found.GetCritter();
         if (owner is null) return -5;
         if (owner.Id != cr2.Id) return -6;
 
@@ -355,10 +355,10 @@ namespace ScriptMethodsTest
 
     int TestGameDestroyItemById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident item_id = item.Id;
@@ -367,7 +367,7 @@ namespace ScriptMethodsTest
         Game.DestroyItem(item);
 
         // Item should be gone from global lookup
-        Item@ check = Game.GetItem(item_id);
+        Item? check = Game.GetItem(item_id);
         if (check !is null) return -3;
 
         Game.DestroyCritter(cr);
@@ -376,10 +376,10 @@ namespace ScriptMethodsTest
 
     int TestGameDestroyItemPartialById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         ident item_id = item.Id;
@@ -388,7 +388,7 @@ namespace ScriptMethodsTest
         Game.DestroyItem(item_id);
 
         // Verify destroyed
-        Item@ check = Game.GetItem(item_id);
+        Item? check = Game.GetItem(item_id);
         if (check !is null) return -3;
 
         Game.DestroyCritter(cr);
@@ -399,14 +399,14 @@ namespace ScriptMethodsTest
 
     int TestDestroyCritterById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         ident cr_id = cr.Id;
 
         Game.DestroyCritter(cr_id);
 
-        Critter@ check = Game.GetCritter(cr_id);
+        Critter? check = Game.GetCritter(cr_id);
         if (check !is null) return -2;
 
         return 0;
@@ -414,15 +414,15 @@ namespace ScriptMethodsTest
 
     int TestBulkDestroyCritters()
     {
-        array<Critter@> critters = {};
+        array<Critter> critters = {};
         for (int i = 0; i < 5; i++)
         {
-            Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+            Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
             if (cr is null) return -(i + 1);
             critters.insertLast(cr);
         }
 
-        array<Critter@> all = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> all = Game.GetAllNpc("TestCritter".hstr());
         if (all.length() < 5) return -10;
 
         Game.DestroyCritters(critters);
@@ -431,13 +431,13 @@ namespace ScriptMethodsTest
 
     int TestBulkDestroyItems()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        array<Item@> items = {};
+        array<Item> items = {};
         for (int i = 0; i < 4; i++)
         {
-            Item@ item = cr.AddItem("TestItem".hstr(), 1);
+            Item item = cr.AddItem("TestItem".hstr(), 1);
             if (item is null) return -(i + 2);
             items.insertLast(item);
         }
@@ -454,7 +454,7 @@ namespace ScriptMethodsTest
 
     int TestEntityPersistence()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         bool was_persistent = cr.IsPersistent();
@@ -473,14 +473,14 @@ namespace ScriptMethodsTest
 
     int TestItemOwnership()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
         // Item should know its owner
-        Critter@ owner = item.GetCritter();
+        Critter? owner = item.GetCritter();
         if (owner is null) return -3;
         if (owner.Id != cr.Id) return -4;
 
@@ -492,7 +492,7 @@ namespace ScriptMethodsTest
 
     int TestCritterDirection()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         // Set direction
@@ -510,7 +510,7 @@ namespace ScriptMethodsTest
     int TestPlayerCritterCreation()
     {
         // Create player-controlled critter
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), true);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -1;
 
         // Player critter should still be alive
@@ -526,15 +526,15 @@ namespace ScriptMethodsTest
 
     int TestCritterAttachments()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
         // Attach cr2 to cr1
         cr2.AttachToCritter(cr1);
 
         // Get attached critters
-        array<Critter@> attached = cr1.GetAttachedCritters();
+        array<Critter> attached = cr1.GetAttachedCritters();
         if (attached.length() != 1) return -2;
 
         // Detach
@@ -569,7 +569,7 @@ namespace ScriptMethodsTest
 
     int TestDestroyEntityGeneric()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         ident cr_id = cr.Id;
@@ -577,7 +577,7 @@ namespace ScriptMethodsTest
         // Destroy via generic entity destroy
         Game.DestroyEntity(cr_id);
 
-        Critter@ check = Game.GetCritter(cr_id);
+        Critter? check = Game.GetCritter(cr_id);
         if (check !is null) return -2;
 
         return 0;

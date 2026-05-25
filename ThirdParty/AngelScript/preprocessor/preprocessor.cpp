@@ -129,6 +129,7 @@ public:
 public:
         LexemList Lexems;
         ArgSet    Arguments;
+        bool      Variadic = false;
     };
 
     typedef std::map< std::string, DefineEntry > DefineTable;
@@ -440,7 +441,7 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( Context* ctx, LLITR itr, LLITR e
 
     itr = lexems.erase( itr );
 
-    if( define_entry->second.Arguments.size() == 0 )
+    if( define_entry->second.Arguments.size() == 0 && !define_entry->second.Variadic )
     {
         return lexems.insert( itr,
                        define_entry->second.Lexems.begin(),
@@ -451,7 +452,10 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( Context* ctx, LLITR itr, LLITR e
     std::vector< LexemList > arguments;
     itr = ParseDefineArguments( ctx, itr, end, lexems, arguments );
 
-    if( define_entry->second.Arguments.size() != arguments.size() )
+    const size_t named_count = define_entry->second.Arguments.size();
+    const bool   wrong_count = define_entry->second.Variadic ? arguments.size() < named_count
+                                                             : arguments.size() != named_count;
+    if( wrong_count )
     {
         PrintErrorMessage( ctx, "Didn't supply right number of arguments to define '" + itr_value + "'." );
         return end;
@@ -462,6 +466,25 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( Context* ctx, LLITR itr, LLITR e
     LLITR     tli = temp_list.begin();
     while( tli != temp_list.end() )
     {
+        // (FOnline Patch) `__VA_ARGS__` expands to the comma-joined call arguments
+        // beyond the named parameters of a variadic macro.
+        if( define_entry->second.Variadic && tli->Value == "__VA_ARGS__" )
+        {
+            tli = temp_list.erase( tli );
+            for( size_t va = named_count; va < arguments.size(); va++ )
+            {
+                if( va > named_count )
+                {
+                    Lexem comma;
+                    comma.Type = COMMA;
+                    comma.Value = ",";
+                    temp_list.insert( tli, comma );
+                }
+                temp_list.insert( tli, arguments[ va ].begin(), arguments[ va ].end() );
+            }
+            continue;
+        }
+
         ArgSet::iterator arg = define_entry->second.Arguments.find( tli->Value );
         if( arg == define_entry->second.Arguments.end() )
         {
@@ -524,6 +547,23 @@ void Preprocessor::ParseDefine( Context* ctx, DefineTable& define_table, LexemLi
             int num_args = 0;
             while( !def_lexems.empty() && def_lexems.begin()->Value != ")" )
             {
+                // (FOnline Patch) Variadic marker `...` (three IGNORE `.` lexems):
+                // the remaining call arguments are captured as `__VA_ARGS__` in the
+                // body. Must be the last item in the parameter list.
+                if( def_lexems.begin()->Value == "." )
+                {
+                    for( int dot = 0; dot < 3; dot++ )
+                    {
+                        if( def_lexems.empty() || def_lexems.begin()->Value != "." )
+                        {
+                            PrintErrorMessage( ctx, "Malformed '...' in macro parameter list." );
+                            return;
+                        }
+                        def_lexems.pop_front();
+                    }
+                    def.Variadic = true;
+                    break;
+                }
                 if( def_lexems.begin()->Type != IDENTIFIER )
                 {
                     PrintErrorMessage( ctx, "Expected identifier." );
@@ -963,6 +1003,30 @@ void Preprocessor::RecursivePreprocess( Context* ctx, std::string filename, File
 
             LexemList directive( start_of_line, end_of_line );
             itr = lexems.erase( start_of_line, end_of_line );
+
+            // (FOnline Patch) Accept C-style function-like macros `#define NAME(args)`
+            // (no `#` before the paren). The whitespace strip below erases the name/`(`
+            // adjacency that tells `NAME(args)` (function-like) apart from `NAME (body)`
+            // (object-like), so detect it here while the whitespace is still present and
+            // insert the legacy `#` marker the define parser already understands.
+            if( directive.begin() != directive.end() && directive.begin()->Value == "#define" )
+            {
+                LLITR di = directive.begin();
+                ++di;
+                while( di != directive.end() && di->Type == WHITESPACE )
+                    ++di;
+                if( di != directive.end() && di->Type == IDENTIFIER )
+                {
+                    ++di;
+                    if( di != directive.end() && di->Type == OPEN )
+                    {
+                        Lexem hash;
+                        hash.Type = PREPROCESSOR;
+                        hash.Value = "#";
+                        directive.insert( di, hash );
+                    }
+                }
+            }
 
             for (auto it = directive.begin(); it != directive.end();)
             {

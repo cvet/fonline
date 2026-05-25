@@ -2302,9 +2302,9 @@ static const void *const dispatch_table[256] = {
 &&INSTRUCTION(asBC_JLowNZ),		&&INSTRUCTION(asBC_AllocMem),	&&INSTRUCTION(asBC_SetListSize),&&INSTRUCTION(asBC_PshListElmnt),
 &&INSTRUCTION(asBC_SetListType),&&INSTRUCTION(asBC_POWi),		&&INSTRUCTION(asBC_POWu),		&&INSTRUCTION(asBC_POWf),
 &&INSTRUCTION(asBC_POWd),		&&INSTRUCTION(asBC_POWdi),		&&INSTRUCTION(asBC_POWi64),		&&INSTRUCTION(asBC_POWu64),
-&&INSTRUCTION(asBC_Thiscall1),
+&&INSTRUCTION(asBC_Thiscall1),	&&INSTRUCTION(asBC_RefCpyChk), // (FOnline Patch)
 
-								&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
+																&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
 &&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),			&&INSTRUCTION(FAULT),
@@ -4956,10 +4956,51 @@ static const void *const dispatch_table[256] = {
 		}
 		NEXT_INSTRUCTION();
 
+	// (FOnline Patch) REFCPY variant: identical semantics, but raises a distinct
+	// "Null assignment to non-nullable handle" exception when the source handle is
+	// null. The compiler emits this for assignments whose destination type is a
+	// non-nullable handle (declared without the `?` suffix). The dedicated message
+	// makes it easy to tell apart from generic null-pointer dereferences when reading
+	// stack traces from production crashes.
+	INSTRUCTION(asBC_RefCpyChk):
+		{
+			asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
+			asSTypeBehaviour *beh = &objType->beh;
+
+			// Pop address of destination pointer from the stack
+			void **d = (void**)*(asPWORD*)l_sp;
+			l_sp += AS_PTR_SIZE;
+
+			// Read wanted pointer from the stack
+			void *s = (void*)*(asPWORD*)l_sp;
+
+			m_regs.programPointer    = l_bc;
+			m_regs.stackPointer      = l_sp;
+			m_regs.stackFramePointer = l_fp;
+
+			if( s == 0 )
+			{
+				SetInternalException(TXT_NULL_ASSIGN_TO_NON_NULLABLE);
+				return;
+			}
+
+			if( !(objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) )
+			{
+				if( *d != 0 && beh->release )
+					m_engine->CallObjectMethod(*d, beh->release);
+				if( beh->addref )
+					m_engine->CallObjectMethod(s, beh->addref);
+			}
+
+			*d = s;
+		}
+		l_bc += 1+AS_PTR_SIZE;
+		NEXT_INSTRUCTION();
+
 	// Don't let the optimizer optimize for size,
 	// since it requires extra conditions and jumps
 #if AS_USE_COMPUTED_GOTOS == 0
-	INSTRUCTION(201): l_bc = (asDWORD*)201; goto case_FAULT;
+	// (FOnline Patch) opcode 201 is now asBC_RefCpyChk and handled above
 	INSTRUCTION(202): l_bc = (asDWORD*)202; goto case_FAULT;
 	INSTRUCTION(203): l_bc = (asDWORD*)203; goto case_FAULT;
 	INSTRUCTION(204): l_bc = (asDWORD*)204; goto case_FAULT;

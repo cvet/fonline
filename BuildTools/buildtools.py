@@ -159,6 +159,55 @@ XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 XWIN_HTTP_RETRY_COUNT = '5'
 
+# clang-format treats `?` as a binary operator and inserts whitespace around
+# it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
+# nullable type suffix (parsed natively by the engine since the
+# `asBC_RefCpyChk` change) and the project style is to keep `?` attached to
+# the type. The same regex is used by `Tools/Formatter/format_project.py`
+# in the embedding project; keep them in sync if the suffix shape changes.
+# The type token is either an uppercase identifier with optional namespace
+# and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
+# etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
+# `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
+# `?`, but the bare primitive cannot, so the `[]` is mandatory here).
+_FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
+FOS_NULLABLE_SUFFIX_RE = re.compile(
+	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
+)
+# Inside function bodies we also need to repair uninitialized declarations
+# `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
+# carries `:` between its branches and never `;` directly after the candidate
+# identifier, so adding `;` here doesn't collide with ternary parsing.
+FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
+	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
+)
+
+# clang-format also mangles the nullable marker inside template / cast angle
+# brackets (`cast<MovePlan?>(x)` -> `cast < MovePlan ? > (x)`), the bracket
+# nullable-element array (`Item?[]` -> `Item ? []`), and named call arguments
+# (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
+# `[]`, and a `:` whose left side is an argument-position identifier, are all
+# unambiguous markers, so the inserted spacing is collapsed back. String / char
+# literals and comments are masked first so literal text is never rewritten. Kept
+# in sync with `Tools/Formatter/format_project.py` in the embedding project.
+_FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
+_FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
+FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
+	r'\b(' + _FOS_ANGLE_NAME + r')\s*<\s*(' + _FOS_ANGLE_SUBTYPE + r')\s*\?\s*>\s*\('
+)
+FOS_NULLABLE_ANGLE_RE = re.compile(
+	r'\b(' + _FOS_ANGLE_NAME + r')\s*<\s*(' + _FOS_ANGLE_SUBTYPE + r')\s*\?\s*>'
+)
+FOS_NULLABLE_BRACKET_RE = re.compile(r'\b([A-Z][\w:]*)\s*\?\s*\[\s*\]')
+FOS_NAMED_ARG_RE = re.compile(r'([(,]\s*[A-Za-z_]\w*)\s+:(?!:)')
+FOS_LITERAL_OR_COMMENT_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/', re.DOTALL)
+FOS_STASH_RE = re.compile('\x00(\\d+)\x00')
+
+
+def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
+	return match.group(1) + '<' + re.sub(r'\s+', '', match.group(2)) + '?>' + suffix
+
+
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
 		'10',
@@ -1742,6 +1791,135 @@ def strip_text_bom(content: str) -> str:
 	return content[1:] if content.startswith('\ufeff') else content
 
 
+def _split_outside_function_bodies(text: str) -> list[tuple[int, int, bool]]:
+	"""Return list of (start, end, inside_body) spans. A `{` is a function-body
+	brace when the previous significant char is `)` or one of
+	`else`/`do`/`try`/`catch`."""
+	n = len(text)
+	spans: list[tuple[int, int, bool]] = []
+	body_depth = 0
+	region_start = 0
+	i = 0
+	in_string = False
+	in_char = False
+	in_line_comment = False
+	in_block_comment = False
+	while i < n:
+		c = text[i]
+		nxt = text[i + 1] if i + 1 < n else ''
+		if in_line_comment:
+			if c == '\n':
+				in_line_comment = False
+			i += 1
+			continue
+		if in_block_comment:
+			if c == '*' and nxt == '/':
+				in_block_comment = False
+				i += 2
+				continue
+			i += 1
+			continue
+		if in_string:
+			if c == '\\':
+				i += 2
+				continue
+			if c == '"':
+				in_string = False
+			i += 1
+			continue
+		if in_char:
+			if c == '\\':
+				i += 2
+				continue
+			if c == "'":
+				in_char = False
+			i += 1
+			continue
+		if c == '/' and nxt == '/':
+			in_line_comment = True
+			i += 2
+			continue
+		if c == '/' and nxt == '*':
+			in_block_comment = True
+			i += 2
+			continue
+		if c == '"':
+			in_string = True
+			i += 1
+			continue
+		if c == "'":
+			in_char = True
+			i += 1
+			continue
+		if c == '{':
+			j = i - 1
+			while j >= 0 and text[j] in ' \t\r\n':
+				j -= 1
+			is_body = False
+			if j >= 0 and text[j] == ')':
+				is_body = True
+			elif j >= 0:
+				end_word = j + 1
+				wstart = j
+				while wstart > 0 and (text[wstart - 1].isalnum() or text[wstart - 1] == '_'):
+					wstart -= 1
+				word = text[wstart:end_word]
+				if word in ('else', 'do', 'try', 'catch'):
+					is_body = True
+			if is_body:
+				if body_depth == 0:
+					spans.append((region_start, i + 1, False))
+					region_start = i + 1
+				body_depth += 1
+			i += 1
+			continue
+		if c == '}':
+			if body_depth > 0:
+				body_depth -= 1
+				if body_depth == 0:
+					spans.append((region_start, i, True))
+					region_start = i
+			i += 1
+			continue
+		i += 1
+	spans.append((region_start, n, body_depth > 0))
+	return spans
+
+
+def fix_fos_nullable_suffix(text: str) -> str:
+	# Mask string/char literals and comments so none of the repairs below touch
+	# literal text (e.g. a UI string that happens to contain `(name : value)`).
+	stash: list[str] = []
+
+	def _stash(match: 're.Match[str]') -> str:
+		stash.append(match.group(0))
+		return f'\x00{len(stash) - 1}\x00'
+
+	text = FOS_LITERAL_OR_COMMENT_RE.sub(_stash, text)
+
+	spans = _split_outside_function_bodies(text)
+	out: list[str] = []
+	for start, end, inside_body in spans:
+		chunk = text[start:end]
+		if inside_body:
+			chunk = FOS_NULLABLE_SUFFIX_BODY_RE.sub(r'\1? \2\3', chunk)
+		else:
+			chunk = FOS_NULLABLE_SUFFIX_RE.sub(r'\1? \2\3', chunk)
+		out.append(chunk)
+	result = ''.join(out)
+	# Repair nullable markers inside template / cast angle brackets (call form first
+	# so the space before a call's `(` is removed, then the bare declaration form).
+	result = FOS_NULLABLE_ANGLE_CALL_RE.sub(lambda m: _fos_collapse_nullable_angle(m, '('), result)
+	result = FOS_NULLABLE_ANGLE_RE.sub(lambda m: _fos_collapse_nullable_angle(m, ''), result)
+	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`).
+	result = FOS_NULLABLE_BRACKET_RE.sub(r'\1?[]', result)
+	# Drop the space clang-format inserts before a named call argument's `:`.
+	result = FOS_NAMED_ARG_RE.sub(r'\1:', result)
+	# Restore the masked literals/comments.
+	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
+	return result
+
+
 def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 	files: list[Path] = []
 	for pattern in patterns:
@@ -1769,6 +1947,8 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 		original, has_bom = read_text_strip_bom(path)
 		formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
 		formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
+		if path.suffix == '.fos':
+			formatted = fix_fos_nullable_suffix(formatted)
 		if not differs_beyond_line_endings(original, formatted) and not has_bom:
 			continue
 

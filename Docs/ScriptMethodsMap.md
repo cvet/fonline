@@ -166,7 +166,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 101
+- Exported methods: 100
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -175,6 +175,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - distance helpers and visible entity queries;
   - atlas/resource/debug helpers;
   - resolution/minimap/render-facing helpers;
+  - effect selection and single/ranged script-value buffer writes;
   - sound, music, video, sprite, and UI-adjacent helpers where exposed.
 - Related docs: [ClientRuntime.md](ClientRuntime.md), [FrontendAndRendering.md](FrontendAndRendering.md).
 

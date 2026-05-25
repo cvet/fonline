@@ -2321,6 +2321,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 				break;
 
 			case asBC_REFCPY:
+			case asBC_RefCpyChk: // (FOnline Patch)
 				fprintf(file, "   %-8s 0x%x\n", asBCInfo[instr->op].name, *((int*) ARG_DW(instr->arg)));
 				break;
 

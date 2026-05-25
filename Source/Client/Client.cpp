@@ -344,9 +344,6 @@ void ClientEngine::MainLoop()
     {
         SprMngr.BeginScene();
 
-        // Quake effect
-        ProcessScreenEffectQuake();
-
         // Make dirty offscreen surfaces
         if (!PreDirtyOffscreenSurfaces.empty()) {
             DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
@@ -359,130 +356,8 @@ void ClientEngine::MainLoop()
         OnRenderIface.Fire();
 
         ProcessVideo();
-        ProcessScreenEffectFading();
 
         SprMngr.EndScene();
-    }
-}
-
-void ClientEngine::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!push_back || _screenFadingEffects.empty()) {
-        _screenFadingEffects.push_back({.BeginTime = GameTime.GetFrameTime(), .Duration = time, .StartColor = from_color, .EndColor = to_color});
-    }
-    else {
-        nanotime last_tick;
-
-        for (const auto& e : _screenFadingEffects) {
-            if (e.BeginTime + e.Duration > last_tick) {
-                last_tick = e.BeginTime + e.Duration;
-            }
-        }
-
-        _screenFadingEffects.push_back({.BeginTime = last_tick, .Duration = time, .StartColor = from_color, .EndColor = to_color});
-    }
-}
-
-void ClientEngine::ProcessScreenEffectFading()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    SprMngr.Flush();
-
-    vector<PrimitivePoint> full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, irect32(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), ucolor::clear);
-
-    for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
-        auto& screen_effect = *it;
-
-        if (GameTime.GetFrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
-            it = _screenFadingEffects.erase(it);
-            continue;
-        }
-
-        if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const int32_t effect_duration = screen_effect.Duration.to_ms<int32_t>();
-            const int32_t effect_elapsed = (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32_t>();
-            const int32_t effect_percent = effect_duration == 0 ? 0 : std::clamp(effect_elapsed * 100 / effect_duration, 0, 100);
-            const int32_t proc = std::min(effect_percent + 1, 100);
-            int32_t res[4];
-
-            for (auto i = 0; i < 4; i++) {
-                const int32_t sc = (reinterpret_cast<uint8_t*>(&screen_effect.StartColor))[i];
-                const int32_t ec = (reinterpret_cast<uint8_t*>(&screen_effect.EndColor))[i];
-                const auto dc = ec - sc;
-                res[i] = sc + dc * numeric_cast<int32_t>(proc) / 100;
-            }
-
-            const auto color = ucolor {numeric_cast<uint8_t>(res[0]), numeric_cast<uint8_t>(res[1]), numeric_cast<uint8_t>(res[2]), numeric_cast<uint8_t>(res[3])};
-
-            for (auto i = 0; i < 6; i++) {
-                full_screen_quad[i].PointColor = color;
-            }
-
-            SprMngr.DrawPoints(full_screen_quad, RenderPrimitiveType::TriangleList);
-        }
-
-        ++it;
-    }
-}
-
-void ClientEngine::ScreenQuake(int32_t noise, timespan time)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_curMap) {
-        _quakeScreenOffsX = 0.0f;
-        _quakeScreenOffsY = 0.0f;
-        _quakeScreenOffsStep = 0.0f;
-        _quakeScreenOffsNextTime = {};
-        return;
-    }
-
-    _quakeScreenOffsX = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32_t>() / 30.0f);
-
-    _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
-
-    _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
-}
-
-void ClientEngine::ProcessScreenEffectQuake()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_curMap) {
-        _quakeScreenOffsX = 0.0f;
-        _quakeScreenOffsY = 0.0f;
-        _quakeScreenOffsStep = 0.0f;
-        _quakeScreenOffsNextTime = {};
-        return;
-    }
-
-    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
-        if (_quakeScreenOffsX < 0.0f) {
-            _quakeScreenOffsX += _quakeScreenOffsStep;
-        }
-        else if (_quakeScreenOffsX > 0.0f) {
-            _quakeScreenOffsX -= _quakeScreenOffsStep;
-        }
-
-        if (_quakeScreenOffsY < 0.0f) {
-            _quakeScreenOffsY += _quakeScreenOffsStep;
-        }
-        else if (_quakeScreenOffsY > 0.0f) {
-            _quakeScreenOffsY -= _quakeScreenOffsStep;
-        }
-
-        _quakeScreenOffsX = -_quakeScreenOffsX;
-        _quakeScreenOffsY = -_quakeScreenOffsY;
-
-        _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
-
-        _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -2345,15 +2220,6 @@ void ClientEngine::UnloadMap()
 
     OnMapUnload.Fire();
 
-    if (_curMap && (_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f)) {
-        _curMap->SetExtraScrollOffset({});
-    }
-
-    _quakeScreenOffsX = 0.0f;
-    _quakeScreenOffsY = 0.0f;
-    _quakeScreenOffsStep = 0.0f;
-    _quakeScreenOffsNextTime = {};
-
     Settings.ScrollMouseRight = false;
     Settings.ScrollMouseLeft = false;
     Settings.ScrollMouseDown = false;
@@ -2762,13 +2628,42 @@ void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSub
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (valueIndex < 0 || valueIndex >= numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
-        throw ScriptException("Effect script value index is out of range", valueIndex);
+    SetEffectScriptValues(effectType, effectSubtype, valueIndex, const_span<float32_t> {&value, 1});
+}
+
+void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset, int32_t valuesCount)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const int32_t values_size = numeric_cast<int32_t>(values.size());
+
+    if (valuesOffset < 0 || valuesOffset > values_size) {
+        throw ScriptException("Effect script values offset is out of range", valuesOffset, values_size);
+    }
+
+    int32_t actual_values_count = valuesCount;
+
+    if (actual_values_count < 0) {
+        actual_values_count = values_size - valuesOffset;
+    }
+    if (actual_values_count < 0 || actual_values_count > values_size - valuesOffset) {
+        throw ScriptException("Effect script values count is out of range", actual_values_count, values_size, valuesOffset);
+    }
+    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw ScriptException("Effect script value index is out of range", valueStartIndex);
+    }
+    if (actual_values_count > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES) - valueStartIndex) {
+        throw ScriptException("Effect script value range is out of range", valueStartIndex, actual_values_count);
     }
 
     RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    const_span<float32_t> selected_values {};
 
-    EffectMngr.SetEffectScriptValue(effect, valueIndex, value);
+    if (actual_values_count != 0) {
+        selected_values = const_span<float32_t> {values.data() + valuesOffset, numeric_cast<size_t>(actual_values_count)};
+    }
+
+    EffectMngr.SetEffectScriptValues(effect, valueStartIndex, selected_values);
 }
 
 void ClientEngine::ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype)

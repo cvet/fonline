@@ -889,9 +889,14 @@ def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tup
             for arg in split_engine_args(args_text):
                 arg = arg.strip()
                 separator = arg.find('/')
-                arg_type = engine_type_to_meta_type(arg[:separator - 1].rstrip(), valid_types)
+                type_part = arg[:separator - 1].rstrip()
+                nullable = False
+                if type_part.startswith('FO_NULLABLE'):
+                    nullable = True
+                    type_part = type_part[len('FO_NULLABLE'):].lstrip()
+                arg_type = engine_type_to_meta_type(type_part, valid_types)
                 arg_name = arg[separator + 2:-2]
-                event_args.append(MethodArg(arg_type, arg_name))
+                event_args.append(MethodArg(arg_type, arg_name, nullable=nullable))
 
     return event_name, event_args
 

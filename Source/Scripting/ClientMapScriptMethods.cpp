@@ -186,6 +186,12 @@ FO_SCRIPT_API void Client_Map_SetScrollCheck(MapView* self, bool enabled)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(MapView* self, fpos32 offset)
+{
+    self->SetExtraScrollOffset(offset);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {
@@ -567,9 +573,9 @@ FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, FO_NULLABLE CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API bool Client_Map_IsAutoScrolling(MapView* self)
 {
-    self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
+    return self->IsAutoScrolling();
 }
 
 ///@ ExportMethod

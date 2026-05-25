@@ -121,7 +121,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, Player* /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, FO_NULLABLE Player* /*unloginedPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
@@ -137,7 +137,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterStopMoving, Critter* /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, FO_NULLABLE Map* /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
