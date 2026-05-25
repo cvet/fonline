@@ -40,7 +40,7 @@ TEST_CASE("NetBuffer")
 {
     SECTION("PrimitiveAndStringRoundtrip")
     {
-        NetOutBuffer out_buf {8, false};
+        NetOutBuffer out_buf {8};
         out_buf.Write<int32_t>(42);
         out_buf.Write<float32_t>(12.5f);
         out_buf.Write<string>(string {"hello"});
@@ -56,7 +56,7 @@ TEST_CASE("NetBuffer")
 
     SECTION("DiscardWriteBufDropsPrefix")
     {
-        NetOutBuffer out_buf {8, false};
+        NetOutBuffer out_buf {8};
         out_buf.Write<uint32_t>(111);
         out_buf.Write<uint32_t>(222);
         out_buf.DiscardWriteBuf(sizeof(uint32_t));
@@ -70,7 +70,7 @@ TEST_CASE("NetBuffer")
 
     SECTION("DiscardWriteBufTooMuchResetsAndThrows")
     {
-        NetOutBuffer out_buf {8, false};
+        NetOutBuffer out_buf {8};
         out_buf.Write<uint32_t>(111);
 
         CHECK_THROWS_AS(out_buf.DiscardWriteBuf(sizeof(uint32_t) + 1), NetBufferException);
@@ -79,7 +79,7 @@ TEST_CASE("NetBuffer")
 
     SECTION("MessageFramingHandlesPartialInput")
     {
-        NetOutBuffer out_buf {8, false};
+        NetOutBuffer out_buf {8};
         out_buf.StartMsg(NetMessage::Ping);
         out_buf.Write<uint16_t>(321);
         out_buf.EndMsg();
@@ -102,7 +102,7 @@ TEST_CASE("NetBuffer")
 
     SECTION("EncryptionRoundtripPreservesPayload")
     {
-        NetOutBuffer out_buf {8, false};
+        NetOutBuffer out_buf {8};
         out_buf.SetEncryptKey(123456);
         out_buf.StartMsg(NetMessage::RemoteCall);
         out_buf.Write<uint32_t>(0xABCD1234);
@@ -126,12 +126,12 @@ TEST_CASE("NetBuffer")
         CHECK(in_buf.Read<string>() == "secret");
     }
 
-    SECTION("HashedStringRoundtripSupportsDebugMode")
+    SECTION("HashedStringRoundtrip")
     {
         HashStorage hashes {};
         const auto value = hashes.ToHashedString("net_hash_value");
 
-        NetOutBuffer out_buf {8, true};
+        NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
 
         NetInBuffer in_buf {8};
@@ -140,6 +140,43 @@ TEST_CASE("NetBuffer")
         const auto read_value = in_buf.Read<hstring>(hashes);
         CHECK(read_value == value);
         CHECK(read_value.as_str() == "net_hash_value");
+    }
+
+    SECTION("UnresolvedHashThrowsWithHashAndCanBeLearned")
+    {
+        HashStorage sender {};
+        const auto value = sender.ToHashedString("runtime_only_hash");
+
+        NetOutBuffer out_buf {8};
+        out_buf.Write<hstring>(value);
+
+        // A receiver that doesn't know this hash yet fails and reports the raw hash
+        HashStorage receiver {};
+        NetInBuffer in_buf {8};
+        in_buf.AddData(out_buf.GetData());
+
+        try {
+            (void)in_buf.Read<hstring>(receiver);
+            FAIL("Expected UnresolvedHashException");
+        }
+        catch (const UnresolvedHashException& ex) {
+            // The unresolved hash travels as the exception's first param (unsigned decimal)
+            REQUIRE_FALSE(ex.params().empty());
+            hstring::hash_t reported = 0;
+            const auto& hash_param = ex.params().front();
+            (void)std::from_chars(hash_param.data(), hash_param.data() + hash_param.size(), reported);
+            CHECK(reported == value.as_hash());
+        }
+
+        // Learning the string (as the client does from the server's HashList) makes the same hash resolve
+        const auto learned = receiver.ToHashedString("runtime_only_hash");
+        CHECK(learned.as_hash() == value.as_hash());
+
+        NetInBuffer in_buf_again {8};
+        in_buf_again.AddData(out_buf.GetData());
+        const auto read_value = in_buf_again.Read<hstring>(receiver);
+        CHECK(read_value.as_hash() == value.as_hash());
+        CHECK(read_value.as_str() == "runtime_only_hash");
     }
 
     SECTION("InvalidSignatureThrows")

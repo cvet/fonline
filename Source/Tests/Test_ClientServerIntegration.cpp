@@ -412,4 +412,71 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK(disconnected_calls >= 1);
 }
 
+TEST_CASE("ClientReportsUnresolvedHashServerDisconnectsAndTeachesOnReconnect")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] {
+            client->Disconnect();
+            client->Shutdown();
+        });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client.get(), server.get()));
+
+    // A string the server knows but the client doesn't — mimics a runtime hstring the client can't resolve
+    const auto reported = server->Hashes.ToHashedString("integration_test_only_hash");
+
+    {
+        bool failed = false;
+        (void)client->Hashes.ResolveHash(reported.as_hash(), &failed);
+        REQUIRE(failed); // The client genuinely can't resolve it yet
+    }
+
+    // Send the exact wire message ClientConnection emits when it hits an unresolved hash
+    client->GetConnection().OutBuf->StartMsg(NetMessage::UnresolvedHash);
+    client->GetConnection().OutBuf->Write<hstring::hash_t>(reported.as_hash());
+    client->GetConnection().OutBuf->EndMsg();
+
+    // The server logs the report and drops the connection on receipt
+    REQUIRE(WaitForDisconnected(client.get(), server.get()));
+    CHECK_FALSE(client->IsConnected());
+    CHECK(GetServerConnectionCount(server.get()) == 0);
+
+    // On reconnect the server sends back the resolved string, so the client learns it
+    client->Connect();
+    REQUIRE(WaitForConnected(client.get(), server.get()));
+
+    // Pump a few frames so the post-InitData HashList message is processed
+    for (int32_t i = 0; i < 50; i++) {
+        client->MainLoop();
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    bool failed = false;
+    const auto resolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
+    CHECK_FALSE(failed);
+    CHECK(resolved.as_str() == "integration_test_only_hash");
+}
+
 FO_END_NAMESPACE

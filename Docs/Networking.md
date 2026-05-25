@@ -44,7 +44,6 @@ Important constants:
 
 - `CRYPT_KEYS_COUNT = 50`
 - `NETMSG_SIGNATURE = 0x011E9422`
-- `DEBUG_HASH_VALUE = ~0`
 
 `NetOutBuffer` responsibilities:
 
@@ -65,11 +64,26 @@ Important constants:
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
-## Hashes and debug hashes
+## Hashes
 
-Network buffers can serialize `hstring` values. `NetOutBuffer` can be created with `debug_hashes`, and `NetInBuffer` resolves hashed strings through a `HashResolver`.
+Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
 
-When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers. Debug hash behavior is especially important for diagnosing missing hash names across client/server builds.
+When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
+
+### Unresolved hash recovery
+
+Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. When `NetInBuffer::ReadHashedString` fails to resolve an incoming hash it throws `UnresolvedHashException` (declared in `NetBuffer.h`), a `NetBufferException` subclass that carries the raw `hstring::hash_t`. Catch the derived type before the base where the failed hash must be recovered.
+
+The engine recovers from this instead of looping on the disconnect:
+
+1. `ClientConnection::Process` catches the exception and immediately sends the failing hash to the server in a `NetMessage::UnresolvedHash` message with a single non-blocking `SendData()` flush. `Process` runs on the main loop, so it must not stall: the report is tiny and the connection was just live, so it lands in the kernel send buffer (delivered by the graceful close) without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client then drops the connection, rethrows so the host's recreate/reconnect flow re-establishes it, and keeps no state and writes nothing to disk.
+2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
+3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
+4. Clients feed each received string through `HashResolver::ToHashedString`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
+
+The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `HashStorage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
+
+This is a serialized contract change: `NetMessage::HashList` (server→client) and `NetMessage::UnresolvedHash` (client→server) were added, so the central compatibility marker in `Source/Common/Common.h` is bumped accordingly.
 
 ## Net commands
 

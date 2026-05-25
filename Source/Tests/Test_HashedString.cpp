@@ -156,6 +156,24 @@ TEST_CASE("HashedString")
         CHECK(hs.as_hash() == 0);
         CHECK(hs.as_str().empty());
     }
+
+    SECTION("CheckHashedStringChecksWithoutInserting")
+    {
+        HashStorage storage {};
+
+        storage.ToHashedString("registered_value");
+        CHECK(storage.CheckHashedString("registered_value"));
+
+        // An unregistered string is reported missing and must NOT be inserted
+        CHECK_FALSE(storage.CheckHashedString("never_registered_value"));
+
+        bool still_failed = false;
+        (void)storage.ResolveHash(hashing_ex::hash("never_registered_value", 22), &still_failed);
+        CHECK(still_failed);
+
+        // Empty string is the zero hash, never a registered entry
+        CHECK_FALSE(storage.CheckHashedString(""));
+    }
 }
 
 FO_END_NAMESPACE

@@ -90,6 +90,7 @@ private:
     auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
+    void Net_SendUnresolvedHash(hstring::hash_t hash); // Send and flush immediately.
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 

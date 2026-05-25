@@ -61,7 +61,7 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, nullptr, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, static_cast<const FO_NAMESPACE StackTraceData*>(nullptr), message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
@@ -75,6 +75,13 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
         } \
         exception_name(exception_name&& other) noexcept : \
             base_exception_name(std::move(other)) \
+        { \
+        } \
+\
+    protected: \
+        template<typename... Args> \
+        exception_name(const char* derived_name, const FO_NAMESPACE StackTraceData* st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+            base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
     }

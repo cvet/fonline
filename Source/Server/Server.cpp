@@ -239,6 +239,7 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
 
         register_collection(GameCollectionName, DataBaseKeyType::IntId);
         register_collection(HistoryCollectionName, DataBaseKeyType::IntId);
+        register_collection(HashReportsCollectionName, DataBaseKeyType::String);
 
         for (const auto& type_desc : GetEntityTypes() | std::views::values) {
             register_collection(type_desc.PropRegistrator->GetTypeNamePlural(), DataBaseKeyType::IntId);
@@ -406,12 +407,13 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
             WriteLog("Init script modules");
 
             ServerInitHook(this);
-
             InitModules();
 
             if (OnInit.Fire() == EventResult::StopChain) {
                 throw ServerInitException("Initialization script failed");
             }
+
+            LoadReportedHashes();
 
             // Init world
             if (globals_doc.Empty()) {
@@ -1309,6 +1311,9 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
             case NetMessage::RemoteCall:
                 Process_RemoteCall(unlogined_player);
                 break;
+            case NetMessage::UnresolvedHash:
+                Process_UnresolvedHash(connection);
+                break;
             default:
                 throw GenericException("Unexpected unlogined player message", msg);
             }
@@ -1382,6 +1387,9 @@ void ServerEngine::ProcessPlayer(Player* player)
             break;
         case NetMessage::SendProperty:
             Process_Property(player);
+            break;
+        case NetMessage::UnresolvedHash:
+            Process_UnresolvedHash(connection);
             break;
         default:
             throw GenericException("Unexpected player message", msg);
@@ -2134,12 +2142,14 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     static const vector<uint8_t> empty_update_desc;
     const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
 
-    auto out_buf = connection->WriteMsg(NetMessage::InitData);
+    {
+        auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
-    out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
-    out_buf->Push(update_desc);
-    out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
-    out_buf->Write(GameTime.GetSynchronizedTime());
+        out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
+        out_buf->Push(update_desc);
+        out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+        out_buf->Write(GameTime.GetSynchronizedTime());
+    }
 
     connection->MarkHandshakeComplete();
 
@@ -2148,6 +2158,131 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
     }
     else {
         WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);
+        SendAllReportedHashes(connection);
+    }
+}
+
+void ServerEngine::LoadReportedHashes()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t resolved_count = 0;
+
+    for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
+        // Now resolvable — developers added the missing string after the report, so stop tracking and broadcasting it
+        if (Hashes.CheckHashedString(reported_string)) {
+            DbStorage.Delete(HashReportsCollectionName, reported_string);
+            resolved_count++;
+            continue;
+        }
+
+        WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", reported_string);
+        _reportedStrings.emplace(reported_string);
+    }
+
+    if (!_reportedStrings.empty() || resolved_count != 0) {
+        WriteLog("Loaded {} unresolved client-reported hash(es), {} now resolved", _reportedStrings.size(), resolved_count);
+    }
+}
+
+void ServerEngine::Process_UnresolvedHash(ServerConnection* connection)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto in_buf = connection->ReadBuf();
+
+    const auto hash = in_buf->Read<hstring::hash_t>();
+
+    in_buf.Unlock();
+
+    RegisterClientReportedHash(connection, hash);
+
+    // The client reports a bad hash only right before dropping (it can't keep parsing the stream),
+    // so tear down the server side too instead of waiting for the socket close or an inactivity timeout.
+    connection->HardDisconnect();
+}
+
+void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (hash == 0) {
+        return;
+    }
+
+    bool failed = false;
+    const hstring hstr = Hashes.ResolveHash(hash, &failed);
+
+    if (failed) {
+        // The server can't resolve it either — a deeper content/version mismatch. Log each one once per session.
+        if (_unresolvableReportedHashes.emplace(hash).second) {
+            WriteLog(LogType::Warning, "Client {} reported hash {} that the server can't resolve either", connection->GetHost(), hash);
+        }
+
+        return;
+    }
+
+    const string reported_string = hstr.as_str();
+
+    // Already known (already broadcast and persisted)
+    if (_reportedStrings.count(reported_string) != 0) {
+        return;
+    }
+
+    WriteLog(LogType::Warning, "Client {} couldn't resolve hash {}: '{}'", connection->GetHost(), hash, reported_string);
+    _reportedStrings.emplace(reported_string);
+
+    // Persist so the list survives a server restart and preloads new clients immediately
+    AnyData::Document doc;
+    doc.Emplace("_Name", reported_string);
+    DbStorage.Insert(HashReportsCollectionName, reported_string, doc);
+
+    // Teach the freshly learned string to clients that are already connected
+    BroadcastReportedString(reported_string);
+}
+
+void ServerEngine::SendAllReportedHashes(ServerConnection* connection)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_reportedStrings.empty()) {
+        return;
+    }
+
+    auto out_buf = connection->WriteMsg(NetMessage::HashList);
+
+    out_buf->Write(numeric_cast<uint32_t>(_reportedStrings.size()));
+
+    for (const auto& reported_string : _reportedStrings) {
+        out_buf->Write(reported_string);
+    }
+}
+
+void ServerEngine::BroadcastReportedString(string_view reported_string)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto send_to_connection = [reported_string](ServerConnection* conn) {
+        if (conn == nullptr || conn->IsHardDisconnected() || !conn->IsHandshakeComplete()) {
+            return;
+        }
+
+        auto out_buf = conn->WriteMsg(NetMessage::HashList);
+
+        out_buf->Write(numeric_cast<uint32_t>(1));
+        out_buf->Write(reported_string);
+    };
+
+    for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
+        send_to_connection(player->GetConnection());
+    }
+
+    {
+        std::scoped_lock locker {_unloginedPlayersLocker};
+
+        for (auto& player : _unloginedPlayers) {
+            send_to_connection(player->GetConnection());
+        }
     }
 }
 

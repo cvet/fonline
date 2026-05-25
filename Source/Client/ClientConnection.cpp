@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
     _settings {&settings},
     _netIn(_settings->NetBufferSize),
-    _netOut(_settings->NetBufferSize, _settings->NetDebugHashes)
+    _netOut(_settings->NetBufferSize)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -166,6 +166,22 @@ void ClientConnection::Process()
         if (!TryFallbackToTcp()) {
             Disconnect();
         }
+    }
+    catch (const UnresolvedHashException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+
+        // The unresolved hash is the exception's first param (see UnresolvedHashException declaration)
+        if (!ex.params().empty()) {
+            const auto& hash_param = ex.params().front();
+            hstring::hash_t hash = 0;
+
+            if (std::from_chars(hash_param.data(), hash_param.data() + hash_param.size(), hash).ec == std::errc {}) {
+                Net_SendUnresolvedHash(hash);
+            }
+        }
+
+        Disconnect();
+        throw;
     }
     catch (const NetBufferException& ex) {
         WriteLog("Connection error: {}", ex.what());
@@ -391,6 +407,31 @@ void ClientConnection::Net_SendHandshake()
     _netOut.EndMsg();
 
     _netOut.SetEncryptKey(encrypt_key);
+}
+
+void ClientConnection::Net_SendUnresolvedHash(hstring::hash_t hash)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Only meaningful on an established (post-handshake, encrypted) connection
+    if (!_netConnection || !_wasHandshake) {
+        return;
+    }
+
+    try {
+        _netOut.StartMsg(NetMessage::UnresolvedHash);
+        _netOut.Write(hash);
+        _netOut.EndMsg();
+
+        SendData();
+
+        if (!_netOut.IsEmpty()) {
+            WriteLog("Couldn't flush unresolved hash {} report before disconnect", hash);
+        }
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to report unresolved hash {}: {}", hash, ex.what());
+    }
 }
 
 void ClientConnection::Net_OnHandshakeAnswer()

@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 6
+///@ MigrationRule Version 0 0 7
 
 #include "Version-Include.h"
 
@@ -413,6 +413,8 @@ enum class NetMessage : uint8_t
     RemoveCustomEntity = 117,
     Property = 120,
     SendProperty = 121,
+    HashList = 122,
+    UnresolvedHash = 123,
 };
 
 enum class EngineSideKind : uint8_t
