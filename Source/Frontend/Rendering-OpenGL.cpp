@@ -738,8 +738,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         if (GL_HAS(uniform_buffer_object)) {
             const auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
-                if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
-                    GL(glUniformBlockBinding(program, index, block_pos));
+                if (block_pos != -1) {
+                    if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
+                        GL(glUniformBlockBinding(program, index, block_pos));
+                    }
                 }
             };
 

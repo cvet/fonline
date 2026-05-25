@@ -573,9 +573,9 @@ FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, FO_NULLABLE CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API bool Client_Map_IsAutoScrolling(MapView* self)
 {
-    self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
+    return self->IsAutoScrolling();
 }
 
 ///@ ExportMethod

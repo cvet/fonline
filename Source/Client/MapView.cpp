@@ -2796,25 +2796,6 @@ void MapView::ProcessScroll(float32_t dt)
         _autoScrollActive = false;
     }
 
-    if (_autoScrollHardLockedCritter) {
-        const auto* cr = GetCritter(_autoScrollHardLockedCritter);
-
-        if (cr != nullptr && ipos32(cr->GetHex()) != GetCenterRawHex()) {
-            ScrollToHex(cr->GetHex(), cr->GetHexOffset(), _autoScrollLockSpeed, false);
-        }
-    }
-
-    if (_autoScrollSoftLockedCritter && !is_manual_scrolling) {
-        const auto* cr = GetCritter(_autoScrollSoftLockedCritter);
-
-        if (cr != nullptr && cr->GetHex() != _autoScrollCritterLastHex) {
-            const auto hex_offset = GeometryHelper::GetHexOffset(_autoScrollCritterLastHex, cr->GetHex());
-            ApplyScrollOffset(hex_offset - ipos32(_autoScrollCritterLastHexOffset) + ipos32(cr->GetHexOffset()), _autoScrollLockSpeed, true);
-            _autoScrollCritterLastHex = cr->GetHex();
-            _autoScrollCritterLastHexOffset = cr->GetHexOffset();
-        }
-    }
-
     fpos32 scroll;
 
     if (_autoScrollActive) {
@@ -3056,35 +3037,6 @@ void MapView::ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop)
     _autoScrollCanStop = can_stop;
     _autoScrollSpeed = speed;
     _autoScrollOffset += fpos32(offset);
-}
-
-void MapView::LockScreenScroll(CritterView* cr, int32_t speed, bool soft_lock, bool unlock_if_same)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto id = cr != nullptr ? cr->GetId() : ident_t();
-
-    if (soft_lock) {
-        if (unlock_if_same && id == _autoScrollSoftLockedCritter) {
-            _autoScrollSoftLockedCritter = ident_t();
-        }
-        else {
-            _autoScrollSoftLockedCritter = id;
-        }
-
-        _autoScrollCritterLastHex = cr != nullptr ? cr->GetHex() : mpos();
-        _autoScrollCritterLastHexOffset = cr != nullptr ? cr->GetHexOffset() : ipos16();
-    }
-    else {
-        if (unlock_if_same && id == _autoScrollHardLockedCritter) {
-            _autoScrollHardLockedCritter = ident_t();
-        }
-        else {
-            _autoScrollHardLockedCritter = id;
-        }
-    }
-
-    _autoScrollLockSpeed = speed;
 }
 
 void MapView::SetExtraScrollOffset(fpos32 offset)
