@@ -3580,7 +3580,7 @@ class ItemView : Grid
         for (int i = 0; i < newItems.length() && !isChanged; i++) {
             Item? newItem = newItems[i];
             Item? oldItem = _Items[i];
-            isChanged = newItem !is oldItem;
+            isChanged = newItem != oldItem;
         }
 
         if (isChanged) {
