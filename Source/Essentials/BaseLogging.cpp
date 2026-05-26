@@ -115,6 +115,17 @@ extern void SetAsyncLogWriting(bool enabled)
 extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
 {
     try {
+        if (BaseLogging == nullptr) {
+            std::cout << message;
+
+            if (st != nullptr) {
+                std::cout << FormatStackTrace(*st) << "\n";
+            }
+
+            std::cout.flush();
+            return;
+        }
+
         if (BaseLogging->AsyncEnabled.load(std::memory_order_acquire)) {
             bool enqueued = false;
             bool dropped = false;

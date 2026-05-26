@@ -92,6 +92,15 @@ void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceD
     FO_STACK_TRACE_ENTRY();
 
     try {
+        if (Logging == nullptr) {
+            string result;
+            result.reserve(message.length() + 1);
+            result += message;
+            result += '\n';
+            WriteBaseLog(result, st);
+            return;
+        }
+
         std::scoped_lock locker {Logging->Locker};
 
         // Make message
