@@ -170,9 +170,14 @@ if(FO_MULTICONFIG)
 	StringReplace(";" " " configs "${CMAKE_CONFIGURATION_TYPES}")
 	StatusMessage("Configurations: ${configs}")
 else()
+	if(NOT CMAKE_BUILD_TYPE)
+		SetValue(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Forced by FOnline default" FORCE)
+		StatusMessage("Configuration not set, defaulting to ${CMAKE_BUILD_TYPE}")
+	endif()
+
 	StatusMessage("Configuration: ${CMAKE_BUILD_TYPE}")
 
-	ListFind(FO_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE} configurationIndex)
+	ListFind(FO_CONFIGURATION_TYPES "${CMAKE_BUILD_TYPE}" configurationIndex)
 
 	if(configurationIndex EQUAL -1)
 		AbortMessage("Invalid requested configuration type")

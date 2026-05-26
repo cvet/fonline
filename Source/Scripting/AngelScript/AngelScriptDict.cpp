@@ -886,7 +886,7 @@ static auto Equals(int32_t type_id, const ScriptDictTypeData* type_data, AngelSc
     FO_STACK_TRACE_ENTRY();
 
     if (type_data != nullptr) {
-        if (!type_data->CmpFunc && !type_data->EqFunc) {
+        if (!type_data->CmpFunc && !type_data->EqFunc && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             const auto* sub_type = engine->GetTypeInfoById(type_id);
 
             if (type_data->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {

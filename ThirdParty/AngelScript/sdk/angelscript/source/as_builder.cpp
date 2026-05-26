@@ -438,7 +438,28 @@ int asCBuilder::ValidateDefaultArgs(asCScriptCode *script, asCScriptNode *node, 
 	for( asUINT n = 0; n < func->defaultArgs.GetLength(); n++ )
 	{
 		if( func->defaultArgs[n] )
+		{
 			firstArgWithDefaultValue = n;
+
+			// (FOnline Patch) Reject a `null` default value for a non-nullable
+			// handle parameter. A `f()` call substitutes the default null, leaving
+			// the parameter null inside a body that assumes it is non-null, and the
+			// first dereference then explodes at runtime. This mirrors the
+			// `T x = null;` guard in the expression compiler. Declare the parameter
+			// `T?` if it is genuinely allowed to be null.
+			if( n < func->parameterTypes.GetLength() &&
+				func->parameterTypes[n].IsObjectHandle() &&
+				!func->parameterTypes[n].IsNullable() &&
+				func->defaultArgs[n]->Compare("null") == 0 )
+			{
+				asCString msg;
+				msg.Format("Cannot assign 'null' to a non-nullable handle of type '%s' (use '%s?' to allow null)",
+					func->parameterTypes[n].Format(func->nameSpace).AddressOf(),
+					func->parameterTypes[n].Format(func->nameSpace).AddressOf());
+				WriteError(msg, script, node);
+				return asINVALID_DECLARATION;
+			}
+		}
 		else if( firstArgWithDefaultValue >= 0 )
 		{
 			asCString str;

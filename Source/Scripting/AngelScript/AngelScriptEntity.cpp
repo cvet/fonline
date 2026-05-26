@@ -94,46 +94,6 @@ static auto Entity_Id(const Entity* self) -> ident_t
     return self->GetId();
 }
 
-static auto Entity_Equals(const Entity* self, const Entity* other) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (other == nullptr) {
-        return false;
-    }
-
-    // Id is stable for the full entity lifetime, including destroying/destroyed states.
-    return self->GetId() == other->GetId();
-}
-
-static auto Entity_ProtoEquals(const Entity* self, const Entity* other) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (other == nullptr) {
-        return false;
-    }
-
-    hstring self_pid;
-    hstring other_pid;
-
-    if (const auto* self_proto = dynamic_cast<const ProtoEntity*>(self)) {
-        self_pid = self_proto->GetProtoId();
-    }
-    else if (const auto* self_with_proto = dynamic_cast<const EntityWithProto*>(self)) {
-        self_pid = self_with_proto->GetProtoId();
-    }
-
-    if (const auto* other_proto = dynamic_cast<const ProtoEntity*>(other)) {
-        other_pid = other_proto->GetProtoId();
-    }
-    else if (const auto* other_with_proto = dynamic_cast<const EntityWithProto*>(other)) {
-        other_pid = other_with_proto->GetProtoId();
-    }
-
-    return self_pid != hstring() && self_pid == other_pid;
-}
-
 static auto Entity_ProtoId(const Entity* self) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
@@ -1033,16 +993,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "string get_Name() const", FO_SCRIPT_FUNC_THIS(Entity_Name), FO_SCRIPT_FUNC_THIS_CONV));
     };
 
-    const auto register_entity_id_equals = [&](const char* name) {
-        // Entities are equal if they are the same instance or if they have the same id
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_Equals), FO_SCRIPT_FUNC_THIS_CONV));
-    };
-
-    const auto register_entity_proto_equals = [&](const char* name) {
-        // Protos are equal if they have the same type and proto id, regardless of whether they are the same instance or not
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Entity_ProtoEquals), FO_SCRIPT_FUNC_THIS_CONV));
-    };
-
     const auto register_entity_cast = [&](const char* name, const char* base_name) {
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(base_name, strex("{}@+ opCast()", name).c_str(), FO_SCRIPT_GENERIC(Entity_UpCast), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(base_name, strex("const {}@+ opCast() const", name).c_str(), FO_SCRIPT_GENERIC(Entity_UpCast), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
@@ -1067,7 +1017,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     const auto register_entity_abstract = [&](const char* name, const EntityTypeDesc& desc) {
         const string sub_name = strex("Abstract{}", name);
         register_base_entity(sub_name.c_str());
-        register_entity_id_equals(sub_name.c_str());
         register_entity_cast(sub_name.c_str(), "Entity");
         register_entity_cast(name, sub_name.c_str());
         register_entity_getset(sub_name.c_str(), name);
@@ -1080,7 +1029,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     const auto register_entity_protos = [&](const char* name, const EntityTypeDesc& desc) {
         const string sub_name = strex("Proto{}", name);
         register_base_entity(sub_name.c_str());
-        register_entity_proto_equals(sub_name.c_str());
         register_entity_cast(sub_name.c_str(), "Entity");
         register_entity_getset(sub_name.c_str(), name);
 
@@ -1100,7 +1048,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
     const auto register_fixed_type = [&](const char* name) {
         register_base_entity(name);
-        register_entity_proto_equals(name);
         register_entity_getset(name, name);
         register_entity_props(name);
 
@@ -1115,7 +1062,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     const auto register_entity_statics = [&](const char* name, const EntityTypeDesc& desc) {
         const string sub_name = strex("Static{}", name);
         register_base_entity(sub_name.c_str());
-        register_entity_id_equals(sub_name.c_str());
         register_entity_cast(sub_name.c_str(), "Entity");
         register_entity_getset(sub_name.c_str(), name);
 
@@ -1139,7 +1085,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         }
         else {
             register_base_entity(name);
-            register_entity_id_equals(name);
             register_entity_cast(name, "Entity");
             register_entity_getset(name, name);
             register_entity_props(name);
@@ -1165,7 +1110,6 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
     };
 
     register_base_entity("Entity");
-    register_entity_id_equals("Entity");
 
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
         if (string_view(type_name) == "Game") {
