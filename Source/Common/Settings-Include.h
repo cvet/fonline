@@ -174,8 +174,6 @@ VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode i
 VARIABLE_SETTING(int32_t, Render, Brightness, 0); // Brightness value
 VARIABLE_SETTING(int32_t, Render, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)
 VARIABLE_SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 to disable)
-FIXED_SETTING(int32_t, Render, FogExtraLength, 0); // Extra fog length
-FIXED_SETTING(int32_t, Render, FogTransitionDuration, 200); // Fog visual transition duration in milliseconds
 FIXED_SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor

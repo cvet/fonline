@@ -71,6 +71,13 @@ void SpritePattern::Finish()
     }
 }
 
+void FogLayer::Dispose() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    Disposed = true;
+}
+
 MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
@@ -141,7 +148,7 @@ MapView::~MapView()
     FO_RUNTIME_VERIFY(_dynamicItems.empty());
     FO_RUNTIME_VERIFY(_processingItems.empty());
     FO_RUNTIME_VERIFY(_spritePatterns.empty());
-    FO_RUNTIME_VERIFY(_fogLayers.empty());
+    FO_RUNTIME_VERIFY(!HasFogLayers());
     FO_RUNTIME_VERIFY(_visibleLightSources.empty());
     FO_RUNTIME_VERIFY(_lightSources.empty());
     FO_RUNTIME_VERIFY(!_rtMap);
@@ -158,19 +165,21 @@ void MapView::OnDestroySelf()
     for (auto& item : _items) {
         item->DestroySelf();
     }
-
     for (auto& pattern : _spritePatterns) {
         pattern->Finish();
+    }
+    for (auto& fog_slot : _fogs) {
+        for (auto& fog : fog_slot) {
+            fog->Disposed = true; // so a script still holding the handle recreates it on the next map
+        }
+        fog_slot.clear();
     }
 
     _mapSprites.InvalidateAll();
     _indoorMaskSprites.InvalidateAll();
     _hexField.reset();
     _viewField.clear();
-    for (auto& fog_layer : _fogLayers) {
-        fog_layer.Fog.Clear();
-    }
-    _fogLayers.clear();
+    _fogs = {};
     _visibleLightSources.clear();
     _lightPoints.clear();
     _lightSoftPoints.clear();
@@ -2547,25 +2556,15 @@ void MapView::DrawMap()
                 _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
 
-            // Other sprites
+            // Other sprites, with fog layers interleaved by their draw order
             _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, GetMapDayColor());
+            DrawSpritesWithFog(draw_area);
             _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
 
-            // Fog
-            if (!_engine->Settings.DisableFog && !_mapperMode && !_fogLayers.empty()) {
+            // Fog layers drawn on top of all sprites (DrawOrderType::Last)
+            if (!_engine->Settings.DisableFog && !_mapperMode && HasFogLayers()) {
                 _engine->OnRenderMap_BeforeFog.Fire(this, draw_area);
-                _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
-                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-
-                for (auto& fog_layer : _fogLayers) {
-                    _engine->SprMngr.DrawPoints(fog_layer.Fog.GetPoints(), RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
-                }
-
-                _engine->SprMngr.GetRtMngr().PopRenderTarget();
-
-                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog.get());
-                _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+                DrawFogSlot(draw_area, DrawOrderType::Last);
                 _engine->OnRenderMap_AfterFog.Fire(this, draw_area);
             }
 
@@ -2635,6 +2634,122 @@ void MapView::DrawMap()
     }
 }
 
+void MapView::DrawSpritesWithFog(const irect32& draw_area)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ucolor day_color = GetMapDayColor();
+
+    if (_engine->Settings.DisableFog || _mapperMode || !HasFogLayers()) {
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, day_color);
+        return;
+    }
+
+    // Fog slots below the main sprite pass (draw order < Ligth) blit first, at ground level
+    for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Ligth); order++) {
+        DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
+    }
+
+    // Walk the main sprite pass [Ligth, Last), blitting each occupied fog slot at its draw order so a
+    // layer is drawn over the sprites of its own order and below the sprites of higher orders
+    DrawOrderType segment_from = DrawOrderType::Ligth;
+
+    for (size_t order = static_cast<size_t>(DrawOrderType::Ligth); order < static_cast<size_t>(DrawOrderType::Last); order++) {
+        if (_fogs[order].empty()) {
+            continue;
+        }
+
+        const DrawOrderType boundary = static_cast<DrawOrderType>(order);
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, boundary, day_color);
+        DrawFogSlot(draw_area, boundary);
+        segment_from = static_cast<DrawOrderType>(order + 1);
+    }
+
+    _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, DrawOrderType::Last, day_color);
+}
+
+void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& fog : _fogs[static_cast<size_t>(draw_order)]) {
+        const auto& fog_points = fog->Shape.GetPoints();
+
+        if (fog_points.empty()) {
+            continue;
+        }
+
+        RenderEffect* fog_effect = fog->CustomFogEffect ? fog->CustomFogEffect.get() : _engine->EffectMngr.Effects.Fog.get();
+
+        if (fog->CustomFlushEffect) {
+            // Custom flush (e.g. base-look fog): rasterize the honest hexagon profile into the light
+            // target, then composite it onto the scene with the custom effect. The effect shapes the
+            // analytic oval, cold tint, drifting mist edge, and distance depth from the fog's own tunable
+            // fields, passed below as script values (fog center + semi-axes in light-target UV, plus knobs).
+            _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
+            _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
+            _engine->SprMngr.DrawPoints(fog_points, RenderPrimitiveType::TriangleStrip, &draw_area, fog_effect);
+
+            _engine->SprMngr.GetRtMngr().PopRenderTarget();
+
+            auto* flush_effect = fog->CustomFlushEffect.get();
+
+            if (flush_effect->IsNeedScriptValueBuf() && fog_points.size() >= 3) {
+                const auto to_target = [&draw_area](const PrimitivePoint& p) -> ipos32 {
+                    ipos32 pos = p.PointPos;
+                    if (p.PointOffset) {
+                        pos += *p.PointOffset;
+                    }
+                    return pos - ipos32 {draw_area.x, draw_area.y};
+                };
+
+                // Index 2 is the first inserted center point of the triangle strip; the ring points fan
+                // around it. Semi-axes are the farthest extent from the center along each axis.
+                const ipos32 center = to_target(fog_points[2]);
+                int32_t semi_x = 0;
+                int32_t semi_y = 0;
+
+                for (const auto& p : fog_points) {
+                    const ipos32 s = to_target(p);
+                    semi_x = std::max(semi_x, std::abs(s.x - center.x));
+                    semi_y = std::max(semi_y, std::abs(s.y - center.y));
+                }
+
+                const auto* rt_tex = _rtLight->GetTexture();
+                const auto rt_w = numeric_cast<float32_t>(rt_tex->Size.width);
+                const auto rt_h = numeric_cast<float32_t>(rt_tex->Size.height);
+                float32_t center_v = numeric_cast<float32_t>(center.y) / rt_h;
+
+                if (rt_tex->FlippedHeight) {
+                    center_v = 1.0f - center_v;
+                }
+
+                // World-anchored noise offset: the origin's absolute world pos in light-target UV. Added to
+                // (TexCoord - center) in the shader it yields each pixel's world position, so the rim noise
+                // is fixed to the world — stable under camera scroll, streaming as the fog moves through it.
+                const float32_t world_x = numeric_cast<float32_t>(fog->OriginWorldPos.x) / rt_w;
+                const float32_t world_y = numeric_cast<float32_t>(fog->OriginWorldPos.y) / rt_h;
+
+                const float32_t values[14] = {numeric_cast<float32_t>(center.x) / rt_w, center_v, //
+                    numeric_cast<float32_t>(semi_x) / rt_w, numeric_cast<float32_t>(semi_y) / rt_h, //
+                    fog->OvalRoundness, fog->EdgeNoise, fog->Depth, fog->ClearRadius, //
+                    numeric_cast<float32_t>(fog->TintColor.comp.r) / 255.0f, numeric_cast<float32_t>(fog->TintColor.comp.g) / 255.0f, numeric_cast<float32_t>(fog->TintColor.comp.b) / 255.0f, //
+                    0.0f, // [2].w reserved
+                    world_x, world_y}; // [3].xy world-anchored noise offset
+                _engine->EffectMngr.SetEffectScriptValues(flush_effect, 0, const_span<float32_t> {values, 14});
+            }
+
+            _rtLight->SetCustomDrawEffect(flush_effect);
+            _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+        }
+        else {
+            // Without a custom flush effect: draw the fog points straight into the scene
+            _engine->SprMngr.DrawPoints(fog_points, RenderPrimitiveType::TriangleStrip, &draw_area, fog_effect);
+        }
+    }
+}
+
 auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -2695,6 +2810,17 @@ void MapView::PrepareFogToDraw()
 {
     FO_STACK_TRACE_ENTRY();
 
+    for (auto& fog_slot : _fogs) {
+        for (auto it = fog_slot.begin(); it != fog_slot.end();) {
+            if ((*it)->Disposed || (*it)->GetRefCount() == 1) {
+                it = fog_slot.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+
     if (_engine->Settings.DisableFog) {
         return;
     }
@@ -2702,9 +2828,7 @@ void MapView::PrepareFogToDraw()
         return;
     }
 
-    FogOfWar::Input input;
-    input.FogExtraLength = _engine->Settings.FogExtraLength;
-    input.FogTransitionDuration = _engine->Settings.FogTransitionDuration;
+    FogShape::Input input;
     input.MapHexWidth = _engine->Settings.MapHexWidth;
     input.MapHexHeight = _engine->Settings.MapHexHeight;
     input.MapSize = _mapSize;
@@ -2715,23 +2839,25 @@ void MapView::PrepareFogToDraw()
         return block_hex;
     };
 
-    for (auto& fog_layer : _fogLayers) {
+    for (auto& fog : _fogs | std::views::join) {
         auto fog_input = input;
-        fog_input.Enabled = fog_layer.Input.Enabled;
-        fog_input.Distance = fog_layer.Input.Distance;
-        fog_input.Radius = fog_layer.Input.Radius;
-        fog_input.OverlayColor = fog_layer.Input.OverlayColor;
-        fog_input.CenterColor = fog_layer.Input.CenterColor;
-        fog_input.TraceMode = fog_layer.Input.TraceMode;
-        fog_input.CheckShootBlocks = fog_layer.Input.CheckShootBlocks;
+        fog_input.FogExtraLength = fog->ExtraLength;
+        fog_input.FogTransitionDuration = fog->TransitionDuration;
+        fog_input.Enabled = fog->Enabled;
+        fog_input.Distance = fog->Distance;
+        fog_input.Radius = fog->Radius;
+        fog_input.OverlayColor = fog->OverlayColor;
+        fog_input.CenterColor = fog->CenterColor;
+        fog_input.TraceMode = fog->Traced ? FogShape::TraceModeType::Overlay : FogShape::TraceModeType::None;
+        fog_input.CheckShootBlocks = fog->CheckShootBlocks;
 
         ipos32 base_draw_offset {};
         ipos32 draw_offset {};
 
-        if (fog_layer.FollowCritter) {
-            const auto* cr = GetCritter(fog_layer.OriginCritterId);
+        if (fog->FollowCritter) {
+            const auto* cr = GetCritter(fog->OriginCritterId);
             if (cr == nullptr) {
-                fog_layer.Fog.Clear();
+                fog->Shape.Clear();
                 continue;
             }
 
@@ -2741,21 +2867,23 @@ void MapView::PrepareFogToDraw()
 
             base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
             draw_offset = base_draw_offset + *cr->GetSpriteOffsetPtr();
+            // Absolute world-pixel position of the origin (camera-independent), incl. the sub-hex sprite
+            // offset for smooth flow; the shader anchors the rim noise to it so it streams as the fog moves.
+            fog->OriginWorldPos = GeometryHelper::GetHexOffset(ipos32 {}, ipos32(fog_input.FogOrigin.BaseHex)) + *cr->GetSpriteOffsetPtr();
         }
         else {
-            if (!fog_layer.Input.FogOrigin.Valid) {
-                fog_layer.Fog.Clear();
-                continue;
-            }
+            fog_input.FogOrigin.Valid = true;
+            fog_input.FogOrigin.BaseHex = fog->OriginHex;
+            fog_input.FogOrigin.LookDistance = fog->Radius;
 
-            fog_input.FogOrigin = fog_layer.Input.FogOrigin;
-            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
+            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog->OriginHex));
             draw_offset = base_draw_offset;
+            fog->OriginWorldPos = GeometryHelper::GetHexOffset(ipos32 {}, ipos32(fog->OriginHex));
         }
 
-        fog_layer.Fog.SetBaseDrawOffset(base_draw_offset);
-        fog_layer.Fog.SetDrawOffset(draw_offset);
-        fog_layer.Fog.Prepare(fog_input);
+        fog->Shape.SetBaseDrawOffset(base_draw_offset);
+        fog->Shape.SetDrawOffset(draw_offset);
+        fog->Shape.Prepare(fog_input);
     }
 }
 
@@ -3737,107 +3865,49 @@ void MapView::RebuildFog()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& fog_layer : _fogLayers) {
-        fog_layer.Fog.RequestRebuild();
+    for (auto& fog : _fogs | std::views::join) {
+        fog->Shape.RequestRebuild();
     }
 }
 
-auto MapView::FindFogLayer(hstring fog_id) noexcept -> FogLayer*
+auto MapView::HasFogLayers() const noexcept -> bool
 {
-    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
-    return it != _fogLayers.end() ? &*it : nullptr;
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::ranges::any_of(_fogs, [](const auto& fog_slot) { return !fog_slot.empty(); });
 }
 
-auto MapView::FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*
-{
-    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
-    return it != _fogLayers.end() ? &*it : nullptr;
-}
-
-void MapView::SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
+auto MapView::AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     if (hex_cr == nullptr || hex_cr->GetMap() != this) {
-        ClearFogOfWar(fog_id);
-        return;
+        throw ScriptException("Fog critter is not a hex critter on this map");
     }
 
-    FogOfWar::Input input;
-    input.Distance = distance;
-    input.Radius = radius;
-    input.OverlayColor = overlay_color;
-    input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
-    input.CheckShootBlocks = check_shoot_blocks;
-    auto* fog_layer = FindFogLayer(fog_id);
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    fog->DrawOrder = draw_order;
+    fog->FollowCritter = true;
+    fog->OriginCritterId = hex_cr->GetId();
+    fog->CustomFlushEffect = custom_flush_effect;
 
-    if (fog_layer == nullptr) {
-        _fogLayers.emplace_back(fog_id);
-        fog_layer = &_fogLayers.back();
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    if (!fog_layer->FollowCritter || fog_layer->OriginCritterId != hex_cr->GetId() || //
-        fog_layer->Input.Enabled != input.Enabled || fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
-        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
-        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
-        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
-        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    fog_layer->Input = input;
-    fog_layer->OriginCritterId = hex_cr->GetId();
-    fog_layer->FollowCritter = true;
+    _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
+    return fog.get();
 }
 
-void MapView::SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
+auto MapView::AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FogOfWar::Input input;
-    input.Distance = distance;
-    input.Radius = radius;
-    input.OverlayColor = overlay_color;
-    input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
-    input.CheckShootBlocks = check_shoot_blocks;
-    input.FogOrigin.Valid = true;
-    input.FogOrigin.BaseHex = hex;
-    input.FogOrigin.LookDistance = radius;
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    fog->DrawOrder = draw_order;
+    fog->FollowCritter = false;
+    fog->OriginHex = hex;
+    fog->CustomFlushEffect = custom_flush_effect;
 
-    auto* fog_layer = FindFogLayer(fog_id);
-
-    if (fog_layer == nullptr) {
-        _fogLayers.emplace_back(fog_id);
-        fog_layer = &_fogLayers.back();
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    if (fog_layer->FollowCritter || fog_layer->OriginCritterId != ident_t {} || fog_layer->Input.Enabled != input.Enabled || //
-        fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
-        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
-        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
-        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
-        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    fog_layer->Input = input;
-    fog_layer->OriginCritterId = {};
-    fog_layer->FollowCritter = false;
-}
-
-void MapView::ClearFogOfWar(hstring fog_id)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (auto* fog_layer = FindFogLayer(fog_id); fog_layer != nullptr) {
-        fog_layer->Fog.Clear();
-        std::erase_if(_fogLayers, [fog_id](const auto& entry) { return entry.Id == fog_id; });
-    }
+    _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
+    return fog.get();
 }
 
 auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8_t* palpha, bool* callback) -> MapSprite*

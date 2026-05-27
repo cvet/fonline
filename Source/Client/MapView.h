@@ -81,6 +81,40 @@ public:
     vector<shared_ptr<Sprite>> Sprites {};
 };
 
+///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
+class FogLayer : public RefCounted<FogLayer>
+{
+public:
+    void Dispose() noexcept;
+
+    // Script-tunable configuration (exported as properties)
+    bool Enabled {true};
+    int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
+    int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
+    int32_t ExtraLength {1}; // Extra look length added to the derived radius
+    int32_t TransitionDuration {150}; // Grow/move/shrink morph duration in ms
+    float32_t OvalRoundness {1.0f}; // 0 = raw hexagon, 1 = full smooth oval
+    float32_t EdgeNoise {0.15f}; // Drifting-mist rim ripple strength
+    float32_t Depth {0.15f}; // Extra darkening with distance past the edge
+    float32_t ClearRadius {0.85f}; // Fraction kept crisp before the edge fade (lower = wider border)
+    ucolor TintColor {10, 13, 20, 255}; // Cold dim tint of the unseen area (rgb used; a ignored)
+    ucolor OverlayColor {}; // Traced-overlay (zone) color
+    ucolor CenterColor {}; // Traced-overlay center color
+    bool Traced {}; // Positive traced overlay (attack/observation zone) vs inverse look fog
+    bool CheckShootBlocks {true};
+    mpos OriginHex {}; // Origin for a hex-anchored fog (ignored when following a critter)
+    bool Disposed {}; // Script-readable status: true once Dispose() ran or the owning map was destroyed (recreate then)
+
+    // Engine-internal (not exported to script)
+    DrawOrderType DrawOrder {};
+    bool FollowCritter {};
+    ident_t OriginCritterId {};
+    ipos32 OriginWorldPos {}; // Origin's absolute world-pixel pos (camera-independent); anchors edge noise to the world so it flows as the fog moves
+    raw_ptr<RenderEffect> CustomFogEffect {}; // Rasterizes the fog points; null = engine default
+    raw_ptr<RenderEffect> CustomFlushEffect {}; // Flushes the fog to the map; null = engine default
+    FogShape Shape {};
+};
+
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {
 public:
@@ -143,20 +177,6 @@ public:
         vector<uint16_t> ControlSteps {};
     };
 
-    struct FogLayer
-    {
-        explicit FogLayer(hstring id) noexcept :
-            Id {id}
-        {
-        }
-
-        hstring Id {};
-        FogOfWar Fog {};
-        FogOfWar::Input Input {};
-        ident_t OriginCritterId {};
-        bool FollowCritter {};
-    };
-
     MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
@@ -209,9 +229,8 @@ public:
 
     void RebuildMap();
     void RebuildFog();
-    void SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
-    void SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
-    void ClearFogOfWar(hstring fog_id);
+    auto AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
+    auto AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
     auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
@@ -330,10 +349,10 @@ private:
     void AddSpriteToChain(Field& field, MapSprite* mspr);
     void InvalidateSpriteChain(Field& field);
 
-    auto FindFogLayer(hstring fog_id) noexcept -> FogLayer*;
-    auto FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*;
-
+    auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
+    void DrawSpritesWithFog(const irect32& draw_area);
+    void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
 
     void UpdateTransparentEgg(TransparentEggSlot slot);
     void UpdateTransparentEggs();
@@ -416,7 +435,8 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    vector<FogLayer> _fogLayers {};
+    static constexpr size_t FOG_SLOT_COUNT = static_cast<size_t>(DrawOrderType::Last) + 1;
+    array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};

@@ -771,25 +771,23 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, FO_NULLABLE CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, FO_NULLABLE CritterView* cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
-    self->SetFogOfWar(fogId, cr, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
+    RenderEffect* customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype) : nullptr;
+
+    return self->AddFog(cr, drawOrder, customFlushEffect);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, mpos hex, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, mpos hex, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    self->SetFogOfWar(fogId, hex, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
-}
+    RenderEffect* customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype) : nullptr;
 
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ClearFogOfWar(MapView* self, hstring fogId)
-{
-    self->ClearFogOfWar(fogId);
+    return self->AddFog(hex, drawOrder, customFlushEffect);
 }
 
 ///@ ExportMethod

@@ -501,6 +501,8 @@ public:
     auto operator=(RefCounted&&) noexcept = delete;
     ~RefCounted() = default;
 
+    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(std::memory_order_relaxed); }
+
     void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
 
     void Release() const noexcept

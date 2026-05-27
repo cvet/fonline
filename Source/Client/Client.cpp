@@ -2619,7 +2619,7 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
             throw ScriptException("Negative effect subtype");
         }
 
-        OffscreenEffects.resize(numeric_cast<size_t>(effectSubtype) + 1);
+        OffscreenEffects.resize(std::max(OffscreenEffects.size(), numeric_cast<size_t>(effectSubtype) + 1));
         OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
     }
 }
