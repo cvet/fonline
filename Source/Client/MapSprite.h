@@ -176,7 +176,7 @@ public:
 
     [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
     [[nodiscard]] auto GetActiveSprites() noexcept -> const vector<unique_ptr<MapSprite>>& { return _activeSprites; }
-    [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const noexcept -> pair<uint32_t, uint32_t>;
+    [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8_t* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*;
     void InvalidateAll() noexcept;

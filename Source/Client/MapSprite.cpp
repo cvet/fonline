@@ -382,7 +382,7 @@ void MapSpriteList::SortIfNeeded() noexcept
     _orderBroken = false;
 }
 
-auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const noexcept -> pair<uint32_t, uint32_t>
+auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
