@@ -54,6 +54,16 @@ Observed wiring patterns include:
 
 Read the CMake stage before documenting a target as available. Availability can depend on platform and project options.
 
+## Client Startup Settings Hook
+
+Applications that construct a `ClientEngine` call the project-provided `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)` immediately before client construction:
+
+- `ClientApp.cpp` calls it for the standalone client with `clientIndex = 1` and `embedded = false`.
+- `ServerApp.cpp` calls it for each GUI embedded client after copying app settings into a client-owned `GlobalSettings`.
+- `ServerHeadlessApp.cpp` calls it for each headless embedded client after copying app settings into a client-owned `GlobalSettings`.
+
+Server-hosted embedded clients keep separate settings objects alive for the lifetime of their `ClientEngine`. This lets an embedding project adjust per-client settings such as auth identity, AI-control ports, diagnostics, or transport toggles without mutating the server's `App->Settings` or other already-created clients. The hook is for startup-time configuration only; after `ClientEngine` construction, normal client/server authority and script-visible settings rules still apply.
+
 ## Which entry point should I inspect?
 
 - Client startup or host/runtime behavior: `ClientApp.cpp`, `ClientLib.cpp`, [ClientUpdater.md](ClientUpdater.md).

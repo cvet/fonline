@@ -82,6 +82,22 @@ Hand-authored declarations live in `Source/Common/MetadataRegistration.h`:
 
 `Source/Common/GenericCode-Template.cpp` is the template for generated common code.
 
+## Engine hook tags
+
+Project/native extension code can mark selected C++ functions with `///@ EngineHook`. `BuildTools/codegen.py` validates hook names and emits no-op stubs for hooks that the embedding project does not implement. Current hook names recognized by the generator are:
+
+- `ApplicationInitHook(AppInitFlags, GlobalSettings&)`
+- `ServerInitHook(ServerEngine*)`
+- `ClientInitHook(ClientEngine*)`
+- `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)`
+- `ConfigSectionParseHook(...)`
+- `ConfigEntryParseHook(...)`
+- `SetupBakersHook(...)`
+- `CheckCritterVisibilityHook(...)`
+- `CheckItemVisibilityHook(...)`
+
+`ClientStartupSettingsHook` is called by app entry points immediately before constructing a client engine. Use it for project-owned startup setting adjustments; do not use it as a gameplay authority bypass.
+
 ## Dynamic metadata
 
 `Source/Common/MetadataRegistration.cpp` implements `RegisterDynamicMetadata()`. It reads binary metadata sections and dispatches them into typed registration steps such as:

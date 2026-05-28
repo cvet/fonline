@@ -3491,14 +3491,15 @@ class ItemView : Grid
 
     Item? GetItem(int cellIndex)
     {
-        return _Items[cellIndex];
+        Item? item = _Items[cellIndex];
+        return item != null && !item.IsDestroyed ? item : null;
     }
 
     bool HasItemId(ident itemId)
     {
         for (int i = 0; i < _Items.length(); i++) {
             Item? item = _Items[i];
-            if (item != null && item.Id == itemId) {
+            if (item != null && !item.IsDestroyed && item.Id == itemId) {
                 return true;
             }
         }
@@ -3580,7 +3581,7 @@ class ItemView : Grid
         for (int i = 0; i < newItems.length() && !isChanged; i++) {
             Item? newItem = newItems[i];
             Item? oldItem = _Items[i];
-            isChanged = newItem != oldItem;
+            isChanged = !AreSameItemHandles(newItem, oldItem);
         }
 
         if (isChanged) {
@@ -3602,6 +3603,19 @@ class ItemView : Grid
     void SetUseSorting(bool enable)
     {
         _UseSorting = enable;
+    }
+
+    bool AreSameItemHandles(Item? first, Item? second)
+    {
+        if (first == null || second == null) {
+            return first == null && second == null;
+        }
+
+        if (first.IsDestroyed || second.IsDestroyed) {
+            return false;
+        }
+
+        return first.Id == second.Id;
     }
 };
 

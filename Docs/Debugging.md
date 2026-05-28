@@ -75,7 +75,7 @@ The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, 
 | `SetScriptStackTraceProvider(p)` | Install the script-frame provider. Pass an empty function to clear. |
 | `HasScriptStackTraceProvider()` | Test hook to confirm a provider is registered. |
 
-`BaseEngineException` captures `GetStackTrace()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` calls `SafeWriteStackTrace` with the trace captured by `SetCrashStackTrace` (invoked from `backward.hpp`'s signal handler).
+`BaseEngineException` captures `GetStackTrace()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` writes `FATAL ERROR!`, a `Crash reason:` line with the native SEH exception / signal / runtime termination code captured by `backward.hpp`, then calls `SafeWriteStackTrace` with the trace captured by `SetCrashStackTrace`.
 
 ### Exception reporting and deferred formatting
 

@@ -30,6 +30,9 @@
 
 extern auto GetCrashStream() noexcept -> std::ostream&; // (FOnline Patch)
 extern void SetCrashStackTrace() noexcept; // (FOnline Patch)
+extern void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address) noexcept; // (FOnline Patch)
+extern void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) noexcept; // (FOnline Patch)
+extern void SetCrashTerminationInfo(const char* reason) noexcept; // (FOnline Patch)
 
 #if defined(BACKWARD_CXX11)
 #elif defined(BACKWARD_CXX98)
@@ -4264,7 +4267,9 @@ public:
 
   bool loaded() const { return _loaded; }
 
-  static void handleSignal(int, siginfo_t *info, void *_ctx) {
+  static void handleSignal(int signo, siginfo_t *info, void *_ctx) {
+    SetCrashSignalInfo(signo, info != nullptr ? info->si_code : 0,
+                       info != nullptr ? info->si_addr : nullptr); // (FOnline Patch)
     SetCrashStackTrace(); // (FOnline Patch)
 
     ucontext_t *uctx = static_cast<ucontext_t *>(_ctx);
@@ -4447,11 +4452,13 @@ private:
   }
 
   static inline void terminator() {
+    SetCrashTerminationInfo("std::terminate"); // (FOnline Patch)
     crash_handler(signal_skip_recs);
     abort();
   }
 
-  static inline void signal_handler(int) {
+  static inline void signal_handler(int signo) {
+    SetCrashSignalInfo(signo, 0, nullptr); // (FOnline Patch)
     crash_handler(signal_skip_recs);
     abort();
   }
@@ -4461,14 +4468,23 @@ private:
                                                        const wchar_t *,
                                                        unsigned int,
                                                        uintptr_t) {
+    SetCrashTerminationInfo("invalid parameter"); // (FOnline Patch)
     crash_handler(signal_skip_recs);
     abort();
   }
 
   NOINLINE static LONG WINAPI crash_handler(EXCEPTION_POINTERS *info) {
+    if (info != nullptr && info->ExceptionRecord != nullptr) {
+      SetCrashSehInfo(static_cast<uint32_t>(info->ExceptionRecord->ExceptionCode),
+                      static_cast<uint32_t>(info->ExceptionRecord->ExceptionFlags),
+                      info->ExceptionRecord->ExceptionAddress); // (FOnline Patch)
+    } else {
+      SetCrashTerminationInfo("SEH exception without EXCEPTION_RECORD"); // (FOnline Patch)
+    }
+
     // The exception info supplies a trace from exactly where the issue was,
     // no need to skip records
-    crash_handler(0, info->ContextRecord);
+    crash_handler(0, info != nullptr ? info->ContextRecord : nullptr);
     return EXCEPTION_CONTINUE_SEARCH;
   }
 

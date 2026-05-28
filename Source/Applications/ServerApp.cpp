@@ -45,6 +45,10 @@
 
 FO_USING_NAMESPACE();
 
+FO_BEGIN_NAMESPACE
+extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+FO_END_NAMESPACE
+
 enum class WindowLayoutMode : uint8_t
 {
     SingleTab, // only the active virtual window is shown; tabs switch which one
@@ -71,6 +75,7 @@ int main(int argc, char** argv) // Handled by SDL
         App->MainWindow.SetSize({App->Settings.ServerWidth, App->Settings.ServerHeight});
 
         refcount_ptr<ServerEngine> server;
+        vector<unique_ptr<GlobalSettings>> client_settings;
         vector<refcount_ptr<ClientEngine>> clients;
         vector<AppWindow*> client_windows;
         bool auto_start_triggered = false;
@@ -129,16 +134,15 @@ int main(int argc, char** argv) // Handled by SDL
                 auto* window = App->CreateChildWindow(client_size, title);
                 FO_RUNTIME_ASSERT(window);
 
-                const auto saved_screen_w = App->Settings.ScreenWidth;
-                const auto saved_screen_h = App->Settings.ScreenHeight;
-                App->Settings.ScreenWidth = client_size.width;
-                App->Settings.ScreenHeight = client_size.height;
-                auto restore_settings = scope_exit([&]() noexcept {
-                    App->Settings.ScreenWidth = saved_screen_w;
-                    App->Settings.ScreenHeight = saved_screen_h;
-                });
+                const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
+                auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+                settings->CopyFrom(App->Settings);
+                ClientStartupSettingsHook(*settings, client_index, true);
+                settings->ScreenWidth = client_size.width;
+                settings->ScreenHeight = client_size.height;
 
-                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), *window);
+                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(*settings, GetClientResources(*settings), *window);
+                client_settings.emplace_back(std::move(settings));
                 clients.emplace_back(std::move(client));
                 client_windows.emplace_back(window);
                 App->SetActiveWindow(window);
@@ -171,7 +175,7 @@ int main(int argc, char** argv) // Handled by SDL
                 start_server();
             }
 
-            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer != 0 && !start_client_triggered) {
+            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
                 WriteLog("Auto start embedded client(s): {}", App->Settings.AutoStartClientOnServer);
 
@@ -680,6 +684,8 @@ int main(int argc, char** argv) // Handled by SDL
                     client->Shutdown();
                 }
 
+                client_settings.clear();
+
                 for (auto* window : std::exchange(client_windows, {})) {
                     if (window != nullptr) {
                         App->DestroyChildWindow(window);
@@ -696,6 +702,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         FO_RUNTIME_ASSERT(!server);
         FO_RUNTIME_ASSERT(clients.empty());
+        FO_RUNTIME_ASSERT(client_settings.empty());
         ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {

@@ -47,6 +47,10 @@
 
 FO_USING_NAMESPACE();
 
+FO_BEGIN_NAMESPACE
+extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+FO_END_NAMESPACE
+
 struct ClientAppData
 {
     refcount_ptr<ClientEngine> Client {};
@@ -336,6 +340,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
                 }
 
+                ClientStartupSettingsHook(App->Settings, 1, false);
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), App->MainWindow);
 #if FO_HEADLESS_APP
                 Data->Client->Connect();
