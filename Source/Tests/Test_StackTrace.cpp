@@ -75,6 +75,7 @@ TEST_CASE("StackTrace")
 {
     // Make sure no leaked provider from a prior test pollutes the suite.
     SetScriptStackTraceProvider({});
+    ClearResolvedStackTraceCache();
 
     SECTION("ProviderRegistrationIsObservable")
     {
@@ -298,6 +299,30 @@ TEST_CASE("StackTrace")
         CHECK(formatted_clean.find("truncated") == std::string::npos);
     }
 
+    SECTION("ResolvedNativeFramesAreCachedGlobally")
+    {
+        StackTraceData st {};
+        st.NativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
+        st.NativeFrames[1] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xBABE));
+        st.NativeFrames[2] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
+        st.NativeFrameCount = 3;
+
+        REQUIRE(GetResolvedStackTraceCacheSize() == 0);
+
+        const auto resolved_first = ResolveStackTrace(st);
+
+        REQUIRE(resolved_first.size() == 3);
+        CHECK(GetResolvedStackTraceCacheSize() == 2);
+
+        const auto resolved_second = ResolveStackTrace(st);
+
+        REQUIRE(resolved_second.size() == 3);
+        CHECK(GetResolvedStackTraceCacheSize() == 2);
+        CHECK(resolved_second[0].Function == resolved_first[0].Function);
+        CHECK(resolved_second[1].Function == resolved_first[1].Function);
+        CHECK(resolved_second[2].Function == resolved_first[2].Function);
+    }
+
     SECTION("CaptureNativeStackFramesReportsNoTruncationForShallowStack")
     {
         // A normal capture inside a unit test thread is well below the 128-frame cap,
@@ -448,6 +473,7 @@ TEST_CASE("StackTrace")
     }
 
     SetScriptStackTraceProvider({});
+    ClearResolvedStackTraceCache();
 }
 
 FO_END_NAMESPACE

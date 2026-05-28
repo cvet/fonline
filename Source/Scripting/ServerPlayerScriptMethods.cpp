@@ -84,6 +84,31 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* se
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (cr->GetMapId() == ident_t {}) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    ident_t player_map_id {};
+
+    if (const Critter* controlled_cr = self->GetControlledCritter(); controlled_cr != nullptr) {
+        player_map_id = controlled_cr->GetMapId();
+    }
+    else if (const ViewMapContext* view_map = self->GetViewMap(); view_map != nullptr) {
+        player_map_id = view_map->MapId;
+    }
+
+    if (player_map_id != cr->GetMapId()) {
+        throw ScriptException("Critter is not on player's current map");
+    }
+
+    self->Send_Moving(cr);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 {
     if (self->GetControlledCritter() != nullptr) {

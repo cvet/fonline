@@ -52,6 +52,7 @@ struct StackTraceFrame
 };
 
 inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
+inline constexpr size_t STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES = 4096;
 
 struct ScriptStackTraceLayer
 {
@@ -90,6 +91,8 @@ extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexc
 extern auto HasScriptStackTraceProvider() noexcept -> bool;
 extern auto GetStackTrace() noexcept -> StackTraceData;
 extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
+extern void ClearResolvedStackTraceCache() noexcept;
+extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t;
 extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;
 extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>;
 extern auto FormatStackTrace(const StackTraceData& st) -> std::string;

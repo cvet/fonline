@@ -804,6 +804,23 @@ auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32
     return GetHexOffset(ipos32(from_hex), ipos32(to_hex));
 }
 
+auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const ipos32 world_pos = GetHexPos(hex) + ipos32(hex_offset);
+    ipos32 normalized_offset;
+    const ipos32 normalized_raw_hex = GetHexPosCoord(world_pos, &normalized_offset);
+
+    if (!map_size.is_valid_pos(normalized_raw_hex)) {
+        return false;
+    }
+
+    hex = map_size.from_raw_pos(normalized_raw_hex);
+    hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
+    return true;
+}
+
 auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();

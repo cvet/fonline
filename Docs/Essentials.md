@@ -83,7 +83,7 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 
 ### Diagnostics and failure handling
 
-`BaseLogging.*` and `Logging.*` provide the logging foundation. `StackTrace.*` captures and formats native/script stack information, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
+`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
 
 ### Memory, pointers, and lifetime utilities
 

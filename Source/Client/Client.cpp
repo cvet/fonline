@@ -2406,9 +2406,14 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
         return;
     }
 
+    if (cr->IsMoving()) {
+        cr->SynchronizeMoving();
+    }
+
     const auto prev_moving = cr->IsMoving();
 
     cr->StopMoving();
+    cr->NormalizeHexOffset();
 
     bool try_move = false;
     mpos hex;
@@ -2416,7 +2421,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
     vector<mdir> steps;
     vector<uint16_t> control_steps;
 
-    if (speed != 0 && cr->IsAlive()) {
+    if (speed != 0) {
         if (pos_or_dir.index() == 0) {
             hex = std::get<0>(std::get<0>(pos_or_dir));
             const auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));

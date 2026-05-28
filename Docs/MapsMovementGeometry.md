@@ -65,6 +65,7 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 `GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:
 
 - map hex/tile to projected screen/map coordinate conversion: `GetHexPos()`, `GetHexPosCoord()`, `GetHexOffset()`;
+- hex/offset canonicalization: `NormalizeHexOffset()` rewrites a projected point to the nearest in-bounds hex plus a small local offset;
 - axial-coordinate helpers: `GetHexAxialCoord()`, `GetAxialHexes()`;
 - distance and direction: `GetDistance()`, `GetHexDir()`, `GetDirAngle()`, angle-difference helpers;
 - radius and line/circle checks: `HexesInRadius()`, `IntersectCircleLine()`;
@@ -191,6 +192,8 @@ Key operations:
 - sanity check: `ValidateRuntimeState()`.
 
 Movement is therefore a reusable time-based plan, not just a list of positions. Client prediction, server correction, and script-visible movement data should all preserve that distinction.
+
+Server and client runtime processing keep `MovingContext` active regardless of `CritterCondition`. Game scripts own condition-based movement permissions, so a game can represent knockout falls, dead-body slides, or custom state movement while still relying on the same path, offset, and completion state machinery. Attached critters are still stopped by runtime processing because attachment is a transport/ownership relationship rather than a critter condition.
 
 ## Map loading
 

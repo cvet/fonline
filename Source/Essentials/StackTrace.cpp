@@ -32,7 +32,6 @@
 //
 
 #include "StackTrace.h"
-#include "GlobalData.h"
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
@@ -52,87 +51,187 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ResolvedNativeFrameCacheEntry
+{
+    StackTraceFrame Frame {};
+    uintptr_t FunctionKey {};
+};
+
 struct StackTraceState
 {
     std::mutex ProviderLocker {};
     ScriptStackTraceProvider Provider {};
+    std::mutex ResolvedNativeFramesLocker {};
+    std::unordered_map<uintptr_t, ResolvedNativeFrameCacheEntry> ResolvedNativeFrames {};
+    std::deque<uintptr_t> ResolvedNativeFrameOrder {};
 };
 
-static auto GetStackTraceState() noexcept -> StackTraceState&
-{
-    static StackTraceState state;
-    return state;
-}
+static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
+static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t to, std::vector<StackTraceFrame>& out) noexcept;
+static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t;
+static auto SameFrameFunction(void* a, void* b) noexcept -> bool;
+static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t;
+static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFrameCacheEntry;
+#if HAS_NATIVE_TRACE
+static auto ResolveNativeFrame(void* addr, uint32_t index, std::optional<backward::TraceResolver>& resolver) -> ResolvedNativeFrameCacheEntry;
+static auto ResolveNativeFrameUncached(void* addr, uint32_t index, backward::TraceResolver& resolver) noexcept -> ResolvedNativeFrameCacheEntry;
+#else
+static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry;
+#endif
+static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<ResolvedNativeFrameCacheEntry>;
+static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFrameCacheEntry& entry) noexcept;
+static auto MakeNativeAddressCacheEntry(void* addr) noexcept -> ResolvedNativeFrameCacheEntry;
+static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame;
+static auto MakeNativeFunctionKey(void* addr, std::string_view name) noexcept -> uintptr_t;
+static auto MakeNativeAddressKey(void* addr) noexcept -> uintptr_t;
+static auto IsLowNativeAddress(void* addr) noexcept -> bool;
+static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool;
+static void TrimInPlace(std::string& s) noexcept;
+static auto GetStackTraceState() noexcept -> StackTraceState&;
 
-static auto IsLowNativeAddress(void* addr) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    // Unit tests synthesize native frames with small integer addresses. These are not
-    // userspace instruction pointers on supported native platforms, and POSIX symbol
-    // resolvers can be extremely slow or return the same "??" symbol for all of them.
-    return reinterpret_cast<uintptr_t>(addr) < 0x10000U;
-}
-
-static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return s.empty() || s == "??" || s == "???" || s == "??:0";
-}
-
-static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    StackTraceFrame frame;
-    frame.Type = StackTraceFrame::FrameType::Native;
-
-    char hex_buf[32];
-    (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
-    frame.Function = hex_buf;
-
-    return frame;
-}
-
-extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept
+extern auto GetStackTrace() noexcept -> StackTraceData
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto& state = GetStackTraceState();
-    std::scoped_lock locker(state.ProviderLocker);
-    state.Provider = std::move(provider);
-}
+    StackTraceData st;
 
-extern auto HasScriptStackTraceProvider() noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
+    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 1);
 
-    auto& state = GetStackTraceState();
-    std::scoped_lock locker(state.ProviderLocker);
-    return !!state.Provider;
-}
+    try {
+        std::vector<ScriptStackTraceLayer> script_layers;
+        CollectScriptLayers(script_layers);
 
-static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ScriptStackTraceProvider provider;
-
-    {
-        auto& state = GetStackTraceState();
-        std::scoped_lock locker(state.ProviderLocker);
-        provider = state.Provider;
-    }
-
-    if (provider) {
-        try {
-            provider(out_layers);
-        }
-        catch (...) {
-            BreakIntoDebugger();
+        if (!script_layers.empty()) {
+            st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(script_layers));
         }
     }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+
+    return st;
+}
+
+extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    std::vector<StackTraceFrame> frames;
+
+    if (!st.ScriptLayers || st.ScriptLayers->empty()) {
+        frames.reserve(st.NativeFrameCount);
+        ResolveNativeRange(st, 0, st.NativeFrameCount, frames);
+        return frames;
+    }
+
+    const auto& layers = *st.ScriptLayers;
+
+    size_t reserve_count = st.NativeFrameCount;
+
+    for (const auto& layer : layers) {
+        reserve_count += layer.ScriptFrames.size();
+    }
+
+    frames.reserve(reserve_count);
+
+    uint32_t prev_anchor = 0;
+
+    for (const auto& layer : layers) {
+        const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
+
+        if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
+            ResolveNativeRange(st, prev_anchor, anchor, frames);
+            prev_anchor = anchor;
+        }
+
+        for (const auto& frame : layer.ScriptFrames) {
+            frames.push_back(frame);
+        }
+    }
+
+    if (prev_anchor < st.NativeFrameCount) {
+        ResolveNativeRange(st, prev_anchor, st.NativeFrameCount, frames);
+    }
+
+    return frames;
+}
+
+extern auto FormatStackTrace(const StackTraceData& st) -> std::string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    std::ostringstream ss;
+    ss << "Stack trace (most recent call first";
+
+    if (st.NativeTruncated) {
+        ss << ", truncated at " << STACK_TRACE_MAX_NATIVE_FRAMES << " frames";
+    }
+
+    ss << "):";
+
+    for (const auto& frame : ResolveStackTrace(st)) {
+        ss << "\n- [" << (frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native") << "] " << frame.Function;
+
+        if (!frame.File.empty()) {
+            std::string_view file_name {frame.File};
+
+            if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                file_name = file_name.substr(pos + 1);
+            }
+
+            ss << " (" << file_name << " line " << frame.Line << ")";
+        }
+    }
+
+    return ss.str();
+}
+
+extern auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!st.Origin.has_value()) {
+        return "Catched at: " + FormatStackTrace(st.Catched);
+    }
+
+    const auto origin_formatted = FormatStackTrace(*st.Origin);
+    const auto catched_st = FormatStackTrace(st.Catched);
+
+    // Skip 'Stack trace (most recent ...'
+    auto pos = catched_st.find('\n');
+
+    if (pos == std::string::npos) {
+        return origin_formatted;
+    }
+
+    // Find stack traces intersection
+    pos = origin_formatted.find(catched_st.substr(pos + 1));
+
+    if (pos == std::string::npos) {
+        return origin_formatted;
+    }
+
+    // Insert at end of line
+    pos = origin_formatted.find('\n', pos);
+    return origin_formatted.substr(0, pos).append(" <- Catched here").append(pos != std::string::npos ? origin_formatted.substr(pos) : "");
+}
+
+extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto resolved = ResolveStackTrace(GetStackTrace());
+
+        if (deep < resolved.size()) {
+            return resolved[deep];
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+
+    return std::nullopt;
 }
 
 extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
@@ -181,27 +280,80 @@ extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FR
 #endif
 }
 
-extern auto GetStackTrace() noexcept -> StackTraceData
+extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    StackTraceData st;
+    StackTraceState& state = GetStackTraceState();
+    std::scoped_lock locker {state.ProviderLocker};
 
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 1);
+    state.Provider = std::move(provider);
+}
+
+extern auto HasScriptStackTraceProvider() noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    StackTraceState& state = GetStackTraceState();
+    std::scoped_lock locker {state.ProviderLocker};
+
+    return !!state.Provider;
+}
+
+extern void ClearResolvedStackTraceCache() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        std::vector<ScriptStackTraceLayer> script_layers;
-        CollectScriptLayers(script_layers);
+        StackTraceState& state = GetStackTraceState();
+        std::scoped_lock locker {state.ResolvedNativeFramesLocker};
 
-        if (!script_layers.empty()) {
-            st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(script_layers));
-        }
+        state.ResolvedNativeFrames.clear();
+        state.ResolvedNativeFrameOrder.clear();
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        StackTraceState& state = GetStackTraceState();
+        std::scoped_lock locker {state.ResolvedNativeFramesLocker};
+
+        return state.ResolvedNativeFrames.size();
     }
     catch (...) {
         BreakIntoDebugger();
     }
 
-    return st;
+    return 0;
+}
+
+static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ScriptStackTraceProvider provider;
+
+    {
+        StackTraceState& state = GetStackTraceState();
+        std::scoped_lock locker {state.ProviderLocker};
+
+        provider = state.Provider;
+    }
+
+    if (provider) {
+        try {
+            provider(out_layers);
+        }
+        catch (...) {
+            BreakIntoDebugger();
+        }
+    }
 }
 
 static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t to, std::vector<StackTraceFrame>& out) noexcept
@@ -213,19 +365,8 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
     }
 
 #if HAS_NATIVE_TRACE
-    const auto trim_in_place = [](std::string& s) {
-        const auto first = s.find_first_not_of(" \t\r\n");
-        if (first == std::string::npos) {
-            s.clear();
-            return;
-        }
-        const auto last = s.find_last_not_of(" \t\r\n");
-        s.erase(last + 1);
-        s.erase(0, first);
-    };
-
     try {
-        backward::TraceResolver resolver;
+        std::optional<backward::TraceResolver> resolver;
 
         for (uint32_t i = from; i < to; i++) {
             void* addr = st.NativeFrames[i];
@@ -234,32 +375,7 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
                 continue;
             }
 
-            if (IsLowNativeAddress(addr)) {
-                out.emplace_back(MakeNativeAddressFrame(addr));
-                continue;
-            }
-
-            backward::ResolvedTrace resolved = resolver.resolve(backward::Trace(addr, i));
-
-            StackTraceFrame frame;
-            frame.Type = StackTraceFrame::FrameType::Native;
-            frame.Function = resolved.source.function.empty() ? resolved.object_function : resolved.source.function;
-            frame.File = resolved.source.filename;
-            frame.Line = resolved.source.line;
-
-            trim_in_place(frame.Function);
-            trim_in_place(frame.File);
-
-            if (IsUnresolvedNativeName(frame.Function)) {
-                frame = MakeNativeAddressFrame(addr);
-            }
-
-            if (IsUnresolvedNativeName(frame.File)) {
-                frame.File.clear();
-                frame.Line = 0;
-            }
-
-            out.emplace_back(std::move(frame));
+            out.emplace_back(ResolveNativeFrame(addr, i, resolver).Frame);
         }
     }
     catch (...) {
@@ -267,57 +383,21 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
     }
 
 #else
-    (void)st;
-    (void)out;
-#endif
-}
-
-static auto ResolveFunctionBase(void* addr) noexcept -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (IsLowNativeAddress(addr)) {
-        return addr;
-    }
-
-#if HAS_NATIVE_TRACE
     try {
-        backward::TraceResolver resolver;
-        const auto resolved = resolver.resolve(backward::Trace(addr, 0));
-        const auto& name = !resolved.source.function.empty() ? resolved.source.function : resolved.object_function;
+        for (uint32_t i = from; i < to; i++) {
+            void* addr = st.NativeFrames[i];
 
-        if (IsUnresolvedNativeName(name)) {
-            return addr;
+            if (addr == nullptr) {
+                continue;
+            }
+
+            out.emplace_back(ResolveNativeFrame(addr, i).Frame);
         }
-
-        // backward stores the function entry address in `object_base + relative offset` form
-        // on POSIX, but on Windows we approximate via the resolved.addr field which points
-        // to the IP back; for matching we collapse all IPs that resolve to the same name
-        // into a single key by hashing the function name.
-        size_t h = std::hash<std::string> {}(name);
-        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
     catch (...) {
-        return addr;
+        BreakIntoDebugger();
     }
-#else
-    return addr;
 #endif
-}
-
-static auto SameFrameFunction(void* a, void* b) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (a == b) {
-        return true;
-    }
-
-    if (a == nullptr || b == nullptr) {
-        return false;
-    }
-
-    return ResolveFunctionBase(a) == ResolveFunctionBase(b);
 }
 
 static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
@@ -357,126 +437,274 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
     return anchor;
 }
 
-extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>
+static auto SameFrameFunction(void* a, void* b) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    std::vector<StackTraceFrame> frames;
-
-    if (!st.ScriptLayers || st.ScriptLayers->empty()) {
-        frames.reserve(st.NativeFrameCount);
-        ResolveNativeRange(st, 0, st.NativeFrameCount, frames);
-        return frames;
+    if (a == b) {
+        return true;
     }
 
-    const auto& layers = *st.ScriptLayers;
-
-    size_t reserve_count = st.NativeFrameCount;
-
-    for (const auto& layer : layers) {
-        reserve_count += layer.ScriptFrames.size();
+    if (a == nullptr || b == nullptr) {
+        return false;
     }
 
-    frames.reserve(reserve_count);
-
-    uint32_t prev_anchor = 0;
-
-    for (const auto& layer : layers) {
-        const uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
-
-        if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
-            ResolveNativeRange(st, prev_anchor, anchor, frames);
-            prev_anchor = anchor;
-        }
-
-        for (const auto& frame : layer.ScriptFrames) {
-            frames.push_back(frame);
-        }
-    }
-
-    if (prev_anchor < st.NativeFrameCount) {
-        ResolveNativeRange(st, prev_anchor, st.NativeFrameCount, frames);
-    }
-
-    return frames;
+    return ResolveFunctionKey(a) == ResolveFunctionKey(b);
 }
 
-extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTraceFrame>
+static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (IsLowNativeAddress(addr)) {
+        return MakeNativeAddressKey(addr);
+    }
+
+    try {
+        // backward stores the function entry address in `object_base + relative offset` form
+        // on POSIX, but on Windows we approximate by collapsing all IPs that resolve to the
+        // same symbol name into a single key.
+        return ResolveNativeFrame(addr, 0).FunctionKey;
+    }
+    catch (...) {
+        return MakeNativeAddressKey(addr);
+    }
+}
+
+static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFrameCacheEntry
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto cached = TryGetResolvedNativeFrameFromCache(addr);
+
+    if (cached.has_value()) {
+        return cached.value();
+    }
+
+    if (IsLowNativeAddress(addr)) {
+        ResolvedNativeFrameCacheEntry entry = MakeNativeAddressCacheEntry(addr);
+        StoreResolvedNativeFrameInCache(addr, entry);
+        return entry;
+    }
+
+#if HAS_NATIVE_TRACE
+    backward::TraceResolver resolver;
+    ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index, resolver);
+#else
+    ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index);
+#endif
+    StoreResolvedNativeFrameInCache(addr, entry);
+    return entry;
+}
+
+#if HAS_NATIVE_TRACE
+static auto ResolveNativeFrame(void* addr, uint32_t index, std::optional<backward::TraceResolver>& resolver) -> ResolvedNativeFrameCacheEntry
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto cached = TryGetResolvedNativeFrameFromCache(addr);
+
+    if (cached.has_value()) {
+        return cached.value();
+    }
+
+    if (IsLowNativeAddress(addr)) {
+        ResolvedNativeFrameCacheEntry entry = MakeNativeAddressCacheEntry(addr);
+        StoreResolvedNativeFrameInCache(addr, entry);
+        return entry;
+    }
+
+    if (!resolver.has_value()) {
+        resolver.emplace();
+    }
+
+    ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index, resolver.value());
+    StoreResolvedNativeFrameInCache(addr, entry);
+    return entry;
+}
+#endif
+
+#if HAS_NATIVE_TRACE
+static auto ResolveNativeFrameUncached(void* addr, uint32_t index, backward::TraceResolver& resolver) noexcept -> ResolvedNativeFrameCacheEntry
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (IsLowNativeAddress(addr)) {
+        return MakeNativeAddressCacheEntry(addr);
+    }
+
+    try {
+        backward::ResolvedTrace resolved = resolver.resolve(backward::Trace(addr, index));
+
+        StackTraceFrame frame;
+        frame.Type = StackTraceFrame::FrameType::Native;
+        frame.Function = resolved.source.function.empty() ? resolved.object_function : resolved.source.function;
+        frame.File = resolved.source.filename;
+        frame.Line = resolved.source.line;
+
+        TrimInPlace(frame.Function);
+        TrimInPlace(frame.File);
+
+        if (IsUnresolvedNativeName(frame.Function)) {
+            return MakeNativeAddressCacheEntry(addr);
+        }
+
+        if (IsUnresolvedNativeName(frame.File)) {
+            frame.File.clear();
+            frame.Line = 0;
+        }
+
+        ResolvedNativeFrameCacheEntry entry;
+        entry.FunctionKey = MakeNativeFunctionKey(addr, frame.Function);
+        entry.Frame = std::move(frame);
+        return entry;
+    }
+    catch (...) {
+        BreakIntoDebugger();
+        return MakeNativeAddressCacheEntry(addr);
+    }
+}
+
+#else
+static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(index);
+    return MakeNativeAddressCacheEntry(addr);
+}
+#endif
+
+static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<ResolvedNativeFrameCacheEntry>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    StackTraceState& state = GetStackTraceState();
+    std::scoped_lock locker {state.ResolvedNativeFramesLocker};
+
+    const uintptr_t key = MakeNativeAddressKey(addr);
+    const auto it = state.ResolvedNativeFrames.find(key);
+
+    if (it == state.ResolvedNativeFrames.end()) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFrameCacheEntry& entry) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        const auto resolved = ResolveStackTrace(GetStackTrace());
+        StackTraceState& state = GetStackTraceState();
+        std::scoped_lock locker {state.ResolvedNativeFramesLocker};
 
-        if (deep < resolved.size()) {
-            return resolved[deep];
+        const uintptr_t key = MakeNativeAddressKey(addr);
+
+        if (state.ResolvedNativeFrames.find(key) != state.ResolvedNativeFrames.end()) {
+            return;
         }
+
+        while (state.ResolvedNativeFrames.size() >= STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES && !state.ResolvedNativeFrameOrder.empty()) {
+            state.ResolvedNativeFrames.erase(state.ResolvedNativeFrameOrder.front());
+            state.ResolvedNativeFrameOrder.pop_front();
+        }
+
+        if (state.ResolvedNativeFrames.size() >= STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES) {
+            state.ResolvedNativeFrames.clear();
+            state.ResolvedNativeFrameOrder.clear();
+        }
+
+        state.ResolvedNativeFrames.emplace(key, entry);
+        state.ResolvedNativeFrameOrder.emplace_back(key);
     }
     catch (...) {
-        BreakIntoDebugger();
+        // The cache is opportunistic; symbol resolution itself must still succeed if caching cannot allocate.
     }
-
-    return std::nullopt;
 }
 
-extern auto FormatStackTrace(const StackTraceData& st) -> std::string
+static auto MakeNativeAddressCacheEntry(void* addr) noexcept -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    std::ostringstream ss;
-    ss << "Stack trace (most recent call first";
-
-    if (st.NativeTruncated) {
-        ss << ", truncated at " << STACK_TRACE_MAX_NATIVE_FRAMES << " frames";
-    }
-
-    ss << "):";
-
-    for (const auto& frame : ResolveStackTrace(st)) {
-        ss << "\n- [" << (frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native") << "] " << frame.Function;
-
-        if (!frame.File.empty()) {
-            std::string_view file_name {frame.File};
-
-            if (const auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
-                file_name = file_name.substr(pos + 1);
-            }
-
-            ss << " (" << file_name << " line " << frame.Line << ")";
-        }
-    }
-
-    return ss.str();
+    ResolvedNativeFrameCacheEntry entry;
+    entry.Frame = MakeNativeAddressFrame(addr);
+    entry.FunctionKey = MakeNativeAddressKey(addr);
+    return entry;
 }
 
-auto FormatStackTrace(const CatchedStackTraceData& st) -> std::string
+static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!st.Origin.has_value()) {
-        return "Catched at: " + FormatStackTrace(st.Catched);
+    StackTraceFrame frame;
+    frame.Type = StackTraceFrame::FrameType::Native;
+
+    char hex_buf[32];
+    (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
+    frame.Function = hex_buf;
+
+    return frame;
+}
+
+static auto MakeNativeFunctionKey(void* addr, std::string_view name) noexcept -> uintptr_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (IsUnresolvedNativeName(name)) {
+        return MakeNativeAddressKey(addr);
     }
 
-    const auto origin_formatted = FormatStackTrace(*st.Origin);
-    const auto catched_st = FormatStackTrace(st.Catched);
+    return static_cast<uintptr_t>(std::hash<std::string_view> {}(name));
+}
 
-    // Skip 'Stack trace (most recent ...'
-    auto pos = catched_st.find('\n');
+static auto MakeNativeAddressKey(void* addr) noexcept -> uintptr_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
-    if (pos == std::string::npos) {
-        return origin_formatted;
+    return std::bit_cast<uintptr_t>(addr);
+}
+
+static auto IsLowNativeAddress(void* addr) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Unit tests synthesize native frames with small integer addresses. These are not
+    // userspace instruction pointers on supported native platforms, and POSIX symbol
+    // resolvers can be extremely slow or return the same "??" symbol for all of them.
+    return reinterpret_cast<uintptr_t>(addr) < 0x10000U;
+}
+
+static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return s.empty() || s == "??" || s == "???" || s == "??:0";
+}
+
+static void TrimInPlace(std::string& s) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const size_t first = s.find_first_not_of(" \t\r\n");
+
+    if (first == std::string::npos) {
+        s.clear();
+        return;
     }
 
-    // Find stack traces intersection
-    pos = origin_formatted.find(catched_st.substr(pos + 1));
+    const size_t last = s.find_last_not_of(" \t\r\n");
+    s.erase(last + 1);
+    s.erase(0, first);
+}
 
-    if (pos == std::string::npos) {
-        return origin_formatted;
-    }
+static auto GetStackTraceState() noexcept -> StackTraceState&
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
-    // Insert at end of line
-    pos = origin_formatted.find('\n', pos);
-    return origin_formatted.substr(0, pos).append(" <- Catched here").append(pos != std::string::npos ? origin_formatted.substr(pos) : "");
+    static StackTraceState state;
+    return state;
 }
 
 FO_END_NAMESPACE

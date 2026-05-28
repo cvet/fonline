@@ -2664,9 +2664,9 @@ void ServerEngine::Process_StopMove(Player* player)
     const auto map_id = in_buf->Read<ident_t>();
     const auto cr_id = in_buf->Read<ident_t>();
 
-    [[maybe_unused]] const auto start_hex = in_buf->Read<mpos>();
-    [[maybe_unused]] const auto hex_offset = in_buf->Read<ipos16>();
-    [[maybe_unused]] const auto dir_angle = in_buf->Read<mdir>();
+    const auto client_hex = in_buf->Read<mpos>();
+    const auto client_hex_offset = in_buf->Read<ipos16>();
+    const auto client_dir = in_buf->Read<mdir>();
 
     in_buf.Unlock();
 
@@ -2691,10 +2691,27 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
+    if (!cr->IsMoving()) {
+        player->Send_Moving(cr);
+        return;
+    }
+
     int32_t zero_speed = 0;
 
     if (OnPlayerMoveCritter.Fire(player, cr, zero_speed) == EventResult::StopChain) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        player->Send_Moving(cr);
+        return;
+    }
+
+    const uint32_t stop_moving_uid = cr->GetMovingUid();
+
+    ReconcileCritterStopPosition(player, cr, map, client_hex, client_hex_offset, client_dir);
+
+    if (cr->IsDestroyed() || map->IsDestroyed()) {
+        return;
+    }
+    if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
         player->Send_Moving(cr);
         return;
     }
@@ -3205,7 +3222,7 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
     if (cr->IsMoving()) {
         auto* map = EntityMngr.GetMap(cr->GetMapId());
 
-        if (map != nullptr && cr->IsAlive() && !cr->GetIsAttached()) {
+        if (map != nullptr && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
 
             if (cr->IsDestroyed()) {
@@ -3213,7 +3230,7 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
             }
         }
         else {
-            const auto reason = cr->GetIsAttached() ? MovingState::Attached : (cr->IsAlive() ? MovingState::GenericError : MovingState::NotAlive);
+            const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
             StopCritterMoving(cr, reason);
         }
     }
@@ -3357,6 +3374,241 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
             break;
         }
     }
+}
+
+auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(cr->IsMoving());
+
+    auto* moving = cr->GetMoving();
+    FO_RUNTIME_ASSERT(moving);
+    moving->ValidateRuntimeState();
+
+    constexpr int32_t max_path_hex_distance = 2;
+    constexpr int32_t max_stop_correction_hex_distance = 4;
+
+    if (!map->GetSize().is_valid_pos(client_hex)) {
+        WriteLog("Process_StopMove: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y);
+        return false;
+    }
+
+    if (!GeometryHelper::NormalizeHexOffset(client_hex, client_hex_offset, map->GetSize())) {
+        WriteLog("Process_StopMove: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
+        return false;
+    }
+
+    const vector<mpos> path_hexes = moving->EvaluatePathHexes(moving->GetStartHex());
+    const auto client_hex_it = std::find(path_hexes.begin(), path_hexes.end(), client_hex);
+    size_t client_hex_index = 0;
+    bool use_movement_path = true;
+
+    if (client_hex_it == path_hexes.end()) {
+        int32_t best_distance = std::numeric_limits<int32_t>::max();
+
+        for (size_t i = 0; i < path_hexes.size(); i++) {
+            const int32_t dist = GeometryHelper::GetDistance(path_hexes[i], client_hex);
+
+            if (dist < best_distance) {
+                best_distance = dist;
+                client_hex_index = i;
+            }
+        }
+
+        if (best_distance > max_path_hex_distance) {
+            use_movement_path = false;
+        }
+    }
+    else {
+        client_hex_index = numeric_cast<size_t>(std::distance(path_hexes.begin(), client_hex_it));
+    }
+
+    if (use_movement_path) {
+        const auto current_hex_it = std::find(path_hexes.begin(), path_hexes.end(), cr->GetHex());
+
+        if (current_hex_it == path_hexes.end()) {
+            use_movement_path = false;
+        }
+        else {
+            const size_t current_hex_index = numeric_cast<size_t>(std::distance(path_hexes.begin(), current_hex_it));
+
+            if (current_hex_index < client_hex_index) {
+                for (size_t i = current_hex_index + 1; i <= client_hex_index; i++) {
+                    if (!MoveCritterToStopHex(cr, map, path_hexes[i])) {
+                        return false;
+                    }
+                    if (cr->IsDestroyed() || map->IsDestroyed()) {
+                        return false;
+                    }
+                }
+            }
+            else {
+                for (size_t i = current_hex_index; i > client_hex_index; i--) {
+                    if (!MoveCritterToStopHex(cr, map, path_hexes[i - 1])) {
+                        return false;
+                    }
+                    if (cr->IsDestroyed() || map->IsDestroyed()) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    if (cr->GetHex() != client_hex && !MoveCritterAlongStopCorrectionPath(player, cr, map, client_hex, max_stop_correction_hex_distance)) {
+        return false;
+    }
+
+    const int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(client_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2)));
+    const int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(client_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2)));
+
+    cr->SetHexOffset({clamped_ox, clamped_oy});
+
+    mdir checked_dir = client_dir;
+
+    if (OnPlayerDirCritter.Fire(player, cr, checked_dir) != EventResult::StopChain) {
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
+            return false;
+        }
+
+        cr->ChangeDir(checked_dir);
+    }
+
+    if (cr->IsDestroyed() || map->IsDestroyed()) {
+        return false;
+    }
+
+    if (cr->HasAttachedCritters()) {
+        cr->MoveAttachedCritters();
+    }
+
+    return !cr->IsDestroyed() && !map->IsDestroyed();
+}
+
+auto ServerEngine::MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(player);
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(map);
+
+    const int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
+
+    if (direct_distance > max_hex_distance) {
+        WriteLog("Process_StopMove: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
+        return false;
+    }
+
+    const auto find_result = MapMngr.FindPath(map, cr, cr->GetHex(), target_hex, cr->GetMultihex(), 0);
+
+    if (find_result.Result == FindPathOutput::ResultType::AlreadyHere) {
+        return true;
+    }
+    if (find_result.Result != FindPathOutput::ResultType::Ok) {
+        WriteLog("Process_StopMove: stop correction pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance);
+        return false;
+    }
+    if (find_result.Steps.size() > numeric_cast<size_t>(max_hex_distance)) {
+        WriteLog("Process_StopMove: stop correction path is too long, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), path {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, find_result.Steps.size(), max_hex_distance);
+        return false;
+    }
+
+    mpos step_hex = cr->GetHex();
+
+    for (const mdir step : find_result.Steps) {
+        if (!GeometryHelper::MoveHexByDir(step_hex, step, map->GetSize())) {
+            return false;
+        }
+        if (!MoveCritterToStopHex(cr, map, step_hex)) {
+            return false;
+        }
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
+            return false;
+        }
+    }
+
+    return cr->GetHex() == target_hex;
+}
+
+auto ServerEngine::MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ident_t expected_map_id = map->GetId();
+    const ident_t expected_cr_id = cr->GetId();
+    const uint32_t expected_moving_uid = cr->GetMovingUid();
+
+    const auto validate_moved_critter = [cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex] {
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
+            return false;
+        }
+        if (cr->GetId() != expected_cr_id || cr->GetMapId() != expected_map_id || cr->GetMovingUid() != expected_moving_uid) {
+            return false;
+        }
+        if (cr->GetHex() != target_hex) {
+            return false;
+        }
+        return true;
+    };
+
+    const mpos old_hex = cr->GetHex();
+
+    if (old_hex == target_hex) {
+        return true;
+    }
+
+    const mdir dir = mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
+    const int32_t multihex = cr->GetMultihex();
+    const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+
+    if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) == HexBlockResult::Blocked) {
+        return false;
+    }
+
+    refcount_ptr cr_ref_holder = cr;
+    refcount_ptr map_ref_holder = map;
+
+    map->RemoveCritterFromField(cr);
+    cr->SetHex(target_hex);
+    map->AddCritterToField(cr);
+
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    map->VerifyTrigger(cr, old_hex, target_hex, dir);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
+
+    MapMngr.ProcessVisibleCritters(cr);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
+
+    MapMngr.ProcessVisibleItems(cr);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
+
+    OnCritterMoved.Fire(cr, old_hex);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
+
+    MapMngr.ProcessVisibleCritters(cr);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
+
+    MapMngr.ProcessVisibleItems(cr);
+
+    return validate_moved_critter();
 }
 
 void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator)

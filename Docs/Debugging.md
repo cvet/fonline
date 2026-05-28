@@ -33,7 +33,7 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 
 The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `StackTraceData` is captured:
 
-1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, and `GetStackTraceEntry` resolve via `backward::TraceResolver` only when frames are actually needed. The capture path is allocation-free aside from the storage on the `StackTraceData` itself.
+1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, and `GetStackTraceEntry` resolve via `backward::TraceResolver` only when frames are actually needed. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `StackTraceData` itself.
 2. **Script frames.** Higher layers register a `ScriptStackTraceProvider` via `SetScriptStackTraceProvider(...)`. The provider is called synchronously during capture and pre-resolves frames eagerly because script execution state is ephemeral (the active context's call stack changes after we leave the capture site).
 
 Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFrame>>` so copying a `StackTraceData` (notably during `BaseEngineException` propagation) remains noexcept.
@@ -43,6 +43,8 @@ Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFram
 [../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) installs `CollectScriptStackLayers` through the AngelScript stack-trace installer. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
 
 The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
+
+`AngelScriptBackend` suppresses AngelScript's GC-only external-reference diagnostics while `ShutDownAndRelease()` is tearing the script engine down. Runtime and compilation messages still go through the normal callback; only shutdown-time "external reference" / "GC cannot destroy" noise is filtered after script cleanup has already run.
 
 The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
 
@@ -72,6 +74,8 @@ The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, 
 | `ResolveStackTrace(st)` | Resolve every frame into a `vector<StackTraceFrame>` (full symbol resolution). |
 | `FormatStackTrace(st)` | Human-readable multi-line string with `[Script]` / `[Native]` prefixes. |
 | `SafeWriteStackTrace(st)` | Writes the trace to the base log; tolerant of OOM (falls back to hex addresses). |
+| `ClearResolvedStackTraceCache()` | Clear the process-wide native-frame resolution cache. |
+| `GetResolvedStackTraceCacheSize()` | Return the current native-frame resolution cache size. |
 | `SetScriptStackTraceProvider(p)` | Install the script-frame provider. Pass an empty function to clear. |
 | `HasScriptStackTraceProvider()` | Test hook to confirm a provider is registered. |
 
@@ -85,7 +89,7 @@ The exception callback receives the already-captured `CatchedStackTraceData` and
 
 ### Logging and crash-path primitives
 
-[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
+[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
 
 ### Coverage
 
@@ -96,6 +100,7 @@ The exception callback receives the already-captured `CatchedStackTraceData` and
 - Multi-context concatenation (top-most context's frames first, then parent) renders in the expected order.
 - `[Script]` / `[Native]` prefixes are present in `FormatStackTrace`.
 - Resolved unified order places script frames before native frames.
+- Native frame resolution populates the global cache once per unique instruction pointer and reuses entries on repeated resolution.
 - `GetStackTraceEntry(deep)` returns the depth-th frame and `nullopt` for out-of-range depths.
 - An empty `StackTraceData` formats to header-only.
 - `SafeWriteStackTrace` writes both sections.

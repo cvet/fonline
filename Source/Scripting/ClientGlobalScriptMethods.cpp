@@ -733,6 +733,19 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ClientEngine* client, ipos32 p
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateKeyPress(ClientEngine* client, KeyCode key, string_view text = "")
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (key == KeyCode::None) {
+        return;
+    }
+
+    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, string(text)}});
+    client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key}});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ClientEngine* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {

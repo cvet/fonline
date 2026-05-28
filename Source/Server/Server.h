@@ -251,6 +251,9 @@ private:
 
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
+    auto ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool;
+    auto MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool;
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     void LogToClients(string_view str);

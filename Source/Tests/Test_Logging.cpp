@@ -135,6 +135,28 @@ TEST_CASE("Logging")
         SetLogCallback("type", {});
     }
 
+    SECTION("RepeatedMessagesAreCollapsedUntilDifferentMessage")
+    {
+        vector<string> captured;
+
+        SetLogCallback("repeat", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
+
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+
+        REQUIRE(captured.size() == 1);
+        CHECK(captured.front().find("repeat-collapse") != string::npos);
+
+        WriteLogMessage(LogType::Warning, "repeat-collapse-next");
+
+        REQUIRE(captured.size() == 3);
+        CHECK(captured[1].find("...and 2 more same messages") != string::npos);
+        CHECK(captured[2].find("repeat-collapse-next") != string::npos);
+
+        SetLogCallback("repeat", {});
+    }
+
     SECTION("MultipleCallbacksFireForEachMessage")
     {
         int32_t first_count = 0;

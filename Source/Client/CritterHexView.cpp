@@ -182,14 +182,12 @@ void CritterHexView::Action(CritterAction action, int32_t action_data, Entity* c
     switch (action) {
     case CritterAction::Knockout:
         SetCondition(CritterCondition::Knockout);
-        StopMoving();
         break;
     case CritterAction::StandUp:
         SetCondition(CritterCondition::Alive);
         break;
     case CritterAction::Dead: {
         SetCondition(CritterCondition::Dead);
-        StopMoving();
 
 #if FO_ENABLE_3D
         if (_model) {
@@ -348,12 +346,13 @@ void CritterHexView::RefreshView(bool no_smooth)
 
             auto anim_flags = no_smooth ? ModelAnimFlags::NoSmooth : ModelAnimFlags::None;
 
-            if (GetCondition() == CritterCondition::Alive || GetCondition() == CritterCondition::Knockout) {
+            if (GetCondition() == CritterCondition::Alive) {
                 _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
             }
             else {
                 anim_flags = CombineEnum(anim_flags, ModelAnimFlags::Freeze);
-                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 1.0f, anim_flags);
+                const float32_t frozen_time = GetCondition() == CritterCondition::Dead ? 1.0f : 0.0f;
+                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
             }
         }
         else
@@ -361,7 +360,7 @@ void CritterHexView::RefreshView(bool no_smooth)
         {
             ignore_unused(no_smooth);
 
-            if (IsMoving()) {
+            if (IsMoving() && GetCondition() == CritterCondition::Alive) {
                 if (GetMoving()->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
                 }
@@ -659,6 +658,36 @@ void CritterHexView::Process()
     }
 }
 
+void CritterHexView::SynchronizeMoving()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsMoving()) {
+        ProcessMoving();
+    }
+}
+
+void CritterHexView::NormalizeHexOffset()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mpos hex = GetHex();
+    ipos16 hex_offset = GetHexOffset();
+
+    if (!GeometryHelper::NormalizeHexOffset(hex, hex_offset, GetMap()->GetSize())) {
+        return;
+    }
+
+    if (GetHex() != hex) {
+        GetMap()->MoveCritter(this, hex, false);
+    }
+
+    if (GetHexOffset() != hex_offset) {
+        SetHexOffset(hex_offset);
+        RefreshOffs();
+    }
+}
+
 void CritterHexView::ProcessMoving()
 {
     FO_STACK_TRACE_ENTRY();
@@ -666,12 +695,6 @@ void CritterHexView::ProcessMoving()
     auto* moving = GetMoving();
     FO_RUNTIME_ASSERT(moving);
     moving->ValidateRuntimeState();
-
-    if (!IsAlive()) {
-        StopMoving();
-        RefreshView();
-        return;
-    }
 
     moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
     const auto progress = moving->EvaluateProgress();

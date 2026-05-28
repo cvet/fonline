@@ -80,6 +80,8 @@ public:
     void RefreshView(bool no_smooth = false);
     void Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call);
     void Process();
+    void SynchronizeMoving();
+    void NormalizeHexOffset();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;

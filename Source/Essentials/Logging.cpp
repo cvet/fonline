@@ -41,13 +41,24 @@
 
 FO_BEGIN_NAMESPACE
 
-[[maybe_unused]] static void FlushLogAtExit();
+static void EmitLogMessage(LogType type, string_view message, const CatchedStackTraceData* st);
+static void FlushLogMessageRepeatsLocked();
+static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool;
+static void RememberLastLogMessage(LogType type, string_view message);
+static void ClearLastLogMessage() noexcept;
+static void FlushLogAtExit();
 
 struct LoggingData
 {
     LoggingData()
     {
         FO_STACK_TRACE_ENTRY();
+
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+        (void)std::at_quick_exit(FlushLogAtExit);
+#else
+        ignore_unused(FlushLogAtExit);
+#endif
 
         MainThreadId = std::this_thread::get_id();
     }
@@ -56,38 +67,14 @@ struct LoggingData
     vector<pair<string, LogFunc>> LogFunctions {};
     std::atomic_bool LogFunctionsInProcess {};
     std::thread::id MainThreadId {};
+    optional<LogType> LastLogType {};
+    string LastLogMessage {};
+    uint64_t SameLogMessageCount {};
     bool TagsDisabled {};
 };
 FO_GLOBAL_DATA(LoggingData, Logging);
 
-void SetLogCallback(string_view key, LogFunc callback)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker {Logging->Locker};
-
-    if (!key.empty()) {
-        std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
-
-        if (callback) {
-            Logging->LogFunctions.emplace_back(key, std::move(callback));
-        }
-    }
-    else {
-        Logging->LogFunctions.clear();
-    }
-}
-
-void LogDisableTags()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker {Logging->Locker};
-
-    Logging->TagsDisabled = true;
-}
-
-void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceData* st) noexcept
+extern void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceData* st) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -103,49 +90,159 @@ void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceD
 
         std::scoped_lock locker {Logging->Locker};
 
-        // Make message
-        string result;
-        result.reserve(message.length() + 64);
-
-        if (!Logging->TagsDisabled) {
-            const auto time = nanotime::now().desc(true);
-            result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
-            result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
-
-            if (const auto thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
-                result += strex("[{}] ", get_this_thread_name());
-            }
+        if (IsSameAsLastLogMessage(type, message)) {
+            Logging->SameLogMessageCount++;
+            return;
         }
 
-        result += message;
-        result += '\n';
-
-        WriteBaseLog(result, st);
-
-        if (!Logging->LogFunctions.empty()) {
-            if (Logging->LogFunctionsInProcess) {
-                return;
-            }
-
-            Logging->LogFunctionsInProcess = true;
-            auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
-
-            for (const auto& func : Logging->LogFunctions | std::views::values) {
-                func(type, result, st);
-            }
-        }
-
-        if constexpr (FO_DEBUG) {
-            Platform::InfoLog(result);
-        }
-
-#if FO_TRACY
-        TracyMessage(result.c_str(), result.length());
-#endif
+        FlushLogMessageRepeatsLocked();
+        EmitLogMessage(type, message, st);
+        RememberLastLogMessage(type, message);
     }
     catch (...) {
         BreakIntoDebugger();
     }
+}
+
+extern void SetLogCallback(string_view key, LogFunc callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker {Logging->Locker};
+
+    FlushLogMessageRepeatsLocked();
+
+    if (!key.empty()) {
+        std::erase_if(Logging->LogFunctions, [key](auto&& e) { return e.first == key; });
+
+        if (callback) {
+            Logging->LogFunctions.emplace_back(key, std::move(callback));
+        }
+    }
+    else {
+        Logging->LogFunctions.clear();
+    }
+}
+
+extern void LogDisableTags()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock locker {Logging->Locker};
+
+    FlushLogMessageRepeatsLocked();
+
+    Logging->TagsDisabled = true;
+}
+
+static void EmitLogMessage(LogType type, string_view message, const CatchedStackTraceData* st)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Make message
+    string result;
+    result.reserve(message.length() + 64);
+
+    if (!Logging->TagsDisabled) {
+        const time_desc_t time = nanotime::now().desc(true);
+        result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
+        result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
+
+        if (const std::thread::id thread_id = std::this_thread::get_id(); thread_id != Logging->MainThreadId) {
+            result += strex("[{}] ", get_this_thread_name());
+        }
+    }
+
+    result += message;
+    result += '\n';
+
+    WriteBaseLog(result, st);
+
+    if (!Logging->LogFunctions.empty()) {
+        if (Logging->LogFunctionsInProcess) {
+            return;
+        }
+
+        Logging->LogFunctionsInProcess = true;
+        auto reset_in_process = scope_exit([]() noexcept { Logging->LogFunctionsInProcess = false; });
+
+        for (const auto& func : Logging->LogFunctions | std::views::values) {
+            func(type, result, st);
+        }
+    }
+
+    if constexpr (FO_DEBUG) {
+        Platform::InfoLog(result);
+    }
+
+#if FO_TRACY
+    TracyMessage(result.c_str(), result.length());
+#endif
+}
+
+static void FlushLogMessageRepeatsLocked()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!Logging->LastLogType.has_value()) {
+        return;
+    }
+
+    const optional<LogType> last_log_type = Logging->LastLogType;
+    const uint64_t same_message_count = Logging->SameLogMessageCount;
+
+    ClearLastLogMessage();
+
+    if (same_message_count == 0) {
+        return;
+    }
+
+    string repeat_message;
+
+    if (same_message_count == 1) {
+        repeat_message = "...and 1 more same message";
+    }
+    else {
+        repeat_message = strex("...and {} more same messages", same_message_count);
+    }
+
+    EmitLogMessage(*last_log_type, repeat_message, nullptr);
+}
+
+static void FlushLogAtExit()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (Logging != nullptr) {
+        std::scoped_lock locker {Logging->Locker};
+
+        FlushLogMessageRepeatsLocked();
+    }
+}
+
+static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return Logging->LastLogType.has_value() && *Logging->LastLogType == type && string_view {Logging->LastLogMessage} == message;
+}
+
+static void RememberLastLogMessage(LogType type, string_view message)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    Logging->LastLogType = type;
+    Logging->LastLogMessage.assign(message);
+    Logging->SameLogMessageCount = 0;
+}
+
+static void ClearLastLogMessage() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    Logging->LastLogType.reset();
+    Logging->LastLogMessage.clear();
+    Logging->SameLogMessageCount = 0;
 }
 
 FO_END_NAMESPACE
