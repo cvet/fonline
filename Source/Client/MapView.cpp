@@ -2450,9 +2450,10 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
         return;
     }
 
+    // egg.HexOffset is hex-center-relative; GetHexMapPos is the cell top-left, so add half a hex.
     const auto hex_pos = GetHexMapPos(egg.Hex);
-    const auto center_x = hex_pos.x + egg.HexOffset.x;
-    const auto center_y = hex_pos.y + egg.HexOffset.y;
+    const auto center_x = hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2 + egg.HexOffset.x;
+    const auto center_y = hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2 + egg.HexOffset.y;
     const auto egg_width_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings.EggEllipseWidthExt) : 0.0f;
     const auto egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings.EggEllipseHeightExt) : 0.0f;
     float32_t radius_w = std::max((numeric_cast<float32_t>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
@@ -3504,8 +3505,15 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
 
     const ipos32 pos = ScreenToMapPos(screen_pos);
     const ipos32 screen_offset = GeometryHelper::GetHexPos(_screenRawHex);
+
+    // GetHexPos/GetHexPosCoord work from the hex draw origin (cell top-left), but sprites (critters,
+    // items) and GetHexScreenPos anchor at the hex visual center = origin + {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}.
+    // Bias the lookup point by -half a hex so we resolve the hex whose visual center is nearest and the
+    // returned offset is measured relative to that center (matching the critter HexOffset convention, and
+    // staying within +-{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2} without clamping).
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     ipos32 offset;
-    const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos, &offset);
+    const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos - hex_center, &offset);
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);
@@ -3695,7 +3703,7 @@ auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool che
     }
 }
 
-auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> optional<FindPathResult>
+auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset) -> optional<FindPathResult>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3709,7 +3717,9 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
     FindPathInput input;
     input.FromHex = start_hex;
+    input.FromHexOffset = cr != nullptr ? cr->GetHexOffset() : ipos16 {};
     input.ToHex = target_hex;
+    input.ToHexOffset = target_hex_offset;
     input.MapSize = _mapSize;
     input.MaxLength = _engine->Settings.MaxPathFindLength;
     input.Cut = cut < 0 ? 0 : cut;
@@ -3737,13 +3747,10 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     if (output.Result == FindPathOutput::ResultType::Ok) {
         target_hex = output.NewToHex;
 
-        if (cut >= 0) {
-            return FindPathResult();
-        }
-
         FindPathResult result;
         result.DirSteps = std::move(output.Steps);
         result.ControlSteps = std::move(output.ControlSteps);
+        result.EndHexOffset = output.EndHexOffset;
         return result;
     }
 

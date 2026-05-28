@@ -175,6 +175,7 @@ public:
     {
         vector<mdir> DirSteps {};
         vector<uint16_t> ControlSteps {};
+        ipos16 EndHexOffset {};
     };
 
     MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props = nullptr);
@@ -208,7 +209,7 @@ public:
     void DrawMap();
     auto DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool;
 
-    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> optional<FindPathResult>;
+    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);

@@ -2388,7 +2388,7 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
-void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed)
+void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2402,20 +2402,21 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
 
     bool try_move = false;
     mpos hex;
-    ipos16 hex_offset;
+    ipos16 end_hex_offset;
     vector<mdir> steps;
     vector<uint16_t> control_steps;
 
     if (speed != 0 && cr->IsAlive()) {
         if (pos_or_dir.index() == 0) {
             hex = std::get<0>(std::get<0>(pos_or_dir));
-            hex_offset = std::get<1>(std::get<0>(pos_or_dir));
-
-            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, -1);
+            const auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
+            const auto cut = std::get<2>(std::get<0>(pos_or_dir));
+            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
 
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
                 control_steps = find_path->ControlSteps;
+                end_hex_offset = find_path->EndHexOffset;
                 try_move = true;
             }
         }
@@ -2423,10 +2424,10 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
             const auto dir = std::get<1>(pos_or_dir);
 
             hex = cr->GetHex();
-            hex_offset = cr->GetHexOffset();
+            end_hex_offset = cr->GetHexOffset();
             vector<mdir> raw_steps;
 
-            if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, dir, cr->GetMultihex())) {
+            if (cr->GetMap()->TraceMoveWay(hex, end_hex_offset, raw_steps, dir, cr->GetMultihex())) {
                 steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
                 control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
                 try_move = true;
@@ -2435,7 +2436,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     }
 
     if (try_move) {
-        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), hex_offset));
+        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
         cr->GetMoving()->ValidateRuntimeState();
         cr->RefreshView();
         Net_SendMove(cr);

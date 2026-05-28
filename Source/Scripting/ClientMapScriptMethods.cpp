@@ -687,9 +687,12 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlo
         return;
     }
 
+    // SetTransparentEgg expects a hex-center-relative offset; GetHexMapPos is the cell top-left,
+    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center.
     const auto rect = cr_hex->GetViewRect();
     const auto hex_pos = self->GetHexMapPos(cr_hex->GetHex());
-    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_pos.x, rect.y + rect.height / 2 - hex_pos.y};
+    const auto hex_center = ipos32 {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
+    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_center.x, rect.y + rect.height / 2 - hex_center.y};
     self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
 }
 

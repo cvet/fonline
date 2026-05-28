@@ -830,7 +830,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, mpos fromHex, mpos toH
         };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, std::move(gag_callback));
+    const auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -855,7 +855,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHe
         };
     }
 
-    const auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, std::move(gag_callback));
+    const auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;

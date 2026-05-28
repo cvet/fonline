@@ -698,7 +698,10 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
         };
     }
 
-    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, std::move(gag_callback));
+    const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    const int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    const ipos16 clamped_offset = {clamped_ox, clamped_oy};
+    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -731,11 +734,7 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
         return failed_moving.release_ownership();
     }
 
-    const auto clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
-    const auto clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
-    const auto clamped_offset = ipos16 {clamped_ox, clamped_oy};
-
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), clamped_offset);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving.release_ownership();
 }

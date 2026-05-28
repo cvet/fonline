@@ -129,7 +129,7 @@ public:
     void Connect();
     void Disconnect();
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
     void CritterLookTo(CritterHexView* cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 

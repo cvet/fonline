@@ -51,12 +51,14 @@ enum class HexBlockResult : int8_t
 struct FindPathInput
 {
     mpos FromHex {};
+    ipos16 FromHexOffset {};
     mpos ToHex {};
+    ipos16 ToHexOffset {};
     msize MapSize {};
     int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.MaxPathFindLength)
     int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
     int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
-    bool FreeMovement {}; // Use LineTracer optimization for control steps
+    bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset
     function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
 };
 
@@ -79,6 +81,7 @@ struct FindPathOutput
     vector<mdir> Steps {};
     vector<uint16_t> ControlSteps {};
     mpos NewToHex {};
+    ipos16 EndHexOffset {}; // FreeMovement sub-hex stop offset relative to NewToHex center; zero when FreeMovement is off or the real target coincides with NewToHex center
 };
 
 struct TraceLineInput
@@ -95,7 +98,7 @@ struct TraceLineInput
 
 struct TraceLineOutput
 {
-    bool IsFullTrace {};
+    bool FullyTraced {};
     bool HasLastMovable {};
     mpos PreBlock {};
     mpos Block {};
@@ -111,6 +114,12 @@ namespace PathFinding
 
     // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
+
+    // FreeMovement: sub-hex offset (clamped to half a hex) at new_to_hex so the end sits at the cut gap
+    // dist(new_to_hex center, to_hex center) from the target's real position (to_hex center + to_hex_offset).
+    // Returns nullopt when the real target essentially coincides with new_to_hex center (stop direction
+    // undefined) — caller is expected to keep the mover's current offset rather than force the center.
+    [[nodiscard]] auto EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>;
 
     // Core line trace from start toward target, stopping at blocked hexes
     [[nodiscard]] auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;

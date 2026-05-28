@@ -37,6 +37,7 @@
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "Geometry.h"
+#include "MapView.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -452,7 +453,25 @@ FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* s
     const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
     const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}}, speed);
+    // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
+    return hex_cr->GetMoving();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    // hexOffset is the target's real sub-hex position; with FreeMovement the engine stops at the cut distance from it.
+    const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
     return hex_cr->GetMoving();
 }
 

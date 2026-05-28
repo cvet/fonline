@@ -491,6 +491,12 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     output.Result = FindPathOutput::ResultType::Ok;
     output.NewToHex = to_hex;
+
+    if (input.FreeMovement) {
+        const auto end_offset = EvaluateFreeMovementEndOffset(output.NewToHex, input.ToHex, input.ToHexOffset);
+        output.EndHexOffset = end_offset.value_or(input.FromHexOffset);
+    }
+
     return output;
 }
 
@@ -508,7 +514,7 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 
     for (int32_t i = 0;; i++) {
         if (i >= dist) {
-            output.IsFullTrace = true;
+            output.FullyTraced = true;
             break;
         }
 
@@ -536,6 +542,46 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
     output.PreBlock = prev_hex;
     output.Block = next_hex;
     return output;
+}
+
+auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Work in map pixel space with the final hex center as the origin.
+    // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset.
+    const auto center_to_hex = GeometryHelper::GetHexOffset(new_to_hex, to_hex);
+    const auto target_x = numeric_cast<float32_t>(center_to_hex.x + to_hex_offset.x);
+    const auto target_y = numeric_cast<float32_t>(center_to_hex.y + to_hex_offset.y);
+
+    // Distance uses the camera Y projection (same metric as MovingContext segment distances).
+    const auto y_proj = GeometryHelper::GetYProj();
+    const auto target_proj_y = target_y * y_proj;
+    const auto target_len = std::sqrt(target_x * target_x + target_proj_y * target_proj_y);
+
+    constexpr float32_t min_len = 0.5f;
+
+    if (target_len < min_len) {
+        // Already on the target.
+        return std::nullopt;
+    }
+
+    // Gap to preserve = continuous distance between the final hex center and the target hex center (the "cut" gap).
+    const auto gap_x = numeric_cast<float32_t>(center_to_hex.x);
+    const auto gap_proj_y = numeric_cast<float32_t>(center_to_hex.y) * y_proj;
+    const auto gap_len = std::sqrt(gap_x * gap_x + gap_proj_y * gap_proj_y);
+
+    // Stand at gap_len from the real target, on the final-hex side of it.
+    const auto factor = 1.0f - gap_len / target_len;
+    const auto ox = iround<int32_t>(factor * target_x);
+    const auto oy = iround<int32_t>(factor * target_y);
+
+    constexpr int32_t half_w = GameSettings::MAP_HEX_WIDTH / 2;
+    constexpr int32_t half_h = GameSettings::MAP_HEX_HEIGHT / 2;
+
+    const auto clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
+    const auto clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
+    return ipos16 {clamped_ox, clamped_oy};
 }
 
 FO_END_NAMESPACE

@@ -83,7 +83,7 @@ struct MovingRawProgress
     bool Found {};
 };
 
-///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
+///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetStartHexOffset, GetEndHexOffset, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
 class MovingContext final : public RefCounted<MovingContext>
 {
 public:

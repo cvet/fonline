@@ -26,6 +26,31 @@ Keep project-specific map content and quest/navigation rules outside this docume
 
 Do not replace these types with generic `ipos`/`isize` in public map APIs without checking generated metadata and script-visible value layouts.
 
+### Sub-hex offset convention
+
+Sub-hex pixel offsets are measured relative to the hex **visual center**, bounded by
+`±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. This single convention is used by critter `HexOffset`,
+`MovingContext` start/end offsets, move-target offsets (`MoveToHex`), transparent-egg offsets, and the
+value returned by `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos`. A click/cursor offset is
+therefore directly usable as a move or critter offset with no conversion. Keep new offset
+producers/consumers on this convention.
+
+Implementation note — there are two anchor points that must not be confused:
+
+- `GeometryHelper::GetHexPos` / `MapView::GetHexMapPos` (and the per-`Field` `Offset` grid) return the
+  hex cell **top-left** draw origin, stepping by full `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`.
+- Sprites (critters, items) anchor at the hex **visual center** = top-left `+ {MAP_HEX_WIDTH/2,
+  MAP_HEX_HEIGHT/2}` (see `HexView::AddSprite`), and `MapView::GetHexScreenPos` returns that same
+  visual center (where a centered critter's feet render).
+
+Because the visual center is half a hex past the cell origin, any code that resolves or applies a
+center-relative offset against `GetHexMapPos` must add `{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`:
+`GetHexAtScreen` biases its lookup point by `-{half hex}` so `GetHexPosCoord` snaps to the hex whose
+visual center is nearest and the returned offset is already center-relative and in range (no clamping);
+`UpdateTransparentEgg` and the critter-based `SetTransparentEgg` add/subtract the same half-hex so a
+stored center-relative egg offset renders at the intended point. `GetHexScreenPos(hex) + offset`
+projects a `(hex, center-relative offset)` pair straight to screen with no further bias.
+
 ## Geometry modes
 
 `hdir` is compiled differently depending on `FO_GEOMETRY`:
@@ -58,6 +83,7 @@ Safe helpers check `msize` bounds; unsafe helpers are for internal algorithms th
 - `TraceLineOutput`
 - `PathFinding::CheckHexWithMultihex()`
 - `PathFinding::FindPath()`
+- `PathFinding::EvaluateFreeMovementEndOffset()`
 - `PathFinding::TraceLine()`
 
 `FindPathInput` is deliberately callback-driven. Runtime code supplies `CheckHex(mpos)` so map ownership, blockers, critters, gag items, and game-specific blocking policy stay outside the generic algorithm.
@@ -65,14 +91,49 @@ Safe helpers check `msize` bounds; unsafe helpers are for internal algorithms th
 Important `FindPathInput` fields:
 
 - `FromHex` / `ToHex` — requested route endpoints.
+- `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
 - `MaxLength` — maximum BFS depth, normally derived from engine settings.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
-- `FreeMovement` — allows line-tracer optimization for control steps.
+- `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
 - `CheckHex` — callback returning block/defer status.
 
-`FindPathOutput` returns a result, direction steps, control steps, and possibly adjusted `NewToHex`.
+`FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
+
+### FreeMovement end offset
+
+When `FreeMovement` is set, the route is still cut to whole hexes by the BFS, but the final
+standing position is refined to a sub-hex point instead of snapping to `NewToHex` center.
+`PathFinding::EvaluateFreeMovementEndOffset()` computes `EndHexOffset` (relative to `NewToHex`
+center) so the continuous end position sits exactly at the cut gap
+`R = dist(NewToHex center, ToHex center)` from the target's real position
+(`ToHex` center + `ToHexOffset`), on the `NewToHex` side of it. Distances use the camera `Y`
+projection (`GeometryHelper::GetYProj()`), matching the metric `MovingContext` uses for segment
+distances. Behavior:
+
+- `EndHexOffset` is a plain `ipos16`: when `FreeMovement` is off (or the request short-circuits
+  before the FreeMovement pass) it stays at its zero default, meaning the mover stops at the
+  reached hex center.
+- A centered target reached short of its hex (`ToHexOffset == 0`, `Cut > 0`) yields
+  `EndHexOffset == 0` (hex center).
+- `Cut == 0` onto an off-center target yields `EndHexOffset == ToHexOffset` (stop exactly on the
+  target point).
+- The offset magnitude is bounded by `|ToHexOffset|` and clamped to half a hex.
+- Degenerate stop direction. Internally `EvaluateFreeMovementEndOffset` returns `optional<ipos16>`
+  and yields `nullopt` when the real target essentially coincides with the reached hex center
+  (e.g. `Cut == 0` onto a centered target, or `Cut > 0` with a target offset that exactly cancels
+  the inter-hex vector). In that case `FindPath` substitutes `FindPathInput::FromHexOffset` — the
+  mover's own current sub-hex offset — so the mover stays where it already is instead of being
+  snapped to the reached hex center. `MapView::FindPath` and `MapManager::FindPath` fill
+  `FromHexOffset` from the supplied critter automatically.
+
+Callers supply `ToHexOffset` and consume `EndHexOffset` directly: on the client through
+`MapView::FindPath` plus the cut-aware `Critter.MoveToHex(hex, cut, hexOffset, speed)` script
+overload; on the server through `MapManager::FindPath` plus
+`Critter.MoveToHex(hex, cut, endHexOffset, speed)`. The resolved offset travels in the existing
+`SendCritterMove` end-offset field (a concrete `ipos16`), so client prediction and server
+authority stop at the same continuous point and there is no protocol change.
 
 ## Blocking model
 

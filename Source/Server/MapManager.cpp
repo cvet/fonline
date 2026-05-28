@@ -641,7 +641,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     FO_STACK_TRACE_ENTRY();
 
     TraceResult output;
-    output.IsFullTrace = false;
+    output.FullyTraced = false;
     output.IsCritterFound = false;
     output.HasLastMovable = false;
 
@@ -655,7 +655,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
 
     for (int32_t i = 0;; i++) {
         if (i >= dist) {
-            output.IsFullTrace = true;
+            output.FullyTraced = true;
             break;
         }
 
@@ -701,7 +701,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     return output;
 }
 
-auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, function<bool(const Item*)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(const Item*)> gag_callback) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -720,7 +720,9 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
 
     FindPathInput settings;
     settings.FromHex = from_hex;
+    settings.FromHexOffset = from_cr != nullptr ? from_cr->GetHexOffset() : ipos16 {};
     settings.ToHex = to_hex;
+    settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
     settings.MaxLength = _engine->Settings.MaxPathFindLength;
     settings.Cut = cut;
