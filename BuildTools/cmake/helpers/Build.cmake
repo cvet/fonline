@@ -142,10 +142,36 @@ macro(SetOptionValues)
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
-		if(NOT DEFINED ${optionName} OR "${${optionName}}" STREQUAL "")
-			set(${optionName} "${optionValue}")
+		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
+
+		# Shadow default: if the current cache value differs from the default we last applied, the value
+		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it; otherwise (unset, or
+		# still our default) -> (re)apply the current cmake-file default with FORCE. This keeps the cmake
+		# file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no longer sticks at
+		# an old number) while still honoring real overrides. CMake exposes no -D provenance, so comparing
+		# against the last-applied default is the detection mechanism.
+		if(DEFINED ${optionName} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+			set(_soptResolved "${${optionName}}")
+		else()
+			set(_soptResolved "${optionValue}")
 		endif()
+
+		string(TOUPPER "${_soptResolved}" _soptUpper)
+		if(_soptUpper STREQUAL "ON" OR _soptUpper STREQUAL "OFF" OR _soptUpper STREQUAL "TRUE" OR
+			_soptUpper STREQUAL "FALSE" OR _soptUpper STREQUAL "YES" OR _soptUpper STREQUAL "NO" OR
+			_soptUpper STREQUAL "1" OR _soptUpper STREQUAL "0")
+			set(${optionName} ${_soptResolved} CACHE BOOL "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		else()
+			set(${optionName} "${_soptResolved}" CACHE STRING "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		endif()
+
+		set(${_soptShadow} "${optionValue}" CACHE INTERNAL "Last FOnline-applied default for ${optionName}")
+		set(${optionName} "${_soptResolved}")
 	endwhile()
+
+	unset(_soptShadow)
+	unset(_soptResolved)
+	unset(_soptUpper)
 endmacro()
 
 # Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:

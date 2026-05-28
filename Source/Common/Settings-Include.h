@@ -272,10 +272,6 @@ SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtu
 FIXED_SETTING(int32_t, Hex, ScrollFixedDt, 10); // Scroll fixed delta time in milliseconds
 FIXED_SETTING(int32_t, Hex, ScrollSpeed, 1200); // Scroll speed in pixels per second
 FIXED_SETTING(int32_t, Hex, ZoomSpeed, 100); // Speed of zooming
-FIXED_SETTING(ucolor, Hex, ChosenLightColor, ucolor::clear); // Chosen light color
-FIXED_SETTING(uint8_t, Hex, ChosenLightDistance, 4); // Chosen light distance
-FIXED_SETTING(int32_t, Hex, ChosenLightIntensity, 20); // Chosen light intensity
-FIXED_SETTING(uint8_t, Hex, ChosenLightFlags, 0); // Chosen light flags
 VARIABLE_SETTING(bool, Hex, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, ScrollKeybLeft, false); // Keyboard map scroll left (read only)

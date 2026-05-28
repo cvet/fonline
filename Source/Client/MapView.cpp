@@ -42,25 +42,6 @@ static constexpr int32_t MAX_LIGHT_INTEN = 10000;
 static constexpr int32_t MAX_LIGHT_HEX = 200;
 static constexpr int32_t MAX_LIGHT_ALPHA = 255;
 
-// Property `Item::LightFlags` is still a packed uint8 (lower 6 bits: directions, 0x40: global, 0x80: inverse).
-// Translate it into the engine-internal split form (LightFlag + dirs mask).
-static auto SplitLegacyLightFlags(uint8_t raw) noexcept -> pair<LightFlag, uint8_t>
-{
-    static constexpr uint8_t LEGACY_GLOBAL_BIT = 0x40;
-    static constexpr uint8_t LEGACY_INVERSE_BIT = 0x80;
-    static constexpr uint8_t LEGACY_DIRS_MASK = 0x3F;
-
-    LightFlag flags = LightFlag::None;
-    if ((raw & LEGACY_GLOBAL_BIT) != 0) {
-        flags = CombineEnum(flags, LightFlag::Global);
-    }
-    if ((raw & LEGACY_INVERSE_BIT) != 0) {
-        flags = CombineEnum(flags, LightFlag::Inverse);
-    }
-
-    return {flags, static_cast<uint8_t>(raw & LEGACY_DIRS_MASK)};
-}
-
 void SpritePattern::Finish()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1406,25 +1387,10 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
         return;
     }
 
-    bool light_added = false;
-
-    for (const auto& item : cr->GetInvItems()) {
-        if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
-            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), cr->GetSpriteOffsetPtr());
-            light_added = true;
-            break;
-        }
+    if (cr->GetLightSource()) {
+        UpdateLightSource(cr->GetId(), cr->GetHex(), cr->GetLightColor(), cr->GetLightDistance(), static_cast<LightFlag>(cr->GetLightFlags()), cr->GetLightIntensity(), cr->GetSpriteOffsetPtr());
     }
-
-    // Default chosen light
-    if (!light_added && cr->GetIsChosen()) {
-        const auto [flags, dirs] = SplitLegacyLightFlags(_engine->Settings.ChosenLightFlags);
-        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, CombineEnum(flags, LightFlag::Global), dirs, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
-        light_added = true;
-    }
-
-    if (!light_added) {
+    else {
         FinishLightSource(cr->GetId());
     }
 }
@@ -1440,8 +1406,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
     }
 
     if (item->GetLightSource()) {
-        const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
-        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), item->GetSpriteOffsetPtr());
+        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), static_cast<LightFlag>(item->GetLightFlags()), item->GetLightIntensity(), item->GetSpriteOffsetPtr());
     }
     else {
         FinishLightSource(item->GetId());
@@ -1463,7 +1428,7 @@ void MapView::UpdateHexLightSources(mpos hex)
     }
 }
 
-void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, uint8_t dirs, int32_t intensity, const ipos32* offset)
+void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, int32_t intensity, const ipos32* offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1472,13 +1437,13 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, dirs, intensity, offset)).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.get();
     }
     else {
         ls = it->second.get();
 
         // Ignore redundant updates
-        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Dirs == dirs && ls->Intensity == intensity) {
+        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity) {
             return;
         }
 
@@ -1489,7 +1454,6 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         ls->Color = color;
         ls->Distance = distance;
         ls->Flags = flags;
-        ls->Dirs = dirs;
         ls->Intensity = intensity;
     }
 
@@ -1552,7 +1516,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     ls->NeedReapply = false;
 
     const auto center_hex = ls->Hex;
-    const auto distance = ls->Distance;
+    const auto distance = std::max(1, ls->Distance);
     const auto prev_fan_hexes = std::move(ls->FanHexes);
 
     ls->MarkedHexes.clear();
@@ -1588,22 +1552,14 @@ void MapView::ApplyLightFan(LightSource* ls)
     ipos32 raw_traced_hex = {center_hex.x, center_hex.y};
     bool seek_start = true;
     optional<mpos> last_traced_hex;
-    const auto dirs_are_allowed = IsEnumSet(ls->Flags, LightFlag::AllowedDirs);
 
-    for (int32_t i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
-        mdir dir;
-        int32_t iterations;
+    // One spoke per hex direction. MAP_DIR_COUNT is 6 (hexagonal) or 8 (square);
+    // LightFlag::StopDir0..StopDir7 carry the per-spoke blocked bits inside
+    // ls->Flags — (StopDir0 << i) gates spoke i.
+    for (int32_t i = 0, ii = GameSettings::MAP_DIR_COUNT; i < ii; i++) {
+        const mdir dir = hdir((i + 2) % GameSettings::MAP_DIR_COUNT);
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = hdir((i + 2) % 6);
-            iterations = distance;
-        }
-        else {
-            dir = hdir(((i + 1) * 2) % 8);
-            iterations = distance * 2;
-        }
-
-        for (int32_t j = 0; j < iterations; j++) {
+        for (int32_t j = 0; j < distance; j++) {
             if (seek_start) {
                 for (int32_t l = 0; l < distance; l++) {
 #if FO_GEOMETRY == 1
@@ -1622,8 +1578,7 @@ void MapView::ApplyLightFan(LightSource* ls)
 
             auto traced_hex = _mapSize.clamp_pos(raw_traced_hex);
 
-            const bool dir_in_mask = (ls->Dirs & (1u << i)) != 0;
-            const bool dir_disabled = dirs_are_allowed ? !dir_in_mask : dir_in_mask;
+            const bool dir_disabled = IsEnumSet(ls->Flags, static_cast<LightFlag>(static_cast<uint16_t>(LightFlag::StopDir0) << i));
             if (dir_disabled) {
                 traced_hex = center_hex;
             }
@@ -1953,7 +1908,30 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     center_pos.x += GameSettings::MAP_HEX_WIDTH / 2;
     center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
-    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get()};
+    // Every fan vertex's PrimitivePoint::TexUV is set to the same constant —
+    // the absolute map-origin-anchored pixel position of the current screen
+    // anchor hex (`_screenRawHex`). SpriteManager::DrawPoints then adds the
+    // current `draw_area` top-left, so the value the shader sees on
+    // `InTexCoord` is `world_pos_of_screen_origin` for this batch. The
+    // varying is therefore constant across the triangle and not subject to
+    // barycentric interpolation rounding — any high-frequency hash keyed off
+    // `gl_FragCoord.xy + InTexCoord` (= the fragment's absolute map pixel
+    // position) gets per-pixel-stable input even while the fan triangle is
+    // deforming under smooth sprite movement.
+    const auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
+    const fpos32 screen_anchor_tex = {numeric_cast<float32_t>(screen_anchor_ox), numeric_cast<float32_t>(screen_anchor_oy)};
+
+    // Per-light falloff metadata forwarded to the shader via EggData (vertex
+    // attribute slot 3). x = the radius the fan was traced to (in hexes —
+    // recomputed here to match ApplyLightFan), y = the normalized center alpha
+    // [0..1]. A light shader recovers each fragment's hex-distance-from-edge as
+    // `radius * Color.a / centerAlpha` and can then fade over a fixed hex band
+    // independent of the light's total length. Same constant on every vertex.
+    const auto fan_radius = numeric_cast<float32_t>(std::max(1, ls->Distance));
+    const auto center_alpha_norm = numeric_cast<float32_t>(ls->CenterColor.comp.a) / 255.0f;
+    const fpos32 light_egg_data = {fan_radius, center_alpha_norm};
+
+    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get(), .TexUV = screen_anchor_tex, .EggData = light_egg_data};
 
     const auto points_start_size = points.size();
     points.reserve(points.size() + ls->FanHexes.size() * 3);
@@ -1969,7 +1947,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const ipos32 pos = {center_pos.x + ox, center_pos.y + oy};
         const ucolor color = ucolor(ls->CenterColor, alpha);
         const ipos32* offset = use_offsets ? ls->Offset.get() : nullptr;
-        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset};
+        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset, .TexUV = screen_anchor_tex, .EggData = light_egg_data};
 
         points.emplace_back(edge_point);
 
@@ -1991,8 +1969,8 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const auto& next = points[i + 1];
 
         if ((next.PointPos - cur.PointPos).idist() > GameSettings::MAP_HEX_WIDTH) {
-            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
-            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
 
             const auto dist_comp = (cur.PointPos - center_pos).idist() > (next.PointPos - center_pos).idist();
             const auto x = numeric_cast<float32_t>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
@@ -2000,10 +1978,10 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
             const auto changed_xy = GeometryHelper::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32_t>(changed_xy.x), cur.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32_t>(changed_xy.x), cur.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
             }
             else {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32_t>(changed_xy.x), next.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32_t>(changed_xy.x), next.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
             }
         }
     }

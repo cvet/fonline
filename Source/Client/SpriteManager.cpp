@@ -1253,6 +1253,8 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     vpos = count;
     ipos = count;
 
+    const fpos32 draw_area_offset = draw_area != nullptr ? fpos32 {numeric_cast<float32_t>(draw_area->x), numeric_cast<float32_t>(draw_area->y)} : fpos32 {};
+
     for (size_t i = 0; i < count; i++) {
         const auto& point = points[i];
         ipos32 pos = point.PointPos;
@@ -1267,6 +1269,13 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         vbuf[i].PosX = numeric_cast<float32_t>(pos.x);
         vbuf[i].PosY = numeric_cast<float32_t>(pos.y);
         vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
+
+        // TexU/TexV = caller's PrimitivePoint::TexUV + draw_area top-left.
+        vbuf[i].TexU = point.TexUV.x + draw_area_offset.x;
+        vbuf[i].TexV = point.TexUV.y + draw_area_offset.y;
+        // Free-form per-vertex data forwarded verbatim to location 3 (InTexEggCoord).
+        vbuf[i].EggFlags[0] = point.EggData.x;
+        vbuf[i].EggFlags[1] = point.EggData.y;
 
         ibuf[i] = numeric_cast<vindex_t>(i);
     }

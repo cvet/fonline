@@ -112,13 +112,42 @@ void CritterHexView::StopMoving()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_moving != nullptr) {
+    if (_moving) {
         _moving->Complete(MovingState::Stopped);
     }
 
-    _moving = nullptr;
-    _walkAnchorAnim = nullptr;
+    _moving.reset();
+    _walkAnchorAnim.reset();
     _walkAnchorDisp = {};
+
+    // Cash any accumulated sub-hex offset into the hex position. Rapid stop/start (key mashing)
+    // re-creates the move every tap inheriting the current HexOffset, but the time-based step index
+    // restarts at 0, so the critter's real forward progress piles up as an ever-growing HexOffset
+    // while the hex stays put — stranding the resting sprite hexes from its logical hex. Snap to the
+    // hex the sprite has actually reached, keeping only the sub-hex remainder. Because
+    // GetHexPos(hex) + offset is invariant under this re-split, the sprite does not visually jump; the
+    // logical hex just catches up to where the sprite already is.
+    if (_map) {
+        const auto offset = GetHexOffset();
+
+        if (offset.x != 0 || offset.y != 0) {
+            const auto base_pos = GeometryHelper::GetHexPos(GetHex());
+            ipos32 residual {};
+            const auto raw_hex = GeometryHelper::GetHexPosCoord(ipos32 {base_pos.x + offset.x, base_pos.y + offset.y}, &residual);
+            const auto map_size = _map->GetSize();
+
+            if (map_size.is_valid_pos(raw_hex)) {
+                const auto snapped_hex = map_size.from_raw_pos(raw_hex);
+
+                if (snapped_hex != GetHex()) {
+                    _map->MoveCritter(this, snapped_hex, false);
+                }
+
+                SetHexOffset(ipos16 {numeric_cast<int16_t>(residual.x), numeric_cast<int16_t>(residual.y)});
+                RefreshOffs();
+            }
+        }
+    }
 }
 
 void CritterHexView::MoveAttachedCritters()

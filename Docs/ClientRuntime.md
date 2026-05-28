@@ -123,7 +123,7 @@ Primary view types:
 - field indexes for items and critters;
 - coordinate conversion, zoom, scrolling, screen-to-map and map-to-screen transformations;
 - path finding and cut-path helpers built on `PathFinding::FindPath()`;
-- line tracing for bullets and light fans;
+- line tracing for bullets and light fans; `MapView::ApplyLightFan` traces every light source out to its full `Distance` in hexes (kept at >= 1) and forwards per-light falloff metadata to primitive shaders via `PrimitivePoint::EggData` → vertex attribute slot 3 (`InTexEggCoord`): `LightFanToPrimitves` writes the traced radius (hexes) and the normalized center alpha so a shader can reconstruct each fragment's hex-distance-from-edge and fade over a fixed hex band independent of the light's total length. A critter's light fan follows the critter's sprite offset (`HexView::GetSpriteOffsetPtr()`) so the light stays exactly under the sprite — the two must never diverge. The offset is kept bounded at the source: `MovingContext::EvaluateRawProgress`'s `current_hex` can lag the smooth lerp, and client prediction reconciliation in `ReceiveCritterMoving` can fold an inter-hex delta into the offset during rapid step taps, but `CritterHexView::StopMoving` cashes any accumulated offset back into the hex (snapping to the hex the sprite actually reached and keeping only the sub-hex remainder, with `hex + offset` invariant so the sprite never jumps), so the offset cannot run away and drag the fan off the critter. Items use the same `GetSpriteOffsetPtr()`;
 - fog-of-war layers;
 - local lighting sources and render targets;
 - mapper mode helpers used by engine tools.

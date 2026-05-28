@@ -1968,7 +1968,37 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     body_lines.append('')
 
-    for value_type_tag in codegen_tags['ExportValueType']:
+    # Topologically sort layouts so a value type that references another value type
+    # as a layout field (e.g. LightSourceInfo with a `ucolor-Color` field) is emitted
+    # AFTER the referenced type's layout — the engine assertion on
+    # `field.Type.IsSimpleStruct` requires the dependency to be fully registered first.
+    # Without this sort, codegen emits in file-alphabetic order, which breaks any
+    # cross-file dependency that points "downward" alphabetically.
+    value_type_tags = list(codegen_tags['ExportValueType'])
+    value_type_names = {tag.name for tag in value_type_tags}
+
+    def layout_field_types(tag: ExportValueTypeTag) -> list[str]:
+        result: list[str] = []
+        for layout_entry in ''.join(tag.flags[tag.flags.index('Layout') + 2:]).split('+'):
+            field_type, _ = layout_entry.split('-')
+            result.append(field_type)
+        return result
+
+    sorted_tags: list[ExportValueTypeTag] = []
+    remaining = value_type_tags[:]
+    while remaining:
+        emitted_names = {tag.name for tag in sorted_tags}
+        progressed = False
+        for i, tag in enumerate(remaining):
+            deps = [t for t in layout_field_types(tag) if t in value_type_names and t != tag.name]
+            if all(dep in emitted_names for dep in deps):
+                sorted_tags.append(tag)
+                remaining.pop(i)
+                progressed = True
+                break
+        assert progressed, 'Cyclic dependency among ExportValueType layouts'
+
+    for value_type_tag in sorted_tags:
         body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
         for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
             field_type, field_name = layout_entry.split('-')

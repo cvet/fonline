@@ -169,9 +169,9 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int8_t, LightIntensity);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightDistance);
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightFlags);
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, LightColor);
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -279,6 +279,16 @@ public:
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, LightSource);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int8_t, LightIntensity);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ucolor, LightColor);
 };
 
 class MapProperties : public EntityProperties

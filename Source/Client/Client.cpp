@@ -165,6 +165,11 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
@@ -2125,22 +2130,27 @@ void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
+    // LightSource, LightIntensity, LightDistance, LightFlags, LightColor.
 
-    ignore_unused(entity);
     ignore_unused(prop);
 
     if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
         hex_item->GetMap()->UpdateItemLightSource(hex_item);
     }
-    else if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
-        if (_curMap) {
-            auto* cr = _curMap->GetCritter(item->GetCritterId());
+}
 
-            if (cr != nullptr) {
-                cr->GetMap()->UpdateCritterLightSource(cr);
-            }
-        }
+void ClientEngine::OnSetCritterLight(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    // Re-apply the critter's light fan after a single bundled write to Critter.Light.
+
+    ignore_unused(prop);
+
+    if (auto* hex_cr = dynamic_cast<CritterHexView*>(entity); hex_cr != nullptr && hex_cr->GetMap() != nullptr) {
+        hex_cr->GetMap()->UpdateCritterLightSource(hex_cr);
     }
 }
 

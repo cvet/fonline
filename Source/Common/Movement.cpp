@@ -386,6 +386,13 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
     const float32_t offset_x = lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_ox);
     const float32_t offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_oy);
 
+    // HexOffset is intentionally NOT clamped here: current_hex (the rounded step) can lag the smooth
+    // lerp position by a full hex on offset-row spacing, and client prediction reconciliation
+    // (ReceiveCritterMoving) can fold an inter-hex delta in during rapid step taps, so the offset
+    // legitimately spans more than one hex. The sprite still renders at the correct visual position
+    // because it is drawn at current_hex + offset; clamping the offset breaks that sum and makes the
+    // sprite stick at the cell edge and jump when the hex catches up. The light fan, which can't absorb
+    // a multi-hex offset gracefully, bounds its own copy in CritterHexView::RefreshOffs instead.
     progress.HexOffset = ipos16 {numeric_cast<int16_t>(iround<int32_t>(offset_x)), numeric_cast<int16_t>(iround<int32_t>(offset_y))};
     progress.Dir = mdir(iround<int16_t>(GeometryHelper::GetLineDirAngle(0, 0, raw_progress.SegmentOffset.x, raw_progress.SegmentOffset.y)));
     return progress;
