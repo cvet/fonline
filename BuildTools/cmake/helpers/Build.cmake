@@ -150,7 +150,7 @@ macro(SetOptionValues)
 		# file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no longer sticks at
 		# an old number) while still honoring real overrides. CMake exposes no -D provenance, so comparing
 		# against the last-applied default is the detection mechanism.
-		if(DEFINED ${optionName} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
 			set(_soptResolved "${${optionName}}")
 		else()
 			set(_soptResolved "${optionValue}")
