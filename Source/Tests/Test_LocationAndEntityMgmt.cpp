@@ -68,13 +68,13 @@ namespace LocEntity
 
     int TestCreateDestroyLocation()
     {
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -1;
 
         int64 locId = loc.Id.value;
         if (locId == 0) return -2;
 
-        Location@ found = Game.GetLocation(loc.Id);
+        Location? found = Game.GetLocation(loc.Id);
         if (found is null) return -3;
 
         if (loc.ProtoId != "TestLocation".hstr()) return -4;
@@ -85,9 +85,9 @@ namespace LocEntity
 
     int TestMultipleLocations()
     {
-        Location@ loc1 = Game.CreateLocation("TestLocation".hstr());
-        Location@ loc2 = Game.CreateLocation("TestLocation".hstr());
-        Location@ loc3 = Game.CreateLocation("TestLocation".hstr());
+        Location loc1 = Game.CreateLocation("TestLocation".hstr());
+        Location loc2 = Game.CreateLocation("TestLocation".hstr());
+        Location loc3 = Game.CreateLocation("TestLocation".hstr());
 
         if (loc1 is null || loc2 is null || loc3 is null) return -1;
 
@@ -103,7 +103,7 @@ namespace LocEntity
 
     int TestLocationProperties()
     {
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -1;
 
         hstring pid = loc.ProtoId;
@@ -119,16 +119,16 @@ namespace LocEntity
 
     int TestEntityManagerCritterOperations()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
 
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
         if (cr1.Id.value == cr2.Id.value) return -2;
         if (cr2.Id.value == cr3.Id.value) return -3;
 
-        Critter@ found1 = Game.GetCritter(cr1.Id);
+        Critter? found1 = Game.GetCritter(cr1.Id);
         if (found1 is null) return -4;
         if (found1.Id.value != cr1.Id.value) return -5;
 
@@ -140,16 +140,16 @@ namespace LocEntity
 
     int TestEntityManagerItemOperations()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ item2 = cr.AddItem("TestItem".hstr(), 5);
-        Item@ item3 = cr.AddItem("TestItem".hstr(), 10);
+        Item item1 = cr.AddItem("TestItem".hstr(), 1);
+        Item item2 = cr.AddItem("TestItem".hstr(), 5);
+        Item item3 = cr.AddItem("TestItem".hstr(), 10);
 
         if (item1 is null || item2 is null || item3 is null) return -2;
 
-        Item@ found = Game.GetItem(item1.Id);
+        Item? found = Game.GetItem(item1.Id);
         if (found is null) return -5;
 
         Game.DestroyCritter(cr);
@@ -158,13 +158,13 @@ namespace LocEntity
 
     int TestEntityManagerDestroyEntity()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -3;
 
         Game.DestroyEntity(loc);
@@ -174,9 +174,9 @@ namespace LocEntity
 
     int TestEntityManagerBulkDestroyEntities()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
 
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
@@ -189,7 +189,7 @@ namespace LocEntity
 
     int TestCritterStateQueries()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         bool alive = cr.IsAlive();
@@ -210,7 +210,7 @@ namespace LocEntity
 
     int TestCritterDirection()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         cr.SetDir(HDIR_NorthEast);
@@ -227,19 +227,19 @@ namespace LocEntity
 
     int TestCritterItemManagement()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ i1 = cr.AddItem("TestItem".hstr(), 3);
+        Item i1 = cr.AddItem("TestItem".hstr(), 3);
         if (i1 is null) return -2;
 
         int count = cr.CountItem("TestItem".hstr());
         if (count < 3) return -3;
 
-        array<Item@> items = cr.GetItems();
+        array<Item> items = cr.GetItems();
         if (items.length() == 0) return -4;
 
-        Item@ byId = cr.GetItem(i1.Id);
+        Item? byId = cr.GetItem(i1.Id);
         if (byId is null) return -5;
 
         cr.DestroyItem("TestItem".hstr(), 1);
@@ -256,7 +256,7 @@ namespace LocEntity
 
     int TestCritterConditions()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         if (!cr.IsAlive()) return -2;
@@ -280,17 +280,17 @@ namespace LocEntity
 
     int TestItemContainerOperations()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ container = cr.AddItem("TestItem".hstr(), 1);
+        Item container = cr.AddItem("TestItem".hstr(), 1);
         if (container is null) return -2;
 
-        Item@ sub1 = container.AddItem("TestItem".hstr(), 1);
-        Item@ sub2 = container.AddItem("TestItem".hstr(), 2);
+        Item sub1 = container.AddItem("TestItem".hstr(), 1);
+        Item sub2 = container.AddItem("TestItem".hstr(), 2);
         if (sub1 is null || sub2 is null) return -3;
 
-        array<Item@> subs = container.GetItems();
+        array<Item> subs = container.GetItems();
         if (subs.length() < 2) return -4;
 
         Game.DestroyCritter(cr);
@@ -299,16 +299,16 @@ namespace LocEntity
 
     int TestItemMoveOperations()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 5);
+        Item item = cr1.AddItem("TestItem".hstr(), 5);
         if (item is null) return -2;
 
         Game.MoveItem(item, cr2);
 
-        Item@ onCr2 = cr2.GetItem(item.Id);
+        Item? onCr2 = cr2.GetItem(item.Id);
         if (onCr2 is null) return -3;
 
         Game.DestroyCritter(cr2);
@@ -318,11 +318,11 @@ namespace LocEntity
 
     int TestItemMovePartial()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ item = cr1.AddItem("TestItem".hstr(), 20);
+        Item item = cr1.AddItem("TestItem".hstr(), 20);
         if (item is null) return -2;
 
         Game.MoveItem(item, 5, cr2);
@@ -334,11 +334,11 @@ namespace LocEntity
 
     int TestItemDestroyVariants()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ i1 = cr.AddItem("TestItem".hstr(), 10);
-        Item@ i2 = cr.AddItem("TestItem".hstr(), 5);
+        Item i1 = cr.AddItem("TestItem".hstr(), 10);
+        Item i2 = cr.AddItem("TestItem".hstr(), 5);
         if (i1 is null || i2 is null) return -2;
 
         Game.DestroyItem(i2);
@@ -353,15 +353,15 @@ namespace LocEntity
 
     int TestNpcQueries()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
-        array<Critter@> npcs = Game.GetAllNpc();
+        array<Critter> npcs = Game.GetAllNpc();
         if (npcs.length() < 3) return -2;
 
-        array<Critter@> byProto = Game.GetAllNpc("TestCritter".hstr());
+        array<Critter> byProto = Game.GetAllNpc("TestCritter".hstr());
         if (byProto.length() < 3) return -3;
 
         Game.DestroyCritter(cr3);
@@ -434,11 +434,11 @@ namespace LocEntity
 
     int TestItemMoveToContainer()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ container = cr.AddItem("TestItem".hstr(), 1);
-        Item@ loose = cr.AddItem("TestItem".hstr(), 3);
+        Item container = cr.AddItem("TestItem".hstr(), 1);
+        Item loose = cr.AddItem("TestItem".hstr(), 3);
         if (container is null || loose is null) return -2;
 
         Game.MoveItem(loose, container);
@@ -449,15 +449,15 @@ namespace LocEntity
 
     int TestBulkItemDestruction()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ i1 = cr.AddItem("TestItem".hstr(), 1);
-        Item@ i2 = cr.AddItem("TestItem".hstr(), 2);
-        Item@ i3 = cr.AddItem("TestItem".hstr(), 3);
+        Item i1 = cr.AddItem("TestItem".hstr(), 1);
+        Item i2 = cr.AddItem("TestItem".hstr(), 2);
+        Item i3 = cr.AddItem("TestItem".hstr(), 3);
         if (i1 is null || i2 is null || i3 is null) return -2;
 
-        array<Item@> items = {i1, i2, i3};
+        array<Item> items = {i1, i2, i3};
         Game.DestroyItems(items);
 
         Game.DestroyCritter(cr);
@@ -466,10 +466,10 @@ namespace LocEntity
 
     int TestCritterGetPlayer()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Player@ player = cr.GetPlayer();
+        Player? player = cr.GetPlayer();
         if (player !is null) return -2;
 
         Game.DestroyCritter(cr);
@@ -478,7 +478,7 @@ namespace LocEntity
 
     int TestCritterAttachments()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
         bool attached = cr.IsAttached;
@@ -542,7 +542,7 @@ namespace LocEntity
         if (d.length() != 2) return -5;
         if (d.exists("two")) return -6;
 
-        array<string>@ keys = d.getKeys();
+        array<string> keys = d.getKeys();
         if (keys.length() != 2) return -7;
 
         d.clear();
@@ -554,7 +554,7 @@ namespace LocEntity
     int TestStringAdvancedOps()
     {
         string csv = "a,b,c,d,e";
-        array<string>@ parts = csv.split(",");
+        array<string> parts = csv.split(",");
         if (parts.length() != 5) return -1;
 
         string rejoined = ",".join(parts);
@@ -586,22 +586,22 @@ namespace LocEntity
 
     int TestEntityGetById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item@ item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr(), 1);
         if (item is null) return -2;
 
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -3;
 
-        Critter@ foundCr = Game.GetCritter(cr.Id);
+        Critter? foundCr = Game.GetCritter(cr.Id);
         if (foundCr is null) return -4;
 
-        Item@ foundItem = Game.GetItem(item.Id);
+        Item? foundItem = Game.GetItem(item.Id);
         if (foundItem is null) return -5;
 
-        Location@ foundLoc = Game.GetLocation(loc.Id);
+        Location? foundLoc = Game.GetLocation(loc.Id);
         if (foundLoc is null) return -6;
 
         Game.DestroyLocation(loc);
@@ -611,10 +611,10 @@ namespace LocEntity
 
     int TestDestroyEntityById()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Location@ loc = Game.CreateLocation("TestLocation".hstr());
+        Location loc = Game.CreateLocation("TestLocation".hstr());
         if (loc is null) return -2;
 
         Game.DestroyEntity(loc.Id);
@@ -625,13 +625,13 @@ namespace LocEntity
 
     int TestMultipleBulkDestroyEntitiesById()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr3 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null || cr3 is null) return -1;
 
-        Location@ l1 = Game.CreateLocation("TestLocation".hstr());
-        Location@ l2 = Game.CreateLocation("TestLocation".hstr());
+        Location l1 = Game.CreateLocation("TestLocation".hstr());
+        Location l2 = Game.CreateLocation("TestLocation".hstr());
         if (l1 is null || l2 is null) return -2;
 
         array<ident> crIds = {cr1.Id, cr2.Id, cr3.Id};
@@ -682,17 +682,17 @@ namespace LocEntity
 
     int TestUnloadCritter()
     {
-        Critter@ cr = Game.CreateCritter("TestCritter".hstr(), true);
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -1;
 
         array<hstring> mapPids = {"TestMap".hstr()};
-        Location@ loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
         if (loc is null) {
             Game.DestroyCritter(cr);
             return -2;
         }
 
-        Map@ map = loc.GetMapByIndex(0);
+        Map map = loc.GetMapByIndex(0);
         if (map is null) {
             Game.DestroyLocation(loc);
             Game.DestroyCritter(cr);
@@ -712,13 +712,13 @@ namespace LocEntity
 
         Game.UnloadCritter(cr);
 
-        Critter@ gone = Game.GetCritter(crId);
+        Critter? gone = Game.GetCritter(crId);
         if (gone !is null) {
             Game.DestroyLocation(loc);
             return -5;
         }
 
-        Critter@ loaded = Game.LoadCritter(crId, false);
+        Critter? loaded = Game.LoadCritter(crId, false);
         if (loaded is null) {
             Game.DestroyLocation(loc);
             return -6;
@@ -741,16 +741,16 @@ namespace LocEntity
 
     int TestMoveItemsBulk()
     {
-        Critter@ cr1 = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter@ cr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item@ i1 = cr1.AddItem("TestItem".hstr(), 1);
-        Item@ i2 = cr1.AddItem("TestItem".hstr(), 2);
-        Item@ i3 = cr1.AddItem("TestItem".hstr(), 3);
+        Item i1 = cr1.AddItem("TestItem".hstr(), 1);
+        Item i2 = cr1.AddItem("TestItem".hstr(), 2);
+        Item i3 = cr1.AddItem("TestItem".hstr(), 3);
         if (i1 is null || i2 is null || i3 is null) return -2;
 
-        array<Item@> items = {i1, i2, i3};
+        array<Item> items = {i1, i2, i3};
         Game.MoveItems(items, cr2);
 
         Game.DestroyCritter(cr2);

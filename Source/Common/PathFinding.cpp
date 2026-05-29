@@ -95,7 +95,10 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
         for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, cw_dir);
-            FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
+
+            if (!map_size.is_valid_pos(raw_hex)) {
+                return HexBlockResult::Blocked;
+            }
 
             if (update_worst(check_hex(map_size.from_raw_pos(raw_hex)))) {
                 return worst;
@@ -122,7 +125,10 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
         for (int32_t k = 0; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, ccw_dir);
-            FO_RUNTIME_ASSERT(map_size.is_valid_pos(raw_hex));
+
+            if (!map_size.is_valid_pos(raw_hex)) {
+                return HexBlockResult::Blocked;
+            }
 
             if (update_worst(check_hex(map_size.from_raw_pos(raw_hex)))) {
                 return worst;
@@ -155,17 +161,20 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     const auto max_len = input.MaxLength;
     const auto grid_side = numeric_cast<size_t>(max_len * 2 + 2);
     vector<int16_t> grid_buffer;
+    vector<mpos> next_hexes;
+    vector<mpos> gag_hexes;
+    vector<mpos> cr_hexes;
     grid_buffer.assign(grid_side * grid_side, 0);
+    next_hexes.reserve(1024);
+    gag_hexes.reserve(128);
+    cr_hexes.reserve(128);
 
     const auto grid_offset = input.FromHex;
     const auto grid_at = [&](mpos hex) -> int16_t& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
 
-    vector<mpos> next_hexes;
-    vector<mpos> gag_hexes;
-    vector<mpos> cr_hexes;
-    next_hexes.reserve(1024);
-    gag_hexes.reserve(64);
-    cr_hexes.reserve(64);
+    size_t next_hexes_read = 0;
+    size_t gag_hexes_read = 0;
+    size_t cr_hexes_read = 0;
 
     // Begin BFS
     auto to_hex = input.ToHex;
@@ -174,10 +183,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     while (true) {
         bool find_ok = false;
-        const auto next_hexes_round = next_hexes.size();
-        FO_RUNTIME_ASSERT(next_hexes_round != 0);
+        const auto round_begin = next_hexes_read;
+        const auto round_end = next_hexes.size();
+        FO_RUNTIME_ASSERT(round_end > round_begin);
 
-        for (size_t i = 0; i < next_hexes_round; i++) {
+        for (size_t i = round_begin; i < round_end; i++) {
             const auto cur_hex = next_hexes[i];
 
             if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
@@ -232,38 +242,39 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             break;
         }
 
-        next_hexes.erase(next_hexes.begin(), next_hexes.begin() + static_cast<ptrdiff_t>(next_hexes_round));
+        // Consume the round's prefix without shifting the vector.
+        next_hexes_read = round_end;
 
         // Add gag hex after some distance
-        if (!gag_hexes.empty() && !next_hexes.empty()) {
+        if (gag_hexes_read < gag_hexes.size() && next_hexes_read < next_hexes.size()) {
             const auto last_index = grid_at(next_hexes.back());
-            const auto& gag_hex = gag_hexes.front();
+            const auto& gag_hex = gag_hexes[gag_hexes_read];
             const auto gag_index = numeric_cast<int16_t>(grid_at(gag_hex) ^ 0x4000);
 
             if (gag_index + 10 < last_index) {
                 grid_at(gag_hex) = gag_index;
                 next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
+                gag_hexes_read++;
             }
         }
 
         // If no way then route through gag/critter
-        if (next_hexes.empty()) {
-            if (!gag_hexes.empty()) {
-                auto& gag_hex = gag_hexes.front();
+        if (next_hexes_read >= next_hexes.size()) {
+            if (gag_hexes_read < gag_hexes.size()) {
+                auto& gag_hex = gag_hexes[gag_hexes_read];
                 grid_at(gag_hex) ^= 0x4000;
                 next_hexes.emplace_back(gag_hex);
-                gag_hexes.erase(gag_hexes.begin());
+                gag_hexes_read++;
             }
-            else if (!cr_hexes.empty()) {
-                auto& cr_hex = cr_hexes.front();
+            else if (cr_hexes_read < cr_hexes.size()) {
+                auto& cr_hex = cr_hexes[cr_hexes_read];
                 grid_at(cr_hex) ^= 0x4000;
                 next_hexes.emplace_back(cr_hex);
-                cr_hexes.erase(cr_hexes.begin());
+                cr_hexes_read++;
             }
         }
 
-        if (next_hexes.empty()) {
+        if (next_hexes_read >= next_hexes.size()) {
             output.Result = FindPathOutput::ResultType::NoWay;
             return output;
         }
@@ -480,6 +491,12 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     output.Result = FindPathOutput::ResultType::Ok;
     output.NewToHex = to_hex;
+
+    if (input.FreeMovement) {
+        const auto end_offset = EvaluateFreeMovementEndOffset(output.NewToHex, input.ToHex, input.ToHexOffset);
+        output.EndHexOffset = end_offset.value_or(input.FromHexOffset);
+    }
+
     return output;
 }
 
@@ -497,7 +514,7 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 
     for (int32_t i = 0;; i++) {
         if (i >= dist) {
-            output.IsFullTrace = true;
+            output.FullyTraced = true;
             break;
         }
 
@@ -525,6 +542,46 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
     output.PreBlock = prev_hex;
     output.Block = next_hex;
     return output;
+}
+
+auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Work in map pixel space with the final hex center as the origin.
+    // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset.
+    const auto center_to_hex = GeometryHelper::GetHexOffset(new_to_hex, to_hex);
+    const auto target_x = numeric_cast<float32_t>(center_to_hex.x + to_hex_offset.x);
+    const auto target_y = numeric_cast<float32_t>(center_to_hex.y + to_hex_offset.y);
+
+    // Distance uses the camera Y projection (same metric as MovingContext segment distances).
+    const auto y_proj = GeometryHelper::GetYProj();
+    const auto target_proj_y = target_y * y_proj;
+    const auto target_len = std::sqrt(target_x * target_x + target_proj_y * target_proj_y);
+
+    constexpr float32_t min_len = 0.5f;
+
+    if (target_len < min_len) {
+        // Already on the target.
+        return std::nullopt;
+    }
+
+    // Gap to preserve = continuous distance between the final hex center and the target hex center (the "cut" gap).
+    const auto gap_x = numeric_cast<float32_t>(center_to_hex.x);
+    const auto gap_proj_y = numeric_cast<float32_t>(center_to_hex.y) * y_proj;
+    const auto gap_len = std::sqrt(gap_x * gap_x + gap_proj_y * gap_proj_y);
+
+    // Stand at gap_len from the real target, on the final-hex side of it.
+    const auto factor = 1.0f - gap_len / target_len;
+    const auto ox = iround<int32_t>(factor * target_x);
+    const auto oy = iround<int32_t>(factor * target_y);
+
+    constexpr int32_t half_w = GameSettings::MAP_HEX_WIDTH / 2;
+    constexpr int32_t half_h = GameSettings::MAP_HEX_HEIGHT / 2;
+
+    const auto clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
+    const auto clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
+    return ipos16 {clamped_ox, clamped_oy};
 }
 
 FO_END_NAMESPACE

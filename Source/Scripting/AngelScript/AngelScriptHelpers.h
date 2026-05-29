@@ -83,6 +83,7 @@ FO_BEGIN_NAMESPACE
 
 class BaseEngine;
 class AngelScriptBackend;
+using ScriptFastCompareFunc = int32_t (*)(const void* a, const void* b);
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result);
 auto GetScriptBackend(BaseEngine* engine) -> AngelScriptBackend*;
@@ -93,9 +94,9 @@ void CheckScriptEntityNonNull(const Entity* entity);
 void CheckScriptEntityNonDestroyed(const Entity* entity);
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string;
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string;
-auto MakeScriptArgName(const ComplexTypeDesc& type) -> string;
+auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable = false) -> string;
 auto MakeScriptArgsName(const_span<ArgDesc> args) -> string;
-auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership = false) -> string;
+auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership = false, bool nullable = false) -> string;
 auto MakeScriptPropertyName(const Property* prop) -> string;
 auto NormalizeScriptPropertyDecl(string_view decl) -> string;
 auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*;
@@ -112,6 +113,8 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
 auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as_obj) -> vector<uint8_t>;
 auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint8_t> raw_data) -> void*;
 auto ConvertRefTypeScriptObjectToProperty(const Property* prop, void* as_obj) -> PropertyRawData;
+void SetScriptTypeFastCompare(AngelScript::asITypeInfo* type, ScriptFastCompareFunc func);
+auto GetScriptTypeFastCompare(const AngelScript::asITypeInfo* type) -> ScriptFastCompareFunc;
 
 #ifdef AS_MAX_PORTABILITY
 

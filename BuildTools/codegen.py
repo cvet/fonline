@@ -36,6 +36,8 @@ class TagMetaRecord:
 class MethodArg:
     arg_type: str
     name: str
+    nullable: bool = False
+    default_value: str | None = None
 
 
 @dataclass(slots=True)
@@ -125,6 +127,7 @@ class ExportMethodTag:
     args: list[MethodArg]
     flags: list[str]
     comment: CommentLines
+    ret_nullable: bool = False
 
 
 @dataclass(slots=True)
@@ -256,6 +259,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-devname', dest='devname', required=True, help='dev game name')
     parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
     parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
+    parser.add_argument('-internalcfg', dest='internalcfg', required=True, help='internal config buffer capacity')
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
     parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
@@ -334,6 +338,7 @@ assert get_hash('abcdefg') == '-106836237'
 
 # Generated file list
 generated_file_list = ['EmbeddedResources-Include.h',
+        'InternalConfig-Include.h',
         'Version-Include.h',
         'GenericCode-Common.cpp',
         'MetadataRegistration-Server.cpp',
@@ -656,23 +661,129 @@ def hash_recursive(hasher: Any, data: Any) -> None:
 compatibility_hasher = hashlib.new('sha256')
 
 
+def iter_cpp_top_level(text: str) -> Iterable[tuple[int, str, bool]]:
+    angle_depth = 0
+    paren_depth = 0
+    brace_depth = 0
+    bracket_depth = 0
+    quote: str | None = None
+    escaped = False
+
+    for index, char in enumerate(text):
+        top_level = angle_depth == 0 and paren_depth == 0 and brace_depth == 0 and bracket_depth == 0 and quote is None
+
+        yield index, char, top_level
+
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in ('"', "'"):
+            quote = char
+        elif char == '<':
+            angle_depth += 1
+        elif char == '>' and angle_depth > 0:
+            angle_depth -= 1
+        elif char == '(':
+            paren_depth += 1
+        elif char == ')' and paren_depth > 0:
+            paren_depth -= 1
+        elif char == '{':
+            brace_depth += 1
+        elif char == '}' and brace_depth > 0:
+            brace_depth -= 1
+        elif char == '[':
+            bracket_depth += 1
+        elif char == ']' and bracket_depth > 0:
+            bracket_depth -= 1
+
+
+def find_cpp_top_level_char(text: str, target: str) -> int:
+    for index, char, top_level in iter_cpp_top_level(text):
+        if char == target and top_level:
+            return index
+    return -1
+
+
+def find_matching_cpp_paren(text: str, open_pos: int) -> int:
+    assert 0 <= open_pos < len(text) and text[open_pos] == '(', 'Invalid opening paren position'
+
+    depth = 0
+    quote: str | None = None
+    escaped = False
+
+    for index in range(open_pos, len(text)):
+        char = text[index]
+
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in ('"', "'"):
+            quote = char
+        elif char == '(':
+            depth += 1
+        elif char == ')':
+            depth -= 1
+            if depth == 0:
+                return index
+
+    assert False, 'Unmatched opening paren'
+
+
 def split_engine_args(function_args_text: str) -> list[str]:
     result: list[str] = []
-    braces = 0
-    current = ''
-    for char in function_args_text:
-        if char == ',' and braces == 0:
-            result.append(current.strip())
-            current = ''
-        else:
-            current += char
-            if char == '<':
-                braces += 1
-            elif char == '>':
-                braces -= 1
-    if current.strip():
-        result.append(current.strip())
+    current_start = 0
+
+    for index, char, top_level in iter_cpp_top_level(function_args_text):
+        if char == ',' and top_level:
+            current = function_args_text[current_start:index].strip()
+            if current:
+                result.append(current)
+            current_start = index + 1
+
+    current = function_args_text[current_start:].strip()
+    if current:
+        result.append(current)
     return result
+
+
+def normalize_default_arg_value(default_value: str, arg_type: str) -> str:
+    default_value = default_value.strip()
+    if default_value in ('nullptr', 'NULL'):
+        return 'null'
+    default_type_ctors = {
+        'any': ['any_t'],
+        'hstring': ['hstring'],
+        'ucolor': ['ucolor'],
+        'ipos': ['ipos32'],
+        'isize': ['isize32'],
+        'fpos': ['fpos32'],
+        'fsize': ['fsize32'],
+    }
+    if arg_type in default_type_ctors:
+        if default_value == '{}':
+            return arg_type + '()'
+        for default_type_ctor in default_type_ctors[arg_type]:
+            if default_value in (default_type_ctor + ' {}', default_type_ctor + '{}', default_type_ctor + '()'):
+                return arg_type + '()'
+            ctor_prefix = default_type_ctor + ' {'
+            if default_value.startswith(ctor_prefix) and default_value.endswith('}'):
+                return arg_type + '(' + default_value[len(ctor_prefix):-1].strip() + ')'
+            ctor_prefix = default_type_ctor + '('
+            if default_value.startswith(ctor_prefix) and default_value.endswith(')'):
+                return arg_type + '(' + default_value[len(ctor_prefix):-1].strip() + ')'
+    return default_value
 
 
 def parse_export_property_definition(tag_context: str, export_flags: list[str], valid_types: set[str]) -> tuple[str, str, str, str, list[str]]:
@@ -702,25 +813,47 @@ def resolve_property_targets(entity: str, property_flags: list[str], game_entiti
 def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
     result_args: list[MethodArg] = []
     raw_args = split_engine_args(args_text)
+    has_default_arg = False
     for arg in raw_args[1:] if skip_first_arg else raw_args:
         arg = arg.strip()
+        raw_default_value = None
+        default_separator = find_cpp_top_level_char(arg, '=')
+        if default_separator != -1:
+            raw_default_value = arg[default_separator + 1:]
+            assert raw_default_value.strip(), 'Default argument value is empty: ' + arg
+            arg = arg[:default_separator].rstrip()
+            has_default_arg = True
+        else:
+            assert not has_default_arg, 'Default argument is followed by non-default argument: ' + arg
+        nullable = False
+        if arg.startswith('FO_NULLABLE'):
+            nullable = True
+            arg = arg[len('FO_NULLABLE'):].lstrip()
         separator = arg.rfind(' ')
+        assert separator != -1, 'Invalid argument declaration: ' + arg
         arg_type = engine_type_to_meta_type(arg[:separator].rstrip(), valid_types)
+        default_value = normalize_default_arg_value(raw_default_value, arg_type) if raw_default_value is not None else None
         arg_name = arg[separator + 1:]
-        result_args.append(MethodArg(arg_type, arg_name))
+        assert arg_name, 'Argument name is empty: ' + arg
+        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable, default_value=default_value))
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg]]:
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
-    brace_close_pos = tag_context.rfind(')')
+    brace_close_pos = find_matching_cpp_paren(tag_context, brace_open_pos)
     function_args = tag_context[brace_open_pos + 1:brace_close_pos]
 
     function_token_index = find_token_index(line_tokens, '(')
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
-    ret = engine_type_to_meta_type(''.join(line_tokens[1:function_token_index - 1]), valid_types)
+    return_tokens = line_tokens[1:function_token_index - 1]
+    ret_nullable = False
+    if return_tokens and return_tokens[0] == 'FO_NULLABLE':
+        ret_nullable = True
+        return_tokens = return_tokens[1:]
+    ret = engine_type_to_meta_type(''.join(return_tokens), valid_types)
 
     function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
@@ -730,7 +863,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     entity = function_tokens[1]
     assert entity in game_entities + ['Entity'], entity
     name = function_tokens[2]
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True)
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -756,9 +889,14 @@ def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tup
             for arg in split_engine_args(args_text):
                 arg = arg.strip()
                 separator = arg.find('/')
-                arg_type = engine_type_to_meta_type(arg[:separator - 1].rstrip(), valid_types)
+                type_part = arg[:separator - 1].rstrip()
+                nullable = False
+                if type_part.startswith('FO_NULLABLE'):
+                    nullable = True
+                    type_part = type_part[len('FO_NULLABLE'):].lstrip()
+                arg_type = engine_type_to_meta_type(type_part, valid_types)
                 arg_name = arg[separator + 2:-2]
-                event_args.append(MethodArg(arg_type, arg_name))
+                event_args.append(MethodArg(arg_type, arg_name, nullable=nullable))
 
     return event_name, event_args
 
@@ -840,20 +978,21 @@ def parse_exported_ref_type_method(stripped_line: str, line_tokens: list[str], f
     decl_tokens = line_tokens[decl_begin:function_token_index - 1]
     assert decl_tokens, 'Invalid function declaration'
 
+    function_begin = stripped_line.index('(')
+    function_end = find_matching_cpp_paren(stripped_line, function_begin)
+    assert function_begin != -1 and function_end != -1 and function_begin < function_end, 'Invalid function definition'
+
     if decl_tokens[-1] == 'auto':
-        signature_end = line_tokens.index(')', function_token_index)
-        arrow_index = find_token_index(line_tokens, '-', signature_end + 1)
-        assert arrow_index != -1 and arrow_index + 1 < len(line_tokens), 'Invalid trailing return declaration'
-        assert line_tokens[arrow_index + 1] == '>'
-        declaration_end = find_first_token_index(line_tokens, {'{', ';'}, arrow_index + 2)
+        trailing_tokens = tokenize(stripped_line[function_end + 1:])
+        arrow_index = find_token_index(trailing_tokens, '-')
+        assert arrow_index != -1 and arrow_index + 1 < len(trailing_tokens), 'Invalid trailing return declaration'
+        assert trailing_tokens[arrow_index + 1] == '>'
+        declaration_end = find_first_token_index(trailing_tokens, {'{', ';'}, arrow_index + 2)
         assert declaration_end != -1, 'Invalid trailing return declaration'
-        return_type = ''.join(line_tokens[arrow_index + 2:declaration_end])
+        return_type = ''.join(trailing_tokens[arrow_index + 2:declaration_end])
     else:
         return_type = ''.join(decl_tokens)
 
-    function_begin = stripped_line.index('(')
-    function_end = stripped_line.index(')')
-    assert function_begin != -1 and function_end != -1 and function_begin < function_end, 'Invalid function definition'
     function_args = stripped_line[function_begin + 1:function_end]
     result_args = parse_method_args(function_args, valid_types)
     return RefTypeMethod(line_tokens[function_token_index - 1], engine_type_to_meta_type(return_type, valid_types), result_args, [])
@@ -1006,6 +1145,17 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
 
 def engine_type_to_meta_type(engine_type: str, valid_types: set[str]) -> str:
     return unified_type_to_meta_type(engine_type_to_unified_type(engine_type, valid_types), valid_types)
+
+
+def is_validated_pointer_meta_type(meta_type: str) -> bool:
+    # Codegen emits CheckArgNotNull / CheckReturnNotNull for every meta-type
+    # whose runtime representation is a script handle to a heap object: game
+    # entities, the generic `Entity` base, entity relatives (Abstract*,
+    # Proto*, Static*) and user-declared `///@ ExportRefType` classes.
+    return (meta_type in game_entities
+            or meta_type == 'Entity'
+            or meta_type in entity_relatives
+            or meta_type in ref_types)
 
 
 def find_next_enum_value(key_values: list[EnumKeyValue]) -> str:
@@ -1248,10 +1398,10 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment))
-            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable))
+            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags, ret_nullable))
 
         except Exception as ex:
             show_error('Invalid tag ExportMethod', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
@@ -1321,7 +1471,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ServerInitHook', 'ClientInitHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
+            assert name in ['ApplicationInitHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
                             'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
@@ -1533,6 +1683,17 @@ def cpp_bool(value: bool) -> str:
     return 'true' if value else 'false'
 
 
+def cpp_string_literal(value: str) -> str:
+    escaped = value.replace('\\', '\\\\')
+    escaped = escaped.replace('"', '\\"')
+    escaped = escaped.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+    return '"' + escaped + '"'
+
+
+def make_arg_desc_initializer(arg: MethodArg, type_expr: str) -> str:
+    return '{' + cpp_string_literal(arg.name) + ', ' + type_expr + ', ' + cpp_bool(arg.nullable) + ', ' + cpp_string_literal(arg.default_value or '') + '}'
+
+
 def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, target: str) -> MethodRegistrationInfo:
     is_generic = method_tag.entity == 'Entity'
     entity_info = game_entities_info[entity]
@@ -1637,6 +1798,9 @@ def generate_generic_code() -> None:
     if not is_engine_hook_enabled('ClientInitHook'):
         global_lines.append('class ClientEngine;')
         global_lines.append('void ClientInitHook(ClientEngine*) { /* Stub */ }')
+    if not is_engine_hook_enabled('ClientStartupSettingsHook'):
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
     if not is_engine_hook_enabled('ConfigSectionParseHook'):
         global_lines.append('bool ConfigSectionParseHook(string_view, string_view, string&, map<string, string>&) {  /* Stub */ return false; }')
     if not is_engine_hook_enabled('ConfigEntryParseHook'):
@@ -1649,7 +1813,7 @@ def generate_generic_code() -> None:
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
-        global_lines.append('bool CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return true; }')
+        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return CritterVisibilityMode::Full; }')
     if not is_engine_hook_enabled('CheckItemVisibilityHook'):
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
@@ -1718,8 +1882,9 @@ def append_ref_method_registration(
     getter: bool = False,
     setter: bool = False,
 ) -> None:
+    resolved_args = ', '.join(make_arg_desc_initializer(p, 'meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type) + '")') for p in params)
     register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
-        '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type) + '")}' for p in params) + '}, ' +
+        '.Args = {' + resolved_args + '}, ' +
         '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(ret) + '")' if ret != 'void' else '{' + '}') + ', ' +
             '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); }' if is_stub else ''))
     if not is_stub:
@@ -1803,7 +1968,37 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     body_lines.append('')
 
-    for value_type_tag in codegen_tags['ExportValueType']:
+    # Topologically sort layouts so a value type that references another value type
+    # as a layout field (e.g. LightSourceInfo with a `ucolor-Color` field) is emitted
+    # AFTER the referenced type's layout — the engine assertion on
+    # `field.Type.IsSimpleStruct` requires the dependency to be fully registered first.
+    # Without this sort, codegen emits in file-alphabetic order, which breaks any
+    # cross-file dependency that points "downward" alphabetically.
+    value_type_tags = list(codegen_tags['ExportValueType'])
+    value_type_names = {tag.name for tag in value_type_tags}
+
+    def layout_field_types(tag: ExportValueTypeTag) -> list[str]:
+        result: list[str] = []
+        for layout_entry in ''.join(tag.flags[tag.flags.index('Layout') + 2:]).split('+'):
+            field_type, _ = layout_entry.split('-')
+            result.append(field_type)
+        return result
+
+    sorted_tags: list[ExportValueTypeTag] = []
+    remaining = value_type_tags[:]
+    while remaining:
+        emitted_names = {tag.name for tag in sorted_tags}
+        progressed = False
+        for i, tag in enumerate(remaining):
+            deps = [t for t in layout_field_types(tag) if t in value_type_names and t != tag.name]
+            if all(dep in emitted_names for dep in deps):
+                sorted_tags.append(tag)
+                remaining.pop(i)
+                progressed = True
+                break
+        assert progressed, 'Cyclic dependency among ExportValueType layouts'
+
+    for value_type_tag in sorted_tags:
         body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
         for layout_entry in ''.join(value_type_tag.flags[value_type_tag.flags.index('Layout') + 2:]).split('+'):
             field_type, field_name = layout_entry.split('-')
@@ -1927,14 +2122,23 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                 extern_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ');')
 
+            resolved_args = ', '.join(make_arg_desc_initializer(p, 'meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")') for p in method_tag.args)
             method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
-                    '.Args = {' + ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in method_tag.args) + '}, ' +
+                    '.Args = {' + resolved_args + '}, ' +
                     '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
                     '.Call = [](FuncCallData& call) {']
             if not is_stub:
                 method_body_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                for arg_index, p in enumerate(method_tag.args):
+                    if p.nullable:
+                        continue
+                    if not is_validated_pointer_meta_type(p.arg_type):
+                        continue
+                    method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
                     ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
+                    method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
                 method_body_lines.append('    ignore_unused(call);')
             method_body_lines.append('}' +
@@ -1942,6 +2146,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .Getter = true' if 'Getter' in method_tag.flags or 'GlobalGetter' in method_tag.flags else '') +
                     (', .Setter = true' if 'Setter' in method_tag.flags else '') +
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
+                    (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 
@@ -1956,7 +2161,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                 chunk_body_lines.extend(method_block)
 
             chunk_function_name = make_unique_cpp_identifier(used_names, 'AddMethods_' + entity + '_', 'Chunk_' + str(chunk_index // method_chunk_size + 1))
-            append_static_function(helper_lines, 'static void ' + chunk_function_name + '(vector<MethodDesc>& methods, EngineMetadata* meta)', chunk_body_lines)
+            append_static_function(helper_lines, 'static void ' + chunk_function_name + '(vector<MethodDesc>& methods, [[maybe_unused]] EngineMetadata* meta)', chunk_body_lines)
             chunk_function_names.append(chunk_function_name)
 
         for chunk_function_name in chunk_function_names:
@@ -1978,7 +2183,7 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
 
         for event_tag in codegen_tags['ExportEvent']:
             if event_tag.target in allowed_targets and event_tag.entity == entity:
-                resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")}' for p in event_tag.args)
+                resolved_args = ', '.join('{"' + p.name + '", meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '"), ' + ('true' if p.nullable else 'false') + '}' for p in event_tag.args)
                 body_lines.append('meta->RegisterEntityEvent("' + entity + '", EntityEventDesc { .Name = "' + event_tag.name + '", ' +
                         '.Args = {' + resolved_args + '}, .Exported = true });')
 
@@ -2069,9 +2274,24 @@ def write_embedded_resources() -> None:
         assert capacity >= 10000, 'Embedded capacity must be greater than or equal to 10000'
         assert capacity % 10000 == 0, 'Embedded capacity must be divisible by 10000'
         generated_output.create_file('EmbeddedResources-Include.h', args.genoutput)
-        generated_output.write_line('alignas(uint32_t) volatile const uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
+        generated_output.write_line('FO_KEEP_DATA_SYMBOL uint8_t EMBEDDED_RESOURCES[' + str(capacity) + '] = {' + ','.join([str((i + 42) % 200) for i in range(capacity)]) + '};')
 
     run_codegen_step(write_embedded_resources_impl, 'Can\'t write embedded resources')
+
+
+def write_internal_config() -> None:
+    def write_internal_config_impl() -> None:
+        start_marker = b'###InternalConfig###1234'
+        end_marker = b'###InternalConfigEnd###'
+        capacity = int(args.internalcfg)
+        assert capacity >= len(start_marker) + len(end_marker), 'Internal config capacity must fit patch markers'
+        data = [ord('0') + i % 10 for i in range(capacity)]
+        data[:len(start_marker)] = start_marker
+        data[-len(end_marker):] = end_marker
+        generated_output.create_file('InternalConfig-Include.h', args.genoutput)
+        generated_output.write_line('FO_KEEP_DATA_SYMBOL char INTERNAL_CONFIG[' + str(capacity) + '] = {' + ','.join([str(x) for x in data]) + '};')
+
+    run_codegen_step(write_internal_config_impl, 'Can\'t write internal config')
 
 
 def try_get_git_branch() -> str:
@@ -2106,6 +2326,7 @@ def run_codegen() -> None:
     run_generic_codegen()
     run_metadata_registration_codegen()
     write_embedded_resources()
+    write_internal_config()
     write_version_info()
     flush_generated_files()
 

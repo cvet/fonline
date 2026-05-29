@@ -37,6 +37,7 @@
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "Geometry.h"
+#include "MapView.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -89,7 +90,7 @@ FO_SCRIPT_API bool Client_Critter_IsMoving(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Client_Critter_GetMovingContext(CritterView* self)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_GetMovingContext(CritterView* self)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -153,33 +154,7 @@ FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    hex_cr->StopAnim();
-    hex_cr->AppendAnim(stateAnim, actionAnim, nullptr);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    hex_cr->StopAnim();
-    hex_cr->AppendAnim(stateAnim, actionAnim, contextItem);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem, bool append)
+FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem = nullptr, bool append = false)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -235,10 +210,6 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, hstring protoI
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     int32_t result = 0;
 
     for (const auto& item : self->GetInvItems()) {
@@ -251,13 +222,13 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
     return self->GetInvItem(itemId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
     const auto* proto = self->GetEngine()->GetProtoItem(protoId);
 
@@ -292,12 +263,8 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, hstring protoI
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (proto->GetStackable()) {
         for (auto& item : self->GetInvItems()) {
             if (item->GetProtoId() == proto->GetProtoId()) {
@@ -325,7 +292,7 @@ FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
@@ -399,7 +366,6 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
     else
 #endif
     {
-        // Todo: improve run particles for 2D animations
         ignore_unused(particleName);
         ignore_unused(boneName);
         ignore_unused(moveX);
@@ -428,12 +394,12 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
                 animCallback->Call(self);
             }
         };
-        hex_cr->GetModel()->AnimationCallbacks.emplace_back(std::move(anim_callback));
+
+        hex_cr->GetModel()->AddAnimationCallback(std::move(anim_callback));
     }
     else
 #endif
     {
-        // Todo: improve animation callbacks for 2D animations
         ignore_unused(stateAnim);
         ignore_unused(actionAnim);
         ignore_unused(normalizedTime);
@@ -476,7 +442,7 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
@@ -487,7 +453,25 @@ FO_SCRIPT_API MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos he
     const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
     const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}}, speed);
+    // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
+    return hex_cr->GetMoving();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    // hexOffset is the target's real sub-hex position; with FreeMovement the engine stops at the cut distance from it.
+    const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
     return hex_cr->GetMoving();
 }
 
@@ -513,6 +497,27 @@ FO_SCRIPT_API void Client_Critter_StopMove(CritterView* self)
     }
 
     self->GetEngine()->CritterMoveTo(hex_cr, mdir {0}, 0);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(CritterView* self)
+{
+#if FO_ENABLE_3D
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr != nullptr && hex_cr->IsModel()) {
+        float32_t a = 180.0f - hex_cr->GetModel()->GetMoveDirAngle();
+        a = std::fmod(a, 360.0f);
+
+        if (a < 0.0f) {
+            a += 360.0f;
+        }
+
+        return iround<int16_t>(a);
+    }
+#endif
+
+    return self->GetDir().angle();
 }
 
 ///@ ExportMethod

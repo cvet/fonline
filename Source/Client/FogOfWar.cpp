@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-void FogOfWar::Clear()
+void FogShape::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -46,6 +46,7 @@ void FogOfWar::Clear()
     _transitionActive = false;
     _collapsingToOff = false;
     _transitionTime = {};
+    _transitionDuration = 0;
     _lastOrigin = {};
     _lastDistance = {};
     _lastRadius = {};
@@ -58,7 +59,7 @@ void FogOfWar::Clear()
     _targetPoints.clear();
 }
 
-void FogOfWar::Prepare(const Input& input)
+void FogShape::Prepare(const Input& input)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -86,10 +87,10 @@ void FogOfWar::Prepare(const Input& input)
         StartTransition(std::move(points), input.FrameTime, input.FogTransitionDuration);
     }
 
-    UpdateTransition(input.FrameTime, input.FogTransitionDuration);
+    UpdateTransition(input.FrameTime);
 }
 
-void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const
+void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -119,9 +120,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
     const ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
     const auto center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
-    const auto traced_color = ucolor {numeric_cast<uint8_t>(overlay_color.comp.r * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.g * 120 / 255), numeric_cast<uint8_t>(overlay_color.comp.b * 120 / 255), center_alpha};
-    const auto default_center_color = is_traced_overlay ? traced_color : ucolor {0, 0, 0, center_alpha};
-    const auto center_color = has_custom_center_color ? input.CenterColor : default_center_color;
+    const auto center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, center_alpha} : (has_custom_center_color ? input.CenterColor : ucolor {0, 0, 0, center_alpha});
     const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset.get()};
 
     auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
@@ -167,7 +166,7 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 const auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_overlay_dist, input.CheckShootBlocks);
                 const auto block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
                 const auto result_overlay_dist = GeometryHelper::GetDistance(base_hex, block_hex);
-                const auto overlay_strength = numeric_cast<uint8_t>(160 + result_overlay_dist * 95 / max_overlay_dist);
+                const auto overlay_strength = numeric_cast<uint8_t>(std::max(max_overlay_dist - result_overlay_dist, 0) * 255 / max_overlay_dist);
                 const auto color_r = numeric_cast<uint8_t>(overlay_color.comp.r * overlay_strength / 255);
                 const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
                 const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
@@ -190,76 +189,60 @@ void FogOfWar::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 }
 
-void FogOfWar::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
+void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto clamped_duration = std::max(duration, 0);
+    // One morph duration for every change: the oval grows from its center on appearance, glides between
+    // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal.
+    _transitionDuration = std::max(duration, 0);
 
     if (points.empty()) {
+        // Disappear: shrink the current fan to its center, then clear when the morph finishes. Nothing to
+        // do if it is already gone or already collapsing.
         if (_collapsingToOff || _points.empty()) {
             return;
         }
 
         _collapsingToOff = true;
 
-        if (clamped_duration > 0) {
+        if (_transitionDuration > 0) {
             _startPoints = _points;
             _targetPoints = MakeCollapsed(_points);
             _transitionTime = frame_time;
             _transitionActive = true;
         }
         else {
-            _points = MakeCollapsed(_points);
-            _targetPoints = _points;
+            _points.clear();
             _startPoints.clear();
+            _targetPoints.clear();
             _transitionActive = false;
         }
 
         return;
     }
 
-    if (_collapsingToOff) {
-        _collapsingToOff = false;
+    _collapsingToOff = false;
 
-        if (clamped_duration > 0) {
-            if (_points.empty()) {
-                _points = MakeCollapsed(points);
-            }
-            _startPoints = _points;
-            _targetPoints = std::move(points);
-            _transitionTime = frame_time;
-            _transitionActive = true;
-        }
-        else {
-            _points = std::move(points);
-            _targetPoints = _points;
-            _startPoints.clear();
-            _transitionActive = false;
-        }
-
-        return;
-    }
-
-    if (clamped_duration == 0) {
+    if (_transitionDuration == 0) {
         _points = std::move(points);
         _startPoints.clear();
         _targetPoints = _points;
         _transitionActive = false;
+        return;
     }
-    else {
-        if (!_transitionActive && _points.empty()) {
-            _points = MakeCollapsed(points);
-        }
 
-        _startPoints = _points;
-        _targetPoints = std::move(points);
-        _transitionTime = frame_time;
-        _transitionActive = true;
+    if (_points.empty()) {
+        _points = MakeCollapsed(points);
     }
+
+    _startPoints = _points;
+    _targetPoints = std::move(points);
+    _transitionTime = frame_time;
+    _transitionActive = true;
 }
 
-void FogOfWar::UpdateTransition(nanotime frame_time, int32_t duration)
+void FogShape::UpdateTransition(nanotime frame_time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -267,11 +250,10 @@ void FogOfWar::UpdateTransition(nanotime frame_time, int32_t duration)
         return;
     }
 
-    const auto clamped_duration = std::max(duration, 0);
+    const auto clamped_duration = std::max(_transitionDuration, 0);
 
     if (clamped_duration == 0) {
-        _points = _targetPoints;
-        _transitionActive = false;
+        FinishTransition();
         return;
     }
 
@@ -280,18 +262,27 @@ void FogOfWar::UpdateTransition(nanotime frame_time, int32_t duration)
     InterpolatePoints(_startPoints, _targetPoints, progress, _points);
 
     if (progress >= 1.0f) {
-        _points = _targetPoints;
-        _transitionActive = false;
-
-        if (_collapsingToOff) {
-            _points.clear();
-            _startPoints.clear();
-            _targetPoints.clear();
-        }
+        FinishTransition();
     }
 }
 
-auto FogOfWar::GetCollapsePoint(const vector<PrimitivePoint>& points) -> PrimitivePoint
+void FogShape::FinishTransition()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _points = _targetPoints;
+    _transitionActive = false;
+
+    // A collapse-to-off morph ends with the fog fully cleared.
+    if (_collapsingToOff) {
+        _points.clear();
+        _startPoints.clear();
+        _targetPoints.clear();
+        _collapsingToOff = false;
+    }
+}
+
+auto FogShape::GetCollapsePoint(const vector<PrimitivePoint>& points) -> PrimitivePoint
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -305,7 +296,7 @@ auto FogOfWar::GetCollapsePoint(const vector<PrimitivePoint>& points) -> Primiti
     return points.front();
 }
 
-auto FogOfWar::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>
+auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -317,16 +308,17 @@ auto FogOfWar::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
 
     auto collapsed = points;
 
+    // Collapse only the position to the origin; keep each point's own color so a growing/shrinking
+    // fan keeps its soft faded edges throughout the transition instead of flashing the center color.
     for (auto& p : collapsed) {
         p.PointPos = center.PointPos;
-        p.PointColor = center.PointColor;
         p.PointOffset = _drawOffset.get();
     }
 
     return collapsed;
 }
 
-auto FogOfWar::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge_count, size_t sample_edge_idx, size_t sample_edge_count, const PrimitivePoint& fallback) -> PrimitivePoint
+auto FogShape::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge_count, size_t sample_edge_idx, size_t sample_edge_count, const PrimitivePoint& fallback) -> PrimitivePoint
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -344,7 +336,7 @@ auto FogOfWar::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge
     return arr_idx < points.size() ? points[arr_idx] : fallback;
 }
 
-auto FogOfWar::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
+auto FogShape::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -353,7 +345,7 @@ auto FogOfWar::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
     return ucolor {lerp_channel(from.comp.r, to.comp.r), lerp_channel(from.comp.g, to.comp.g), lerp_channel(from.comp.b, to.comp.b), lerp_channel(from.comp.a, to.comp.a)};
 }
 
-auto FogOfWar::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint
+auto FogShape::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -366,7 +358,7 @@ auto FogOfWar::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to
     return result;
 }
 
-void FogOfWar::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points)
+void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points)
 {
     FO_NO_STACK_TRACE_ENTRY();
 

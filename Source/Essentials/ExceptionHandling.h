@@ -40,7 +40,7 @@
 FO_BEGIN_NAMESPACE
 
 // Engine exception handling
-using ExceptionCallback = function<void(string_view message, string_view traceback, bool fatal_error)>;
+using ExceptionCallback = function<void(string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
 
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
@@ -51,7 +51,6 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
-// Todo: pass name to exceptions context args
 #define FO_DECLARE_EXCEPTION_EXT(exception_name, base_exception_name) \
     class exception_name : public base_exception_name \
     { \
@@ -62,7 +61,7 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, nullptr, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, static_cast<const FO_NAMESPACE StackTraceData*>(nullptr), message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
@@ -76,6 +75,13 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
         } \
         exception_name(exception_name&& other) noexcept : \
             base_exception_name(std::move(other)) \
+        { \
+        } \
+\
+    protected: \
+        template<typename... Args> \
+        exception_name(const char* derived_name, const FO_NAMESPACE StackTraceData* st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+            base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
     }
@@ -158,7 +164,11 @@ private:
     if (!(expr)) [[unlikely]] { \
         throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
     }
-#define FO_RUNTIME_VERIFY(expr, ...) \
+#define FO_RUNTIME_VERIFY(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+    }
+#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...) \
     if (!(expr)) [[unlikely]] { \
         FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
         return __VA_ARGS__; \
@@ -171,6 +181,7 @@ private:
 #define FO_RUNTIME_ASSERT(expr)
 #define FO_RUNTIME_ASSERT_STR(expr, str)
 #define FO_RUNTIME_VERIFY(expr, ...)
+#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...)
 #define FO_STRONG_ASSERT(expr)
 #endif
 

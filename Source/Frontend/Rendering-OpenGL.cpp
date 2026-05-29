@@ -284,10 +284,11 @@ public:
     GLuint Ubo_ProjBuf {};
     GLuint Ubo_MainTexBuf {};
     GLuint Ubo_EggBuf {};
-    GLuint Ubo_ContourBuf {};
+    GLuint Ubo_SpriteBorderBuf {};
     GLuint Ubo_TimeBuf {};
     GLuint Ubo_RandomValueBuf {};
     GLuint Ubo_ScriptValueBuf {};
+    GLuint Ubo_CameraBuf {};
 #if FO_ENABLE_3D
     GLuint Ubo_ModelBuf {};
     GLuint Ubo_ModelTexBuf {};
@@ -422,25 +423,27 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 
     // Check OpenGL extensions
-#define CHECK_EXTENSION(ext, critical) \
-    if (!GL_HAS(ext)) { \
-        string msg = (critical) ? "Critical" : "Not critical"; \
-        WriteLog("OpenGL extension '" #ext "' not supported. {}", msg); \
-        if (critical) { \
-            extension_errors++; \
-        } \
-    }
     size_t extension_errors = 0;
-    CHECK_EXTENSION(version_2_0, true);
-    CHECK_EXTENSION(vertex_buffer_object, true);
-    CHECK_EXTENSION(uniform_buffer_object, true);
-    CHECK_EXTENSION(vertex_array_object, false);
-    CHECK_EXTENSION(framebuffer_object, false);
+
+    const auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
+        if (!has_ext) {
+            const string msg = critical ? "Critical" : "Not critical";
+            WriteLog("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            if (critical) {
+                extension_errors++;
+            }
+        }
+    };
+
+    check_extension("version_2_0", GL_HAS(version_2_0), true);
+    check_extension("vertex_buffer_object", GL_HAS(vertex_buffer_object), true);
+    check_extension("uniform_buffer_object", GL_HAS(uniform_buffer_object), true);
+    check_extension("vertex_array_object", GL_HAS(vertex_array_object), false);
+    check_extension("framebuffer_object", GL_HAS(framebuffer_object), false);
     if (!GL_HAS(framebuffer_object)) {
-        CHECK_EXTENSION(framebuffer_object_ext, true);
+        check_extension("framebuffer_object_ext", GL_HAS(framebuffer_object_ext), true);
     }
     FO_RUNTIME_ASSERT(!extension_errors);
-#undef CHECK_EXTENSION
 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
@@ -734,22 +737,26 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         opengl_effect->Program[pass] = program;
 
         if (GL_HAS(uniform_buffer_object)) {
-#define UBO_BLOCK_BINDING(buf) \
-    if (const auto index = glGetUniformBlockIndex(program, #buf); index != GL_INVALID_INDEX) { \
-        GL(glUniformBlockBinding(program, index, opengl_effect->_pos##buf[pass])); \
-    }
-            UBO_BLOCK_BINDING(ProjBuf);
-            UBO_BLOCK_BINDING(MainTexBuf);
-            UBO_BLOCK_BINDING(ContourBuf);
-            UBO_BLOCK_BINDING(TimeBuf);
-            UBO_BLOCK_BINDING(RandomValueBuf);
-            UBO_BLOCK_BINDING(ScriptValueBuf);
+            const auto bind_ubo_block = [&](const char* block_name, int32_t block_pos) {
+                if (block_pos != -1) {
+                    if (const GLuint index = glGetUniformBlockIndex(program, block_name); index != GL_INVALID_INDEX) {
+                        GL(glUniformBlockBinding(program, index, block_pos));
+                    }
+                }
+            };
+
+            bind_ubo_block("ProjBuf", opengl_effect->_posProjBuf[pass]);
+            bind_ubo_block("MainTexBuf", opengl_effect->_posMainTexBuf[pass]);
+            bind_ubo_block("SpriteBorderBuf", opengl_effect->_posSpriteBorderBuf[pass]);
+            bind_ubo_block("TimeBuf", opengl_effect->_posTimeBuf[pass]);
+            bind_ubo_block("RandomValueBuf", opengl_effect->_posRandomValueBuf[pass]);
+            bind_ubo_block("ScriptValueBuf", opengl_effect->_posScriptValueBuf[pass]);
+            bind_ubo_block("CameraBuf", opengl_effect->_posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            UBO_BLOCK_BINDING(ModelBuf);
-            UBO_BLOCK_BINDING(ModelTexBuf);
-            UBO_BLOCK_BINDING(ModelAnimBuf);
+            bind_ubo_block("ModelBuf", opengl_effect->_posModelBuf[pass]);
+            bind_ubo_block("ModelTexBuf", opengl_effect->_posModelTexBuf[pass]);
+            bind_ubo_block("ModelAnimBuf", opengl_effect->_posModelAnimBuf[pass]);
 #endif
-#undef UBO_BLOCK_BINDING
         }
     }
 
@@ -1204,23 +1211,25 @@ OpenGL_Effect::~OpenGL_Effect()
     }
 
     if (GL_HAS(uniform_buffer_object)) {
-#define UBO_DELETE_BUFFER(buf) \
-    if (Ubo_##buf != 0) { \
-        glDeleteBuffers(1, &Ubo_##buf); \
-    }
-        UBO_DELETE_BUFFER(ProjBuf);
-        UBO_DELETE_BUFFER(MainTexBuf);
-        UBO_DELETE_BUFFER(EggBuf);
-        UBO_DELETE_BUFFER(ContourBuf);
-        UBO_DELETE_BUFFER(TimeBuf);
-        UBO_DELETE_BUFFER(RandomValueBuf);
-        UBO_DELETE_BUFFER(ScriptValueBuf);
+        const auto delete_ubo = [](GLuint& ubo) {
+            if (ubo != 0) {
+                glDeleteBuffers(1, &ubo);
+            }
+        };
+
+        delete_ubo(Ubo_ProjBuf);
+        delete_ubo(Ubo_MainTexBuf);
+        delete_ubo(Ubo_EggBuf);
+        delete_ubo(Ubo_SpriteBorderBuf);
+        delete_ubo(Ubo_TimeBuf);
+        delete_ubo(Ubo_RandomValueBuf);
+        delete_ubo(Ubo_ScriptValueBuf);
+        delete_ubo(Ubo_CameraBuf);
 #if FO_ENABLE_3D
-        UBO_DELETE_BUFFER(ModelBuf);
-        UBO_DELETE_BUFFER(ModelTexBuf);
-        UBO_DELETE_BUFFER(ModelAnimBuf);
+        delete_ubo(Ubo_ModelBuf);
+        delete_ubo(Ubo_ModelTexBuf);
+        delete_ubo(Ubo_ModelAnimBuf);
 #endif
-#undef UBO_DELETE_BUFFER
     }
 }
 
@@ -1293,29 +1302,37 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     }
 
     if (GL_HAS(uniform_buffer_object)) {
-#define UBO_UPLOAD_BUFFER(buf) \
-    if (_need##buf && buf.has_value()) { \
-        if (Ubo_##buf == 0) { \
-            GL(glGenBuffers(1, &Ubo_##buf)); \
-        } \
-        GL(glBindBuffer(GL_UNIFORM_BUFFER, Ubo_##buf)); \
-        GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(buf##fer), &buf.value(), GL_DYNAMIC_DRAW)); \
-        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0)); \
-        buf.reset(); \
-    }
-        UBO_UPLOAD_BUFFER(ProjBuf);
-        UBO_UPLOAD_BUFFER(MainTexBuf);
-        UBO_UPLOAD_BUFFER(EggBuf);
-        UBO_UPLOAD_BUFFER(ContourBuf);
-        UBO_UPLOAD_BUFFER(TimeBuf);
-        UBO_UPLOAD_BUFFER(RandomValueBuf);
-        UBO_UPLOAD_BUFFER(ScriptValueBuf);
+        const auto upload_ubo = [&](bool need_buf, auto& buf, GLuint& ubo, bool reset_buf) {
+            if (!need_buf || !buf.has_value()) {
+                return;
+            }
+
+            if (ubo == 0) {
+                GL(glGenBuffers(1, &ubo));
+            }
+
+            GL(glBindBuffer(GL_UNIFORM_BUFFER, ubo));
+            GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(*buf), &buf.value(), GL_DYNAMIC_DRAW));
+            GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+
+            if (reset_buf) {
+                buf.reset();
+            }
+        };
+
+        upload_ubo(_needProjBuf, ProjBuf, Ubo_ProjBuf, true);
+        upload_ubo(_needMainTexBuf, MainTexBuf, Ubo_MainTexBuf, true);
+        upload_ubo(_needEggBuf, EggBuf, Ubo_EggBuf, true);
+        upload_ubo(_needSpriteBorderBuf, SpriteBorderBuf, Ubo_SpriteBorderBuf, true);
+        upload_ubo(_needTimeBuf, TimeBuf, Ubo_TimeBuf, true);
+        upload_ubo(_needRandomValueBuf, RandomValueBuf, Ubo_RandomValueBuf, true);
+        upload_ubo(_needScriptValueBuf, ScriptValueBuf, Ubo_ScriptValueBuf, false);
+        upload_ubo(_needCameraBuf, CameraBuf, Ubo_CameraBuf, true);
 #if FO_ENABLE_3D
-        UBO_UPLOAD_BUFFER(ModelBuf);
-        UBO_UPLOAD_BUFFER(ModelTexBuf);
-        UBO_UPLOAD_BUFFER(ModelAnimBuf);
+        upload_ubo(_needModelBuf, ModelBuf, Ubo_ModelBuf, true);
+        upload_ubo(_needModelTexBuf, ModelTexBuf, Ubo_ModelTexBuf, true);
+        upload_ubo(_needModelAnimBuf, ModelAnimBuf, Ubo_ModelAnimBuf, true);
 #endif
-#undef UBO_UPLOAD_BUFFER
     }
 
     const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
@@ -1329,23 +1346,25 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #endif
 
         if (GL_HAS(uniform_buffer_object)) {
-#define UBO_BIND_BUFFER(buf) \
-    if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
-        GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], Ubo_##buf)); \
-    }
-            UBO_BIND_BUFFER(ProjBuf);
-            UBO_BIND_BUFFER(MainTexBuf);
-            UBO_BIND_BUFFER(EggBuf);
-            UBO_BIND_BUFFER(ContourBuf);
-            UBO_BIND_BUFFER(TimeBuf);
-            UBO_BIND_BUFFER(RandomValueBuf);
-            UBO_BIND_BUFFER(ScriptValueBuf);
+            const auto bind_ubo = [this](GLuint ubo, int32_t pos) {
+                if (ubo != 0 && pos != -1) {
+                    GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, ubo));
+                }
+            };
+
+            bind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
+            bind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
+            bind_ubo(Ubo_EggBuf, _posEggBuf[pass]);
+            bind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
+            bind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
+            bind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
+            bind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            bind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            UBO_BIND_BUFFER(ModelBuf);
-            UBO_BIND_BUFFER(ModelTexBuf);
-            UBO_BIND_BUFFER(ModelAnimBuf);
+            bind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
+            bind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
+            bind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
 #endif
-#undef UBO_BIND_BUFFER
         }
 
         GL(glUseProgram(Program[pass]));
@@ -1353,6 +1372,13 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (_posMainTex[pass] != -1) {
             GL(glActiveTexture(GL_TEXTURE0 + _posMainTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
+        }
+
+        if (_posIndoorMaskTex[pass] != -1) {
+            const auto* indoor_tex = static_cast<const OpenGL_Texture*>(IndoorMaskTex ? IndoorMaskTex.get() : _ctx->DummyTexture.get());
+            GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));
             GL(glActiveTexture(GL_TEXTURE0));
         }
 
@@ -1397,22 +1423,24 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
 
         if (GL_HAS(uniform_buffer_object)) {
-#define UBO_UNBIND_BUFFER(buf) \
-    if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
-        GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], 0)); \
-    }
-            UBO_UNBIND_BUFFER(ProjBuf);
-            UBO_UNBIND_BUFFER(MainTexBuf);
-            UBO_UNBIND_BUFFER(ContourBuf);
-            UBO_UNBIND_BUFFER(TimeBuf);
-            UBO_UNBIND_BUFFER(RandomValueBuf);
-            UBO_UNBIND_BUFFER(ScriptValueBuf);
+            const auto unbind_ubo = [this](GLuint ubo, int32_t pos) {
+                if (ubo != 0 && pos != -1) {
+                    GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, 0));
+                }
+            };
+
+            unbind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
+            unbind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
+            unbind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
+            unbind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
+            unbind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
+            unbind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
+            unbind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            UBO_UNBIND_BUFFER(ModelBuf);
-            UBO_UNBIND_BUFFER(ModelTexBuf);
-            UBO_UNBIND_BUFFER(ModelAnimBuf);
+            unbind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
+            unbind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
+            unbind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
 #endif
-#undef UBO_UNBIND_BUFFER
         }
     }
 

@@ -127,12 +127,15 @@
 #endif
 
 // Compiler warnings disable helper
-#if defined(_MSC_VER)
-#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
-#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
+#if defined(__clang__) && defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0)) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop") __pragma(warning(pop))
 #elif defined(__clang__)
 #define FO_DISABLE_WARNINGS_PUSH() _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
 #define FO_DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#elif defined(_MSC_VER)
+#define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
+#define FO_DISABLE_WARNINGS_POP() __pragma(warning(pop))
 #else
 #define FO_DISABLE_WARNINGS_PUSH()
 #define FO_DISABLE_WARNINGS_POP()
@@ -154,6 +157,13 @@
 #define FO_EXPORT_FUNC extern "C" __declspec(dllexport)
 #else
 #define FO_EXPORT_FUNC extern "C"
+#endif
+
+// Keep data symbol from being eliminated by LTO (used for markers patched at packaging time)
+#if defined(__GNUC__)
+#define FO_KEEP_DATA_SYMBOL [[gnu::used]] alignas(uint32_t) static volatile
+#else
+#define FO_KEEP_DATA_SYMBOL alignas(uint32_t) static volatile
 #endif
 
 // Namespace management
@@ -256,7 +266,6 @@ FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 }
 
 // Explicit copying
-// Todo: optimize copy() to pass placement storage for value
 template<typename T>
     requires(std::is_copy_constructible_v<std::remove_cvref_t<T>>)
 constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
@@ -289,6 +298,7 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
+#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)
@@ -359,6 +369,17 @@ template<typename T, std::integral U>
 inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
 {
     return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
+}
+
+template<bool Enabled>
+[[nodiscard]] bool build_condition() noexcept
+{
+    if constexpr (Enabled) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 // Stack unwind detector
@@ -480,6 +501,8 @@ public:
     auto operator=(RefCounted&&) noexcept = delete;
     ~RefCounted() = default;
 
+    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(std::memory_order_relaxed); }
+
     void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
 
     void Release() const noexcept
@@ -513,7 +536,6 @@ constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
 }
 
 // Enum formatter
-// Todo: improve named enums
 FO_END_NAMESPACE
 template<typename T>
     requires(std::is_enum_v<T>)

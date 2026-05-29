@@ -108,6 +108,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _conn.AddMessageHandler(NetMessage::PlaceToGameComplete, [this]() FO_DEFERRED { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NetMessage::AddCritter, [this]() FO_DEFERRED { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NetMessage::RemoveCritter, [this]() FO_DEFERRED { Net_OnRemoveCritter(); });
+    _conn.AddMessageHandler(NetMessage::CritterVisibilityMode, [this]() FO_DEFERRED { Net_OnCritterVisibilityMode(); });
     _conn.AddMessageHandler(NetMessage::CritterAction, [this]() FO_DEFERRED { Net_OnCritterAction(); });
     _conn.AddMessageHandler(NetMessage::CritterMoveItem, [this]() FO_DEFERRED { Net_OnCritterMoveItem(); });
     _conn.AddMessageHandler(NetMessage::CritterTeleport, [this]() FO_DEFERRED { Net_OnCritterTeleport(); });
@@ -130,6 +131,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::AddCustomEntity, [this]() FO_DEFERRED { Net_OnAddCustomEntity(); });
     _conn.AddMessageHandler(NetMessage::RemoveCustomEntity, [this]() FO_DEFERRED { Net_OnRemoveCustomEntity(); });
+    _conn.AddMessageHandler(NetMessage::HashList, [this]() FO_DEFERRED { Net_OnHashList(); });
 
     // Properties that sending to clients
     {
@@ -162,9 +164,12 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterContour(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Contour_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemContour(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
@@ -344,9 +349,6 @@ void ClientEngine::MainLoop()
     {
         SprMngr.BeginScene();
 
-        // Quake effect
-        ProcessScreenEffectQuake();
-
         // Make dirty offscreen surfaces
         if (!PreDirtyOffscreenSurfaces.empty()) {
             DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
@@ -359,130 +361,8 @@ void ClientEngine::MainLoop()
         OnRenderIface.Fire();
 
         ProcessVideo();
-        ProcessScreenEffectFading();
 
         SprMngr.EndScene();
-    }
-}
-
-void ClientEngine::ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!push_back || _screenFadingEffects.empty()) {
-        _screenFadingEffects.push_back({.BeginTime = GameTime.GetFrameTime(), .Duration = time, .StartColor = from_color, .EndColor = to_color});
-    }
-    else {
-        nanotime last_tick;
-
-        for (const auto& e : _screenFadingEffects) {
-            if (e.BeginTime + e.Duration > last_tick) {
-                last_tick = e.BeginTime + e.Duration;
-            }
-        }
-
-        _screenFadingEffects.push_back({.BeginTime = last_tick, .Duration = time, .StartColor = from_color, .EndColor = to_color});
-    }
-}
-
-void ClientEngine::ProcessScreenEffectFading()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    SprMngr.Flush();
-
-    vector<PrimitivePoint> full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, irect32(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), ucolor::clear);
-
-    for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
-        auto& screen_effect = *it;
-
-        if (GameTime.GetFrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
-            it = _screenFadingEffects.erase(it);
-            continue;
-        }
-
-        if (GameTime.GetFrameTime() >= screen_effect.BeginTime) {
-            const int32_t effect_duration = screen_effect.Duration.to_ms<int32_t>();
-            const int32_t effect_elapsed = (GameTime.GetFrameTime() - screen_effect.BeginTime).to_ms<int32_t>();
-            const int32_t effect_percent = effect_duration == 0 ? 0 : std::clamp(effect_elapsed * 100 / effect_duration, 0, 100);
-            const int32_t proc = std::min(effect_percent + 1, 100);
-            int32_t res[4];
-
-            for (auto i = 0; i < 4; i++) {
-                const int32_t sc = (reinterpret_cast<uint8_t*>(&screen_effect.StartColor))[i];
-                const int32_t ec = (reinterpret_cast<uint8_t*>(&screen_effect.EndColor))[i];
-                const auto dc = ec - sc;
-                res[i] = sc + dc * numeric_cast<int32_t>(proc) / 100;
-            }
-
-            const auto color = ucolor {numeric_cast<uint8_t>(res[0]), numeric_cast<uint8_t>(res[1]), numeric_cast<uint8_t>(res[2]), numeric_cast<uint8_t>(res[3])};
-
-            for (auto i = 0; i < 6; i++) {
-                full_screen_quad[i].PointColor = color;
-            }
-
-            SprMngr.DrawPoints(full_screen_quad, RenderPrimitiveType::TriangleList);
-        }
-
-        ++it;
-    }
-}
-
-void ClientEngine::ScreenQuake(int32_t noise, timespan time)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_curMap) {
-        _quakeScreenOffsX = 0.0f;
-        _quakeScreenOffsY = 0.0f;
-        _quakeScreenOffsStep = 0.0f;
-        _quakeScreenOffsNextTime = {};
-        return;
-    }
-
-    _quakeScreenOffsX = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsY = numeric_cast<float32_t>(Random(0, 1) != 0 ? noise : -noise);
-    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time.to_ms<float32_t>() / 30.0f);
-
-    _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
-
-    _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
-}
-
-void ClientEngine::ProcessScreenEffectQuake()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_curMap) {
-        _quakeScreenOffsX = 0.0f;
-        _quakeScreenOffsY = 0.0f;
-        _quakeScreenOffsStep = 0.0f;
-        _quakeScreenOffsNextTime = {};
-        return;
-    }
-
-    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GetFrameTime() >= _quakeScreenOffsNextTime) {
-        if (_quakeScreenOffsX < 0.0f) {
-            _quakeScreenOffsX += _quakeScreenOffsStep;
-        }
-        else if (_quakeScreenOffsX > 0.0f) {
-            _quakeScreenOffsX -= _quakeScreenOffsStep;
-        }
-
-        if (_quakeScreenOffsY < 0.0f) {
-            _quakeScreenOffsY += _quakeScreenOffsStep;
-        }
-        else if (_quakeScreenOffsY > 0.0f) {
-            _quakeScreenOffsY -= _quakeScreenOffsStep;
-        }
-
-        _quakeScreenOffsX = -_quakeScreenOffsX;
-        _quakeScreenOffsY = -_quakeScreenOffsY;
-
-        _curMap->SetExtraScrollOffset(fpos32(_quakeScreenOffsX, _quakeScreenOffsY));
-
-        _quakeScreenOffsNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -578,8 +458,11 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
         _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
         OnConnected.Fire();
     }
-    else if (result == ClientConnection::ConnectResult::Outdated) {
+    else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         throw ResourcesOutdatedException("Binary outdated");
+    }
+    else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
+        throw ResourcesOutdatedException("Updater outdated");
     }
     else {
         OnConnectingFailed.Fire();
@@ -634,7 +517,7 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
     auto* moving = cr->GetMoving();
     FO_RUNTIME_ASSERT(moving);
 
-    if (moving->GetSteps().size() > Settings.MaxPathFindLength) {
+    if (std::cmp_greater(moving->GetSteps().size(), Settings.MaxPathFindLength)) {
         BreakIntoDebugger();
         cr->StopMoving();
         return;
@@ -749,10 +632,17 @@ void ClientEngine::Net_OnInitData()
 
             FO_RUNTIME_ASSERT(name_len > 0);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-            const auto size = reader.Read<uint32_t>();
+            const auto size = reader.Read<uint64_t>();
             const auto hash = reader.Read<uint64_t>();
+            const auto target = reader.Read<UpdateFileTarget>();
+            const auto data_index = reader.Read<uint32_t>();
 
             ignore_unused(hash);
+            ignore_unused(data_index);
+
+            if (target != UpdateFileTarget::ClientResources) {
+                continue;
+            }
 
             // Check size
             if (auto file = resources.ReadFileHeader(fname)) {
@@ -767,6 +657,24 @@ void ClientEngine::Net_OnInitData()
         }
 
         reader.VerifyEnd();
+    }
+}
+
+void ClientEngine::Net_OnHashList()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto count = _conn.InBuf->Read<uint32_t>();
+
+    for (uint32_t i = 0; i < count; i++) {
+        const auto str = _conn.InBuf->Read<string>();
+
+        // Learn the string locally so the matching hash now resolves; same hash function as the server
+        Hashes.ToHashedString(str);
+    }
+
+    if (count != 0) {
+        WriteLog("Learned {} previously unresolved hash(es) from server", count);
     }
 }
 
@@ -812,12 +720,8 @@ void ClientEngine::Net_OnAddCritter()
     CritterHexView* hex_cr;
 
     if (_curMap) {
-        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData);
+        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
         FO_RUNTIME_ASSERT(hex_cr);
-
-        if (_mapLoaded) {
-            hex_cr->FadeUp();
-        }
 
         cr = hex_cr;
     }
@@ -865,6 +769,10 @@ void ClientEngine::Net_OnAddCritter()
         ReceiveCustomEntities(item);
     }
 
+    // Visibility mode (sent regardless of context; default Full for global map)
+    const auto vis_mode = _conn.InBuf->Read<CritterVisibilityMode>();
+    cr->SetVisibilityMode(vis_mode);
+
     // Initial attachment
     const auto is_attached = _conn.InBuf->Read<bool>();
 
@@ -877,19 +785,19 @@ void ClientEngine::Net_OnAddCritter()
     }
 
     cr->SetIsAttached(is_attached);
-    cr->AttachedCritters = std::move(attached_critters);
+    cr->SetAttachedCritters(std::move(attached_critters));
 
     if (_curMap) {
         if (is_attached) {
             for (auto& map_cr : _curMap->GetCritters()) {
-                if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
+                if (map_cr->IsAttachedCritter(cr_id)) {
                     map_cr->MoveAttachedCritters();
                     break;
                 }
             }
         }
 
-        if (!hex_cr->AttachedCritters.empty()) {
+        if (hex_cr->HasAttachedCritters()) {
             hex_cr->MoveAttachedCritters();
         }
     }
@@ -972,6 +880,24 @@ void ClientEngine::Net_OnRemoveCritter()
         }
 
         cr->DestroySelf();
+    }
+}
+
+void ClientEngine::Net_OnCritterVisibilityMode()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto cr_id = _conn.InBuf->Read<ident_t>();
+    const auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
+
+    if (_curMap) {
+        if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
+            cr->SetVisibilityMode(mode);
+            OnCritterVisibilityModeChanged.Fire(cr, mode);
+        }
+        else {
+            BreakIntoDebugger();
+        }
     }
 }
 
@@ -1150,7 +1076,6 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
-    // Todo: refactor critters inventory updating
     const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
@@ -1292,7 +1217,7 @@ void ClientEngine::Net_OnCritterAttachments()
 
             if (is_attached) {
                 for (auto& map_cr : _curMap->GetCritters()) {
-                    if (!map_cr->AttachedCritters.empty() && std::ranges::find(map_cr->AttachedCritters, cr_id) != map_cr->AttachedCritters.end()) {
+                    if (map_cr->IsAttachedCritter(cr_id)) {
                         map_cr->MoveAttachedCritters();
                         break;
                     }
@@ -1300,9 +1225,9 @@ void ClientEngine::Net_OnCritterAttachments()
             }
         }
 
-        cr->AttachedCritters = std::move(attached_critters);
+        cr->SetAttachedCritters(std::move(attached_critters));
 
-        if (!cr->AttachedCritters.empty()) {
+        if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
         }
     }
@@ -1316,7 +1241,7 @@ void ClientEngine::Net_OnCritterAttachments()
 
         cr->SetIsAttached(is_attached);
         cr->SetAttachMaster(attach_master);
-        cr->AttachedCritters = std::move(attached_critters);
+        cr->SetAttachedCritters(std::move(attached_critters));
     }
 }
 
@@ -1417,14 +1342,10 @@ void ClientEngine::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData);
+    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
     FO_RUNTIME_ASSERT(item);
 
     ReceiveCustomEntities(item);
-
-    if (_mapLoaded) {
-        item->FadeUp();
-    }
 
     OnItemMapIn.Fire(item);
 }
@@ -1623,10 +1544,13 @@ void ClientEngine::Net_OnLoadMap()
         const auto* map_proto = GetProtoMap(map_pid);
         FO_RUNTIME_ASSERT(map_proto);
 
+        isize32 screen_size = {Settings.ScreenWidth, Settings.ScreenHeight};
+        OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
+
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
-        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto);
+        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto, screen_size);
         _curMap->RestoreData(_tempPropertiesData);
         _curMap->LoadStaticData();
 
@@ -2154,32 +2078,6 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSetCritterContour(Entity* entity, const Property* prop)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    ignore_unused(prop);
-
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsMapSpriteValid()) {
-        cr->GetMapSprite()->SetContour(cr->GetContour());
-    }
-}
-
-void ClientEngine::OnSetItemContour(Entity* entity, const Property* prop)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    ignore_unused(prop);
-
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->IsMapSpriteValid()) {
-        item->GetMapSprite()->SetContour(item->GetContour());
-    }
-}
-
 void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2232,22 +2130,27 @@ void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
     FO_NON_CONST_METHOD_HINT();
 
-    // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
+    // LightSource, LightIntensity, LightDistance, LightFlags, LightColor.
 
-    ignore_unused(entity);
     ignore_unused(prop);
 
     if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
         hex_item->GetMap()->UpdateItemLightSource(hex_item);
     }
-    else if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr) {
-        if (_curMap) {
-            auto* cr = _curMap->GetCritter(item->GetCritterId());
+}
 
-            if (cr != nullptr) {
-                cr->GetMap()->UpdateCritterLightSource(cr);
-            }
-        }
+void ClientEngine::OnSetCritterLight(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    // Re-apply the critter's light fan after a single bundled write to Critter.Light.
+
+    ignore_unused(prop);
+
+    if (auto* hex_cr = dynamic_cast<CritterHexView*>(entity); hex_cr != nullptr && hex_cr->GetMap() != nullptr) {
+        hex_cr->GetMap()->UpdateCritterLightSource(hex_cr);
     }
 }
 
@@ -2326,15 +2229,6 @@ void ClientEngine::UnloadMap()
     FO_STACK_TRACE_ENTRY();
 
     OnMapUnload.Fire();
-
-    if (_curMap && (_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f)) {
-        _curMap->SetExtraScrollOffset({});
-    }
-
-    _quakeScreenOffsX = 0.0f;
-    _quakeScreenOffsY = 0.0f;
-    _quakeScreenOffsStep = 0.0f;
-    _quakeScreenOffsNextTime = {};
 
     Settings.ScrollMouseRight = false;
     Settings.ScrollMouseLeft = false;
@@ -2504,7 +2398,7 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
-void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed)
+void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2512,26 +2406,32 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
         return;
     }
 
+    if (cr->IsMoving()) {
+        cr->SynchronizeMoving();
+    }
+
     const auto prev_moving = cr->IsMoving();
 
     cr->StopMoving();
+    cr->NormalizeHexOffset();
 
     bool try_move = false;
     mpos hex;
-    ipos16 hex_offset;
+    ipos16 end_hex_offset;
     vector<mdir> steps;
     vector<uint16_t> control_steps;
 
-    if (speed != 0 && cr->IsAlive()) {
+    if (speed != 0) {
         if (pos_or_dir.index() == 0) {
             hex = std::get<0>(std::get<0>(pos_or_dir));
-            hex_offset = std::get<1>(std::get<0>(pos_or_dir));
-
-            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, -1);
+            const auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
+            const auto cut = std::get<2>(std::get<0>(pos_or_dir));
+            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
 
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
                 control_steps = find_path->ControlSteps;
+                end_hex_offset = find_path->EndHexOffset;
                 try_move = true;
             }
         }
@@ -2539,10 +2439,10 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
             const auto dir = std::get<1>(pos_or_dir);
 
             hex = cr->GetHex();
-            hex_offset = cr->GetHexOffset();
+            end_hex_offset = cr->GetHexOffset();
             vector<mdir> raw_steps;
 
-            if (cr->GetMap()->TraceMoveWay(hex, hex_offset, raw_steps, dir, cr->GetMultihex())) {
+            if (cr->GetMap()->TraceMoveWay(hex, end_hex_offset, raw_steps, dir, cr->GetMultihex())) {
                 steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
                 control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
                 try_move = true;
@@ -2551,7 +2451,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>
     }
 
     if (try_move) {
-        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), hex_offset));
+        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
         cr->GetMoving()->ValidateRuntimeState();
         cr->RefreshView();
         Net_SendMove(cr);
@@ -2638,6 +2538,291 @@ void ClientEngine::ProcessVideo()
         queue.erase(queue.begin());
         _videoQueue = queue;
     }
+}
+
+void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto reload_effect = [this, effectPath](raw_ptr<RenderEffect> def_effect) -> RenderEffect* { return EffectMngr.ResolveEffect(def_effect, effectPath); };
+
+    const uint32_t eff_type = static_cast<uint32_t>(effectType);
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
+        MapView* map = GetCurMap();
+
+        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+
+            if (item != nullptr) {
+                item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic));
+            }
+        }
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
+        MapView* map = GetCurMap();
+
+        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+
+            if (cr != nullptr) {
+                cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter));
+            }
+        }
+    }
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Generic, EffectMngr.Effects.GenericDefault, effectPath);
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Critter, EffectMngr.Effects.CritterDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::TileSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Tile, EffectMngr.Effects.TileDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::RoofSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Roof, EffectMngr.Effects.RoofDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::RainSprite)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Rain, EffectMngr.Effects.RainDefault, effectPath);
+    }
+
+#if FO_ENABLE_3D
+    if ((eff_type & static_cast<uint32_t>(EffectType::SkinnedMesh)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.SkinnedModel, EffectMngr.Effects.SkinnedModelDefault, effectPath);
+    }
+#endif
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Interface)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Iface, EffectMngr.Effects.IfaceDefault, effectPath);
+    }
+
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Font, EffectMngr.Effects.FontDefault, effectPath);
+    }
+    if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
+        FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(EffectMngr.Effects.Font));
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Primitive, EffectMngr.Effects.PrimitiveDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::Light)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Light, EffectMngr.Effects.LightDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::Fog)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.Fog, EffectMngr.Effects.FogDefault, effectPath);
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushRenderTarget)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushRenderTarget, EffectMngr.Effects.FlushRenderTargetDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushPrimitive)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushPrimitive, EffectMngr.Effects.FlushPrimitiveDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushMap)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushMap, EffectMngr.Effects.FlushMapDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushLight)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushLight, EffectMngr.Effects.FlushLightDefault, effectPath);
+    }
+    if ((eff_type & static_cast<uint32_t>(EffectType::FlushFog)) != 0) {
+        EffectMngr.SetEffect(EffectMngr.Effects.FlushFog, EffectMngr.Effects.FlushFogDefault, effectPath);
+    }
+
+    if ((eff_type & static_cast<uint32_t>(EffectType::Offscreen)) != 0) {
+        if (effectSubtype < 0) {
+            throw ScriptException("Negative effect subtype");
+        }
+
+        OffscreenEffects.resize(std::max(OffscreenEffects.size(), numeric_cast<size_t>(effectSubtype) + 1));
+        OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
+    }
+}
+
+void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetEffectScriptValues(effectType, effectSubtype, valueIndex, const_span<float32_t> {&value, 1});
+}
+
+void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset, int32_t valuesCount)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const int32_t values_size = numeric_cast<int32_t>(values.size());
+
+    if (valuesOffset < 0 || valuesOffset > values_size) {
+        throw ScriptException("Effect script values offset is out of range", valuesOffset, values_size);
+    }
+
+    int32_t actual_values_count = valuesCount;
+
+    if (actual_values_count < 0) {
+        actual_values_count = values_size - valuesOffset;
+    }
+    if (actual_values_count < 0 || actual_values_count > values_size - valuesOffset) {
+        throw ScriptException("Effect script values count is out of range", actual_values_count, values_size, valuesOffset);
+    }
+    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw ScriptException("Effect script value index is out of range", valueStartIndex);
+    }
+    if (actual_values_count > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES) - valueStartIndex) {
+        throw ScriptException("Effect script value range is out of range", valueStartIndex, actual_values_count);
+    }
+
+    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    const_span<float32_t> selected_values {};
+
+    if (actual_values_count != 0) {
+        selected_values = const_span<float32_t> {values.data() + valuesOffset, numeric_cast<size_t>(actual_values_count)};
+    }
+
+    EffectMngr.SetEffectScriptValues(effect, valueStartIndex, selected_values);
+}
+
+void ClientEngine::ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+
+    EffectMngr.ClearEffectScriptValues(effect);
+}
+
+auto ClientEngine::GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || OffscreenEffects[numeric_cast<size_t>(effectSubtype)] == nullptr) {
+        throw ScriptException("Invalid effect subtype");
+    }
+
+    return OffscreenEffects[numeric_cast<size_t>(effectSubtype)].get();
+}
+
+auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (effectType) {
+    case EffectType::GenericSprite:
+        if (effectSubtype != 0) {
+            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid generic sprite effect subtype", effectSubtype);
+            }
+
+            MapView* map = GetCurMap();
+            if (map == nullptr) {
+                throw ScriptException("Current map is not available");
+            }
+
+            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (item == nullptr) {
+                throw ScriptException("Generic sprite effect target item not found", effectSubtype);
+            }
+
+            return item->GetDrawEffect();
+        }
+
+        return EffectMngr.Effects.Generic.get();
+
+    case EffectType::CritterSprite:
+        if (effectSubtype != 0) {
+            if (effectSubtype < 0 || effectSubtype > std::numeric_limits<uint32_t>::max()) {
+                throw ScriptException("Invalid critter sprite effect subtype", effectSubtype);
+            }
+
+            MapView* map = GetCurMap();
+            if (map == nullptr) {
+                throw ScriptException("Current map is not available");
+            }
+
+            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (cr == nullptr) {
+                throw ScriptException("Critter sprite effect target critter not found", effectSubtype);
+            }
+
+            return cr->GetDrawEffect();
+        }
+
+        return EffectMngr.Effects.Critter.get();
+
+    case EffectType::TileSprite:
+        return EffectMngr.Effects.Tile.get();
+
+    case EffectType::RoofSprite:
+        return EffectMngr.Effects.Roof.get();
+
+    case EffectType::RainSprite:
+        return EffectMngr.Effects.Rain.get();
+
+#if FO_ENABLE_3D
+    case EffectType::SkinnedMesh:
+        return EffectMngr.Effects.SkinnedModel.get();
+#endif
+
+    case EffectType::Interface:
+        return EffectMngr.Effects.Iface.get();
+
+    case EffectType::Font:
+        if (effectSubtype != -1) {
+            throw ScriptException("Per-font script values are not supported");
+        }
+
+        return EffectMngr.Effects.Font.get();
+
+    case EffectType::Primitive:
+        return EffectMngr.Effects.Primitive.get();
+
+    case EffectType::Light:
+        return EffectMngr.Effects.Light.get();
+
+    case EffectType::Fog:
+        return EffectMngr.Effects.Fog.get();
+
+    case EffectType::FlushRenderTarget:
+        return EffectMngr.Effects.FlushRenderTarget.get();
+
+    case EffectType::FlushPrimitive:
+        return EffectMngr.Effects.FlushPrimitive.get();
+
+    case EffectType::FlushMap:
+        return EffectMngr.Effects.FlushMap.get();
+
+    case EffectType::FlushLight:
+        return EffectMngr.Effects.FlushLight.get();
+
+    case EffectType::FlushFog:
+        return EffectMngr.Effects.FlushFog.get();
+
+    case EffectType::Offscreen:
+        if (effectSubtype < 0 || effectSubtype > std::numeric_limits<int32_t>::max()) {
+            throw ScriptException("Invalid offscreen effect subtype", effectSubtype);
+        }
+
+        return GetOffscreenEffect(numeric_cast<int32_t>(effectSubtype));
+
+    default:
+        throw ScriptException("Unsupported effect script value target", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+}
+
+auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    RenderEffect* effect = ResolveEffectScriptValueTarget(effectType, effectSubtype);
+
+    if (effect == nullptr) {
+        throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+    if (!effect->IsNeedScriptValueBuf()) {
+        throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effectType), effectSubtype);
+    }
+
+    return effect;
 }
 
 FO_END_NAMESPACE

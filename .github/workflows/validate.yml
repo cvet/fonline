@@ -21,11 +21,9 @@ jobs:
         shell: bash
     steps:
     - uses: actions/checkout@v6
-    - uses: DoozyX/clang-format-lint-action@v0.20
-      with:
-        source: ./Source
-        extensions: 'h,cpp,fos'
-        clangFormatVersion: 20
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: python3 BuildTools/buildtools.py format-source
+    - run: git diff --exit-code
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-24.04
@@ -34,7 +32,7 @@ jobs:
         shell: bash
     steps:
     - uses: actions/checkout@v6
-    - run: BuildTools/prepare-workspace.sh packages linux
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
     name: Run code coverage
@@ -44,7 +42,7 @@ jobs:
         shell: bash
     steps:
     - uses: actions/checkout@v6
-    - run: BuildTools/prepare-workspace.sh packages linux
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh code-coverage
     - uses: codecov/codecov-action@v4
       with:
@@ -78,38 +76,38 @@ jobs:
       matrix:
         include:
         - app: linux-client
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-client
-          prepare: linux
+          prepare: linux-packages linux
         - app: android-arm32-client
-          prepare: android-arm32
+          prepare: android-packages android-arm32
         - app: android-arm64-client
-          prepare: android-arm64
+          prepare: android-packages android-arm64
         - app: web-client
-          prepare: web
+          prepare: web-packages web
         - app: linux-server
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-server
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-editor
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-editor
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-mapper
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-mapper
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-ascompiler
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-ascompiler
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-baker
-          prepare: linux
+          prepare: linux-packages linux
         - app: linux-gcc-baker
-          prepare: linux
+          prepare: linux-packages linux
     steps:
     - uses: actions/checkout@v6
-    - run: BuildTools/prepare-workspace.sh packages ${{ matrix.prepare }}
+    - run: BuildTools/prepare-workspace.sh ${{ matrix.prepare }}
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
     name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})

@@ -36,13 +36,14 @@
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "LineTracer.h"
+#include "Player.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
-extern bool CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*);
+extern CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*);
 
 MapManager::MapManager(ServerEngine* engine) :
     _engine {engine}
@@ -569,8 +570,8 @@ void MapManager::DestroyLocation(Location* loc)
     }
 
     for (auto* map : copy_hold_ref(loc->GetMaps())) {
-        loc->RemoveMap(map);
         DestroyMapInternal(map);
+        loc->RemoveMap(map);
     }
 
     for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {
@@ -601,14 +602,20 @@ void MapManager::DestroyMap(Map* map)
 
     refcount_ptr loc = map->GetLocation();
     loc->OnMapRemoved.Fire(map);
-    loc->RemoveMap(map);
-
     DestroyMapInternal(map);
+    loc->RemoveMap(map);
 }
 
 void MapManager::DestroyMapInternal(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
+    while (map->HasSpectatorPlayers()) {
+        auto* player = map->GetSpectatorPlayers().back().get();
+        player->ResetViewMap();
+        player->Send_LoadMap(nullptr);
+    }
 
     for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems() || map->HasInnerEntities(); detector.AddLoop()) {
         try {
@@ -634,7 +641,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     FO_STACK_TRACE_ENTRY();
 
     TraceResult output;
-    output.IsFullTrace = false;
+    output.FullyTraced = false;
     output.IsCritterFound = false;
     output.HasLastMovable = false;
 
@@ -648,7 +655,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
 
     for (int32_t i = 0;; i++) {
         if (i >= dist) {
-            output.IsFullTrace = true;
+            output.FullyTraced = true;
             break;
         }
 
@@ -694,7 +701,7 @@ auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int3
     return output;
 }
 
-auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, function<bool(const Item*)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(const Item*)> gag_callback) const -> FindPathOutput
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -713,7 +720,9 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
 
     FindPathInput settings;
     settings.FromHex = from_hex;
+    settings.FromHexOffset = from_cr != nullptr ? from_cr->GetHexOffset() : ipos16 {};
     settings.ToHex = to_hex;
+    settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
     settings.MaxLength = _engine->Settings.MaxPathFindLength;
     settings.Cut = cut;
@@ -842,7 +851,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             }
         }
 
-        RemoveCritterFromMap(cr, prev_map); // Todo: callbacks may turn critter to wrong state
+        RemoveCritterFromMap(cr, prev_map);
 
         if (cr->IsDestroyed()) {
             return;
@@ -938,6 +947,13 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         }
 
         map->AddCritter(cr);
+
+        // Notify spectators
+        if (map->HasSpectatorPlayers()) {
+            for (auto* player : copy_hold_ref(map->GetSpectatorPlayers())) {
+                player->Send_AddCritter(cr);
+            }
+        }
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -994,6 +1010,14 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
 
         cr->ClearVisibleEnitites();
+
+        // Notify spectators
+        if (map->HasSpectatorPlayers()) {
+            for (auto* player : copy_hold_ref(map->GetSpectatorPlayers())) {
+                player->Send_RemoveCritter(cr);
+            }
+        }
+
         map->RemoveCritter(cr);
         cr->SetMapId({});
 
@@ -1065,24 +1089,36 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
         return;
     }
 
-    bool is_see = IsCritterSeeCritter(map, cr, target);
+    auto vis_mode = IsCritterSeeCritter(map, cr, target);
 
-    if (!is_see && target->HasAttachedCritters()) {
+    if (vis_mode == CritterVisibilityMode::None && target->HasAttachedCritters()) {
         for (auto& attached_cr : target->GetAttachedCritters()) {
             FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
 
-            is_see = IsCritterSeeCritter(map, cr, attached_cr.get());
+            const auto attached_mode = IsCritterSeeCritter(map, cr, attached_cr.get());
 
-            if (is_see) {
+            if (attached_mode != CritterVisibilityMode::None) {
+                vis_mode = attached_mode;
                 break;
             }
         }
     }
 
+    const bool is_see = vis_mode != CritterVisibilityMode::None;
+
     if (is_see) {
-        if (target->AddVisibleCritter(cr)) {
+        if (target->AddVisibleCritter(cr, vis_mode)) {
             cr->Send_AddCritter(target);
             cr->OnCritterAppeared.Fire(target);
+        }
+        else {
+            const auto prev_mode = cr->GetVisibleCritterMode(target->GetId());
+
+            if (prev_mode != vis_mode) {
+                cr->SetVisibleCritterMode(target->GetId(), vis_mode);
+                cr->Send_CritterVisibilityMode(target, vis_mode);
+                cr->OnCritterVisibilityModeChanged.Fire(target, vis_mode);
+            }
         }
     }
     else {
@@ -1137,7 +1173,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     }
 }
 
-auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> bool
+auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> CritterVisibilityMode
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1185,37 +1221,29 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, int32_t look, mpos hex, mdir dir)
+void MapManager::ViewMap(Player* view_player, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Critters
-    ignore_unused(look);
-    ignore_unused(hex);
-    ignore_unused(dir);
+    FO_RUNTIME_ASSERT(view_player);
+    FO_RUNTIME_ASSERT(map);
 
+    // Critters: spectator sees every non-destroyed critter on the map
     for (const auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
         }
-        if (cr == view_cr) {
-            continue;
-        }
 
-        if (CheckCritterVisibilityHook(_engine.get(), map, view_cr, cr)) {
-            view_cr->Send_AddCritter(cr);
-        }
+        view_player->Send_AddCritter(cr);
     }
 
-    // Items
+    // Items: spectator sees every non-destroyed item on the map
     for (const auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
             continue;
         }
 
-        if (view_cr->CanSeeItemOnMap(item)) {
-            view_cr->Send_AddItemOnMap(item);
-        }
+        view_player->Send_AddItemOnMap(item);
     }
 }
 

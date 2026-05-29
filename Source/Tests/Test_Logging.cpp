@@ -44,7 +44,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("capture", [&](LogType, string_view message) { captured.emplace_back(message); });
+        SetLogCallback("capture", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
         WriteLog("Hello {}", 42);
 
         REQUIRE(captured.size() == 1);
@@ -59,8 +59,8 @@ TEST_CASE("Logging")
         int32_t first_count = 0;
         int32_t second_count = 0;
 
-        SetLogCallback("replace", [&](LogType, string_view) { first_count++; });
-        SetLogCallback("replace", [&](LogType, string_view) { second_count++; });
+        SetLogCallback("replace", [&](LogType, string_view, const CatchedStackTraceData*) { first_count++; });
+        SetLogCallback("replace", [&](LogType, string_view, const CatchedStackTraceData*) { second_count++; });
         WriteLog(LogType::Warning, "Replacement {}", 1);
 
         CHECK(first_count == 0);
@@ -73,7 +73,7 @@ TEST_CASE("Logging")
     {
         int32_t callback_count = 0;
 
-        SetLogCallback("clear-me", [&](LogType, string_view) { callback_count++; });
+        SetLogCallback("clear-me", [&](LogType, string_view, const CatchedStackTraceData*) { callback_count++; });
         SetLogCallback("", {});
         WriteLogMessage(LogType::Error, "should not hit callback");
 
@@ -84,7 +84,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("reentrant", [&](LogType, string_view message) {
+        SetLogCallback("reentrant", [&](LogType, string_view message, const CatchedStackTraceData*) {
             captured.emplace_back(message);
 
             if (captured.size() == 1) {
@@ -104,7 +104,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("sv", [&](LogType, string_view message) { captured.emplace_back(message); });
+        SetLogCallback("sv", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
 
         const string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders.
         WriteLog(string_view {raw});
@@ -119,7 +119,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("type", [&](LogType, string_view message) { captured.emplace_back(message); });
+        SetLogCallback("type", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
 
         WriteLog(LogType::Info, "info-line");
         WriteLog(LogType::InfoSection, "section-line");
@@ -135,6 +135,28 @@ TEST_CASE("Logging")
         SetLogCallback("type", {});
     }
 
+    SECTION("RepeatedMessagesAreCollapsedUntilDifferentMessage")
+    {
+        vector<string> captured;
+
+        SetLogCallback("repeat", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
+
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+        WriteLogMessage(LogType::Warning, "repeat-collapse");
+
+        REQUIRE(captured.size() == 1);
+        CHECK(captured.front().find("repeat-collapse") != string::npos);
+
+        WriteLogMessage(LogType::Warning, "repeat-collapse-next");
+
+        REQUIRE(captured.size() == 3);
+        CHECK(captured[1].find("...and 2 more same messages") != string::npos);
+        CHECK(captured[2].find("repeat-collapse-next") != string::npos);
+
+        SetLogCallback("repeat", {});
+    }
+
     SECTION("MultipleCallbacksFireForEachMessage")
     {
         int32_t first_count = 0;
@@ -142,11 +164,11 @@ TEST_CASE("Logging")
         string last_first;
         string last_second;
 
-        SetLogCallback("first", [&](LogType, string_view message) {
+        SetLogCallback("first", [&](LogType, string_view message, const CatchedStackTraceData*) {
             first_count++;
             last_first = string(message);
         });
-        SetLogCallback("second", [&](LogType, string_view message) {
+        SetLogCallback("second", [&](LogType, string_view message, const CatchedStackTraceData*) {
             second_count++;
             last_second = string(message);
         });
@@ -173,7 +195,7 @@ TEST_CASE("Logging")
     {
         vector<string> captured;
 
-        SetLogCallback("tag", [&](LogType, string_view message) { captured.emplace_back(message); });
+        SetLogCallback("tag", [&](LogType, string_view message, const CatchedStackTraceData*) { captured.emplace_back(message); });
         WriteLog("tagged");
 
         REQUIRE(captured.size() == 1);

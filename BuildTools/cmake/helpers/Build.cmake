@@ -142,10 +142,36 @@ macro(SetOptionValues)
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
-		if(NOT DEFINED ${optionName} OR "${${optionName}}" STREQUAL "")
-			set(${optionName} "${optionValue}")
+		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
+
+		# Shadow default: if the current cache value differs from the default we last applied, the value
+		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it; otherwise (unset, or
+		# still our default) -> (re)apply the current cmake-file default with FORCE. This keeps the cmake
+		# file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no longer sticks at
+		# an old number) while still honoring real overrides. CMake exposes no -D provenance, so comparing
+		# against the last-applied default is the detection mechanism.
+		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+			set(_soptResolved "${${optionName}}")
+		else()
+			set(_soptResolved "${optionValue}")
 		endif()
+
+		string(TOUPPER "${_soptResolved}" _soptUpper)
+		if(_soptUpper STREQUAL "ON" OR _soptUpper STREQUAL "OFF" OR _soptUpper STREQUAL "TRUE" OR
+			_soptUpper STREQUAL "FALSE" OR _soptUpper STREQUAL "YES" OR _soptUpper STREQUAL "NO" OR
+			_soptUpper STREQUAL "1" OR _soptUpper STREQUAL "0")
+			set(${optionName} ${_soptResolved} CACHE BOOL "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		else()
+			set(${optionName} "${_soptResolved}" CACHE STRING "Forced by FOnline (override via -D / preset / gui)" FORCE)
+		endif()
+
+		set(${_soptShadow} "${optionValue}" CACHE INTERNAL "Last FOnline-applied default for ${optionName}")
+		set(${optionName} "${_soptResolved}")
 	endwhile()
+
+	unset(_soptShadow)
+	unset(_soptResolved)
+	unset(_soptUpper)
 endmacro()
 
 # Force-set a list of CMake cache variables, auto-detecting BOOL vs STRING entries:
@@ -346,7 +372,7 @@ macro(WriteBuildHash target)
 		${CMAKE_COMMAND}
 		-DHASH_FILE="${outputDir}/${target}.build-hash"
 		-DGIT_ROOT="${FO_GIT_ROOT}"
-		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/WriteBuildHash.cmake")
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
 		-E remove -f "${outputDir}/${target}.build-hash")
@@ -490,7 +516,7 @@ endmacro()
 
 macro(SetupApplicationTarget target)
 	set(options WRITE_BUILD_HASH)
-	set(oneValueArgs OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs PROPERTIES LINK_LIBS DEPENDS)
 	ParseArguments(APP_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -510,9 +536,15 @@ macro(SetupApplicationTarget target)
 		SetTargetProperties(${target} OUTPUT_NAME "${APP_TARGET_OUTPUT_NAME}")
 	endif()
 
-	if(DEFINED APP_TARGET_TESTING_APP)
-		SetTargetProperties(${target} COMPILE_DEFINITIONS "FO_TESTING_APP=${APP_TARGET_TESTING_APP}")
+	if(NOT APP_TARGET_TESTING_APP)
+		set(APP_TARGET_TESTING_APP 0)
 	endif()
+	if(NOT APP_TARGET_HEADLESS_APP)
+		set(APP_TARGET_HEADLESS_APP 0)
+	endif()
+	TargetCompileDefinitions(${target} PRIVATE
+		"FO_TESTING_APP=${APP_TARGET_TESTING_APP}"
+		"FO_HEADLESS_APP=${APP_TARGET_HEADLESS_APP}")
 
 	if(APP_TARGET_LINK_LIBS)
 		TargetLinkLibraries(${target} ${APP_TARGET_LINK_LIBS})
@@ -525,7 +557,7 @@ endmacro()
 
 macro(AddExecutableApplication target sourceFile)
 	set(options WIN32 WRITE_BUILD_HASH)
-	set(oneValueArgs OUTPUT_DIR WORKING_DIRECTORY OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_DIR WORKING_DIRECTORY OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_SOURCES)
 	ParseArguments(APP_EXEC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -546,6 +578,7 @@ macro(AddExecutableApplication target sourceFile)
 		VS_DEBUGGER_WORKING_DIRECTORY ${APP_EXEC_WORKING_DIRECTORY}
 		OUTPUT_NAME ${APP_EXEC_OUTPUT_NAME}
 		TESTING_APP ${APP_EXEC_TESTING_APP}
+		HEADLESS_APP ${APP_EXEC_HEADLESS_APP}
 		LINK_LIBS ${APP_EXEC_LINK_LIBS}
 		DEPENDS ${APP_EXEC_DEPENDS})
 
@@ -558,7 +591,7 @@ endmacro()
 
 macro(AddSharedApplication target sourceFile)
 	set(options WRITE_BUILD_HASH NO_PREFIX)
-	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP)
+	set(oneValueArgs OUTPUT_DIR OUTPUT_NAME TESTING_APP HEADLESS_APP)
 	set(multiValueArgs LINK_LIBS DEPENDS EXTRA_PROPERTIES)
 	ParseArguments(APP_SHARED "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -578,6 +611,7 @@ macro(AddSharedApplication target sourceFile)
 		PROPERTIES ${appSharedProperties}
 		OUTPUT_NAME ${APP_SHARED_OUTPUT_NAME}
 		TESTING_APP ${APP_SHARED_TESTING_APP}
+		HEADLESS_APP ${APP_SHARED_HEADLESS_APP}
 		LINK_LIBS ${APP_SHARED_LINK_LIBS}
 		DEPENDS ${APP_SHARED_DEPENDS})
 

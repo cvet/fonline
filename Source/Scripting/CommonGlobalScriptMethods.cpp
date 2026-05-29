@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "ConfigFile.h"
 #include "EngineBase.h"
 #include "Geometry.h"
 #include "LineTracer.h"
@@ -59,15 +60,7 @@ FO_SCRIPT_API void Common_Game_Log(BaseEngine* engine, string_view text)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine)
-{
-    ignore_unused(engine);
-
-    App->RequestQuit();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success)
+FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success = true)
 {
     ignore_unused(engine);
 
@@ -175,6 +168,27 @@ FO_SCRIPT_API string Common_Game_ReadResource(BaseEngine* engine, string_view re
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(BaseEngine* engine, string_view resourcePath, string_view sectionName)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string content = engine->Resources.ReadFileText(resourcePath);
+    ConfigFile config(resourcePath, std::move(content));
+
+    map<string, string> result;
+
+    if (!config.HasSection(sectionName)) {
+        return result;
+    }
+
+    for (const auto& [key, value] : config.GetSection(sectionName)) {
+        result.emplace(string(key), string(value));
+    }
+
+    return result;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_Random(BaseEngine* engine, int32_t minValue, int32_t maxValue)
 {
     return engine->Random(minValue, maxValue);
@@ -227,15 +241,7 @@ FO_SCRIPT_API int32_t Common_Game_GetDistance(BaseEngine* engine, mpos hex1, mpo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex)
-{
-    ignore_unused(engine);
-
-    return mdir(iround<int32_t>(GeometryHelper::GetDirAngle(fromHex, toHex)));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32_t offset)
+FO_SCRIPT_API mdir Common_Game_GetDirection(BaseEngine* engine, mpos fromHex, mpos toHex, float32_t offset = 0.0f)
 {
     ignore_unused(engine);
 
@@ -381,7 +387,19 @@ FO_SCRIPT_API void Common_Game_SetClipboardText(BaseEngine* engine, string_view 
 ///@ ExportMethod
 FO_SCRIPT_API ProtoItem* Common_Game_GetProtoItem(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoItem*>(engine->GetProtoItem(pid));
+    ProtoItem* proto = const_cast<ProtoItem*>(engine->GetProtoItem(pid));
+
+    if (proto == nullptr) {
+        throw ScriptException("Item proto not found (check CheckProtoItem first)", pid);
+    }
+
+    return proto;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_CheckProtoItem(BaseEngine* engine, hstring pid)
+{
+    return engine->GetProtoItem(pid) != nullptr;
 }
 
 ///@ ExportMethod
@@ -420,7 +438,19 @@ FO_SCRIPT_API vector<ProtoItem*> Common_Game_GetProtoItems(BaseEngine* engine, I
 ///@ ExportMethod
 FO_SCRIPT_API ProtoCritter* Common_Game_GetProtoCritter(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoCritter*>(engine->GetProtoCritter(pid));
+    ProtoCritter* proto = const_cast<ProtoCritter*>(engine->GetProtoCritter(pid));
+
+    if (proto == nullptr) {
+        throw ScriptException("Critter proto not found (check CheckProtoCritter first)", pid);
+    }
+
+    return proto;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_CheckProtoCritter(BaseEngine* engine, hstring pid)
+{
+    return engine->GetProtoCritter(pid) != nullptr;
 }
 
 ///@ ExportMethod
@@ -459,7 +489,19 @@ FO_SCRIPT_API vector<ProtoCritter*> Common_Game_GetProtoCritters(BaseEngine* eng
 ///@ ExportMethod
 FO_SCRIPT_API ProtoMap* Common_Game_GetProtoMap(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoMap*>(engine->GetProtoMap(pid));
+    ProtoMap* proto = const_cast<ProtoMap*>(engine->GetProtoMap(pid));
+
+    if (proto == nullptr) {
+        throw ScriptException("Map proto not found (check CheckProtoMap first)", pid);
+    }
+
+    return proto;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_CheckProtoMap(BaseEngine* engine, hstring pid)
+{
+    return engine->GetProtoMap(pid) != nullptr;
 }
 
 ///@ ExportMethod
@@ -498,7 +540,19 @@ FO_SCRIPT_API vector<ProtoMap*> Common_Game_GetProtoMaps(BaseEngine* engine, Map
 ///@ ExportMethod
 FO_SCRIPT_API ProtoLocation* Common_Game_GetProtoLocation(BaseEngine* engine, hstring pid)
 {
-    return const_cast<ProtoLocation*>(engine->GetProtoLocation(pid));
+    ProtoLocation* proto = const_cast<ProtoLocation*>(engine->GetProtoLocation(pid));
+
+    if (proto == nullptr) {
+        throw ScriptException("Location proto not found (check CheckProtoLocation first)", pid);
+    }
+
+    return proto;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_CheckProtoLocation(BaseEngine* engine, hstring pid)
+{
+    return engine->GetProtoLocation(pid) != nullptr;
 }
 
 ///@ ExportMethod

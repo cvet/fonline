@@ -50,6 +50,7 @@ struct ScriptDictTypeData
     raw_ptr<AngelScript::asIScriptFunction> EqFunc {};
     int32_t CmpFuncReturnCode {};
     int32_t EqFuncReturnCode {};
+    ScriptFastCompareFunc FastCompare {};
 };
 
 static void CleanupTypeInfoDictCache(AngelScript::asITypeInfo* type)
@@ -375,6 +376,9 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, AngelScript::asITypeInfo* 
     const auto* sub_type = ti->GetEngine()->GetTypeInfoById(type_id);
 
     if (sub_type != nullptr) {
+        // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types.
+        sub_type_data->FastCompare = GetScriptTypeFastCompare(sub_type);
+
         for (AngelScript::asUINT i = 0; i < sub_type->GetMethodCount(); i++) {
             auto* func = sub_type->GetMethodByIndex(i);
 
@@ -882,7 +886,7 @@ static auto Equals(int32_t type_id, const ScriptDictTypeData* type_data, AngelSc
     FO_STACK_TRACE_ENTRY();
 
     if (type_data != nullptr) {
-        if (!type_data->CmpFunc && !type_data->EqFunc) {
+        if (!type_data->CmpFunc && !type_data->EqFunc && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             const auto* sub_type = engine->GetTypeInfoById(type_id);
 
             if (type_data->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -974,6 +978,11 @@ static auto Compare(bool check_less, int32_t type_id, const ScriptDictTypeData* 
         }
     }
     else {
+        if (type_data != nullptr && type_data->FastCompare != nullptr && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
+            const int32_t r = type_data->FastCompare(a, b);
+            return check_less ? r < 0 : r == 0;
+        }
+
         if (!check_less) {
             if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
                 if (*static_cast<void**>(a) == *static_cast<void**>(b)) {

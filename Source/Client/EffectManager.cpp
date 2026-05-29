@@ -63,9 +63,100 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
         return {};
     });
 
+    if (effect->IsNeedScriptValueBuf()) {
+        effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
+    }
+
     auto* effect_raw_ptr = effect.get();
     _loadedEffects.emplace(path, std::move(effect));
     return effect_raw_ptr;
+}
+
+auto EffectManager::ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_view effectPath) -> RenderEffect*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(defaultEffect != nullptr);
+
+    if (!effectPath.empty()) {
+        RenderEffect* effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
+
+        if (effect == nullptr) {
+            throw EffectManagerException("Effect not found or have some errors, see log file");
+        }
+
+        return effect;
+    }
+
+    return defaultEffect.get();
+}
+
+void EffectManager::SetEffect(raw_ptr<RenderEffect>& effect, raw_ptr<RenderEffect> defaultEffect, string_view effectPath)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    effect = ResolveEffect(defaultEffect, effectPath);
+}
+
+void EffectManager::SetEffectScriptValue(RenderEffect* effect, int32_t valueIndex, float32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
+}
+
+void EffectManager::SetEffectScriptValues(RenderEffect* effect, int32_t valueStartIndex, const_span<float32_t> values)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (effect == nullptr) {
+        throw EffectManagerException("Effect script value target is not loaded");
+    }
+    if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
+        throw EffectManagerException("Effect script value index is out of range", valueStartIndex);
+    }
+    if (values.size() > numeric_cast<size_t>(EFFECT_SCRIPT_VALUES - valueStartIndex)) {
+        throw EffectManagerException("Effect script value range is out of range", valueStartIndex, values.size());
+    }
+    if (!effect->IsNeedScriptValueBuf()) {
+        throw EffectManagerException("Effect does not declare ScriptValueBuf");
+    }
+
+    RenderEffect::ScriptValueBuffer& script_value_buf = GetOrCreateScriptValueBuf(effect);
+    const size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
+
+    for (size_t i = 0; i < values.size(); i++) {
+        script_value_buf.ScriptValue[value_start_index + i] = values[i];
+    }
+}
+
+void EffectManager::ClearEffectScriptValues(RenderEffect* effect)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (effect == nullptr) {
+        throw EffectManagerException("Effect script value target is not loaded");
+    }
+    if (!effect->IsNeedScriptValueBuf()) {
+        throw EffectManagerException("Effect does not declare ScriptValueBuf");
+    }
+
+    RenderEffect::ScriptValueBuffer& script_value_buf = GetOrCreateScriptValueBuf(effect);
+
+    script_value_buf = RenderEffect::ScriptValueBuffer();
+}
+
+auto EffectManager::GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEffect::ScriptValueBuffer&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(effect != nullptr);
+
+    if (!effect->ScriptValueBuf.has_value()) {
+        effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
+    }
+
+    return effect->ScriptValueBuf.value();
 }
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
@@ -97,14 +188,6 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
         random_value_buf->RandomValue[1] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
         random_value_buf->RandomValue[2] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
         random_value_buf->RandomValue[3] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-    }
-
-    if (effect->IsNeedScriptValueBuf()) {
-        auto& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
-
-        for (size_t i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
-            script_value_buf->ScriptValue[i] = i < _settings->EffectValues.size() ? _settings->EffectValues[i] : 0.0f;
-        }
     }
 }
 
@@ -157,10 +240,6 @@ void EffectManager::LoadDefaultEffects()
     if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
-
-    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
-
-    ignore_unused(effect_errors);
 }
 
 #undef LOAD_DEFAULT_EFFECT

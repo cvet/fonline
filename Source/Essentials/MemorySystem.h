@@ -119,7 +119,7 @@ public:
             ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
 
             while (ptr == nullptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...); // Todo: fix use after possible move
+                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
             }
 
             if (ptr == nullptr) {

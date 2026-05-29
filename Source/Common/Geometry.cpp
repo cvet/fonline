@@ -491,39 +491,107 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
         return;
     }
 
-    // Move to first hex around
-#if FO_GEOMETRY == 1
-    constexpr hdir init_dir = hdir::NorthEast;
-#elif FO_GEOMETRY == 2
-    constexpr hdir init_dir = hdir::North;
-#endif
-    MoveHexByDirUnsafe(hex, mdir(init_dir));
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        // Hex grid: ring R has 6R cells; HexesInRadius(R) = 1 + 3R(R+1).
+        // R = smallest integer with 3R(R+1) >= index.
+        const float64_t fi = static_cast<float64_t>(index);
+        int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(12.0 * fi + 9.0) - 3.0) / 6.0 - 1e-9));
 
-    auto dir = hdir::SouthEast;
-    int32_t round = 1;
-    int32_t round_count = HexesInRadius(1) - 1;
-
-    // Move around in a spiral away from the start position
-    for (int32_t i = 1; i < index; i++) {
-        MoveHexByDirUnsafe(hex, dir);
-
-        if (i >= round_count) {
+        if (round < 1) {
+            round = 1;
+        }
+        while (round > 1 && 3 * (round - 1) * round >= index) {
+            round--;
+        }
+        while (3 * round * (round + 1) < index) {
             round++;
-            round_count = HexesInRadius(round) - 1;
-            MoveHexByDirUnsafe(hex, mdir(init_dir));
-            FO_RUNTIME_ASSERT(dir == hdir::East);
         }
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            if (i % round == 0) {
-                dir = hdir(dir.value() + 1);
-            }
+        const int32_t r = index - (1 + 3 * (round - 1) * round); // [0, 6*round - 1]
+
+        // Axial position relative to hex (engine's doubled-axial: E=(+2,0), SE=(+1,+1), ...).
+        // 6 sides of length `round` walked in order SE, SW, W, NW, NE, E. Ranges below
+        // overlap at corners by design - both side formulas agree there.
+        int32_t dax;
+        int32_t day;
+
+        if (r <= round) {
+            dax = round + r;
+            day = -round + r;
+        }
+        else if (r <= 2 * round) {
+            dax = 3 * round - r;
+            day = r - round;
+        }
+        else if (r <= 3 * round) {
+            dax = 5 * round - 2 * r;
+            day = round;
+        }
+        else if (r <= 4 * round) {
+            dax = 2 * round - r;
+            day = 4 * round - r;
+        }
+        else if (r <= 5 * round) {
+            dax = r - 6 * round;
+            day = 4 * round - r;
         }
         else {
-            if (i % (round * 2) == 0) {
-                dir = hdir(dir.value() + 2);
-            }
+            dax = 2 * r - 11 * round;
+            day = -round;
         }
+
+        // Convert axial delta back to offset delta. Hex directions always produce
+        // an even (day - dax), so dx is integer; dy then depends on hex.x parity
+        // via the same row-shift rule used by GetHexPos.
+        const int32_t dx = (day - dax) / 2;
+        const int32_t cx_parity = hex.x & 1;
+        const int32_t shift = dx + cx_parity;
+        const int32_t adj = (shift < 0 ? shift - 1 : shift) / 2; // floor(shift / 2)
+        const int32_t dy = day - adj;
+
+        hex = ipos32 {hex.x + dx, hex.y + dy};
+    }
+    else {
+        // Square grid: ring R has 8R cells; HexesInRadius(R) = 1 + 4R(R+1).
+        // R = smallest integer with 4R(R+1) >= index.
+        const float64_t fi = static_cast<float64_t>(index);
+        int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(1.0 + fi) - 1.0) / 2.0 - 1e-9));
+
+        if (round < 1) {
+            round = 1;
+        }
+        while (round > 1 && 4 * (round - 1) * round >= index) {
+            round--;
+        }
+        while (4 * round * (round + 1) < index) {
+            round++;
+        }
+
+        const int32_t r = index - (1 + 4 * (round - 1) * round); // [0, 8*round - 1]
+
+        // 4 sides of length 2R, walked SE, SW, NW, NE (raw-coord directions).
+        // Square geometry has no parity quirk: raw coords ARE the lattice.
+        int32_t drx;
+        int32_t dry;
+
+        if (r <= 2 * round) {
+            drx = -round;
+            dry = -round + r;
+        }
+        else if (r <= 4 * round) {
+            drx = r - 3 * round;
+            dry = round;
+        }
+        else if (r <= 6 * round) {
+            drx = round;
+            dry = 5 * round - r;
+        }
+        else {
+            drx = 7 * round - r;
+            dry = -round;
+        }
+
+        hex = ipos32 {hex.x + drx, hex.y + dry};
     }
 }
 
@@ -666,9 +734,9 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
         //   |dx * hq + dy * half_w| <= limit
         // where hq = MAP_HEX_HEIGHT / 4, limit = 2 * half_w * hq
         constexpr int32_t hq = GameSettings::MAP_HEX_HEIGHT / 4;
-        const int32_t limit = 2 * half_w * hq;
+        constexpr int32_t limit = 2 * half_w * hq;
 
-        const auto is_inside_hex = [half_w, hq, limit](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
+        const auto is_inside_hex = [](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
 
         if (!is_inside_hex(dx, dy)) {
             // Check 6 neighbors in lattice space: (±1,0), (0,±1), (+1,-1), (-1,+1)
@@ -734,6 +802,23 @@ auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32
     FO_NO_STACK_TRACE_ENTRY();
 
     return GetHexOffset(ipos32(from_hex), ipos32(to_hex));
+}
+
+auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const ipos32 world_pos = GetHexPos(hex) + ipos32(hex_offset);
+    ipos32 normalized_offset;
+    const ipos32 normalized_raw_hex = GetHexPosCoord(world_pos, &normalized_offset);
+
+    if (!map_size.is_valid_pos(normalized_raw_hex)) {
+        return false;
+    }
+
+    hex = map_size.from_raw_pos(normalized_raw_hex);
+    hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
+    return true;
 }
 
 auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32

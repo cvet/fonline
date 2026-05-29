@@ -62,11 +62,19 @@ SETTING_GROUP_END();
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Network, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32_t, Network, NetBufferSize, 4096); // Network buffer size
-FIXED_SETTING(bool, Network, NetDebugHashes, false); // Debug network hashes resolution
-FIXED_SETTING(int32_t, Network, UpdateFileSendSize, 1000000); // Update file send size
+FIXED_SETTING(int32_t, Network, UdpPortOffset, 0); // UDP port offset relative to ServerPort
+FIXED_SETTING(int32_t, Network, UdpPacketSize, 1200); // Target UDP payload budget in bytes
+FIXED_SETTING(int32_t, Network, UdpWindowSize, 65536); // Reliable UDP send window size in bytes
+FIXED_SETTING(int32_t, Network, UdpResendTimeout, 150); // UDP packet resend timeout in milliseconds
+FIXED_SETTING(int32_t, Network, UdpConnectRetry, 500); // UDP connect retry timeout in milliseconds
+FIXED_SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout in milliseconds before failing transport bootstrap
+FIXED_SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
+FIXED_SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
+FIXED_SETTING(int32_t, Network, UpdateFileMaxPortionSize, 1000000); // Maximum update file portion size in bytes
 FIXED_SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 FIXED_SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 FIXED_SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
+FIXED_SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
 FIXED_SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
@@ -75,6 +83,9 @@ SETTING_GROUP_END();
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(bool, ServerNetwork, DisableNetworking, false); // If true, server networking listeners are not started
+FIXED_SETTING(bool, ServerNetwork, EnableUdp, false); // If true, UDP listener is enabled for native clients
+FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP listener silently drops incoming Connect packets so clients fall back to TCP (debug aid)
+FIXED_SETTING(bool, ServerNetwork, UpdateFilesInMemory, false); // If true, updater files are served from memory, otherwise from disk
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
@@ -85,6 +96,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(string, ClientNetwork, ServerHost, "localhost"); // Server host address
 FIXED_SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
+VARIABLE_SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 VARIABLE_SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
@@ -107,15 +119,15 @@ VARIABLE_SETTING(int32_t, View, ScreenWidth, 1024); // Screen width in pixels
 VARIABLE_SETTING(int32_t, View, ScreenHeight, 768); // Screen height in pixels
 FIXED_SETTING(int32_t, View, MonitorWidth); // Monitor width (read only)
 FIXED_SETTING(int32_t, View, MonitorHeight); // Monitor height (read only)
-VARIABLE_SETTING(int32_t, View, ScreenHudHeight, 0); // Screen HUD height in pixels
-VARIABLE_SETTING(bool, View, ShowCorners, false); // If true, corners are shown
-VARIABLE_SETTING(bool, View, ShowSpriteBorders, false); // If true, sprite borders are shown
 FIXED_SETTING(bool, View, HideNativeCursor, false); // If true, native cursor is hidden
 FIXED_SETTING(int32_t, View, FadingDuration, 1000); // Fading duration in milliseconds
 FIXED_SETTING(bool, View, MapZoomEnabled); // Map view zooming
 FIXED_SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (speed up rendering but disables zooming and make scrolling jumpy)
 FIXED_SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 FIXED_SETTING(bool, View, DisableFog); // Disables fog for more performance
+FIXED_SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
+FIXED_SETTING(vector<uint8_t>, View, GlobalDayColor, 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29); // Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor
+FIXED_SETTING(bool, View, DisableIndoorMask, false); // If true, MapView skips the _rtIndoorMask render pass (saves a sprite-draw + RT swap per frame). Use for projects without weather, or to debug-see weather through hidden roofs.
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -147,22 +159,22 @@ FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone 
 FIXED_SETTING(vector<string>, Render, LegBones); // Leg bone names (Todo: move LegBones to fo3d settings)
 VARIABLE_SETTING(bool, Render, WindowCentered, true); // If true, window is centered
 VARIABLE_SETTING(bool, Render, WindowResizable, false); // If true, window is resizable
+VARIABLE_SETTING(bool, Render, HeadlessWindow, false); // If true, window is created hidden for off-screen rendering
 VARIABLE_SETTING(bool, Render, NullRenderer, false); // If true, null renderer is used
 VARIABLE_SETTING(bool, Render, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, Render, ForceDirect3D, false); // If true, Direct3D is forced
 VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
 VARIABLE_SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
+FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
+FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
-VARIABLE_SETTING(vector<float32_t>, Render, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); // Effect values
 VARIABLE_SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
 VARIABLE_SETTING(int32_t, Render, Brightness, 0); // Brightness value
 VARIABLE_SETTING(int32_t, Render, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)
 VARIABLE_SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 to disable)
-FIXED_SETTING(int32_t, Render, FogExtraLength, 0); // Extra fog length
-FIXED_SETTING(int32_t, Render, FogTransitionDuration, 200); // Fog visual transition duration in milliseconds
 FIXED_SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
@@ -235,6 +247,7 @@ FIXED_SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 FIXED_SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
 FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
 FIXED_SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
+FIXED_SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 FIXED_SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
 FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource entries (read only)
 FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
@@ -260,13 +273,8 @@ SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtu
 FIXED_SETTING(int32_t, Hex, ScrollFixedDt, 10); // Scroll fixed delta time in milliseconds
 FIXED_SETTING(int32_t, Hex, ScrollSpeed, 1200); // Scroll speed in pixels per second
 FIXED_SETTING(int32_t, Hex, ZoomSpeed, 100); // Speed of zooming
-FIXED_SETTING(ucolor, Hex, ChosenLightColor, ucolor::clear); // Chosen light color
-FIXED_SETTING(uint8_t, Hex, ChosenLightDistance, 4); // Chosen light distance
-FIXED_SETTING(int32_t, Hex, ChosenLightIntensity, 20); // Chosen light intensity
-FIXED_SETTING(uint8_t, Hex, ChosenLightFlags, 0); // Chosen light flags
 VARIABLE_SETTING(bool, Hex, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
-VARIABLE_SETTING(bool, Hex, ScrollCheck, true); // If true, scroll check is enabled
 VARIABLE_SETTING(bool, Hex, ScrollKeybLeft, false); // Keyboard map scroll left (read only)
 VARIABLE_SETTING(bool, Hex, ScrollKeybRight, false); // Keyboard map scroll right (read only)
 VARIABLE_SETTING(bool, Hex, ScrollKeybUp, false); // Keyboard map scroll up (read only)
@@ -333,6 +341,7 @@ FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
+FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled
@@ -344,7 +353,7 @@ SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, vi
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
-FIXED_SETTING(bool, Server, AutoStartClientOnServer, false); // If true, server automatically spawns an embedded client on startup
+FIXED_SETTING(int32_t, Server, AutoStartClientOnServer, 0); // Number of embedded clients to auto-spawn on server startup; 0 disables the feature
 VARIABLE_SETTING(int32_t, Server, ServerWidth, 800); // Server window width in pixels (test bench host before any client is spawned)
 VARIABLE_SETTING(int32_t, Server, ServerHeight, 600); // Server window height in pixels (test bench host before any client is spawned)
 FIXED_SETTING(bool, Server, CollapseLogOnStart, false); // If true, log is collapsed on start

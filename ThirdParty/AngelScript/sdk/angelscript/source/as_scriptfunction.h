@@ -113,7 +113,8 @@ enum asEFuncTrait
 	asTRAIT_EXPLICIT    = 1<<9,  // method
 	asTRAIT_PROPERTY    = 1<<10, // method/function
 	asTRAIT_DELETED     = 1<<11, // method
-	asTRAIT_VARIADIC    = 1<<12  // method/function
+	asTRAIT_VARIADIC    = 1<<12, // method/function
+	asTRAIT_NORETURN    = 1<<13  // (FOnline Patch) function/method never returns normally (always throws/exits)
 };
 
 struct asSFunctionTraits
@@ -185,6 +186,8 @@ public:
 	bool                 IsExplicit() const;
 	bool                 IsProperty() const;
 	bool                 IsVariadic() const;
+	bool                 IsNoReturn() const;
+	void                 SetNoReturn();
 	asUINT               GetParamCount() const;
 	int                  GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const;
 	int                  GetReturnTypeId(asDWORD *flags = 0) const;

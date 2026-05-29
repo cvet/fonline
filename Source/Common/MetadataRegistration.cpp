@@ -264,15 +264,16 @@ static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vec
 
     for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 2);
-        FO_RUNTIME_ASSERT((tokens.size() - 2) % 2 == 0);
+        FO_RUNTIME_ASSERT((tokens.size() - 2) % 3 == 0);
         const auto entity_name = tokens[0];
         EntityEventDesc event;
         event.Name = tokens[1];
 
-        for (size_t i = 2; i < tokens.size() - 1; i += 2) {
+        for (size_t i = 2; i + 3 <= tokens.size(); i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
-            auto arg_name = string(tokens[i + 1]);
-            event.Args.emplace_back(std::move(arg_name), std::move(arg_type));
+            const bool arg_nullable = tokens[i + 1] == "?";
+            auto arg_name = string(tokens[i + 2]);
+            event.Args.emplace_back(std::move(arg_name), std::move(arg_type), arg_nullable);
         }
 
         meta->RegisterEntityEvent(entity_name, std::move(event));
@@ -285,16 +286,17 @@ static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vecto
 
     for (const auto& tokens : engine_data) {
         FO_RUNTIME_ASSERT(tokens.size() >= 3);
-        FO_RUNTIME_ASSERT((tokens.size() - 3) % 2 == 0);
+        FO_RUNTIME_ASSERT((tokens.size() - 3) % 3 == 0);
         RemoteCallDesc remote_call;
         remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
         const auto inbound = tokens[2] == "In";
 
-        for (size_t i = 3; i < tokens.size() - 1; i += 2) {
+        for (size_t i = 3; i + 3 <= tokens.size(); i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
-            auto arg_name = string(tokens[i + 1]);
-            remote_call.Args.emplace_back(std::move(arg_name), std::move(arg_type));
+            const bool arg_nullable = tokens[i + 1] == "?";
+            auto arg_name = string(tokens[i + 2]);
+            remote_call.Args.emplace_back(std::move(arg_name), std::move(arg_type), arg_nullable);
         }
 
         if (inbound) {

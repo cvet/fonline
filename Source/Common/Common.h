@@ -43,17 +43,16 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 4
+///@ MigrationRule Version 0 0 16
 
 #include "Version-Include.h"
 
 extern auto IsPackaged() -> bool;
-extern void ForcePackaged();
+extern auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define FO_NON_NULL // Pointer annotation
 #define FO_DEFERRED // Lambda annotation
 
 ///@ ExportValueType Name = ident Layout = int64-value
@@ -61,7 +60,6 @@ using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag,
 static_assert(some_strong_type<ident_t>);
 
 // Custom any as string
-// Todo: export any_t with ExportValueType
 class any_t : public string
 {
 public:
@@ -242,7 +240,6 @@ public:
 
     auto operator()(Args&&... args) -> EventDispatcher&
     {
-        // Todo: recursion guard for EventDispatcher
         if (!_observer._subscriberCallbacks.empty()) {
             for (auto& cb : _observer._subscriberCallbacks) {
                 cb(std::forward<Args>(args)...);
@@ -356,6 +353,25 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
+static constexpr uint32_t FO_UPDATER_VERSION = 1;
+
+enum class UpdatePlatform : uint8_t
+{
+    Unknown = 0,
+    Windows = 1,
+    Linux = 2,
+    Android = 3,
+    MacOS = 4,
+    IOS = 5,
+    Web = 6,
+};
+
+enum class UpdateFileTarget : uint8_t
+{
+    ClientResources = 0,
+    ClientBinaries = 1,
+};
+
 // Network messages
 enum class NetMessage : uint8_t
 {
@@ -367,7 +383,6 @@ enum class NetMessage : uint8_t
     Ping = 15,
     PlaceToGameComplete = 17,
     GetUpdateFile = 19,
-    GetUpdateFileData = 21,
     UpdateFileData = 23,
     AddCritter = 25,
     RemoveCritter = 27,
@@ -381,6 +396,7 @@ enum class NetMessage : uint8_t
     CritterMoveSpeed = 48,
     CritterPos = 49,
     CritterAttachments = 50,
+    CritterVisibilityMode = 51,
     CritterTeleport = 52,
     ChosenAddItem = 65,
     ChosenRemoveItem = 66,
@@ -397,6 +413,8 @@ enum class NetMessage : uint8_t
     RemoveCustomEntity = 117,
     Property = 120,
     SendProperty = 121,
+    HashList = 122,
+    UnresolvedHash = 123,
 };
 
 enum class EngineSideKind : uint8_t
@@ -476,6 +494,8 @@ struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
+    bool Nullable {};
+    string DefaultValue {};
 };
 
 struct FieldDesc
@@ -499,6 +519,7 @@ struct MethodDesc
     bool Getter {};
     bool Setter {};
     bool PassOwnership {};
+    bool ReturnNullable {};
 };
 
 struct StructLayoutDesc
@@ -892,6 +913,13 @@ enum class CritterSeeType : uint8_t
     Any = 0,
     WhoSeeMe = 1,
     WhoISee = 2,
+};
+
+///@ ExportEnum
+enum class CritterVisibilityMode : uint8_t
+{
+    None = 0,
+    Full = 1,
 };
 
 ///@ ExportEnum

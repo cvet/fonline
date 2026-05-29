@@ -183,7 +183,7 @@ public:
     [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsHistorical() const noexcept -> bool { return _isHistorical; }
     [[nodiscard]] auto IsNullGetterForProto() const noexcept -> bool { return _isNullGetterForProto; }
-    [[nodiscard]] auto IsMaybeNull() const noexcept -> bool { return _isMaybeNull; }
+    [[nodiscard]] auto IsNullable() const noexcept -> bool { return _isNullable; }
     [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
     [[nodiscard]] auto GetGetter() const noexcept -> auto& { return _getter; }
@@ -246,7 +246,7 @@ private:
     bool _isModifiableByAnyClient {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
-    bool _isMaybeNull {};
+    bool _isNullable {};
     uint16_t _regIndex {};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};
@@ -322,6 +322,8 @@ public:
 
     auto FindOverlayEntry(const Property* prop) const noexcept -> const OverlayEntry*;
     auto FindOverlayEntry(const Property* prop) noexcept -> OverlayEntry*;
+    void EnsureOverlayEntryIndex() noexcept;
+    void RebuildOverlayEntryIndex() noexcept;
     auto IsOverlayPropertyIncluded(const Property* prop, bool with_protected) const noexcept -> bool;
     void CloneOwnDataFrom(const Properties& other) noexcept;
     void RebuildOverlayFromFullData(const Properties& other) noexcept;
@@ -388,6 +390,7 @@ private:
     unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};
 
     vector<OverlayEntry> _overlayEntries {};
+    vector<int32_t> _overlayEntryIndex {};
     unique_arr_ptr<uint8_t> _overlayData {};
     size_t _overlayDataSize {};
     size_t _overlayDataCapacity {};

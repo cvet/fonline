@@ -39,20 +39,38 @@ FO_BEGIN_NAMESPACE
 std::mutex InterthreadListenersLocker;
 map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
-alignas(uint32_t) static volatile constexpr char PACKAGED_MARK[] = "###NOT_PACKAGED###";
-static bool HasNotPackagedMark = strex().assignVolatile(PACKAGED_MARK, sizeof(PACKAGED_MARK)).str().find("NOT_PACKAGED") != string::npos;
+FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###";
+static auto ReadPackagedBuildName() -> string;
+static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
 
 auto IsPackaged() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return !HasNotPackagedMark;
+    return !PackagedBuildName.empty();
 }
 
-void ForcePackaged()
+auto GetPackagedRuntimeName() -> string
 {
-    HasNotPackagedMark = false;
+    FO_STACK_TRACE_ENTRY();
+
+    return PackagedBuildName;
+}
+
+static auto ReadPackagedBuildName() -> string
+{
+    auto raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
+
+    if (raw.find("NotPackaged") != string::npos) {
+        return {};
+    }
+
+    if (const auto null_pos = raw.find('\0'); null_pos != string::npos) {
+        raw.resize(null_pos);
+    }
+
+    return raw;
 }
 
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :

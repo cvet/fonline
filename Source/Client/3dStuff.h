@@ -46,8 +46,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr size_t MODEL_LAYERS_COUNT = 30;
-
 class IAppRender;
 
 enum class ModelAnimFlags : uint8_t
@@ -265,6 +263,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
+    [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
     void SetupFrame(isize32 draw_size);
     void StartMeshGeneration();
@@ -283,8 +282,10 @@ public:
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
-    // Todo: incapsulate model animation callbacks
-    vector<ModelAnimationCallback> AnimationCallbacks {};
+    void AddAnimationCallback(ModelAnimationCallback callback);
+    void SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks);
+    auto TakeAnimationCallbacks() -> vector<ModelAnimationCallback>;
+    void ClearAnimationCallbacks();
 
 private:
     struct CombinedMesh
@@ -370,6 +371,7 @@ private:
     vec3 _moveOffset {};
     bool _forceDraw {};
     bool _nonConstHelper {};
+    vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};
@@ -377,7 +379,6 @@ private:
     raw_ptr<ModelBone> _parentBone {};
     mat44 _parentMatrix {};
     vector<raw_ptr<ModelBone>> _linkBones {};
-    vector<mat44> _linkMatricles {};
     ModelAnimationData _animLink {};
     bool _childChecker {};
 };
@@ -398,12 +399,52 @@ public:
     ~ModelInformation() = default;
 
 private:
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32_t* speed) const -> int32_t;
-    [[nodiscard]] auto ParseInt32Value(string_view value, bool* failed) const -> int32_t;
-    [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
+    struct BakedModelDescriptionCutInfo
+    {
+        string FileName {};
+        vector<int32_t> Layers {};
+        vector<string> Shapes {};
+        string UnskinBone1 {};
+        string UnskinBone2 {};
+        string UnskinShape {};
+        bool RevertUnskinShape {};
+    };
+
+    struct BakedModelDescriptionLink
+    {
+        ModelAnimationData Data {};
+        vector<BakedModelDescriptionCutInfo> CutInfo {};
+    };
+
+    struct BakedModelDescriptionAnimEntry
+    {
+        int32_t StateAnim {};
+        int32_t ActionAnim {};
+        string FileName {};
+        string Name {};
+    };
+
+    struct BakedModelDescriptionAnimLayerValue
+    {
+        int32_t StateAnim {};
+        int32_t ActionAnim {};
+        int32_t Layer {};
+        int32_t LayerValue {};
+    };
 
     [[nodiscard]] auto Load(string_view name) -> bool;
+    [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
+    [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader) const -> BakedModelDescriptionLink;
+    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    [[nodiscard]] auto ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>;
+    [[nodiscard]] auto ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>;
+    [[nodiscard]] auto ReadBakedModelDescriptionString(DataReader& reader) const -> string;
+
+    [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32_t* speed) const -> int32_t;
     [[nodiscard]] auto CreateInstance() -> ModelInstance*;
 
     raw_ptr<ModelManager> _modelMngr;

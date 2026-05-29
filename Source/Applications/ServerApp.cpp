@@ -45,6 +45,10 @@
 
 FO_USING_NAMESPACE();
 
+FO_BEGIN_NAMESPACE
+extern void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
+FO_END_NAMESPACE
+
 enum class WindowLayoutMode : uint8_t
 {
     SingleTab, // only the active virtual window is shown; tabs switch which one
@@ -71,6 +75,7 @@ int main(int argc, char** argv) // Handled by SDL
         App->MainWindow.SetSize({App->Settings.ServerWidth, App->Settings.ServerHeight});
 
         refcount_ptr<ServerEngine> server;
+        vector<unique_ptr<GlobalSettings>> client_settings;
         vector<refcount_ptr<ClientEngine>> clients;
         vector<AppWindow*> client_windows;
         bool auto_start_triggered = false;
@@ -82,15 +87,15 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved = false;
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, StackTraceData>> log_buffer;
+        list<pair<vector<string>, CatchedStackTraceData>> log_buffer;
         std::mutex log_buffer_locker;
         int32_t exception_count = 0;
 
-        SetLogCallback("ServerApp", [&](LogType type, string_view str) FO_DEFERRED {
+        SetLogCallback("ServerApp", [&](LogType type, string_view str, const CatchedStackTraceData* st) FO_DEFERRED {
             auto locker = std::unique_lock {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
-            log_buffer.emplace_back(std::move(lines), GetStackTrace());
+            log_buffer.emplace_back(std::move(lines), st != nullptr ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
 
             if (log_buffer.size() > numeric_cast<size_t>(App->Settings.MaxServerLogLines)) {
                 log_buffer.pop_front();
@@ -129,16 +134,15 @@ int main(int argc, char** argv) // Handled by SDL
                 auto* window = App->CreateChildWindow(client_size, title);
                 FO_RUNTIME_ASSERT(window);
 
-                const auto saved_screen_w = App->Settings.ScreenWidth;
-                const auto saved_screen_h = App->Settings.ScreenHeight;
-                App->Settings.ScreenWidth = client_size.width;
-                App->Settings.ScreenHeight = client_size.height;
-                auto restore_settings = scope_exit([&]() noexcept {
-                    App->Settings.ScreenWidth = saved_screen_w;
-                    App->Settings.ScreenHeight = saved_screen_h;
-                });
+                const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
+                auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+                settings->CopyFrom(App->Settings);
+                ClientStartupSettingsHook(*settings, client_index, true);
+                settings->ScreenWidth = client_size.width;
+                settings->ScreenHeight = client_size.height;
 
-                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(App->Settings, GetClientResources(App->Settings), *window);
+                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(*settings, GetClientResources(*settings), *window);
+                client_settings.emplace_back(std::move(settings));
                 clients.emplace_back(std::move(client));
                 client_windows.emplace_back(window);
                 App->SetActiveWindow(window);
@@ -171,10 +175,13 @@ int main(int argc, char** argv) // Handled by SDL
                 start_server();
             }
 
-            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer && !start_client_triggered) {
+            if (server && server->IsStarted() && App->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
-                WriteLog("Auto start embedded client");
-                start_client();
+                WriteLog("Auto start embedded client(s): {}", App->Settings.AutoStartClientOnServer);
+
+                for (int32_t i = 0; i < App->Settings.AutoStartClientOnServer; i++) {
+                    start_client();
+                }
             }
 
             const auto child_count = App->GetChildWindowsCount();
@@ -281,7 +288,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                     const auto tex_w = numeric_cast<float32_t>(tex->Size.width);
                     const auto tex_h = numeric_cast<float32_t>(tex->Size.height);
-                    const auto scale = std::min({1.0f, region.x / tex_w, region.y / tex_h});
+                    const auto scale = std::min(region.x / tex_w, region.y / tex_h);
                     const auto img_size = ImVec2(tex_w * scale, tex_h * scale);
                     const auto cursor = ImGui::GetCursorScreenPos();
                     ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + region.x, cursor.y + region.y), IM_COL32(0, 0, 0, 255));
@@ -505,7 +512,10 @@ int main(int argc, char** argv) // Handled by SDL
                                         for (size_t i = 1; i < lines.size(); i++) {
                                             ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
                                         }
-                                        for (const auto& st_line : strex(FormatStackTrace(st)).split('\n')) {
+
+                                        const auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
+
+                                        for (const auto& st_line : strex(formatted).split('\n')) {
                                             ImGui::TextUnformatted(st_line.c_str(), st_line.c_str() + st_line.size());
                                         }
 
@@ -674,6 +684,8 @@ int main(int argc, char** argv) // Handled by SDL
                     client->Shutdown();
                 }
 
+                client_settings.clear();
+
                 for (auto* window : std::exchange(client_windows, {})) {
                     if (window != nullptr) {
                         App->DestroyChildWindow(window);
@@ -690,6 +702,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         FO_RUNTIME_ASSERT(!server);
         FO_RUNTIME_ASSERT(clients.empty());
+        FO_RUNTIME_ASSERT(client_settings.empty());
         ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {

@@ -9,8 +9,6 @@ StatusMessage("Applications:")
 
 if(FO_BUILD_CLIENT)
     if(NOT FO_BUILD_LIBRARY)
-        # Todo: cmake make bundles for Mac and iOS
-        # add_executable( ${FO_DEV_NAME}_Client MACOSX_BUNDLE ... ${FO_RC_FILE} )
         AddExecutableApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
             WIN32
             OUTPUT_DIR ${FO_CLIENT_OUTPUT}
@@ -20,6 +18,48 @@ if(FO_BUILD_CLIENT)
             LINK_LIBS AppFrontend ClientLib
             EXTRA_SOURCES ${FO_RC_FILE}
             WRITE_BUILD_HASH)
+
+        if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
+            AddSharedApplication(${FO_DEV_NAME}_ClientLib "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.cpp"
+                OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+                OUTPUT_NAME ${FO_DEV_NAME}_ClientLib
+                TESTING_APP 0
+                LINK_LIBS PRIVATE AppFrontend ClientLib
+                EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT}
+                NO_PREFIX
+                WRITE_BUILD_HASH)
+
+            add_custom_command(TARGET ${FO_DEV_NAME}_ClientLib POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${FO_DEV_NAME}_ClientLib>"
+                    "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_Client${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                COMMENT "Copy client runtime library to host-derived module name")
+
+            AddExecutableApplication(${FO_DEV_NAME}_ClientHeadless "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
+                OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+                WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+                OUTPUT_NAME ${FO_DEV_NAME}_ClientHeadless
+                TESTING_APP 0
+                HEADLESS_APP 1
+                LINK_LIBS AppHeadless ClientLib
+                WRITE_BUILD_HASH)
+
+            AddSharedApplication(${FO_DEV_NAME}_ClientLibHeadless "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.cpp"
+                OUTPUT_DIR ${FO_CLIENT_OUTPUT}
+                OUTPUT_NAME ${FO_DEV_NAME}_ClientLibHeadless
+                TESTING_APP 0
+                HEADLESS_APP 1
+                LINK_LIBS PRIVATE AppHeadless ClientLib
+                EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT}
+                NO_PREFIX
+                WRITE_BUILD_HASH)
+
+            add_custom_command(TARGET ${FO_DEV_NAME}_ClientLibHeadless POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${FO_DEV_NAME}_ClientLibHeadless>"
+                    "${FO_CLIENT_OUTPUT}/${FO_DEV_NAME}_ClientHeadless${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                COMMENT "Copy headless client runtime library to host-derived module name")
+        endif()
     else()
         AddSharedApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
             OUTPUT_DIR ${FO_CLIENT_OUTPUT}

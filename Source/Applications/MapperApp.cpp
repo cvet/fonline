@@ -67,6 +67,7 @@ static void MapperEntry([[maybe_unused]] void* data)
         if (!Data->Mapper) {
             try {
                 Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), App->MainWindow);
+                Data->Mapper->SetInputLocked(App->Settings.HeadlessWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -100,9 +101,6 @@ int main(int argc, char** argv) // Handled by SDL
 
     try {
         InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::ShowMessageOnException);
-
-        App->Settings.ScreenHudHeight = 0;
-        App->Settings.ScrollCheck = false;
 
 #if FO_IOS
         MapperEntry(nullptr);

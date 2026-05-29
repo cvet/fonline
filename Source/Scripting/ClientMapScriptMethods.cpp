@@ -52,10 +52,6 @@ FO_SCRIPT_API void Client_Map_DrawMap(MapView* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapSpr)
 {
-    if (mapSpr == nullptr) {
-        throw ScriptException("Map sprite arg is null");
-    }
-
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
         return;
     }
@@ -76,7 +72,6 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
     auto corner = mapSpr->Corner;
     auto disable_egg = mapSpr->DisableEgg;
-    auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
         const auto* proto = self->GetEngine()->GetProtoItem(mapSpr->ProtoId);
@@ -96,6 +91,12 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
 
     mapSpr->MSpr = mspr;
 
+    if (mapSpr->Angle != 0) {
+        mspr->SetAngle(mapSpr->Angle);
+    }
+    if (mapSpr->MapProjection) {
+        mspr->SetMapProjection(true);
+    }
     if (!no_light) {
         mspr->SetLight(corner, self->GetLightData(), self->GetSize());
     }
@@ -126,10 +127,32 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
         mspr->SetColor(ucolor {color, 0});
         mspr->SetFixedAlpha(color.comp.a);
     }
+}
 
-    if (contour_color != ucolor::clear) {
-        mspr->SetContour(contour_color);
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_DrawEntitySprite(MapView* self, ClientEntity* entity, int32_t effectSubtype, ucolor color, int32_t padding)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* engine = self->GetEngine();
+
+    if (!engine->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in render events");
     }
+    if (padding < 0) {
+        throw ScriptException("Negative padding");
+    }
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(engine->OffscreenEffects.size())) {
+        throw ScriptException("Invalid effect subtype");
+    }
+
+    RenderEffect* effect = engine->OffscreenEffects[numeric_cast<size_t>(effectSubtype)].get();
+
+    if (effect == nullptr) {
+        throw ScriptException("Effect is null");
+    }
+
+    return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
 ///@ ExportMethod
@@ -139,7 +162,43 @@ FO_SCRIPT_API void Client_Map_RebuildFog(MapView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
+FO_SCRIPT_API void Client_Map_SetDayColors(MapView* self, ucolor mapDayColor, int32_t mapLightCapacity, ucolor globalDayColor, int32_t globalLightCapacity)
+{
+    self->SetDayColors(mapDayColor, mapLightCapacity, globalDayColor, globalLightCapacity);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API isize32 Client_Map_GetScreenSize(MapView* self)
+{
+    return self->GetScreenSize();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetScreenSize(MapView* self, isize32 size)
+{
+    self->SetScreenSize(size);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Map_IsScrollCheck(MapView* self)
+{
+    return self->IsScrollCheck();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetScrollCheck(MapView* self, bool enabled)
+{
+    self->SetScrollCheck(enabled);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(MapView* self, fpos32 offset)
+{
+    self->SetExtraScrollOffset(offset);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -149,7 +208,7 @@ FO_SCRIPT_API ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItemOnHex(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -175,7 +234,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(MapView* self, mpos hex
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
     if (!critterId) {
         return nullptr;
@@ -191,13 +250,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterOnHex(MapView* self, mpos hex, C
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -215,13 +268,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterInRadius(MapView* self, mpos hex
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex() + radius)) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -233,13 +280,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterInRadius(MapView* self, mpos hex
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self)
-{
-    return vec_transform(self->GetCritters(), [](auto&& cr) -> CritterView* { return cr.get(); });
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
+FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType = CritterFindType::Any)
 {
     const auto map_critters = self->GetCritters();
 
@@ -294,13 +335,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(MapView* self, mp
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersOnHex(hex, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -308,7 +343,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(MapView* self, mp
         return dist1 < dist2;
     });
 
-    return critters;
+    return vec_transform(critters, [](auto* cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -318,13 +353,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(MapView* self,
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<CritterView*> critters;
-
-    for (auto& cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
-        }
-    }
+    vector<CritterHexView*> critters = self->GetCrittersInRadius(hex, radius, findType);
 
     std::ranges::stable_sort(critters, [&hex](const CritterView* cr1, const CritterView* cr2) {
         const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
@@ -332,7 +361,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(MapView* self,
         return dist1 < dist2;
     });
 
-    return critters;
+    return vec_transform(critters, [](auto* cr) -> CritterView* { return cr; });
 }
 
 ///@ ExportMethod
@@ -550,9 +579,9 @@ FO_SCRIPT_API void Client_Map_ApplyScreenScroll(MapView* self, ipos32 offset, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, int32_t speed, bool softLock, bool unlockIfSame)
+FO_SCRIPT_API bool Client_Map_IsAutoScrolling(MapView* self)
 {
-    self->LockScreenScroll(cr, speed, softLock, unlockIfSame);
+    return self->IsAutoScrolling();
 }
 
 ///@ ExportMethod
@@ -618,6 +647,19 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(MapView* self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex provided");
+    }
+
+    const auto hex_pos = self->GetHexMapPos(hex);
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    const ipos32 map_pos = hex_pos + hex_center;
+    return (fpos32(map_pos) - self->GetScrollOffset()) * self->GetSpritesZoom();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(MapView* self, ipos32 pos, mpos& hex)
 {
     return self->GetHexAtScreen(pos, hex, nullptr);
@@ -636,7 +678,7 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, CritterView* cr)
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlot slot, FO_NULLABLE CritterView* cr)
 {
     const auto* cr_hex = dynamic_cast<CritterHexView*>(cr);
 
@@ -645,9 +687,12 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(MapView* self, TransparentEggSlo
         return;
     }
 
+    // SetTransparentEgg expects a hex-center-relative offset; GetHexMapPos is the cell top-left,
+    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center.
     const auto rect = cr_hex->GetViewRect();
     const auto hex_pos = self->GetHexMapPos(cr_hex->GetHex());
-    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_pos.x, rect.y + rect.height / 2 - hex_pos.y};
+    const auto hex_center = ipos32 {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
+    const auto center_offset = ipos32 {rect.x + rect.width / 2 - hex_center.x, rect.y + rect.height / 2 - hex_center.y};
     self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
 }
 
@@ -658,20 +703,14 @@ FO_SCRIPT_API void Client_Map_ClearTransparentEgg(MapView* self, TransparentEggS
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
+FO_SCRIPT_API FO_NULLABLE ItemView* Client_Map_GetItemAtScreenPos(MapView* self, ipos32 pos)
 {
     bool item_egg;
     return self->GetItemAtScreen(pos, item_egg, 0, true).first;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos)
-{
-    return self->GetCritterAtScreen(pos, false, 0, true).first;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange)
+FO_SCRIPT_API FO_NULLABLE CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos32 pos, int32_t extraRange = 0)
 {
     auto* cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
@@ -683,7 +722,7 @@ FO_SCRIPT_API CritterView* Client_Map_GetCritterAtScreenPos(MapView* self, ipos3
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
+FO_SCRIPT_API FO_NULLABLE ClientEntity* Client_Map_GetEntityAtScreenPos(MapView* self, ipos32 pos)
 {
     return self->GetEntityAtScreen(pos, 0, true).first;
 }
@@ -735,25 +774,23 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, CritterView* cr, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, FO_NULLABLE CritterView* cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
-    self->SetFogOfWar(fogId, cr, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
+    RenderEffect* customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype) : nullptr;
+
+    return self->AddFog(cr, drawOrder, customFlushEffect);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetFogOfWar(MapView* self, hstring fogId, mpos hex, int32_t distance, int32_t radius, ucolor overlayColor, ucolor centerColor, bool traced, bool checkShootBlocks)
+FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, mpos hex, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    self->SetFogOfWar(fogId, hex, distance, radius, overlayColor, centerColor, traced, checkShootBlocks);
-}
+    RenderEffect* customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype) : nullptr;
 
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_ClearFogOfWar(MapView* self, hstring fogId)
-{
-    self->ClearFogOfWar(fogId);
+    return self->AddFog(hex, drawOrder, customFlushEffect);
 }
 
 ///@ ExportMethod

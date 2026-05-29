@@ -42,25 +42,6 @@ static constexpr int32_t MAX_LIGHT_INTEN = 10000;
 static constexpr int32_t MAX_LIGHT_HEX = 200;
 static constexpr int32_t MAX_LIGHT_ALPHA = 255;
 
-// Property `Item::LightFlags` is still a packed uint8 (lower 6 bits: directions, 0x40: global, 0x80: inverse).
-// Translate it into the engine-internal split form (LightFlag + dirs mask).
-static auto SplitLegacyLightFlags(uint8_t raw) noexcept -> pair<LightFlag, uint8_t>
-{
-    static constexpr uint8_t LEGACY_GLOBAL_BIT = 0x40;
-    static constexpr uint8_t LEGACY_INVERSE_BIT = 0x80;
-    static constexpr uint8_t LEGACY_DIRS_MASK = 0x3F;
-
-    LightFlag flags = LightFlag::None;
-    if ((raw & LEGACY_GLOBAL_BIT) != 0) {
-        flags = CombineEnum(flags, LightFlag::Global);
-    }
-    if ((raw & LEGACY_INVERSE_BIT) != 0) {
-        flags = CombineEnum(flags, LightFlag::Inverse);
-    }
-
-    return {flags, static_cast<uint8_t>(raw & LEGACY_DIRS_MASK)};
-}
-
 void SpritePattern::Finish()
 {
     FO_STACK_TRACE_ENTRY();
@@ -71,7 +52,14 @@ void SpritePattern::Finish()
     }
 }
 
-MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
+void FogLayer::Dispose() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    Disposed = true;
+}
+
+MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef())
@@ -81,21 +69,31 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const 
     _name = strex("{}_{}", proto->GetName(), id);
 
     _maxScroll = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
-    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    _screenSize = screen_size;
     _viewSize = fsize32(_screenSize);
+    _scrollCheckEnabled = true;
 
     SetSpritesZoom(1.0f);
     SetSpritesZoomTarget(1.0f);
     RefreshMinZoom();
 
+    SetMapDayColor(ucolor {255, 255, 255, 255});
+    SetGlobalDayColor(ucolor {255, 255, 255, 255});
+
+    const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+
     if (!_engine->Settings.MapDirectDraw) {
-        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeKindType::Map, {}, true);
+        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, true);
         _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap.get());
+
+        if (!_engine->Settings.DisableIndoorMask) {
+            _rtIndoorMask = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, false);
+        }
     }
 
     if (!_engine->Settings.DisableLighting || !_engine->Settings.DisableFog) {
-        const auto tex_size = _engine->Settings.MapDirectDraw ? RenderTarget::SizeKindType::Screen : RenderTarget::SizeKindType::Map;
-        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, tex_size, {}, true);
+        const auto rt_light_size = _engine->Settings.MapDirectDraw ? App->MainWindow.GetSize() : map_rt_size;
+        _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
 
     _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
@@ -123,15 +121,19 @@ MapView::~MapView()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& cr : _critters) {
-        cr->DestroySelf();
-    }
-    for (auto& item : _items) {
-        item->DestroySelf();
-    }
-
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap.get());
-    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight.get());
+    FO_RUNTIME_VERIFY(_critters.empty());
+    FO_RUNTIME_VERIFY(_crittersMap.empty());
+    FO_RUNTIME_VERIFY(_items.empty());
+    FO_RUNTIME_VERIFY(_itemsMap.empty());
+    FO_RUNTIME_VERIFY(_staticItems.empty());
+    FO_RUNTIME_VERIFY(_dynamicItems.empty());
+    FO_RUNTIME_VERIFY(_processingItems.empty());
+    FO_RUNTIME_VERIFY(_spritePatterns.empty());
+    FO_RUNTIME_VERIFY(!HasFogLayers());
+    FO_RUNTIME_VERIFY(_visibleLightSources.empty());
+    FO_RUNTIME_VERIFY(_lightSources.empty());
+    FO_RUNTIME_VERIFY(!_rtMap);
+    FO_RUNTIME_VERIFY(!_rtLight);
 }
 
 void MapView::OnDestroySelf()
@@ -144,18 +146,21 @@ void MapView::OnDestroySelf()
     for (auto& item : _items) {
         item->DestroySelf();
     }
-
     for (auto& pattern : _spritePatterns) {
         pattern->Finish();
     }
+    for (auto& fog_slot : _fogs) {
+        for (auto& fog : fog_slot) {
+            fog->Disposed = true; // so a script still holding the handle recreates it on the next map
+        }
+        fog_slot.clear();
+    }
 
     _mapSprites.InvalidateAll();
+    _indoorMaskSprites.InvalidateAll();
     _hexField.reset();
     _viewField.clear();
-    for (auto& fog_layer : _fogLayers) {
-        fog_layer.Fog.Clear();
-    }
-    _fogLayers.clear();
+    _fogs = {};
     _visibleLightSources.clear();
     _lightPoints.clear();
     _lightSoftPoints.clear();
@@ -168,6 +173,15 @@ void MapView::OnDestroySelf()
     _processingItems.clear();
     _itemsMap.clear();
     _spritePatterns.clear();
+
+    if (_rtMap) {
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap.get());
+        _rtMap = nullptr;
+    }
+    if (_rtLight) {
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight.get());
+        _rtLight = nullptr;
+    }
 }
 
 void MapView::EnableMapperMode()
@@ -176,6 +190,7 @@ void MapView::EnableMapperMode()
 
     _mapperMode = true;
     _isShowTrack = true;
+    _scrollCheckEnabled = false;
 
     _hexTrack.resize(_mapSize.square());
 }
@@ -368,59 +383,28 @@ void MapView::Process()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Map time and color
-    {
-        const auto global_day_time = _engine->GetGlobalDayTime();
-        const auto fixed_map_day_time = GetFixedDayTime();
-        const auto map_day_time = fixed_map_day_time != 0 ? fixed_map_day_time : global_day_time;
-
-        if (map_day_time != _prevMapDayTime || global_day_time != _prevGlobalDayTime) {
-            _prevMapDayTime = map_day_time;
-            _prevGlobalDayTime = global_day_time;
-
-            // Default values:
-            // Morning	 5.00 -  9.59	 300 - 599
-            // Day		10.00 - 18.59	 600 - 1139
-            // Evening	19.00 - 22.59	1140 - 1379
-            // Nigh		23.00 -  4.59	1380
-            const auto day_color_time = IsNonEmptyDayColorTime() ? GetDayColorTime() : vector<int32_t> {300, 600, 1140, 1380};
-            const auto day_color = IsNonEmptyDayColor() ? GetDayColor() : vector<uint8_t> {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-
-            _mapDayColor = GetColorDay(day_color_time, day_color, map_day_time, &_mapDayLightCapacity);
-            _globalDayColor = GetColorDay(day_color_time, day_color, global_day_time, &_globalDayLightCapacity);
-
-            if (_mapDayColor != _prevMapDayColor) {
-                _prevMapDayColor = _mapDayColor;
-                _needReapplyLights = true;
-            }
-
-            if (_globalDayColor != _prevGlobalDayColor) {
-                _prevGlobalDayColor = _globalDayColor;
-                _needReapplyLights = _globalLights != 0;
-            }
-        }
-    }
-
     // Critters
     {
-        vector<CritterHexView*> critter_to_delete;
+        _critterToDeleteScratch.clear();
 
         for (auto& cr : _critters) {
             cr->Process();
 
             if (cr->IsFinished()) {
-                critter_to_delete.emplace_back(cr.get());
+                _critterToDeleteScratch.emplace_back(cr.get());
             }
         }
 
-        for (auto* cr : critter_to_delete) {
+        for (auto* cr : _critterToDeleteScratch) {
             DestroyCritter(cr);
         }
+
+        _critterToDeleteScratch.clear();
     }
 
     // Items
     {
-        vector<ItemHexView*> item_to_delete;
+        _itemToDeleteScratch.clear();
 
         for (auto& item : _processingItems) {
             if (item->IsNeedProcess()) {
@@ -428,13 +412,15 @@ void MapView::Process()
             }
 
             if (item->IsFinished()) {
-                item_to_delete.emplace_back(item.get());
+                _itemToDeleteScratch.emplace_back(item.get());
             }
         }
 
-        for (auto* item : item_to_delete) {
+        for (auto* item : _itemToDeleteScratch) {
             DestroyItem(item);
         }
+
+        _itemToDeleteScratch.clear();
     }
 
     // Scroll and zoom
@@ -582,6 +568,9 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     if (_mapperMode) {
         const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
 
+        if (!_isShowMapperHiddenSprites && item->GetAlwaysHideSprite()) {
+            return;
+        }
         if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
             return;
         }
@@ -611,10 +600,8 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     }
 
     const bool is_roof = item->GetIsTile() && item->GetIsRoofTile();
-
-    if (is_roof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum) {
-        return;
-    }
+    const bool hidden_roof_for_indoor_mask = is_roof && _hiddenRoofNum != 0 && _hiddenRoofNum == field.RoofNum;
+    MapSpriteList& target_sprites = hidden_roof_for_indoor_mask ? _indoorMaskSprites : _mapSprites;
 
     DrawOrderType draw_order;
 
@@ -637,13 +624,11 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     MapSprite* mspr;
 
     if (!extra_draw) {
-        mspr = item->AddSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
+        mspr = item->AddSprite(target_sprites, draw_order, draw_hex, &field.Offset);
     }
     else {
-        mspr = item->AddExtraSprite(_mapSprites, draw_order, draw_hex, &field.Offset);
+        mspr = item->AddExtraSprite(target_sprites, draw_order, draw_hex, &field.Offset);
     }
-
-    mspr->SetContour(item->GetContour());
 
     AddSpriteToChain(field, mspr);
 
@@ -652,7 +637,7 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
     }
 }
 
-auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data) -> ItemHexView*
+auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -672,7 +657,15 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
         RebuildFog();
     }
 
-    return AddItemInternal(item.get());
+    const bool was_present = GetItem(id) != nullptr;
+
+    auto* added = AddItemInternal(item.get());
+
+    if (fade_in && !was_present) {
+        added->FadeUp();
+    }
+
+    return added;
 }
 
 auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id) -> ItemHexView*
@@ -738,7 +731,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     if (item->GetId()) {
         if (auto* prev_item = GetItem(item->GetId()); prev_item != nullptr) {
-            item->RestoreFading(prev_item->StoreFading());
+            item->InheritAlphaFrom(prev_item);
             DestroyItem(prev_item);
         }
     }
@@ -979,6 +972,7 @@ void MapView::RebuildMapNow()
 
     HideHexLines(0, _hVisible);
     FO_RUNTIME_ASSERT(!_mapSprites.HasActiveSprites());
+    FO_RUNTIME_ASSERT(!_indoorMaskSprites.HasActiveSprites());
     FO_RUNTIME_ASSERT(_visibleLightSources.empty());
 
     InitView();
@@ -989,7 +983,7 @@ void MapView::RebuildMapNow()
     _engine->SprMngr.InvalidateEgg();
     _needRebuildLightPrimitives = true;
     _needReapplyLights = true;
-    _engine->OnRenderMap.Fire();
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
@@ -1064,7 +1058,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     }
 
     _needRebuildLightPrimitives = true;
-    _engine->OnRenderMap.Fire();
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::ShowHexLines(int ox, int oy)
@@ -1247,7 +1241,7 @@ void MapView::ShowHex(const ViewField& vf)
     }
 
     // Scroll block
-    if (_mapperMode) {
+    if (_mapperMode && _isShowMapperOverlay) {
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {
@@ -1317,8 +1311,8 @@ void MapView::ProcessLighting()
         }
     }
 
-    vector<LightSource*> reapply_sources;
-    vector<LightSource*> remove_sources;
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     for (auto* ls : _visibleLightSources | std::views::keys) {
         const auto prev_intensity = ls->CurIntensity;
@@ -1329,23 +1323,26 @@ void MapView::ProcessLighting()
         }
 
         if (ls->Finishing && ls->CurIntensity == 0) {
-            remove_sources.emplace_back(ls);
+            _removeLightSourcesScratch.emplace_back(ls);
         }
         else if (ls->CurIntensity != prev_intensity || ls->NeedReapply) {
-            reapply_sources.emplace_back(ls);
+            _reapplyLightSourcesScratch.emplace_back(ls);
         }
     }
 
-    for (auto* ls : reapply_sources) {
+    for (auto* ls : _reapplyLightSourcesScratch) {
         ApplyLightFan(ls);
     }
 
-    for (auto* ls : remove_sources) {
+    for (auto* ls : _removeLightSourcesScratch) {
         FO_RUNTIME_ASSERT(_lightSources.count(ls->Id) != 0);
 
         CleanLightFan(ls);
         _lightSources.erase(ls->Id);
     }
+
+    _reapplyLightSourcesScratch.clear();
+    _removeLightSourcesScratch.clear();
 
     if (_needRebuildLightPrimitives) {
         _needRebuildLightPrimitives = false;
@@ -1390,25 +1387,10 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
         return;
     }
 
-    bool light_added = false;
-
-    for (const auto& item : cr->GetInvItems()) {
-        if (item->GetLightSource() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
-            UpdateLightSource(cr->GetId(), cr->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), cr->GetSpriteOffsetPtr());
-            light_added = true;
-            break;
-        }
+    if (cr->GetLightSource()) {
+        UpdateLightSource(cr->GetId(), cr->GetHex(), cr->GetLightColor(), cr->GetLightDistance(), static_cast<LightFlag>(cr->GetLightFlags()), cr->GetLightIntensity(), cr->GetSpriteOffsetPtr());
     }
-
-    // Default chosen light
-    if (!light_added && cr->GetIsChosen()) {
-        const auto [flags, dirs] = SplitLegacyLightFlags(_engine->Settings.ChosenLightFlags);
-        UpdateLightSource(cr->GetId(), cr->GetHex(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, flags, dirs, _engine->Settings.ChosenLightIntensity, cr->GetSpriteOffsetPtr());
-        light_added = true;
-    }
-
-    if (!light_added) {
+    else {
         FinishLightSource(cr->GetId());
     }
 }
@@ -1424,8 +1406,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
     }
 
     if (item->GetLightSource()) {
-        const auto [flags, dirs] = SplitLegacyLightFlags(item->GetLightFlags());
-        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), flags, dirs, item->GetLightIntensity(), item->GetSpriteOffsetPtr());
+        UpdateLightSource(item->GetId(), item->GetHex(), item->GetLightColor(), item->GetLightDistance(), static_cast<LightFlag>(item->GetLightFlags()), item->GetLightIntensity(), item->GetSpriteOffsetPtr());
     }
     else {
         FinishLightSource(item->GetId());
@@ -1447,7 +1428,7 @@ void MapView::UpdateHexLightSources(mpos hex)
     }
 }
 
-void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, uint8_t dirs, int32_t intensity, const ipos32* offset)
+void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, int32_t intensity, const ipos32* offset)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1456,13 +1437,13 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, dirs, intensity, offset)).first->second.get();
+        ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.get();
     }
     else {
         ls = it->second.get();
 
         // Ignore redundant updates
-        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Dirs == dirs && ls->Intensity == intensity) {
+        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity) {
             return;
         }
 
@@ -1473,7 +1454,6 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         ls->Color = color;
         ls->Distance = distance;
         ls->Flags = flags;
-        ls->Dirs = dirs;
         ls->Intensity = intensity;
     }
 
@@ -1536,7 +1516,7 @@ void MapView::ApplyLightFan(LightSource* ls)
     ls->NeedReapply = false;
 
     const auto center_hex = ls->Hex;
-    const auto distance = ls->Distance;
+    const auto distance = std::max(1, ls->Distance);
     const auto prev_fan_hexes = std::move(ls->FanHexes);
 
     ls->MarkedHexes.clear();
@@ -1549,10 +1529,10 @@ void MapView::ApplyLightFan(LightSource* ls)
     }
 
     if (IsEnumSet(ls->Flags, LightFlag::Global)) {
-        ls->Capacity = _globalDayLightCapacity;
+        ls->Capacity = GetGlobalDayLightCapacity();
     }
     else if (ls->Intensity >= 0) {
-        ls->Capacity = _mapDayLightCapacity;
+        ls->Capacity = GetMapDayLightCapacity();
     }
     else {
         ls->Capacity = 100;
@@ -1572,22 +1552,14 @@ void MapView::ApplyLightFan(LightSource* ls)
     ipos32 raw_traced_hex = {center_hex.x, center_hex.y};
     bool seek_start = true;
     optional<mpos> last_traced_hex;
-    const auto dirs_are_allowed = IsEnumSet(ls->Flags, LightFlag::AllowedDirs);
 
-    for (int32_t i = 0, ii = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4; i < ii; i++) {
-        mdir dir;
-        int32_t iterations;
+    // One spoke per hex direction. MAP_DIR_COUNT is 6 (hexagonal) or 8 (square);
+    // LightFlag::StopDir0..StopDir7 carry the per-spoke blocked bits inside
+    // ls->Flags — (StopDir0 << i) gates spoke i.
+    for (int32_t i = 0, ii = GameSettings::MAP_DIR_COUNT; i < ii; i++) {
+        const mdir dir = hdir((i + 2) % GameSettings::MAP_DIR_COUNT);
 
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = hdir((i + 2) % 6);
-            iterations = distance;
-        }
-        else {
-            dir = hdir(((i + 1) * 2) % 8);
-            iterations = distance * 2;
-        }
-
-        for (int32_t j = 0; j < iterations; j++) {
+        for (int32_t j = 0; j < distance; j++) {
             if (seek_start) {
                 for (int32_t l = 0; l < distance; l++) {
 #if FO_GEOMETRY == 1
@@ -1606,8 +1578,7 @@ void MapView::ApplyLightFan(LightSource* ls)
 
             auto traced_hex = _mapSize.clamp_pos(raw_traced_hex);
 
-            const bool dir_in_mask = (ls->Dirs & (1u << i)) != 0;
-            const bool dir_disabled = dirs_are_allowed ? !dir_in_mask : dir_in_mask;
+            const bool dir_disabled = IsEnumSet(ls->Flags, static_cast<LightFlag>(static_cast<uint16_t>(LightFlag::StopDir0) << i));
             if (dir_disabled) {
                 traced_hex = center_hex;
             }
@@ -1937,7 +1908,30 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     center_pos.x += GameSettings::MAP_HEX_WIDTH / 2;
     center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
-    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get()};
+    // Every fan vertex's PrimitivePoint::TexUV is set to the same constant —
+    // the absolute map-origin-anchored pixel position of the current screen
+    // anchor hex (`_screenRawHex`). SpriteManager::DrawPoints then adds the
+    // current `draw_area` top-left, so the value the shader sees on
+    // `InTexCoord` is `world_pos_of_screen_origin` for this batch. The
+    // varying is therefore constant across the triangle and not subject to
+    // barycentric interpolation rounding — any high-frequency hash keyed off
+    // `gl_FragCoord.xy + InTexCoord` (= the fragment's absolute map pixel
+    // position) gets per-pixel-stable input even while the fan triangle is
+    // deforming under smooth sprite movement.
+    const auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
+    const fpos32 screen_anchor_tex = {numeric_cast<float32_t>(screen_anchor_ox), numeric_cast<float32_t>(screen_anchor_oy)};
+
+    // Per-light falloff metadata forwarded to the shader via EggData (vertex
+    // attribute slot 3). x = the radius the fan was traced to (in hexes —
+    // recomputed here to match ApplyLightFan), y = the normalized center alpha
+    // [0..1]. A light shader recovers each fragment's hex-distance-from-edge as
+    // `radius * Color.a / centerAlpha` and can then fade over a fixed hex band
+    // independent of the light's total length. Same constant on every vertex.
+    const auto fan_radius = numeric_cast<float32_t>(std::max(1, ls->Distance));
+    const auto center_alpha_norm = numeric_cast<float32_t>(ls->CenterColor.comp.a) / 255.0f;
+    const fpos32 light_egg_data = {fan_radius, center_alpha_norm};
+
+    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get(), .TexUV = screen_anchor_tex, .EggData = light_egg_data};
 
     const auto points_start_size = points.size();
     points.reserve(points.size() + ls->FanHexes.size() * 3);
@@ -1953,7 +1947,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const ipos32 pos = {center_pos.x + ox, center_pos.y + oy};
         const ucolor color = ucolor(ls->CenterColor, alpha);
         const ipos32* offset = use_offsets ? ls->Offset.get() : nullptr;
-        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset};
+        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset, .TexUV = screen_anchor_tex, .EggData = light_egg_data};
 
         points.emplace_back(edge_point);
 
@@ -1975,8 +1969,8 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const auto& next = points[i + 1];
 
         if ((next.PointPos - cur.PointPos).idist() > GameSettings::MAP_HEX_WIDTH) {
-            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
-            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
+            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
 
             const auto dist_comp = (cur.PointPos - center_pos).idist() > (next.PointPos - center_pos).idist();
             const auto x = numeric_cast<float32_t>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
@@ -1984,10 +1978,10 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
             const auto changed_xy = GeometryHelper::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32_t>(changed_xy.x), cur.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32_t>(changed_xy.x), cur.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
             }
             else {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32_t>(changed_xy.x), next.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor});
+                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32_t>(changed_xy.x), next.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
             }
         }
     }
@@ -2225,6 +2219,34 @@ void MapView::ClearHexTrack()
     MemFill(_hexTrack.data(), 0, _hexTrack.size() * sizeof(char));
 }
 
+void MapView::SetShowMapperOverlay(bool show)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_mapperMode);
+
+    if (_isShowMapperOverlay == show) {
+        return;
+    }
+
+    _isShowMapperOverlay = show;
+    RebuildMap();
+}
+
+void MapView::SetShowMapperHiddenSprites(bool show)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_mapperMode);
+
+    if (_isShowMapperHiddenSprites == show) {
+        return;
+    }
+
+    _isShowMapperHiddenSprites = show;
+    RebuildMap();
+}
+
 void MapView::SwitchShowTrack()
 {
     FO_STACK_TRACE_ENTRY();
@@ -2406,9 +2428,10 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
         return;
     }
 
+    // egg.HexOffset is hex-center-relative; GetHexMapPos is the cell top-left, so add half a hex.
     const auto hex_pos = GetHexMapPos(egg.Hex);
-    const auto center_x = hex_pos.x + egg.HexOffset.x;
-    const auto center_y = hex_pos.y + egg.HexOffset.y;
+    const auto center_x = hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2 + egg.HexOffset.x;
+    const auto center_y = hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2 + egg.HexOffset.y;
     const auto egg_width_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings.EggEllipseWidthExt) : 0.0f;
     const auto egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings.EggEllipseHeightExt) : 0.0f;
     float32_t radius_w = std::max((numeric_cast<float32_t>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
@@ -2436,6 +2459,7 @@ void MapView::DrawMap()
     ProcessLighting();
     PrepareFogToDraw();
     _mapSprites.SortIfNeeded();
+    _indoorMaskSprites.SortIfNeeded();
 
     // Draw by parts if view size too big
     const fsize32 screen_size = fsize32(_screenSize);
@@ -2478,14 +2502,22 @@ void MapView::DrawMap()
             const int32_t target_height = iround<int32_t>(std::ceil(source_height * draw_scale.y));
             const irect32 target_rect = {target_x, target_y, target_width, target_height};
 
+            _currentRenderDrawArea = draw_area;
+            const auto reset_render_draw_area = scope_exit([this]() noexcept { _currentRenderDrawArea.reset(); });
+
             // Tiles
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
+            _engine->OnRenderMap_BeforeTiles.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::Tile4, GetMapDayColor());
+            _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
 
             // Flat sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
+            _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, GetMapDayColor());
+            _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Lighting
             if (!_engine->Settings.DisableLighting) {
+                _engine->OnRenderMap_BeforeLighting.Fire(this, draw_area);
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
 
@@ -2500,41 +2532,273 @@ void MapView::DrawMap()
 
                 _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight.get());
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+                _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
 
-            // Other sprites
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
+            // Other sprites, with fog layers interleaved by their draw order
+            _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
+            DrawSpritesWithFog(draw_area);
+            _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
 
-            // Collected contours
-            _engine->SprMngr.DrawContours();
-
-            // Fog
-            if (!_engine->Settings.DisableFog && !_mapperMode) {
-                _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
-                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-
-                for (auto& fog_layer : _fogLayers) {
-                    _engine->SprMngr.DrawPoints(fog_layer.Fog.GetPoints(), RenderPrimitiveType::TriangleStrip, &draw_area, _engine->EffectMngr.Effects.Fog.get());
-                }
-
-                _engine->SprMngr.GetRtMngr().PopRenderTarget();
-
-                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushFog.get());
-                _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+            // Fog layers drawn on top of all sprites (DrawOrderType::Last)
+            if (!_engine->Settings.DisableFog && !_mapperMode && HasFogLayers()) {
+                _engine->OnRenderMap_BeforeFog.Fire(this, draw_area);
+                DrawFogSlot(draw_area, DrawOrderType::Last);
+                _engine->OnRenderMap_AfterFog.Fire(this, draw_area);
             }
 
             // Draw streched render target
             if (!direct_draw) {
+                _engine->OnRenderMap_BeforeFlushMap.Fire(this, draw_area);
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
+                auto* flush_map = _engine->EffectMngr.Effects.FlushMap.get();
+                _rtMap->SetCustomDrawEffect(flush_map);
+
+                if (flush_map->IsNeedIndoorMaskTex()) {
+                    if (_rtIndoorMask && !_engine->Settings.DisableIndoorMask) {
+                        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtIndoorMask.get());
+                        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor());
+                        _engine->SprMngr.GetRtMngr().PopRenderTarget();
+                        flush_map->IndoorMaskTex = _rtIndoorMask->GetTexture();
+                    }
+                    else {
+                        flush_map->IndoorMaskTex = nullptr;
+                    }
+                }
+
+                if (flush_map->IsNeedCameraBuf()) {
+                    // World-anchored UV affine basis: world_uv = .xy + TexCoord * .zw, where
+                    //   .xy = world UV at TexCoord(0,0) for this chunk
+                    //   .zw = world UV per TexCoord unit
+                    // The shader's TexCoord does NOT span [0,1] across the chunk — `_rtMap` is
+                    // sized (screen_w + MAP_HEX_WIDTH, screen_h + 2*MAP_HEX_LINE_HEIGHT) so
+                    // sprites that overlap the screen edge render fully, while the FlushMap
+                    // source_rect samples only the screen_w × screen_h content region. So
+                    // TexCoord ranges roughly [source_x/rt_w, (source_x+screen_w)/rt_w], with
+                    // max ~screen_w/rt_w (~0.95 with default hex padding), not 1.0. An affine
+                    // basis `anchor + TexCoord * (rt_size/screen_size)` cancels the rt/screen
+                    // and sub-pixel discrepancies, so adjacent chunks emit a continuous ps at
+                    // the seam (older `ps = TexCoord - anchor` form had a hex-sized gap there).
+                    // Pre-zoom anchor (no GetSpritesZoom() multiply) keeps ps zoom-invariant: a
+                    // fixed world position produces the same ps at any zoom, so noise patterns
+                    // stay pinned to the world during zoom in/out instead of drifting.
+                    const ipos32 anchor_hex_pos = GetHexMapPos(mpos(0, 0));
+                    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+                    const fpos32 anchor_world = fpos32(anchor_hex_pos + hex_center) - _scrollOffset;
+                    const auto rt_size = _rtMap->GetTexture()->Size;
+                    const float32_t sw_f = numeric_cast<float32_t>(_screenSize.width);
+                    const float32_t sh_f = numeric_cast<float32_t>(_screenSize.height);
+                    auto& cam_buf = flush_map->CameraBuf = RenderEffect::CameraBuffer();
+                    cam_buf->MapAnchorScreenPos[0] = step_xf - (anchor_world.x + source_x) / sw_f;
+                    cam_buf->MapAnchorScreenPos[1] = step_yf - (anchor_world.y + source_y) / sh_f;
+                    cam_buf->MapAnchorScreenPos[2] = numeric_cast<float32_t>(rt_size.width) / sw_f;
+                    cam_buf->MapAnchorScreenPos[3] = numeric_cast<float32_t>(rt_size.height) / sh_f;
+                    // Screen-anchored basis: screen_uv = .xy + TexCoord * .zw — UV continuous
+                    // across the full screen (regardless of chunking) for effects that must
+                    // stay attached to the screen frame (vignette, sun bleach, grain). Same
+                    // rt-vs-screen scaling correction as MapAnchorScreenPos: TexCoord max is
+                    // ~sw/rt_w not 1.0, so the per-TexCoord screen UV step is
+                    // `(rt_w/sw) * draw_scale`, and the chunk anchor backs out source_x.
+                    cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
+                    cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
+                }
+
                 _engine->SprMngr.DrawRenderTarget(_rtMap.get(), false, &source_rect, &target_rect);
+                _engine->OnRenderMap_AfterFlushMap.Fire(this, draw_area);
             }
         }
     }
 }
 
+void MapView::DrawSpritesWithFog(const irect32& draw_area)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ucolor day_color = GetMapDayColor();
+
+    if (_engine->Settings.DisableFog || _mapperMode || !HasFogLayers()) {
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, day_color);
+        return;
+    }
+
+    // Fog slots below the main sprite pass (draw order < Ligth) blit first, at ground level
+    for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Ligth); order++) {
+        DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
+    }
+
+    // Walk the main sprite pass [Ligth, Last), blitting each occupied fog slot at its draw order so a
+    // layer is drawn over the sprites of its own order and below the sprites of higher orders
+    DrawOrderType segment_from = DrawOrderType::Ligth;
+
+    for (size_t order = static_cast<size_t>(DrawOrderType::Ligth); order < static_cast<size_t>(DrawOrderType::Last); order++) {
+        if (_fogs[order].empty()) {
+            continue;
+        }
+
+        const DrawOrderType boundary = static_cast<DrawOrderType>(order);
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, boundary, day_color);
+        DrawFogSlot(draw_area, boundary);
+        segment_from = static_cast<DrawOrderType>(order + 1);
+    }
+
+    _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, DrawOrderType::Last, day_color);
+}
+
+void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& fog : _fogs[static_cast<size_t>(draw_order)]) {
+        const auto& fog_points = fog->Shape.GetPoints();
+
+        if (fog_points.empty()) {
+            continue;
+        }
+
+        RenderEffect* fog_effect = fog->CustomFogEffect ? fog->CustomFogEffect.get() : _engine->EffectMngr.Effects.Fog.get();
+
+        if (fog->CustomFlushEffect) {
+            // Custom flush (e.g. base-look fog): rasterize the honest hexagon profile into the light
+            // target, then composite it onto the scene with the custom effect. The effect shapes the
+            // analytic oval, cold tint, drifting mist edge, and distance depth from the fog's own tunable
+            // fields, passed below as script values (fog center + semi-axes in light-target UV, plus knobs).
+            _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight.get());
+            _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+
+            _engine->SprMngr.DrawPoints(fog_points, RenderPrimitiveType::TriangleStrip, &draw_area, fog_effect);
+
+            _engine->SprMngr.GetRtMngr().PopRenderTarget();
+
+            auto* flush_effect = fog->CustomFlushEffect.get();
+
+            if (flush_effect->IsNeedScriptValueBuf() && fog_points.size() >= 3) {
+                const auto to_target = [&draw_area](const PrimitivePoint& p) -> ipos32 {
+                    ipos32 pos = p.PointPos;
+                    if (p.PointOffset) {
+                        pos += *p.PointOffset;
+                    }
+                    return pos - ipos32 {draw_area.x, draw_area.y};
+                };
+
+                // Index 2 is the first inserted center point of the triangle strip; the ring points fan
+                // around it. Semi-axes are the farthest extent from the center along each axis.
+                const ipos32 center = to_target(fog_points[2]);
+                int32_t semi_x = 0;
+                int32_t semi_y = 0;
+
+                for (const auto& p : fog_points) {
+                    const ipos32 s = to_target(p);
+                    semi_x = std::max(semi_x, std::abs(s.x - center.x));
+                    semi_y = std::max(semi_y, std::abs(s.y - center.y));
+                }
+
+                const auto* rt_tex = _rtLight->GetTexture();
+                const auto rt_w = numeric_cast<float32_t>(rt_tex->Size.width);
+                const auto rt_h = numeric_cast<float32_t>(rt_tex->Size.height);
+                float32_t center_v = numeric_cast<float32_t>(center.y) / rt_h;
+
+                if (rt_tex->FlippedHeight) {
+                    center_v = 1.0f - center_v;
+                }
+
+                // World-anchored noise offset: the origin's absolute world pos in light-target UV. Added to
+                // (TexCoord - center) in the shader it yields each pixel's world position, so the rim noise
+                // is fixed to the world — stable under camera scroll, streaming as the fog moves through it.
+                const float32_t world_x = numeric_cast<float32_t>(fog->OriginWorldPos.x) / rt_w;
+                const float32_t world_y = numeric_cast<float32_t>(fog->OriginWorldPos.y) / rt_h;
+
+                const float32_t values[14] = {numeric_cast<float32_t>(center.x) / rt_w, center_v, //
+                    numeric_cast<float32_t>(semi_x) / rt_w, numeric_cast<float32_t>(semi_y) / rt_h, //
+                    fog->OvalRoundness, fog->EdgeNoise, fog->Depth, fog->ClearRadius, //
+                    numeric_cast<float32_t>(fog->TintColor.comp.r) / 255.0f, numeric_cast<float32_t>(fog->TintColor.comp.g) / 255.0f, numeric_cast<float32_t>(fog->TintColor.comp.b) / 255.0f, //
+                    0.0f, // [2].w reserved
+                    world_x, world_y}; // [3].xy world-anchored noise offset
+                _engine->EffectMngr.SetEffectScriptValues(flush_effect, 0, const_span<float32_t> {values, 14});
+            }
+
+            _rtLight->SetCustomDrawEffect(flush_effect);
+            _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
+        }
+        else {
+            // Without a custom flush effect: draw the fog points straight into the scene
+            _engine->SprMngr.DrawPoints(fog_points, RenderPrimitiveType::TriangleStrip, &draw_area, fog_effect);
+        }
+    }
+}
+
+auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(effect);
+    FO_RUNTIME_ASSERT(padding >= 0);
+
+    if (!_currentRenderDrawArea.has_value()) {
+        throw ScriptException("Map sprite draw is available only inside map render stage events");
+    }
+
+    const MapSprite* mspr = nullptr;
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        if (cr->GetMap() != this || !cr->IsMapSpriteValid()) {
+            return false;
+        }
+
+        mspr = cr->GetMapSprite();
+    }
+    else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        if (item->GetMap() != this || !item->IsMapSpriteValid()) {
+            return false;
+        }
+
+        mspr = item->GetMapSprite();
+    }
+    else {
+        throw ScriptException("Entity has no map sprite", entity->GetId());
+    }
+
+    FO_RUNTIME_ASSERT(mspr);
+
+    if (mspr->IsHidden()) {
+        return false;
+    }
+
+    const Sprite* spr = mspr->GetSprite();
+
+    if (spr == nullptr) {
+        return false;
+    }
+
+    irect32 mspr_rect = mspr->GetDrawRect();
+    mspr_rect.x -= _currentRenderDrawArea->x;
+    mspr_rect.y -= _currentRenderDrawArea->y;
+
+    if (mspr_rect.x > _currentRenderDrawArea->width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > _currentRenderDrawArea->height || mspr_rect.y + mspr_rect.height < 0) {
+        return false;
+    }
+
+    _engine->SprMngr.DrawSpriteWithEffect(spr, mspr_rect.pos(), color, effect, padding);
+    return true;
+}
+
 void MapView::PrepareFogToDraw()
 {
     FO_STACK_TRACE_ENTRY();
+
+    for (auto& fog_slot : _fogs) {
+        for (auto it = fog_slot.begin(); it != fog_slot.end();) {
+            if ((*it)->Disposed || (*it)->GetRefCount() == 1) {
+                it = fog_slot.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+    }
 
     if (_engine->Settings.DisableFog) {
         return;
@@ -2543,9 +2807,7 @@ void MapView::PrepareFogToDraw()
         return;
     }
 
-    FogOfWar::Input input;
-    input.FogExtraLength = _engine->Settings.FogExtraLength;
-    input.FogTransitionDuration = _engine->Settings.FogTransitionDuration;
+    FogShape::Input input;
     input.MapHexWidth = _engine->Settings.MapHexWidth;
     input.MapHexHeight = _engine->Settings.MapHexHeight;
     input.MapSize = _mapSize;
@@ -2556,23 +2818,25 @@ void MapView::PrepareFogToDraw()
         return block_hex;
     };
 
-    for (auto& fog_layer : _fogLayers) {
+    for (auto& fog : _fogs | std::views::join) {
         auto fog_input = input;
-        fog_input.Enabled = fog_layer.Input.Enabled;
-        fog_input.Distance = fog_layer.Input.Distance;
-        fog_input.Radius = fog_layer.Input.Radius;
-        fog_input.OverlayColor = fog_layer.Input.OverlayColor;
-        fog_input.CenterColor = fog_layer.Input.CenterColor;
-        fog_input.TraceMode = fog_layer.Input.TraceMode;
-        fog_input.CheckShootBlocks = fog_layer.Input.CheckShootBlocks;
+        fog_input.FogExtraLength = fog->ExtraLength;
+        fog_input.FogTransitionDuration = fog->TransitionDuration;
+        fog_input.Enabled = fog->Enabled;
+        fog_input.Distance = fog->Distance;
+        fog_input.Radius = fog->Radius;
+        fog_input.OverlayColor = fog->OverlayColor;
+        fog_input.CenterColor = fog->CenterColor;
+        fog_input.TraceMode = fog->Traced ? FogShape::TraceModeType::Overlay : FogShape::TraceModeType::None;
+        fog_input.CheckShootBlocks = fog->CheckShootBlocks;
 
         ipos32 base_draw_offset {};
         ipos32 draw_offset {};
 
-        if (fog_layer.FollowCritter) {
-            const auto* cr = GetCritter(fog_layer.OriginCritterId);
+        if (fog->FollowCritter) {
+            const auto* cr = GetCritter(fog->OriginCritterId);
             if (cr == nullptr) {
-                fog_layer.Fog.Clear();
+                fog->Shape.Clear();
                 continue;
             }
 
@@ -2582,21 +2846,23 @@ void MapView::PrepareFogToDraw()
 
             base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
             draw_offset = base_draw_offset + *cr->GetSpriteOffsetPtr();
+            // Absolute world-pixel position of the origin (camera-independent), incl. the sub-hex sprite
+            // offset for smooth flow; the shader anchors the rim noise to it so it streams as the fog moves.
+            fog->OriginWorldPos = GeometryHelper::GetHexOffset(ipos32 {}, ipos32(fog_input.FogOrigin.BaseHex)) + *cr->GetSpriteOffsetPtr();
         }
         else {
-            if (!fog_layer.Input.FogOrigin.Valid) {
-                fog_layer.Fog.Clear();
-                continue;
-            }
+            fog_input.FogOrigin.Valid = true;
+            fog_input.FogOrigin.BaseHex = fog->OriginHex;
+            fog_input.FogOrigin.LookDistance = fog->Radius;
 
-            fog_input.FogOrigin = fog_layer.Input.FogOrigin;
-            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
+            base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog->OriginHex));
             draw_offset = base_draw_offset;
+            fog->OriginWorldPos = GeometryHelper::GetHexOffset(ipos32 {}, ipos32(fog->OriginHex));
         }
 
-        fog_layer.Fog.SetBaseDrawOffset(base_draw_offset);
-        fog_layer.Fog.SetDrawOffset(draw_offset);
-        fog_layer.Fog.Prepare(fog_input);
+        fog->Shape.SetBaseDrawOffset(base_draw_offset);
+        fog->Shape.SetDrawOffset(draw_offset);
+        fog->Shape.Prepare(fog_input);
     }
 }
 
@@ -2635,25 +2901,6 @@ void MapView::ProcessScroll(float32_t dt)
 
     if (is_manual_scrolling && _autoScrollCanStop) {
         _autoScrollActive = false;
-    }
-
-    if (_autoScrollHardLockedCritter) {
-        const auto* cr = GetCritter(_autoScrollHardLockedCritter);
-
-        if (cr != nullptr && ipos32(cr->GetHex()) != GetCenterRawHex()) {
-            ScrollToHex(cr->GetHex(), cr->GetHexOffset(), _autoScrollLockSpeed, false);
-        }
-    }
-
-    if (_autoScrollSoftLockedCritter && !is_manual_scrolling) {
-        const auto* cr = GetCritter(_autoScrollSoftLockedCritter);
-
-        if (cr != nullptr && cr->GetHex() != _autoScrollCritterLastHex) {
-            const auto hex_offset = GeometryHelper::GetHexOffset(_autoScrollCritterLastHex, cr->GetHex());
-            ApplyScrollOffset(hex_offset - ipos32(_autoScrollCritterLastHexOffset) + ipos32(cr->GetHexOffset()), _autoScrollLockSpeed, true);
-            _autoScrollCritterLastHex = cr->GetHex();
-            _autoScrollCritterLastHexOffset = cr->GetHexOffset();
-        }
     }
 
     fpos32 scroll;
@@ -2727,7 +2974,7 @@ void MapView::ProcessZoom(float32_t dt)
         return;
     }
 
-    const float32_t min_zoom = _engine->Settings.ScrollCheck ? _minZoomScroll : GameSettings::MIN_ZOOM;
+    const float32_t min_zoom = _scrollCheckEnabled ? _minZoomScroll : GameSettings::MIN_ZOOM;
     constexpr float32_t max_zoom = GameSettings::MAX_ZOOM;
     const float32_t clamped_target_zoom = std::clamp(target_zoom, min_zoom, max_zoom);
 
@@ -2816,7 +3063,7 @@ void MapView::InstantScroll(fpos32 scroll)
 
     _scrollOffset += scroll;
 
-    if (_engine->Settings.ScrollCheck) {
+    if (_scrollCheckEnabled) {
         const irect32 scroll_area = GetScrollAxialArea();
 
         if (!scroll_area.is_zero()) {
@@ -2882,7 +3129,7 @@ void MapView::ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_s
 
     const ipos32 hex_pos = GeometryHelper::GetHexOffset(GetCenterRawHex(), ipos32(hex));
     _autoScrollActive = false;
-    ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset(), speed, can_stop);
+    ApplyScrollOffset(hex_pos - ipos32(hex_offset) - GetScrollOffset().round<int32_t>(), speed, can_stop);
 }
 
 void MapView::ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop)
@@ -2897,35 +3144,6 @@ void MapView::ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop)
     _autoScrollCanStop = can_stop;
     _autoScrollSpeed = speed;
     _autoScrollOffset += fpos32(offset);
-}
-
-void MapView::LockScreenScroll(CritterView* cr, int32_t speed, bool soft_lock, bool unlock_if_same)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto id = cr != nullptr ? cr->GetId() : ident_t();
-
-    if (soft_lock) {
-        if (unlock_if_same && id == _autoScrollSoftLockedCritter) {
-            _autoScrollSoftLockedCritter = ident_t();
-        }
-        else {
-            _autoScrollSoftLockedCritter = id;
-        }
-
-        _autoScrollCritterLastHex = cr != nullptr ? cr->GetHex() : mpos();
-        _autoScrollCritterLastHexOffset = cr != nullptr ? cr->GetHexOffset() : ipos16();
-    }
-    else {
-        if (unlock_if_same && id == _autoScrollHardLockedCritter) {
-            _autoScrollHardLockedCritter = ident_t();
-        }
-        else {
-            _autoScrollHardLockedCritter = id;
-        }
-    }
-
-    _autoScrollLockSpeed = speed;
 }
 
 void MapView::SetExtraScrollOffset(fpos32 offset)
@@ -3023,7 +3241,7 @@ auto MapView::GetNonDeadCritter(mpos hex) -> CritterHexView*
     return nullptr;
 }
 
-auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data) -> CritterHexView*
+auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> CritterHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3037,7 +3255,17 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
     cr->SetHex(hex);
     cr->ChangeDir(dir);
 
-    return AddCritterInternal(cr.get());
+    // Detect re-addition: if the previous view is still around (fading out), the new view inherits its
+    // alpha in AddCritterInternal, so we must skip the FadeUp() reset to keep the transition smooth.
+    const bool was_present = GetCritter(id) != nullptr;
+
+    auto* added = AddCritterInternal(cr.get());
+
+    if (fade_in && !was_present) {
+        added->FadeUp();
+    }
+
+    return added;
 }
 
 auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id) -> CritterHexView*
@@ -3064,7 +3292,7 @@ auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
 
     if (cr->GetId()) {
         if (auto* prev_cr = GetCritter(cr->GetId()); prev_cr != nullptr) {
-            cr->RestoreFading(prev_cr->StoreFading());
+            cr->InheritAlphaFrom(prev_cr);
             DestroyCritter(prev_cr);
         }
 
@@ -3144,6 +3372,37 @@ auto MapView::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vec
     return critters;
 }
 
+auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<CritterHexView*> critters;
+
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<const CritterHexView*> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(cur_hex);
+
+            if (field.Critters.empty()) {
+                continue;
+            }
+
+            auto& field2 = _hexField->GetCellForWriting(cur_hex);
+
+            for (auto& cr : field2.Critters) {
+                if (seen.insert(cr.get()).second && cr->CheckFind(find_type)) {
+                    critters.emplace_back(cr.get());
+                }
+            }
+        }
+    }
+
+    return critters;
+}
+
 void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3215,7 +3474,6 @@ void MapView::DrawHexCritter(CritterHexView* cr, Field& field, mpos hex)
 
     const auto draw_order = cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
     auto* mspr = cr->AddSprite(_mapSprites, draw_order, hex, &field.Offset);
-    mspr->SetContour(cr->GetContour());
     AddSpriteToChain(field, mspr);
 }
 
@@ -3225,8 +3483,15 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) c
 
     const ipos32 pos = ScreenToMapPos(screen_pos);
     const ipos32 screen_offset = GeometryHelper::GetHexPos(_screenRawHex);
+
+    // GetHexPos/GetHexPosCoord work from the hex draw origin (cell top-left), but sprites (critters,
+    // items) and GetHexScreenPos anchor at the hex visual center = origin + {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}.
+    // Bias the lookup point by -half a hex so we resolve the hex whose visual center is nearest and the
+    // returned offset is measured relative to that center (matching the critter HexOffset convention, and
+    // staying within +-{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2} without clamping).
+    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     ipos32 offset;
-    const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos, &offset);
+    const ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos - hex_center, &offset);
 
     if (_mapSize.is_valid_pos(raw_hex)) {
         hex = _mapSize.from_raw_pos(raw_hex);
@@ -3364,20 +3629,18 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
             continue;
         }
 
-        const auto view_rect = mspr->GetViewRect();
-        const auto l = view_rect.x - extra_range;
-        const auto t = view_rect.y - extra_range;
-        const auto r = view_rect.x + view_rect.width + extra_range;
-        const auto b = view_rect.y + view_rect.height + extra_range;
+        const auto bound_rect = check_transparent ? mspr->GetDrawRect() : mspr->GetViewRect();
+        const auto l = bound_rect.x - extra_range;
+        const auto t = bound_rect.y - extra_range;
+        const auto r = bound_rect.x + bound_rect.width + extra_range;
+        const auto b = bound_rect.y + bound_rect.height + extra_range;
 
         if (pos.x < l || pos.x > r || pos.y < t || pos.y > b) {
             continue;
         }
 
         if (check_transparent) {
-            const auto draw_rect = mspr->GetDrawRect();
-
-            if (!_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - draw_rect.x, pos.y - draw_rect.y})) {
+            if (!_engine->SprMngr.SpriteHitTest(cr->GetSprite(), {pos.x - bound_rect.x, pos.y - bound_rect.y})) {
                 continue;
             }
         }
@@ -3418,7 +3681,7 @@ auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool che
     }
 }
 
-auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> optional<FindPathResult>
+auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset) -> optional<FindPathResult>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3432,7 +3695,9 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 
     FindPathInput input;
     input.FromHex = start_hex;
+    input.FromHexOffset = cr != nullptr ? cr->GetHexOffset() : ipos16 {};
     input.ToHex = target_hex;
+    input.ToHexOffset = target_hex_offset;
     input.MapSize = _mapSize;
     input.MaxLength = _engine->Settings.MaxPathFindLength;
     input.Cut = cut < 0 ? 0 : cut;
@@ -3460,13 +3725,10 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
     if (output.Result == FindPathOutput::ResultType::Ok) {
         target_hex = output.NewToHex;
 
-        if (cut >= 0) {
-            return FindPathResult();
-        }
-
         FindPathResult result;
         result.DirSteps = std::move(output.Steps);
         result.ControlSteps = std::move(output.ControlSteps);
+        result.EndHexOffset = output.EndHexOffset;
         return result;
     }
 
@@ -3588,107 +3850,49 @@ void MapView::RebuildFog()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& fog_layer : _fogLayers) {
-        fog_layer.Fog.RequestRebuild();
+    for (auto& fog : _fogs | std::views::join) {
+        fog->Shape.RequestRebuild();
     }
 }
 
-auto MapView::FindFogLayer(hstring fog_id) noexcept -> FogLayer*
+auto MapView::HasFogLayers() const noexcept -> bool
 {
-    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
-    return it != _fogLayers.end() ? &*it : nullptr;
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::ranges::any_of(_fogs, [](const auto& fog_slot) { return !fog_slot.empty(); });
 }
 
-auto MapView::FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*
-{
-    const auto it = std::ranges::find(_fogLayers, fog_id, &FogLayer::Id);
-    return it != _fogLayers.end() ? &*it : nullptr;
-}
-
-void MapView::SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
+auto MapView::AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
     if (hex_cr == nullptr || hex_cr->GetMap() != this) {
-        ClearFogOfWar(fog_id);
-        return;
+        throw ScriptException("Fog critter is not a hex critter on this map");
     }
 
-    FogOfWar::Input input;
-    input.Distance = distance;
-    input.Radius = radius;
-    input.OverlayColor = overlay_color;
-    input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
-    input.CheckShootBlocks = check_shoot_blocks;
-    auto* fog_layer = FindFogLayer(fog_id);
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    fog->DrawOrder = draw_order;
+    fog->FollowCritter = true;
+    fog->OriginCritterId = hex_cr->GetId();
+    fog->CustomFlushEffect = custom_flush_effect;
 
-    if (fog_layer == nullptr) {
-        _fogLayers.emplace_back(fog_id);
-        fog_layer = &_fogLayers.back();
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    if (!fog_layer->FollowCritter || fog_layer->OriginCritterId != hex_cr->GetId() || //
-        fog_layer->Input.Enabled != input.Enabled || fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
-        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
-        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
-        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
-        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    fog_layer->Input = input;
-    fog_layer->OriginCritterId = hex_cr->GetId();
-    fog_layer->FollowCritter = true;
+    _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
+    return fog.get();
 }
 
-void MapView::SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks)
+auto MapView::AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FogOfWar::Input input;
-    input.Distance = distance;
-    input.Radius = radius;
-    input.OverlayColor = overlay_color;
-    input.CenterColor = center_color;
-    input.TraceMode = traced ? FogOfWar::TraceModeType::Overlay : FogOfWar::TraceModeType::None;
-    input.CheckShootBlocks = check_shoot_blocks;
-    input.FogOrigin.Valid = true;
-    input.FogOrigin.BaseHex = hex;
-    input.FogOrigin.LookDistance = radius;
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    fog->DrawOrder = draw_order;
+    fog->FollowCritter = false;
+    fog->OriginHex = hex;
+    fog->CustomFlushEffect = custom_flush_effect;
 
-    auto* fog_layer = FindFogLayer(fog_id);
-
-    if (fog_layer == nullptr) {
-        _fogLayers.emplace_back(fog_id);
-        fog_layer = &_fogLayers.back();
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    if (fog_layer->FollowCritter || fog_layer->OriginCritterId != ident_t {} || fog_layer->Input.Enabled != input.Enabled || //
-        fog_layer->Input.Distance != input.Distance || fog_layer->Input.Radius != input.Radius || //
-        fog_layer->Input.OverlayColor != input.OverlayColor || fog_layer->Input.CenterColor != input.CenterColor || //
-        fog_layer->Input.TraceMode != input.TraceMode || fog_layer->Input.CheckShootBlocks != input.CheckShootBlocks || //
-        fog_layer->Input.FogOrigin.Valid != input.FogOrigin.Valid || //
-        (fog_layer->Input.FogOrigin.Valid && (fog_layer->Input.FogOrigin.BaseHex != input.FogOrigin.BaseHex || fog_layer->Input.FogOrigin.LookDistance != input.FogOrigin.LookDistance))) {
-        fog_layer->Fog.RequestRebuild();
-    }
-
-    fog_layer->Input = input;
-    fog_layer->OriginCritterId = {};
-    fog_layer->FollowCritter = false;
-}
-
-void MapView::ClearFogOfWar(hstring fog_id)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (auto* fog_layer = FindFogLayer(fog_id); fog_layer != nullptr) {
-        fog_layer->Fog.Clear();
-        std::erase_if(_fogLayers, [fog_id](const auto& entry) { return entry.Id == fog_id; });
-    }
+    _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
+    return fog.get();
 }
 
 auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8_t* palpha, bool* callback) -> MapSprite*
@@ -3707,8 +3911,39 @@ void MapView::OnScreenSizeChanged()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _screenSize = {_engine->Settings.ScreenWidth, _engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight};
+    if (_engine->Settings.MapDirectDraw) {
+        const auto window_size = App->MainWindow.GetSize();
+
+        SetScreenSize(window_size);
+
+        if (_rtLight) {
+            _engine->SprMngr.GetRtMngr().ResizeRenderTarget(_rtLight.get(), window_size);
+        }
+    }
+
+    RebuildMapNow();
+}
+
+void MapView::SetScreenSize(isize32 size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_screenSize == size) {
+        return;
+    }
+
+    _screenSize = size;
     _viewSize = fsize32(_screenSize) / GetSpritesZoom();
+
+    auto& rt_mngr = _engine->SprMngr.GetRtMngr();
+    const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
+
+    if (_rtMap) {
+        rt_mngr.ResizeRenderTarget(_rtMap.get(), map_rt_size);
+    }
+    if (_rtLight && !_engine->Settings.MapDirectDraw) {
+        rt_mngr.ResizeRenderTarget(_rtLight.get(), map_rt_size);
+    }
 
     RebuildMapNow();
 }
@@ -3821,6 +4056,13 @@ auto MapView::GenTempEntityId() -> ident_t
     return next_id;
 }
 
+void MapView::SetHeaderExtraFields(map<string, string> fields)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _headerExtraFields = std::move(fields);
+}
+
 auto MapView::SaveToText() const -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -3877,7 +4119,13 @@ auto MapView::SaveToText() const -> string
     };
 
     // Header
-    fill_generic_section("ProtoMap", GetProperties().SaveToText(nullptr));
+    auto proto_map_kv = GetProperties().SaveToText(nullptr);
+
+    for (const auto& [key, value] : _headerExtraFields) {
+        proto_map_kv.emplace(key, value);
+    }
+
+    fill_generic_section("ProtoMap", proto_map_kv);
 
     // Critters
     for (const auto& cr : _critters) {
@@ -3900,67 +4148,22 @@ auto MapView::SaveToText() const -> string
     return fomap;
 }
 
-auto MapView::GetColorDay(const vector<int32_t>& day_time, const vector<uint8_t>& colors, int32_t game_time, int32_t* light) -> ucolor
+void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(day_time.size() == 4);
-    FO_RUNTIME_ASSERT(colors.size() == 12);
-
-    uint8_t result[3];
-    const int32_t color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
-    const int32_t color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
-    const int32_t color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
-
-    game_time %= 1440;
-    int32_t time;
-    int32_t duration;
-    if (game_time >= day_time[0] && game_time < day_time[1]) {
-        time = 0;
-        game_time -= day_time[0];
-        duration = day_time[1] - day_time[0];
-    }
-    else if (game_time >= day_time[1] && game_time < day_time[2]) {
-        time = 1;
-        game_time -= day_time[1];
-        duration = day_time[2] - day_time[1];
-    }
-    else if (game_time >= day_time[2] && game_time < day_time[3]) {
-        time = 2;
-        game_time -= day_time[2];
-        duration = day_time[3] - day_time[2];
-    }
-    else {
-        time = 3;
-        if (game_time >= day_time[3]) {
-            game_time -= day_time[3];
-        }
-        else {
-            game_time += 1440 - day_time[3];
-        }
-        duration = 1440 - day_time[3] + day_time[0];
+    if (GetMapDayColor() != map_color) {
+        SetMapDayColor(map_color);
+        _needReapplyLights = true;
     }
 
-    if (duration == 0) {
-        duration = 1;
+    if (GetGlobalDayColor() != global_color) {
+        SetGlobalDayColor(global_color);
+        _needReapplyLights = _needReapplyLights || _globalLights != 0;
     }
 
-    result[0] = numeric_cast<uint8_t>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
-    result[1] = numeric_cast<uint8_t>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
-    result[2] = numeric_cast<uint8_t>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
-
-    if (light != nullptr) {
-        const auto max_light = (std::max({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::max({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::max({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
-        const auto min_light = (std::min({color_r[0], color_r[1], color_r[2], color_r[3]}) + std::min({color_g[0], color_g[1], color_g[2], color_g[3]}) + std::min({color_b[0], color_b[1], color_b[2], color_b[3]})) / 3;
-        const auto cur_light = (result[0] + result[1] + result[2]) / 3;
-        const int32_t light_full = max_light - min_light;
-        const int32_t light_part = max_light - cur_light;
-
-        *light = light_full == 0 ? 0 : std::clamp(light_part * 100 / light_full, 0, 100);
-        *light = std::clamp(*light, 0, 100);
-    }
-
-    return ucolor {result[0], result[1], result[2], 255};
+    SetMapDayLightCapacity(std::clamp(map_light_capacity, 0, 100));
+    SetGlobalDayLightCapacity(std::clamp(global_light_capacity, 0, 100));
 }
 
 FO_END_NAMESPACE

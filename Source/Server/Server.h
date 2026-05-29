@@ -53,6 +53,7 @@
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
 #include "Settings.h"
+#include "UpdaterBackend.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -77,8 +78,8 @@ public:
 
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
-    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
 
     void Shutdown() override;
@@ -95,8 +96,7 @@ public:
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
     auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
-
-    auto CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> FO_NON_NULL Item*;
+    auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
 
     auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
@@ -107,6 +107,7 @@ public:
 
     void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
     void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
+    void StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
 
     ///@ ExportEvent
@@ -120,7 +121,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, Player* /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, FO_NULLABLE Player* /*unloginedPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
@@ -132,7 +133,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterMoved, Critter* /*cr*/, mpos /*oldHex*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterStartMoving, Critter* /*cr*/, bool /*wasMoving*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterStopMoving, Critter* /*cr*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, FO_NULLABLE Map* /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
@@ -177,6 +182,7 @@ public:
     const hstring GameCollectionName = Hashes.ToHashedString("Game");
     const hstring HistoryCollectionName = Hashes.ToHashedString("History");
     const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
+    const hstring HashReportsCollectionName = Hashes.ToHashedString("HashReports");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -212,10 +218,14 @@ private:
     void ProcessConnection(ServerConnection* connection);
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 
+    void LoadReportedHashes();
+    void RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash);
+    void SendAllReportedHashes(ServerConnection* connection);
+    void BroadcastReportedString(string_view reported_string);
+
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
-    void Process_UpdateFile(ServerConnection* connection);
-    void Process_UpdateFileData(ServerConnection* connection);
+    void Process_UnresolvedHash(ServerConnection* connection);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -241,6 +251,9 @@ private:
 
     void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
+    auto ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool;
+    auto MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool;
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
 
     void LogToClients(string_view str);
@@ -282,16 +295,24 @@ private:
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
+    std::atomic_bool _shutdownInProgress {};
     FrameBalancer _loopBalancer {};
     ServerStats _stats {};
-    vector<vector<uint8_t>> _updateFilesData {};
-    vector<uint8_t> _updateFilesDesc {};
+    unique_ptr<UpdaterBackend> _updaterBackend {};
     vector<refcount_ptr<Player>> _logClients {};
     vector<string> _logLines {};
     TextPack _defaultLang {Hashes};
-    vector<unique_ptr<NetworkServer>> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<unique_ptr<NetworkServer>> _connectionServers {};
     vector<refcount_ptr<Player>> _unloginedPlayers {};
     mutable std::mutex _unloginedPlayersLocker {};
+
+    // Strings behind hashes that clients reported as unresolvable. Stored raw (not registered) and broadcast
+    // to all clients so they can resolve these hashes too. Accessed only from the main worker (handshake
+    // processing) plus one-time load at init, so it needs no extra locking.
+    unordered_set<string> _reportedStrings {};
+    // Reported hashes the server itself can't resolve either; kept in memory to log each one once per session.
+    unordered_set<hstring::hash_t> _unresolvableReportedHashes {};
+
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

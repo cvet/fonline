@@ -347,6 +347,13 @@ TEST_CASE("PathFinding::FindPath")
         CHECK((output.Result == FindPathOutput::ResultType::Ok || output.Result == FindPathOutput::ResultType::NoWay || output.Result == FindPathOutput::ResultType::TooFar));
     }
 
+    SECTION("MultihexPerimeterOutsideMapReturnsBlocked")
+    {
+        const auto result = PathFinding::CheckHexWithMultihex(mpos {0, 0}, hdir::SouthEast, 1, TEST_MAP_SIZE, [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; });
+
+        CHECK(result == HexBlockResult::Blocked);
+    }
+
     SECTION("MultihexPerimeterDeferCritter")
     {
         // Critter on a perimeter hex — multihex should aggregate DeferCritter
@@ -637,6 +644,113 @@ TEST_CASE("PathFinding::FindPath")
     }
 }
 
+TEST_CASE("PathFinding::FreeMovementEndOffset")
+{
+    // Projected distance between two map-pixel points (same metric as MovingContext segments)
+    const auto proj_dist = [](ipos32 a, ipos32 b) -> float32_t {
+        const auto dx = numeric_cast<float32_t>(a.x - b.x);
+        const auto dy = numeric_cast<float32_t>(a.y - b.y) * GeometryHelper::GetYProj();
+        return std::sqrt(dx * dx + dy * dy);
+    };
+
+    SECTION("DisabledFreeMovementReturnsZeroOffset")
+    {
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {10, 5}, 2);
+        settings.ToHexOffset = ipos16 {8, 4};
+        settings.FromHexOffset = ipos16 {5, 2}; // must not leak through when FreeMovement is off
+        settings.FreeMovement = false;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.EndHexOffset.x == 0);
+        CHECK(output.EndHexOffset.y == 0);
+    }
+
+    SECTION("DegenerateTargetKeepsCurrentOffset")
+    {
+        // Cut 0 onto a centered target produces an undefined stop direction; FindPath must fall
+        // back to the mover's current sub-hex offset so the critter stays in place visually.
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
+        settings.ToHexOffset = ipos16 {0, 0};
+        settings.FromHexOffset = ipos16 {-6, 4};
+        settings.FreeMovement = true;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.EndHexOffset.x == -6);
+        CHECK(output.EndHexOffset.y == 4);
+    }
+
+    SECTION("CenteredTargetKeepsCenterOffset")
+    {
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {10, 5}, 2);
+        settings.ToHexOffset = ipos16 {0, 0};
+        settings.FreeMovement = true;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.EndHexOffset.x == 0);
+        CHECK(output.EndHexOffset.y == 0);
+    }
+
+    SECTION("ExactReachStandsAtTargetOffset")
+    {
+        // cut 0 on a clear map reaches the exact target hex; offset must equal the target's own offset
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
+        settings.ToHexOffset = ipos16 {7, 3};
+        settings.FreeMovement = true;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        REQUIRE(output.NewToHex == mpos {9, 5});
+        CHECK(output.EndHexOffset.x == 7);
+        CHECK(output.EndHexOffset.y == 3);
+    }
+
+    SECTION("ExactCenteredTargetWithCenteredMoverStaysCentered")
+    {
+        // Cut 0 onto a centered target is the degenerate case; with FromHexOffset == 0 the fallback
+        // also yields 0, preserving the old center-snapped behavior for a mover already at its center.
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
+        settings.ToHexOffset = ipos16 {0, 0};
+        settings.FreeMovement = true;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        REQUIRE(output.NewToHex == mpos {9, 5});
+        CHECK(output.EndHexOffset.x == 0);
+        CHECK(output.EndHexOffset.y == 0);
+    }
+
+    SECTION("OffsetTargetPreservesCutDistance")
+    {
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {12, 5}, 2);
+        settings.ToHexOffset = ipos16 {9, 5};
+        settings.FreeMovement = true;
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+        const auto new_to = output.NewToHex;
+        const auto to = settings.ToHex;
+        REQUIRE(new_to != to); // off-center target, stopped short by cut
+
+        // R = continuous gap between the final hex center and the target hex center
+        const auto r = proj_dist(GeometryHelper::GetHexOffset(new_to, to), ipos32 {0, 0});
+
+        // Final standing position and the real target, both relative to the target hex center
+        const auto final_rel = GeometryHelper::GetHexOffset(to, new_to);
+        const auto final_pos = ipos32 {final_rel.x + output.EndHexOffset.x, final_rel.y + output.EndHexOffset.y};
+        const auto target_pos = ipos32 {settings.ToHexOffset.x, settings.ToHexOffset.y};
+
+        // Distance to the real target equals the cut gap (within integer-rounding tolerance)
+        CHECK(std::abs(proj_dist(final_pos, target_pos) - r) <= 3.0f);
+
+        // Off-center target produced a non-zero correction (feature is active)
+        CHECK((output.EndHexOffset.x != 0 || output.EndHexOffset.y != 0));
+    }
+}
+
 TEST_CASE("PathFinding::TraceLine")
 {
     // Helper to build trace settings with defaults
@@ -654,12 +768,12 @@ TEST_CASE("PathFinding::TraceLine")
 
     // ======== Basic tracing ========
 
-    SECTION("ClearTraceIsFullTrace")
+    SECTION("ClearTraceFullyTraced")
     {
         auto settings = make_trace_settings(mpos {5, 5}, mpos {10, 5});
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
         CHECK_FALSE(output.HasLastMovable);
     }
 
@@ -668,7 +782,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {10, 5});
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
         // On a full clear trace: Block is the last hex stepped, PreBlock is the one before
         // Both equal the target only if the tracer lands exactly on target
     }
@@ -678,7 +792,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {3, 3}, mpos {15, 15});
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
     }
 
     SECTION("SameStartAndTarget")
@@ -686,7 +800,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {5, 5});
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
     }
 
     // ======== Blocked hex tests ========
@@ -697,7 +811,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {10, 5}, [block_hex](mpos hex) { return hex == block_hex; });
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.Block == block_hex);
     }
 
@@ -707,7 +821,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {10, 5}, [block_hex](mpos hex) { return hex == block_hex; });
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.PreBlock != output.Block);
         CHECK(GeometryHelper::CheckDist(output.PreBlock, output.Block, 1));
     }
@@ -718,7 +832,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {10, 5}, [](mpos hex) { return hex == mpos {6, 5}; });
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.Block == mpos {6, 5});
         CHECK(output.PreBlock == mpos {5, 5});
     }
@@ -729,7 +843,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, mpos {12, 5}, [](mpos hex) { return hex == mpos {7, 5} || hex == mpos {9, 5}; });
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.Block == mpos {7, 5});
     }
 
@@ -739,7 +853,7 @@ TEST_CASE("PathFinding::TraceLine")
         auto settings = make_trace_settings(mpos {5, 5}, target, [target](mpos hex) { return hex == target; });
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.Block == target);
     }
 
@@ -751,7 +865,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.MaxDist = 3;
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
         CHECK(GeometryHelper::GetDistance(settings.StartHex, output.Block) <= 3);
     }
 
@@ -762,7 +876,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.MaxDist = 3;
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
     }
 
     SECTION("MaxDistBeyondBlocker")
@@ -772,7 +886,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.MaxDist = 10;
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.Block == mpos {7, 5});
     }
 
@@ -782,7 +896,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.MaxDist = 1;
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
         CHECK(GeometryHelper::GetDistance(settings.StartHex, output.Block) <= 1);
     }
 
@@ -796,7 +910,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.IsHexMovable = [block_hex](mpos hex) -> bool { return hex != block_hex; };
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.HasLastMovable);
         CHECK(GeometryHelper::GetDistance(output.LastMovable, settings.StartHex) > 0);
     }
@@ -824,7 +938,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.IsHexMovable = [](mpos hex) -> bool { return hex.x < 7; };
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         CHECK(output.HasLastMovable);
         // LastMovable should be a hex with x < 7 (last movable before reaching the non-movable zone)
         CHECK(output.LastMovable.x < 7);
@@ -837,7 +951,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.IsHexMovable = [](mpos /*hex*/) -> bool { return true; };
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK(output.IsFullTrace);
+        CHECK(output.FullyTraced);
         CHECK(output.HasLastMovable);
     }
 
@@ -849,7 +963,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.IsHexMovable = [](mpos hex) -> bool { return hex.x > 8; }; // only hexes past x=8 are movable, but blocker at x=9
         auto output = PathFinding::TraceLine(settings);
 
-        CHECK_FALSE(output.IsFullTrace);
+        CHECK_FALSE(output.FullyTraced);
         // First hex (x=6) is NOT movable, so last_passed_ok becomes true immediately
         // No LastMovable should be set since IsHexMovable fails on first try
         CHECK_FALSE(output.HasLastMovable);
@@ -869,8 +983,8 @@ TEST_CASE("PathFinding::TraceLine")
         auto output0 = PathFinding::TraceLine(settings0);
         auto output_angled = PathFinding::TraceLine(settings_angled);
 
-        CHECK(output0.IsFullTrace);
-        CHECK(output_angled.IsFullTrace);
+        CHECK(output0.FullyTraced);
+        CHECK(output_angled.FullyTraced);
 
         // With angle offset, the final hex should differ from straight trace
         CHECK(output0.Block != output_angled.Block);
@@ -889,12 +1003,12 @@ TEST_CASE("PathFinding::TraceLine")
         auto output_angled = PathFinding::TraceLine(settings_angled);
 
         // Straight should be blocked
-        CHECK_FALSE(output_straight.IsFullTrace);
+        CHECK_FALSE(output_straight.FullyTraced);
         CHECK(output_straight.Block == blocker);
 
         // Angled might miss the blocker (depending on hex geometry)
         // At minimum, the block position should differ
-        if (!output_angled.IsFullTrace) {
+        if (!output_angled.FullyTraced) {
             CHECK(output_angled.Block != blocker);
         }
     }

@@ -77,7 +77,9 @@ include (CheckIncludeFile)
 include (CheckStructHasMember)
 include (CheckSymbolExists)
 include (TestBigEndian)
-include (InstallRequiredSystemLibraries)
+if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
+   include (InstallRequiredSystemLibraries)
+endif ()
 include (CheckIncludeFiles)
 
 # See https://public.kitware.com/Bug/view.php?id=15659

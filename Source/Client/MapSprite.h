@@ -115,18 +115,20 @@ public:
     [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
     [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
-    [[nodiscard]] auto GetContourColor() const noexcept -> ucolor { return _contourColor; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
+    [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
+    [[nodiscard]] auto GetMapProjection() const noexcept -> bool { return _mapProjection; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
-    void SetContour(ucolor color) noexcept;
     void SetColor(ucolor color) noexcept;
     void SetAlpha(const uint8_t* alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
     void SetLight(CornerType corner, const ucolor* light, msize size) noexcept;
     void SetHidden(bool hidden) noexcept;
+    void SetAngle(int16_t angle) noexcept;
+    void SetMapProjection(bool map_projection) noexcept;
     void CreateExtraChain(MapSprite** mspr);
     void AddToExtraChain(MapSprite* mspr);
 
@@ -151,8 +153,9 @@ private:
     raw_ptr<const ucolor> _lightRight {};
     raw_ptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
-    ucolor _contourColor {};
     ucolor _color {};
+    int16_t _angle {};
+    bool _mapProjection {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};
     raw_ptr<MapSprite*> _extraChainRoot {};
     raw_ptr<MapSprite> _extraChainParent {};
@@ -173,6 +176,7 @@ public:
 
     [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
     [[nodiscard]] auto GetActiveSprites() noexcept -> const vector<unique_ptr<MapSprite>>& { return _activeSprites; }
+    [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8_t* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*;
     void InvalidateAll() noexcept;
@@ -186,9 +190,12 @@ private:
     vector<unique_ptr<MapSprite>> _spritesPool {};
     uint32_t _globalCounter {};
     bool _needSort {};
+    bool _orderBroken {};
+    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, ContourColor, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjection, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
@@ -213,11 +220,12 @@ public:
     CornerType Corner {};
     bool DisableEgg {};
     ucolor Color {};
-    ucolor ContourColor {};
     bool IsTweakOffs {};
     ipos32 TweakOffset {};
     bool IsTweakAlpha {};
     uint8_t TweakAlpha {};
+    int16_t Angle {};
+    bool MapProjection {};
     raw_ptr<MapSprite> MSpr {};
 };
 

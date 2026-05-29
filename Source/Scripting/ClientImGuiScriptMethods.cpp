@@ -71,7 +71,7 @@ static auto ResolveTintColor(ucolor tint_color) noexcept -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    return tint_color == ucolor::clear ? COLOR_NEUTRAL : tint_color;
+    return tint_color == ucolor::clear ? Color::Neutral : tint_color;
 }
 
 static auto ToImU32(ucolor color) -> ImU32
@@ -158,19 +158,7 @@ static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize)
-{
-    CheckImageSize(imageSize);
-
-    auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_RUNTIME_ASSERT(client);
-
-    ImGui::Dummy({imageSize.width, imageSize.height});
-    DrawItemSprite(client, sprId, imageSize, ucolor::clear);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1)
+FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f})
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);
@@ -183,26 +171,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize)
-{
-    CheckImageSize(imageSize);
-
-    if (strId.empty()) {
-        throw ScriptException("Image button id arg is empty");
-    }
-
-    auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_RUNTIME_ASSERT(client);
-
-    const auto button_id = string(strId);
-    const auto pressed = ImGui::InvisibleButton(button_id.c_str(), {imageSize.width, imageSize.height});
-    RenderImageButtonFrame(ucolor::clear);
-    DrawItemSprite(client, sprId, imageSize, ucolor::clear);
-    return pressed;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0, fpos32 uv1, ucolor bgColor, ucolor tintColor)
+FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f}, ucolor bgColor = ucolor {}, ucolor tintColor = ucolor {})
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);

@@ -52,8 +52,10 @@
 #include "Settings.h"
 
 #include <angelscript.h>
-#include <json.hpp>
 #include <preprocessor.h>
+FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
@@ -70,9 +72,10 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     auto* as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
     const auto* backend = GetScriptBackend(as_engine);
     const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
-    const auto& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
-    const auto orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
-    const auto formatted_message = strex("{}({},{}): {} : {}", orig_file, orig_line, msg->col, type, msg->message).str();
+    const std::string& orig_file = Preprocessor::ResolveOriginalFile(msg->row, lnt);
+    const uint32_t orig_line = Preprocessor::ResolveOriginalLine(msg->row, lnt);
+    const string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
+    const string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, msg->col, type, msg->message).str();
 
     backend->SendMessage(formatted_message);
 }
@@ -172,6 +175,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_REQUIRE_ENUM_SCOPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_PROPERTY_ACCESSOR_MODE, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_INIT_GLOBAL_VARS_AFTER_BUILD, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));

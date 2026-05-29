@@ -717,6 +717,51 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         CHECK(finished_moving->GetCompleteReason() == MovingState::Success);
     }
 
+    SECTION("CompletesWholeRouteForDeadCritter")
+    {
+        vector<hstring> map_pids {map_pid};
+        auto* loc = server->MapMngr.CreateLocation(location_pid, map_pids);
+        REQUIRE(loc != nullptr);
+
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (loc != nullptr && !loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto* map = loc->GetMapByIndex(0);
+        REQUIRE(map != nullptr);
+
+        auto* cr = server->CreateCritter(critter_pid, false);
+        REQUIRE(cr != nullptr);
+
+        server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, mdir {}, std::nullopt);
+        cr->SetCondition(CritterCondition::Dead);
+
+        const auto template_moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime());
+        const auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
+        REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
+
+        const auto overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
+
+        server->StartCritterMoving(cr, moving, nullptr);
+        REQUIRE(cr->IsMoving());
+
+        REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
+
+        CHECK_FALSE(cr->IsMoving());
+        CHECK(cr->GetMovingState() == MovingState::Success);
+        CHECK(cr->GetHex() == path_hexes.back());
+        CHECK(cr->IsDead());
+
+        const auto* finished_moving = cr->GetMovingContext();
+        REQUIRE(finished_moving != nullptr);
+        CHECK(finished_moving->GetCompleteReason() == MovingState::Success);
+    }
+
     SECTION("StopsAtFirstBlockedHexWithoutTeleport")
     {
         vector<hstring> map_pids {map_pid};

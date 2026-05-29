@@ -43,6 +43,12 @@ FO_BEGIN_NAMESPACE
 
 struct ParticleEditor::Impl
 {
+    [[nodiscard]] auto GetEditedSparkSystem() -> SPK::Ref<SPK::System>;
+    [[nodiscard]] auto GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>;
+    [[nodiscard]] auto GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>;
+    [[nodiscard]] auto GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>;
+    [[nodiscard]] auto GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string;
+
     // Generic
     void DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj);
     // Core
@@ -99,6 +105,9 @@ struct ParticleEditor::Impl
     // Helpers
     void DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw);
     void DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw);
+    void DrawSparkGroupRef(const char* label, const SPK::Ref<SPK::Group>& current, const function<void(const SPK::Ref<SPK::Group>&)>& set);
+    void DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set);
+    void DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group);
 
     unique_ptr<EffectManager> EffectMngr {};
     unique_ptr<GameTimer> GameTime {};
@@ -606,7 +615,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 
     DrawSparkArray(
         "Modifiers", false, [obj] { return obj->getNbModifiers(); }, [obj](auto i) { return obj->getModifier(i); }, [obj](auto i) { obj->removeModifier(obj->getModifier(i)); },
-        [obj] {
+        [this, obj] {
             if (ImGui::Button("Add Gravity")) {
                 obj->addModifier(SPK::Gravity::create());
             }
@@ -628,10 +637,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
             if (ImGui::Button("Add Vortex")) {
                 obj->addModifier(SPK::Vortex::create());
             }
-            // Todo: improve EmitterAttacher
-            // if (ImGui::Button("Add EmitterAttacher")) {
-            //    obj->addModifier(SPK::EmitterAttacher::create());
-            //}
+            if (ImGui::Button("Add EmitterAttacher")) {
+                obj->addModifier(SPK::EmitterAttacher::create(obj, GetFirstSparkEmitter(obj)));
+            }
             if (ImGui::Button("Add PointMass")) {
                 obj->addModifier(SPK::PointMass::create());
             }
@@ -644,27 +652,13 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
         });
 
     DrawSparkNullableField(
-        "Birth action", [obj] { return obj->getBirthAction(); }, [obj] { obj->setBirthAction(SPK::Ref<SPK::Action>()); },
-        [obj] {
-            // Todo: improve EmitterAttacher
-            // if (ImGui::Button("Add SpawnParticlesAction")) {
-            //	obj->setBirthAction(SPK::SpawnParticlesAction::create());
-            // }
-            // Todo: improve ActionSet
-            // else if (ImGui::Button("Add ActionSet")) {
-            //	obj->setBirthAction(SPK::ActionSet::create());
-            // }
+        "Birth action", [obj] { return obj->getBirthAction(); }, [obj] { obj->setBirthAction(SPK::Ref<SPK::Action>()); }, [this, obj] { //
+            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->setBirthAction(action); }, obj);
         });
 
     DrawSparkNullableField(
-        "Death action", [obj] { return obj->getDeathAction(); }, [obj] { obj->setDeathAction(SPK::Ref<SPK::Action>()); },
-        [obj] {
-            // if (ImGui::Button("Add SpawnParticlesAction")) {
-            //	obj->setDeathAction(SPK::SpawnParticlesAction::create());
-            // }
-            // else if (ImGui::Button("Add ActionSet")) {
-            //	obj->setDeathAction(SPK::ActionSet::create());
-            // }
+        "Death action", [obj] { return obj->getDeathAction(); }, [obj] { obj->setDeathAction(SPK::Ref<SPK::Action>()); }, [this, obj] { //
+            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->setDeathAction(action); }, obj);
         });
 
     DrawSparkNullableField(
@@ -1123,11 +1117,9 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>&
 
     DrawSparkModifier(obj);
 
-    // SPK_ATTRIBUTE("base emitter",ATTRIBUTE_TYPE_REF)
+    DrawSparkEmitterRef("EmitterAttacher BaseEmitter", obj->getEmitter(), [obj](const SPK::Ref<SPK::Emitter>& emitter) { obj->setEmitter(emitter); });
     DRAW_SPK_BOOL_BOOL("EmitterAttacher OrientationEnabled", "EmitterAttacher RotationEnabled", isEmitterOrientationEnabled, isEmitterRotationEnabled, enableEmitterOrientation);
-    // SPK_ATTRIBUTE("target group",ATTRIBUTE_TYPE_REF)
-
-    // Todo: DrawSparkObject SPK::EmitterAttacher
+    DrawSparkGroupRef("EmitterAttacher TargetGroup", obj->getTargetGroup(), [obj](const SPK::Ref<SPK::Group>& group) { obj->setTargetGroup(group); });
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
@@ -1177,18 +1169,39 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
 
     DrawSparkAction(obj);
 
-    // Todo: DrawSparkObject SPK::ActionSet
+    DrawSparkArray(
+        "Actions", false, [obj] { return obj->getNbActions(); }, [obj](auto i) { return obj->getAction(i); }, [obj](auto i) { obj->removeAction(obj->getAction(i)); }, [this, obj] { //
+            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->addAction(action); }, SPK::Ref<SPK::Group>());
+        });
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT_STR(false, "Not implemented");
-
     DrawSparkAction(obj);
 
-    // Todo: DrawSparkObject SPK::SpawnParticlesAction
+    int32_t min_nb = numeric_cast<int32_t>(obj->getMinNb());
+    int32_t max_nb = numeric_cast<int32_t>(obj->getMaxNb());
+
+    bool nb_changed = ImGui::InputInt("SpawnParticlesAction MinNb", &min_nb);
+    nb_changed |= ImGui::InputInt("SpawnParticlesAction MaxNb", &max_nb);
+
+    if (nb_changed) {
+        min_nb = std::max(min_nb, 0);
+        max_nb = std::max(max_nb, 0);
+
+        Changed |= true;
+        obj->setNb(numeric_cast<unsigned int>(min_nb), numeric_cast<unsigned int>(max_nb));
+    }
+
+    DrawSparkEmitterRef("SpawnParticlesAction BaseEmitter", obj->getEmitter(), [obj](const SPK::Ref<SPK::Emitter>& emitter) { obj->setEmitter(emitter); });
+    DrawSparkGroupRef("SpawnParticlesAction TargetGroup", obj->getTargetGroup(), [obj](const SPK::Ref<SPK::Group>& group) { obj->setTargetGroup(group); });
+
+    if (ImGui::Button("SpawnParticlesAction ResetPool")) {
+        Changed |= true;
+        obj->resetPool();
+    }
 }
 
 // Renderers
@@ -1272,6 +1285,173 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 }
 
 // Helpers
+void ParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::Ref<SPK::Group>& current, const function<void(const SPK::Ref<SPK::Group>&)>& set)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<SPK::Ref<SPK::Group>> refs {SPK::Ref<SPK::Group>()};
+    vector<string> names {"None"};
+
+    auto groups = GetSparkGroups();
+
+    for (size_t i = 0; i < groups.size(); i++) {
+        refs.emplace_back(groups[i]);
+        names.emplace_back(GetSparkObjectLabel(groups[i], i));
+    }
+
+    if (current && std::ranges::find(refs, current) == refs.end()) {
+        refs.emplace_back(current);
+        names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
+    }
+
+    int32_t index = 0;
+
+    for (size_t i = 0; i < refs.size(); i++) {
+        if (refs[i] == current) {
+            index = numeric_cast<int32_t>(i);
+            break;
+        }
+    }
+
+    vector<const char*> items;
+    items.reserve(names.size());
+
+    for (const auto& name : names) {
+        items.emplace_back(name.c_str());
+    }
+
+    if (ImGui::Combo(label, &index, items.data(), numeric_cast<int32_t>(items.size()))) {
+        Changed |= true;
+        set(refs[numeric_cast<size_t>(index)]);
+    }
+}
+
+void ParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<SPK::Ref<SPK::Emitter>> refs {SPK::Ref<SPK::Emitter>()};
+    vector<string> names {"None"};
+
+    auto groups = GetSparkGroups();
+
+    for (size_t group_index = 0; group_index < groups.size(); group_index++) {
+        auto&& group = groups[group_index];
+        const auto group_name = GetSparkObjectLabel(group, group_index);
+
+        for (size_t emitter_index = 0; emitter_index < group->getNbEmitters(); emitter_index++) {
+            auto&& emitter = group->getEmitter(emitter_index);
+
+            refs.emplace_back(emitter);
+            names.emplace_back(strex("{} / {}", group_name, GetSparkObjectLabel(emitter, emitter_index)));
+        }
+    }
+
+    if (current && std::ranges::find(refs, current) == refs.end()) {
+        refs.emplace_back(current);
+        names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
+    }
+
+    int32_t index = 0;
+
+    for (size_t i = 0; i < refs.size(); i++) {
+        if (refs[i] == current) {
+            index = numeric_cast<int32_t>(i);
+            break;
+        }
+    }
+
+    vector<const char*> items;
+    items.reserve(names.size());
+
+    for (const auto& name : names) {
+        items.emplace_back(name.c_str());
+    }
+
+    if (ImGui::Combo(label, &index, items.data(), numeric_cast<int32_t>(items.size()))) {
+        Changed |= true;
+        set(refs[numeric_cast<size_t>(index)]);
+    }
+}
+
+void ParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto target_group = GetSparkFallbackGroup(preferred_group);
+
+    if (ImGui::Button("Add SpawnParticlesAction")) {
+        add(SPK::SpawnParticlesAction::create(1, 1, target_group, GetFirstSparkEmitter(target_group)));
+    }
+    if (ImGui::Button("Add ActionSet")) {
+        add(SPK::ActionSet::create());
+    }
+}
+
+auto ParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return Particle && Particle->GetBaseSystem() ? SPK::Ref<SPK::System>(Particle->GetBaseSystem()) : SPK::Ref<SPK::System>();
+}
+
+auto ParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<SPK::Ref<SPK::Group>> groups;
+
+    if (auto&& system = GetEditedSparkSystem()) {
+        groups.reserve(system->getNbGroups());
+
+        for (size_t i = 0; i < system->getNbGroups(); i++) {
+            groups.emplace_back(system->getGroup(i));
+        }
+    }
+
+    return groups;
+}
+
+auto ParticleEditor::Impl::GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (preferred_group) {
+        return preferred_group;
+    }
+
+    const auto groups = GetSparkGroups();
+    return !groups.empty() ? groups.front() : SPK::Ref<SPK::Group>();
+}
+
+auto ParticleEditor::Impl::GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (preferred_group && preferred_group->getNbEmitters() != 0) {
+        return preferred_group->getEmitter(0);
+    }
+
+    for (auto&& group : GetSparkGroups()) {
+        if (group->getNbEmitters() != 0) {
+            return group->getEmitter(0);
+        }
+    }
+
+    return {};
+}
+
+auto ParticleEditor::Impl::GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!obj) {
+        return "None";
+    }
+
+    return strex("{} ({})", obj->getName().empty() ? strex("{}", index + 1) : string(obj->getName()), string(obj->getClassName()));
+}
+
 void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw)
 {
     FO_STACK_TRACE_ENTRY();

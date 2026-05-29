@@ -138,6 +138,324 @@ void asCCompiler::Reset(asCBuilder *in_builder, asCScriptCode *in_script, asCScr
 	byteCode.ClearAll();
 	m_initializedProperties.SetLength(0);
 	m_propertyAccessCount.EraseAll();
+
+	// (FOnline Patch) smart-cast narrowing stack starts empty per-function
+	smartCasts.SetLength(0);
+	m_lastEmittedCall = 0;
+	m_emittedNoReturnCall = false;
+}
+
+// (FOnline Patch) Helpers for smart-cast narrowing. A nullable local that has
+// been guarded (`if (x != null) ...`, `Assert(x != null)`, `if (x == null)
+// return;`) becomes non-null inside the guarded region; reads consult the
+// narrowing stack and use the narrowed type if present. Pushed entries are
+// popped when the enclosing region ends; assignments to the variable
+// invalidate any matching entry so later reads see the original nullable type
+// again.
+const asCDataType *asCCompiler::GetNarrowedTypeForLocal(int stackOffset) const
+{
+	for (asUINT i = smartCasts.GetLength(); i > 0; i--)
+	{
+		if (smartCasts[i - 1].stackOffset == stackOffset)
+			return &smartCasts[i - 1].narrowedType;
+	}
+	return 0;
+}
+
+// (FOnline Patch)
+void asCCompiler::InvalidateNarrowingForLocal(int stackOffset)
+{
+	for (asUINT i = 0; i < smartCasts.GetLength(); )
+	{
+		if (smartCasts[i].stackOffset == stackOffset)
+			smartCasts.RemoveIndex(i);
+		else
+			i++;
+	}
+}
+
+// (FOnline Patch) Inspect an if-condition node and recognise the simple
+// null-check forms that license a smart-cast. Supported patterns (one
+// operand must be the literal `null`, the other a local identifier):
+//   NAME != null     /  null != NAME   â†’ narrowed in then
+//   NAME !is null    /  null !is NAME  â†’ narrowed in then
+//   NAME == null     /  null == NAME   â†’ narrowed in else
+//   NAME is null     /  null is NAME   â†’ narrowed in else
+// Conjunctions (`a != null && b != null`) and parenthesised forms are not
+// detected by this MVP; they fall back to the runtime guard.
+void asCCompiler::DetectNullCheckPattern(asCScriptNode *condition, sNullCheckPattern &out)
+{
+	out.narrowsInThenStackOffset = -1;
+	out.narrowsInElseStackOffset = -1;
+	out.thenNarrowList.SetLength(0);
+	out.elseNarrowList.SetLength(0);
+	if (condition == 0 || script == 0)
+		return;
+
+	const char *base = script->code;
+	if (base == 0)
+		return;
+	const size_t len = condition->tokenLength;
+	if (len == 0 || len > 4096)
+		return;
+	asCString text;
+	text.Assign(base + condition->tokenPos, len);
+
+	// Detect a whole-condition negation `!( ... )`: first
+	// non-space char `!`, immediately followed by a `(` whose matching `)` is
+	// the last non-space char. When present, analyse the inner expression and
+	// swap the then/else narrowing at the end. This makes
+	// `if (!(x != null)) <exit>` narrow `x` afterwards exactly like
+	// `if (x == null) <exit>`, and through the inner `&&`/`||` segmentation it
+	// also covers De Morgan'd compound guards (`!(a != null && b != null)`).
+	// The swap is the only mechanism needed because `if (!C)`'s then-branch runs
+	// when C is false, i.e. with C's else-branch narrowing - and vice versa.
+	bool negate = false;
+	asUINT negInnerStart = 0;
+	asUINT negInnerEnd = (asUINT)text.GetLength();
+	{
+		const char *full = text.AddressOf();
+		const asUINT n = (asUINT)text.GetLength();
+		asUINT a = 0;
+		while (a < n && (full[a] == ' ' || full[a] == '\t' || full[a] == '\r' || full[a] == '\n')) a++;
+		asUINT b = n;
+		while (b > a && (full[b - 1] == ' ' || full[b - 1] == '\t' || full[b - 1] == '\r' || full[b - 1] == '\n')) b--;
+		if (a < b && full[a] == '!')
+		{
+			asUINT q = a + 1;
+			while (q < b && (full[q] == ' ' || full[q] == '\t')) q++;
+			if (q < b && full[q] == '(')
+			{
+				int depth = 0;
+				asUINT close = q;
+				bool found = false;
+				for (asUINT p = q; p < b; p++)
+				{
+					if (full[p] == '(') depth++;
+					else if (full[p] == ')') { depth--; if (depth == 0) { close = p; found = true; break; } }
+				}
+				if (found && close == b - 1)
+				{
+					negate = true;
+					negInnerStart = q + 1;
+					negInnerEnd = close;
+				}
+			}
+		}
+	}
+
+	const char *s = text.AddressOf() + (negate ? negInnerStart : 0);
+	asUINT j = negate ? (negInnerEnd - negInnerStart) : (asUINT)text.GetLength();
+
+	// Swap then/else narrowing for a negated condition, then
+	// recompute the legacy single-slot fields from the swapped lists. Called at
+	// every exit of the analysis below.
+	auto applyNegate = [&]()
+	{
+		if (!negate)
+			return;
+		asCArray<sSmartCast> tmpList = out.thenNarrowList;
+		out.thenNarrowList = out.elseNarrowList;
+		out.elseNarrowList = tmpList;
+		out.narrowsInThenStackOffset = -1;
+		out.narrowsInElseStackOffset = -1;
+		if (out.thenNarrowList.GetLength() == 1)
+		{
+			out.narrowsInThenStackOffset = out.thenNarrowList[0].stackOffset;
+			out.narrowedTypeThen = out.thenNarrowList[0].narrowedType;
+		}
+		if (out.elseNarrowList.GetLength() == 1)
+		{
+			out.narrowsInElseStackOffset = out.elseNarrowList[0].stackOffset;
+			out.narrowedTypeElse = out.elseNarrowList[0].narrowedType;
+		}
+	};
+
+	auto isIdentStart = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; };
+	auto isIdentCont = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9'); };
+
+	// Split the condition into top-level segments separated by `&&` or `||`,
+	// remembering the joiner. We only narrow in the then-branch when every
+	// joiner is `&&` (so each `x != null` atom is required to take the
+	// branch); for an early-return guard the caller handles else-branch
+	// propagation. Track parentheses so nested calls don't split.
+	struct Segment
+	{
+		asUINT start;
+		asUINT end;
+	};
+	asCArray<Segment> segs;
+	bool allAnd = true;
+	bool allOr = true; // becomes false once we see `||` or `&&` mixed
+	bool sawJoin = false;
+	asUINT segStart = 0;
+	int paren = 0;
+	for (asUINT p = 0; p < j; p++)
+	{
+		const char c = s[p];
+		if (c == '(') paren++;
+		else if (c == ')') paren--;
+		if (paren == 0 && p + 1 < j && ((c == '&' && s[p+1] == '&') || (c == '|' && s[p+1] == '|')))
+		{
+			sawJoin = true;
+			if (c == '&') allOr = false; else allAnd = false;
+			Segment seg = {segStart, p};
+			segs.PushLast(seg);
+			p += 1; // skip second char
+			segStart = p + 1;
+		}
+	}
+	{
+		Segment seg = {segStart, j};
+		segs.PushLast(seg);
+	}
+
+	auto trimAndTryAtom = [&](asUINT segStartIdx, asUINT segEndIdx, bool &outIsNeq, asCString &outName) -> bool
+	{
+		outIsNeq = false;
+		asUINT i = segStartIdx;
+		asUINT je = segEndIdx;
+		// Strip outer parens/whitespace.
+		while (i < je && (s[i] == ' ' || s[i] == '\t' || s[i] == '(' || s[i] == '\r' || s[i] == '\n')) i++;
+		while (je > i && (s[je - 1] == ' ' || s[je - 1] == '\t' || s[je - 1] == ')' || s[je - 1] == '\r' || s[je - 1] == '\n')) je--;
+		if (je <= i) return false;
+
+		asUINT p = i;
+		asUINT a_start = p, a_end = p;
+		if (p < je && isIdentStart(s[p]))
+		{
+			while (p < je && isIdentCont(s[p])) p++;
+			a_end = p;
+		}
+		else return false;
+		while (p < je && (s[p] == ' ' || s[p] == '\t')) p++;
+
+		bool isEq = false, isNeq = false;
+		asUINT op_end = p;
+		if (p + 1 < je && s[p] == '=' && s[p + 1] == '=') { isEq = true; op_end = p + 2; }
+		else if (p + 1 < je && s[p] == '!' && s[p + 1] == '=') { isNeq = true; op_end = p + 2; }
+		else if (p + 1 < je && s[p] == 'i' && s[p + 1] == 's' && (p + 2 == je || s[p + 2] == ' ' || s[p + 2] == '\t')) { isEq = true; op_end = p + 2; }
+		else if (p + 2 < je && s[p] == '!' && s[p + 1] == 'i' && s[p + 2] == 's' && (p + 3 == je || s[p + 3] == ' ' || s[p + 3] == '\t')) { isNeq = true; op_end = p + 3; }
+		else return false;
+		p = op_end;
+		while (p < je && (s[p] == ' ' || s[p] == '\t')) p++;
+
+		asUINT b_start = p, b_end = p;
+		if (p < je && isIdentStart(s[p]))
+		{
+			while (p < je && isIdentCont(s[p])) p++;
+			b_end = p;
+		}
+		else return false;
+		asUINT after = p;
+		while (after < je && (s[after] == ' ' || s[after] == '\t')) after++;
+		if (after != je) return false;
+
+		asCString aTok, bTok;
+		aTok.Assign(s + a_start, a_end - a_start);
+		bTok.Assign(s + b_start, b_end - b_start);
+
+		asCString varName;
+		if (aTok == "null" && bTok != "null") varName = bTok;
+		else if (bTok == "null" && aTok != "null") varName = aTok;
+		else return false;
+
+		outIsNeq = isNeq;
+		outName = varName;
+		(void)isEq;
+		return true;
+	};
+
+	auto tryNarrow = [&](const asCString &name, bool isNeq, asCArray<sSmartCast> &thenList, asCArray<sSmartCast> &elseList)
+	{
+		if (variables == 0) return;
+		sVariable *v = variables->GetVariable(name.AddressOf());
+		if (v == 0) return;
+		if (!v->type.IsObjectHandle() || !v->type.IsNullable()) return;
+		asCDataType narrowed = v->type;
+		narrowed.MakeNullable(false);
+		sSmartCast sc;
+		sc.stackOffset = v->stackOffset;
+		sc.narrowedType = narrowed;
+		if (isNeq) thenList.PushLast(sc); else elseList.PushLast(sc);
+	};
+
+	// Single segment (no joiner): use the legacy single-pattern shape; both
+	// then- and else-narrowing remain valid.
+	if (!sawJoin)
+	{
+		bool isNeq = false;
+		asCString name;
+		if (segs.GetLength() == 1 && trimAndTryAtom(segs[0].start, segs[0].end, isNeq, name))
+		{
+			tryNarrow(name, isNeq, out.thenNarrowList, out.elseNarrowList);
+			// Preserve the legacy single-slot fields so older call paths see
+			// the same narrowing they did before.
+			if (out.thenNarrowList.GetLength() == 1)
+			{
+				out.narrowsInThenStackOffset = out.thenNarrowList[0].stackOffset;
+				out.narrowedTypeThen = out.thenNarrowList[0].narrowedType;
+			}
+			if (out.elseNarrowList.GetLength() == 1)
+			{
+				out.narrowsInElseStackOffset = out.elseNarrowList[0].stackOffset;
+				out.narrowedTypeElse = out.elseNarrowList[0].narrowedType;
+			}
+		}
+		applyNegate();
+		return;
+	}
+
+	// `A && B && ...`: every `x != null` atom narrows x in the then-branch.
+	// Else-branch narrowing is not safe here because the failure could come
+	// from any single atom.
+	if (allAnd)
+	{
+		for (asUINT k = 0; k < segs.GetLength(); k++)
+		{
+			bool isNeq = false;
+			asCString name;
+			if (trimAndTryAtom(segs[k].start, segs[k].end, isNeq, name) && isNeq)
+			{
+				tryNarrow(name, /*isNeq=*/true, out.thenNarrowList, out.elseNarrowList);
+			}
+		}
+		if (out.thenNarrowList.GetLength() == 1)
+		{
+			out.narrowsInThenStackOffset = out.thenNarrowList[0].stackOffset;
+			out.narrowedTypeThen = out.thenNarrowList[0].narrowedType;
+		}
+		applyNegate();
+		return;
+	}
+
+	// `A || B || ...`: every `x == null` atom narrows x in the else-branch
+	// (because the branch was not taken means every atom was false, so x is
+	// non-null). The then-branch could come from any atom so it's unsafe to
+	// narrow there.
+	if (allOr)
+	{
+		for (asUINT k = 0; k < segs.GetLength(); k++)
+		{
+			bool isNeq = false;
+			asCString name;
+			if (trimAndTryAtom(segs[k].start, segs[k].end, isNeq, name) && !isNeq)
+			{
+				tryNarrow(name, /*isNeq=*/false, out.thenNarrowList, out.elseNarrowList);
+			}
+		}
+		if (out.elseNarrowList.GetLength() == 1)
+		{
+			out.narrowsInElseStackOffset = out.elseNarrowList[0].stackOffset;
+			out.narrowedTypeElse = out.elseNarrowList[0].narrowedType;
+		}
+		applyNegate();
+		return;
+	}
+
+	// Mixed `&&` and `||` — too ambiguous to narrow safely without precedence
+	// handling. Leave both lists empty.
+	applyNegate();
 }
 
 int asCCompiler::CompileDefaultCopyConstructor(asCBuilder* in_builder, asCScriptCode* in_script, asCScriptNode* in_node, asCScriptFunction* in_outFunc, sClassDeclaration* in_classDecl)
@@ -1389,6 +1707,12 @@ void asCCompiler::CompileStatementBlock(asCScriptNode *block, bool ownVariableSc
 	bool hasReturnBefore = false;
 	asUINT visibleNamespaceCount = 0;
 
+	// (FOnline Patch) Snapshot smart-cast narrowings so any added by statements
+	// inside this block (early-return propagation, etc.) get popped when the
+	// block ends. Function bodies are themselves a statement block, so the
+	// outermost mark = 0 is the right behaviour for whole-function lifetime.
+	const asUINT smartCastsBlockMark = smartCasts.GetLength();
+
 	if( ownVariableScope )
 	{
 		bc->Block(true);
@@ -1490,7 +1814,13 @@ void asCCompiler::CompileStatementBlock(asCScriptNode *block, bool ownVariableSc
 		RemoveVariableScope();
 		bc->Block(false);
 	}
-	
+
+	// (FOnline Patch) Pop any smart-cast narrowings introduced inside this
+	// block. Narrowings established by guards stop applying once we leave
+	// the enclosing block.
+	if (smartCasts.GetLength() > smartCastsBlockMark)
+		smartCasts.SetLength(smartCastsBlockMark);
+
 	if( visibleNamespaceCount > 0 )
 	{
 		m_namespaceVisibility.SetLengthNoAllocate(m_namespaceVisibility.GetLength() - visibleNamespaceCount);
@@ -3265,6 +3595,60 @@ void asCCompiler::CompileDeclaration(asCScriptNode *decl, asCByteCode *bc)
 	bc->OptimizeLocally(tempVariableOffsets);
 }
 
+// (FOnline Patch) Walks the assignment expression node and returns true when the
+// RHS is shaped in a way the redundant-? warning can't reason about correctly:
+//   * `cast<T>(...)` — failed downcast returns null at runtime even though the
+//     static type is `T`.
+//   * `cond ? a : b` — ternary. AS picks the non-null branch as the common
+//     type when one side is nullable and the other isn't (or one side is the
+//     null literal), which silently strips nullability from the result.
+// Wrapper nodes that only contain a single child (snCondition without `?`,
+// snExpression, snExprTerm without operators, snExprValue) are transparently
+// skipped during the walk.
+static bool IsRhsACastOrTernary(asCScriptNode *assignmentNode)
+{
+	if (assignmentNode == 0 || assignmentNode->nodeType != snAssignment)
+		return false;
+
+	// snAssignment children: [LHS condition, (op, RHS assignment)?]. For a
+	// plain initializer the whole RHS is the first (and only) child.
+	asCScriptNode *cur = assignmentNode->firstChild;
+	if (cur == 0 || cur->next != 0)
+		return false;
+
+	for (;;)
+	{
+		if (cur == 0)
+			return false;
+		if (cur->nodeType == snCast)
+			return true;
+		// A real ternary `c ? a : b` has three children. A snCondition with one
+		// child is just a wrapper around an expression and should be peeled.
+		if (cur->nodeType == snCondition && cur->firstChild != 0 && cur->firstChild->next != 0)
+			return true;
+
+		switch (cur->nodeType)
+		{
+		case snCondition:
+		case snExpression:
+		case snExprValue:
+			if (cur->firstChild == 0 || cur->firstChild->next != 0)
+				return false;
+			cur = cur->firstChild;
+			break;
+		case snExprTerm:
+			// snExprTerm is `EXPRPREOP* EXPRVALUE EXPRPOSTOP*`. A wrapped cast
+			// has exactly one child, the snExprValue.
+			if (cur->firstChild == 0 || cur->firstChild->next != 0)
+				return false;
+			cur = cur->firstChild;
+			break;
+		default:
+			return false;
+		}
+	}
+}
+
 // Returns true if the initialization expression is a constant expression
 bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, const asCDataType &type, asCScriptNode *errNode, int offset, asQWORD *constantValue, EVarGlobOrMem isVarGlobOrMem, asCExprContext *preCompiled)
 {
@@ -3462,7 +3846,63 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		// handles initialized with null doesn't need any bytecode
 		// since handles will be initialized to null by default anyway
 		if (type.IsObjectHandle() && expr->type.IsNullConstant() && expr->bc.IsSimpleExpression() )
+		{
+			// (FOnline Patch) Reject `T x = null;` at compile time when the
+			// destination is non-nullable. Without this guard the
+			// initialisation silently does nothing (the field stays
+			// default-constructed to null) and the first read explodes at
+			// runtime with a generic null-pointer access.
+			if (!type.IsNullable())
+			{
+				asCString msg;
+				msg.Format("Cannot assign 'null' to a non-nullable handle of type '%s' (use '%s?' to allow null)",
+					type.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+					type.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+				Error(msg, errNode);
+			}
+
 			return false;
+		}
+
+		// (FOnline Patch) Warn when the destination is declared `T?` but the
+		// initializer is statically non-nullable (i.e. cannot produce null).
+		// The `?` is then redundant - the local is widened to nullable for no
+		// reason and any subsequent `if (x == null)` check is dead code.
+		// Catches stale `T?` declarations left behind after an API tightened
+		// its return type from `FO_NULLABLE T*` to `T*`, or after a refactor
+		// extracted a previously-nullable expression into a non-nullable one.
+		// This trusts the static nullability of the source much like the deref
+		// (ttDot) and redundant-null-comparison checks do: reading a non-const
+		// handle reference (`arr[i]` of a non-nullable element type, or a `T`
+		// field/local reached by reference) yields storage whose non-null
+		// invariant is enforced on every write, so `T? x = arr[i]` is redundant.
+		// Two source shapes are skipped because their non-null static type does
+		// NOT guarantee a non-null value:
+		//   * `cast<T>(...)` / `cond ? a : b` (see IsRhsACastOrTernary): a failed
+		//     reference cast yields null and ternary branch types may differ.
+		//   * a const handle reference `T@const&` (`dict.get(key, default)`): the
+		//     lookup substitutes its (possibly null) default and yields null on a
+		//     missing key, so its non-null element type does not make the read
+		//     non-null. A genuinely-non-null source must instead spell itself so
+		//     (`cast<T?>`, the `Nullable` property flag, `FO_NULLABLE`, ...).
+		const bool rhsIsConstHandleRef = expr->type.dataType.IsObjectHandle() &&
+			expr->type.dataType.IsReference() &&
+			expr->type.dataType.IsReadOnly() &&
+			!expr->type.isTemporary;
+		if (type.IsObjectHandle() && type.IsNullable() &&
+			expr->type.dataType.IsObjectHandle() && !expr->type.dataType.IsNullable() &&
+			!expr->type.IsNullConstant() &&
+			!IsRhsACastOrTernary(node) &&
+			!rhsIsConstHandleRef)
+		{
+			asCDataType bareDest = type;
+			bareDest.MakeNullable(false);
+			asCString msg;
+			msg.Format("Redundant '?': initializer of type '%s' cannot be null; declare destination as '%s' instead",
+				expr->type.dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+				bareDest.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+			Warning(msg, errNode);
+		}
 
 		return CompileInitializationWithAssignment(bc, type, errNode, offset, constantValue, isVarGlobOrMem, node, expr);
 	}
@@ -3527,10 +3967,22 @@ bool asCCompiler::CompileInitializationWithAssignment(asCByteCode* bc, const asC
 			// Clear the local variable so the reference isn't released
 			bc->InstrSHORT(asBC_ClrVPtr, (short)rexpr->type.stackOffset);
 		}
-		else if (type.IsFuncdef())
+		/*else if (type.IsFuncdef()) // (FOnline Patch)
 			bc->InstrPTR(asBC_REFCPY, &engine->functionBehaviours);
 		else
-			bc->InstrPTR(asBC_REFCPY, type.GetTypeInfo());
+			bc->InstrPTR(asBC_REFCPY, type.GetTypeInfo());*/
+		else
+		{
+			// (FOnline Patch) Member / global handle initializer: use the checking REFCPY
+			// when the destination handle is declared non-nullable (default for `T`).
+			const bool emitNullCheck = type.IsObjectHandle() && !type.IsNullable();
+			asEBCInstr refCpyOp = emitNullCheck ? asBC_RefCpyChk : asBC_REFCPY;
+			if (type.IsFuncdef())
+				bc->InstrPTR(refCpyOp, &engine->functionBehaviours);
+			else
+				bc->InstrPTR(refCpyOp, type.GetTypeInfo());
+		}
+
 		ReleaseTemporaryVariable(rexpr->type.stackOffset, bc);
 
 		bc->Instr(asBC_PopPtr);
@@ -4491,7 +4943,21 @@ void asCCompiler::CompileStatement(asCScriptNode *statement, bool *hasReturn, as
 	else if (statement->nodeType == snDoWhile)
 		CompileDoWhileStatement(statement, bc);
 	else if (statement->nodeType == snExpressionStatement)
+	{
+		// (FOnline Patch) Track whether this statement ends in a no-return call
+		// (e.g. `ThrowException(...)`). Reset the recorder, compile, then promote
+		// the statement to a control-flow terminator so a guard branch like
+		// `if (x == null) { ThrowException(...); }` narrows `x` afterwards
+		// without an explicit `return`. Only meaningful for non-empty statements.
+		m_lastEmittedCall = 0;
+		m_emittedNoReturnCall = false;
+
 		CompileExpressionStatement(statement, bc);
+
+		// (FOnline Patch)
+		if( statement->firstChild && m_emittedNoReturnCall )
+			*hasReturn = true;
+	}
 	else if (statement->nodeType == snBreak)
 		CompileBreakStatement(statement, bc);
 	else if (statement->nodeType == snContinue)
@@ -4907,11 +5373,38 @@ void asCCompiler::CompileTryCatch(asCScriptNode *node, bool *hasReturn, asCByteC
 	*hasReturn = hasReturnTry && hasReturnCatch;
 }
 
+// (FOnline Patch) Does this statement transfer control away from the straight-line
+// flow without falling through to the statement after it (other than via
+// return/throw, which `hasReturn` already covers)? A `break`/`continue` is such a
+// transfer, so a guard like `if (x == null) continue;` leaves `x` non-null for the
+// rest of the loop body, exactly like `if (x == null) return;`. A statement block
+// counts when its last statement does. Used only to extend smart-cast narrowing
+// past such a guard; it never feeds the function-must-return-value analysis.
+static bool StatementAbortsFallThrough(asCScriptNode *stmt)
+{
+	if( stmt == 0 )
+		return false;
+	if( stmt->nodeType == snBreak || stmt->nodeType == snContinue )
+		return true;
+	if( stmt->nodeType == snStatementBlock )
+	{
+		asCScriptNode *last = stmt->lastChild;
+		return StatementAbortsFallThrough(last);
+	}
+	return false;
+}
+
 void asCCompiler::CompileIfStatement(asCScriptNode *inode, bool *hasReturn, asCByteCode *bc)
 {
 	// We will use one label for the if statement
 	// and possibly another for the else statement
 	int afterLabel = nextLabel++;
+
+	// (FOnline Patch) Detect smart-cast pattern in the if-condition so the
+	// then/else branches and any after-if region can see the narrowed type.
+	sNullCheckPattern nullCheck;
+	DetectNullCheckPattern(inode->firstChild, nullCheck);
+	const asUINT smartCastMarkBeforeIf = smartCasts.GetLength();
 
 	// Compile the expression
 	asCExprContext expr(engine);
@@ -4964,6 +5457,21 @@ void asCCompiler::CompileIfStatement(asCScriptNode *inode, bool *hasReturn, asCB
 		}
 	}
 
+	// (FOnline Patch) A compile-time-constant-true condition means the then-branch
+	// always executes, so the statement's reachability is the then-branch's even
+	// without an else. This makes `verify(false, ...)` (which expands to
+	// `if (!(false)) throw(...)`) a no-return statement, so no `return` is needed
+	// after it. Runtime conditions (incl. settings) are unaffected.
+	bool condIsConstTrue = false;
+	if( expr.type.isConstant && expr.type.dataType.IsEqualExceptRefAndConst(asCDataType::CreatePrimitive(ttBool, true)) )
+	{
+#if AS_SIZEOF_BOOL == 1
+		condIsConstTrue = expr.type.GetConstantB() != 0;
+#else
+		condIsConstTrue = expr.type.GetConstantDW() != 0;
+#endif
+	}
+
 	// Compile the if statement
 	// Backup the call to super() and member initializations
 	bool origIsConstructorCalled = m_isConstructorCalled;
@@ -4973,7 +5481,28 @@ void asCCompiler::CompileIfStatement(asCScriptNode *inode, bool *hasReturn, asCB
 
 	bool hasReturn1;
 	asCByteCode ifBC(engine);
+
+	// (FOnline Patch) Push then-branch narrowing before compiling. Prefer the
+	// list form (compound `&&` shapes can narrow multiple locals); fall back
+	// to the legacy single-slot when the list is empty.
+	const asUINT smartCastMarkBeforeThen = smartCasts.GetLength();
+	if (nullCheck.thenNarrowList.GetLength() > 0)
+	{
+		for (asUINT n = 0; n < nullCheck.thenNarrowList.GetLength(); n++)
+			smartCasts.PushLast(nullCheck.thenNarrowList[n]);
+	}
+	else if (nullCheck.narrowsInThenStackOffset >= 0)
+	{
+		sSmartCast sc;
+		sc.stackOffset = nullCheck.narrowsInThenStackOffset;
+		sc.narrowedType = nullCheck.narrowedTypeThen;
+		smartCasts.PushLast(sc);
+	}
+
 	CompileStatement(inode->firstChild->next, &hasReturn1, &ifBC);
+
+	// (FOnline Patch)
+	smartCasts.SetLength(smartCastMarkBeforeThen);
 
 	// Add the byte code
 	LineInstr(bc, inode->firstChild->next->tokenPos);
@@ -5019,7 +5548,26 @@ void asCCompiler::CompileIfStatement(asCScriptNode *inode, bool *hasReturn, asCB
 
 		bool hasReturn2;
 		asCByteCode elseBC(engine);
+		// (FOnline Patch) Push else-branch narrowing before compiling. List
+		// form first (compound `||` shapes can narrow multiple locals).
+		const asUINT smartCastMarkBeforeElse = smartCasts.GetLength();
+		if (nullCheck.elseNarrowList.GetLength() > 0)
+		{
+			for (asUINT n = 0; n < nullCheck.elseNarrowList.GetLength(); n++)
+				smartCasts.PushLast(nullCheck.elseNarrowList[n]);
+		}
+		else if (nullCheck.narrowsInElseStackOffset >= 0)
+		{
+			sSmartCast sc;
+			sc.stackOffset = nullCheck.narrowsInElseStackOffset;
+			sc.narrowedType = nullCheck.narrowedTypeElse;
+			smartCasts.PushLast(sc);
+		}
+
 		CompileStatement(inode->lastChild, &hasReturn2, &elseBC);
+
+		// (FOnline Patch)
+		smartCasts.SetLength(smartCastMarkBeforeElse);
 
 		// Add byte code for the else statement
 		LineInstr(bc, inode->lastChild->tokenPos);
@@ -5044,13 +5592,82 @@ void asCCompiler::CompileIfStatement(asCScriptNode *inode, bool *hasReturn, asCB
 			constructorCall2 = true;
 
 		initializedProperties2 = m_initializedProperties;
+
+		// (FOnline Patch) Smart-cast propagation past the if/else:
+		// â€¢ if then-branch always exits, the only fall-through path is the
+		//   else semantics â€" the else's narrowing applies for the rest of
+		//   the enclosing block.
+		// â€¢ symmetric for else always exiting.
+		// â€¢ if both exit, *hasReturn already covers it and the caller
+		//   doesn't reach this region.
+		// â€¢ if neither exits, no narrowing carries past â€" each branch
+		//   already popped its own.
+		// A branch also "exits" (no fall-through) when it ends in
+		// break/continue, not only return/throw - treat those the same for narrowing.
+		bool thenExits = hasReturn1 || StatementAbortsFallThrough(inode->firstChild->next);
+		bool elseExits = hasReturn2 || StatementAbortsFallThrough(inode->lastChild);
+		if (thenExits && !elseExits)
+		{
+			if (nullCheck.elseNarrowList.GetLength() > 0)
+			{
+				for (asUINT n = 0; n < nullCheck.elseNarrowList.GetLength(); n++)
+					smartCasts.PushLast(nullCheck.elseNarrowList[n]);
+			}
+			else if (nullCheck.narrowsInElseStackOffset >= 0)
+			{
+				sSmartCast sc;
+				sc.stackOffset = nullCheck.narrowsInElseStackOffset;
+				sc.narrowedType = nullCheck.narrowedTypeElse;
+				smartCasts.PushLast(sc);
+			}
+		}
+		else if (elseExits && !thenExits)
+		{
+			if (nullCheck.thenNarrowList.GetLength() > 0)
+			{
+				for (asUINT n = 0; n < nullCheck.thenNarrowList.GetLength(); n++)
+					smartCasts.PushLast(nullCheck.thenNarrowList[n]);
+			}
+			else if (nullCheck.narrowsInThenStackOffset >= 0)
+			{
+				sSmartCast sc;
+				sc.stackOffset = nullCheck.narrowsInThenStackOffset;
+				sc.narrowedType = nullCheck.narrowedTypeThen;
+				smartCasts.PushLast(sc);
+			}
+		}
 	}
 	else
 	{
 		// Add label for the end of if statement
 		bc->Label((short)afterLabel);
-		*hasReturn = false;
+
+		// (FOnline Patch) A constant-true condition with no else terminates iff the
+		// then-branch does (the fall-through is dead code).
+		*hasReturn = condIsConstTrue ? hasReturn1 : false;
+
+		// (FOnline Patch) `if (x == null) return; <code>` â€" no else, then
+		// always exits, so the rest of the enclosing block sees `x` as
+		// non-null. A break/continue guard exits the same way for narrowing.
+		if (hasReturn1 || StatementAbortsFallThrough(inode->firstChild->next))
+		{
+			if (nullCheck.elseNarrowList.GetLength() > 0)
+			{
+				for (asUINT n = 0; n < nullCheck.elseNarrowList.GetLength(); n++)
+					smartCasts.PushLast(nullCheck.elseNarrowList[n]);
+			}
+			else if (nullCheck.narrowsInElseStackOffset >= 0)
+			{
+				sSmartCast sc;
+				sc.stackOffset = nullCheck.narrowsInElseStackOffset;
+				sc.narrowedType = nullCheck.narrowedTypeElse;
+				smartCasts.PushLast(sc);
+			}
+		}
 	}
+	
+	// (FOnline Patch)
+	(void)smartCastMarkBeforeIf;
 
 	// Make sure both or neither conditions call a constructor
 	if( (constructorCall1 && !constructorCall2) ||
@@ -6132,6 +6749,22 @@ void asCCompiler::CompileReturnStatement(asCScriptNode *rnode, asCByteCode *bc)
 		int r = CompileAssignment(rnode->firstChild, &expr);
 		if( r < 0 ) return;
 
+		// (FOnline Patch) Reject `return null;` (or any nullable expression)
+		// when the declared return type is a non-nullable handle. Without this
+		// check the implicit conversion silently passes null up to callers
+		// that then crash with `asBC_RefCpyChk` at runtime.
+		if( v->type.IsObjectHandle() && !v->type.IsNullable() &&
+			(expr.type.IsNullConstant() ||
+			 (expr.type.dataType.IsObjectHandle() && expr.type.dataType.IsNullable())) )
+		{
+			asCString msg;
+			msg.Format("Cannot return nullable value from a non-nullable return type '%s' (change the declared return type to '%s?')",
+				v->type.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+				v->type.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+			Error(msg, rnode);
+			return;
+		}
+
 		if( v->type.IsReference() )
 		{
 			// The expression that gives the reference must not use any of the
@@ -6889,6 +7522,13 @@ int asCCompiler::PerformAssignment(asCExprValue *lvalue, asCExprValue *rvalue, a
 		return -1;
 	}
 
+	// (FOnline Patch) Invalidate any smart-cast narrowing on this lvalue:
+	// once the local is reassigned, the old guard no longer covers the new
+	// value. The next read will see the variable's declared (nullable) type
+	// again and re-issue the guard if needed.
+	if (lvalue->isVariable)
+		InvalidateNarrowingForLocal(lvalue->stackOffset);
+
 	if( lvalue->dataType.IsPrimitive() )
 	{
 		if( lvalue->isVariable )
@@ -6976,10 +7616,52 @@ int asCCompiler::PerformAssignment(asCExprValue *lvalue, asCExprValue *rvalue, a
 			return -1;
 		}
 
-		if( lvalue->dataType.IsFuncdef() )
+		// (FOnline Patch) Pick REFCPY (no check) or RefCpyChk (raises if source is null)
+		// based on the declared nullability of the destination handle. Without `?` the
+		// lvalue rejects null writes at runtime; `T?` opts back into the bare REFCPY.
+		// Skip the check for compiler-generated temporaries (arg-setup slots, intermediate
+		// expression buffers): the user can't annotate those with `?`, and their type is
+		// inherited from a native parameter whose nullability is enforced at the AS-to-native
+		// boundary by the codegen-emitted `NativeDataProvider::CheckArgNotNull`.
+		const bool emitNullCheck = lvalue->dataType.IsObjectHandle() && !lvalue->dataType.IsNullable() && !lvalue->isTemporary;
+		asEBCInstr refCpyOp = emitNullCheck ? asBC_RefCpyChk : asBC_REFCPY;
+
+		// (FOnline Patch) Compile-time guard against `T x = null;` â€" always
+		// on (no smart-cast can rescue it). The full `T x = nullableExpr;`
+		// rejection is opt-in via `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE`
+		// so existing code keeps compiling while authors migrate; the
+		// runtime `asBC_RefCpyChk` is still the safety net underneath.
+		if( emitNullCheck && rvalue != 0 )
+		{
+			const bool rvalueIsNullLiteral = rvalue->dataType.IsNullHandle();
+			const bool rvalueIsNullableHandle = rvalue->dataType.IsObjectHandle() && rvalue->dataType.IsNullable();
+			const bool strictNullable = engine && engine->ep.disallowNullableToNonNullable;
+			if( rvalueIsNullLiteral || (rvalueIsNullableHandle && strictNullable) )
+			{
+				asCString msg;
+				if( rvalueIsNullLiteral )
+					msg.Format("Cannot assign 'null' to a non-nullable handle of type '%s' (use '%s?' to allow null)",
+						lvalue->dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+						lvalue->dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+				else
+					msg.Format("Cannot assign nullable '%s' to non-nullable '%s' without a null-check (add `if (src != null)` or change the destination to '%s')",
+						rvalue->dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+						lvalue->dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+						rvalue->dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+				Error(msg, node);
+				// Continue emission so subsequent compile errors aren't masked.
+			}
+		}
+
+		// (FOnline Patch)
+		/*if( lvalue->dataType.IsFuncdef() )
 			bc->InstrPTR(asBC_REFCPY, &engine->functionBehaviours);
 		else
-			bc->InstrPTR(asBC_REFCPY, lvalue->dataType.GetTypeInfo());
+			bc->InstrPTR(asBC_REFCPY, lvalue->dataType.GetTypeInfo());*/
+		if( lvalue->dataType.IsFuncdef() )
+			bc->InstrPTR(refCpyOp, &engine->functionBehaviours);
+		else
+			bc->InstrPTR(refCpyOp, lvalue->dataType.GetTypeInfo());
 
 		// Mark variable as initialized
 		if( variables )
@@ -10388,10 +11070,26 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 		if( e.type.dataType.IsReference() ) ConvertToVariable(&e);
 		ProcessDeferredParams(&e);
 
+		// (FOnline Patch) Narrow nullable locals inside the ternary branches the
+		// same way CompileIfStatement narrows then/else: `x != null ? x.Y : Z`
+		// lets the then-expression treat x as non-null (and the else-expression
+		// for the `x == null ? ...` shape).
+		sNullCheckPattern ternaryNullCheck;
+		DetectNullCheckPattern(cexpr, ternaryNullCheck);
+
 		//-------------------------------
 		// Compile the left expression
 		asCExprContext le(engine);
+		
+		// (FOnline Patch)
+		const asUINT smartCastMarkTernaryThen = smartCasts.GetLength();
+		for( asUINT tnc = 0; tnc < ternaryNullCheck.thenNarrowList.GetLength(); tnc++ )
+			smartCasts.PushLast(ternaryNullCheck.thenNarrowList[tnc]);
+
 		int lr = CompileAssignment(cexpr->next, &le);
+
+		// (FOnline Patch)
+		smartCasts.SetLength(smartCastMarkTernaryThen);
 
 		// Resolve any function names already
 		DetermineSingleFunc(&le, cexpr->next);
@@ -10399,7 +11097,17 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 		//-------------------------------
 		// Compile the right expression
 		asCExprContext re(engine);
+
+		// (FOnline Patch)
+		const asUINT smartCastMarkTernaryElse = smartCasts.GetLength();
+		for( asUINT tnc = 0; tnc < ternaryNullCheck.elseNarrowList.GetLength(); tnc++ )
+			smartCasts.PushLast(ternaryNullCheck.elseNarrowList[tnc]);
+
 		int rr = CompileAssignment(cexpr->next->next, &re);
+
+		// (FOnline Patch)
+		smartCasts.SetLength(smartCastMarkTernaryElse);
+
 		DetermineSingleFunc(&re, cexpr->next->next);
 
 		if (lr >= 0 && rr >= 0)
@@ -10415,6 +11123,16 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 				return -1;
 			if (ProcessPropertyGetAccessor(&re, cexpr->next->next) < 0)
 				return -1;
+
+			// (FOnline Patch) A conditional evaluates to whichever branch is taken, so it
+			// can be null if EITHER branch is nullable (or a null literal). Capture this now,
+			// before the branch-type-unifying conversions below can drop the flag, then
+			// re-apply it to the result type at the end of this block so the front-end
+			// nullability checks (assignment #2, deref, comparison) treat `cond ? a? : b`
+			// as T? instead of relying solely on the runtime asBC_RefCpyChk safety net.
+			const bool ternaryResultNullable =
+				le.type.dataType.IsNullable() || re.type.dataType.IsNullable() ||
+				le.type.IsNullConstant() || re.type.IsNullConstant();
 
 			bool isExplicitHandle = le.type.isExplicitHandle || re.type.isExplicitHandle;
 
@@ -10767,6 +11485,12 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asCExprContext *ctx)
 					ctx->type.isConstant = false;
 				}
 			}
+
+			// (FOnline Patch) Re-apply the conditional's nullability captured above (before
+			// the branch-type merge) so `cond ? a? : b` is seen as T? by the assignment,
+			// deref and null-comparison checks, not only the runtime asBC_RefCpyChk.
+			if( ternaryResultNullable && ctx->type.dataType.IsObjectHandle() )
+				ctx->type.dataType.MakeNullable(true);
 		}
 		else
 		{
@@ -10829,6 +11553,39 @@ void asCCompiler::ConvertToPostFix(asCScriptNode *expr, asCArray<asCScriptNode *
 		stackB.PushLast(stackA.PopLast());
 }
 
+// (FOnline Patch) After a null-check operand lands on the postfix evaluation
+// stack, decide whether it is consumed as the LEFT operand of a matching
+// short-circuit (`&&` for a `!=`/onTrue tag, `||` for an `==`/onFalse tag). If
+// so, its entire right-operand span should be narrowed - not just the first
+// term - so `x != null && x.Prop == y` narrows `x.Prop`. Scans the remaining
+// postfix tracking how many operands sit above the landed one; the binary
+// operator that pops it (when the count returns to 0) is its consumer. Unary
+// operators are folded into their term (snExprTerm), so every non-term node
+// here is binary.
+static bool ShortCircuitNarrowsRightOperand(const asCArray<asCScriptNode *> *postfix, asUINT startIdx, bool onTrue)
+{
+	int above = 0;
+	for( asUINT i = startIdx; i < postfix->GetLength(); i++ )
+	{
+		if( (*postfix)[i]->nodeType == snExprTerm )
+		{
+			above++;
+		}
+		else
+		{
+			if( above == 0 )
+				return false; // the landed operand is this operator's RIGHT operand
+			if( above == 1 )
+			{
+				const eTokenType tt = (*postfix)[i]->tokenType;
+				return (tt == ttAnd && onTrue) || (tt == ttOr && !onTrue);
+			}
+			above--;
+		}
+	}
+	return false;
+}
+
 int asCCompiler::CompilePostFixExpression(asCArray<asCScriptNode *> *postfix, asCExprContext *ctx)
 {
 	// Shouldn't send any byte code
@@ -10842,6 +11599,18 @@ int asCCompiler::CompilePostFixExpression(asCArray<asCScriptNode *> *postfix, as
 	asCArray<asCExprContext*> free;
 	asCArray<asCExprContext*> expr;
 	int ret = 0;
+
+	// (FOnline Patch) Smart-cast narrowing for `&&` / `||` short-circuits. When a
+	// `x != null` / `x == null` operand lands on the evaluation stack and will be
+	// consumed as the LEFT operand of a matching short-circuit, push a narrowing
+	// for x that stays active across the operator's entire right operand (any
+	// number of terms), then drop it when that operator is reached. `narrowAtIdx`
+	// is the expr-stack index of the guarding operand; `narrowMark` the smartCasts
+	// length to restore to. `smartCastBase` restores the stack on early exit.
+	const asUINT smartCastBase = smartCasts.GetLength();
+	asCArray<asUINT> narrowAtIdx;
+	asCArray<asUINT> narrowMark;
+
 	for( asUINT n = 0; ret == 0 && n < postfix->GetLength(); n++ )
 	{
 		asCScriptNode *node = (*postfix)[n];
@@ -10854,6 +11623,16 @@ int asCCompiler::CompilePostFixExpression(asCArray<asCScriptNode *> *postfix, as
 		}
 		else
 		{
+			// (FOnline Patch) A guarding operand is consumed as the left operand of
+			// this operator -> end its narrowing scope before compiling it.
+			while( narrowAtIdx.GetLength() > 0 && expr.GetLength() >= 2 &&
+				   narrowAtIdx[narrowAtIdx.GetLength()-1] == expr.GetLength()-2 )
+			{
+				smartCasts.SetLength(narrowMark[narrowMark.GetLength()-1]);
+				narrowAtIdx.PopLast();
+				narrowMark.PopLast();
+			}
+
 			asCExprContext *r = expr.PopLast();
 			asCExprContext *l = expr.PopLast();
 
@@ -10861,7 +11640,60 @@ int asCCompiler::CompilePostFixExpression(asCArray<asCScriptNode *> *postfix, as
 			asCExprContext *e = free.GetLength() ? free.PopLast() : asNEW(asCExprContext)(engine);
 			ret = CompileOperator(node, l, r, e);
 
+			// (FOnline Patch) Propagate a null-check narrowing tag across a
+			// `&&` / `||` chain so a later operand still narrows the guarded local,
+			// regardless of where the check sits in the chain. A true `(L && R)`
+			// means BOTH L and R were true, so an `&&` keeps a `!=`-tag (onTrue)
+			// from either side; a false `(L || R)` means both were false, so an
+			// `||` keeps an `==`-tag (onFalse) from either. The right operand is
+			// preferred (it is the most recent check). Reassignment of the variable
+			// inside an operand is not tracked (rare; matches the immediate
+			// narrowing contract).
+			if( ret == 0 && !e->nullCheckNarrowValid )
+			{
+				eTokenType chainOp = node->tokenType;
+				// A true `(L && R)` means BOTH L and R were true, so an `&&` keeps the
+				// `!=`-narrowings (onTrue) from both sides; a false `(L || R)` means both
+				// were false, so an `||` keeps the `==`-narrowings (onFalse) from both.
+				// Accumulating ALL of them (not just the nearest check) lets a later
+				// operand narrow every guarded local in the chain. Reassignment of a
+				// variable inside an operand is not tracked (rare; matches the immediate
+				// narrowing contract).
+				bool keepPolarity = (chainOp == ttAnd); // onTrue for &&, onFalse for ||
+				if( chainOp == ttAnd || chainOp == ttOr )
+				{
+					if( l->nullCheckNarrowValid && l->nullCheckNarrowOnTrue == keepPolarity )
+						for( asUINT k = 0; k < l->nullCheckNarrowList.GetLength(); k++ )
+							e->nullCheckNarrowList.PushLast(l->nullCheckNarrowList[k]);
+					if( r->nullCheckNarrowValid && r->nullCheckNarrowOnTrue == keepPolarity )
+						for( asUINT k = 0; k < r->nullCheckNarrowList.GetLength(); k++ )
+							e->nullCheckNarrowList.PushLast(r->nullCheckNarrowList[k]);
+					if( e->nullCheckNarrowList.GetLength() > 0 )
+					{
+						e->nullCheckNarrowValid = true;
+						e->nullCheckNarrowOnTrue = keepPolarity;
+					}
+				}
+			}
+
 			expr.PushLast(e);
+
+			// (FOnline Patch) If this result is a null-check that a following
+			// `&&` / `||` consumes as its left operand, narrow the guarded local
+			// across that operator's whole right operand.
+			if( ret == 0 && e->nullCheckNarrowValid &&
+				ShortCircuitNarrowsRightOperand(postfix, n + 1, e->nullCheckNarrowOnTrue) )
+			{
+				narrowAtIdx.PushLast(expr.GetLength() - 1);
+				narrowMark.PushLast(smartCasts.GetLength());
+				for( asUINT k = 0; k < e->nullCheckNarrowList.GetLength(); k++ )
+				{
+					sSmartCast sc;
+					sc.stackOffset = e->nullCheckNarrowList[k].stackOffset;
+					sc.narrowedType = e->nullCheckNarrowList[k].narrowedType;
+					smartCasts.PushLast(sc);
+				}
+			}
 
 			// Free the operands
 			l->Clear();
@@ -10870,6 +11702,8 @@ int asCCompiler::CompilePostFixExpression(asCArray<asCScriptNode *> *postfix, as
 			free.PushLast(r);
 		}
 	}
+
+	smartCasts.SetLength(smartCastBase); // (FOnline Patch) restore on normal/early exit
 
 	if( ret == 0 )
 	{
@@ -11524,6 +12358,14 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 		sVariable *v = variables->GetVariable(name.AddressOf());
 		asASSERT(v);
 
+		// (FOnline Patch) Smart-cast: if a prior guard narrowed this local
+		// from `T?` to `T`, present the narrowed type to the rest of the
+		// compiler. The variable's stored declaration is untouched, so
+		// re-entry to the parent scope restores the original nullable type
+		// automatically when the narrowing entry pops.
+		const asCDataType *narrowed = (!v->isPureConstant) ? GetNarrowedTypeForLocal(v->stackOffset) : 0;
+		const asCDataType &effectiveType = narrowed ? *narrowed : v->type;
+
 		if( v->isPureConstant )
 			ctx->type.SetConstantData(v->type, v->constantValue);
 		else if( v->type.IsPrimitive() )
@@ -11545,7 +12387,14 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 		else
 		{
 			ctx->bc.InstrSHORT(asBC_PSF, (short)v->stackOffset);
-			ctx->type.SetVariable(v->type, v->stackOffset, false);
+
+			// (FOnline Patch) Use the smart-cast narrowed type if one is
+			// active for this local. The narrowed type matches the original
+			// except the nullable bit is cleared, so all downstream sizing /
+			// reference / ref-safe logic still works against the same handle
+			// layout.
+			// ctx->type.SetVariable(v->type, v->stackOffset, false);
+			ctx->type.SetVariable(effectiveType, v->stackOffset, false);
 
 			// If the variable is allocated on the heap we have a reference,
 			// otherwise the actual object pointer is pushed on the stack.
@@ -12642,6 +13491,10 @@ int asCCompiler::CompileConversion(asCScriptNode *node, asCExprContext *ctx)
 		// This will keep information about constant type
 		MergeExprBytecode(ctx, &expr);
 		ctx->type = expr.type;
+		// (FOnline Patch) Honor `cast<T?>(x)` even when the (possibly implicit) conversion already
+		// produced the target type: datatype equality ignores the nullable bit, so re-apply it here.
+		if( convType == asIC_EXPLICIT_REF_CAST && ctx->type.dataType.IsObjectHandle() )
+			ctx->type.dataType.MakeNullable(to.IsNullable());
 		return 0;
 	}
 
@@ -12670,6 +13523,13 @@ int asCCompiler::CompileConversion(asCScriptNode *node, asCExprContext *ctx)
 
 			MergeExprBytecode(ctx, &expr);
 			ctx->type = expr.type;
+
+			// (FOnline Patch) Honor an explicit `cast<T?>(x)`: a reference cast can fail at
+			// runtime and yield null, so when the target type is spelled nullable the result
+			// handle is nullable too. `cast<T>(x)` (no `?`) keeps the non-nullable "assume the
+			// cast succeeds" contract and so still warns on a redundant `!= null` check.
+			if( conversionOK && ctx->type.dataType.IsObjectHandle() )
+				ctx->type.dataType.MakeNullable(to.IsNullable());
 		}
 	}
 
@@ -14778,6 +15638,28 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asCExprContext *ct
 	}
 	else if( op == ttDot )
 	{
+		// (FOnline Patch) Warn when a member (property, method, or field) is
+		// accessed on a nullable handle `T?` that has not been narrowed. The
+		// correct pattern is to guard first (`if (x == null) return;` /
+		// `if (x != null) { ... }`); smart-cast then narrows `x` to a
+		// non-nullable type for the rest of the scope, so this warning does
+		// NOT fire on properly guarded code. It is a warning rather than an
+		// error because the runtime still guards every dereference with a
+		// null-pointer check - we surface the missing narrow at compile time so
+		// authors add an explicit guard instead of relying on the runtime trap.
+		if( ctx->type.dataType.IsObjectHandle() && ctx->type.dataType.IsNullable() &&
+			!ctx->type.IsNullConstant() )
+		{
+			asCDataType bareType = ctx->type.dataType;
+			bareType.MakeNullable(false);
+			bareType.MakeReference(false);
+			asCString msg;
+			msg.Format("Dereference of nullable handle '%s' without a null-check; narrow it first (e.g. `if (x == null) return;`) so it becomes '%s'",
+				ctx->type.dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf(),
+				bareType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+			Warning(msg, node);
+		}
+
 		if( node->firstChild->nodeType == snIdentifier )
 		{
 			if( ProcessPropertyGetAccessor(ctx, node) < 0 )
@@ -15833,6 +16715,15 @@ int asCCompiler::MakeFunctionCall(asCExprContext *ctx, int funcId, asCObjectType
 
 	asCScriptFunction* descr = builder->GetFunctionDescription(funcId);
 
+	// (FOnline Patch) Record the most recently emitted call. Arguments are
+	// compiled before their enclosing call, so for a full expression the
+	// outermost call is recorded last; CompileExpressionStatement reads this to
+	// detect a statement that ends in a no-return call.
+	if( descr )
+		m_lastEmittedCall = descr;
+	if( descr && descr->IsNoReturn() )
+		m_emittedNoReturnCall = true;
+
 	// Store the expression node for error reporting
 	if( ctx->exprNode == 0 )
 		ctx->exprNode = node;
@@ -15959,9 +16850,33 @@ int asCCompiler::CompileOperator(asCScriptNode *node, asCExprContext *lctx, asCE
 	}
 	else
 	{
+		// (FOnline Patch) For `==` / `!=` between two object/funcdef handles
+		// (or reference-to-object on one side, which AS can implicitly
+		// convert), when no opEquals is registered fall through to
+		// handle-identity comparison instead of erroring with "no matching
+		// operator". This unifies `==` and `is` semantics for ref types that
+		// don't define opEquals so the project can drop `is` / `!is` from
+		// its style guide. When opEquals IS registered, the overloaded path
+		// still wins.
+		const bool isEqOp = (op == ttEqual || op == ttNotEqual);
+		auto isObjectOrFuncdef = [](const asCDataType &dt) -> bool {
+			return dt.IsObject() || dt.IsFuncdef() || dt.IsObjectHandle();
+		};
+		const bool bothObjectish = isObjectOrFuncdef(lctx->type.dataType) && isObjectOrFuncdef(rctx->type.dataType);
+
 		// Compile an overloaded operator for the two operands
 		if( CompileOverloadedDualOperator(node, lctx, rctx, leftToRight, ctx, false, op) )
 			return 0;
+
+		// (FOnline Patch) Fall through to handle-identity comparison when
+		// opEquals was not registered and both sides are object-ish. This
+		// must happen BEFORE the "no matching op" error below so funcdef and
+		// reference-to-object operands still reach `CompileOperatorOnHandles`.
+		if( isEqOp && bothObjectish )
+		{
+			CompileOperatorOnHandles(node, lctx, rctx, ctx, op);
+			return 0;
+		}
 
 		// If both operands are objects, then we shouldn't continue
 		if( lctx->type.dataType.IsObject() && rctx->type.dataType.IsObject() )
@@ -17625,6 +18540,49 @@ void asCCompiler::CompileOperatorOnHandles(asCScriptNode *node, asCExprContext *
 	if( opToken == ttUnrecognizedToken )
 		opToken = node->tokenType;
 
+	// (FOnline Patch)
+	// A redundant null comparison on any non-nullable handle operand is reported - named
+	// variables and temporaries alike (e.g. throwing global/component getter results, which
+	// return non-null so `getter() != null` is a footgun: the getter throws instead of returning
+	// null). Operands that can genuinely be null at runtime despite a non-nullable static type
+	// must be spelled nullable so they are not flagged: a fallible reference cast is `cast<T?>(x)`,
+	// and proto/fixed-type property handles that may be unset use the `Nullable` property flag.
+	if( opToken == ttEqual || opToken == ttNotEqual || opToken == ttIs || opToken == ttNotIs )
+	{
+		asCExprContext *nonNull = 0;
+		if( lctx->type.IsNullConstant() && !rctx->type.IsNullConstant() )
+			nonNull = rctx;
+		else if( rctx->type.IsNullConstant() && !lctx->type.IsNullConstant() )
+			nonNull = lctx;
+
+		if( nonNull &&
+			nonNull->type.dataType.IsObjectHandle() && !nonNull->type.dataType.IsNullable() )
+		{
+			asCString msg;
+			msg.Format("Redundant null comparison: '%s' is a non-nullable handle and can never be null; remove the check (or make the source nullable if it actually can be null)",
+				nonNull->type.dataType.Format(outFunc ? outFunc->nameSpace : 0).AddressOf());
+			Warning(msg, node);
+		}
+
+		// Tag a `x != null` / `x == null` check on a nullable local
+		// so a `&&` / `||` short-circuit can narrow x in the operand it guards
+		// (consumed in CompilePostFixExpression). `!=` narrows when the check is
+		// true (right operand of `&&`); `==` narrows when false (right of `||`).
+		if( nonNull && nonNull->type.isVariable && nonNull->type.dataType.IsObjectHandle() && nonNull->type.dataType.IsNullable() )
+		{
+			asCDataType narrowed = nonNull->type.dataType;
+			narrowed.MakeNullable(false);
+			narrowed.MakeReference(false);
+			ctx->nullCheckNarrowValid = true;
+			ctx->nullCheckNarrowOnTrue = (opToken == ttNotEqual || opToken == ttNotIs);
+			ctx->nullCheckNarrowList.SetLength(0);
+			asSNullCheckNarrow leafNarrow;
+			leafNarrow.stackOffset = nonNull->type.stackOffset;
+			leafNarrow.narrowedType = narrowed;
+			ctx->nullCheckNarrowList.PushLast(leafNarrow);
+		}
+	}
+
 	// Warn if not both operands are explicit handles or null handles
 	if( (opToken == ttEqual || opToken == ttNotEqual) &&
 		((!(lctx->type.isExplicitHandle || lctx->type.IsNullConstant()) && !(lctx->type.dataType.GetTypeInfo() && (lctx->type.dataType.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE))) ||
@@ -18529,6 +19487,9 @@ void asCExprContext::Clear()
 	isVoidExpression = false;
 	isCleanArg = false;
 	isAnonymousInitList = false;
+	nullCheckNarrowValid = false; // (FOnline Patch)
+	nullCheckNarrowOnTrue = false; // (FOnline Patch)
+	nullCheckNarrowList.SetLength(0); // (FOnline Patch)
 	origCode = 0;
 	
 	if (next)

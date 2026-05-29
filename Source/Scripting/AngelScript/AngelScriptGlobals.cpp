@@ -51,29 +51,6 @@ template<size_t... I>
 }
 
 template<size_t ArgsCount>
-static void Global_Assert(AngelScript::asIScriptGeneric* gen)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto condition = *cast_from_void<bool*>(gen->GetAddressOfArg(0));
-
-    if (condition) {
-        return;
-    }
-
-    vector<string> obj_infos;
-    obj_infos.reserve(ArgsCount);
-
-    for (int32_t i = 1; i < gen->GetArgCount(); i++) {
-        const auto* obj = *static_cast<void**>(gen->GetAddressOfArg(i));
-        const auto obj_type_id = gen->GetArgTypeId(i);
-        obj_infos.emplace_back(GetScriptObjectInfo(obj, obj_type_id));
-    }
-
-    ThrowWithArgs("Assertion failed", obj_infos, std::make_index_sequence<ArgsCount> {});
-}
-
-template<size_t ArgsCount>
 static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -129,17 +106,27 @@ static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Maybe called in script object destructors during backend destruction
     const auto* as_engine = gen->GetEngine();
     auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
 
-    if (backend != nullptr && backend->HasGameEngine()) {
-        auto* engine = static_cast<Entity*>(backend->GetGameEngine());
-        new (gen->GetAddressOfReturnLocation()) Entity*(engine);
+    if (!backend->HasGameEngine()) {
+        throw ScriptException("Game engine is not available");
     }
-    else {
-        new (gen->GetAddressOfReturnLocation()) Entity*(nullptr);
-    }
+
+    auto* engine = static_cast<Entity*>(backend->GetGameEngine());
+    new (gen->GetAddressOfReturnLocation()) Entity*(engine);
+}
+
+static void Global_IsGameDestroying(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // True once the game engine is gone, e.g. in script object destructors during backend destruction (when Game is null)
+    const auto* as_engine = gen->GetEngine();
+    auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
+
+    const bool destroying = backend == nullptr || !backend->HasGameEngine();
+    new (gen->GetAddressOfReturnLocation()) bool(destroying);
 }
 
 static void Global_GetPropertyGroup(AngelScript::asIScriptGeneric* gen)
@@ -232,6 +219,102 @@ static void Setting_SetEngineValue(AngelScript::asIScriptGeneric* gen)
     auto& value = *cast_from_void<T*>(gen->GetAuxiliary());
     const auto& new_value = *cast_from_void<T*>(gen->GetAddressOfArg(0));
     value = new_value;
+}
+
+template<typename T>
+struct SettingScalarTypeNames
+{
+    static constexpr const char* ScalarName = nullptr;
+    static constexpr const char* ArrayName = nullptr;
+};
+template<>
+struct SettingScalarTypeNames<int32_t>
+{
+    static constexpr const char* ScalarName = "int";
+    static constexpr const char* ArrayName = "array<int>";
+};
+template<>
+struct SettingScalarTypeNames<int64_t>
+{
+    static constexpr const char* ScalarName = "int64";
+    static constexpr const char* ArrayName = "array<int64>";
+};
+template<>
+struct SettingScalarTypeNames<int8_t>
+{
+    static constexpr const char* ScalarName = "int8";
+    static constexpr const char* ArrayName = "array<int8>";
+};
+template<>
+struct SettingScalarTypeNames<uint8_t>
+{
+    static constexpr const char* ScalarName = "uint8";
+    static constexpr const char* ArrayName = "array<uint8>";
+};
+template<>
+struct SettingScalarTypeNames<int16_t>
+{
+    static constexpr const char* ScalarName = "int16";
+    static constexpr const char* ArrayName = "array<int16>";
+};
+template<>
+struct SettingScalarTypeNames<uint16_t>
+{
+    static constexpr const char* ScalarName = "uint16";
+    static constexpr const char* ArrayName = "array<uint16>";
+};
+template<>
+struct SettingScalarTypeNames<float32_t>
+{
+    static constexpr const char* ScalarName = "float";
+    static constexpr const char* ArrayName = "array<float>";
+};
+template<>
+struct SettingScalarTypeNames<float64_t>
+{
+    static constexpr const char* ScalarName = "double";
+    static constexpr const char* ArrayName = "array<double>";
+};
+template<>
+struct SettingScalarTypeNames<bool>
+{
+    static constexpr const char* ScalarName = "bool";
+    static constexpr const char* ArrayName = "array<bool>";
+};
+template<>
+struct SettingScalarTypeNames<string>
+{
+    static constexpr const char* ScalarName = "string";
+    static constexpr const char* ArrayName = "array<string>";
+};
+
+template<typename>
+struct IsVectorSetting : std::false_type
+{
+};
+template<typename U>
+struct IsVectorSetting<vector<U>> : std::true_type
+{
+};
+
+template<typename T>
+static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& vec = *cast_from_void<const vector<T>*>(gen->GetAuxiliary());
+    auto* as_engine = gen->GetEngine();
+
+    auto* arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
+    arr->Reserve(numeric_cast<int32_t>(vec.size()));
+
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    for (size_t i = 0; i < vec.size(); i++) {
+        T value = vec[i];
+        arr->InsertLast(cast_to_void(&value));
+    }
+
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
 }
 
 static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
@@ -434,29 +517,25 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     const auto* meta = backend->GetMetadata();
 
     // Global functions
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition)", FO_SCRIPT_GENERIC(Global_Assert<0>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", FO_SCRIPT_GENERIC(Global_Assert<1>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2)", FO_SCRIPT_GENERIC(Global_Assert<2>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3)", FO_SCRIPT_GENERIC(Global_Assert<3>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", FO_SCRIPT_GENERIC(Global_Assert<4>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", FO_SCRIPT_GENERIC(Global_Assert<5>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", FO_SCRIPT_GENERIC(Global_Assert<6>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", FO_SCRIPT_GENERIC(Global_Assert<7>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", FO_SCRIPT_GENERIC(Global_Assert<8>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", FO_SCRIPT_GENERIC(Global_Assert<9>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", FO_SCRIPT_GENERIC(Global_Assert<10>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message)", FO_SCRIPT_GENERIC(Global_ThrowException<0>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1)", FO_SCRIPT_GENERIC(Global_ThrowException<1>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2)", FO_SCRIPT_GENERIC(Global_ThrowException<2>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3)", FO_SCRIPT_GENERIC(Global_ThrowException<3>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", FO_SCRIPT_GENERIC(Global_ThrowException<4>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", FO_SCRIPT_GENERIC(Global_ThrowException<5>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", FO_SCRIPT_GENERIC(Global_ThrowException<6>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", FO_SCRIPT_GENERIC(Global_ThrowException<7>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", FO_SCRIPT_GENERIC(Global_ThrowException<8>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", FO_SCRIPT_GENERIC(Global_ThrowException<9>), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void throw(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", FO_SCRIPT_GENERIC(Global_ThrowException<10>), FO_SCRIPT_GENERIC_CONV));
 
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message)", FO_SCRIPT_GENERIC(Global_ThrowException<0>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1)", FO_SCRIPT_GENERIC(Global_ThrowException<1>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2)", FO_SCRIPT_GENERIC(Global_ThrowException<2>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3)", FO_SCRIPT_GENERIC(Global_ThrowException<3>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4)", FO_SCRIPT_GENERIC(Global_ThrowException<4>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5)", FO_SCRIPT_GENERIC(Global_ThrowException<5>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6)", FO_SCRIPT_GENERIC(Global_ThrowException<6>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7)", FO_SCRIPT_GENERIC(Global_ThrowException<7>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8)", FO_SCRIPT_GENERIC(Global_ThrowException<8>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", FO_SCRIPT_GENERIC(Global_ThrowException<9>), FO_SCRIPT_GENERIC_CONV));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", FO_SCRIPT_GENERIC(Global_ThrowException<10>), FO_SCRIPT_GENERIC_CONV));
+    for (AngelScript::asUINT i = 0, count = as_engine->GetGlobalFunctionCount(); i < count; i++) {
+        AngelScript::asIScriptFunction* func = as_engine->GetGlobalFunctionByIndex(i);
+
+        if (func != nullptr && string_view(func->GetName()) == "throw") {
+            func->SetNoReturn();
+        }
+    }
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
@@ -464,6 +543,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {
@@ -532,32 +612,20 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     };
 
     const auto register_engine_setting = [&]<typename T>(const char* owner_type, const char* name, T& data, bool writeble) {
-        string type_str;
-
-        if constexpr (std::is_same_v<T, int32_t>) {
-            type_str = "int";
-        }
-        else if constexpr (std::is_same_v<T, int64_t>) {
-            type_str = "int64";
-        }
-        else if constexpr (std::is_same_v<T, float32_t>) {
-            type_str = "float";
-        }
-        else if constexpr (std::is_same_v<T, float64_t>) {
-            type_str = "double";
-        }
-        else if constexpr (std::is_same_v<T, bool>) {
-            type_str = "bool";
-        }
-        else if constexpr (std::is_same_v<T, string>) {
-            type_str = "string";
-        }
-
-        if (!type_str.empty()) {
+        if constexpr (SettingScalarTypeNames<T>::ScalarName != nullptr) {
+            constexpr const char* type_str = SettingScalarTypeNames<T>::ScalarName;
             FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{} get_{}()", type_str, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
 
             if (writeble) {
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("void set_{}({} value)", name, type_str).c_str(), FO_SCRIPT_GENERIC(Setting_SetEngineValue<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
+            }
+        }
+        else if constexpr (IsVectorSetting<T>::value) {
+            using Elem = typename T::value_type;
+            ignore_unused(writeble);
+
+            if constexpr (SettingScalarTypeNames<Elem>::ArrayName != nullptr) {
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(owner_type, strex("{}@ get_{}()", SettingScalarTypeNames<Elem>::ArrayName, name).c_str(), FO_SCRIPT_GENERIC(Setting_GetEngineVectorValue<Elem>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&data)));
             }
         }
     };

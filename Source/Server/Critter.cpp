@@ -55,6 +55,25 @@ Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, co
 Critter::~Critter()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(!_player);
+        FO_RUNTIME_VERIFY(!GetMapId());
+        FO_RUNTIME_VERIFY(!GetIsAttached());
+        FO_RUNTIME_VERIFY(_invItems.empty());
+        FO_RUNTIME_VERIFY(_attachedCritters.empty());
+        FO_RUNTIME_VERIFY(!_globalMapGroup);
+        FO_RUNTIME_VERIFY(_visibleCrWhoSeeMe.empty());
+        FO_RUNTIME_VERIFY(_visibleCr.empty());
+        FO_RUNTIME_VERIFY(_visibleCrWhoSeeMeMap.empty());
+        FO_RUNTIME_VERIFY(_visibleCrMap.empty());
+        FO_RUNTIME_VERIFY(_visibleCrModes.empty());
+        FO_RUNTIME_VERIFY(_visibleCrGroup1.empty());
+        FO_RUNTIME_VERIFY(_visibleCrGroup2.empty());
+        FO_RUNTIME_VERIFY(_visibleCrGroup3.empty());
+        FO_RUNTIME_VERIFY(_visibleItems.empty());
+        FO_RUNTIME_VERIFY(_lockMapTransfers == 0);
+    }
 }
 
 auto Critter::GetName() const noexcept -> string_view
@@ -123,6 +142,24 @@ void Critter::MarkIsForPlayer()
 
     SetControlledByPlayer(true);
     _playerDetachTime = _engine->GameTime.GetFrameTime();
+
+    if (auto* map = _engine->EntityMngr.GetMap(GetMapId()); map != nullptr) {
+        map->RefreshCritterPlayerState(this);
+    }
+}
+
+void Critter::UnmarkIsForPlayer()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(GetControlledByPlayer());
+    FO_RUNTIME_ASSERT(!_player);
+
+    SetControlledByPlayer(false);
+
+    if (auto* map = _engine->EntityMngr.GetMap(GetMapId()); map != nullptr) {
+        map->RefreshCritterPlayerState(this);
+    }
 }
 
 void Critter::AttachPlayer(Player* player)
@@ -133,6 +170,7 @@ void Critter::AttachPlayer(Player* player)
     FO_RUNTIME_ASSERT(player);
     FO_RUNTIME_ASSERT(!player->GetControlledCritterId());
     FO_RUNTIME_ASSERT(!_player);
+    FO_RUNTIME_ASSERT(!player->GetViewMap());
 
     _player = player;
 
@@ -185,13 +223,6 @@ void Critter::StopMoving(MovingState reason)
     SetMovingSpeed(0);
 }
 
-void Critter::SetViewMap(ViewMapContext ctx)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _viewMap = SafeAlloc::MakeUnique<ViewMapContext>(std::move(ctx));
-}
-
 void Critter::AttachToCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -203,8 +234,7 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(_attachedCritters.empty());
 
     if (IsMoving()) {
-        StopMoving();
-        SendAndBroadcast_Moving();
+        StopMoving(MovingState::Stopped);
     }
 
     vec_add_unique_value(cr->_attachedCritters, this);
@@ -338,6 +368,7 @@ void Critter::ClearVisibleEnitites()
     FO_RUNTIME_ASSERT(_visibleCrWhoSeeMeMap.empty());
     FO_RUNTIME_ASSERT(_visibleCr.empty());
     FO_RUNTIME_ASSERT(_visibleCrMap.empty());
+    FO_RUNTIME_ASSERT(_visibleCrModes.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup1.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup2.empty());
     FO_RUNTIME_ASSERT(_visibleCrGroup3.empty());
@@ -452,7 +483,27 @@ auto Critter::GetGlobalMapGroup() -> span<raw_ptr<Critter>>
     return *_globalMapGroup;
 }
 
-auto Critter::AddVisibleCritter(Critter* cr) -> bool
+auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto it = _visibleCrModes.find(cr_id);
+    return it != _visibleCrModes.end() ? it->second : CritterVisibilityMode::None;
+}
+
+void Critter::SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (mode == CritterVisibilityMode::None) {
+        _visibleCrModes.erase(cr_id);
+    }
+    else {
+        _visibleCrModes[cr_id] = mode;
+    }
+}
+
+auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -461,6 +512,7 @@ auto Critter::AddVisibleCritter(Critter* cr) -> bool
     FO_RUNTIME_ASSERT(cr != this);
     FO_RUNTIME_ASSERT(cr->GetId() != GetId());
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+    FO_RUNTIME_ASSERT(mode != CritterVisibilityMode::None);
 
     const auto inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
 
@@ -471,6 +523,7 @@ auto Critter::AddVisibleCritter(Critter* cr) -> bool
     const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
     FO_RUNTIME_ASSERT(inserted2);
 
+    cr->_visibleCrModes[GetId()] = mode;
     _visibleCrWhoSeeMe.emplace_back(cr);
     cr->_visibleCr.emplace_back(this);
 
@@ -498,6 +551,8 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     const auto it_map2 = cr->_visibleCrMap.find(GetId());
     FO_RUNTIME_ASSERT(it_map2 != cr->_visibleCrMap.end());
     cr->_visibleCrMap.erase(it_map2);
+
+    cr->_visibleCrModes.erase(GetId());
 
     const auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
     FO_RUNTIME_ASSERT(it != _visibleCrWhoSeeMe.end());
@@ -680,6 +735,19 @@ auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
     return count;
 }
 
+auto Critter::GetMapSpectators() -> ref_hold_vector<Player*>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (const auto map_id = GetMapId()) {
+        if (auto* map = GetEngine()->EntityMngr.GetMap(map_id); map != nullptr && map->HasSpectatorPlayers()) {
+            return copy_hold_ref(map->GetSpectatorPlayers());
+        }
+    }
+
+    return ref_hold_vector<Player*>(0);
+}
+
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
@@ -688,6 +756,10 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Property(type, prop, entity);
+    }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Property(type, prop, entity);
     }
 }
 
@@ -700,6 +772,10 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Action(this, action, action_data, item);
     }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Action(this, action, action_data, item);
+    }
 }
 
 void Critter::Broadcast_Dir()
@@ -710,6 +786,10 @@ void Critter::Broadcast_Dir()
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Dir(this);
+    }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Dir(this);
     }
 }
 
@@ -722,19 +802,31 @@ void Critter::Broadcast_Teleport(mpos to_hex)
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Teleport(this, to_hex);
     }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Teleport(this, to_hex);
+    }
 }
 
-void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& callback)
+void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& cr_callback, const function<void(Player*)>& spectator_callback)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (ignore_player == nullptr || ignore_player != GetPlayer()) {
-        callback(this);
+        cr_callback(this);
     }
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         if (ignore_player == nullptr || ignore_player != cr->GetPlayer()) {
-            callback(cr.get());
+            cr_callback(cr.get());
+        }
+    }
+
+    if (spectator_callback) {
+        for (auto* player : GetMapSpectators()) {
+            if (player != ignore_player) {
+                spectator_callback(player);
+            }
         }
     }
 }
@@ -748,6 +840,10 @@ void Critter::SendAndBroadcast_Moving()
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Moving(this);
     }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Moving(this);
+    }
 }
 
 void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item)
@@ -758,6 +854,10 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data,
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Action(this, action, action_data, context_item);
+    }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Action(this, action, action_data, context_item);
     }
 }
 
@@ -770,6 +870,10 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_MoveItem(this, item, action, prev_slot);
     }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_MoveItem(this, item, action, prev_slot);
+    }
 }
 
 void Critter::SendAndBroadcast_Attachments()
@@ -780,6 +884,10 @@ void Critter::SendAndBroadcast_Attachments()
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         cr->Send_Attachments(this);
+    }
+
+    for (auto* player : GetMapSpectators()) {
+        player->Send_Attachments(this);
     }
 }
 
@@ -834,6 +942,15 @@ void Critter::Send_RemoveCritter(const Critter* cr)
 
     if (_player) {
         _player->Send_RemoveCritter(cr);
+    }
+}
+
+void Critter::Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_player) {
+        _player->Send_CritterVisibilityMode(cr, mode);
     }
 }
 
@@ -924,15 +1041,6 @@ void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAct
 
     if (_player) {
         _player->Send_MoveItem(from_cr, item, action, prev_slot);
-    }
-}
-
-void Critter::Send_ViewMap()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_player) {
-        _player->Send_ViewMap();
     }
 }
 

@@ -34,6 +34,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptAttributes.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptRemoteCalls.h"
 #include "Common.h"
 #include "EngineBase.h"
@@ -154,15 +155,15 @@ namespace
 
     static void DummyEvent_Subscribe(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyEvent_Unsubscribe(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
     }
 
     static void DummyRefAddRef(void* obj)
@@ -184,7 +185,11 @@ namespace
 
     static void RegisterDummyCritterType(asIScriptEngine* engine)
     {
-        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF) >= 0);
+        // Critter is registered as an implicit-handle ref type so the
+        // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
+        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
+        CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+        REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
     }
@@ -198,74 +203,74 @@ namespace
 
     static void DummyScheduler_StartTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyScheduler_StartTimeEventRepeat(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
-        ignore_unused(gen->GetAddressOfArg(2));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
+        (void)gen->GetAddressOfArg(2);
     }
 
     static void DummyScheduler_StopTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
     }
 
     static void DummyScheduler_CountTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
         gen->SetReturnDWord(0);
     }
 
     static void DummyScheduler_RepeatTimeEvent(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyScheduler_SetTimeEventData(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_SetPropertyGetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_AddPropertySetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyProperty_AddPropertyDeferredSetter(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
     }
 
     static void DummyCritter_AddAnimCallback(asIScriptGeneric* gen)
     {
-        ignore_unused(gen->GetObject());
-        ignore_unused(gen->GetAddressOfArg(0));
-        ignore_unused(gen->GetAddressOfArg(1));
-        ignore_unused(gen->GetAddressOfArg(2));
-        ignore_unused(gen->GetAddressOfArg(3));
+        (void)gen->GetObject();
+        (void)gen->GetAddressOfArg(0);
+        (void)gen->GetAddressOfArg(1);
+        (void)gen->GetAddressOfArg(2);
+        (void)gen->GetAddressOfArg(3);
     }
 
     struct ScriptMessages
@@ -379,7 +384,13 @@ namespace
         auto* mod = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
         REQUIRE(mod != nullptr);
         REQUIRE(mod->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        REQUIRE(mod->Build() >= 0);
+        const auto build_result = mod->Build();
+        if (build_result < 0) {
+            for (const auto& entry : messages.Entries) {
+                INFO("AS message: " << entry);
+            }
+        }
+        REQUIRE(build_result >= 0);
         if (!messages.Entries.empty()) {
             INFO(messages.Entries.front());
         }
@@ -630,6 +641,47 @@ namespace AttrTest
 [[Primary(2)]][[Secondary]]
 void WithPriority()
 {
+}
+}
+)";
+
+    // `?` is no longer stripped by the preprocessor — AngelScript itself
+    // parses the suffix on handle types. The script uses the project's implicit-handle
+    // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
+    // ternary uses inside function bodies stay disambiguated by the AS parser.
+    static constexpr string_view NullableStripScript = R"(
+namespace AttrTest
+{
+Critter? Returns(Critter? a, Critter? b)
+{
+    return a;
+}
+
+[[Primary]]
+void Mixed(Critter? arg)
+{
+}
+
+void Plain(Critter? x)
+{
+}
+
+int TernaryStaysIntact(int cond, int a, int b)
+{
+    return cond > 0 ? a : b;
+}
+
+[[Primary]]
+void RequestTargetInfo(int player, int targetCritterId)
+{
+    int crBool = 1;
+    int x = crBool > 0 ? player : targetCritterId;
+}
+
+int TernaryNestedInsideBody(int v)
+{
+    int s = v > 0 ? 1 : (v < 0 ? 2 : 3);
+    return s;
 }
 }
 )";
@@ -918,7 +970,7 @@ void OnAnim(Critter@+ cr)
 
 void StoreHandler()
 {
-    AnimCallbackFunc@ fn = @OnAnim;
+    AnimCallbackFunc fn = @OnAnim;
 }
 )";
 
@@ -1239,6 +1291,17 @@ void Activate(Player@+ player, int value)
 TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 {
 #if FO_ANGELSCRIPT_SCRIPTING
+    SECTION("RendersDefaultValuesForMetadataArgs")
+    {
+        EngineMetadata meta {[] { }};
+        const vector<ArgDesc> args = {
+            {.Name = "value", .Type = meta.ResolveComplexType("int32"), .DefaultValue = "42"},
+            {.Name = "label", .Type = meta.ResolveComplexType("string"), .DefaultValue = "\"fresh\""},
+        };
+
+        CHECK(MakeScriptArgsName(args) == "int value = 42, string label = \"fresh\"");
+    }
+
     SECTION("BindsAndStripsAttributes")
     {
         auto parsed = ParseScript("AttributesPositive.fos", PositiveScript);
@@ -1404,6 +1467,71 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         CHECK(!parsed.Errors.empty());
         CHECK(parsed.Errors.find("Function attribute must be placed directly before a function declaration") != string::npos);
         CHECK(parsed.Errors.find("AttributesInvalidPlacement.fos") != string::npos);
+    }
+
+    SECTION("ParsesNullableTypeSuffix")
+    {
+        // `?` now passes through the preprocessor untouched and is parsed
+        // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
+        // must survive into the AS source; ternary `cond ? a : b` inside function bodies
+        // must continue to parse normally.
+        auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
+
+        INFO(parsed.Errors);
+        CHECK(parsed.Errors.empty());
+        CHECK(parsed.Source.find("Critter?") != string::npos);
+        CHECK(parsed.Source.find("? a") != string::npos);
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        RegisterDummyCritterType(engine);
+
+        auto* mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        INFO(bind_error);
+        REQUIRE(bind_error.empty());
+
+        CheckAttributes(FindScriptFunction(mod, "Critter@? AttrTest::Returns(Critter@?, Critter@?)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Mixed(Critter@?)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::Plain(Critter@?)"), {});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryStaysIntact(int, int, int)"), {});
+        CheckAttributes(FindScriptFunction(mod, "void AttrTest::RequestTargetInfo(int, int)"), {"Primary"});
+        CheckAttributes(FindScriptFunction(mod, "int AttrTest::TernaryNestedInsideBody(int)"), {});
+    }
+
+    SECTION("RejectsNullableSuffixOnPrimitive")
+    {
+        // `?` is only meaningful on handle types — applying it to a
+        // primitive must produce a parse / type-check error.
+        static constexpr string_view PrimitiveNullableScript = R"(
+namespace AttrTest
+{
+void TakesIntPlease(int? value)
+{
+}
+}
+)";
+        auto parsed = ParseScript("AttributesNullablePrimitive.fos", PrimitiveNullableScript);
+        CHECK(parsed.Errors.empty());
+
+        ScriptMessages messages;
+        auto* engine = MakeEngine(messages);
+        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+
+        auto* mod = engine->GetModule("AttrNullablePrimitive", asGM_ALWAYS_CREATE);
+        REQUIRE(mod != nullptr);
+        REQUIRE(mod->AddScriptSection("AttrNullablePrimitive", parsed.Source.data(), parsed.Source.length()) >= 0);
+        CHECK(mod->Build() < 0);
+
+        bool found_message = false;
+        for (const auto& entry : messages.Entries) {
+            if (entry.find("Nullable marker '?' is only allowed on handle types") != string::npos) {
+                found_message = true;
+                break;
+            }
+        }
+        CHECK(found_message);
     }
 
     SECTION("RejectsInvalidModuleInitPriorityArgument")

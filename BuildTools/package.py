@@ -21,10 +21,12 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Single', 'Editor', 'Mapper', 'Baker']
+TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
+INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
+INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -40,6 +42,33 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
+PACKAGED_BUILD_NAME_CAPACITY = 128
+
+# Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
+# to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
+# in Engine/Source/Common/Common.h. Most platforms match directly; Android
+# binaries are staged with the Android ABI name (armeabi-v7a, arm64-v8a) while
+# the C++ side reports the canonical arch (arm32, arm64). Keep this table in sync
+# with GetCurrentBinaryUpdateTargetName so the server-side updater payload
+# directory and the client request name agree per platform.
+PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
+	('Windows', 'win32'): 'win32',
+	('Windows', 'win64'): 'win64',
+	('Windows', 'arm64'): 'arm64',
+	('Linux', 'x64'): 'x64',
+	('Linux', 'arm64'): 'arm64',
+	('Linux', 'x86'): 'x86',
+	('Linux', 'arm'): 'arm',
+	('Android', 'armeabi-v7a'): 'arm32',
+	('Android', 'arm64-v8a'): 'arm64',
+	('Android', 'x86'): 'x86',
+	('macOS', 'arm64'): 'arm64',
+	('macOS', 'x64'): 'x64',
+	('iOS', 'arm64'): 'arm64',
+	('iOS', 'simulator'): 'simulator',
+	('Web', 'wasm'): 'wasm',
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,7 +106,7 @@ def log(*text: object) -> None:
 
 
 def patch_data(file_path: str | Path, mark: bytes, data: bytes, max_size: int) -> None:
-	assert len(data) <= max_size, 'Data size is to big ' + str(len(data)) + ' but maximum is ' + str(max_size)
+	assert len(data) <= max_size, 'Data size is too big ' + str(len(data)) + ' but maximum is ' + str(max_size)
 	with open(file_path, 'rb') as file:
 		content = file.read()
 	file_size = os.path.getsize(file_path)
@@ -96,6 +125,70 @@ def patch_file(file_path: str | Path, text_from: str, text_to: str) -> None:
 	content = content.replace(text_from.encode('utf-8'), text_to.encode('utf-8'))
 	with open(file_path, 'wb') as file:
 		file.write(content)
+
+
+def find_internal_config_capacity(content: bytes) -> int:
+	pos = content.find(INTERNAL_CONFIG_MARKER)
+	assert pos != -1, 'Internal config marker not found'
+	end_pos = content.find(INTERNAL_CONFIG_END_MARKER, pos + len(INTERNAL_CONFIG_MARKER))
+	assert end_pos != -1, 'Internal config end marker not found'
+	return end_pos + len(INTERNAL_CONFIG_END_MARKER) - pos
+
+
+def patch_pe_pdb_path(file_path: str | Path, new_pdb_name: str) -> bool:
+	with open(file_path, 'rb') as file:
+		content = bytearray(file.read())
+	if content[:2] != b'MZ':
+		return False
+	pe_offset = struct.unpack_from('<I', content, 0x3C)[0]
+	if content[pe_offset:pe_offset + 4] != b'PE\x00\x00':
+		return False
+	coff_offset = pe_offset + 4
+	num_sections = struct.unpack_from('<H', content, coff_offset + 2)[0]
+	opt_header_size = struct.unpack_from('<H', content, coff_offset + 16)[0]
+	opt_header_offset = coff_offset + 20
+	magic = struct.unpack_from('<H', content, opt_header_offset)[0]
+	if magic == 0x10b:
+		data_dir_offset = opt_header_offset + 96
+	elif magic == 0x20b:
+		data_dir_offset = opt_header_offset + 112
+	else:
+		return False
+	debug_rva, debug_size = struct.unpack_from('<II', content, data_dir_offset + 6 * 8)
+	if debug_rva == 0 or debug_size == 0:
+		return False
+	section_table_offset = opt_header_offset + opt_header_size
+	debug_offset: int | None = None
+	for i in range(num_sections):
+		section_offset = section_table_offset + i * 40
+		vsize, vaddr, _, raw_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
+		if vaddr <= debug_rva < vaddr + vsize:
+			debug_offset = raw_ptr + (debug_rva - vaddr)
+			break
+	if debug_offset is None:
+		return False
+	new_path_bytes = new_pdb_name.encode('utf-8')
+	IMAGE_DEBUG_TYPE_CODEVIEW = 2
+	num_entries = debug_size // 28
+	for i in range(num_entries):
+		entry_offset = debug_offset + i * 28
+		debug_type, raw_data_size, _, raw_data_ptr = struct.unpack_from('<IIII', content, entry_offset + 12)
+		if debug_type != IMAGE_DEBUG_TYPE_CODEVIEW:
+			continue
+		if content[raw_data_ptr:raw_data_ptr + 4] != b'RSDS':
+			continue
+		path_start = raw_data_ptr + 4 + 16 + 4
+		path_end = content.find(b'\x00', path_start, raw_data_ptr + raw_data_size)
+		if path_end == -1:
+			return False
+		available = path_end - path_start
+		if len(new_path_bytes) > available:
+			return False
+		content[path_start:path_end + 1] = new_path_bytes + b'\x00' * (available - len(new_path_bytes) + 1)
+		with open(file_path, 'wb') as file:
+			file.write(bytes(content))
+		return True
+	return False
 
 
 def escape_groovy_string(value: str) -> str:
@@ -162,6 +255,7 @@ class Packager:
 	build_tools_path: str = field(init=False)
 	server_res_dir: str = field(init=False)
 	client_res_dir: str = field(init=False)
+	platform_binaries_dir: str = field(init=False)
 	zip_compress_level: int = field(init=False)
 	target_output_path: str = field(init=False)
 	baking_path: str | None = field(init=False, default=None)
@@ -174,6 +268,7 @@ class Packager:
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
+		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
@@ -216,24 +311,101 @@ class Packager:
 	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
 		return variant.output_suffix(is_windows)
 
+	def build_client_runtime_input_name(self, variant: BinaryVariant | None = None) -> str:
+		role = variant.role if variant is not None else ''
+		return self.args.devname + '_ClientLib' + role
+
+	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
+		return self.args.devname + '_Client' + variant.role
+
+	def get_runtime_library_ext_for_platform(self, platform: str) -> str:
+		if platform == 'Windows':
+			return '.dll'
+		if platform in ('Linux', 'Android'):
+			return '.so'
+		if platform in ('macOS', 'iOS'):
+			return '.dylib'
+		return ''
+
+	def build_runtime_update_target_name(self, binary_entry_name: str) -> str | None:
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		# Optional trailing suffixes (-Profiling_Total/-OnDemand, -Debug, -{binary_output_postfix})
+		# follow the platform/arch prefix, so pick the longest matching known (platform, arch).
+		best_platform: str | None = None
+		best_cxx_arch: str | None = None
+		best_prefix_len = -1
+		for (platform, arch_in_entry), cxx_arch in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_platform = platform
+					best_cxx_arch = cxx_arch
+					best_prefix_len = len(prefix)
+		if best_platform is None or best_cxx_arch is None:
+			return None
+		return best_platform + '-' + best_cxx_arch
+
+	@staticmethod
+	def extract_binary_entry_postfix(binary_entry_name: str) -> str | None:
+		# Mirror of build_binary_entry(): {target}-{platform}-{arch}[-Profiling_X][-Debug][-{binary_output_postfix}].
+		# Returns the FO_BINARY_OUTPUT_POSTFIX segment (empty if absent), or None when the entry
+		# doesn't match any known platform/arch. The server-side runtime payload packager uses
+		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
+		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
+		if not binary_entry_name.startswith('Client-'):
+			return None
+		after_client = binary_entry_name[len('Client-'):]
+		best_prefix_len = -1
+		for (platform, arch_in_entry), _ in PACKAGER_TO_CXX_BINARY_TARGET_ARCH.items():
+			prefix = platform + '-' + arch_in_entry
+			if after_client == prefix or after_client.startswith(prefix + '-'):
+				if len(prefix) > best_prefix_len:
+					best_prefix_len = len(prefix)
+		if best_prefix_len < 0:
+			return None
+		remainder = after_client[best_prefix_len:]
+		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
+			if remainder.startswith(opt):
+				remainder = remainder[len(opt):]
+				break
+		if remainder.startswith('-Debug'):
+			remainder = remainder[len('-Debug'):]
+		if not remainder:
+			return ''
+		assert remainder.startswith('-'), 'Unexpected binary entry layout: ' + binary_entry_name
+		return remainder[1:]
+
 	def resolve_binary_input_dir(self, arch: str, variant: BinaryVariant, bin_name: str) -> str:
 		return self.get_input(os.path.join('Binaries', self.build_binary_entry(arch, variant)), bin_name)
 
-	def copy_optional_pdb(self, bin_path: str, input_name: str, output_name: str) -> None:
+	def copy_pdb(self, bin_path: str, input_name: str, output_name: str) -> None:
 		pdb_path = os.path.join(bin_path, input_name + '.pdb')
-		if os.path.isfile(pdb_path):
-			log('PDB file included')
-			shutil.copy(pdb_path, os.path.join(self.target_output_path, output_name + '.pdb'))
-		else:
-			log('PDB file NOT included')
+		assert os.path.isfile(pdb_path), 'PDB file not found: ' + pdb_path
+		log('PDB file included')
+		shutil.copy(pdb_path, os.path.join(self.target_output_path, output_name + '.pdb'))
 
-	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str) -> None:
+	def copy_runtime_pdb(self, bin_path: str, input_name: str, dll_output_path: str) -> None:
+		pdb_path = os.path.join(bin_path, input_name + '.pdb')
+		assert os.path.isfile(pdb_path), 'Runtime PDB file not found: ' + pdb_path
+		pdb_out_name = os.path.basename(dll_output_path) + '.pdb'
+		pdb_out_path = os.path.join(os.path.dirname(dll_output_path), pdb_out_name)
+		log('Runtime PDB file included', pdb_out_path)
+		shutil.copy(pdb_path, pdb_out_path)
+		assert patch_pe_pdb_path(dll_output_path, pdb_out_name), 'Runtime DLL RSDS not patched (no CodeView entry or path too short): ' + dll_output_path
+
+	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
+		excluded_names = excluded_names or set()
 		for entry_name in sorted(os.listdir(bin_path)):
 			entry_path = os.path.join(bin_path, entry_name)
 			if not os.path.isfile(entry_path):
 				continue
 			if entry_name == primary_file_name:
+				continue
+			if entry_name in excluded_names:
 				continue
 			if os.path.splitext(entry_name)[1].lower() not in RUNTIME_COMPANION_EXTENSIONS:
 				continue
@@ -241,12 +413,127 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None) -> str:
+	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
-		self.patch_packaged_binary(output_file_path, additional_config_data)
-		self.copy_runtime_companions(bin_path, input_name, output_ext)
+		self.patch_packaged_binary(output_file_path, output_name, additional_config_data)
+		self.copy_runtime_companions(bin_path, input_name, output_ext, excluded_companions)
 		return output_file_path
+
+	def package_all_client_runtime_update_payloads(self) -> None:
+		copied_payloads: set[tuple[str, str]] = set()
+		client_embedded_data = self.make_embedded_data_for_target('Client')
+		_, client_config_data = self.read_config_data('Client')
+
+		for input_dir in self.args.input:
+			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
+			if not os.path.isdir(binaries_root):
+				continue
+
+			for entry_name in os.listdir(binaries_root):
+				entry_path = os.path.join(binaries_root, entry_name)
+				if not os.path.isdir(entry_path) or not entry_name.startswith('Client-'):
+					continue
+
+				request_target_name = self.build_runtime_update_target_name(entry_name)
+				if request_target_name is None:
+					continue
+
+				entry_postfix = self.extract_binary_entry_postfix(entry_name)
+				if entry_postfix is None:
+					continue
+
+				parts = request_target_name.split('-', 1)
+				if len(parts) != 2:
+					continue
+
+				platform = parts[0]
+				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
+				if not runtime_ext:
+					continue
+
+				default_runtime_variant = BinaryVariant()
+				headless_runtime_variant = BinaryVariant(role='Headless')
+
+				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				if not os.path.isfile(build_hash_path):
+					continue
+
+				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
+					build_hash = file.read().strip()
+				if build_hash != self.args.buildhash:
+					continue
+
+				suffix = ''
+				if '-Profiling_' in entry_name:
+					suffix = '_Profiling'
+
+				# binary_output_postfix is appended to the staged payload name so two
+				# binary entries that map to the same request_target_name (e.g.
+				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
+				# client variant patches its own PACKAGED_BUILD_NAME to match the
+				# resulting suffixed payload, so updater's remap_runtime_name picks
+				# the right file.
+				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
+
+				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
+				if platform == 'Windows':
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
+				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
+				if os.path.isfile(headless_runtime_path):
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
+
+				for output_name, variant_config_data, runtime_variant in variant_specs:
+					payload_key = (request_target_name, output_name)
+					if payload_key in copied_payloads:
+						continue
+
+					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
+					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
+					if not os.path.isfile(runtime_input_path):
+						continue
+
+					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+					os.makedirs(payload_dir, exist_ok=True)
+					output_path = os.path.join(payload_dir, output_name + runtime_ext)
+					log('Client runtime update payload', output_path)
+					shutil.copy(runtime_input_path, output_path)
+
+					old_embedded_data = self.embedded_data
+					old_config_data = self.config_data
+					try:
+						self.embedded_data = client_embedded_data
+						self.config_data = client_config_data
+						self.patch_packaged_binary(output_path, output_name, variant_config_data)
+					finally:
+						self.embedded_data = old_embedded_data
+						self.config_data = old_config_data
+
+					if platform == 'Windows':
+						pdb_input_path = os.path.join(entry_path, runtime_input_name + '.pdb')
+						assert os.path.isfile(pdb_input_path), 'Client runtime update payload PDB not found: ' + pdb_input_path
+						pdb_out_name = os.path.basename(output_path) + '.pdb'
+						pdb_out_path = os.path.join(payload_dir, pdb_out_name)
+						log('Client runtime update payload PDB', pdb_out_path)
+						shutil.copy(pdb_input_path, pdb_out_path)
+						assert patch_pe_pdb_path(output_path, pdb_out_name), 'Client runtime update payload RSDS not patched: ' + output_path
+
+						# Stage the host executable's PDB (`<name>.pdb`) so a client that lost it can
+						# re-download it. The client fetches it only when its local copy is missing and
+						# never overwrites a present one (see Updater.cpp): an up-to-date host recovers a
+						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered.
+						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
+						if os.path.isfile(host_pdb_input):
+							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
+							log('Client host PDB included', host_pdb_out)
+							shutil.copy(host_pdb_input, host_pdb_out)
+
+					copied_payloads.add(payload_key)
+
+	def merge_additional_config_data(self, *entries: str | None) -> str | None:
+		lines = [entry for entry in entries if entry]
+		return '\n'.join(lines) if lines else None
 
 	def select_platform_packager(self) -> Callable[[], None]:
 		if self.args.platform == 'Windows':
@@ -326,20 +613,47 @@ class Packager:
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
 		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = [file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path)]
+		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
 		assert files, 'No files in pack ' + pack_name
 		return files
 
+	def make_embedded_data_for_target(self, target: str) -> bytes:
+		assert self.baking_path, 'Baking path is not initialized'
+		for pack_name in self.get_target_resource_packs(target):
+			if pack_name == 'Embedded':
+				files = self.collect_resource_files(pack_name, target)
+				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
+		raise AssertionError('Embedded resource pack not found for ' + target)
+
+	def read_config_data(self, target: str) -> tuple[str, bytes]:
+		assert self.baking_path, 'Baking path is not initialized'
+		config_suffix = 'client' if target == 'Client' else 'server'
+		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
+		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		assert os.path.isfile(config_path), 'Config file not found'
+		with open(config_path, 'r', encoding='utf-8-sig') as file:
+			return config_name, file.read().encode()
+
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+			for arcname, file_path in zip_entries:
+				self.write_stable_zip_entry(archive, file_path, arcname)
+
+	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
+		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
+		info.create_system = 3
+		info.compress_type = zipfile.ZIP_DEFLATED
+		info.external_attr = 0o644 << 16
+		with open(file_path, 'rb') as src, archive.open(info, 'w') as dst:
+			shutil.copyfileobj(src, dst)
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
 		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for file_path in files:
-				archive.write(file_path, os.path.relpath(file_path, base_path))
+				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
 		return struct.pack('I', len(data)) + data
 
@@ -358,14 +672,8 @@ class Packager:
 		self.write_files_zip(archive_path, base_path, files)
 
 	def load_config_data(self) -> None:
-		assert self.baking_path, 'Baking path is not initialized'
-		config_suffix = 'client' if self.args.target == 'Client' else 'server'
-		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
-		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		config_name, self.config_data = self.read_config_data(self.args.target)
 		log('Config', config_name)
-		assert os.path.isfile(config_path), 'Config file not found'
-		with open(config_path, 'r', encoding='utf-8-sig') as file:
-			self.config_data = file.read().encode()
 		log('Embedded data length', len(self.embedded_data))
 		log('Embedded config length', len(self.config_data))
 
@@ -415,17 +723,21 @@ class Packager:
 	def patch_config(self, file_path: str, additional_config_data: str | None = None) -> None:
 		assert self.config_data, 'Embedded config is not prepared'
 		result_data = self.config_data + (('\n' + additional_config_data).encode() if additional_config_data else b'')
-		patch_data(file_path, b'###InternalConfig###1234', result_data, 10048)
+		with open(file_path, 'rb') as file:
+			content = file.read()
+		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
 
-	def patch_packaged_mark(self, file_path: str) -> None:
-		patch_data(file_path, b'###NOT_PACKAGED###', b'###XXXXXXXXXXXX###', 18)
+	def patch_packaged_build_name(self, file_path: str, build_name: str) -> None:
+		name_bytes = build_name.encode('utf-8')
+		assert len(name_bytes) + 1 <= PACKAGED_BUILD_NAME_CAPACITY, f'Packaged build name too long ({len(name_bytes)} bytes, cap {PACKAGED_BUILD_NAME_CAPACITY - 1}): {build_name}'
+		patch_data(file_path, PACKAGED_BUILD_NAME_MARKER, name_bytes + b'\x00' * (PACKAGED_BUILD_NAME_CAPACITY - len(name_bytes)), PACKAGED_BUILD_NAME_CAPACITY)
 
-	def patch_packaged_binary(self, file_path: str, additional_config_data: str | None = None) -> None:
+	def patch_packaged_binary(self, file_path: str, build_name: str, additional_config_data: str | None = None) -> None:
 		if self.has_pack('NoRes'):
 			return
 		self.patch_embedded(file_path)
 		self.patch_config(file_path, additional_config_data)
-		self.patch_packaged_mark(file_path)
+		self.patch_packaged_build_name(file_path, build_name)
 
 	def iter_windows_variants(self) -> list[BinaryVariant]:
 		bin_roles = ['']
@@ -471,30 +783,88 @@ class Packager:
 		]
 
 	def package_windows(self) -> None:
+		if self.args.target == 'Server' and not self.has_pack('NoRes'):
+			self.package_all_client_runtime_update_payloads()
+
+		# Mirror of the suffix appended to server-side payloads in
+		# package_all_client_runtime_update_payloads: tagging the client output
+		# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
+		# under PlatformBinaries/<target>/<name>.dll for this variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
 			for variant in self.iter_windows_variants():
 				is_lib = self.has_pack('Lib')
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=True)
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, 'ForceOpenGL=1' if variant.graphics == 'OGL' else None)
-				self.copy_optional_pdb(bin_path, bin_name, bin_out_name)
+				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
+				excluded_companions: set[str] = set()
+				if self.args.target == 'Client':
+					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
+
+				if self.args.target == 'Client' and not is_lib:
+					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
+					runtime_out_name = bin_out_name
+					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
+					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
+					excluded_companions.add(runtime_input_name + '.dll')
+
+				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
+				self.copy_pdb(bin_path, bin_name, bin_out_name)
+				if bin_ext == '.exe':
+					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
+					# build's `<bin_name>.pdb`). Otherwise the exe keeps the build-machine
+					# CodeView path and only resolves symbols via a debugger's module-adjacent
+					# basename heuristic.
+					assert patch_pe_pdb_path(main_binary_path, bin_out_name + '.pdb'), 'Host exe RSDS not patched: ' + main_binary_path
 
 	def package_linux(self) -> None:
+		if self.args.target == 'Server' and not self.has_pack('NoRes'):
+			self.package_all_client_runtime_update_payloads()
+
+		all_linux_variants = self.iter_linux_variants()
+		cross_variant_excluded: set[str] = set()
+		if self.args.target == 'Client':
+			for other_variant in all_linux_variants:
+				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
+				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
+
+		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
+		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
+		# for this binary_output_postfix variant.
+		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
+
 		for arch in self.iter_arches():
-			for variant in self.iter_linux_variants():
+			for variant in all_linux_variants:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role
-				bin_out_name = (bin_name if self.args.target != 'Client' else self.args.nicename) + self.build_output_variant_suffix(variant, is_windows=False)
+				if self.args.target == 'Client':
+					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
+				else:
+					bin_out_name_base = bin_name
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
 
-				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '')
+				additional_config_data = None
+				excluded_companions: set[str] = set(cross_variant_excluded)
+
+				if self.args.target == 'Client':
+					runtime_input_name = self.build_client_runtime_input_name(variant)
+					runtime_alias_name = self.build_client_runtime_alias_name(variant)
+					runtime_out_name = bin_out_name
+					runtime_excluded = set(cross_variant_excluded) | {runtime_alias_name + '.so'}
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=runtime_excluded)
+					excluded_companions.add(runtime_input_name + '.so')
+
+				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
 
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
@@ -519,7 +889,7 @@ class Packager:
 
 		self.patch_embedded(wasm_output_path)
 		self.patch_config(wasm_output_path)
-		self.patch_packaged_mark(wasm_output_path)
+		self.patch_packaged_build_name(wasm_output_path, bin_out_name)
 
 		web_loading_image = self.fomain.mainSection().getStr('Web.LoadingImage', '')
 		web_background_color = self.fomain.mainSection().getStr('Web.BackgroundColor', 'rgb(0, 0, 0)')
@@ -647,7 +1017,7 @@ class Packager:
 			log('Native library', src_so, '=>', dst_so)
 
 			# Patch the binary (embedded data, config, packaged mark)
-			self.patch_packaged_binary(dst_so)
+			self.patch_packaged_binary(dst_so, bin_name)
 
 		# Move baked resources into assets directory
 		assets_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'assets')
@@ -731,8 +1101,17 @@ class Packager:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
 
+			gradle_user_home = os.path.join(
+				os.path.dirname(self.output_path),
+				'.gradle-user-home',
+				os.path.basename(self.target_output_path),
+			)
+			os.makedirs(gradle_user_home, exist_ok=True)
+			gradle_env['GRADLE_USER_HOME'] = gradle_user_home
+			log('Android Gradle user home', gradle_user_home)
+
 			build_task = 'assembleDebug' if self.has_pack('Debug') else 'assembleRelease'
-			result = subprocess.call([gradlew, build_task], cwd=self.target_output_path, env=gradle_env)
+			result = subprocess.call([gradlew, '--no-daemon', build_task], cwd=self.target_output_path, env=gradle_env)
 			assert result == 0, 'Gradle build failed'
 
 			build_type = 'debug' if self.has_pack('Debug') else 'release'

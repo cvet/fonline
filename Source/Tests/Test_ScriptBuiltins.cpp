@@ -891,9 +891,9 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         string message;
         string traceback;
         bool fatal = true;
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            traceback = FormatStackTrace(st);
             fatal = is_fatal;
         });
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });

@@ -115,7 +115,7 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
     _settings {&settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings->NetBufferSize),
-    _outBuf(_settings->NetBufferSize, _settings->NetDebugHashes)
+    _outBuf(_settings->NetBufferSize)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -160,6 +160,129 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     return _gracefulDisconnected;
+}
+
+auto ServerConnection::GetDiagnostics() const -> Diagnostics
+{
+    FO_STACK_TRACE_ENTRY();
+
+    Diagnostics result;
+    result.HandshakeComplete = _activity.HandshakeComplete;
+    result.LastActivityTime = _activity.LastActivityTime;
+    result.PingAnswerReceived = _activity.PingAnswerReceived;
+
+    if (_updateFileTransfer.PendingFileIndex) {
+        result.PendingUpdateFileIndex = numeric_cast<int32_t>(*_updateFileTransfer.PendingFileIndex);
+        result.PendingUpdateFilePortion = numeric_cast<int32_t>(_updateFileTransfer.PortionIndex);
+    }
+
+    return result;
+}
+
+auto ServerConnection::IsHandshakeComplete() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _activity.HandshakeComplete;
+}
+
+auto ServerConnection::IsInactive(nanotime time) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _settings->InactivityDisconnectTime != 0 && time - _activity.LastActivityTime >= std::chrono::milliseconds {_settings->InactivityDisconnectTime};
+}
+
+auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
+}
+
+auto ServerConnection::HasPendingPing() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_activity.PingAnswerReceived;
+}
+
+auto ServerConnection::GetUpdateFileTransferIndex() const noexcept -> optional<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _updateFileTransfer.PendingFileIndex;
+}
+
+void ServerConnection::MarkHandshakeComplete() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _activity.HandshakeComplete = true;
+}
+
+void ServerConnection::EnsureActivityTime(nanotime time) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_activity.LastActivityTime) {
+        _activity.LastActivityTime = time;
+    }
+}
+
+void ServerConnection::RegisterActivity(nanotime time) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _activity.LastActivityTime = time;
+}
+
+void ServerConnection::RegisterPingRequest(nanotime time) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ClientPingTime};
+    _activity.PingAnswerReceived = false;
+}
+
+void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ClientPingTime};
+    _activity.PingAnswerReceived = true;
+}
+
+void ServerConnection::BeginUpdateFileTransfer(size_t file_index) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _updateFileTransfer.PendingFileIndex = file_index;
+    _updateFileTransfer.PortionIndex = 0;
+}
+
+auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_updateFileTransfer.PendingFileIndex);
+    FO_RUNTIME_ASSERT(max_portion_size != 0);
+
+    const auto offset = _updateFileTransfer.PortionIndex * max_portion_size;
+    FO_RUNTIME_ASSERT(offset <= file_size);
+
+    const auto remaining_size = file_size - offset;
+    const auto portion_size = std::min(remaining_size, max_portion_size);
+
+    if (offset + portion_size < file_size) {
+        _updateFileTransfer.PortionIndex++;
+    }
+    else {
+        _updateFileTransfer.PendingFileIndex.reset();
+        _updateFileTransfer.PortionIndex = 0;
+    }
+
+    return {offset, portion_size};
 }
 
 void ServerConnection::StartAsyncSend()

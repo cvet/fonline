@@ -86,7 +86,7 @@ private:
     void AcceptNext();
     void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
-    ServerNetworkSettings& _settings;
+    raw_ptr<ServerNetworkSettings> _settings;
     asio::io_context _context {};
     asio::ip::tcp::acceptor _acceptor;
     NewConnectionCallback _connectionCallback;
@@ -126,7 +126,7 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
 
-    _inBufData.resize(_settings.NetBufferSize);
+    _inBufData.resize(_settings->NetBufferSize);
 }
 
 void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation, const std::error_code& error)
@@ -255,7 +255,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 }
 
 NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {settings},
+    _settings {&settings},
     _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
@@ -300,21 +300,38 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto rearm_accept = scope_success([this]() noexcept {
+    const auto rearm_accept = [this] {
         if (!_context.stopped()) {
             AcceptNext();
         }
-    });
+    };
 
     if (!error) {
         try {
-            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
+            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(*_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
             _connectionCallback(std::move(connection));
         }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+        catch (const std::exception&) {
+            const auto exception = std::current_exception();
+            safe_call(rearm_accept);
+
+            run_thread("Network-Asio-Reporter", [exception = std::move(exception)] {
+                try {
+                    std::rethrow_exception(exception);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+                catch (...) {
+                    FO_UNKNOWN_EXCEPTION();
+                }
+            }).detach();
+
+            return;
         }
+
+        rearm_accept();
     }
     else {
         if (error != asio::error::operation_aborted) {

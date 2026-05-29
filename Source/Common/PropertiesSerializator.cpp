@@ -114,13 +114,11 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
             else {
-                // Todo: maybe need some optional warning for unknown/wrong properties
                 // WriteLog(LogType::Warning, "Skip unknown property {}", key);
             }
         }
         catch (const std::exception& ex) {
-            WriteLog(LogType::Warning, "Unable to load property {}", doc_key);
-            ReportExceptionAndContinue(ex);
+            WriteLog(LogType::Warning, "Unable to load property {}: {}", doc_key, ex.what());
             is_error = true;
         }
     }
@@ -416,8 +414,8 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
         }
 
         if (!resolved_value) {
-            if (prop == nullptr || !prop->IsMaybeNull()) {
-                throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
+            if (prop == nullptr || !prop->IsNullable()) {
+                throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop != nullptr ? prop->GetName() : base_type.Name, base_type.Name);
             }
         }
         else if (proto == nullptr) {
@@ -434,7 +432,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
 
         if (strvex(decoded).is_number()) {
             enum_value = numeric_cast<int32_t>(strvex(decoded).to_int64());
-            ignore_unused(name_resolver.ResolveEnumValueName(base_type.Name, enum_value));
+            (void)name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
         }
         else {
             enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);
@@ -1449,8 +1447,8 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
             }
 
             if (!resolved_value) {
-                if (!prop->IsMaybeNull()) {
-                    throw PropertySerializationException("Proto reference property requires non-null proto, add MaybeNull or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+                if (!prop->IsNullable()) {
+                    throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
                 }
             }
             else if (proto == nullptr) {

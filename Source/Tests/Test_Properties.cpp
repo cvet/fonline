@@ -227,10 +227,10 @@ namespace
 
             auto make_route_snapshot = [this]() {
                 auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteSnapshotRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "int32[]", "Values"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Note"}));
+                (void)fields_registrator->RegisterProperty({"Common", "int32[]", "Values"});
+                (void)fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"});
+                (void)fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"});
+                (void)fields_registrator->RegisterProperty({"Common", "string", "Note"});
 
                 auto& ref_type = _ref_types["RouteSnapshot"];
                 ref_type.FieldsRegistrator = fields_registrator.get();
@@ -247,9 +247,9 @@ namespace
 
             auto make_route_envelope = [this]() {
                 auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteEnvelopeRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"}));
-                ignore_unused(fields_registrator->RegisterProperty({"Common", "string", "Title"}));
+                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"});
+                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"});
+                (void)fields_registrator->RegisterProperty({"Common", "string", "Title"});
 
                 auto& ref_type = _ref_types["RouteEnvelope"];
                 ref_type.FieldsRegistrator = fields_registrator.get();
@@ -2128,13 +2128,13 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
 
     const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
 
     CHECK(item_prop->GetBaseType().IsEntity);
     CHECK(item_prop->IsBaseTypeEntityProto());
     CHECK(item_prop->IsBaseTypeProtoReference());
-    CHECK(map_prop->IsMaybeNull());
+    CHECK(map_prop->IsNullable());
     CHECK(loot_sets_prop->IsDictOfArray());
     CHECK(loot_sets_prop->IsBaseTypeEntityProto());
     CHECK(loot_sets_prop->IsBaseTypeProtoReference());
@@ -2195,7 +2195,7 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
     const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
     const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
     const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
     const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
     const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
@@ -3033,7 +3033,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
     PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
 
     const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "MaybeNull"});
+    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
     const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;

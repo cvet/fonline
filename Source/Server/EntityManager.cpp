@@ -53,7 +53,8 @@ EntityManager::EntityManager(ServerEngine* engine) :
     _mapCollectionName {engine->Hashes.ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
     _critterCollectionName {engine->Hashes.ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
     _itemCollectionName {engine->Hashes.ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
-    _removeMigrationRuleName {engine->Hashes.ToHashedString("Remove")}
+    _protoMigrationRuleName {engine->Hashes.ToHashedString("Proto")},
+    _removeMigrationReplacement {engine->Hashes.ToHashedString("Remove")}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -206,8 +207,6 @@ void EntityManager::LoadEntities()
         LoadLocation(loc_id, is_error);
     }
 
-    // Todo: load global map critters
-
     if (is_error) {
         throw ServerInitException("Load entities failed");
     }
@@ -243,8 +242,6 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
     if (!loc_pid) {
-        WriteLog(LogType::Warning, "Location {} invalid document", loc_id);
-        is_error = true;
         return nullptr;
     }
 
@@ -324,8 +321,6 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
     if (!map_pid) {
-        WriteLog(LogType::Warning, "Map {} invalid document", map_pid);
-        is_error = true;
         return nullptr;
     }
 
@@ -431,8 +426,6 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
     if (!cr_pid) {
-        WriteLog(LogType::Warning, "Critter {} invalid document", cr_id);
-        is_error = true;
         return nullptr;
     }
 
@@ -507,8 +500,6 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
     auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
     if (!item_pid) {
-        WriteLog(LogType::Warning, "Item {} invalid document", item_id);
-        is_error = true;
         return nullptr;
     }
 
@@ -700,7 +691,11 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
 
         auto proto_id = _engine->Hashes.ToHashedString(proto_name);
 
-        if (_engine->CheckMigrationRule(_removeMigrationRuleName, type_name, proto_id).has_value()) {
+        // A proto whose migration rule resolves to the "Remove" sentinel was deleted on purpose: skip
+        // the entity cleanly (without is_error) so callers drop it instead of failing the whole load.
+        // A genuinely missing proto (no rule) keeps proto_id and surfaces later as proto-not-found.
+        if (const auto migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && migrated.value() == _removeMigrationReplacement) {
+            WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
 
@@ -838,7 +833,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
     }
 }
 
-void EntityManager::RegisterPlayer(Player* player, ident_t id)
+void EntityManager::RegisterPlayer(Player* player, ident_t id, bool persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -847,7 +842,7 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id)
     }
 
     RegisterEntity(player);
-    player->SetPersistent(true);
+    player->SetPersistent(persistent);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
     FO_RUNTIME_ASSERT(inserted);
 }

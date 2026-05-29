@@ -4,6 +4,9 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(ExceptionHandlingTestBaseException);
+FO_DECLARE_EXCEPTION_EXT(ExceptionHandlingTestDerivedException, ExceptionHandlingTestBaseException);
+
 TEST_CASE("ExceptionHandling")
 {
     SECTION("BaseEngineExceptionCapturesMessageAndParams")
@@ -56,27 +59,48 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool has_origin = false;
         bool fatal = false;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
         const auto callback = GetExceptionCallback();
         REQUIRE(callback);
-        callback("Msg", "Trace", true);
+        const CatchedStackTraceData st {std::nullopt, {}};
+        callback("Msg", st, true);
 
         CHECK(message == "Msg");
-        CHECK(traceback == "Trace");
+        CHECK_FALSE(has_origin);
         CHECK(fatal);
 
         SetExceptionCallback({});
         CHECK_FALSE(GetExceptionCallback());
 
         SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
+    {
+        // Regression: a macro exception derived from another macro exception (not BaseEngineException
+        // directly) must still report its own name/message/params, with no stray null pushed into params.
+        static_assert(std::is_base_of_v<ExceptionHandlingTestBaseException, ExceptionHandlingTestDerivedException>);
+        static_assert(std::is_base_of_v<BaseEngineException, ExceptionHandlingTestDerivedException>);
+
+        const ExceptionHandlingTestDerivedException ex {"Derived failure", 7, "extra"};
+
+        CHECK(string_view {ex.name()} == "ExceptionHandlingTestDerivedException");
+        CHECK(ex.message() == "Derived failure");
+        REQUIRE(ex.params().size() == 2);
+        CHECK(ex.params()[0] == "7");
+        CHECK(ex.params()[1] == "extra");
+        CHECK(string_view {ex.what()}.find("ExceptionHandlingTestDerivedException: Derived failure") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- 7") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("- extra") != string_view::npos);
+        CHECK(string_view {ex.what()}.find("0x0") == string_view::npos);
     }
 
     SECTION("BaseEngineExceptionCopyPreservesPayload")
@@ -96,12 +120,14 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = false;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
@@ -109,7 +135,8 @@ TEST_CASE("ExceptionHandling")
         ReportExceptionAndContinue(ex);
 
         CHECK(message == ex.what());
-        CHECK_FALSE(traceback.empty());
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
 
         SetExceptionCallback(std::move(prev_callback));
@@ -120,12 +147,14 @@ TEST_CASE("ExceptionHandling")
         const auto prev_callback = GetExceptionCallback();
 
         string message;
-        string traceback;
+        bool trace_received = false;
+        bool trace_has_origin = false;
         bool fatal = true;
 
-        SetExceptionCallback([&](string_view msg, string_view trace, bool is_fatal) {
+        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
             message = string(msg);
-            traceback = string(trace);
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
             fatal = is_fatal;
         });
 
@@ -134,8 +163,59 @@ TEST_CASE("ExceptionHandling")
         CHECK(message.find("VerifyFailedException: CheckInput") != string::npos);
         CHECK(message.find("- unit_test.cpp") != string::npos);
         CHECK(message.find("- 77") != string::npos);
-        CHECK_FALSE(traceback.empty());
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
         CHECK_FALSE(fatal);
+
+        SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("CatchedStackTraceDataIncludesOriginForEngineExceptions")
+    {
+        const auto prev_callback = GetExceptionCallback();
+
+        bool trace_received = false;
+        bool trace_has_origin = false;
+
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
+        });
+
+        try {
+            throw GenericException("Boom");
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        CHECK(trace_received);
+        CHECK(trace_has_origin);
+
+        SetExceptionCallback(std::move(prev_callback));
+    }
+
+    SECTION("CatchedStackTraceDataForNonEngineExceptionPrefixesCatchedAt")
+    {
+        const auto prev_callback = GetExceptionCallback();
+
+        bool trace_received = false;
+        bool trace_has_origin = true;
+
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData& st, bool) { //
+            trace_received = true;
+            trace_has_origin = st.Origin.has_value();
+        });
+
+        try {
+            throw std::runtime_error("plain");
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        CHECK(trace_received);
+        CHECK_FALSE(trace_has_origin);
 
         SetExceptionCallback(std::move(prev_callback));
     }

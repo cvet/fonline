@@ -315,7 +315,7 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> a
 
     const auto check_type = [this](const ComplexTypeDesc& left, size_t right) -> bool {
         const auto it = _engineTypes.find(right);
-        FO_RUNTIME_VERIFY(it != _engineTypes.end(), false);
+        FO_RUNTIME_VERIFY_AND_RETURN(it != _engineTypes.end(), false);
         return left == it->second;
     };
 

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: optimize sprite atlas filling
-
 #pragma once
 
 #include "Common.h"
@@ -49,9 +47,11 @@
 
 FO_BEGIN_NAMESPACE
 
-// Colors
-static constexpr auto COLOR_NEUTRAL = ucolor {128, 128, 128};
-static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
+namespace Color
+{
+    static constexpr auto Neutral = ucolor {128, 128, 128};
+    static constexpr auto TextWhite = ucolor {255, 255, 255};
+}
 
 class IAppWindow;
 class IAppRender;
@@ -131,6 +131,8 @@ struct PrimitivePoint
     ucolor PointColor {};
     raw_ptr<const ipos32> PointOffset {};
     raw_ptr<const ucolor> PPointColor {};
+    fpos32 TexUV {}; // Custom data for shader.
+    fpos32 EggData {}; // Custom data for shader.
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 
@@ -161,6 +163,8 @@ public:
     [[nodiscard]] auto GetResources() noexcept -> FileSystem& { return *_resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
+    [[nodiscard]] auto GetMainRenderTarget() noexcept -> RenderTarget* { return _rtMain.get(); }
+    [[nodiscard]] auto GetMainRenderTarget() const noexcept -> const RenderTarget* { return _rtMain.get(); }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> TextureAtlasManager& { return _atlasMngr; }
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
     [[nodiscard]] auto GetWindow() noexcept -> IAppWindow& { return *_window; }
@@ -203,13 +207,12 @@ public:
     void DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     auto DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool;
     void DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
+    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
+    void DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor color, RenderEffect* effect, int32_t padding);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const irect32* draw_area = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const frect32* region_from = nullptr, const irect32* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const frect32* region_from = nullptr, const irect32* region_to = nullptr);
     void Flush();
-
-    void DrawContours();
 
     void SetEgg(TransparentEggSlot slot, mpos hex, const MapSprite* mspr);
     void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius);
@@ -233,8 +236,6 @@ private:
     void EnableScissor();
     void DisableScissor();
 
-    void CollectContour(ipos32 pos, const Sprite* spr, ucolor contour_color);
-
     raw_ptr<RenderSettings> _settings;
     raw_ptr<IAppWindow> _window;
     raw_ptr<FileSystem> _resources;
@@ -254,19 +255,16 @@ private:
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
 
     raw_ptr<RenderTarget> _rtMain {};
-    raw_ptr<RenderTarget> _rtContours {};
 
     vector<DipData> _dipQueue {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};
     unique_ptr<RenderDrawBuffer> _primitiveDrawBuf {};
     unique_ptr<RenderDrawBuffer> _flushDrawBuf {};
-    unique_ptr<RenderDrawBuffer> _contourDrawBuf {};
+    unique_ptr<RenderDrawBuffer> _spriteEffectDrawBuf {};
     size_t _flushVertCount {};
 
     vector<irect32> _scissorStack {};
     irect32 _scissorRect {};
-
-    bool _contoursAdded {};
 
     EggSlot _eggSlots[EGG_SLOT_COUNT] {};
 

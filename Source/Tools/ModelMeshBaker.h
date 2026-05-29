@@ -33,28 +33,26 @@
 
 #pragma once
 
-#include "Common.h"
-
-#if FO_ENABLE_3D
-
 #include "Baker.h"
 #include "FileSystem.h"
 
+#if FO_ENABLE_3D
+
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ModelBakerException);
+FO_DECLARE_EXCEPTION(ModelMeshBakerException);
 
-class ModelBaker final : public BaseBaker
+class ModelMeshBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Model";
+    static constexpr string_view_nt NAME = "ModelMesh";
 
-    explicit ModelBaker(shared_ptr<BakingContext> ctx);
-    ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = delete;
-    auto operator=(const ModelBaker&) = delete;
-    auto operator=(ModelBaker&&) noexcept = delete;
-    ~ModelBaker() override;
+    explicit ModelMeshBaker(shared_ptr<BakingContext> ctx);
+    ModelMeshBaker(const ModelMeshBaker&) = delete;
+    ModelMeshBaker(ModelMeshBaker&&) noexcept = delete;
+    auto operator=(const ModelMeshBaker&) = delete;
+    auto operator=(ModelMeshBaker&&) noexcept = delete;
+    ~ModelMeshBaker() override;
 
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 4; }

@@ -88,7 +88,7 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY(spr, irect32());
+    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
 
     const ipos32 spr_offset = spr->GetOffset();
     const isize32 spr_size = spr->GetSize();
@@ -108,7 +108,7 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY(spr, irect32());
+    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
 
     auto rect = GetDrawRect();
 
@@ -132,13 +132,6 @@ void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     _eggAppearence = egg_appearence;
-}
-
-void MapSprite::SetContour(ucolor color) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    _contourColor = color;
 }
 
 void MapSprite::SetColor(ucolor color) noexcept
@@ -204,6 +197,20 @@ void MapSprite::SetHidden(bool hidden) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     _hidden = hidden;
+}
+
+void MapSprite::SetAngle(int16_t angle) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _angle = angle;
+}
+
+void MapSprite::SetMapProjection(bool map_projection) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _mapProjection = map_projection;
 }
 
 void MapSprite::CreateExtraChain(MapSprite** mspr)
@@ -279,8 +286,9 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightRight = nullptr;
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
-    mspr->_contourColor = ucolor::clear;
     mspr->_color = ucolor::clear;
+    mspr->_angle = 0;
+    mspr->_mapProjection = false;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
 
@@ -290,6 +298,16 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
 
     _activeSprites.emplace_back(std::move(mspr));
     _needSort = true;
+
+    if (!_orderBroken && _activeSprites.size() >= 2) {
+        const auto& tail = *_activeSprites.back();
+        const auto& prev = *_activeSprites[_activeSprites.size() - 2];
+
+        if (tail._drawOrderPos < prev._drawOrderPos) {
+            _orderBroken = true;
+        }
+    }
+
     return _activeSprites.back().get();
 }
 
@@ -318,6 +336,7 @@ void MapSpriteList::Invalidate(MapSprite* mspr) noexcept
         _activeSprites[index] = std::move(_activeSprites.back());
         _activeSprites[index]->_index = index;
         _needSort = true;
+        _orderBroken = true;
     }
 
     _activeSprites.pop_back();
@@ -331,12 +350,15 @@ void MapSpriteList::SortIfNeeded() noexcept
         return;
     }
 
-    std::ranges::sort(_activeSprites, [](auto&& mspr1, auto&& mspr2) -> bool {
-        if (mspr1->_drawOrderPos == mspr2->_drawOrderPos) [[unlikely]] {
-            return mspr1->_globalPos < mspr2->_globalPos;
-        }
-        return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
-    });
+    if (_orderBroken) {
+        std::ranges::sort(_activeSprites, [](auto&& mspr1, auto&& mspr2) -> bool {
+            if (mspr1->_drawOrderPos == mspr2->_drawOrderPos) [[unlikely]] {
+                return mspr1->_globalPos < mspr2->_globalPos;
+            }
+
+            return mspr1->_drawOrderPos < mspr2->_drawOrderPos;
+        });
+    }
 
     uint32_t index = 0;
 
@@ -344,7 +366,30 @@ void MapSpriteList::SortIfNeeded() noexcept
         mspr->_index = index++;
     }
 
+    uint32_t pos = 0;
+
+    for (uint32_t order = 0; order < DrawOrderRangeSize - 1; order++) {
+        while (pos < _activeSprites.size() && static_cast<uint32_t>(_activeSprites[pos]->GetDrawOrder()) < order) {
+            pos++;
+        }
+
+        _drawOrderRangeBegin[order] = pos;
+    }
+
+    _drawOrderRangeBegin[DrawOrderRangeSize - 1] = numeric_cast<uint32_t>(_activeSprites.size());
+
     _needSort = false;
+    _orderBroken = false;
+}
+
+auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_needSort);
+    FO_RUNTIME_ASSERT(static_cast<uint32_t>(from) <= static_cast<uint32_t>(to));
+
+    return {_drawOrderRangeBegin[static_cast<size_t>(from)], _drawOrderRangeBegin[static_cast<size_t>(to) + 1]};
 }
 
 MapSpriteHolder::~MapSpriteHolder()

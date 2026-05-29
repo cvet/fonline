@@ -46,6 +46,15 @@ Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto,
     FO_STACK_TRACE_ENTRY();
 }
 
+Location::~Location()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(_locMaps.empty());
+    }
+}
+
 auto Location::GetMapByIndex(int32_t index) noexcept -> Map*
 {
     FO_STACK_TRACE_ENTRY();
@@ -128,7 +137,9 @@ void Location::RemoveMap(Map* map)
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
 
-    if (map->IsPersistent() && !map->IsExplicitlyPersistent()) {
+    // Currently all maps are destroyed on this stage but in future maps can be reused or
+    // moved to another location, so keep the persistence flag in sync with the location.
+    if (map->IsPersistent() && !map->IsExplicitlyPersistent() && !map->IsDestroying() && !map->IsDestroyed()) {
         _engine->EntityMngr.MakePersistent(map, false);
     }
 }

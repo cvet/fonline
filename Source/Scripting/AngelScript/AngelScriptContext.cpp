@@ -200,7 +200,7 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     ctx_ext->Root = root_ctx != nullptr ? root_ctx : ctx.get();
     ctx_ext->Exception = {};
 
-    CaptureNativeStackFrames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, 1);
+    CaptureNativeStackFrames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, ctx_ext->BirthNativeTruncated, 1);
 
     if (_contextSetupCallback) {
         _contextSetupCallback(ctx.get(), AngelScriptContextSetupReason::Request);
@@ -242,6 +242,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         ctx_ext->Root = nullptr;
         ctx_ext->Exception = {};
         ctx_ext->BirthNativeFrameCount = 0;
+        ctx_ext->BirthNativeTruncated = false;
 
         for (auto& other : _busyContexts) {
             auto* other_ext = AngelScriptContextExtendedData::Get(other.get());
@@ -571,6 +572,7 @@ static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_lay
             if (ctx_ext != nullptr) {
                 layer.BirthNativeFrames = ctx_ext->BirthNativeFrames;
                 layer.BirthNativeFrameCount = ctx_ext->BirthNativeFrameCount;
+                layer.BirthNativeTruncated = ctx_ext->BirthNativeTruncated;
             }
 
             if (!layer.ScriptFrames.empty() || layer.BirthNativeFrameCount != 0) {

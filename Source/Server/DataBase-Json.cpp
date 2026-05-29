@@ -2,9 +2,8 @@
 
 FO_DISABLE_WARNINGS_PUSH()
 #include <bson/bson.h>
-FO_DISABLE_WARNINGS_POP()
-
 #include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
 
@@ -23,7 +22,7 @@ public:
         _storageDir {storage_dir},
         _jsonIndent {db_settings.JsonIndent}
     {
-        (void)fs_create_directories(storage_dir);
+        fs_create_directories(storage_dir);
         StartCommitThread();
     }
 

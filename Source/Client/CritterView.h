@@ -52,7 +52,7 @@ public:
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
     auto operator=(CritterView&&) noexcept = delete;
-    ~CritterView() override = default;
+    ~CritterView() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto IsAlive() const noexcept -> bool { return GetCondition() == CritterCondition::Alive; }
@@ -63,6 +63,9 @@ public:
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> ItemView*;
     [[nodiscard]] auto GetInvItems() const noexcept -> const vector<refcount_ptr<ItemView>>& { return _invItems; }
     [[nodiscard]] auto GetInvItems() noexcept -> vector<refcount_ptr<ItemView>>& { return _invItems; }
+    [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool { return !_attachedCritters.empty(); }
+    [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<ident_t> { return _attachedCritters; }
+    [[nodiscard]] auto IsAttachedCritter(ident_t cr_id) const noexcept -> bool;
 
     auto AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
     auto AddReceivedInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ItemView*;
@@ -70,13 +73,13 @@ public:
     void DeleteInvItem(ItemView* item);
     void DeleteAllInvItems();
     void SetName(string_view name);
-
-    vector<ident_t> AttachedCritters {}; // Todo: incapsulate AttachedCritters
+    void SetAttachedCritters(vector<ident_t> attached_critters);
 
 protected:
     void OnDestroySelf() override;
 
     vector<refcount_ptr<ItemView>> _invItems {};
+    vector<ident_t> _attachedCritters {};
 };
 
 FO_END_NAMESPACE

@@ -49,6 +49,11 @@ class net_sockets final
 {
 public:
     static auto startup() noexcept -> bool;
+    static auto resolve_ipv4(string_view host) noexcept -> optional<uint32_t>;
+    static auto ipv4_to_string(uint32_t addr_net_order) noexcept -> string;
+    static auto host_to_net_u16(uint16_t value) noexcept -> uint16_t;
+    static auto last_recv_was_would_block() noexcept -> bool;
+    static auto last_error_text() noexcept -> string;
 };
 
 class tcp_socket final
@@ -62,10 +67,14 @@ public:
     ~tcp_socket() = default;
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_sock; }
+    [[nodiscard]] auto native_handle() const noexcept -> socket_t { return _sock ? *_sock : socket_t {}; }
 
     auto connect(string_view host, uint16_t port) noexcept -> bool;
+    auto connect_async(string_view host, uint16_t port) noexcept -> bool; // Use can_write(timeout) + peek_socket_error() to detect completion.
     auto can_read(timespan timeout = {}) const noexcept -> bool;
     auto can_write(timespan timeout = {}) const noexcept -> bool;
+    auto set_nodelay(bool enabled) noexcept -> bool;
+    auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed.
     auto send(const_span<uint8_t> data) noexcept -> int32_t;
     auto receive(span<uint8_t> data) noexcept -> int32_t;
     void close() noexcept;

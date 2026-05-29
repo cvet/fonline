@@ -56,6 +56,7 @@ asCDataType::asCDataType()
 	isConstHandle          = false;
 	isHandleToAsHandleType = false;
 	ifHandleThenConst      = false;
+	isNullable             = false; // (FOnline Patch)
 }
 
 asCDataType::asCDataType(const asCDataType &dt)
@@ -69,6 +70,7 @@ asCDataType::asCDataType(const asCDataType &dt)
 	isConstHandle          = dt.isConstHandle;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 	ifHandleThenConst      = dt.ifHandleThenConst;
+	isNullable             = dt.isNullable; // (FOnline Patch)
 }
 
 asCDataType::~asCDataType()
@@ -258,6 +260,9 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 			str += "const";
 	}
 
+	if( isNullable ) // (FOnline Patch)
+		str += "?";
+
 	if( isReference )
 		str += "&";
 
@@ -275,6 +280,7 @@ asCDataType &asCDataType::operator =(const asCDataType &dt)
 	isAuto                 = dt.isAuto;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 	ifHandleThenConst      = dt.ifHandleThenConst;
+	isNullable             = dt.isNullable; // (FOnline Patch)
 
 	return (asCDataType &)*this;
 }
@@ -338,7 +344,9 @@ int asCDataType::MakeArray(asCScriptEngine *engine, asCModule *module)
 
 	isObjectHandle = (at->flags & asOBJ_IMPLICIT_HANDLE) != 0; // (FOnline Patch) isObjectHandle = false;
 	isConstHandle = false;
-	
+	isNullable = false; // (FOnline Patch) the new array handle is non-null by default; the element's
+	                    // nullability (e.g. `Item?[]`) was already captured in the subtype pushed above
+
 	typeInfo = at;
 	tokenType = ttIdentifier;
 
@@ -369,6 +377,15 @@ int asCDataType::MakeHandleToConst(bool b)
 	if( !isObjectHandle ) return -1;
 
 	isReadOnly = b;
+	return 0;
+}
+
+// (FOnline Patch) Mark this type as nullable (`T?`). Only meaningful for handle types;
+// the builder validates placement before invoking this. Stored as an extra bit on the
+// data type so the compiler can decide whether to emit a runtime null guard on writes.
+int asCDataType::MakeNullable(bool b)
+{
+	isNullable = b;
 	return 0;
 }
 

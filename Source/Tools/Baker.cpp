@@ -44,7 +44,8 @@
 #include "MapLoader.h"
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
-#include "ModelBaker.h"
+#include "ModelInfoBaker.h"
+#include "ModelMeshBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -121,8 +122,11 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
         bakers.emplace_back(SafeAlloc::MakeUnique<ProtoTextBaker>(ctx));
     }
 #if FO_ENABLE_3D
-    if (vec_exists(request_bakers, ModelBaker::NAME)) {
-        bakers.emplace_back(SafeAlloc::MakeUnique<ModelBaker>(ctx));
+    if (vec_exists(request_bakers, ModelMeshBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ModelMeshBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ModelInfoBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ModelInfoBaker>(ctx));
     }
 #endif
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -210,6 +214,7 @@ void MasterBaker::BakeAllInternal()
         FileCollection FilteredFiles {};
         vector<unique_ptr<BaseBaker>> Bakers {};
         std::atomic_int BakedFiles {};
+        std::mutex BakedFilePathsLocker {};
         unordered_set<string> BakedFilePaths {};
         bool FirstBake {};
         bool OutputAdded {};
@@ -239,7 +244,12 @@ void MasterBaker::BakeAllInternal()
         pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
 
         const auto bake_checker = [context = pack_bake_context.get(), &force_baking](string_view path, uint64_t write_time) -> bool {
-            context->BakedFilePaths.emplace(path);
+            // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
+            // to be guarded; without it concurrent emplace() races on the bucket array.
+            {
+                std::scoped_lock lock(context->BakedFilePathsLocker);
+                context->BakedFilePaths.emplace(path);
+            }
 
             if (!force_baking) {
                 const auto file_write_time = fs_last_write_time(strex(context->OutputDir).combine_path(path));
@@ -314,7 +324,9 @@ void MasterBaker::BakeAllInternal()
         vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
 
         for (const auto& res_pack : res_packs) {
-            prepare_res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { return prepare_bake_pack(res_pack, make_output_path(res_pack.Name)); }));
+            const ResourcePackInfo* res_pack_ptr = &res_pack;
+            const string output_path = make_output_path(res_pack.Name);
+            prepare_res_bakings.emplace_back(std::async(async_mode, [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
 
         for (auto& prepare_res_baking : prepare_res_bakings) {
@@ -341,7 +353,8 @@ void MasterBaker::BakeAllInternal()
 
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->Done) {
-                res_bakings.emplace_back(std::async(async_mode, [&]() FO_DEFERRED { bake_pack(bake_context.get(), bake_order); }));
+                PackBakeContext* bake_context_ptr = bake_context.get();
+                res_bakings.emplace_back(std::async(async_mode, [&bake_pack, bake_context_ptr, bake_order]() FO_DEFERRED { bake_pack(bake_context_ptr, bake_order); }));
             }
         }
 
@@ -361,7 +374,7 @@ void MasterBaker::BakeAllInternal()
 
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->OutputAdded && bake_context->FirstBake) {
-                baking_output.AddDirSource(bake_context->OutputDir, true);
+                baking_output.AddDirSource(bake_context->OutputDir, true, true);
                 bake_context->OutputAdded = true;
             }
             if (bake_context->BakedFiles != 0) {
@@ -395,7 +408,7 @@ void MasterBaker::BakeAllInternal()
         ignore_unused(size, write_time);
 
         if (actual_resource_names.count(exclude_all_ext(path)) == 0) {
-            (void)fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
+            fs_remove_file(strex(_settings->BakeOutput).combine_path(path));
             WriteLog("Delete outdated file {}", path);
         }
     });

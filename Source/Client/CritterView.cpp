@@ -54,6 +54,14 @@ CritterView::CritterView(ClientEngine* engine, ident_t id, const ProtoCritter* p
 #endif
 }
 
+CritterView::~CritterView()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY(_invItems.empty());
+    FO_RUNTIME_VERIFY(_attachedCritters.empty());
+}
+
 void CritterView::OnDestroySelf()
 {
     FO_STACK_TRACE_ENTRY();
@@ -70,6 +78,20 @@ void CritterView::SetName(string_view name)
     FO_STACK_TRACE_ENTRY();
 
     _name = name;
+}
+
+auto CritterView::IsAttachedCritter(ident_t cr_id) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return std::ranges::find(_attachedCritters, cr_id) != _attachedCritters.end();
+}
+
+void CritterView::SetAttachedCritters(vector<ident_t> attached_critters)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _attachedCritters = std::move(attached_critters);
 }
 
 auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*

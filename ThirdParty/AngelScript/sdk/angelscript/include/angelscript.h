@@ -192,6 +192,17 @@ enum asEEngineProp
 	asEP_BOOL_CONVERSION_MODE               = 39,
 	asEP_FOREACH_SUPPORT                    = 40,
 
+	// (FOnline Patch) When non-zero, the compiler treats every implicit
+	// nullable-to-non-nullable handle conversion (e.g. `Critter cr =
+	// nullableExpr;`) as a hard compile-time error rather than relying on
+	// the runtime `asBC_RefCpyChk` guard. Smart-cast still narrows
+	// guarded reads. Default is 0 (off) so existing scripts keep
+	// compiling while authors migrate; set to 1 in CI / release builds for
+	// maximum compile-time safety. The simpler `T x = null;` rejection is
+	// always on regardless of this flag, because it has no smart-cast
+	// fallback and is always a bug.
+	asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE  = 41,
+
 	asEP_LAST_PROPERTY
 };
 
@@ -1182,6 +1193,12 @@ public:
 	virtual bool             IsExplicit() const = 0;
 	virtual bool             IsProperty() const = 0;
 	virtual bool             IsVariadic() const = 0;
+	// (FOnline Patch) A no-return function never returns normally (it always
+	// throws or exits). Flow analysis treats a statement that ends in such a
+	// call like a `return`, so a guard branch `if (x == null) { Throw(); }`
+	// narrows `x` for the rest of the scope without an explicit `return`.
+	virtual bool             IsNoReturn() const = 0;
+	virtual void             SetNoReturn() = 0;
 	virtual asUINT           GetParamCount() const = 0;
 	virtual int              GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const = 0;
 	virtual int              GetReturnTypeId(asDWORD *flags = 0) const = 0;
@@ -1663,7 +1680,8 @@ enum asEBCInstr
 	asBC_POWi64			= 198,
 	asBC_POWu64			= 199,
 	asBC_Thiscall1		= 200,
-	asBC_MAXBYTECODE	= 201,
+	asBC_RefCpyChk		= 201, // (FOnline Patch) REFCPY variant: throws if source handle is null
+	asBC_MAXBYTECODE	= 202,
 
 	// Temporary tokens. Can't be output to the final program
 	asBC_TryBlock		= 250,
@@ -1967,8 +1985,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(POWi64,	wW_rW_rW_ARG,	0),
 	asBCINFO(POWu64,	wW_rW_rW_ARG,	0),
 	asBCINFO(Thiscall1, DW_ARG,			-AS_PTR_SIZE-1),
+	asBCINFO(RefCpyChk,	PTR_ARG,		-AS_PTR_SIZE), // (FOnline Patch) same shape as REFCPY
 
-	asBCINFO_DUMMY(201),
 	asBCINFO_DUMMY(202),
 	asBCINFO_DUMMY(203),
 	asBCINFO_DUMMY(204),

@@ -43,6 +43,21 @@ HashStorage::HashStorage(HashFunc hash_func) :
     FO_STACK_TRACE_ENTRY();
 }
 
+auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (s.empty()) {
+        return false;
+    }
+
+    const auto hash_value = _hashFunc(s.data(), s.length());
+
+    auto locker = std::shared_lock {_hashStorageLocker};
+
+    return _hashStorage.find(hash_value) != _hashStorage.end();
+}
+
 auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -76,9 +91,10 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     {
         // Add new entry
+        hstring::entry entry = {.Hash = hash_value, .Str = string(s)};
+
         auto locker = std::unique_lock {_hashStorageLocker};
 
-        hstring::entry entry = {.Hash = hash_value, .Str = string(s)};
         const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
 

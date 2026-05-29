@@ -521,7 +521,7 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     for (const auto& res_pack : settings.GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir, false, true, true);
+            MapsFileSys.AddDirSource(dir, res_pack.RecursiveInput, true, true);
         }
     }
 
@@ -727,6 +727,13 @@ auto MapperEngine::GetPreviewSprite(hstring fname) -> Sprite*
     return PreviewSprites.emplace(fname, std::move(spr)).first->second.get();
 }
 
+void MapperEngine::SetInputLocked(bool locked) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    InputLocked = locked;
+}
+
 void MapperEngine::MapperMainLoop()
 {
     FO_STACK_TRACE_ENTRY();
@@ -763,11 +770,29 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (InputLocked) {
+        Settings.ScrollMouseRight = false;
+        Settings.ScrollMouseLeft = false;
+        Settings.ScrollMouseDown = false;
+        Settings.ScrollMouseUp = false;
+        Settings.ScrollKeybRight = false;
+        Settings.ScrollKeybLeft = false;
+        Settings.ScrollKeybDown = false;
+        Settings.ScrollKeybUp = false;
+        MouseHoldMode = INT_NONE;
+        RightMouseDragged = false;
+        RightMouseInertia = {};
+        RightMouseVelocityAccum = {};
+        RightMouseVelocityTime = {};
+    }
+
     if (const bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings.FullscreenMouseScroll) || (!is_fullscreen && Settings.WindowedMouseScroll)) {
-        Settings.ScrollMouseRight = MousePos.x >= Settings.ScreenWidth - 1;
-        Settings.ScrollMouseLeft = MousePos.x <= 0;
-        Settings.ScrollMouseDown = MousePos.y >= Settings.ScreenHeight - 1;
-        Settings.ScrollMouseUp = MousePos.y <= 0;
+        if (!InputLocked) {
+            Settings.ScrollMouseRight = MousePos.x >= Settings.ScreenWidth - 1;
+            Settings.ScrollMouseLeft = MousePos.x <= 0;
+            Settings.ScrollMouseDown = MousePos.y >= Settings.ScreenHeight - 1;
+            Settings.ScrollMouseUp = MousePos.y <= 0;
+        }
     }
 
     if (!SprMngr.IsWindowFocused()) {
@@ -783,7 +808,10 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         ProcessInputEvent(ev);
-        ProcessMapperInputEvent(ev);
+
+        if (!InputLocked) {
+            ProcessMapperInputEvent(ev);
+        }
     }
 
     return true;
@@ -873,21 +901,18 @@ void MapperEngine::DrawMapperFrame()
     {
         SprMngr.BeginScene();
 
-        DrawIfaceLayer(0);
-
         if (_curMap) {
             _curMap->DrawMap();
         }
 
-        DrawIfaceLayer(1);
+        SpritesCanDraw = true;
+        OnRenderIface.Fire();
+        SpritesCanDraw = false;
+
         DrawMainPanelImGui();
         DrawConsoleImGui();
         DrawInspectorImGui();
-        DrawIfaceLayer(2);
-
-        DrawIfaceLayer(4);
         CurDraw();
-        DrawIfaceLayer(5);
 
         SprMngr.EndScene();
     }
@@ -897,7 +922,7 @@ void MapperEngine::ProcessRightMouseInertia()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curMap == nullptr || MouseHoldMode == INT_PAN) {
+    if (InputLocked || _curMap == nullptr || MouseHoldMode == INT_PAN) {
         return;
     }
 
@@ -1190,15 +1215,14 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::D:
-        Settings.ScrollCheck = !Settings.ScrollCheck;
+        if (_curMap) {
+            _curMap->SetScrollCheck(!_curMap->IsScrollCheck());
+        }
         break;
     case KeyCode::B:
         if (_curMap) {
             _curMap->MarkBlockedHexes();
         }
-        break;
-    case KeyCode::Q:
-        Settings.ShowCorners = !Settings.ShowCorners;
         break;
     default:
         break;
@@ -2711,8 +2735,14 @@ void MapperEngine::DrawMapWindowImGui()
     ImGui::SameLine();
     ImGui::TextUnformatted("Tile layer");
 
-    ImGui::Checkbox("Scroll check", &Settings.ScrollCheck);
-    ImGui::Checkbox("Show corners", &Settings.ShowCorners);
+    if (_curMap) {
+        bool scroll_check_enabled = _curMap->IsScrollCheck();
+
+        if (ImGui::Checkbox("Scroll check", &scroll_check_enabled)) {
+            _curMap->SetScrollCheck(scroll_check_enabled);
+        }
+    }
+
     ImGui::Checkbox("Roof preview", &PreviewRoofTiles);
 
     const auto rotate_preview_dir_label = strex("Rotate preview dir ({})", CritterDir).str();
@@ -3442,7 +3472,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
             const auto new_value = InspectorSelectedLineValue;
 
             if (!ApplyEntityPropertyText(entity, prop.get(), new_value)) {
-                ignore_unused(ApplyEntityPropertyText(entity, prop.get(), old_value));
+                ApplyEntityPropertyText(entity, prop.get(), old_value);
                 return;
             }
 
@@ -4482,11 +4512,11 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
     FO_RUNTIME_ASSERT(_curMap);
 
     if (!_curMap->GetSize().is_valid_pos(hex)) {
-        return nullptr;
+        throw GenericException("Invalid hex for critter spawn", pid, hex.x, hex.y);
     }
 
     if (_curMap->GetNonDeadCritter(hex) != nullptr) {
-        return nullptr;
+        throw GenericException("Hex is already occupied by a non-dead critter", pid, hex.x, hex.y);
     }
 
     SelectClear();
@@ -4527,7 +4557,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     const auto* proto = GetProtoItem(pid);
 
     if (proto == nullptr) {
-        return nullptr;
+        throw GenericException("Invalid item proto", pid);
     }
 
     mpos corrected_hex = hex;
@@ -4537,7 +4567,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
     }
 
     if (owner == nullptr && (!_curMap->GetSize().is_valid_pos(corrected_hex))) {
-        return nullptr;
+        throw GenericException("Invalid hex for item spawn", pid, hex.x, hex.y);
     }
 
     if (owner == nullptr) {
@@ -4561,6 +4591,10 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
         item = _curMap->AddMapperItem(proto->GetProtoId(), corrected_hex, nullptr);
     }
 
+    if (item == nullptr) {
+        throw GenericException("Failed to create item", pid);
+    }
+
     if (owner == nullptr) {
         SelectAdd(item, corrected_hex);
         SetCurMode(CUR_MODE_DEFAULT);
@@ -4572,11 +4606,12 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 
     SetMapDirty(_curMap.get());
 
-    if (item != nullptr) {
+    {
         EntityBuf entity_buf;
         CaptureEntityBuf(entity_buf, item);
         auto item_ownership = item->GetOwnership();
         ident_t owner_id {};
+
         if (item_ownership == ItemOwnership::CritterInventory) {
             owner_id = item->GetCritterId();
         }
@@ -5335,7 +5370,7 @@ void MapperEngine::CurDraw()
 
             const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
             const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
-            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, COLOR_NEUTRAL);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, Color::Neutral);
         }
         return;
     }
@@ -5361,7 +5396,7 @@ void MapperEngine::CurDraw()
 
         const auto width = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().width) * zoom);
         const auto height = iround<int32_t>(numeric_cast<float32_t>(anim->GetSize().height) * zoom);
-        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, COLOR_NEUTRAL);
+        SprMngr.DrawSpriteSize(anim, pos, {width, height}, true, false, Color::Neutral);
     }
 }
 
@@ -5789,8 +5824,9 @@ void MapperEngine::ParseCommand(string_view command)
             auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
-            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
+            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get(), App->MainWindow.GetSize());
             map->EnableMapperMode();
+            map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
 
             LoadedMaps.emplace_back(std::move(map));
@@ -5898,11 +5934,22 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
         throw MapLoaderException("Invalid map format", map_name);
     }
 
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
-    pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"));
+    const auto& proto_map_section = map_data.GetSection("ProtoMap");
+    map<string, string> proto_map_header_extra_fields;
 
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get());
+    for (const auto& [key, value] : proto_map_section) {
+        if (key.starts_with("$Text")) {
+            proto_map_header_extra_fields.emplace(string {key}, string {value});
+        }
+    }
+
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME));
+    pmap->GetPropertiesForEdit().ApplyFromText(proto_map_section);
+
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap.get(), App->MainWindow.GetSize());
+    new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
     new_map->EnableMapperMode();
+    new_map->SetScrollCheck(false);
 
     try {
         new_map->LoadFromFile(map_name, map_text);
@@ -5918,10 +5965,12 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
     LoadedMaps.emplace_back(std::move(new_map));
-    GetUndoContext(LoadedMaps.back().get(), true)->CleanUndoDepth = 0;
-    SetMapDirty(LoadedMaps.back().get(), false);
+    auto* loaded_map = LoadedMaps.back().get();
 
-    return LoadedMaps.back().get();
+    GetUndoContext(loaded_map, true)->CleanUndoDepth = 0;
+    SetMapDirty(loaded_map, false);
+
+    return loaded_map;
 }
 
 auto MapperEngine::LoadMap(string_view map_name) -> MapView*
@@ -5929,7 +5978,18 @@ auto MapperEngine::LoadMap(string_view map_name) -> MapView*
     FO_STACK_TRACE_ENTRY();
 
     const auto map_files = MapsFileSys.FilterFiles("fomap");
-    const auto map_file = map_files.FindFileByName(map_name);
+    File map_file = map_files.FindFileByName(map_name);
+
+    if (!map_file) {
+        string map_path = string(map_name);
+
+        if (!strvex(map_path).ends_with(".fomap")) {
+            map_path = strex("{}.fomap", map_path).str();
+        }
+
+        map_path = strex(map_path).format_path().str();
+        map_file = map_files.FindFileByPath(map_path);
+    }
 
     if (!map_file) {
         AddMess("Map file not found");
@@ -6083,10 +6143,12 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     FO_RUNTIME_ASSERT(it != LoadedMaps.end());
 
     SetMapDirty(map, false);
+
     if (clear_undo) {
         ClearUndoContext(map);
     }
-    map->MarkAsDestroyed();
+
+    map->DestroySelf();
     LoadedMaps.erase(it);
 }
 
@@ -6111,6 +6173,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
     SetMapDirty(map);
 
     const auto after_snapshot = CaptureMapSnapshot(map);
+
     if (!before_snapshot.empty() && before_snapshot != after_snapshot) {
         PushUndoOp(map, UndoOp {"Resize map", [map_name = string(map->GetName()), before_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name = string(map->GetName()), after_snapshot](MapperEngine& mapper, raw_ptr<MapView>& active_map) { return mapper.RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
     }
@@ -6120,7 +6183,7 @@ void MapperEngine::AddMess(string_view message_text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string str = strex("|{} - {}\n", COLOR_TEXT_WHITE, message_text);
+    const string str = strex("- {}\n", message_text);
     const auto time = nanotime::now().desc(true);
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
@@ -6162,18 +6225,7 @@ void MapperEngine::MessBoxDraw()
         return;
     }
 
-    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, COLOR_TEXT_WHITE, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
-}
-
-void MapperEngine::DrawIfaceLayer(int32_t layer)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(layer);
-
-    SpritesCanDraw = true;
-    OnRenderIface.Fire(); // Todo: mapper render iface layer
-    SpritesCanDraw = false;
+    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, Color::TextWhite, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
 }
 
 auto MapperEngine::GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>

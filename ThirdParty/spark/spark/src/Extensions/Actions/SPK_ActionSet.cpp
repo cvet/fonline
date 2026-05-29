@@ -63,7 +63,7 @@ namespace SPK
 
 	const Ref<Action>& ActionSet::getAction(size_t index) const
 	{
-		SPK_ASSERT(index <= getNbActions(),"ActionSet::getAction(size_t) - Action index is out of bounds : " << index);
+		SPK_ASSERT(index < getNbActions(),"ActionSet::getAction(size_t) - Action index is out of bounds : " << index);
 		return actions[index];
 	}
 
@@ -103,6 +103,7 @@ namespace SPK
 	void ActionSet::innerExport(IO::Descriptor& descriptor) const
 	{
 		Action::innerExport(descriptor);
-		descriptor.getAttribute("actions")->setValuesRef<Action>(&actions[0],getNbActions());
+		if (getNbActions() > 0)
+			descriptor.getAttribute("actions")->setValuesRef<Action>(&actions[0],getNbActions());
 	}
 }

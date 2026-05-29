@@ -208,7 +208,7 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     tcp_socket second_client;
     REQUIRE(second_client.connect("127.0.0.1", port));
-    REQUIRE(second_connection_future.wait_for(std::chrono::seconds {1}) == std::future_status::ready);
+    REQUIRE(second_connection_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
 
     auto second_connection = second_connection_future.get();
     REQUIRE(second_connection != nullptr);

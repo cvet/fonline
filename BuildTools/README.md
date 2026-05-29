@@ -1,4 +1,4 @@
-# FOnline Engine : Build tools
+﻿# FOnline Engine : Build tools
 
 ## Build scripts
 
@@ -12,10 +12,16 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
+
+```bash
+pytest -q Engine/BuildTools/tests
+```
+
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.
-The public entry points kept at the `Engine/BuildTools` root are `Init.cmake`, `StartGeneration.cmake`, and `FinalizeGeneration.cmake`.
+The public entry point kept at the `Engine/BuildTools` root is `Init.cmake`; staged CMake implementation lives under `Engine/BuildTools/cmake/stages/` and helpers under `Engine/BuildTools/cmake/helpers/`.
 The validation project scaffold continues to live under `Engine/BuildTools/validation-project`.
 
 ## Build environment variables
@@ -59,6 +65,18 @@ At the moment the shared flow covers:
 - `emscripten`
 - `android-ndk`
 - `dotnet`
+- `xwin`
+
+Linux system package installation is explicit and separate from workspace preparation:
+
+- `common-packages`
+- `linux-packages`
+- `web-packages`
+- `android-packages`
+- `windows-cross-packages`
+- `all-packages`
+
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first.
 
 Host prerequisite checks are also available through the main tool:
 
@@ -81,8 +99,22 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
-python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web dotnet
+python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
+
+Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
+
+```bash
+bash Engine/BuildTools/prepare-workspace.sh windows-cross-packages windows-cross
+bash Engine/BuildTools/prepare-workspace.sh windows-cross
+python3 Engine/BuildTools/buildtools.py prepare-workspace xwin
+python3 Engine/BuildTools/buildtools.py build win64 client Release
+python3 Engine/BuildTools/buildtools.py build win32 client Release
+```
+
+The `windows-cross-packages` feature installs/checks Linux prerequisites. The `windows-cross` wrapper feature and direct `prepare-workspace xwin` command are workspace-only: they use the xwin version pinned in `Engine/ThirdParty/xwin`, prepare both `x86` and `x86_64` SDK/CRT trees into `Workspace/xwin`, and intentionally skip system package installation for pre-provisioned CI hosts. `buildtools.py` splats the primary architecture first, then merges secondary architecture library directories from isolated splats to avoid the `xwin 0.6.6-rc.2` shared-symlink race in one multi-arch invocation. Each splat passes `--http-retry 5` so transient Microsoft CDN body-read failures are retried before failing the workspace preparation.
+
+For `win32`, `buildtools.py` passes `CMAKE_SYSTEM_PROCESSOR=x86`; the toolchain keeps the xwin `x86` library paths and forces `clang-cl --target=i686-pc-windows-msvc` so CMake compiler probes do not emit x64 objects for an x86 link.
 
 ## Windows web debug workflow
 
@@ -95,7 +127,7 @@ For an optimized browser build use:
 
 - `buildtools.py build web client Release`
 
-The packaged browser build is emitted into `Workspace/web-debug/LF-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.
+The packaged browser build is emitted into `Workspace/web-debug/<ProjectDevName>-Client-LocalTest-Web` and can be served by the generated `web-server.py` helper.
 
 ## Android debug workflow
 
@@ -110,24 +142,25 @@ Device deployment is built around ADB over Wi-Fi. The target device must have wi
 - `buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch`
 - `android_device.py --workspace-root Workspace connect`
 
-The Android SDK and NDK workspace parts must be prepared first:
+The Android SDK and NDK workspace parts must be prepared first. Use `android-packages` only on a fresh Linux host that still needs system packages:
 
 - `bash Engine/BuildTools/prepare-workspace.sh android-arm64`
+- `bash Engine/BuildTools/prepare-workspace.sh android-packages android-arm64`
 
-The packaged Android build is emitted into `Workspace/android-debug/LF-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
+The packaged Android build is emitted into `Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android` as a ready-to-build Gradle project. Build and deploy:
 
 ```bash
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace connect
-cd Workspace/android-debug/LF-Client-LocalTest-Android
+cd Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android
 ./gradlew assembleDebug
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/<ProjectDevName>-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch --activity com.example.game/.FOnlineActivity
 
 # Remote scene launch from host to Android device
 python3 Engine/BuildTools/buildtools.py package-android-debug LF android-arm64 RemoteSceneLaunch
-cd Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android
+cd Workspace/android-debug/<ProjectDevName>-Client-RemoteSceneLaunch-Android
 ./gradlew assembleDebug
-python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
+python3 Engine/BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/<ProjectDevName>-Client-RemoteSceneLaunch-Android/app/build/outputs/apk/debug/app-debug.apk
 python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-game --activity com.example.game/.FOnlineActivity
 ```
 
@@ -143,4 +176,10 @@ The Gradle project template lives in `Engine/BuildTools/android-project/` and us
 
 Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. If they are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
+APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace output tree instead of the shared `~/.gradle`, so parallel CI package jobs do not contend for global Gradle caches.
+
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
+
+## Pipeline documentation
+
+For the maintained staged CMake pipeline guide, see [../Docs/BuildToolsPipeline.md](../Docs/BuildToolsPipeline.md).

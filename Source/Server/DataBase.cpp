@@ -46,9 +46,8 @@
 
 FO_DISABLE_WARNINGS_PUSH()
 #include <bson/bson.h>
-FO_DISABLE_WARNINGS_POP()
-
 #include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef-Include.h"
 
@@ -474,6 +473,7 @@ void DataBaseImpl::RestorePendingChanges()
         throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
     }
 
+    _backendFailed = false;
     OnPendingChangesRestored();
 }
 

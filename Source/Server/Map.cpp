@@ -36,6 +36,7 @@
 #include "CritterManager.h"
 #include "Item.h"
 #include "Location.h"
+#include "Player.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -65,6 +66,32 @@ Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* loca
 Map::~Map()
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (!_engine->IsShutdownInProgress()) {
+        FO_RUNTIME_VERIFY(_spectatorPlayers.empty());
+        FO_RUNTIME_VERIFY(_critters.empty());
+        FO_RUNTIME_VERIFY(_crittersMap.empty());
+        FO_RUNTIME_VERIFY(_playerCritters.empty());
+        FO_RUNTIME_VERIFY(_nonPlayerCritters.empty());
+        FO_RUNTIME_VERIFY(_items.empty());
+        FO_RUNTIME_VERIFY(_itemsMap.empty());
+    }
+}
+
+void Map::AddSpectatorPlayer(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(player);
+    vec_add_unique_value(_spectatorPlayers, player);
+}
+
+void Map::RemoveSpectatorPlayer(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(player);
+    vec_remove_unique_value(_spectatorPlayers, player);
 }
 
 void Map::SetLocation(Location* loc) noexcept
@@ -164,6 +191,34 @@ void Map::RemoveCritter(Critter* cr)
     }
 }
 
+void Map::RefreshCritterPlayerState(Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(cr);
+    FO_RUNTIME_ASSERT(_crittersMap.count(cr->GetId()));
+
+    const bool removed_from_players = vec_safe_remove_unique_value(_playerCritters, cr);
+    const bool removed_from_non_players = vec_safe_remove_unique_value(_nonPlayerCritters, cr);
+    FO_RUNTIME_ASSERT(removed_from_players || removed_from_non_players);
+
+    auto cr_ids = GetCritterIds();
+    vec_safe_remove_unique_value(cr_ids, cr->GetId());
+
+    if (!cr->GetControlledByPlayer()) {
+        vec_add_unique_value(cr_ids, cr->GetId());
+    }
+
+    SetCritterIds(cr_ids);
+
+    if (cr->GetControlledByPlayer()) {
+        vec_add_unique_value(_playerCritters, cr);
+    }
+    else {
+        vec_add_unique_value(_nonPlayerCritters, cr);
+    }
+}
+
 void Map::AddCritterToField(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -252,6 +307,11 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
             cr->Send_AddItemOnMap(item);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
+    }
+
+    // Notify spectators
+    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        player->Send_AddItemOnMap(item);
     }
 }
 
@@ -359,6 +419,11 @@ void Map::RemoveItem(ident_t item_id)
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
+
+    // Notify spectators
+    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        player->Send_RemoveItemFromMap(item);
+    }
 }
 
 void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
@@ -372,6 +437,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         for (auto& cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
         }
+
+        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+            player->Send_Property(type, prop, entity);
+        }
     }
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
@@ -382,6 +451,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
                 cr->Send_Property(type, prop, entity);
                 cr->OnItemOnMapChanged.Fire(item);
             }
+        }
+
+        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+            player->Send_Property(type, prop, entity);
         }
     }
     else {
@@ -531,10 +604,12 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto hexes_around = GeometryHelper::HexesInRadius(radius);
-
     vector<raw_ptr<Item>> items;
-    items.reserve(numeric_cast<size_t>(hexes_around) * 2);
+
+    const int32_t hexes_around = GeometryHelper::HexesInRadius(radius);
+    unordered_set<ident_t> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_around));
+    items.reserve(numeric_cast<size_t>(hexes_around));
 
     for (int32_t i = 0; i < hexes_around; i++) {
         if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
@@ -544,7 +619,9 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
                 auto& field2 = _hexField->GetCellForWriting(hex_around);
 
                 for (auto& item : field2.Items) {
-                    vec_safe_add_unique_value(items, item.get());
+                    if (seen.insert(item->GetId()).second) {
+                        items.emplace_back(item.get());
+                    }
                 }
             }
         }
@@ -753,10 +830,25 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
 
     vector<Critter*> critters;
 
-    // Todo: optimize items radius search by checking directly hexes in radius
-    for (auto& cr : _critters) {
-        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hex, cr->GetHex(), radius + cr->GetMultihex())) {
-            critters.emplace_back(cr.get());
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<ident_t> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
+            const auto& field = _hexField->GetCellForReading(cur_hex);
+
+            if (!field.HasCritter) {
+                continue;
+            }
+
+            auto& field2 = _hexField->GetCellForWriting(cur_hex);
+
+            for (auto& cr : field2.Critters) {
+                if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
+                    critters.emplace_back(cr.get());
+                }
+            }
         }
     }
 
@@ -836,10 +928,25 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
 
     vector<StaticItem*> items;
 
-    // Todo: optimize items radius search by checking directly hexes in radius
-    for (auto& item : _staticMap->StaticItems) {
-        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::GetDistance(item->GetHex(), hex) <= radius) {
-            items.emplace_back(item.get());
+    const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    unordered_set<const StaticItem*> seen;
+    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
+
+    for (int32_t i = 0; i < hexes_in_radius; i++) {
+        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& static_field = _staticMap->HexField->GetCellForReading(cur_hex);
+
+            if (static_field.StaticItems.empty()) {
+                continue;
+            }
+
+            auto& static_field2 = _staticMap->HexField->GetCellForWriting(cur_hex);
+
+            for (auto& item : static_field2.StaticItems) {
+                if (seen.insert(item.get()).second && (!pid || item->GetProtoId() == pid)) {
+                    items.emplace_back(item.get());
+                }
+            }
         }
     }
 

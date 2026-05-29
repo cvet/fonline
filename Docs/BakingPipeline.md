@@ -1,0 +1,172 @@
+# Baking Pipeline
+
+This document explains the engine resource baking pipeline: where it is wired, which source files own baker behavior, and how to validate changes. For the broader engine tool map, see [Tools.md](Tools.md).
+
+Use this for reusable engine behavior. Game-specific content folder rules and product package policy belong in the embedding project's docs.
+
+## Source paths inspected
+
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/helpers/WriteBuildHash.cmake`
+- `Source/Applications/BakerApp.cpp`
+- `Source/Applications/BakerLib.cpp`
+- `Source/Tools/Baker.h`
+- `Source/Tools/Baker.cpp`
+- `Source/Tools/MetadataBaker.h`
+- `Source/Tools/MetadataBaker.cpp`
+- `Source/Tools/ConfigBaker.h`
+- `Source/Tools/ConfigBaker.cpp`
+- `Source/Tools/RawCopyBaker.h`
+- `Source/Tools/RawCopyBaker.cpp`
+- `Source/Tools/ImageBaker.h`
+- `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/EffectBaker.h`
+- `Source/Tools/EffectBaker.cpp`
+- `Source/Tools/ProtoBaker.h`
+- `Source/Tools/ProtoBaker.cpp`
+- `Source/Tools/MapBaker.h`
+- `Source/Tools/MapBaker.cpp`
+- `Source/Tools/TextBaker.h`
+- `Source/Tools/TextBaker.cpp`
+- `Source/Tools/ProtoTextBaker.h`
+- `Source/Tools/ProtoTextBaker.cpp`
+- `Source/Tools/ModelMeshBaker.h`
+- `Source/Tools/ModelMeshBaker.cpp`
+- `Source/Tools/ModelInfoBaker.h`
+- `Source/Tools/ModelInfoBaker.cpp`
+- `Source/Tools/AngelScriptBaker.h`
+- `Source/Tools/AngelScriptBaker.cpp`
+- `Source/Tests/Test_BakerSetup.cpp`
+- `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ConfigBaker.cpp`
+- `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_EffectBaker.cpp`
+- `Source/Tests/Test_ProtoBaker.cpp`
+- `Source/Tests/Test_ProtoTextBaker.cpp`
+- `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_TextBaker.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_AngelScriptBaker.cpp`
+
+## What baking does
+
+Baking turns project resources and configuration into runtime-ready output. The build pipeline creates `BakeResources` and `ForceBakeResources` command targets in `BuildTools/cmake/stages/ScriptsAndBaking.cmake`. Those targets run the project baker application with the embedding project's main config applied.
+
+At runtime/source level, baking is owned by:
+
+- `Source/Applications/BakerApp.cpp` — executable app wrapper that constructs `MasterBaker` and calls `BakeAll()`.
+- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows.
+- `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
+
+## CMake entry points
+
+`BuildTools/cmake/stages/ScriptsAndBaking.cmake` creates baking commands after application targets are available.
+
+Current target responsibilities:
+
+- `BakeResources` runs the project baker with `-ForceBaking False`.
+- `ForceBakeResources` runs the project baker with `-ForceBaking True`.
+- Both apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and `-ApplySubConfig NONE`.
+- Both work from `FO_OUTPUT_PATH`.
+- Resource build-hash state is written through `BuildTools/cmake/helpers/WriteBuildHash.cmake` using `Baking/Resources.build-hash`.
+
+The actual final target names that depend on these commands are project/preset-dependent. Do not document one embedding project's target names as universal engine behavior.
+
+## Runtime classes
+
+### `BakingContext`
+
+Defined in `Source/Tools/Baker.h`. It carries shared bake state:
+
+- `Settings` — `BakingSettings` for the current bake.
+- `PackName` — current resource pack name.
+- `BakeChecker` — callback used to decide whether existing baked data is still valid.
+- `WriteData` — async output writer callback.
+- `BakedFiles` — existing baked file data source.
+- `ForceSyncMode` — optional override for synchronous execution.
+
+### `BaseBaker`
+
+The abstract base for individual baker implementations. Each baker provides:
+
+- `GetName()` — stable baker name used by setup/config selection.
+- `GetOrder()` — ordering key for deterministic bake ordering.
+- `BakeFiles()` — the actual file transformation step.
+
+`BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
+
+### `MasterBaker`
+
+`MasterBaker` coordinates a full bake through `BakeAll()`. It is the app-facing type used by both `BakerApp.cpp` and `BakerLib.cpp`.
+
+### `BakerDataSource`
+
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction.
+
+## Built-in baker types
+
+`Source/Tools/Baker.cpp` registers built-in bakers when requested and enabled:
+
+- `MetadataBaker` — `Source/Tools/MetadataBaker.*`
+- `ConfigBaker` — `Source/Tools/ConfigBaker.*`, name `Config`, order `2`
+- `RawCopyBaker` — `Source/Tools/RawCopyBaker.*`, name `RawCopy`, order `4`
+- `ImageBaker` — `Source/Tools/ImageBaker.*`
+- `EffectBaker` — `Source/Tools/EffectBaker.*`
+- `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `6`
+- `MapBaker` — `Source/Tools/MapBaker.*`, name `Map`, order `7`
+- `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
+- `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
+- `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
+- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
+- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+
+When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
+
+## Script compilation relationship
+
+`ScriptsAndBaking.cmake` also creates script compilation commands:
+
+- `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
+- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` when `FO_MONO_SCRIPTING` is enabled.
+
+These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
+
+## Tests to inspect
+
+Baker behavior is covered by focused tests in `Source/Tests/`:
+
+- `Test_BakerSetup.cpp`
+- `Test_ConfigBaker.cpp`
+- `Test_MetadataBaker.cpp`
+- `Test_RawCopyBaker.cpp`
+- `Test_ImageBaker.cpp`
+- `Test_EffectBaker.cpp`
+- `Test_ProtoBaker.cpp`
+- `Test_ProtoTextBaker.cpp`
+- `Test_MapBaker.cpp`
+- `Test_TextBaker.cpp`
+- `Test_ModelBaker.cpp`
+- `Test_AngelScriptBaker.cpp`
+
+Use the smallest test that matches the baker you changed. If CMake target names are generated by the embedding project, discover them from that project's presets/build files instead of hard-coding them here.
+
+## Change routing
+
+- New baker type: add/modify `Source/Tools/*Baker.*`, register it in `BaseBaker::SetupBakers()` or through `SetupBakersHook()`, and add focused tests.
+- Baking command arguments: update `BuildTools/cmake/stages/ScriptsAndBaking.cmake`.
+- Resource build hash behavior: update `BuildTools/cmake/helpers/WriteBuildHash.cmake` and related tests/build validation.
+- Metadata baking: update `Source/Tools/MetadataBaker.*` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
+- Script-specific bake behavior: update `Source/Tools/AngelScriptBaker.*` and [Scripting.md](Scripting.md).
+
+## Validation checklist
+
+1. Configure from an embedding project root.
+2. Build the project baker application/library target if the changed path affects app/library code.
+3. Run the relevant baker test(s) under `Source/Tests/`.
+4. Run `BakeResources` for incremental behavior when cache/build-hash logic matters.
+5. Run `ForceBakeResources` when forced rebuild behavior matters.
+6. Inspect generated output only as output, not as hand-authored source.
+7. Update this document and [BuildToolsPipeline.md](BuildToolsPipeline.md) if stage responsibilities change.

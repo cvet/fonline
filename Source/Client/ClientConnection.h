@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: automatically reconnect on network failures
-
 #pragma once
 
 #include "Common.h"
@@ -51,7 +49,8 @@ public:
     enum class ConnectResult : uint8_t
     {
         Success,
-        Outdated,
+        CompatibilityOutdated,
+        UpdaterOutdated,
         Failed,
     };
 
@@ -84,17 +83,22 @@ public:
     raw_ptr<NetOutBuffer> OutBuf {&_netOut};
 
 private:
+    void CreateNetworkConnection(bool use_udp);
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
+    auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
+    void Net_SendUnresolvedHash(hstring::hash_t hash); // Send and flush immediately.
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 
     raw_ptr<ClientNetworkSettings> _settings;
     unique_ptr<NetworkClientConnection> _netConnection {};
+    bool _connectingOverUdp {};
     bool _connectingHandled {};
+    bool _udpFallbackTried {};
     bool _wasHandshake {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};

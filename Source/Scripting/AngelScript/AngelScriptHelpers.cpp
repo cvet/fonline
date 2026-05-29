@@ -47,11 +47,28 @@
 FO_BEGIN_NAMESPACE
 
 constexpr AngelScript::asPWORD AS_TYPE_INFO_CACHE_USER_DATA = 1100;
+constexpr AngelScript::asPWORD AS_TYPE_FAST_COMPARE_USER_DATA = 1101;
 
 struct ScriptTypeInfoCache
 {
     unordered_map<string, AngelScript::asITypeInfo*> Map {};
+    unordered_map<const Property*, AngelScript::asITypeInfo*> ByProperty {};
 };
+
+void SetScriptTypeFastCompare(AngelScript::asITypeInfo* type, ScriptFastCompareFunc func)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(type);
+    type->SetUserData(reinterpret_cast<void*>(func), AS_TYPE_FAST_COMPARE_USER_DATA);
+}
+
+auto GetScriptTypeFastCompare(const AngelScript::asITypeInfo* type) -> ScriptFastCompareFunc
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return reinterpret_cast<ScriptFastCompareFunc>(type->GetUserData(AS_TYPE_FAST_COMPARE_USER_DATA));
+}
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {
@@ -192,7 +209,7 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
     return result;
 }
 
-auto MakeScriptArgName(const ComplexTypeDesc& type) -> string
+auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -207,13 +224,23 @@ auto MakeScriptArgName(const ComplexTypeDesc& type) -> string
     }
     else if (type.Kind == ComplexTypeKind::Simple && type.BaseType.IsGlobalEntity) {
         result += "@";
+
+        if (nullable) {
+            result += "?";
+        }
     }
     else {
+        result += "@";
+
+        if (nullable) {
+            result += "?";
+        }
+
         if (type.IsMutable) {
-            result += "@&";
+            result += "&";
         }
         else {
-            result += "@+";
+            result += "+";
         }
     }
 
@@ -234,15 +261,20 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
             result += ", ";
         }
 
-        result += MakeScriptArgName(arg.Type);
+        result += MakeScriptArgName(arg.Type, arg.Nullable);
         result += " ";
         result += arg.Name;
+
+        if (!arg.DefaultValue.empty()) {
+            result += " = ";
+            result += arg.DefaultValue;
+        }
     }
 
     return result;
 }
 
-auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership) -> string
+auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool nullable) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -250,7 +282,7 @@ auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership) -> s
         return "void";
     }
 
-    string result = MakeScriptArgName(type);
+    string result = MakeScriptArgName(type, nullable);
 
     if (type.Kind == ComplexTypeKind::Simple) {
         if ((type.BaseType.IsEntity && !type.BaseType.IsGlobalEntity) || type.BaseType.IsRefType) {
@@ -357,7 +389,7 @@ static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
     engine->SetUserData(nullptr, AS_TYPE_INFO_CACHE_USER_DATA);
 }
 
-static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const char* type) -> AngelScript::asITypeInfo*
+static auto GetTypeInfoCache(AngelScript::asIScriptEngine* as_engine) -> ScriptTypeInfoCache*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -369,6 +401,15 @@ static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const 
         as_engine->SetEngineUserDataCleanupCallback(CleanupTypeInfoCache, AS_TYPE_INFO_CACHE_USER_DATA);
     }
 
+    return cache;
+}
+
+static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const char* type) -> AngelScript::asITypeInfo*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* cache = GetTypeInfoCache(as_engine);
+
     if (const auto it = cache->Map.find(type); it != cache->Map.end()) {
         return it->second;
     }
@@ -378,6 +419,26 @@ static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const 
     auto* info = as_engine->GetTypeInfoById(type_id);
     FO_RUNTIME_ASSERT(info);
     cache->Map.emplace(type, info);
+    return info;
+}
+
+static auto LookupCachedTypeInfoForProperty(AngelScript::asIScriptEngine* as_engine, const Property* prop) -> AngelScript::asITypeInfo*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* cache = GetTypeInfoCache(as_engine);
+
+    if (const auto it = cache->ByProperty.find(prop); it != cache->ByProperty.end()) {
+        return it->second;
+    }
+
+    const auto type_name = MakeScriptPropertyName(prop);
+    const auto type_id = as_engine->GetTypeIdByDecl(type_name.c_str());
+    FO_RUNTIME_ASSERT(type_id);
+    auto* info = as_engine->GetTypeInfoById(type_id);
+    FO_RUNTIME_ASSERT(info);
+    cache->ByProperty.emplace(prop, info);
+    cache->Map.try_emplace(type_name, info);
     return info;
 }
 
@@ -544,7 +605,8 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         new (construct_addr) string(reinterpret_cast<const char*>(data), data_size);
     }
     else if (prop->IsArray()) {
-        auto* arr = CreateScriptArray(as_engine, MakeScriptPropertyName(prop).c_str());
+        auto* arr = ScriptArray::Create(LookupCachedTypeInfoForProperty(as_engine, prop));
+        FO_RUNTIME_ASSERT(arr);
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
@@ -656,11 +718,14 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
         *cast_from_void<ScriptArray**>(construct_addr) = arr;
     }
     else if (prop->IsDict()) {
-        ScriptDict* dict = CreateScriptDict(as_engine, MakeScriptPropertyName(prop).c_str());
+        ScriptDict* dict = ScriptDict::Create(LookupCachedTypeInfoForProperty(as_engine, prop));
+        FO_RUNTIME_ASSERT(dict);
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
                 const auto* data_end = data + data_size;
+                const auto inner_array_type_name = strex("array<{}{}>", prop->GetBaseTypeName(), prop->IsBaseTypeRefType() ? "@" : "").str();
+                auto* inner_array_type_info = LookupCachedTypeInfo(as_engine, inner_array_type_name.c_str());
 
                 while (data < data_end) {
                     const auto* key = data;
@@ -677,7 +742,8 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     MemCopy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
-                    auto* arr = CreateScriptArray(as_engine, strex("array<{}{}>", prop->GetBaseTypeName(), prop->IsBaseTypeRefType() ? "@" : "").c_str());
+                    auto* arr = ScriptArray::Create(inner_array_type_info);
+                    FO_RUNTIME_ASSERT(arr);
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -1491,7 +1557,6 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
         break;
     }
 
-    // Todo: GetScriptObjectInfo add detailed info about object
     const auto* ctx = AngelScript::asGetActiveContext();
     FO_RUNTIME_ASSERT(ctx);
     auto* as_engine = ctx->GetEngine();

@@ -37,7 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Todo: make hex position customizable, to allow to add third Z coordinate
 ///@ ExportValueType Layout = int16-x+int16-y
 struct mpos : ipos<int16_t>
 {
@@ -198,6 +197,7 @@ public:
     [[nodiscard]] static auto GetHexAxialCoord(mpos hex) -> ipos32;
     [[nodiscard]] static auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
     [[nodiscard]] static auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) -> ipos32;
+    [[nodiscard]] static auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool;
     [[nodiscard]] static auto GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32;
     [[nodiscard]] static auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32;
     [[nodiscard]] static auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;

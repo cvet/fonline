@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: optimize sprite atlas filling
-
 #pragma once
 
 #include "Common.h"
@@ -41,7 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-class IAppWindow;
 class IAppRender;
 class RenderTargetManager;
 
@@ -50,17 +47,9 @@ class RenderTarget
     friend class RenderTargetManager;
 
 public:
-    enum class SizeKindType : uint8_t
-    {
-        Custom,
-        Screen,
-        Map,
-    };
-
     [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _texture.get(); }
     [[nodiscard]] auto GetTexture() noexcept -> RenderTexture* { return _texture.get(); }
-    [[nodiscard]] auto GetSizeKind() const noexcept -> SizeKindType { return _sizeKind; }
-    [[nodiscard]] auto GetBaseSize() const noexcept -> isize32 { return _baseSize; }
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> RenderEffect* { return _customDrawEffect.get(); }
 
     void SetCustomDrawEffect(RenderEffect* effect) const noexcept { _customDrawEffect = effect; }
@@ -68,8 +57,7 @@ public:
 
 private:
     unique_ptr<RenderTexture> _texture {};
-    SizeKindType _sizeKind {};
-    isize32 _baseSize {};
+    isize32 _size {};
     mutable raw_ptr<RenderEffect> _customDrawEffect {};
     mutable vector<tuple<ipos32, ucolor>> _lastPixelPicks {};
 };
@@ -79,14 +67,14 @@ class RenderTargetManager
 public:
     using FlushCallback = function<void()>;
 
-    RenderTargetManager(RenderSettings& settings, IAppWindow& window, FlushCallback flush);
+    RenderTargetManager(IAppRender& render, FlushCallback flush);
     RenderTargetManager(const RenderTargetManager&) = delete;
     RenderTargetManager(RenderTargetManager&&) noexcept = default;
     auto operator=(const RenderTargetManager&) = delete;
     auto operator=(RenderTargetManager&&) noexcept -> RenderTargetManager& = delete;
     ~RenderTargetManager() = default;
 
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeKindType size_kind, isize32 base_size, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&;
     [[nodiscard]] auto GetCurrentRenderTarget() const -> const RenderTarget*;
@@ -96,21 +84,18 @@ public:
     void PopRenderTarget();
     void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
+    void ResizeRenderTarget(RenderTarget* rt, isize32 size);
 
     void ClearStack();
     void DumpTextures() const;
 
 private:
-    void OnScreenSizeChanged();
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<IAppWindow> _window;
     raw_ptr<IAppRender> _render;
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<raw_ptr<RenderTarget>> _rtStack {};
-    EventUnsubscriber _eventUnsubscriber {};
     bool _nonConstHelper {};
 };
 

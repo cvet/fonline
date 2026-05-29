@@ -49,17 +49,6 @@ class Item;
 class Map;
 class Location;
 
-struct ViewMapContext
-{
-    ident_t MapId {};
-    hstring MapPid {};
-    uint16_t Look {};
-    mpos Hex {};
-    mdir Dir {};
-    ident_t LocId {};
-    int32_t LocEnt {};
-};
-
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
 public:
@@ -102,12 +91,13 @@ public:
     [[nodiscard]] auto GetMovingContext() noexcept -> MovingContext* { return _moving ? _moving.get() : _lastMoving.get(); }
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState { return _moving ? MovingState::InProgress : (_lastMoving ? _lastMoving->GetCompleteReason() : MovingState::Success); }
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool { return _lockMapTransfers != 0; }
-    [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext* { return _viewMap.get(); }
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool { return !_attachedCritters.empty(); }
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<raw_ptr<Critter>> { return _attachedCritters; }
     [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<raw_ptr<Critter>> { return _attachedCritters; }
 
-    auto AddVisibleCritter(Critter* cr) -> bool;
+    auto AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool;
+    auto GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode;
+    void SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) noexcept;
     auto RemoveVisibleCritter(Critter* cr) -> bool;
     auto AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool;
     auto AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool;
@@ -121,6 +111,7 @@ public:
     auto CanSeeItemOnMap(const Item* item) const -> bool;
 
     void MarkIsForPlayer();
+    void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(Player* player);
@@ -134,15 +125,13 @@ public:
     void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept { _lockMapTransfers++; }
     void UnlockMapTransfers() noexcept { _lockMapTransfers--; }
-    void SetViewMap(ViewMapContext ctx);
-    void ResetViewMap() noexcept { _viewMap.reset(); }
 
     void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Broadcast_Action(CritterAction action, int32_t action_data, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
-    void SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& callback);
+    void SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& cr_callback, const function<void(Player*)>& spectator_callback = {});
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
@@ -154,6 +143,7 @@ public:
     void Send_Dir(const Critter* from_cr);
     void Send_AddCritter(const Critter* cr);
     void Send_RemoveCritter(const Critter* cr);
+    void Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode);
     void Send_LoadMap(const Map* map);
     void Send_AddItemOnMap(const Item* item);
     void Send_RemoveItemFromMap(const Item* item);
@@ -164,7 +154,6 @@ public:
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
     void Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot);
-    void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(const Critter* from_cr);
@@ -188,6 +177,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, Critter* /*targetCr*/, CritterVisibilityMode /*mode*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
@@ -199,6 +190,8 @@ public:
     FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
+    auto GetMapSpectators() -> ref_hold_vector<Player*>;
+
     uint32_t _movingUid {};
     refcount_ptr<MovingContext> _moving {};
     refcount_ptr<MovingContext> _lastMoving {};
@@ -209,13 +202,13 @@ private:
     vector<raw_ptr<Critter>> _visibleCr {};
     unordered_map<ident_t, raw_ptr<Critter>> _visibleCrWhoSeeMeMap {};
     unordered_map<ident_t, raw_ptr<Critter>> _visibleCrMap {};
+    unordered_map<ident_t, CritterVisibilityMode> _visibleCrModes {};
     unordered_set<ident_t> _visibleCrGroup1 {};
     unordered_set<ident_t> _visibleCrGroup2 {};
     unordered_set<ident_t> _visibleCrGroup3 {};
     unordered_set<ident_t> _visibleItems {};
     shared_ptr<vector<raw_ptr<Critter>>> _globalMapGroup {};
     int32_t _lockMapTransfers {};
-    unique_ptr<ViewMapContext> _viewMap {};
     vector<raw_ptr<Critter>> _attachedCritters {};
 };
 

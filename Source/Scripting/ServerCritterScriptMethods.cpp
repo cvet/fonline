@@ -70,7 +70,7 @@ FO_SCRIPT_API bool Server_Critter_IsMoving(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API MovingContext* Server_Critter_GetMovingContext(Critter* self)
+FO_SCRIPT_API FO_NULLABLE MovingContext* Server_Critter_GetMovingContext(Critter* self)
 {
     return self->GetMovingContext();
 }
@@ -82,13 +82,13 @@ FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Critter_GetPlayer(Critter* self)
+FO_SCRIPT_API FO_NULLABLE Player* Server_Critter_GetPlayer(Critter* self)
 {
     return self->GetPlayer();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Critter_GetMap(Critter* self)
+FO_SCRIPT_API FO_NULLABLE Map* Server_Critter_GetMap(Critter* self)
 {
     return self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
 }
@@ -146,36 +146,15 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-
     self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir)
+FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex = false)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-
-    self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, 2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos hex, mdir dir, bool preciseHex)
-{
-    if (self->IsMapTransfersLocked()) {
-        throw ScriptException("Transfers locked");
-    }
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-
     if (preciseHex) {
         self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, std::nullopt);
     }
@@ -220,17 +199,44 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (!self->GetMapId()) {
-        throw ScriptException("Critter already on global");
-    }
-    if (globalCr == nullptr) {
-        throw ScriptException("Global critter arg is null");
-    }
     if (globalCr->GetMapId()) {
         throw ScriptException("Global critter is not on global map");
     }
+    if (self == globalCr) {
+        throw ScriptException("Cannot join own group");
+    }
 
-    self->GetEngine()->MapMngr.TransferToGlobal(self, globalCr->GetId());
+    auto& map_mngr = self->GetEngine()->MapMngr;
+
+    if (self->GetMapId()) {
+        map_mngr.TransferToGlobal(self, globalCr->GetId());
+        return;
+    }
+
+    const auto& self_group = self->GetRawGlobalMapGroup();
+    const auto& target_group = globalCr->GetRawGlobalMapGroup();
+
+    if (self_group && target_group && self_group.get() == target_group.get()) {
+        return;
+    }
+
+    map_mngr.RemoveCritterFromMap(self, nullptr);
+
+    if (self->IsDestroyed()) {
+        return;
+    }
+
+    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, globalCr->GetId());
+
+    if (self->IsDestroyed()) {
+        return;
+    }
+
+    for (const auto& member : self->GetGlobalMapGroup()) {
+        if (member.get() != self) {
+            self->Send_AddCritter(member.get());
+        }
+    }
 }
 
 ///@ ExportMethod
@@ -259,30 +265,6 @@ FO_SCRIPT_API void Server_Critter_RefreshView(Critter* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_ViewMap(Critter* self, Map* map, int32_t look, mpos hex, mdir dir)
-{
-    if (map == nullptr) {
-        throw ScriptException("Map arg is null");
-    }
-    if (!map->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    if (!self->GetControlledByPlayer()) {
-        return;
-    }
-
-    auto look_ = look;
-
-    if (look_ == 0) {
-        look_ = self->GetLookDistance();
-    }
-
-    self->SetViewMap({.MapId = map->GetId(), .MapPid = map->GetProtoId(), .Look = numeric_cast<uint16_t>(look_), .Hex = hex, .Dir = dir});
-    self->Send_LoadMap(map);
-}
-
-///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 {
     if (dir == self->GetDir()) {
@@ -295,7 +277,7 @@ FO_SCRIPT_API void Server_Critter_SetDir(Critter* self, mdir dir)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Critter_GetCritter(Critter* self, ident_t id, CritterSeeType seeType)
 {
     return self->GetCritter(id, seeType);
 }
@@ -319,10 +301,6 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (self == cr) {
         return true;
     }
@@ -333,10 +311,6 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
-
     if (self == cr) {
         return true;
     }
@@ -345,12 +319,18 @@ FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
+FO_SCRIPT_API CritterVisibilityMode Server_Critter_GetVisibilityMode(Critter* self, Critter* cr)
 {
-    if (item == nullptr) {
-        throw ScriptException("Item arg is null");
+    if (self == cr) {
+        return CritterVisibilityMode::Full;
     }
 
+    return self->GetVisibleCritterMode(cr->GetId());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
+{
     return self->CheckVisibleItem(item->GetId());
 }
 
@@ -363,10 +343,6 @@ FO_SCRIPT_API int32_t Server_Critter_CountItem(Critter* self, hstring protoId)
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Critter_CountItem(Critter* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     return self->CountInvItemByPid(proto->GetProtoId());
 }
 
@@ -389,10 +365,6 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     const auto count = self->CountInvItemByPid(proto->GetProtoId());
 
     if (count == 0) {
@@ -419,10 +391,6 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, hstring pid, int32_
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
         return;
     }
@@ -439,9 +407,8 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t c
     if (self->GetEngine()->GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid proto", pid);
     }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
@@ -450,19 +417,15 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t c
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     if (count <= 0) {
-        return nullptr;
+        throw ScriptException("Count arg must be positive", count);
     }
 
     return self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
     if (!itemId) {
         return nullptr;
@@ -472,23 +435,19 @@ FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, hstring protoId)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 {
     return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
 {
-    if (proto == nullptr) {
-        throw ScriptException("Item proto arg is null");
-    }
-
     return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -617,7 +576,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem)
 {
     const auto prev_cond = self->GetCondition();
 
@@ -657,19 +616,13 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, AbstractItem* contextItem)
+FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, FO_NULLABLE AbstractItem* contextItem)
 {
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items)
-{
-    self->Send_SomeItems(items, false, false, {});
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned, bool withInnerEntities, any_t contextParam)
+FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
 {
     self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }
@@ -687,6 +640,29 @@ FO_SCRIPT_API void Server_Critter_Disconnect(Critter* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controllable)
+{
+    if (controllable) {
+        if (self->GetControlledByPlayer()) {
+            return;
+        }
+
+        self->MarkIsForPlayer();
+    }
+    else {
+        if (!self->GetControlledByPlayer()) {
+            return;
+        }
+
+        if (self->GetPlayer() != nullptr) {
+            self->DetachPlayer();
+        }
+
+        self->UnmarkIsForPlayer();
+    }
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
 {
     if (!self->GetControlledByPlayer()) {
@@ -696,8 +672,7 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(Critter* self)
     return self->GetPlayer() != nullptr;
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gag_callback_func) -> MovingContext*
 {
     auto* engine = self->GetEngine();
     auto* map = engine->EntityMngr.GetMap(self->GetMapId());
@@ -716,15 +691,17 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
 
     function<bool(const Item*)> gag_callback;
 
-    if (gagCallabck) {
-        // Todo: use move only function
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gagCallabck)), self](const Item* gag) mutable {
+    if (gag_callback_func) {
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, Critter*, Item*>>(std::move(gag_callback_func)), self](const Item* gag) mutable {
             auto* gag_non_const = const_cast<Item*>(gag);
             return gag_cb->Call(self, gag_non_const) && gag_cb->GetResult();
         };
     }
 
-    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, std::move(gag_callback));
+    const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
+    const int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    const ipos16 clamped_offset = {clamped_ox, clamped_oy};
+    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -757,9 +734,21 @@ FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, i
         return failed_moving.release_ownership();
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), ipos16 {});
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving.release_ownership();
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+{
+    return StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API MovingContext* Server_Critter_MoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t speed, ScriptFunc<bool, Critter*, Item*> gagCallabck)
+{
+    return StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
 }
 
 ///@ ExportMethod
@@ -771,10 +760,7 @@ FO_SCRIPT_API MovingState Server_Critter_GetMovingState(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 {
-    if (self->IsMoving()) {
-        self->StopMoving(MovingState::Stopped);
-        self->SendAndBroadcast_Moving();
-    }
+    self->GetEngine()->StopCritterMoving(self, MovingState::Stopped);
 }
 
 ///@ ExportMethod
@@ -786,9 +772,6 @@ FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int32_t speed
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
 {
-    if (cr == nullptr) {
-        throw ScriptException("Critter arg is null");
-    }
     if (cr == self) {
         throw ScriptException("Critter can't attach to itself");
     }

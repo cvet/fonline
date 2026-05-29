@@ -1,0 +1,149 @@
+# Essentials
+
+> Engine-owned documentation. This page maps the low-level `Source/Essentials/` layer: platform/compiler prerequisites, process-wide lifecycle helpers, logging, memory, strings, serialization, filesystem, sockets, and utility types used by every higher engine layer.
+
+## Purpose
+
+Use this page when changing code that sits below `Source/Common/` or when you need to know whether a utility belongs in the reusable engine foundation instead of client, server, tools, or game-specific code.
+
+The essentials layer should stay dependency-light. It is included by most of the engine through `Source/Essentials/Essentials.h`, so changes here can affect every application target.
+
+## Source paths inspected
+
+- `Source/Essentials/Essentials.h`
+- `Source/Essentials/Essentials.cpp`
+- `Source/Essentials/BasicCore.h`
+- `Source/Essentials/BasicCore.cpp`
+- `Source/Essentials/GlobalData.h`
+- `Source/Essentials/GlobalData.cpp`
+- `Source/Essentials/StackTrace.h`
+- `Source/Essentials/StackTrace.cpp`
+- `Source/Essentials/BaseLogging.h`
+- `Source/Essentials/BaseLogging.cpp`
+- `Source/Essentials/Logging.h`
+- `Source/Essentials/Logging.cpp`
+- `Source/Essentials/ExceptionHandling.h`
+- `Source/Essentials/ExceptionHandling.cpp`
+- `Source/Essentials/MemorySystem.h`
+- `Source/Essentials/MemorySystem.cpp`
+- `Source/Essentials/SmartPointers.h`
+- `Source/Essentials/SmartPointers.cpp`
+- `Source/Essentials/Containers.h`
+- `Source/Essentials/Containers.cpp`
+- `Source/Essentials/StringUtils.h`
+- `Source/Essentials/StringUtils.cpp`
+- `Source/Essentials/SafeArithmetics.h`
+- `Source/Essentials/SafeArithmetics.cpp`
+- `Source/Essentials/DataSerialization.h`
+- `Source/Essentials/DataSerialization.cpp`
+- `Source/Essentials/HashedString.h`
+- `Source/Essentials/HashedString.cpp`
+- `Source/Essentials/StrongType.h`
+- `Source/Essentials/StrongType.cpp`
+- `Source/Essentials/TimeRelated.h`
+- `Source/Essentials/TimeRelated.cpp`
+- `Source/Essentials/ExtendedTypes.h`
+- `Source/Essentials/ExtendedTypes.cpp`
+- `Source/Essentials/Compressor.h`
+- `Source/Essentials/Compressor.cpp`
+- `Source/Essentials/WorkThread.h`
+- `Source/Essentials/WorkThread.cpp`
+- `Source/Essentials/DiskFileSystem.h`
+- `Source/Essentials/DiskFileSystem.cpp`
+- `Source/Essentials/CommonHelpers.h`
+- `Source/Essentials/CommonHelpers.cpp`
+- `Source/Essentials/NetSockets.h`
+- `Source/Essentials/NetSockets.cpp`
+- `Source/Essentials/Platform.h`
+- `Source/Essentials/Platform.cpp`
+- `BuildTools/cmake/stages/EngineSources.cmake`
+- related tests under `Source/Tests/`
+
+## Include and dependency model
+
+`Source/Essentials/Essentials.h` is the umbrella include. Its include order is the dependency order for the foundation layer:
+
+1. `BasicCore.h` — compiler/OS gates, standard library surface, namespace macros, base aliases, exception declaration helpers, and compile-time constants.
+2. `GlobalData.h` — process-wide create/delete callback registration for engine global data.
+3. `StackTrace.h`, `BaseLogging.h`, `ExceptionHandling.h`, `Logging.h` — diagnostic and failure-reporting foundation.
+4. `SmartPointers.h`, `MemorySystem.h` — pointer and allocation helpers.
+5. `Containers.h`, `StringUtils.h`, `CommonHelpers.h` — reusable container/string/utility helpers.
+6. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` — value, serialization, hashing, time, compression, and type helpers.
+7. `WorkThread.h`, `DiskFileSystem.h`, `NetSockets.h`, `Platform.h` — threading, disk access, socket, and host OS abstractions.
+
+Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
+
+## Subsystem map
+
+### Platform and compiler gate
+
+`BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers.
+
+`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, process id formatting, fork support where available, and dynamic module loading. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+
+### Diagnostics and failure handling
+
+`BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns exception-reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
+
+### Memory, pointers, and lifetime utilities
+
+`MemorySystem.*` owns backup-memory chunks, bad-allocation reporting, and `SafeAllocator`. `SmartPointers.*` contains pointer wrappers used to make ownership and raw-reference intent explicit. Use this layer for generic ownership utilities only; entity lifetime and holder semantics belong in [EntityModel.md](EntityModel.md).
+
+### Serialization, values, strings, and hashes
+
+`DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives.
+
+### Filesystem, compression, sockets, and work threads
+
+`DiskFileSystem.*` is the low-level disk abstraction. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+
+## Build integration
+
+`BuildTools/cmake/stages/EngineSources.cmake` lists essentials files in `FO_ESSENTIALS_SOURCE`. The essentials target is part of the core libraries used by applications, tools, tests, and generated-code consumers. If a new essentials file is added, wire it through this stage and add a focused test where possible.
+
+## Tests to inspect
+
+The essentials layer has direct test coverage in:
+
+- `Source/Tests/Test_BaseLogging.cpp`
+- `Source/Tests/Test_BasicCore.cpp`
+- `Source/Tests/Test_CommonHelpers.cpp`
+- `Source/Tests/Test_Compressor.cpp`
+- `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_DataSerialization.cpp`
+- `Source/Tests/Test_DiskFileSystem.cpp`
+- `Source/Tests/Test_ExceptionHandling.cpp`
+- `Source/Tests/Test_ExtendedTypes.cpp`
+- `Source/Tests/Test_GenericUtils.cpp`
+- `Source/Tests/Test_GlobalData.cpp`
+- `Source/Tests/Test_HashedString.cpp`
+- `Source/Tests/Test_Logging.cpp`
+- `Source/Tests/Test_MemorySystem.cpp`
+- `Source/Tests/Test_NetSockets.cpp`
+- `Source/Tests/Test_Platform.cpp`
+- `Source/Tests/Test_SafeArithmetics.cpp`
+- `Source/Tests/Test_SmartPointers.cpp`
+- `Source/Tests/Test_StackTrace.cpp`
+- `Source/Tests/Test_StringUtils.cpp`
+- `Source/Tests/Test_StrongType.cpp`
+- `Source/Tests/Test_TimeRelated.cpp`
+- `Source/Tests/Test_WorkThread.cpp`
+
+See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
+
+## Change routing
+
+- Compiler/OS gates, namespace, base aliases, and low-level macros: `Source/Essentials/BasicCore.*`.
+- Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
+- Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Debugging.md](Debugging.md).
+- Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*` and `SmartPointers.*`.
+- File bytes on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources: [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
+- Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking.md](Networking.md).
+
+## Validation checklist
+
+1. Confirm the change does not introduce a dependency from essentials back into higher engine layers.
+2. Update `BuildTools/cmake/stages/EngineSources.cmake` when adding/removing essentials files.
+3. Run the smallest matching essentials test and then the broader `RunUnitTests` target when behavior crosses utility boundaries.
+4. For diagnostics changes, also verify [Debugging.md](Debugging.md) stays accurate.
+5. For filesystem/socket/threading changes, validate at least one higher-level consumer if the low-level contract changed.

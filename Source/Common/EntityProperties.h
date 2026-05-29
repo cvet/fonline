@@ -62,8 +62,6 @@ public:
     FO_ENTITY_PROPERTY(timespan, FrameDeltaTime);
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(int32_t, FramesPerSecond);
-
-    // Todo: exclude player properties from engine:
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(uint32_t, LastGlobalMapTripId);
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -171,15 +169,13 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int8_t, LightIntensity);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightDistance);
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
     ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(uint8_t, LightFlags);
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, LightColor);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, ColorizeColor);
-
-    // Todo: exclude item properties from engine:
     ///@ MigrationRule Property Item SceneryScript StaticScript
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemStatic
     FO_ENTITY_PROPERTY(hstring, StaticScript);
@@ -215,10 +211,6 @@ public:
     ///@ MigrationRule Property Item IsColorize Colorize
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, Colorize);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
-    ///@ ExportProperty Client Mutable
-    FO_ENTITY_PROPERTY(ucolor, Contour);
 };
 
 class CritterProperties : public EntityProperties
@@ -275,8 +267,8 @@ public:
     FO_ENTITY_PROPERTY(bool, HideSprite);
     ///@ ExportProperty Server
     FO_ENTITY_PROPERTY(int32_t, MovingSpeed);
-
-    // Todo: exclude critter properties from engine:
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
     ///@ MigrationRule Property Critter Cond Condition
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
@@ -284,13 +276,19 @@ public:
     FO_ENTITY_PROPERTY(int16_t, NameOffset);
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(string, Lexems);
     ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(ucolor, Contour);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(bool, LightSource);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int8_t, LightIntensity);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(int16_t, LightDistance);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(uint16_t, LightFlags);
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ucolor, LightColor);
 };
 
 class MapProperties : public EntityProperties
@@ -322,8 +320,6 @@ public:
     FO_ENTITY_PROPERTY(ipos32, ScrollOffset);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(irect32, ScrollAxialArea);
-
-    // Todo: exclude map properties from engine:
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(float32_t, SpritesZoom);
     ///@ ExportProperty Client
@@ -336,6 +332,14 @@ public:
     FO_ENTITY_PROPERTY(vector<int32_t>, DayColorTime);
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(vector<uint8_t>, DayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, MapDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(ucolor, GlobalDayColor);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, MapDayLightCapacity);
+    ///@ ExportProperty Client
+    FO_ENTITY_PROPERTY(int32_t, GlobalDayLightCapacity);
 };
 
 class LocationProperties : public EntityProperties
@@ -349,7 +353,6 @@ public:
     }
 
     ///@ MigrationRule Property Location ScriptId InitScript
-    // Todo: implement Location InitScript
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = LocationInit
     FO_ENTITY_PROPERTY(hstring, InitScript);
     ///@ ExportProperty Server Persistent

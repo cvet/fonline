@@ -29,7 +29,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        (void)fs_create_directories(storage_dir);
+        fs_create_directories(storage_dir);
         ValidateStorage();
         StartCommitThread();
     }
@@ -369,7 +369,7 @@ private:
         }
 
         unqlite_close(ping_db);
-        (void)fs_remove_file(ping_db_path);
+        fs_remove_file(ping_db_path);
     }
 
     void CommitCollection(unqlite* db) const

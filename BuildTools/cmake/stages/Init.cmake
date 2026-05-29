@@ -21,6 +21,13 @@ DeclareValueOptions(
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
+	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
+	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
+	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
+	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
+	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
+	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -93,6 +100,25 @@ StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
 StatusMessage("Generator: ${CMAKE_GENERATOR}")
 StatusMessage("Operating system: ${CMAKE_SYSTEM_NAME}")
 
+# Minimum supported toolchains.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
+        AbortMessage("Clang ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 20.0")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    # TODO: pin AppleClang/Xcode minimum once the macOS baseline is decided.
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+        AbortMessage("GCC ${CMAKE_CXX_COMPILER_VERSION} is below the required minimum 13.0")
+    endif()
+elseif(MSVC)
+    if(MSVC_VERSION LESS 1944)
+        AbortMessage("MSVC ${MSVC_VERSION} is below the required minimum 1944 (toolset 14.44 / Visual Studio 2022 17.14).")
+    endif()
+else()
+    AbortMessage("Unsupported compiler '${CMAKE_CXX_COMPILER_ID}'. Supported: Clang >= 20, GCC >= 13, MSVC >= 2022, AppleClang (any).")
+endif()
+
 DetectProcessorArchitecture(FO_PROCESSOR_ARCHITECTURE CMAKE_SYSTEM_PROCESSOR)
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL FO_PROCESSOR_ARCHITECTURE)
@@ -145,9 +171,14 @@ if(FO_MULTICONFIG)
 	StringReplace(";" " " configs "${CMAKE_CONFIGURATION_TYPES}")
 	StatusMessage("Configurations: ${configs}")
 else()
+	if(NOT CMAKE_BUILD_TYPE)
+		SetValue(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Forced by FOnline default" FORCE)
+		StatusMessage("Configuration not set, defaulting to ${CMAKE_BUILD_TYPE}")
+	endif()
+
 	StatusMessage("Configuration: ${CMAKE_BUILD_TYPE}")
 
-	ListFind(FO_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE} configurationIndex)
+	ListFind(FO_CONFIGURATION_TYPES "${CMAKE_BUILD_TYPE}" configurationIndex)
 
 	if(configurationIndex EQUAL -1)
 		AbortMessage("Invalid requested configuration type")
@@ -202,6 +233,12 @@ AddCompileDefinitionsList(
 	FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}
 	FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}
 	FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}
+	FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}
+	FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}
+	FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}
+	FO_MODEL_MAX_TEXTURES=${FO_MODEL_MAX_TEXTURES}
+	FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}
+	FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}
 	FO_NO_EXTRA_ASSERTS=0
 	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.
@@ -297,13 +334,11 @@ if(WIN32)
 	AddCompileOptionsList(
 		/permissive-
 		/Zc:__cplusplus
-		/Zc:preprocessor
 		$<${expr_DebugBuild}:/RTC1>
 		$<${expr_DebugBuild}:/GS>
 		$<$<OR:${expr_DebugBuild},$<CONFIG:RelWithDebInfo>>:/JMC>
 		$<$<NOT:${expr_DebugBuild}>:/sdl->
 		/W4
-		/MP
 		/EHsc
 		/utf-8
 		/volatile:iso
@@ -312,6 +347,11 @@ if(WIN32)
 		/fp:fast
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		AddCompileOptionsList(/MP /Zc:preprocessor)
+	endif()
+
 	AddLinkOptionsList(
 		/INCREMENTAL:NO
 		/OPT:REF
@@ -325,11 +365,10 @@ if(WIN32)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
 	endif()
 
-	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "xinput")
+	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
 
 	if(NOT FO_HEADLESS_ONLY)
-		AppendList(FO_RENDER_SYSTEM_LIBS "d3d9" "gdi32" "dxgi" "windowscodecs" "dxguid")
-		AppendList(FO_RENDER_SYSTEM_LIBS "glu32" "d3d11" "d3dcompiler" "opengl32")
+		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")
 	endif()
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -346,10 +385,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
-	if(NOT FO_BUILD_BAKER)
-		AddLinkOptionsList(-no-pie)
-	else()
+	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 		AddCompileOptionsList(-fPIC)
+	else()
+		AddLinkOptionsList(-no-pie)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -416,7 +455,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
 	SetValue(FO_MONO_OS "android")
 
 	if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm")
+		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm32")
 	elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
 		SetBuildPlatformInfo("Android-${ANDROID_ABI}" "android" "arm64")
 	elseif(${ANDROID_ABI} STREQUAL "x86")
@@ -475,6 +514,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sDEFAULT_TO_CXX=0
 		-sUSE_GLFW=0
 		-sALLOW_UNIMPLEMENTED_SYSCALLS=0
+		-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']
 		-lhtml5
 		-lGL
 		-legl.js

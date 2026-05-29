@@ -178,20 +178,24 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
+        _posIndoorMaskTex[pass] = pass_info.GetAsInt("EffectInfo", "IndoorMaskTex", -1);
+        _needIndoorMaskTex |= _posIndoorMaskTex[pass] != -1;
         _posEggBuf[pass] = pass_info.GetAsInt("EffectInfo", "EggBuf", -1);
         _needEggBuf |= _posEggBuf[pass] != -1;
         _posProjBuf[pass] = pass_info.GetAsInt("EffectInfo", "ProjBuf", -1);
         _needProjBuf |= _posProjBuf[pass] != -1;
         _posMainTexBuf[pass] = pass_info.GetAsInt("EffectInfo", "MainTexBuf", -1);
         _needMainTexBuf |= _posMainTexBuf[pass] != -1;
-        _posContourBuf[pass] = pass_info.GetAsInt("EffectInfo", "ContourBuf", -1);
-        _needContourBuf |= _posContourBuf[pass] != -1;
+        _posSpriteBorderBuf[pass] = pass_info.GetAsInt("EffectInfo", "SpriteBorderBuf", -1);
+        _needSpriteBorderBuf |= _posSpriteBorderBuf[pass] != -1;
         _posTimeBuf[pass] = pass_info.GetAsInt("EffectInfo", "TimeBuf", -1);
         _needTimeBuf |= _posTimeBuf[pass] != -1;
         _posRandomValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "RandomValueBuf", -1);
         _needRandomValueBuf |= _posRandomValueBuf[pass] != -1;
         _posScriptValueBuf[pass] = pass_info.GetAsInt("EffectInfo", "ScriptValueBuf", -1);
         _needScriptValueBuf |= _posScriptValueBuf[pass] != -1;
+        _posCameraBuf[pass] = pass_info.GetAsInt("EffectInfo", "CameraBuf", -1);
+        _needCameraBuf |= _posCameraBuf[pass] != -1;
 
 #if FO_ENABLE_3D
         _posModelBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);

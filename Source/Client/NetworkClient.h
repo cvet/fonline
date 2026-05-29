@@ -63,6 +63,7 @@ public:
 
     [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
     [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateUdpSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
 
 protected:
     virtual auto CheckStatusImpl(bool for_write) -> bool = 0;

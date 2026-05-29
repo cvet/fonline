@@ -110,6 +110,7 @@ public:
     using HashFunc = uint64_t (*)(const void* data, size_t len);
 
     explicit HashStorage(HashFunc hash_func = hashing_ex::hash);
+    auto CheckHashedString(string_view s) const noexcept -> bool;
     auto ToHashedString(string_view s) -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;

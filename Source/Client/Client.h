@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: fix soft scroll if critter teleports
-
 #pragma once
 
 #include "Common.h"
@@ -77,30 +75,6 @@ public:
     bool Stopped {};
 };
 
-///@ ExportEnum
-enum class EffectType : uint32_t
-{
-    None = 0,
-    GenericSprite = 0x00000001,
-    CritterSprite = 0x00000002,
-    TileSprite = 0x00000004,
-    RoofSprite = 0x00000008,
-    RainSprite = 0x00000010,
-    SkinnedMesh = 0x00000400,
-    Interface = 0x00001000,
-    Contour = 0x00002000,
-    Font = 0x00010000,
-    Primitive = 0x00100000,
-    Light = 0x00200000,
-    Fog = 0x00400000,
-    FlushRenderTarget = 0x01000000,
-    FlushPrimitive = 0x04000000,
-    FlushMap = 0x08000000,
-    FlushLight = 0x10000000,
-    FlushFog = 0x20000000,
-    Offscreen = 0x40000000,
-};
-
 auto GetClientResources(GlobalSettings& settings) -> FileSystem;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
@@ -141,9 +115,12 @@ public:
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
-    void ScreenFade(timespan time, ucolor from_color, ucolor to_color, bool push_back);
-    void ScreenQuake(int32_t noise, timespan time);
     void ProcessInputEvent(const InputEvent& ev);
+    void SetEffect(EffectType effectType, int64_t effectSubtype, string_view effectPath);
+    void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
+    void SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1);
+    void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
+    auto GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
     void AnimFree(uint32_t anim_id);
@@ -152,7 +129,7 @@ public:
     void Connect();
     void Disconnect();
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16>, mdir> pos_or_dir, int32_t speed);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
     void CritterLookTo(CritterHexView* cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
@@ -185,7 +162,31 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap);
+    FO_ENTITY_EVENT(OnRenderMap_Rebuild, MapView* /*map*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
@@ -211,6 +212,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, CritterView* /*cr*/, CritterVisibilityMode /*mode*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
@@ -222,6 +225,8 @@ public:
     FO_ENTITY_EVENT(OnCustomEntityIn, ClientEntity* /*entity*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnPreLoadMap, hstring /*locPid*/, hstring /*mapPid*/, isize32& /*screenSize*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
@@ -272,31 +277,22 @@ public:
 #endif
 
 protected:
-    // Todo: make IfaceAnim scriptable object
     struct IfaceAnim
     {
         hstring Name {};
         shared_ptr<Sprite> Anim {};
     };
 
-    struct ScreenFadingData
-    {
-        nanotime BeginTime {};
-        timespan Duration {};
-        ucolor StartColor {};
-        ucolor EndColor {};
-    };
-
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
     void ProcessInputEvents();
-    void ProcessScreenEffectFading(); // Todo: move screen fading to scripts
-    void ProcessScreenEffectQuake(); // Todo: move screen quake effect to scripts
     void ProcessVideo();
 
     void UnloadMap();
     void LmapPrepareMap();
+    auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
+    auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
 
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
 
@@ -308,9 +304,11 @@ protected:
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
+    void Net_OnHashList();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
+    void Net_OnCritterVisibilityMode();
     void Net_OnInfoMessage();
     void Net_OnAddItemOnMap();
     void Net_OnRemoveItemFromMap();
@@ -347,9 +345,8 @@ protected:
 
     void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
-    void OnSetCritterContour(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
-    void OnSetItemContour(Entity* entity, const Property* prop);
+    void OnSetCritterLight(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);
@@ -386,13 +383,6 @@ protected:
     uint32_t _ifaceAnimCounter {};
     unordered_map<uint32_t, unique_ptr<IfaceAnim>> _ifaceAnimations {};
     unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
-
-    vector<ScreenFadingData> _screenFadingEffects {};
-
-    float32_t _quakeScreenOffsX {};
-    float32_t _quakeScreenOffsY {};
-    float32_t _quakeScreenOffsStep {};
-    nanotime _quakeScreenOffsNextTime {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     irect32 _lmapWMap {};

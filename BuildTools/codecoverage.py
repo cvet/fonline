@@ -236,7 +236,7 @@ def find_required_tool(candidates: Iterable[str], description: str) -> str:
 
 def find_versioned_llvm_tool(tool_name: str) -> str:
     preferred_major: int | None = None
-    clang_path = shutil.which("clang++") or shutil.which("clang")
+    clang_path = shutil.which("clang++-20") or shutil.which("clang++") or shutil.which("clang")
 
     if clang_path:
         version_process = subprocess.run(

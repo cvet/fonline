@@ -804,7 +804,7 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
     }
 
     if (_subTypeData) {
-        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc) {
+        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             const auto* sub_type = _typeInfo->GetEngine()->GetTypeInfoById(_subTypeId);
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -897,7 +897,7 @@ auto ScriptArray::Find(int32_t start_at, void* value) const -> int32_t
     FO_STACK_TRACE_ENTRY();
 
     if (_subTypeData) {
-        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc) {
+        if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             const auto* sub_type = _typeInfo->GetEngine()->GetTypeInfoById(_subTypeId);
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {

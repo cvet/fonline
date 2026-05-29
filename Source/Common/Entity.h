@@ -235,7 +235,7 @@ private:
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 
     Properties _props;
-    unique_ptr<map<string, vector<EventCallbackData>>> _events {}; // Todo: entity events map key to hstring
+    unique_ptr<map<string, vector<EventCallbackData>>> _events {};
     unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
     unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
     bool _isDestroying {};

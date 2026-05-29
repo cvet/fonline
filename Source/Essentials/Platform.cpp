@@ -192,12 +192,16 @@ auto Platform::LoadModule(const string& module_name) noexcept -> void*
 
     void* module_handle = nullptr;
 
+    const auto add_extension = [](const string& path, string_view extension) -> string { //
+        return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
+    };
+
 #if FO_WINDOWS
-    module_handle = ::LoadLibraryW(strex(strex::safe_format, "{}.dll", module_name).to_wide_char().c_str());
+    module_handle = ::LoadLibraryW(strex(add_extension(module_name, ".dll")).to_wide_char().c_str());
 #elif FO_LINUX
-    module_handle = ::dlopen(strex(strex::safe_format, "{}.so", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+    module_handle = ::dlopen(add_extension(module_name, ".so").c_str(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC
-    module_handle = ::dlopen(strex(strex::safe_format, "{}.dylib", module_name).c_str(), RTLD_LAZY | RTLD_LOCAL);
+    module_handle = ::dlopen(add_extension(module_name, ".dylib").c_str(), RTLD_LAZY | RTLD_LOCAL);
 #endif
 
     return module_handle;

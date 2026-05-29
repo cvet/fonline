@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: optimize sprite atlas filling
-
 #pragma once
 
 #include "Common.h"
@@ -82,7 +80,7 @@ public:
     ~TextureAtlas() = default;
 
     [[nodiscard]] auto GetType() const noexcept -> AtlasType { return _type; }
-    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _rt->GetBaseSize(); }
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _rt->GetSize(); }
     [[nodiscard]] auto GetRenderTarget() const noexcept -> const RenderTarget* { return _rt.get(); }
     [[nodiscard]] auto GetRenderTarget() noexcept -> RenderTarget* { return _rt.get(); }
     [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _rt->GetTexture(); }

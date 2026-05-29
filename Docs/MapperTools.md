@@ -1,0 +1,249 @@
+# Mapper Tools
+
+> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+
+This page documents mapper-specific engine behavior and known mapper automation workflows. For the broader tool map, see [Tools.md](Tools.md); for native mapper script methods, see [ScriptMethodsMap.md](ScriptMethodsMap.md).
+
+## Source paths inspected
+
+- `Source/Applications/MapperApp.cpp`
+- `Source/Tools/Mapper.h`
+- `Source/Tools/Mapper.cpp`
+- `Source/Scripting/MapperGlobalScriptMethods.cpp`
+- `Source/Scripting/CommonGlobalScriptMethods.cpp`
+- `Source/Client/MapView.h`
+- `Source/Client/MapView.cpp`
+- `Source/Common/Geometry.cpp`
+- `../../Scripts/MapperRender.fos`
+- `../../Tools/MapPreview/generate_map_preview.py`
+- `../../Tools/MapPreview/map_preview_overrides.ini`
+- `../../LastFrontier.fomain`
+
+## Mapper lifecycle and source ownership
+
+`Source/Applications/MapperApp.cpp` is the application entry point. It initializes the application/frontend layer, waits for persistent data readiness on Web builds, constructs `MapperEngine`, locks input when `HeadlessWindow` is active, calls `MapperMainLoop()` every frame, and calls `Shutdown()` before exit.
+
+`Source/Tools/Mapper.h` / `Source/Tools/Mapper.cpp` own the reusable mapper runtime. `MapperEngine` is client-like: it uses the client/view/rendering side of the engine, registers mapper metadata, creates sprite factories, processes input, draws editor UI, and loads/saves maps without connecting to a game server.
+
+Important source areas:
+
+- `MapperEngine::MapperMainLoop()` — per-frame mapper execution.
+- `MapperEngine::DrawMapperFrame()` — map/editor frame drawing.
+- `MapperEngine::ProcessMapperInputEvent()` and cursor helpers — input-to-map interactions.
+- `DrawMainPanelImGui()`, `DrawWorkspaceWindowImGui()`, `DrawContentWindowImGui()`, `DrawMapListWindowImGui()`, `DrawMapWindowImGui()`, `DrawInspectorImGui()`, `DrawHistoryWindowImGui()`, `DrawSettingsWindowImGui()`, and `DrawConsoleImGui()` — major ImGui UI panels.
+- `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()` — map file lifecycle.
+- `Source/Scripting/MapperGlobalScriptMethods.cpp` — mapper-side native script helpers exposed through `Mapper_Game_*` methods.
+
+## Extension points and boundaries
+
+Use mapper script methods for editor automation that acts on mapper-owned state: adding/deleting/moving/selecting entities, adding tiles, loading/unloading/saving/showing maps, resizing maps, and managing mapper tabs. The current method group is mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md).
+
+Do not put authoritative gameplay policy in mapper helpers. The mapper can inspect and author map content, but server runtime rules, persistence authority, and gameplay validation remain server-side; see [ServerRuntime.md](ServerRuntime.md) and [EntityModel.md](EntityModel.md).
+
+Do not document one game's mapper binary name or content pipeline as universal engine behavior. The sections below include Last Frontier examples because this repository is currently embedded there; reusable mechanics are the `MapperEngine` lifecycle, mapper script helper surface, and headless render capability.
+
+## Existing project workflows
+
+## Headless Map Render
+
+### Pipeline goal
+
+For the [Checkpoints](../../Docs/Checkpoints.md) UI we need a flat picture of every static map so the schema generator can post-process it (place entry-point markers, downscale, run the AI generator). Doing this from `LF_Client` would require connecting to a server and walking through the entry; the mapper already loads `.fomap` files directly, so it is the cheapest place to run the export.
+
+### Building blocks
+
+Native helpers in [../Source/Scripting/MapperGlobalScriptMethods.cpp](../Source/Scripting/MapperGlobalScriptMethods.cpp), exported into the mapper-side AS `Game.*` surface:
+
+| Method | Purpose |
+|--------|---------|
+| `Game.GetCurMapHexSize()` â†’ `msize` | Hex grid size of the currently shown map |
+| `Game.GetCurMapPixelSize()` â†’ `isize32` | Pixel bounds of the full map (`width * MAP_HEX_WIDTH`, `height * MAP_HEX_LINE_HEIGHT + tail`) |
+| `Game.SetMapperViewSize(size)` | Resize the mapper's render view (wraps `MapView::SetScreenSize`) |
+| `Game.CenterMapperOnHex(hex)` | Snap the camera to a hex (wraps `MapView::InstantScrollTo`) |
+| `Game.CenterMapperOnRawHex(rawHex)` | Snap the camera to a raw hex without validating it against the authored map rectangle. Use this for preview frames whose visual center follows `ScrollAxialArea`, because that area can extend outside normal map hex bounds. |
+| `Game.SetMapperZoom(zoom)` | Set the camera zoom and zoom target (wraps `MapView::InstantZoom`) so warmup frames do not interpolate back to the previous mapper zoom |
+| `Game.CalcMapperFitZoom(viewport)` â†’ `float` | Zoom factor needed for the playable area (`ScrollAxialArea`, axial basis; falls back to hex bounding box) to fit a given viewport in pixels â€” same basis as the engine's `MapView::RefreshMinZoom`. |
+| `Game.SetMapperOverlayVisible(visible)` | Toggle the mapper-only scroll-block markers (`_picTrack1` drawn along `ScrollAxialArea` edges). Off â†’ clean previews; defaults to on for normal mapper use. |
+| `Game.SetMapperHiddenSpritesVisible(visible)` | Toggle mapper rendering of `AlwaysHideSprite` items. The normal mapper can still show them for editing, while the preview driver disables them by default for client-like captures without invisible blockers / entry markers. |
+| `Game.AddMapperIgnoredItemPids(itemPids)` | Add item prototypes to the active map's mapper ignore list and rebuild the map. The preview driver uses this for explicit special marker suppression (`Entrance`, `Trigger`, `ExitGrid`, blockers, lights). |
+| `Game.SetMapperScrollCheckEnabled(enabled)` | Toggle mapper scroll clamping. The render driver disables it before centering so large/low-zoom captures are not clamped back to `ScrollAxialArea`. |
+| `Game.SaveMapperScreenshot(filePath)` | Dump the active main render target to a TGA file (RGBA, Y-flipped to match the renderer) via the engine-shared `WriteSimpleTga` helper |
+
+Mapper exit is the common `Game.RequestQuit()` from [CommonGlobalScriptMethods.cpp](../Source/Scripting/CommonGlobalScriptMethods.cpp) â€” no mapper-specific wrapper.
+
+### Driver script
+
+[Scripts/MapperRender.fos](../../Scripts/MapperRender.fos) wires the helpers into a single-process autopilot that batches multiple maps:
+
+1. Subscribes to `Game.OnStart` (mapper-side) and `Game.OnLoop`.
+2. The mapper process is launched with the engine `Render.HeadlessWindow=True` setting so batch runs lock interactive input, suppress exception message boxes, and create the engine render-host window hidden for off-screen rendering; this setting is intentionally separate from the project `Mapper.Render*` settings. Screenshot readback still comes from the mapper sprite manager's main render target.
+3. On start, reads `Settings.Mapper.RenderMaps` (space-separated map names or paths relative to `Maps/`) and `Settings.Mapper.RenderOutputDir`. Empty `RenderMaps` disables the autopilot â€” mapper opens its usual interactive UI.
+4. For every map: disable critter and fast/special marker drawing via `Hex.ShowCrit=False` and `Hex.ShowFast=False`, `Game.LoadMap`, `Game.ShowMap`, hide mapper-only overlays via `Game.SetMapperOverlayVisible(false)`, toggle off the mapper track layer, add the known blocker/entrance/trigger marker prototypes to the map ignore list, disable scroll clamping/input drift for the capture, clear mouse/key scroll flags during every warmup tick, hide client-invisible blocker sprites via `Mapper.RenderHideHiddenSprites` by default, auto-fit zoom via `Game.CalcMapperFitZoom(viewport) / Mapper.RenderFitPadding` unless `Mapper.RenderZoomOverride` is set, then center on `Mapper.RenderCenterRawHexX/Y`, `Mapper.RenderCenterHexX/Y`, or the playable-area midpoint. Python-side per-map `Viewport` overrides can make that one frame larger than the final PNG, and `ViewportCrop` can cut a fixed inner rectangle from it.
+5. Waits `Settings.Mapper.RenderWarmupFrames` `OnLoop` ticks so the new map actually paints into the main render target (the first frame after `ShowMap` still holds the previous frame).
+6. Calls `Game.SaveMapperScreenshot("<RenderOutputDir>/<OutputName>.tga")`, then unloads the current map and advances to the next. `OutputName` comes from `Mapper.RenderPlanOutputNames` when provided, otherwise from the loaded map name.
+7. After the last map: if `Settings.Mapper.RenderQuitWhenDone` is true, calls `Game.RequestQuit()`.
+
+Single-process batching exists because the mapper's startup is the slowest step (asset baking, AS bytecode load, GPU device init). Rendering 297 maps in one invocation pays it once instead of 297 times.
+
+### Settings
+
+| Setting | Default | ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ |
+|---------|---------|----------|
+| `Mapper.RenderMaps` | `""` | Space-separated list of map names or paths relative to `Maps/` to load (without `.fomap`). Empty value disables the autopilot â€” mapper opens normally. |
+| `Mapper.RenderOutputDir` | `""` | Directory for `<OutputName>.tga` outputs. Forward slashes recommended. Created on demand by `WriteSimpleTga`. |
+| `Mapper.RenderWarmupFrames` | `4` | Number of `OnLoop` ticks to wait between `ShowMap` and `SaveMapperScreenshot`. Bumping this helps if the dumped TGA looks empty/half-painted. |
+| `Mapper.RenderQuitWhenDone` | `True` | If true, the mapper quits after the last map. Set to `False` for interactive debugging. |
+| `Mapper.RenderFitPadding` | `1.50` | Extra zoom-out factor above the calculated fit zoom. Keeps trees, cliffs, shadows, and other sprites that protrude outside `ScrollAxialArea` inside the captured viewport. |
+| `Mapper.RenderPlanViewports` | empty | Optional semicolon-separated batch list of `W,H` viewports, aligned with `Mapper.RenderMaps`. Used by the preview tool so different maps can render with different overscan sizes in one mapper launch. |
+| `Mapper.RenderPlanCenters` | empty | Optional semicolon-separated batch list of raw-hex `X,Y` centers, aligned with `Mapper.RenderMaps`. |
+| `Mapper.RenderPlanZooms` | empty | Optional semicolon-separated batch list of zoom values, aligned with `Mapper.RenderMaps`. |
+| `Mapper.RenderPlanOutputNames` | empty | Optional semicolon-separated batch list of screenshot base names, aligned with `Mapper.RenderMaps`. The preview tool uses this to load maps from subfolders while keeping `<MapPid>.tga/.png` output names. |
+| `Mapper.RenderHideHiddenSprites` | `True` | If true, hides `AlwaysHideSprite` items for a client-like render. Set false only for schematic debugging that needs blocker/ground markers. |
+| `Mapper.RenderCenterHexX/Y` | `0 0` | Optional capture camera center. `0 0` means auto-center on the playable area; explicit values are used for tuned one-frame previews. |
+| `Mapper.RenderCenterRawHexX/Y` | `0 0` | Optional raw camera center. Takes precedence over `Mapper.RenderCenterHexX/Y` and can point outside the authored map rectangle for axial-border-aligned previews. |
+| `Mapper.RenderZoomOverride` | `0.0` | Optional capture zoom. `0.0` means auto-fit; positive values force a tuned zoom. |
+
+`MapperRender` SubConfig in [LastFrontier.fomain](../../LastFrontier.fomain) carries these defaults plus `Parent = Dev`, so a render run inherits the dev-friendly settings.
+
+### Running it
+
+```
+LF_Mapper --Render.HeadlessWindow True \
+    --ApplySubConfig MapperRender \
+    --Mapper.RenderMaps="Encounter_1 Antenna BomberCrash" \
+    --Mapper.RenderOutputDir=Workspace/MapPreview
+```
+
+Or, if you prefer not to touch the CLI on every call, override `Mapper.RenderMaps` / `Mapper.RenderOutputDir` in a personal SubConfig and just pass `--ApplySubConfig MyMapperRender`.
+
+### Current limitations (known scope)
+
+**Backend caveat.** `Game.SaveMapperScreenshot` redraws one mapper frame and reads the sprite manager's main render target (`_rtMain`). If a backend is built without a readable main render target, the save path needs an engine-side framebuffer readback before headless screenshots can work there.
+
+**Frame timing.** `OnLoop` fires before `MapperEngine::DrawMapperFrame()` ([../Source/Tools/Mapper.cpp:730-746](../Source/Tools/Mapper.cpp#L730)), so the first `OnLoop` after `OnStart` reads the previous frame's pixels. `Mapper.RenderWarmupFrames=4` skips a handful of ticks so the new map actually paints into the readable surface; bump it if the dumped TGA looks blank or stale.
+
+**View bounds.** The preview pipeline renders one mapper frame per map. If a large map is clipped, use a larger viewport, a lower `Mapper.RenderZoomOverride`, an explicit `Mapper.RenderCenterRawHexX/Y`, or a per-map `ViewportCrop` over a larger one-frame viewport; do not stitch several captures together for checkpoint previews.
+
+### Downstream pipeline (planned)
+
+The TGA produced here is only step 1. Step 2 (place entry-point markers, gather metadata) and step 3 (run the AI generator) will live as Python tooling under `../../Tools/` once the rendering side stabilizes. Both will read the TGA plus a JSON sidecar describing entry positions; emitting that JSON is the next addition to `MapperRender.fos`.
+
+## Map Entrance Preview
+
+### Pipeline goal
+
+The checkpoint UI ([Checkpoints.md](../../Docs/Checkpoints.md)) needs a static preview of every map and the pixel position of each `MapEntry` button so the player can pick *where* on the map they want to land. Generating those previews is what this tool does.
+
+### Driver script
+
+[Tools/MapPreview/generate_map_preview.py](../../Tools/MapPreview/generate_map_preview.py):
+
+1. Parses `Maps/**/<MapName>.fomap` and collects every static item with `MapEntry.Name = ...`. Hex positions are read from the matching `Hex = X Y` line.
+2. Invokes LF_Mapper with `Render.HeadlessWindow=True` plus the [MapperRender SubConfig](../../LastFrontier.fomain) (Steps from [Headless Map Render](#headless-map-render)). Output TGA goes to a temp dir.
+3. Converts the TGA to PNG via Pillow, cropping to a fixed `ViewportCrop`, the authored `ScrollAxialArea` inner border, or the authored-content fallback. `--crop-padding` applies only to the fallback path; axial previews are not expanded to random rendered alpha bounds. A small `--axial-crop-inset` trims mapper border marker pixels after axial crop. The final PNG is scaled to `--output-height` (300px by default) with aspect ratio preserved, and every pixel coordinate written to `MapEntrancePreviews.fopro` uses the resized image space.
+4. For each entry and optional `ScrollAxialArea`, computes final PNG pixel positions by replicating the engine camera transform and subtracting the actual crop offset: `image_pixel = viewport_center + GetHexOffset(center_raw_hex, entry_hex) Ã— zoom âˆ’ crop_offset`. The offset formula mirrors [../Source/Common/Geometry.cpp](../Source/Common/Geometry.cpp).
+5. Writes `<MapName>.png` plus/updates `MapEntrancePreviews.fopro` in `Resources/MapPreview/MapEntrances/`, then updates the matching `Maps/**/<MapName>.fomap` with `MapEntrancePreview = <MapName>` when writing to the default output folder. PNGs are picked by the `MapPreview` ResourcePack rooted at `Resources/MapPreview`, and the fixed-type data is picked by the `Protos` ResourcePack through the same `Resources/MapPreview` root.
+
+### Fixed-type format
+
+`Resources/MapPreview/MapEntrances/MapEntrancePreviews.fopro` is generated as `MapEntrancePreview` fixed-type data. `$Name` is the map pid, and the generator stores the matching reference in the matching source map as `MapEntrancePreview = <MapName>`, so UI code reads it from `Game.GetProtoMap(mapPid).MapEntrancePreview`. `ImageWidth` / `ImageHeight` are the actual final PNG dimensions after crop and resize (variable aspect ratio per map); `RenderZoomPpm` is the effective zoom scaled by 1,000,000.
+If a map has several `MapEntry` items with the same name, the tool writes one entry name and averages the hex/button coordinates; `EntryHexCounts` records how many authored markers fed each entry.
+
+```
+[MapEntrancePreview]
+$Name = BomberCrash
+ImageWidth = 500
+ImageHeight = 418
+MapHexWidth = 200
+MapHexHeight = 200
+RenderZoomPpm = 107388
+ScrollAxialArea = -10 20 120 80
+AxialCropBounds = 12 8 220 140
+AxialCropPolygon = 12 8 232 8 232 148 12 148
+EntryNames = DefaultEntrance E NE
+EntryHexes = 191 65 96 161 47 88
+EntryButtonPixels = 128 128 156 100 200 80
+EntryHexCounts = 1 1 1
+```
+
+When a map has `ScrollAxialArea`, the fixed-type entry also carries `ScrollAxialArea`, `AxialCropBounds` (`X Y Width Height` in final PNG pixels), and `AxialCropPolygon` (four final-PNG pixel points in `LT RT RB LB` order). Consumers that need the inner axial-border crop should use those fields instead of alpha bounds.
+
+### Reading from AngelScript
+
+Typical UI flow:
+
+```angelscript
+ProtoMap protoMap = Game.GetProtoMap(mapPid);
+MapEntrancePreview preview = protoMap != null ? protoMap.MapEntrancePreview : null;
+for (uint i = 0; preview != null && i < preview.EntryNames.length; i++) {
+    int bx = preview.EntryButtonPixels[i * 2];
+    int by = preview.EntryButtonPixels[i * 2 + 1];
+    // place EntryNames[i] button at (bx, by) on MapEntrances/<mapPid>.png
+}
+```
+
+### Running it
+
+```
+# one map
+python Tools/MapPreview/generate_map_preview.py --map BomberCrash
+
+# checkpoint-relevant static maps
+python Tools/MapPreview/generate_map_preview.py --checkpoint-maps
+
+# every .fomap under Maps/
+python Tools/MapPreview/generate_map_preview.py --all
+```
+
+Common knobs:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--map` | â€” | Map name without `.fomap` (repeatable). Mutually exclusive with `--all` / `--checkpoint-maps`. |
+| `--checkpoint-maps` | â€” | Render the checkpoint UI set: maps from public static `Maps/**/*.foloc` (`IsPublic=True`) with multiple maps and/or maps that contain `MapEntry` items. |
+| `--all` | â€” | Render every `.fomap` under `Maps/`. Mutually exclusive with `--map` / `--checkpoint-maps`. |
+| `--mapper` | autodetect | Path to `LF_Mapper` binary. Tries `Binaries/Mapper-*` and `LF-Dev/Workspace/Mapper-*`. |
+| `--viewport` | `2000x1000` | Exact mapper viewport WIDTHxHEIGHT, forwarded as `View.ScreenWidth`/`View.ScreenHeight`. Per-map `Viewport` overrides can render a larger one-frame overscan before the post-processor cuts the final image. |
+| `--warmup-frames` | `4` | Forwarded to `Mapper.RenderWarmupFrames`. Bump if the preview comes out blank. |
+| `--fit-padding` | `1.50` | Extra zoom-out factor forwarded to `Mapper.RenderFitPadding`. Increase when the rendered alpha touches an output edge and the preview still looks clipped. |
+| `--crop-padding` | `40` | Transparent source pixels kept around the authored-content fallback crop. Maps with `ScrollAxialArea` crop to that authored inner axial border instead. |
+| `--axial-crop-inset` | `90` | Source pixels trimmed from each side after `ScrollAxialArea` crop so mapper border marker sprites sitting exactly on the axial edge do not leak into the final preview. |
+| `--min-render-zoom` | `0.05` | Lower bound for auto-fit zoom; explicit `--zoom` / per-map `Zoom` can go lower. Matches the engine map-view minimum. |
+| `--max-render-zoom` | `1.00` | Upper bound for auto-fit zoom; prevents tiny marker-only maps from asking the mapper for extreme zoom. Explicit `--zoom` / per-map `Zoom` can go higher. |
+| `--center-hex` | â€” | Override the capture center as raw `X,Y` for a tuned single-frame preview. Raw centers may sit outside the authored map bounds. |
+| `--zoom` | â€” | Override the capture zoom for a tuned single-frame preview. |
+| `--output-height` | `300` | Final PNG height after crop. Width is derived from aspect ratio, and `ButtonPixel` / `AxialCrop*` metadata is scaled to this final size. Use `0` to keep the crop height before `--max-output-size`. |
+| `--max-output-size` | `2000` | Additional final width/height cap after `--output-height`. Use `0` to disable this cap. |
+| `--overrides` | `../../Tools/MapPreview/map_preview_overrides.ini` | Per-map tuning file. Each `[MapName]` section can set `Viewport = W H`, `ViewportCrop = X Y W H`, `CenterRawHex = X Y` (preferred), legacy `CenterHex = X Y`, and `Zoom = value`. |
+| `--ignore-overrides` | off | Ignore the per-map tuning file and use only auto-fit / CLI values. |
+| `--hide-hidden-sprites` | on | Forwarded to `Mapper.RenderHideHiddenSprites`; explicit form of the default client-like preview behavior. |
+| `--show-hidden-sprites` | off | Forwarded to `Mapper.RenderHideHiddenSprites=False`; use only for debugging schematic blocker/ground markers. |
+| `--output-dir` | `<root>/Resources/MapPreview/MapEntrances` | Override sink directory. |
+| `--keep-tga` | off | Copy the raw TGA next to the PNG for debugging. |
+| `--skip-existing` | off | Skip maps whose `<name>.png` already exists. Use after a native crash mid-batch â€” the next run picks up where the previous one left off. |
+
+The python script invokes `LF_Mapper` once for the planned batch, enables hidden-window batch mode with `Render.HeadlessWindow=True`, and passes per-map viewport, center, zoom, and output-name lists through `Mapper.RenderPlanViewports`, `Mapper.RenderPlanCenters`, `Mapper.RenderPlanZooms`, and `Mapper.RenderPlanOutputNames`; if edge-touch retry is needed, each retry round is also a batch rather than one mapper process per map. Map loading uses the path relative to `Maps/`, so maps in subfolders still load while output files and fixed-type records keep the stable map proto name. `--checkpoint-maps` builds its target list from authored location/map data: it scans `Maps/**/*.foloc` `MapProtos`, keeps only public static locations (`IsPublic=True`), skips encounter/camp templates (`ReadyForEncounter`, `ReadyForCamp`, authored `IsEncounter` / `IsCamp`, or explicit `EncounterGenerationMode`), keeps every map from remaining locations with more than one unique map proto, and also keeps any remaining public location map whose `.fomap` has at least one `MapEntry`. It also passes `Hex.FullscreenMouseScroll=False` and `Hex.WindowedMouseScroll=False`; `MapperRender.fos` clears the live scroll flags during warmup, disables `Hex.ShowCrit` / `Hex.ShowFast`, toggles off the mapper track layer, and explicitly ignores the known special marker prototypes after `ShowMap`, so the camera cannot drift and critters or mapper markers do not appear in checkpoint previews. The Python fit/crop pass ignores the same explicit marker prototypes when choosing fallback visual bounds, while still writing their `MapEntry` button coordinates to `MapEntrancePreviews.fopro`; maps with `ScrollAxialArea` crop to that authored inner axial border and do not expand to rendered alpha bounds. When the mapper shows a loaded map, it applies a display-only time override: `FixedDayTime` for maps with `FixedTime=True`, or noon for outdoor maps without fixed time. This does not rewrite the map's authored `FixedDayTime`. A fixed `ViewportCrop` still comes from a single mapper frame; it is used for overscan cases where the mapper's minimum zoom fits the map only after rendering a slightly taller/wider viewport. After crop, the PNG is downscaled to the requested output height, and the script writes entry-point pixels plus axial crop metadata in that final coordinate space. When `--output-dir` is the default `Resources/MapPreview/MapEntrances`, it also writes the `ProtoMap.MapEntrancePreview` link into each rendered source map. Pillow (`pip install Pillow`) is the only non-stdlib dependency.
+
+### Known limitations
+
+- Engine geometry constants (`HEX_WIDTH = 32`, `HEX_HEIGHT = 16`, hexagonal layout) are mirrored as Python constants in the script. If `../../CMakeLists.txt` ever changes them, update both sides.
+- If the planned crop touches the viewport edge, the script prints a warning; rerun with a larger `--fit-padding` or viewport.
+- Button pixel coordinates are based on `MapEntry` hex centers. The preview image is cropped to `ScrollAxialArea` when authored, a per-map `ViewportCrop` when configured, or the fallback content/alpha bounds otherwise, so entries can legitimately land outside visible alpha if the entry item itself is hidden as client-invisible.
+- AS `try { } catch { }` in [Scripts/MapperRender.fos](../../Scripts/MapperRender.fos) skips maps whose load/show/save throws a script exception, but a hard native crash (e.g. missing critter animation, broken proto) still kills the mapper. Run again with `--skip-existing` to resume after fixing the offending content.
+
+### Timing
+
+End-to-end wall-clock on the dev machine (DirectX, 297 maps):
+
+- Mapper startup: paid per `LF_Mapper` invocation.
+- Per-map work (LoadMap + overlay-toggle RebuildMap + auto-fit zoom + 4 warmup frames + DrawMapperFrame + read `_rtMain` + WriteSimpleTga): ~1â€“2s.
+- TGA â†’ PNG crop + `MapEntrancePreviews.fopro` update (Python, post-mapper): ~50ms per map.
+
+For full-map batches, prefer `--skip-existing` while tuning so interrupted or corrected runs resume from already generated previews.
+
+## See Also
+
+- [Architecture.md](Architecture.md) — repository layout and engine layer ownership
+- `../../Docs/BuildAndLaunch.md` — embedding-project build route for `LF_Mapper`
+- `../../Docs/Checkpoints.md` — embedding-project consumer of rendered map schemas and entrance previews
+- [Scripting.md](Scripting.md) — engine scripting runtime and mapper-side script method ownership

@@ -532,10 +532,15 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType, boo
 		if (isSyntaxError) return node;
 	}
 
-	// Parse [] and @
+	// Parse [], @, and the `?` nullable marker, interleaved in source order.
+	// (FOnline Patch) `?` may appear before `[]` (element nullable, e.g. `Item?[]` == `array<Item?>`)
+	// or after it / a handle (handle nullable, e.g. `Item[]?`, `Item?`). The order is preserved as
+	// child nodes so the builder applies MakeNullable to the correct level. The validity of `?` (only
+	// on handle / implicit-handle types) is checked in the builder so it can report with full type info.
+
 	GetToken(&t);
 	RewindTo(&t);
-	while( t.type == ttOpenBracket || t.type == ttHandle)
+	while( t.type == ttOpenBracket || t.type == ttHandle || t.type == ttQuestion ) // (FOnline Patch) || t.type == ttQuestion
 	{
 		if( t.type == ttOpenBracket )
 		{
@@ -550,7 +555,7 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType, boo
 				return node;
 			}
 		}
-		else
+		else if( t.type == ttHandle ) // (FOnline Patch) if( t.type == ttHandle )
 		{
 			node->AddChildLast(ParseToken(ttHandle));
 			if( isSyntaxError ) return node;
@@ -562,6 +567,12 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType, boo
 				node->AddChildLast(ParseToken(ttConst));
 				if( isSyntaxError ) return node;
 			}
+		}
+		else
+		{
+			// (FOnline Patch)
+			node->AddChildLast(ParseToken(ttQuestion));
+			if( isSyntaxError ) return node;
 		}
 
 		GetToken(&t);
@@ -1400,8 +1411,11 @@ bool asCParser::FindTokenAfterType(sToken &nextToken)
 	// Object handles can be interleaved with the array brackets
 	// Even though declaring variables with & is invalid we'll accept
 	// it here to give an appropriate error message later
+	// (FOnline Patch) The `?` nullable marker can be interleaved too, so `Item?[]`, `Item[]?` and
+	// `Item?` are all recognized as types in the declaration lookahead (a trailing `?` here is just
+	// consumed like the others, so it isn't mistaken for a partial ternary).
 	GetToken(&t2);
-	while (t2.type == ttHandle || t2.type == ttAmp || t2.type == ttOpenBracket)
+	while (t2.type == ttHandle || t2.type == ttAmp || t2.type == ttOpenBracket || t2.type == ttQuestion)
 	{
 		if( t2.type == ttHandle )
 		{
@@ -1428,6 +1442,7 @@ bool asCParser::FindTokenAfterType(sToken &nextToken)
 			if (t3.type != ttIn && t3.type != ttOut && t3.type != ttInOut)
 				RewindTo(&t3);
 		}
+		// ttQuestion: nullable marker, consumed by the GetToken below
 
 		GetToken(&t2);
 	}
@@ -1485,8 +1500,10 @@ bool asCParser::IsTemplateTypeList(sToken start, sToken *after)
 
 		GetToken(&t1);
 
-		// Is it a handle or array?
-		while (t1.type == ttHandle || t1.type == ttOpenBracket)
+		// Is it a handle, array, or nullable marker?
+		// (FOnline Patch) `?` interleaves with @/[] in the subtype so array<T?> and array<T?[]> are
+		// recognized; a trailing `?` on the subtype is consumed here as well.
+		while (t1.type == ttHandle || t1.type == ttOpenBracket || t1.type == ttQuestion)
 		{
 			if (t1.type == ttOpenBracket)
 			{
@@ -1501,6 +1518,7 @@ bool asCParser::IsTemplateTypeList(sToken start, sToken *after)
 				if (t1.type != ttConst)
 					RewindTo(&t1);
 			}
+			// ttQuestion: nullable marker, consumed by the GetToken below
 
 			GetToken(&t1);
 		}

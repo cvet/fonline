@@ -438,7 +438,28 @@ int asCBuilder::ValidateDefaultArgs(asCScriptCode *script, asCScriptNode *node, 
 	for( asUINT n = 0; n < func->defaultArgs.GetLength(); n++ )
 	{
 		if( func->defaultArgs[n] )
+		{
 			firstArgWithDefaultValue = n;
+
+			// (FOnline Patch) Reject a `null` default value for a non-nullable
+			// handle parameter. A `f()` call substitutes the default null, leaving
+			// the parameter null inside a body that assumes it is non-null, and the
+			// first dereference then explodes at runtime. This mirrors the
+			// `T x = null;` guard in the expression compiler. Declare the parameter
+			// `T?` if it is genuinely allowed to be null.
+			if( n < func->parameterTypes.GetLength() &&
+				func->parameterTypes[n].IsObjectHandle() &&
+				!func->parameterTypes[n].IsNullable() &&
+				func->defaultArgs[n]->Compare("null") == 0 )
+			{
+				asCString msg;
+				msg.Format("Cannot assign 'null' to a non-nullable handle of type '%s' (use '%s?' to allow null)",
+					func->parameterTypes[n].Format(func->nameSpace).AddressOf(),
+					func->parameterTypes[n].Format(func->nameSpace).AddressOf());
+				WriteError(msg, script, node);
+				return asINVALID_DECLARATION;
+			}
+		}
 		else if( firstArgWithDefaultValue >= 0 )
 		{
 			asCString str;
@@ -6610,8 +6631,44 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 	// Determine array dimensions and object handles
 	n = n->next;
-	while( n && (n->tokenType == ttOpenBracket || n->tokenType == ttHandle) )
+	while( n && (n->tokenType == ttOpenBracket || n->tokenType == ttHandle || n->tokenType == ttQuestion) ) // (FOnline Patch) || n->tokenType == ttQuestion
 	{
+		// (FOnline Patch) `?` nullable marker, applied in source order: `Item?[]` marks the element
+		// nullable (array<Item?>); `Item[]?` / `Item?` mark the handle itself nullable. Implicit-handle
+		// types are promoted to a handle first (mirroring the `[` case) so `?` has a handle to mark.
+		if( n->tokenType == ttQuestion )
+		{
+			if( isImplicitHandle )
+			{
+				if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
+				{
+					if( reportError )
+						WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+					if( isValid )
+						*isValid = false;
+
+					// Return a dummy
+					return asCDataType::CreatePrimitive(ttInt, false);
+				}
+				isImplicitHandle = false;
+			}
+
+			if( !dt.IsObjectHandle() )
+			{
+				if( reportError )
+					WriteError("Nullable marker '?' is only allowed on handle types", file, n);
+				if( isValid )
+					*isValid = false;
+			}
+			else
+			{
+				dt.MakeNullable(true);
+			}
+
+			n = n->next;
+			continue;
+		}
+
 		if( n->tokenType == ttOpenBracket )
 		{
 			if (isImplicitHandle)
@@ -6674,7 +6731,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				return asCDataType::CreatePrimitive(ttInt, false);
 			}
 		}
-		else
+		else if( n->tokenType == ttHandle ) // (FOnline Patch) if( n->tokenType == ttHandle )
 		{
 			// Make the type a handle
 			if( dt.IsObjectHandle() )
@@ -6689,6 +6746,46 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			}
 			else
 			{
+				// (FOnline Patch) Reject explicit `@` on types registered as
+				// `asOBJ_IMPLICIT_HANDLE`. The convention is that those types are spelled
+				// without `@` everywhere â€” `Critter`, `array<Item>`, `Map?` â€” because the
+				// handle nature is part of the type registration. The guard `module && !silent`
+				// keeps the rejection limited to actual script compilation: native API
+				// registration uses a builder without a module, and `GetFunctionByDecl`
+				// silently re-parses decl strings emitted by the engine itself (which may
+				// still include the explicit form for backward compat with AS's Format()).
+				//
+				// Exception: the funcdef-parameter form `Type@+` (handle with auto-add-ref)
+				// is allowed even on implicit-handle types because the trailing `+` modifier
+				// is parsed by ParseTypeMod into a separate sibling snDataType node, and
+				// the bare `Type+` form is not a valid signature in AS.
+				bool followedByPlusModifier = false;
+				if( node->next != 0 && node->next->nodeType == snDataType )
+				{
+					for( asCScriptNode* c = node->next->firstChild; c != 0; c = c->next )
+					{
+						if( c->tokenType == ttPlus )
+						{
+							followedByPlusModifier = true;
+							break;
+						}
+					}
+				}
+
+				// (FOnline Patch)
+				if( module && !silent && isImplicitHandle && !followedByPlusModifier )
+				{
+					if( reportError )
+					{
+						asCString msg;
+						msg.Format("Explicit handle '@' is not allowed on implicit-handle type '%s'", dt.GetTypeInfo() ? dt.GetTypeInfo()->name.AddressOf() : "<unknown>");
+						WriteError(msg, file, n);
+					}
+					if (isValid)
+						*isValid = false;
+					return asCDataType::CreatePrimitive(ttInt, false);
+				}
+
 				if( dt.MakeHandle(true, acceptHandleForScope) < 0 )
 				{
 					if( reportError )
@@ -6699,7 +6796,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 					// Return a dummy
 					return asCDataType::CreatePrimitive(ttInt, false);
 				}
-				
+
 				// Check if the handle should be read-only
 				if( n && n->next && n->next->tokenType == ttConst )
 					dt.MakeReadOnly(true);

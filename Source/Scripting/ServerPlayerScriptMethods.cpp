@@ -72,15 +72,74 @@ FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter* cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Player_GetControlledCritter(Player* self)
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* self)
 {
     return self->GetControlledCritter();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (cr->GetMapId() == ident_t {}) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    ident_t player_map_id {};
+
+    if (const Critter* controlled_cr = self->GetControlledCritter(); controlled_cr != nullptr) {
+        player_map_id = controlled_cr->GetMapId();
+    }
+    else if (const ViewMapContext* view_map = self->GetViewMap(); view_map != nullptr) {
+        player_map_id = view_map->MapId;
+    }
+
+    if (player_map_id != cr->GetMapId()) {
+        throw ScriptException("Critter is not on player's current map");
+    }
+
+    self->Send_Moving(cr);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
+{
+    if (self->GetControlledCritter() != nullptr) {
+        throw ScriptException("Player controls critter");
+    }
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    self->SetViewMap(map, hex);
+    self->Send_LoadMap(map);
+    self->GetEngine()->MapMngr.ViewMap(self, map);
+    self->Send_ViewMap();
+    self->Send_PlaceToGameComplete();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ResetViewMap(Player* self)
+{
+    self->ResetViewMap();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_UnloadMap(Player* self)
+{
+    if (self->GetControlledCritter() != nullptr) {
+        throw ScriptException("Player controls critter");
+    }
+
+    self->ResetViewMap();
+    self->Send_LoadMap(nullptr);
 }
 
 FO_END_NAMESPACE

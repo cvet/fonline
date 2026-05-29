@@ -57,13 +57,19 @@ class ItemHexView;
 class CritterHexView;
 class CritterView;
 
-// Light flags. Direction mask is passed as a separate `dirs` argument; this enum only governs higher-level behavior.
-enum class LightFlag : uint8_t
+enum class LightFlag : uint16_t
 {
     None = 0,
     Global = 0x01,
     Inverse = 0x02,
-    AllowedDirs = 0x04, // When set, the `Dirs` mask lists ALLOWED directions; otherwise it lists DISABLED (blocked) ones (default behavior — dirs == 0 means no restriction)
+    StopDir0 = 0x04,
+    StopDir1 = 0x08,
+    StopDir2 = 0x10,
+    StopDir3 = 0x20,
+    StopDir4 = 0x40,
+    StopDir5 = 0x80,
+    StopDir6 = 0x100,
+    StopDir7 = 0x200,
 };
 
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
@@ -81,6 +87,40 @@ public:
     vector<shared_ptr<Sprite>> Sprites {};
 };
 
+///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
+class FogLayer : public RefCounted<FogLayer>
+{
+public:
+    void Dispose() noexcept;
+
+    // Script-tunable configuration (exported as properties)
+    bool Enabled {true};
+    int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
+    int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
+    int32_t ExtraLength {1}; // Extra look length added to the derived radius
+    int32_t TransitionDuration {150}; // Grow/move/shrink morph duration in ms
+    float32_t OvalRoundness {1.0f}; // 0 = raw hexagon, 1 = full smooth oval
+    float32_t EdgeNoise {0.15f}; // Drifting-mist rim ripple strength
+    float32_t Depth {0.15f}; // Extra darkening with distance past the edge
+    float32_t ClearRadius {0.85f}; // Fraction kept crisp before the edge fade (lower = wider border)
+    ucolor TintColor {10, 13, 20, 255}; // Cold dim tint of the unseen area (rgb used; a ignored)
+    ucolor OverlayColor {}; // Traced-overlay (zone) color
+    ucolor CenterColor {}; // Traced-overlay center color
+    bool Traced {}; // Positive traced overlay (attack/observation zone) vs inverse look fog
+    bool CheckShootBlocks {true};
+    mpos OriginHex {}; // Origin for a hex-anchored fog (ignored when following a critter)
+    bool Disposed {}; // Script-readable status: true once Dispose() ran or the owning map was destroyed (recreate then)
+
+    // Engine-internal (not exported to script)
+    DrawOrderType DrawOrder {};
+    bool FollowCritter {};
+    ident_t OriginCritterId {};
+    ipos32 OriginWorldPos {}; // Origin's absolute world-pixel pos (camera-independent); anchors edge noise to the world so it flows as the fog moves
+    raw_ptr<RenderEffect> CustomFogEffect {}; // Rasterizes the fog points; null = engine default
+    raw_ptr<RenderEffect> CustomFlushEffect {}; // Flushes the fog to the map; null = engine default
+    FogShape Shape {};
+};
+
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {
 public:
@@ -91,7 +131,6 @@ public:
         ucolor Color {};
         int32_t Distance {};
         LightFlag Flags {};
-        uint8_t Dirs {}; // Lower 6 bits encode directions; meaning is determined by LightFlag::AllowedDirs
         int32_t Intensity {};
         raw_ptr<const ipos32> Offset {};
         bool Applied {};
@@ -141,23 +180,10 @@ public:
     {
         vector<mdir> DirSteps {};
         vector<uint16_t> ControlSteps {};
+        ipos16 EndHexOffset {};
     };
 
-    struct FogLayer
-    {
-        explicit FogLayer(hstring id) noexcept :
-            Id {id}
-        {
-        }
-
-        hstring Id {};
-        FogOfWar Fog {};
-        FogOfWar::Input Input {};
-        ident_t OriginCritterId {};
-        bool FollowCritter {};
-    };
-
-    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
+    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -166,30 +192,39 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
+    [[nodiscard]] auto IsShowMapperOverlay() const noexcept -> bool { return _isShowMapperOverlay; }
+    [[nodiscard]] auto IsShowMapperHiddenSprites() const noexcept -> bool { return _isShowMapperHiddenSprites; }
+    [[nodiscard]] auto IsScrollCheck() const noexcept -> bool { return _scrollCheckEnabled; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
     [[nodiscard]] auto GetHexTrack(mpos hex) noexcept -> int8_t& { return _hexTrack[static_cast<size_t>(hex.y) * _mapSize.width + hex.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
+    [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
+    void SetScrollCheck(bool enabled) noexcept { _scrollCheckEnabled = enabled; }
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
     void Process();
 
     void DrawMap();
+    auto DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool;
 
-    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> optional<FindPathResult>;
+    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
     void ClearHexTrack();
     void SwitchShowTrack();
+    void SetShowMapperOverlay(bool show);
+    void SetShowMapperHiddenSprites(bool show);
 
+    void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
     auto MapToScreenPos(ipos32 map_pos) const -> ipos32;
     auto GetScreenRawHex() const -> ipos32;
@@ -200,9 +235,8 @@ public:
 
     void RebuildMap();
     void RebuildFog();
-    void SetFogOfWar(hstring fog_id, CritterView* cr, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
-    void SetFogOfWar(hstring fog_id, mpos hex, int32_t distance, int32_t radius, ucolor overlay_color, ucolor center_color, bool traced, bool check_shoot_blocks);
-    void ClearFogOfWar(hstring fog_id);
+    auto AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
+    auto AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
     auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void RecacheHexFlags(mpos hex);
@@ -211,15 +245,16 @@ public:
     void ChangeZoom(float32_t new_zoom, fpos32 anchor);
     void InstantZoom(float32_t new_zoom, fpos32 anchor);
 
+    auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
+    void SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity);
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
-    void LockScreenScroll(CritterView* cr, int32_t speed, bool soft_lock, bool unlock_if_same);
     void SetExtraScrollOffset(fpos32 offset);
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
 
     // Critters
-    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> CritterHexView*;
     auto AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id = {}) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
@@ -227,12 +262,13 @@ public:
     auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
+    auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
     void ReapplyCritterView(CritterHexView* cr);
     void DestroyCritter(CritterHexView* cr);
 
     // Items
-    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data) -> ItemHexView*;
+    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ItemHexView*;
     auto AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id = {}) -> ItemHexView*;
     auto AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ItemHexView*;
     auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;
@@ -275,6 +311,7 @@ public:
     void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
 
+    void SetHeaderExtraFields(map<string, string> fields);
     auto SaveToText() const -> string;
 
 private:
@@ -318,16 +355,16 @@ private:
     void AddSpriteToChain(Field& field, MapSprite* mspr);
     void InvalidateSpriteChain(Field& field);
 
-    auto FindFogLayer(hstring fog_id) noexcept -> FogLayer*;
-    auto FindFogLayer(hstring fog_id) const noexcept -> const FogLayer*;
-
+    auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
+    void DrawSpritesWithFog(const irect32& draw_area);
+    void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
 
     void UpdateTransparentEgg(TransparentEggSlot slot);
     void UpdateTransparentEggs();
 
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, uint8_t dirs, int32_t intensity, const ipos32* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, int32_t intensity, const ipos32* offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);
@@ -343,14 +380,13 @@ private:
     void OnDestroySelf() override;
     void OnScreenSizeChanged();
 
-    static auto GetColorDay(const vector<int32_t>& day_time, const vector<uint8_t>& colors, int32_t game_time, int32_t* light) -> ucolor;
-
     EventUnsubscriber _eventUnsubscriber {};
 
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
     ident_t _workEntityId {};
+    map<string, string> _headerExtraFields {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
     unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};
@@ -365,9 +401,11 @@ private:
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};
+    MapSpriteList _indoorMaskSprites {};
 
     fpos32 _zoomAnchor {};
     float32_t _minZoomScroll {};
+    bool _scrollCheckEnabled {};
     irect32 _scrollArea {};
     fpos32 _scrollOffset {};
     fpos32 _extraScrollOffset {};
@@ -377,20 +415,19 @@ private:
     bool _autoScrollCanStop {};
     fpos32 _autoScrollOffset {};
     int32_t _autoScrollSpeed {};
-    ident_t _autoScrollHardLockedCritter {};
-    ident_t _autoScrollSoftLockedCritter {};
-    mpos _autoScrollCritterLastHex {};
-    ipos16 _autoScrollCritterLastHexOffset {};
-    int32_t _autoScrollLockSpeed {};
 
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
     shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
+    bool _isShowMapperOverlay {true};
+    bool _isShowMapperHiddenSprites {true};
 
     raw_ptr<RenderTarget> _rtMap {};
+    raw_ptr<RenderTarget> _rtIndoorMask {}; // Currently-hidden-roof alpha mask; tells the weather shader where the player can see inside and should not be visually obstructed by snow/rain/dust
     raw_ptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
+    optional<irect32> _currentRenderDrawArea {};
 
     isize32 _maxScroll {};
     isize32 _screenSize {};
@@ -404,20 +441,12 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    vector<FogLayer> _fogLayers {};
+    static constexpr size_t FOG_SLOT_COUNT = static_cast<size_t>(DrawOrderType::Last) + 1;
+    array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
     vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
-
-    int32_t _prevMapDayTime {-1};
-    int32_t _prevGlobalDayTime {-1};
-    ucolor _prevMapDayColor {};
-    ucolor _prevGlobalDayColor {};
-    ucolor _mapDayColor {};
-    ucolor _globalDayColor {};
-    int32_t _mapDayLightCapacity {};
-    int32_t _globalDayLightCapacity {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};
@@ -426,6 +455,12 @@ private:
     size_t _globalLights {};
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
+
+    // Reused per-frame scratch buffers for Process() / ProcessLighting()
+    vector<CritterHexView*> _critterToDeleteScratch {};
+    vector<ItemHexView*> _itemToDeleteScratch {};
+    vector<LightSource*> _reapplyLightSourcesScratch {};
+    vector<LightSource*> _removeLightSourcesScratch {};
 
     int32_t _hiddenRoofNum {};
 

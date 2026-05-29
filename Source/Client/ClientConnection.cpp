@@ -33,13 +33,14 @@
 
 #include "ClientConnection.h"
 #include "NetCommand.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
 ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
     _settings {&settings},
     _netIn(_settings->NetBufferSize),
-    _netOut(_settings->NetBufferSize, _settings->NetDebugHashes)
+    _netOut(_settings->NetBufferSize)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -74,6 +75,23 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
     _handlers.emplace(msg, std::move(handler));
 }
 
+void ClientConnection::CreateNetworkConnection(bool use_udp)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_ptr<NetworkClientConnection> connection;
+
+    if (use_udp) {
+        connection = NetworkClientConnection::CreateUdpSocketsConnection(*_settings);
+    }
+    else {
+        connection = NetworkClientConnection::CreateSocketsConnection(*_settings);
+    }
+
+    _connectingOverUdp = use_udp;
+    _netConnection = std::move(connection);
+}
+
 void ClientConnection::Connect()
 {
     FO_STACK_TRACE_ENTRY();
@@ -94,9 +112,23 @@ void ClientConnection::Connect()
 
         if (has_interthread_listener) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
+            _connectingOverUdp = false;
+            _udpFallbackTried = false;
+        }
+        else if (_settings->UseUdp && build_condition<!FO_WEB>()) {
+            try {
+                CreateNetworkConnection(true);
+                _udpFallbackTried = false;
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                _udpFallbackTried = true;
+                CreateNetworkConnection(false);
+            }
         }
         else {
-            _netConnection = NetworkClientConnection::CreateSocketsConnection(*_settings);
+            CreateNetworkConnection(false);
+            _udpFallbackTried = false;
         }
     }
     catch (const ClientConnectionException& ex) {
@@ -130,7 +162,26 @@ void ClientConnection::Process()
     }
     catch (const NetworkClientException& ex) {
         WriteLog("Connection error: {}", ex.what());
+
+        if (!TryFallbackToTcp()) {
+            Disconnect();
+        }
+    }
+    catch (const UnresolvedHashException& ex) {
+        WriteLog("Connection error: {}", ex.what());
+
+        // The unresolved hash is the exception's first param (see UnresolvedHashException declaration)
+        if (!ex.params().empty()) {
+            const auto& hash_param = ex.params().front();
+            hstring::hash_t hash = 0;
+
+            if (std::from_chars(hash_param.data(), hash_param.data() + hash_param.size(), hash).ec == std::errc {}) {
+                Net_SendUnresolvedHash(hash);
+            }
+        }
+
         Disconnect();
+        throw;
     }
     catch (const NetBufferException& ex) {
         WriteLog("Connection error: {}", ex.what());
@@ -167,6 +218,9 @@ void ClientConnection::ProcessConnection()
         if (_netConnection->IsConnected()) {
             Net_SendHandshake();
         }
+        else if (TryFallbackToTcp()) {
+            return;
+        }
         else {
             Disconnect();
             return;
@@ -187,6 +241,9 @@ void ClientConnection::ProcessConnection()
             return;
         }
     }
+
+    _netConnection->CheckStatus(false);
+    _netConnection->CheckStatus(true);
 
     // Receive and send data
     if (ReceiveData()) {
@@ -246,7 +303,9 @@ void ClientConnection::Disconnect()
     _netConnection->Disconnect();
     _netConnection.reset();
 
+    _connectingOverUdp = false;
     _connectingHandled = false;
+    _udpFallbackTried = false;
     _netIn.ResetBuf();
     _netOut.ResetBuf();
     _decompressor.Reset();
@@ -261,6 +320,22 @@ void ClientConnection::Disconnect()
         _wasHandshake = false;
         _disconnectCallback();
     }
+}
+
+auto ClientConnection::TryFallbackToTcp() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_connectingOverUdp || _udpFallbackTried) {
+        return false;
+    }
+
+    WriteLog("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ServerHost, _settings->ServerPort);
+
+    _udpFallbackTried = true;
+    _connectingHandled = false;
+    CreateNetworkConnection(false);
+    return true;
 }
 
 void ClientConnection::SendData()
@@ -321,26 +396,65 @@ void ClientConnection::Net_SendHandshake()
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
         (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
+    const uint32_t updater_version = FO_UPDATER_VERSION;
+    const string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->CompatibilityVersion);
+    _netOut.Write(updater_version);
+    _netOut.Write(binary_update_target_name);
     _netOut.Write(encrypt_key);
     _netOut.EndMsg();
 
     _netOut.SetEncryptKey(encrypt_key);
 }
 
+void ClientConnection::Net_SendUnresolvedHash(hstring::hash_t hash)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Only meaningful on an established (post-handshake, encrypted) connection
+    if (!_netConnection || !_wasHandshake) {
+        return;
+    }
+
+    try {
+        _netOut.StartMsg(NetMessage::UnresolvedHash);
+        _netOut.Write(hash);
+        _netOut.EndMsg();
+
+        SendData();
+
+        if (!_netOut.IsEmpty()) {
+            WriteLog("Couldn't flush unresolved hash {} report before disconnect", hash);
+        }
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Failed to report unresolved hash {}: {}", hash, ex.what());
+    }
+}
+
 void ClientConnection::Net_OnHandshakeAnswer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto outdated = _netIn.Read<bool>();
+    const auto compatibility_outdated = _netIn.Read<bool>();
+    const auto updater_outdated = _netIn.Read<bool>();
     const auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
 
     _wasHandshake = true;
-    _connectCallback(outdated ? ConnectResult::Outdated : ConnectResult::Success);
+
+    if (updater_outdated) {
+        _connectCallback(ConnectResult::UpdaterOutdated);
+    }
+    else if (compatibility_outdated) {
+        _connectCallback(ConnectResult::CompatibilityOutdated);
+    }
+    else {
+        _connectCallback(ConnectResult::Success);
+    }
 }
 
 void ClientConnection::Net_OnPing()

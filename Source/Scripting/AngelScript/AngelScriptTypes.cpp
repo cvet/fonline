@@ -94,6 +94,14 @@ static auto Type_Cmp(const T& self, const T& other) -> int32_t
     return 0;
 }
 
+template<typename T>
+static auto Type_FastCompare(const void* a, const void* b) -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return Type_Cmp<T>(*static_cast<const T*>(a), *static_cast<const T*>(b));
+}
+
 template<typename T, typename U = T>
 static auto Type_Equals(const T& self, const U& other) -> bool
 {
@@ -1127,6 +1135,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_CONSTRUCT, strex("void f(const {}&in other)", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("int opCmp(const {}&in other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_Cmp<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("bool opEquals(const {}&in other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_Equals<T>), FO_SCRIPT_FUNC_THIS_CONV));
+        SetScriptTypeFastCompare(as_engine->GetTypeInfoByName(name), &Type_FastCompare<T>);
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", name).c_str(), FO_SCRIPT_FUNC_THIS(Any_Conv<T>), FO_SCRIPT_FUNC_THIS_CONV));
@@ -1432,7 +1441,7 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
             }
             else if (!strvex(method.Name).starts_with("__")) {
                 const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
-                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership), getset, method.Name, MakeScriptArgsName(method.Args));
+                const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), getset, method.Name, MakeScriptArgsName(method.Args));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
             }
         }

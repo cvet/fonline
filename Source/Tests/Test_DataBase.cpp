@@ -48,10 +48,11 @@ namespace
             DataBaseImpl(db_settings, nullptr),
             _stringKeyEscaping {string_key_escaping}
         {
-            HashStorage hashes;
+            // _hashes (member) must outlive _collectionKeyTypes/_collectionNames in the base class,
+            // because the hstrings registered below hold pointers into _hashes._hashStorage.
             InitializeCollections({
-                {hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
-                {hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
+                {_hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
+                {_hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
             });
             StartCommitThread();
         }
@@ -316,6 +317,7 @@ namespace
         }
 
     private:
+        HashStorage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
         mutable std::mutex _collectionsLocker {};
         mutable std::mutex _callbackLocker {};

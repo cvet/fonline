@@ -39,8 +39,8 @@
 // clang-format off
 #include "BasicCore.h"
 #include "GlobalData.h"
-#include "BaseLogging.h"
 #include "StackTrace.h"
+#include "BaseLogging.h"
 #include "SmartPointers.h"
 #include "MemorySystem.h"
 #include "Containers.h"
