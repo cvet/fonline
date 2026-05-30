@@ -105,7 +105,7 @@ void ClientConnection::Connect()
         bool has_interthread_listener = false;
 
         {
-            std::scoped_lock locker(InterthreadListenersLocker);
+            scoped_lock locker {InterthreadListenersLocker};
 
             has_interthread_listener = InterthreadListeners.count(port) != 0;
         }

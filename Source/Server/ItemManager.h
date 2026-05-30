@@ -72,8 +72,7 @@ public:
     auto MoveItem(Item* item, int32_t count, Item* to_cont, const any_t& stack_id) -> Item*;
 
 private:
-    [[nodiscard]] auto GetItemHolder(Item* item) -> Entity*;
-
+    auto GetItemHolder(Item* item) -> Entity*;
     void RemoveItemHolder(Item* item, Entity* holder);
 
     raw_ptr<ServerEngine> _engine;

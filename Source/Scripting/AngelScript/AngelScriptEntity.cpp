@@ -52,6 +52,8 @@ static void Entity_AddRef(const Entity* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
+    // May call on destroyed entity
     self->AddRef();
 }
 
@@ -59,6 +61,8 @@ static void Entity_Release(const Entity* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
+    // May call on destroyed entity
     self->Release();
 }
 
@@ -66,6 +70,7 @@ static auto Entity_IsDestroyed(const Entity* self) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     // May call on destroyed entity
     return self->IsDestroyed();
 }
@@ -74,6 +79,7 @@ static auto Entity_IsDestroying(const Entity* self) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     // May call on destroyed entity
     return self->IsDestroying();
 }
@@ -82,7 +88,8 @@ static auto Entity_Name(const Entity* self) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(self);
+    // May call on unsynced entity
+    // May call on destroyed entity
     return string(self->GetName());
 }
 
@@ -90,6 +97,7 @@ static auto Entity_Id(const Entity* self) -> ident_t
 {
     FO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     // May call on destroyed entity
     return self->GetId();
 }
@@ -98,6 +106,7 @@ static auto Entity_ProtoId(const Entity* self) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     CheckScriptEntityNonDestroyed(self);
 
     if (const auto* self_proto = dynamic_cast<const ProtoEntity*>(self)) {
@@ -114,6 +123,7 @@ static auto Entity_Proto(const Entity* self) -> const Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     CheckScriptEntityNonDestroyed(self);
 
     if (const auto* self_proto = dynamic_cast<const ProtoEntity*>(self)) {
@@ -130,6 +140,7 @@ static auto Entity_GetSelfForEvent(Entity* entity) -> Entity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // May call on unsynced entity
     // May call on destroyed entity
     return entity;
 }
@@ -138,7 +149,7 @@ static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> in
 {
     FO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
 
@@ -160,7 +171,7 @@ static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t val
 {
     FO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
 
@@ -185,7 +196,7 @@ static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> an
 {
     FO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
 
@@ -207,7 +218,7 @@ static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value
 {
     FO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
 
     const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index);
 
@@ -233,7 +244,7 @@ static void Entity_GetComponent(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
     const auto& props = entity->GetProperties();
     const auto has_component = props.GetValue<bool>(prop);
@@ -262,10 +273,14 @@ static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonNull(entity);
+
+    entity->LockForPropertyAccessShared();
+    auto auto_unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccessShared(); });
+
+    CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
     const auto& getter = prop->GetGetter();
-    CheckScriptEntityNonNull(entity);
-    CheckScriptEntityNonDestroyed(entity);
 
     PropertyRawData prop_data;
 
@@ -294,11 +309,15 @@ static void Entity_SetPropertyValue(AngelScript::asIScriptGeneric* gen)
     FO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityNonNull(entity);
+
+    entity->LockForPropertyAccess();
+    auto auto_unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccess(); });
+
+    CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
     auto& props = entity->GetPropertiesForEdit();
     void* as_obj = gen->GetAddressOfArg(0);
-    CheckScriptEntityNonNull(entity);
-    CheckScriptEntityNonDestroyed(entity);
 
     auto prop_data = ConvertScriptToPropsObject(prop, as_obj);
     props.SetValue(prop, prop_data);
@@ -309,6 +328,7 @@ static auto Entity_DownCast(Entity* entity) -> Entity*
     FO_NO_STACK_TRACE_ENTRY();
 
     CheckScriptEntityNonDestroyed(entity);
+
     return entity;
 }
 
@@ -318,9 +338,9 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     const auto entity_type_name = entity->GetTypeName();
+    CheckScriptEntityNonDestroyed(entity);
     const auto& target_type_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     bool valid_cast = false;
-    CheckScriptEntityNonDestroyed(entity);
 
     if (entity != nullptr && target_type_name.find(entity_type_name) != string::npos) {
         if (target_type_name.starts_with("Proto")) {
@@ -449,8 +469,8 @@ static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
     const auto entity_hname = backend->GetMetadata()->Hashes.ToHashedString(entity_name);
     auto* entity_mngr = backend->GetEntityMngr();
 
-    auto* entity = entity_mngr->GetCustomEntity(entity_hname, id);
-    new (gen->GetAddressOfReturnLocation()) Entity*(entity);
+    auto entity = entity_mngr->GetCustomEntity(entity_hname, id);
+    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get());
 }
 
 static void Game_DestroyOne(AngelScript::asIScriptGeneric* gen)
@@ -489,7 +509,7 @@ static void CustomEntity_Add(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(holder);
+    CheckScriptEntityAccessAndNonDestroyed(holder);
     const auto pid = gen->GetArgCount() == 1 ? *cast_from_void<hstring*>(gen->GetAddressOfArg(0)) : hstring();
     auto* backend = GetScriptBackend(gen->GetEngine());
     auto* entity_mngr = backend->GetEntityMngr();
@@ -515,13 +535,13 @@ static void CustomEntity_GetOne(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(holder);
+    CheckScriptEntityAccessAndNonDestroyed(holder);
     const auto id = *cast_from_void<ident_t*>(gen->GetAddressOfArg(0));
     auto* entities = holder->GetInnerEntities(entry);
 
     if (entities != nullptr && !entities->empty()) {
         const auto it = std::ranges::find_if(*entities, [id](auto&& entity) {
-            CheckScriptEntityNonDestroyed(entity.get());
+            CheckScriptEntityAccessAndNonDestroyed(entity.get());
             return entity->GetId() == id;
         });
 
@@ -543,7 +563,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     auto* holder = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(holder);
+    CheckScriptEntityAccessAndNonDestroyed(holder);
     auto* entities = holder->GetInnerEntities(entry);
     auto* as_engine = gen->GetEngine();
     const auto* meta = GetEngineMetadata(as_engine);
@@ -555,7 +575,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
         result_entities.reserve(entities->size());
 
         for (auto& entity : *entities) {
-            CheckScriptEntityNonDestroyed(entity.get());
+            CheckScriptEntityAccessAndNonDestroyed(entity.get());
             result_entities.emplace_back(entity.get());
         }
 
@@ -628,7 +648,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     }
 
     prop->SetGetter([=](Entity* entity, const Property*) -> PropertyRawData FO_DEFERRED {
-        CheckScriptEntityNonDestroyed(entity);
+        CheckScriptEntityAccessAndNonDestroyed(entity);
 
         auto* context_mngr = backend->GetContextMngr();
         auto* ctx = context_mngr->PrepareContext(func);
@@ -723,7 +743,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
     }
 
     prop->AddSetter([=, &as_result](Entity* entity, const Property*, PropertyRawData& prop_data) FO_DEFERRED {
-        CheckScriptEntityNonDestroyed(entity);
+        CheckScriptEntityAccessAndNonDestroyed(entity);
 
         auto* context_mngr = backend->GetContextMngr();
 
@@ -826,8 +846,8 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* entity = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(entity);
+    auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
     FO_RUNTIME_ASSERT(method.Call);
 
@@ -890,7 +910,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
-    CheckScriptEntityNonDestroyed(entity);
+    CheckScriptEntityAccessAndNonDestroyed(entity);
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
@@ -967,6 +987,68 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     }
     else {
         new (gen->GetAddressOfReturnLocation()) Entity::EventResult(Entity::EventResult::ContinueChain);
+    }
+}
+
+static void Game_SetConstGlobalVar(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* as_engine = gen->GetEngine();
+    auto* engine = GetGameEngine(as_engine);
+
+    if (engine->IsGlobalVarsFrozen()) {
+        throw ScriptException("SetConstGlobalVar is only allowed during module initialization");
+    }
+
+    const auto target_type_id = gen->GetArgTypeId(0);
+    auto* target_addr = gen->GetAddressOfArg(0);
+
+    const auto value_type_id = gen->GetArgTypeId(1);
+    auto* value_addr = gen->GetAddressOfArg(1);
+
+    const auto target_base = target_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
+    const auto value_base = value_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
+
+    if (target_base != value_base) {
+        throw ScriptException("SetConstGlobalVar: type mismatch between target and value");
+    }
+
+    if (target_type_id & AngelScript::asTYPEID_OBJHANDLE) {
+        auto* type_info = as_engine->GetTypeInfoById(target_base);
+
+        auto** target_handle = *static_cast<void***>(target_addr);
+        auto* old_obj = *target_handle;
+
+        void* new_obj = nullptr;
+
+        if (value_type_id & AngelScript::asTYPEID_OBJHANDLE) {
+            new_obj = **(static_cast<void***>(value_addr));
+        }
+        else if (value_type_id & AngelScript::asTYPEID_MASK_OBJECT) {
+            new_obj = value_addr;
+        }
+
+        if (old_obj != nullptr && type_info != nullptr) {
+            as_engine->ReleaseScriptObject(old_obj, type_info);
+        }
+        if (new_obj != nullptr && type_info != nullptr) {
+            as_engine->AddRefScriptObject(new_obj, type_info);
+        }
+
+        *target_handle = new_obj;
+    }
+    else if (target_type_id & AngelScript::asTYPEID_MASK_OBJECT) {
+        auto* type_info = as_engine->GetTypeInfoById(target_type_id);
+        void* src = (value_type_id & AngelScript::asTYPEID_OBJHANDLE) ? **(static_cast<void***>(value_addr)) : value_addr;
+        as_engine->AssignScriptObject(target_addr, src, type_info);
+    }
+    else {
+        const auto size = as_engine->GetSizeOfPrimitiveType(target_type_id);
+
+        if (size > 0) {
+            std::memcpy(target_addr, value_addr, size);
+        }
     }
 }
 
@@ -1127,6 +1209,8 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
         register_fixed_type(type_name.c_str());
     }
 
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "void SetConstGlobalVar(?&out target, ?&in value)", FO_SCRIPT_GENERIC(Game_SetConstGlobalVar), FO_SCRIPT_GENERIC_CONV));
+
     // Register properties
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
         const auto& registrator = type_desc.PropRegistrator;
@@ -1194,7 +1278,8 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             }
 
             if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), handle_str).str();
+                const auto* set_handle_str = handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
             }
         }
@@ -1250,6 +1335,8 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
                 }
             }
 
+            int32_t registered_id = -1;
+
             if (method.GlobalGetter) {
                 FO_RUNTIME_ASSERT(type_name.as_str() == "Game");
                 FO_RUNTIME_ASSERT(method.Getter);
@@ -1257,12 +1344,18 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
                 FO_RUNTIME_ASSERT(method.Args.empty());
 
                 const string getter_decl = strex("{} get_{}()", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), method.Name);
-                FO_AS_VERIFY(as_engine->RegisterGlobalFunction(getter_decl.c_str(), FO_SCRIPT_GENERIC(Entity_GlobalMethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+                registered_id = as_engine->RegisterGlobalFunction(getter_decl.c_str(), FO_SCRIPT_GENERIC(Entity_GlobalMethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method));
+                FO_AS_VERIFY(registered_id);
             }
             else {
                 const string possible_getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
                 const string method_decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), possible_getset, method.Name, MakeScriptArgsName(method.Args));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(class_name.c_str(), method_decl.c_str(), FO_SCRIPT_GENERIC(Entity_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)))
+                registered_id = as_engine->RegisterObjectMethod(class_name.c_str(), method_decl.c_str(), FO_SCRIPT_GENERIC(Entity_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method));
+                FO_AS_VERIFY(registered_id);
+            }
+
+            if (method.Async) {
+                SetFunctionAttributes(as_engine->GetFunctionById(registered_id), {"Async"});
             }
         }
     }

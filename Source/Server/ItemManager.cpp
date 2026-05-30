@@ -50,18 +50,16 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    switch (item->GetOwnership()) {
-    case ItemOwnership::CritterInventory:
-        return _engine->EntityMngr.GetCritter(item->GetCritterId());
-    case ItemOwnership::MapHex:
-        return _engine->EntityMngr.GetMap(item->GetMapId());
-    case ItemOwnership::ItemContainer:
-        return _engine->EntityMngr.GetItem(item->GetContainerId());
-    default:
-        break;
+    ValidateEntityAccess(item);
+
+    if (item->GetOwnership() == ItemOwnership::Nowhere) {
+        throw GenericException("Item does not has holder", item->GetId(), item->GetProtoId());
     }
 
-    throw GenericException("Item does not has holder", item->GetId(), item->GetProtoId());
+    auto holder = item->GetParent();
+    FO_RUNTIME_ASSERT(holder);
+    ValidateEntityAccess(holder.get());
+    return holder.get();
 }
 
 void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
@@ -70,6 +68,9 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 
     FO_RUNTIME_ASSERT(item);
     FO_RUNTIME_ASSERT(holder);
+
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(holder);
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
@@ -191,6 +192,8 @@ void ItemManager::DestroyItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(item);
+
     // Redundant calls
     if (item->IsDestroying() || item->IsDestroyed()) {
         return;
@@ -209,7 +212,13 @@ void ItemManager::DestroyItem(Item* item)
             }
 
             while (item->HasInnerItems()) {
-                DestroyItem(item->GetAllInnerItems().front());
+                auto* inner = item->GetAllInnerItems().front();
+                // Inner item has its own EntityLock; pull it into the current sync context so the
+                // recursive DestroyItem call's ValidateEntityAccess passes.
+                auto* ctx = _engine->GetCurrentSyncContext();
+                FO_RUNTIME_ASSERT(ctx);
+                ctx->EnsureEntitySynced(inner);
+                DestroyItem(inner);
             }
 
             if (item->HasInnerEntities()) {
@@ -221,16 +230,17 @@ void ItemManager::DestroyItem(Item* item)
         }
     }
 
-    // Invalidate for use
+    _engine->TimeEventMngr.CancelAllForEntity(item);
+    item->SetParent(nullptr);
     item->MarkAsDestroyed();
-
-    // Erase from main collection
     _engine->EntityMngr.UnregisterItem(item, true);
 }
 
 auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(item);
 
     const auto item_count = item->GetCount();
     FO_RUNTIME_ASSERT(item->GetStackable());
@@ -250,6 +260,8 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(count >= 0);
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(to_cr);
 
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
         return item;
@@ -272,6 +284,8 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(count >= 0);
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(to_map);
 
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
         return item;
@@ -296,6 +310,8 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(count >= 0);
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(to_cont);
 
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return item;
@@ -319,6 +335,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const
 
     FO_RUNTIME_ASSERT(cont);
     FO_RUNTIME_ASSERT(count >= 0);
+    ValidateEntityAccess(cont);
 
     const auto* proto = _engine->GetProtoItem(pid);
 
@@ -338,25 +355,22 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                item = CreateItem(pid, 0, nullptr);
-                item = cont->AddItemToContainer(item, stack_id);
-                result = item;
+                auto* new_item = CreateItem(pid, 0, nullptr);
+                result = cont->AddItemToContainer(new_item, stack_id);
             }
         }
     }
     else {
         if (proto->GetStackable()) {
-            item = CreateItem(pid, count, nullptr);
-            item = cont->AddItemToContainer(item, stack_id);
-            result = item;
+            auto* new_item = CreateItem(pid, count, nullptr);
+            result = cont->AddItemToContainer(new_item, stack_id);
         }
         else {
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                item = CreateItem(pid, 0, nullptr);
-                item = cont->AddItemToContainer(item, stack_id);
-                result = item;
+                auto* new_item = CreateItem(pid, 0, nullptr);
+                result = cont->AddItemToContainer(new_item, stack_id);
             }
         }
     }
@@ -369,6 +383,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(count > 0);
+    ValidateEntityAccess(cr);
 
     const auto* proto = _engine->GetProtoItem(pid);
 
@@ -385,17 +400,15 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
     }
     else {
         if (proto->GetStackable()) {
-            item = CreateItem(pid, count, nullptr);
-            item = _engine->CrMngr.AddItemToCritter(cr, item, true);
-            result = item;
+            auto* new_item = CreateItem(pid, count, nullptr);
+            result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
         }
         else {
             count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                item = CreateItem(pid, 0, nullptr);
-                item = _engine->CrMngr.AddItemToCritter(cr, item, true);
-                result = item;
+                auto* new_item = CreateItem(pid, 0, nullptr);
+                result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
             }
         }
     }
@@ -406,6 +419,8 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
 void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(cr);
 
     if (count <= 0) {
         return;
@@ -441,6 +456,8 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
 void ItemManager::SetItemCritter(Critter* cr, hstring pid, int32_t count)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(cr);
 
     const auto cur_count = cr->CountInvItemByPid(pid);
 

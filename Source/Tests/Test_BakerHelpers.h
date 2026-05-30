@@ -63,10 +63,57 @@ namespace BakerTests
         OverrideSetting(settings.ItemStubSpriteName, string {});
     }
 
+    // Test rigs embed tiny scripts that intentionally use mutable module-level globals as
+    // observation hooks. List every namespace those embedded scripts declare; production scripts
+    // compile through their own settings instance and stay gated. The gate-test namespace
+    // (MutableGlobal) is intentionally excluded so the gate-test still fires.
+    inline auto GetTestMutableGlobalsAllowedNamespaces() -> vector<string>
+    {
+        return {
+            "ServerEngineTest",
+            "CommonMethods",
+            "EntityOps",
+            "EntityLifecycle",
+            "ServerItemsTest",
+            "AdvOps",
+            "ScriptMethodsTest",
+            "MapOpsTest",
+            "ScriptBuiltins",
+            "LocEntity",
+            "ClientEngineTest",
+            "ClientServerIntegrationServer",
+            "ClientServerIntegrationClient",
+            "AttrTest",
+            "Footsteps",
+            "CritterState",
+            "Deterioration",
+            "RemoteCallTest",
+            "ItemTriggerTest",
+            "ItemStaticTest",
+            "TestSettings",
+            "TestMigration",
+            "TestRefTypeProps",
+            "TestRefTypeEntityProps",
+            "TestNestedRefTypeProps",
+            "TestLegacyRefType",
+            "TestRefTypeFlags",
+            "TestValueTypePropertyOwner",
+        };
+    }
+
     inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
     {
         OverrideSetting(settings.DisableNetworking, true);
         OverrideSetting(settings.OpLogEnabled, false);
+        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+    }
+
+    inline auto MakeScriptCompilerSettings() -> GlobalSettings
+    {
+        auto settings = GlobalSettings(false);
+        settings.ApplyDefaultSettings();
+        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        return settings;
     }
 
     inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
@@ -231,7 +278,7 @@ namespace BakerTests
         return instance;
     }
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, const ScriptSettings& settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto CompileInlineScripts(EngineMetadata* meta, const AngelScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -246,12 +293,13 @@ namespace BakerTests
             files.emplace_back(source_files.ReadFile(path));
         }
 
-        return CompileAngelScript(meta, settings, files, std::move(message_callback));
+        return CompileAngelScript(meta, script_settings, files, std::move(message_callback));
     }
 
     inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
-        return CompileInlineScripts(meta, GetTestSettings(), pack_name, script_files, std::move(message_callback));
+        auto script_settings = MakeScriptCompilerSettings();
+        return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));
     }
 
     class TestRig final
@@ -261,6 +309,11 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
+            // Match MakeScriptCompilerSettings — the gate also fires at runtime when ServerEngine
+            // loads bytecode, so the runtime settings need the same allowlist as the compile-time
+            // ones. The gate-test (Test_AngelScriptBaker) intentionally bypasses this default by
+            // re-overriding the field on its TestRig instance before compiling.
+            OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
             auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();

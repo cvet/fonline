@@ -49,4 +49,26 @@ TEST_CASE("AngelScriptBaker")
 #endif
 }
 
+TEST_CASE("AngelScript mutable globals are disallowed")
+{
+#if FO_ANGELSCRIPT_SCRIPTING
+    using namespace BakerTests;
+
+    // Defaults: AngelScriptSettings::MutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
+    // The gate must fire for any non-const module-level global.
+    TestRig rig;
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+
+    {
+        BakerServerEngine compiler_engine(rig.BakedFiles);
+        REQUIRE_THROWS_WITH(CompileInlineScripts(&compiler_engine, rig.Settings, "MutableGlobalScripts", {{"Scripts/MutableGlobal.fos", "namespace MutableGlobal\n{\nint Value = 1;\n}\n"}}, [](string_view) { }), Catch::Matchers::ContainsSubstring("mutable global variable"));
+    }
+
+    {
+        BakerServerEngine compiler_engine(rig.BakedFiles);
+        REQUIRE_NOTHROW(CompileInlineScripts(&compiler_engine, rig.Settings, "ConstGlobalScripts", {{"Scripts/ConstGlobal.fos", "namespace ConstGlobal\n{\nconst int Value = 1;\nconst int[] Values = {1, 2, 3};\n}\n"}}, [](string_view) { }));
+    }
+#endif
+}
+
 FO_END_NAMESPACE

@@ -213,7 +213,7 @@ public:
     [[nodiscard]] static auto GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t;
     [[nodiscard]] static auto GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32_t;
     [[nodiscard]] static auto CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool;
-    [[nodiscard]] static auto HexesInRadius(int32_t radius) -> int32_t;
+    [[nodiscard]] static auto HexesInRadius(int32_t radius) noexcept -> int32_t;
     [[nodiscard]] static auto IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius, int32_t x1, int32_t y1, int32_t x2, int32_t y2) noexcept -> bool;
     [[nodiscard]] static auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
     [[nodiscard]] static auto ChangeStepsCoords(fpos32 pos, float32_t deq) noexcept -> fpos32;

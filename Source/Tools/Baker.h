@@ -78,7 +78,7 @@ public:
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> std::launch { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? std::launch::deferred : std::launch::async | std::launch::deferred; }
+    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t;
 
     shared_ptr<BakingContext> _context;
@@ -137,8 +137,8 @@ private:
     raw_ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};
     FileSystem _outputResources {};
-    mutable std::mutex _outputFilesLocker {};
-    unordered_map<string, uint64_t> _outputFiles {}; // Path and input file last write time
+    mutable mutex _outputFilesLocker {};
+    unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
     bool _nonConstHelper {};
 };
 
@@ -150,7 +150,7 @@ public:
     // Entity API stub
     auto CreateCustomInnerEntity(Entity* /*holder*/, hstring /*entry*/, hstring /*pid*/) -> Entity* override { return nullptr; }
     auto CreateCustomEntity(hstring /*type_name*/, hstring /*pid*/) -> Entity* override { return nullptr; }
-    auto GetCustomEntity(hstring /*type_name*/, ident_t /*id*/) -> Entity* override { return nullptr; }
+    auto GetCustomEntity(hstring /*type_name*/, ident_t /*id*/) -> refcount_ptr<Entity> override { return {}; }
     void DestroyEntity(Entity* /*entity*/) override { }
 };
 

@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "EntitySync.h"
 #include "Geometry.h"
 #include "MapLoader.h"
 #include "ScriptSystem.h"
@@ -97,9 +98,10 @@ public:
     [[nodiscard]] auto GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto HasItems() const noexcept -> bool { return !_items.empty(); }
     [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>> { return _items; }
-    [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>;
+    [[nodiscard]] auto GetItems() const noexcept -> const_span<raw_ptr<Item>> { return _items; }
+    [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>;
-    [[nodiscard]] auto GetTriggerItemsOnHex(mpos hex) -> vector<Item*>;
+    [[nodiscard]] auto GetTriggerItemsOnHex(mpos hex) noexcept -> vector<Item*>;
     [[nodiscard]] auto IsValidPlaceForItem(mpos hex, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool skip_unsafe) const -> optional<mpos>;
     [[nodiscard]] auto IsCritterOnHex(mpos hex, CritterFindType find_type) const -> bool;
@@ -108,11 +110,14 @@ public:
     [[nodiscard]] auto GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> Critter*;
     [[nodiscard]] auto HasCritters() const noexcept -> bool { return !_critters.empty(); }
     [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>> { return _critters; }
+    [[nodiscard]] auto GetCritters() const noexcept -> const_span<raw_ptr<Critter>> { return _critters; }
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>;
     [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _playerCritters; }
+    [[nodiscard]] auto GetPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>> { return _playerCritters; }
     [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>> { return _nonPlayerCritters; }
+    [[nodiscard]] auto GetNonPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>> { return _nonPlayerCritters; }
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto HasSpectatorPlayers() const noexcept -> bool { return !_spectatorPlayers.empty(); }
     [[nodiscard]] auto GetSpectatorPlayers() noexcept -> span<raw_ptr<Player>> { return _spectatorPlayers; }
@@ -120,11 +125,12 @@ public:
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>> { return _staticMap->StaticItems; }
+    [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<raw_ptr<StaticItem>> { return _staticMap->StaticItems; }
     [[nodiscard]] auto GetStaticItems(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
-    [[nodiscard]] auto IsOutsideArea(mpos hex) const -> bool;
+    [[nodiscard]] auto IsOutsideArea(mpos hex) const noexcept -> bool;
 
     void SetLocation(Location* loc) noexcept;
     void AddCritter(Critter* cr);
@@ -182,6 +188,7 @@ private:
     unordered_map<ident_t, raw_ptr<Item>> _itemsMap {};
     raw_ptr<Location> _mapLocation {};
     vector<raw_ptr<Player>> _spectatorPlayers {};
+    EntityLock _ownedLock {};
 };
 
 FO_END_NAMESPACE

@@ -35,6 +35,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptHelpers.h"
 #include "Application.h"
 
 #include <angelscript.h>
@@ -93,6 +94,39 @@ struct ScriptBytecodeLocation
     int Row {};
     int Column {1};
 };
+
+static constexpr array DIRECT_CALL_BLOCKING_ATTRIBUTES {
+    string_view {"Event"},
+    string_view {"TimeEvent"},
+    string_view {"AnimCallback"},
+    string_view {"PropertyGetter"},
+    string_view {"PropertySetter"},
+    string_view {"ServerRemoteCall"},
+    string_view {"ClientRemoteCall"},
+    string_view {"AdminRemoteCall"},
+    string_view {"ItemTrigger"},
+    string_view {"ItemStatic"},
+    string_view {"ModuleInit"},
+};
+
+static auto IsDirectCallBlockingAttribute(string_view base_name, const vector<string>* project_extras) noexcept -> bool
+{
+    for (const auto& name : DIRECT_CALL_BLOCKING_ATTRIBUTES) {
+        if (base_name == name) {
+            return true;
+        }
+    }
+
+    if (project_extras != nullptr) {
+        for (const auto& name : *project_extras) {
+            if (base_name == name) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 static constexpr array CALLBACK_ATTRIBUTE_RULES {
     CallbackAttributeRule {.AttributeName = "Event", .UsageName = "Subscribe/Unsubscribe", .MethodName = "Subscribe", .ObjectTypeSuffix = "Event"},
@@ -446,11 +480,16 @@ static auto TryParseFunctionDecl(LexemIt start, const Preprocessor::LexemList& l
     return std::nullopt;
 }
 
-static void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const vector<string>& attributes)
+void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const vector<string>& attributes)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (attributes.empty()) {
+        return;
+    }
+
+    if (auto* old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA))) {
+        FO_RUNTIME_ASSERT(old_user_data->Attributes == attributes);
         return;
     }
 
@@ -461,7 +500,7 @@ static void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const ve
     FO_RUNTIME_ASSERT(!old_user_data);
 }
 
-static void SetFunctionAttributesWithVirtualMirror(AngelScript::asIScriptFunction* func, const vector<string>& attributes)
+static void SetFunctionAttributesWithVirtualMirror(AngelScript::asIScriptFunction* func, const vector<string>& attributes, const vector<string>* project_blocking_extras)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -477,13 +516,26 @@ static void SetFunctionAttributesWithVirtualMirror(AngelScript::asIScriptFunctio
         return;
     }
 
+    vector<string> blocking_only;
+    blocking_only.reserve(attributes.size());
+
+    for (const auto& attr : attributes) {
+        if (IsDirectCallBlockingAttribute(GetAttributeBaseName(attr), project_blocking_extras)) {
+            blocking_only.emplace_back(attr);
+        }
+    }
+
+    if (blocking_only.empty()) {
+        return;
+    }
+
     for (AngelScript::asUINT i = 0; i < ti->GetMethodCount(); i++) {
         if (ti->GetMethodByIndex(i, false) != func) {
             continue;
         }
 
         if (auto* virtual_func = ti->GetMethodByIndex(i, true); virtual_func != nullptr && virtual_func != func) {
-            SetFunctionAttributes(virtual_func, attributes);
+            SetFunctionAttributes(virtual_func, blocking_only);
         }
 
         return;
@@ -671,66 +723,16 @@ static auto FormatUsageErrorLocation(const ScriptBytecodeLocation& location, con
     return strex("{}({},{})", location.Section, location.Row, location.Column).str();
 }
 
-static auto ShouldSkipAttributedUsageValidation(const AngelScript::asIScriptFunction* caller, const AngelScript::asDWORD* instruction, const Preprocessor::LineNumberTranslator* lnt) -> bool
+static auto ShouldSkipAttributedUsageValidation(const AngelScript::asIScriptFunction* caller, const vector<string>* allowed_namespaces) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> allowed_source_paths {"Scripts/Tests"};
-
-    if (allowed_source_paths.empty()) {
+    if (allowed_namespaces == nullptr) {
         return false;
     }
 
-    const auto location = ResolveInstructionLocation(caller, instruction);
-
-    if (!location.has_value()) {
-        return false;
-    }
-
-    string source_file;
-
-    if (lnt != nullptr) {
-        const auto resolved_source_file = Preprocessor::ResolveOriginalFile(numeric_cast<uint32_t>(location->Row), lnt);
-        source_file = {resolved_source_file.begin(), resolved_source_file.end()};
-    }
-    else {
-        source_file = location->Section;
-    }
-
-    auto normalized_source_file = strex(source_file).normalize_path_slashes().str();
-
-    while (!normalized_source_file.empty() && normalized_source_file.back() == '/') {
-        normalized_source_file.pop_back();
-    }
-
-    for (const auto& allowed_source_path : allowed_source_paths) {
-        auto normalized_allowed_source_path = strex(allowed_source_path).normalize_path_slashes().str();
-
-        while (!normalized_allowed_source_path.empty() && normalized_allowed_source_path.back() == '/') {
-            normalized_allowed_source_path.pop_back();
-        }
-
-        if (normalized_allowed_source_path.empty()) {
-            continue;
-        }
-
-        if (strex(normalized_source_file).starts_with(normalized_allowed_source_path) && (normalized_source_file.length() == normalized_allowed_source_path.length() || normalized_source_file[normalized_allowed_source_path.length()] == '/')) {
-            return true;
-        }
-
-        if (normalized_allowed_source_path.front() != '/' && normalized_allowed_source_path.find(':') == string::npos) {
-            const auto relative_path_segment = strex("/{}", normalized_allowed_source_path).str();
-
-            for (auto pos = normalized_source_file.find(relative_path_segment); pos != string::npos; pos = normalized_source_file.find(relative_path_segment, pos + 1)) {
-                const auto end_pos = pos + relative_path_segment.size();
-                if (end_pos == normalized_source_file.size() || normalized_source_file[end_pos] == '/') {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
+    const auto* caller_ns = caller->GetNamespace();
+    return IsScriptNamespaceAllowed(caller_ns != nullptr ? caller_ns : "", *allowed_namespaces);
 }
 
 static auto MakeAttributedUsageError(const AngelScript::asIScriptFunction* caller, const AngelScript::asIScriptFunction* callee, const AngelScript::asDWORD* instruction, const Preprocessor::LineNumberTranslator* lnt) -> string
@@ -740,6 +742,21 @@ static auto MakeAttributedUsageError(const AngelScript::asIScriptFunction* calle
     const auto caller_decl = GetFunctionDeclarationString(caller);
     const auto callee_decl = GetFunctionDeclarationString(callee);
     auto message = strex("Attributed function '{}' cannot be called from function '{}'", callee_decl, caller_decl).str();
+
+    if (const auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
+        return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
+    }
+
+    return message;
+}
+
+static auto MakeMarkerPropagationError(const AngelScript::asIScriptFunction* caller, const AngelScript::asIScriptFunction* callee, string_view marker_name, const AngelScript::asDWORD* instruction, const Preprocessor::LineNumberTranslator* lnt) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto caller_decl = GetFunctionDeclarationString(caller);
+    const auto callee_decl = GetFunctionDeclarationString(callee);
+    auto message = strex("Function '{}' is marked [[{}]] but is called from '{}' which does not carry the same marker; add [[{}]] to the caller to propagate it", callee_decl, marker_name, caller_decl, marker_name).str();
 
     if (const auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
         return strex("{}: error : {}", FormatUsageErrorLocation(*location, lnt), message).str();
@@ -1028,7 +1045,7 @@ static auto FormatRecordFunctionName(const ParsedFunctionAttributeRecord& record
     return result;
 }
 
-auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vector<ParsedFunctionAttributeRecord>& records) -> string
+auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vector<ParsedFunctionAttributeRecord>& records, const vector<string>* project_blocking_extras) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1112,32 +1129,48 @@ auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vecto
             return strex("Can't bind attributes to function {} [overload {}]", FormatRecordFunctionName(record), record.OverloadIndex).str();
         }
 
-        SetFunctionAttributesWithVirtualMirror(target_func, record.Attributes);
+        SetFunctionAttributesWithVirtualMirror(target_func, record.Attributes, project_blocking_extras);
     }
 
     return {};
 }
 
-auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt) -> string
+static auto ClassifyFunctionAttributes(const AngelScript::asIScriptFunction* func, bool& has_blocking, vector<string_view>& markers, const vector<string>* project_blocking_extras) -> void
 {
     FO_STACK_TRACE_ENTRY();
 
-    map<int, const AngelScript::asIScriptFunction*> attributed_funcs_by_id;
+    has_blocking = false;
+    markers.clear();
+
+    const auto* user_data = GetFunctionAttributesUserData(func);
+
+    if (user_data == nullptr) {
+        return;
+    }
+
+    for (const auto& attr : user_data->Attributes) {
+        const auto base = GetAttributeBaseName(attr);
+
+        if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
+            has_blocking = true;
+        }
+        else {
+            markers.emplace_back(base);
+        }
+    }
+}
+
+auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt, const vector<string>* allowed_namespaces, const vector<string>* project_blocking_extras) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
     const auto funcs = CollectModuleScriptFunctions(mod);
 
-    for (const auto* func : funcs) {
-        if (GetFunctionAttributesUserData(func) == nullptr) {
-            continue;
-        }
-
-        attributed_funcs_by_id.emplace(func->GetId(), func);
-    }
-
-    if (attributed_funcs_by_id.empty()) {
-        return {};
-    }
-
     string errors;
+    vector<string_view> caller_markers;
+    vector<string_view> target_markers;
+    bool caller_has_blocking {};
+    bool target_has_blocking {};
 
     for (auto* caller : funcs) {
         AngelScript::asUINT bc_length = 0;
@@ -1146,6 +1179,8 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
         if (bc == nullptr || bc_length == 0) {
             continue;
         }
+
+        ClassifyFunctionAttributes(caller, caller_has_blocking, caller_markers, project_blocking_extras);
 
         for (AngelScript::asUINT pos = 0; pos < bc_length;) {
             const auto opcode = static_cast<AngelScript::asEBCInstr>(static_cast<uint8_t>(bc[pos]));
@@ -1156,17 +1191,31 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
                 const auto* target = mod->GetEngine()->GetFunctionById(*reinterpret_cast<const int*>(instruction + 1));
                 FO_RUNTIME_ASSERT(target);
 
-                if (const auto it = attributed_funcs_by_id.find(target->GetId()); it != attributed_funcs_by_id.end()) {
-                    if (ShouldSkipAttributedUsageValidation(caller, instruction, lnt)) {
-                        pos += instr_size;
-                        continue;
-                    }
+                ClassifyFunctionAttributes(target, target_has_blocking, target_markers, project_blocking_extras);
 
-                    if (!errors.empty()) {
-                        errors.append("\n");
-                    }
+                // Rule 1: direct-call-blocking attribute → caller must live in an allowed namespace.
+                if (target_has_blocking) {
+                    if (!ShouldSkipAttributedUsageValidation(caller, allowed_namespaces)) {
+                        if (!errors.empty()) {
+                            errors.append("\n");
+                        }
 
-                    errors.append(MakeAttributedUsageError(caller, it->second, instruction, lnt));
+                        errors.append(MakeAttributedUsageError(caller, target, instruction, lnt));
+                    }
+                }
+
+                // Rule 2: marker attribute (any non-blocking attribute, e.g. [[Async]]) →
+                // caller must carry the same marker.
+                for (const auto& marker : target_markers) {
+                    const bool caller_has_marker = std::find(caller_markers.begin(), caller_markers.end(), marker) != caller_markers.end();
+
+                    if (!caller_has_marker) {
+                        if (!errors.empty()) {
+                            errors.append("\n");
+                        }
+
+                        errors.append(MakeMarkerPropagationError(caller, target, marker, instruction, lnt));
+                    }
                 }
             }
 

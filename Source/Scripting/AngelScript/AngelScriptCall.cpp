@@ -132,6 +132,115 @@ void ScriptDataAccessor::AddDictElement(void* data, void* key, void* value) cons
     dict->Set(key, value);
 }
 
+auto ResolveScriptFuncType(AngelScript::asIScriptEngine* as_engine, int32_t type_id, uint32_t flags, bool is_ret) -> ComplexTypeDesc
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(as_engine);
+    FO_RUNTIME_ASSERT(type_id != AngelScript::asTYPEID_VOID);
+
+    const auto* meta = GetEngineMetadata(as_engine);
+
+    const auto get_type_name = [as_engine](int32_t tid) -> string_view {
+        switch (tid) {
+        case AngelScript::asTYPEID_VOID:
+            return "void";
+        case AngelScript::asTYPEID_BOOL:
+            return "bool";
+        case AngelScript::asTYPEID_INT8:
+            return "int8";
+        case AngelScript::asTYPEID_INT16:
+            return "int16";
+        case AngelScript::asTYPEID_INT32:
+            return "int32";
+        case AngelScript::asTYPEID_INT64:
+            return "int64";
+        case AngelScript::asTYPEID_UINT8:
+            return "uint8";
+        case AngelScript::asTYPEID_UINT16:
+            return "uint16";
+        case AngelScript::asTYPEID_UINT32:
+            return "uint32";
+        case AngelScript::asTYPEID_UINT64:
+            return "uint64";
+        case AngelScript::asTYPEID_FLOAT:
+            return "float32";
+        case AngelScript::asTYPEID_DOUBLE:
+            return "float64";
+        default:
+            break;
+        }
+
+        const auto* ti = as_engine->GetTypeInfoById(tid);
+        FO_RUNTIME_ASSERT(ti);
+        return ti->GetName();
+    };
+
+    const auto* as_type_info = as_engine->GetTypeInfoById(type_id);
+    ComplexTypeDesc type;
+
+    if (as_type_info != nullptr && string_view(as_type_info->GetName()) == "dict") {
+        const auto key_name = get_type_name(as_type_info->GetSubTypeId(0));
+        const auto value_name = get_type_name(as_type_info->GetSubTypeId(1));
+
+        if (!meta->IsValidBaseType(key_name)) {
+            return {};
+        }
+
+        if (string_view(value_name) == "array") {
+            const auto value_name2 = get_type_name(as_type_info->GetSubType(1)->GetSubTypeId());
+
+            if (!meta->IsValidBaseType(value_name2)) {
+                return {};
+            }
+
+            type.Kind = ComplexTypeKind::DictOfArray;
+            type.KeyType = meta->GetBaseType(key_name);
+            type.BaseType = meta->GetBaseType(value_name2);
+        }
+        else {
+            if (!meta->IsValidBaseType(value_name)) {
+                return {};
+            }
+
+            type.Kind = ComplexTypeKind::Dict;
+            type.KeyType = meta->GetBaseType(key_name);
+            type.BaseType = meta->GetBaseType(value_name);
+        }
+    }
+    else if (as_type_info != nullptr && string_view(as_type_info->GetName()) == "array") {
+        const auto name = get_type_name(as_type_info->GetSubTypeId());
+
+        if (!meta->IsValidBaseType(name)) {
+            return {};
+        }
+
+        type.Kind = ComplexTypeKind::Array;
+        type.BaseType = meta->GetBaseType(name);
+    }
+    else {
+        const auto name = get_type_name(type_id);
+
+        if (!meta->IsValidBaseType(name)) {
+            return {};
+        }
+
+        type.Kind = ComplexTypeKind::Simple;
+        type.BaseType = meta->GetBaseType(name);
+    }
+
+    if ((flags & AngelScript::asTM_INOUTREF) != 0) {
+        if (is_ret) {
+            return {};
+        }
+
+        type.IsMutable = true;
+    }
+
+    FO_RUNTIME_ASSERT(type);
+    return type;
+}
+
 auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
 {
     FO_STACK_TRACE_ENTRY();
@@ -142,110 +251,6 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
 
     auto* as_engine = func->GetEngine();
     const auto* meta = GetEngineMetadata(as_engine);
-
-    const auto resolve_type = [&](int32_t type_id, AngelScript::asDWORD flags, bool is_ret) -> ComplexTypeDesc {
-        FO_RUNTIME_ASSERT(type_id != AngelScript::asTYPEID_VOID);
-
-        const auto get_type_name = [&](int32_t tid) -> string_view {
-            switch (tid) {
-            case AngelScript::asTYPEID_VOID:
-                return "void";
-            case AngelScript::asTYPEID_BOOL:
-                return "bool";
-            case AngelScript::asTYPEID_INT8:
-                return "int8";
-            case AngelScript::asTYPEID_INT16:
-                return "int16";
-            case AngelScript::asTYPEID_INT32:
-                return "int32";
-            case AngelScript::asTYPEID_INT64:
-                return "int64";
-            case AngelScript::asTYPEID_UINT8:
-                return "uint8";
-            case AngelScript::asTYPEID_UINT16:
-                return "uint16";
-            case AngelScript::asTYPEID_UINT32:
-                return "uint32";
-            case AngelScript::asTYPEID_UINT64:
-                return "uint64";
-            case AngelScript::asTYPEID_FLOAT:
-                return "float32";
-            case AngelScript::asTYPEID_DOUBLE:
-                return "float64";
-            default:
-                break;
-            }
-
-            const auto* ti = as_engine->GetTypeInfoById(tid);
-            FO_RUNTIME_ASSERT(ti);
-            return ti->GetName();
-        };
-
-        const auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-
-        ComplexTypeDesc type;
-
-        if (as_type_info != nullptr && string_view(as_type_info->GetName()) == "dict") {
-            const auto key_name = get_type_name(as_type_info->GetSubTypeId(0));
-            const auto value_name = get_type_name(as_type_info->GetSubTypeId(1));
-
-            if (!meta->IsValidBaseType(key_name)) {
-                return {};
-            }
-
-            if (string_view(value_name) == "array") {
-                const auto value_name2 = get_type_name(as_type_info->GetSubType(1)->GetSubTypeId());
-
-                if (!meta->IsValidBaseType(value_name2)) {
-                    return {};
-                }
-
-                type.Kind = ComplexTypeKind::DictOfArray;
-                type.KeyType = meta->GetBaseType(key_name);
-                type.BaseType = meta->GetBaseType(value_name2);
-            }
-            else {
-                if (!meta->IsValidBaseType(value_name)) {
-                    return {};
-                }
-
-                type.Kind = ComplexTypeKind::Dict;
-                type.KeyType = meta->GetBaseType(key_name);
-                type.BaseType = meta->GetBaseType(value_name);
-            }
-        }
-        else if (as_type_info != nullptr && string_view(as_type_info->GetName()) == "array") {
-            const auto name = get_type_name(as_type_info->GetSubTypeId());
-
-            if (!meta->IsValidBaseType(name)) {
-                return {};
-            }
-
-            type.Kind = ComplexTypeKind::Array;
-            type.BaseType = meta->GetBaseType(name);
-        }
-        else {
-            const auto name = get_type_name(type_id);
-
-            if (!meta->IsValidBaseType(name)) {
-                return {};
-            }
-
-            type.Kind = ComplexTypeKind::Simple;
-            type.BaseType = meta->GetBaseType(name);
-        }
-
-        if ((flags & AngelScript::asTM_INOUTREF) != 0) {
-            if (is_ret) {
-                return {};
-            }
-
-            type.IsMutable = true;
-        }
-
-        FO_RUNTIME_ASSERT(type);
-        return type;
-    };
 
     const auto func_name = GetScriptFuncName(func, meta->Hashes);
     auto func_desc = SafeAlloc::MakeUnique<ScriptFuncDesc>();
@@ -261,7 +266,7 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
         const char* param_name;
         FO_AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags, &param_name));
 
-        auto arg_type = resolve_type(param_type_id, param_flags, false);
+        auto arg_type = ResolveScriptFuncType(as_engine, param_type_id, param_flags, false);
         func_desc->Args.emplace_back(ArgDesc {.Name = param_name != nullptr ? param_name : "", .Type = std::move(arg_type)});
     }
 
@@ -270,7 +275,7 @@ auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*
     const bool is_void_ret = ret_type_id == AngelScript::asTYPEID_VOID;
 
     if (!is_void_ret) {
-        func_desc->Ret = resolve_type(ret_type_id, ret_flags, true);
+        func_desc->Ret = ResolveScriptFuncType(as_engine, ret_type_id, ret_flags, true);
     }
 
     const bool call_supported = (is_void_ret || !!func_desc->Ret) && !std::ranges::any_of(func_desc->Args, [](auto&& a) { return !a.Type; });
@@ -387,17 +392,62 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     FO_RUNTIME_ASSERT(func_desc);
     FO_RUNTIME_ASSERT(func_desc->Call);
 
-    // Check for destroyed entity
-    for (AngelScript::asUINT i = 0; i < call.ArgsData.size(); i++) {
-        const auto& arg_type = func_desc->Args[i].Type;
+    // Check for destroyed or non-synced entity
+    bool any_destroyed = false;
 
-        if (arg_type.Kind == ComplexTypeKind::Simple && arg_type.BaseType.IsEntity) {
-            const auto* entity = cast_from_void<Entity*>(*static_cast<void**>(call.ArgsData[i]));
-
-            if (entity != nullptr && entity->IsDestroyed()) {
+    const auto check_entity = [&](const Entity* entity) {
+        if (entity != nullptr) {
+            if (entity->IsDestroyed()) {
+                any_destroyed = true;
                 return;
             }
+
+            ValidateEntityAccess(entity);
         }
+    };
+
+    for (AngelScript::asUINT i = 0; i < call.ArgsData.size() && !any_destroyed; i++) {
+        const auto& arg_type = func_desc->Args[i].Type;
+
+        if (arg_type.BaseType.IsEntity) {
+            if (arg_type.Kind == ComplexTypeKind::Simple) {
+                check_entity(cast_from_void<Entity*>(*static_cast<void**>(call.ArgsData[i])));
+            }
+            else if (arg_type.Kind == ComplexTypeKind::Array) {
+                void* arr_data = call.ArgsData[i];
+                const size_t arr_size = call.Accessor->GetArraySize(arr_data);
+
+                for (size_t j = 0; j < arr_size && !any_destroyed; j++) {
+                    check_entity(*cast_from_void<Entity**>(call.Accessor->GetArrayElement(arr_data, j)));
+                }
+            }
+            else if (arg_type.Kind == ComplexTypeKind::DictOfArray) {
+                void* dict_data = call.ArgsData[i];
+                const size_t dict_size = call.Accessor->GetDictSize(dict_data);
+
+                for (size_t j = 0; j < dict_size && !any_destroyed; j++) {
+                    const auto kv = call.Accessor->GetDictElement(dict_data, j);
+                    const size_t inner_size = call.Accessor->GetArraySize(kv.second);
+
+                    for (size_t k = 0; k < inner_size && !any_destroyed; k++) {
+                        check_entity(*cast_from_void<Entity**>(call.Accessor->GetArrayElement(kv.second, k)));
+                    }
+                }
+            }
+            else if (arg_type.Kind == ComplexTypeKind::Dict) {
+                void* dict_data = call.ArgsData[i];
+                const size_t dict_size = call.Accessor->GetDictSize(dict_data);
+
+                for (size_t j = 0; j < dict_size && !any_destroyed; j++) {
+                    const auto kv = call.Accessor->GetDictElement(dict_data, j);
+                    check_entity(*cast_from_void<Entity**>(kv.second));
+                }
+            }
+        }
+    }
+
+    if (any_destroyed) {
+        return;
     }
 
     if (call.Accessor && call.Accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX) {

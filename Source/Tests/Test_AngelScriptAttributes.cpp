@@ -1564,11 +1564,15 @@ void TakesIntPlease(int? value)
         auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
 
         auto* mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
-        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
+        // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
+        // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
+        // rather than as a viral marker (Rule 2 default for unknown attributes).
+        const vector<string> project_blocking_extras {"EngineOnly"};
+        const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        const auto usage_error = ValidateAttributedFunctionUsage(mod);
+        const auto usage_error = ValidateAttributedFunctionUsage(mod, nullptr, nullptr, &project_blocking_extras);
         CHECK(!usage_error.empty());
         CHECK(usage_error.find("void AttrTest::Hidden()") != string::npos);
         CHECK(usage_error.find("void AttrTest::User()") != string::npos);

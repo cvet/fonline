@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "EntitySync.h"
 #include "Geometry.h"
 #include "ServerConnection.h"
 #include "ServerEntity.h"
@@ -69,6 +70,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr.get(); }
     [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> ServerEntity* override;
     [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
     [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection* { return _connection.get(); }
     [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext* { return _viewMap.get(); }
@@ -127,6 +129,7 @@ private:
     raw_ptr<const Property> _sendIgnoreProperty {};
     unique_ptr<ViewMapContext> _viewMap {};
     raw_ptr<Map> _viewMapTarget {};
+    EntityLock _ownedLock {};
 };
 
 FO_END_NAMESPACE

@@ -88,11 +88,11 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 
     // Process files
     vector<std::future<void>> file_bakings;
-    unordered_set<string> messages;
-    std::mutex messages_locker;
+    mutex messages_locker;
+    unordered_set<string> messages FO_TSA_GUARDED_BY(messages_locker);
 
     const auto message_callback = [&](string_view message) {
-        std::scoped_lock lock(messages_locker);
+        scoped_lock lock {messages_locker};
 
         if (messages.contains(message)) {
             return;
@@ -103,21 +103,21 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     };
 
     if (bake_server) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Server", [&] {
             auto engine = BakerServerEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-server", data);
         }));
     }
     if (bake_client) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Client", [&] {
             auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-client", data);
         }));
     }
     if (bake_mapper) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&] {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Mapper", [&] {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-mapper", data);

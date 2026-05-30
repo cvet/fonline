@@ -69,12 +69,19 @@ private:
         vector<string_view> Tokens {};
     };
 
+    struct RefTypeFieldState
+    {
+        string Name {};
+        string Type {};
+        vector<string> Flags {};
+    };
+
     struct RefTypeState
     {
         string Target {};
         string SourceFile {};
         size_t LineNumber {};
-        vector<pair<string, string>> Fields {};
+        vector<RefTypeFieldState> Fields {};
     };
 
     struct TagsParsingContext

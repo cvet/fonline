@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "EntitySync.h"
 #include "Geometry.h"
 #include "Movement.h"
 #include "ServerEntity.h"
@@ -64,18 +65,19 @@ public:
     [[nodiscard]] auto HasPlayer() const noexcept -> bool { return !!_player; }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player* { return _player.get(); }
     [[nodiscard]] auto GetPlayer() noexcept -> Player* { return _player.get(); }
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> ServerEntity* override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
     [[nodiscard]] auto IsKnockout() const noexcept -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const noexcept -> bool;
+    [[nodiscard]] auto HasItems() const noexcept -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> Item*;
-    [[nodiscard]] auto GetInvItems() noexcept -> span<raw_ptr<Item>> { return _invItems; }
-    [[nodiscard]] auto GetInvItems() const noexcept -> span<const raw_ptr<Item>> { return _invItems; }
+    [[nodiscard]] auto GetInvItems() noexcept -> vector<raw_ptr<Item>>;
+    [[nodiscard]] auto GetInvItems() const noexcept -> vector<raw_ptr<const Item>>;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
-    [[nodiscard]] auto HasItems() const noexcept -> bool { return !_invItems.empty(); }
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>& { return _visibleItems; }
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool { return _visibleItems.contains(item_id); }
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
@@ -119,6 +121,8 @@ public:
     void AttachToCritter(Critter* cr);
     void DetachFromCritter();
     void MoveAttachedCritters();
+    void AddAttachedCritter(Critter* cr);
+    void RemoveAttachedCritter(Critter* cr);
     void ClearVisibleEnitites();
     void SetItem(Item* item);
     void RemoveItem(Item* item);
@@ -197,6 +201,7 @@ private:
     refcount_ptr<MovingContext> _lastMoving {};
     refcount_ptr<Player> _player {};
     nanotime _playerDetachTime {};
+    vector<raw_ptr<Critter>> _attachedCritters {};
     vector<raw_ptr<Item>> _invItems {};
     vector<raw_ptr<Critter>> _visibleCrWhoSeeMe {};
     vector<raw_ptr<Critter>> _visibleCr {};
@@ -209,7 +214,7 @@ private:
     unordered_set<ident_t> _visibleItems {};
     shared_ptr<vector<raw_ptr<Critter>>> _globalMapGroup {};
     int32_t _lockMapTransfers {};
-    vector<raw_ptr<Critter>> _attachedCritters {};
+    EntityLock _ownedLock {};
 };
 
 FO_END_NAMESPACE

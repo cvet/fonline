@@ -53,7 +53,7 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
 
     const auto hash_value = _hashFunc(s.data(), s.length());
 
-    auto locker = std::shared_lock {_hashStorageLocker};
+    shared_lock locker {_hashStorageLocker};
 
     return _hashStorage.find(hash_value) != _hashStorage.end();
 }
@@ -72,7 +72,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     FO_RUNTIME_ASSERT(hash_value != 0);
 
     {
-        auto locker = std::shared_lock {_hashStorageLocker};
+        shared_lock locker {_hashStorageLocker};
 
         if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
 #if FO_DEBUG
@@ -93,7 +93,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         // Add new entry
         hstring::entry entry = {.Hash = hash_value, .Str = string(s)};
 
-        auto locker = std::unique_lock {_hashStorageLocker};
+        scoped_lock locker {_hashStorageLocker};
 
         const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
@@ -111,7 +111,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     }
 
     {
-        auto locker = std::shared_lock {_hashStorageLocker};
+        shared_lock locker {_hashStorageLocker};
 
         if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(&it->second);
@@ -132,7 +132,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
     }
 
     {
-        auto locker = std::shared_lock {_hashStorageLocker};
+        shared_lock locker {_hashStorageLocker};
 
         if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
             return hstring(&it->second);

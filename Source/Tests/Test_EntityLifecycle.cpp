@@ -175,7 +175,7 @@ namespace EntityLifecycle
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
 
         if (unlogined_player == nullptr) {
             return nullptr;
@@ -217,7 +217,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(reset_func.Call());
 
         // Create critter
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         // Check critter init event fired
@@ -234,7 +234,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto* item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
         int32_t calls = 0;
@@ -250,7 +250,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto* loc = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
         int32_t calls = 0;
@@ -287,14 +287,14 @@ TEST_CASE("EntityManagerCppApi")
     {
         auto initial_critter_count = server->EntityMngr.GetCrittersCount();
 
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK(server->EntityMngr.GetCrittersCount() == initial_critter_count + 1);
 
         auto after_critter_item_count = server->EntityMngr.GetItemsCount();
 
-        auto* item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
         CHECK(server->EntityMngr.GetItemsCount() == after_critter_item_count + 1);
@@ -318,14 +318,14 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("GetEntityFindsCreatedCritter")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         const auto cr_id = cr->GetId();
-        auto* found = server->EntityMngr.GetCritter(cr_id);
+        auto found = server->EntityMngr.GetCritter(cr_id);
         CHECK(found == cr);
 
-        auto* found_entity = server->EntityMngr.GetEntity(cr_id);
+        auto found_entity = server->EntityMngr.GetEntity(cr_id);
         CHECK(found_entity != nullptr);
 
         server->CrMngr.DestroyCritter(cr);
@@ -333,11 +333,11 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("GetEntityFindsCreatedItem")
     {
-        auto* item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
         const auto item_id = item->GetId();
-        auto* found = server->EntityMngr.GetItem(item_id);
+        auto found = server->EntityMngr.GetItem(item_id);
         CHECK(found == item);
 
         server->ItemMngr.DestroyItem(item);
@@ -345,11 +345,11 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("GetEntityFindsCreatedLocation")
     {
-        auto* loc = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
         const auto loc_id = loc->GetId();
-        auto* found = server->EntityMngr.GetLocation(loc_id);
+        auto found = server->EntityMngr.GetLocation(loc_id);
         CHECK(found == loc);
 
         server->MapMngr.DestroyLocation(loc);
@@ -359,11 +359,11 @@ TEST_CASE("EntityManagerCppApi")
     {
         auto initial_count = server->EntityMngr.GetLocationsCount();
 
-        auto* loc1 = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc1 = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc1 != nullptr);
         CHECK(server->EntityMngr.GetLocationsCount() == initial_count + 1);
 
-        auto* loc2 = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc2 = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc2 != nullptr);
         CHECK(server->EntityMngr.GetLocationsCount() == initial_count + 2);
 
@@ -409,7 +409,7 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterStateChecks")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK(cr->IsAlive());
@@ -423,7 +423,7 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterIdentity")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK(cr->GetId() != ident_t {});
@@ -436,7 +436,7 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterPlayerFlag")
     {
-        auto* npc = server->CreateCritter(fn("TestCritter"), false);
+        auto npc = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(npc != nullptr);
 
         CHECK_FALSE(npc->GetControlledByPlayer());
@@ -446,16 +446,16 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterInventoryOperations")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK_FALSE(cr->HasItems());
 
-        auto* item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
         REQUIRE(item1 != nullptr);
         CHECK(cr->HasItems());
 
-        auto* item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
         REQUIRE(item2 != nullptr);
 
         auto inv_items = cr->GetInvItems();
@@ -485,7 +485,7 @@ TEST_CASE("CritterCppApi")
         vector<Critter*> critters;
 
         for (size_t i = 0; i < count; i++) {
-            auto* cr = server->CreateCritter(fn("TestCritter"), false);
+            auto cr = server->CreateCritter(fn("TestCritter"), false);
             REQUIRE(cr != nullptr);
             critters.push_back(cr);
         }
@@ -505,7 +505,7 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterDestroyState")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK_FALSE(cr->IsDestroyed());
@@ -538,7 +538,7 @@ TEST_CASE("ItemCppApi")
 
     SECTION("ItemCreationAndDestruction")
     {
-        auto* item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
         CHECK(item->GetId() != ident_t {});
@@ -551,10 +551,10 @@ TEST_CASE("ItemCppApi")
 
     SECTION("ItemAddToCritterAndRemove")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
-        auto* item = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 5);
+        auto item = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 5);
         REQUIRE(item != nullptr);
         CHECK(cr->HasItems());
 
@@ -570,7 +570,7 @@ TEST_CASE("ItemCppApi")
 
     SECTION("ItemSetCount")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 10);
@@ -587,11 +587,11 @@ TEST_CASE("ItemCppApi")
 
     SECTION("MultipleItemTypes")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
-        auto* item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        auto* item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
 
         REQUIRE(item1 != nullptr);
         REQUIRE(item2 != nullptr);
@@ -631,7 +631,7 @@ TEST_CASE("LocationCppApi")
 
     SECTION("CreateAndDestroyLocation")
     {
-        auto* loc = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
         CHECK(loc->GetId() != ident_t {});
@@ -644,8 +644,8 @@ TEST_CASE("LocationCppApi")
 
     SECTION("MultipleLocations")
     {
-        auto* loc1 = server->MapMngr.CreateLocation(fn("TestLocation"));
-        auto* loc2 = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc1 = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc2 = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc1 != nullptr);
         REQUIRE(loc2 != nullptr);
 
@@ -659,7 +659,7 @@ TEST_CASE("LocationCppApi")
 
     SECTION("LocationMapsEmpty")
     {
-        auto* loc = server->MapMngr.CreateLocation(fn("TestLocation"));
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
         auto maps = loc->GetMaps();
@@ -770,8 +770,8 @@ TEST_CASE("CritterManagerCppApi")
 
     SECTION("GetNonPlayerCritters")
     {
-        auto* cr1 = server->CreateCritter(fn("TestCritter"), false);
-        auto* cr2 = server->CreateCritter(fn("TestCritter"), false);
+        auto cr1 = server->CreateCritter(fn("TestCritter"), false);
+        auto cr2 = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr1 != nullptr);
         REQUIRE(cr2 != nullptr);
 
@@ -780,7 +780,7 @@ TEST_CASE("CritterManagerCppApi")
 
         bool found1 = false;
         bool found2 = false;
-        for (auto* npc : npcs) {
+        for (auto& npc : npcs) {
             if (npc == cr1) {
                 found1 = true;
             }
@@ -797,7 +797,7 @@ TEST_CASE("CritterManagerCppApi")
 
     SECTION("DestroyInventory")
     {
-        auto* cr = server->CreateCritter(fn("TestCritter"), false);
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);

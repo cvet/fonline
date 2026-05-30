@@ -68,7 +68,6 @@ struct AngelScriptContextExtendedData
     raw_ptr<AngelScript::asIScriptContext> Root {};
     raw_ptr<AngelScript::asIScriptContext> Parent {};
     int32_t ExceptionCount {};
-    nanotime SuspendEndTime {};
     refcount_ptr<const Entity> DeferredPropertyEntity {};
     raw_ptr<const Property> DeferredProperty {};
     raw_ptr<AngelScript::asIScriptFunction> DeferredPropertyCallback {};
@@ -92,12 +91,14 @@ struct AngelScriptContextExtendedData
 class AngelScriptContextManager final
 {
 public:
+    using DelayedScheduler = function<void(timespan delay, function<void()> body)>;
+
     explicit AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
-    ~AngelScriptContextManager();
+    ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
 
     [[nodiscard]] auto IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool;
 
@@ -108,18 +109,22 @@ public:
     void MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func);
     auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool;
     void SuspendScriptContext(AngelScript::asIScriptContext* ctx, nanotime time);
-    void ResumeSuspendedContexts(nanotime time);
+    void ResumeSpecificContext(AngelScript::asIScriptContext* ctx);
+
+    void SetDelayedScheduler(DelayedScheduler scheduler) { _delayedScheduler = std::move(scheduler); }
 
 private:
-    void CreateContext();
+    void CreateContext() FO_TSA_REQUIRES(_poolLocker);
 
     raw_ptr<AngelScript::asIScriptEngine> _asEngine;
     timespan _overrunTimeout;
-    vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts {};
-    vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts {};
+    mutable mutex _poolLocker {};
+    vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts FO_TSA_GUARDED_BY(_poolLocker) {};
+    vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts FO_TSA_GUARDED_BY(_poolLocker) {};
     bool _nonConstHelper {};
     function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> _debuggerStopCallback {};
     function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> _contextSetupCallback {};
+    DelayedScheduler _delayedScheduler {};
 };
 
 FO_END_NAMESPACE

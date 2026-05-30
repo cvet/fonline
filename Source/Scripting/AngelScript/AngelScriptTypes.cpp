@@ -1037,6 +1037,16 @@ static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
     ConvertPropsToScriptObject(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
 }
 
+static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
+    FO_RUNTIME_ASSERT(self != nullptr);
+
+    new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(self);
+}
+
 static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1418,14 +1428,28 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_Release), FO_SCRIPT_FUNC_THIS_CONV));
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name, AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(ref_type.FieldsRegistrator.get())));
 
+            for (const auto& [component_name, component_prop] : ref_type.FieldsRegistrator->GetComponents()) {
+                const auto component_type = strex("{}{}Component", name, component_name).str();
+                FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(component_prop.get())));
+            }
+
             for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
                 const auto* prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-                const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
-                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), handle_str).str();
 
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                if (prop->IsComponentItself()) {
+                    continue;
+                }
+
+                const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+                const auto* set_handle_str = handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+
+                const auto host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
+
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
             }
         }
 

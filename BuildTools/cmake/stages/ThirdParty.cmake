@@ -80,6 +80,7 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
         ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
+    TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
 else()
     AddCompileDefinitionsList(FO_HAVE_RPMALLOC=0)
 endif()

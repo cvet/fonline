@@ -358,6 +358,12 @@ namespace CommonMethods
     // ========== Invoke ==========
 
     bool invokeFired = false;
+    bool typedInvokeFired = false;
+    int typedInvokeNumber = 0;
+    string typedInvokeText = "";
+    bool typedInvokeFlag = false;
+    hstring typedInvokeKey;
+    int typedInvokePayloadSize = 0;
 
     void InvokeTarget()
     {
@@ -369,29 +375,30 @@ namespace CommonMethods
         invokeFired = true;
     }
 
-    int TestInvokeByFunc()
+    void InvokeTargetWithTwoData(any data1, any data2)
     {
-        invokeFired = false;
-        bool result = Game.Invoke(InvokeTarget);
-        if (!result) return -1;
-        if (!invokeFired) return -2;
-        return 0;
+        invokeFired = true;
+    }
+
+    void InvokeTargetWithThreeData(any data1, any data2, any data3)
+    {
+        invokeFired = true;
+    }
+
+    void InvokeTargetWithTypedData(int number, string text, bool flag, hstring key, array<any> payload)
+    {
+        typedInvokeFired = true;
+        typedInvokeNumber = number;
+        typedInvokeText = text;
+        typedInvokeFlag = flag;
+        typedInvokeKey = key;
+        typedInvokePayloadSize = int(payload.length());
     }
 
     int TestInvokeByName()
     {
         invokeFired = false;
-        bool result = Game.Invoke("CommonMethods::InvokeTarget");
-        if (!result) return -1;
-        if (!invokeFired) return -2;
-        return 0;
-    }
-
-    int TestInvokeWithData()
-    {
-        invokeFired = false;
-        any param = 42;
-        bool result = Game.Invoke(InvokeTargetWithData, param);
+        bool result = Invoke("CommonMethods::InvokeTarget");
         if (!result) return -1;
         if (!invokeFired) return -2;
         return 0;
@@ -401,10 +408,68 @@ namespace CommonMethods
     {
         invokeFired = false;
         any param = 42;
-        bool result = Game.Invoke("CommonMethods::InvokeTargetWithData", param);
+        bool result = Invoke("CommonMethods::InvokeTargetWithData", param);
         if (!result) return -1;
         if (!invokeFired) return -2;
         return 0;
+    }
+
+    int TestInvokeByNameWithTwoData()
+    {
+        invokeFired = false;
+        any param1 = 42;
+        any param2 = "payload";
+        bool result = Invoke("CommonMethods::InvokeTargetWithTwoData", param1, param2);
+        if (!result) return -1;
+        if (!invokeFired) return -2;
+        return 0;
+    }
+
+    int TestInvokeByNameWithThreeData()
+    {
+        invokeFired = false;
+        any param1 = 42;
+        any param2 = "payload";
+        any param3 = true;
+        bool result = Invoke("CommonMethods::InvokeTargetWithThreeData", param1, param2, param3);
+        if (!result) return -1;
+        if (!invokeFired) return -2;
+        return 0;
+    }
+
+    int TestInvokeByNameWithTypedVariadic()
+    {
+        typedInvokeFired = false;
+        typedInvokeNumber = 0;
+        typedInvokeText = "";
+        typedInvokeFlag = false;
+        typedInvokeKey = hstring();
+        typedInvokePayloadSize = 0;
+
+        array<any> payload = {1, "two", true};
+        bool result = Invoke("CommonMethods::InvokeTargetWithTypedData", 42, "payload", true, "MixedKey".hstr(), payload);
+        if (!result) return -1;
+        if (!typedInvokeFired) return -2;
+        if (typedInvokeNumber != 42) return -3;
+        if (typedInvokeText != "payload") return -4;
+        if (!typedInvokeFlag) return -5;
+        if (typedInvokeKey != "MixedKey".hstr()) return -6;
+        if (typedInvokePayloadSize != 3) return -7;
+        return 0;
+    }
+
+    int TestInvokeByNameRejectsWrongType()
+    {
+        array<any> payload = {1, "two", true};
+
+        try {
+            Invoke("CommonMethods::InvokeTargetWithTypedData", 42, 99, true, "MixedKey".hstr(), payload);
+        }
+        catch {
+            return 0;
+        }
+
+        return -1;
     }
 
  )" + R"(
@@ -1065,24 +1130,34 @@ TEST_CASE("GameInvokeOperations")
 {
     MAKE_CM_SERVER();
 
-    SECTION("ByFunc")
-    {
-        RUN_CM_FUNC("TestInvokeByFunc");
-    }
-
     SECTION("ByName")
     {
         RUN_CM_FUNC("TestInvokeByName");
     }
 
-    SECTION("WithData")
-    {
-        RUN_CM_FUNC("TestInvokeWithData");
-    }
-
     SECTION("ByNameWithData")
     {
         RUN_CM_FUNC("TestInvokeByNameWithData");
+    }
+
+    SECTION("ByNameWithTwoData")
+    {
+        RUN_CM_FUNC("TestInvokeByNameWithTwoData");
+    }
+
+    SECTION("ByNameWithThreeData")
+    {
+        RUN_CM_FUNC("TestInvokeByNameWithThreeData");
+    }
+
+    SECTION("ByNameWithTypedVariadic")
+    {
+        RUN_CM_FUNC("TestInvokeByNameWithTypedVariadic");
+    }
+
+    SECTION("ByNameRejectsWrongType")
+    {
+        RUN_CM_FUNC("TestInvokeByNameRejectsWrongType");
     }
 }
 
@@ -1223,9 +1298,9 @@ TEST_CASE("CommonCppApiTests")
     SECTION("EntityManagerMultipleEntities")
     {
         // Create multiple entities and verify counts
-        auto* cr1 = server->CreateCritter(get_func("TestCritter"), false);
-        auto* cr2 = server->CreateCritter(get_func("TestCritter"), false);
-        auto* cr3 = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
         REQUIRE(cr1 != nullptr);
         REQUIRE(cr2 != nullptr);
         REQUIRE(cr3 != nullptr);
@@ -1240,11 +1315,11 @@ TEST_CASE("CommonCppApiTests")
 
     SECTION("ItemManagerContainerOps")
     {
-        auto* cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
-        auto* item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        auto* item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
+        auto item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
+        auto item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
         REQUIRE(item1 != nullptr);
         REQUIRE(item2 != nullptr);
 

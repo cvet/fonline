@@ -35,7 +35,9 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
+#include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
@@ -100,6 +102,140 @@ static auto Global_GetContextExceptionCount() -> int32_t
     const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_RUNTIME_ASSERT(ctx_ext);
     return ctx_ext->ExceptionCount;
+}
+
+static void Global_RunScriptGC()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* ctx = AngelScript::asGetActiveContext();
+    FO_RUNTIME_ASSERT(ctx);
+    auto* as_engine = ctx->GetEngine();
+    as_engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
+}
+
+static auto ResolveInvokeArgTypes(AngelScript::asIScriptGeneric* gen, AngelScript::asUINT first_arg) -> vector<ComplexTypeDesc>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
+
+    if (args_count > MAX_CALL_ARGS) {
+        throw ScriptException(strex("Invoke supports at most {} arguments", MAX_CALL_ARGS).str());
+    }
+
+    auto* as_engine = gen->GetEngine();
+    vector<ComplexTypeDesc> arg_types;
+    arg_types.reserve(args_count);
+
+    const auto arg_count = numeric_cast<AngelScript::asUINT>(gen->GetArgCount());
+
+    for (auto arg_index = first_arg; arg_index < arg_count; arg_index++) {
+        const auto arg_type_id = gen->GetArgTypeId(arg_index);
+        auto arg_type = ResolveScriptFuncType(as_engine, arg_type_id);
+
+        if (!arg_type) {
+            throw ScriptException(strex("Unsupported invoke argument type '{}'", as_engine->GetTypeDeclaration(arg_type_id, true)).str());
+        }
+
+        arg_types.emplace_back(std::move(arg_type));
+    }
+
+    return arg_types;
+}
+
+static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asIScriptGeneric* gen, AngelScript::asUINT first_arg) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(func_desc);
+    FO_RUNTIME_ASSERT(func_desc->Call);
+
+    array<void*, MAX_CALL_ARGS> args_data {};
+    array<void*, MAX_CALL_ARGS> indirect_args {};
+    const auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
+
+    for (size_t index = 0; index < args_count; index++) {
+        auto* arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
+        const auto& arg_type = func_desc->Args[index].Type;
+        const bool pass_indirect = arg_type.Kind != ComplexTypeKind::Simple || arg_type.IsMutable || arg_type.BaseType.IsEntity || arg_type.BaseType.IsRefType;
+
+        if (pass_indirect) {
+            if (arg_type.Kind == ComplexTypeKind::Simple && !arg_type.BaseType.IsEntity && !arg_type.BaseType.IsRefType) {
+                indirect_args[index] = arg_data;
+            }
+            else {
+                indirect_args[index] = *static_cast<void**>(arg_data);
+            }
+
+            args_data[index] = &indirect_args[index];
+        }
+        else {
+            args_data[index] = arg_data;
+        }
+    }
+
+    FuncCallData call {.Accessor = &SCRIPT_DATA_ACCESSOR};
+    call.ArgsData = span(args_data).subspan(0, args_count);
+
+    try {
+        func_desc->Call(call);
+        return true;
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+        return false;
+    }
+}
+
+static void Global_NameOf(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* as_engine = gen->GetEngine();
+    const auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(0));
+
+    if (as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
+        throw ScriptException("NameOf: argument must be a function reference");
+    }
+
+    const auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetArgAddress(0));
+
+    if (func == nullptr) {
+        throw ScriptException("NameOf: function reference is null");
+    }
+
+    const auto* ns = func->GetNamespace();
+    const auto* name = func->GetName();
+
+    string result;
+
+    if (ns != nullptr && ns[0] != '\0') {
+        result = string(ns) + "::" + (name != nullptr ? name : "");
+    }
+    else {
+        result = name != nullptr ? string(name) : string();
+    }
+
+    new (gen->GetAddressOfReturnLocation()) string(std::move(result));
+}
+
+static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* engine = GetGameEngine(gen->GetEngine());
+    const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
+    const auto hashed_func_name = engine->Hashes.ToHashedString(func_name);
+    const auto arg_types = ResolveInvokeArgTypes(gen, 1);
+    auto* func_desc = engine->FindFunc(hashed_func_name, span(arg_types));
+
+    if (func_desc == nullptr) {
+        throw ScriptException("Script function not found", func_name);
+    }
+
+    const bool result = InvokeResolvedFunction(func_desc, gen, 1);
+    new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 
 static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
@@ -537,13 +673,19 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
         }
     }
 
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV));
+    const auto yield_id = as_engine->RegisterGlobalFunction("void Yield(int durationMs)", FO_SCRIPT_FUNC(Global_Yield), FO_SCRIPT_FUNC_CONV);
+    FO_AS_VERIFY(yield_id);
+    SetFunctionAttributes(as_engine->GetFunctionById(yield_id), {"Async"});
+
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetContextExceptionCount()", FO_SCRIPT_FUNC(Global_GetContextExceptionCount), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void RunScriptGC()", FO_SCRIPT_FUNC(Global_RunScriptGC), FO_SCRIPT_FUNC_CONV));
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool Invoke(string funcName, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByName), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string NameOf(?&in obj)", FO_SCRIPT_GENERIC(Global_NameOf), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {

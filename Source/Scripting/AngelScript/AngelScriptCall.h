@@ -41,6 +41,7 @@
 
 namespace AngelScript
 {
+    class asIScriptEngine;
     class asIScriptFunction;
     class asIScriptGeneric;
 }
@@ -64,6 +65,7 @@ struct ScriptDataAccessor final : DataAccessor
 
 static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;
 
+auto ResolveScriptFuncType(AngelScript::asIScriptEngine* as_engine, int32_t type_id, uint32_t flags = 0, bool is_ret = false) -> ComplexTypeDesc;
 auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*;
 void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const function<void(FuncCallData&)>& callback);
 void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call);

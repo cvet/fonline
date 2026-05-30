@@ -174,7 +174,8 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     vector<std::future<void>> file_bakings;
 
     for (auto& file_to_bake : files_to_bake) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
+        const auto task_name = strex("BakeImage-{}", file_to_bake.first.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [&]() FO_DEFERRED {
             const auto& path = file_to_bake.first.GetPath();
             const auto collection = file_to_bake.second(path, "", file_to_bake.first.GetReader(), files);
             BakeCollection(path, collection);

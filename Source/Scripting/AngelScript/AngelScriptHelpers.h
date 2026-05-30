@@ -92,6 +92,7 @@ auto GetEngineMetadata(AngelScript::asIScriptEngine* as_engine) -> const EngineM
 auto GetGameEngine(AngelScript::asIScriptEngine* as_engine) -> BaseEngine*;
 void CheckScriptEntityNonNull(const Entity* entity);
 void CheckScriptEntityNonDestroyed(const Entity* entity);
+void CheckScriptEntityAccessAndNonDestroyed(const Entity* entity);
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string;
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string;
 auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable = false) -> string;
@@ -109,6 +110,7 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string;
 auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int32_t;
 void WriteEnumValueFromInt32(void* ptr, const BaseTypeDesc& enum_type, int32_t value);
 auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
+auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool;
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*;
 auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as_obj) -> vector<uint8_t>;
 auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint8_t> raw_data) -> void*;

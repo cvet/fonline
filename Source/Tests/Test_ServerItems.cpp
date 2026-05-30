@@ -178,7 +178,7 @@ namespace ServerItemsTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
 
         if (unlogined_player == nullptr) {
             return nullptr;
@@ -220,7 +220,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     const auto initial_entity_count = server->EntityMngr.GetEntitiesCount();
 
     // Create item
-    auto* item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     REQUIRE(item != nullptr);
 
     const auto item_id = item->GetId();
@@ -239,7 +239,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     CHECK(last_item_id == item_id.underlying_value());
 
     // Create second item
-    auto* item2 = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item2 = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     REQUIRE(item2 != nullptr);
     CHECK(item2->GetId() != item_id);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 2);
@@ -282,12 +282,12 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     const auto item_pid = fn("TestItem");
 
     // Create critter
-    auto* cr = server->CreateCritter(critter_pid, false);
+    auto cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
     CHECK_FALSE(cr->HasItems());
 
     // Add item to critter inventory via pid
-    auto* item = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
+    auto item = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
     REQUIRE(item != nullptr);
     CHECK(cr->HasItems());
 
@@ -298,7 +298,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     CHECK(cr->GetInvItem(item_id) == item);
 
     // Add second item
-    auto* item2 = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
+    auto item2 = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
     REQUIRE(item2 != nullptr);
 
     auto inv_items2 = cr->GetInvItems();
@@ -353,9 +353,9 @@ TEST_CASE("ServerCritterLifecycleOperations")
     // Create multiple critters
     const auto cr_count_before = server->EntityMngr.GetCrittersCount();
 
-    auto* cr1 = server->CreateCritter(critter_pid, false);
-    auto* cr2 = server->CreateCritter(critter_pid, false);
-    auto* cr3 = server->CreateCritter(critter_pid, true);
+    auto cr1 = server->CreateCritter(critter_pid, false);
+    auto cr2 = server->CreateCritter(critter_pid, false);
+    auto cr3 = server->CreateCritter(critter_pid, true);
     REQUIRE(cr1 != nullptr);
     REQUIRE(cr2 != nullptr);
     REQUIRE(cr3 != nullptr);
@@ -441,35 +441,35 @@ TEST_CASE("ServerEntityManagerQueries")
     CHECK(server->EntityMngr.GetPlayersCount() == 0);
 
     // Entities collection
-    const auto& entities = server->EntityMngr.GetEntities();
+    const auto entities = server->EntityMngr.GetEntities();
     const auto entities_before = entities.size();
 
     // Items collection access
-    const auto& items = server->EntityMngr.GetItems();
+    const auto items = server->EntityMngr.GetItems();
     const auto items_before = items.size();
 
-    auto* item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     REQUIRE(item != nullptr);
     CHECK(server->EntityMngr.GetItems().size() == items_before + 1);
 
     // Critters collection access
-    const auto& critters = server->EntityMngr.GetCritters();
+    const auto critters = server->EntityMngr.GetCritters();
     const auto cr_before = critters.size();
 
-    auto* cr = server->CreateCritter(critter_pid, false);
+    auto cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
     CHECK(server->EntityMngr.GetCritters().size() == cr_before + 1);
 
     // Locations collection (should be empty in this test)
-    const auto& locations = server->EntityMngr.GetLocations();
+    const auto locations = server->EntityMngr.GetLocations();
     CHECK(locations.empty());
 
     // Maps collection (should be empty)
-    const auto& maps = server->EntityMngr.GetMaps();
+    const auto maps = server->EntityMngr.GetMaps();
     CHECK(maps.empty());
 
     // Players collection (no players connected)
-    const auto& players = server->EntityMngr.GetPlayers();
+    const auto players = server->EntityMngr.GetPlayers();
     CHECK(players.empty());
 
     // Entities grew after creating item and critter

@@ -156,15 +156,25 @@ namespace ServerEngineTest
         AdminCallCounter = 0;
     }
 
+    void UnitTestAdminEntryImpl()
+    {
+        AdminCallCounter++;
+    }
+
     [[AdminRemoteCall]]
     void UnitTestAdminEntry()
     {
-        AdminCallCounter++;
+        UnitTestAdminEntryImpl();
     }
 
     void UnitTestRegularEntry()
     {
         AdminCallCounter += 100;
+    }
+
+    void UnitTestInvokeAdminEntry()
+    {
+        UnitTestAdminEntryImpl();
     }
 
     int UnitTestGetInitCalls()
@@ -317,7 +327,7 @@ namespace ServerEngineTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
 
         if (unlogined_player == nullptr) {
             return nullptr;
@@ -399,7 +409,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     const auto critter_count = server->EntityMngr.GetCrittersCount();
     const auto entity_count = server->EntityMngr.GetEntitiesCount();
 
-    auto* cr = server->CreateCritter(critter_pid, false);
+    auto cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
 
     const auto cr_id = cr->GetId();
@@ -447,7 +457,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
         const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
         const auto critter_count = server->EntityMngr.GetCrittersCount();
 
-        auto* cr = server->CreateCritter(critter_pid, true);
+        auto cr = server->CreateCritter(critter_pid, true);
         REQUIRE(cr != nullptr);
 
         const auto cr_id = cr->GetId();
@@ -505,7 +515,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
     CHECK(manual_calls == 1);
 
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    auto* cr = server->CreateCritter(critter_pid, false);
+    auto cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
 
     int critter_init_calls = 0;
@@ -626,7 +636,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     CHECK(values == vector<int32_t> {11, 2, 3, 77});
 
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    auto* cr = server->CreateCritter(critter_pid, false);
+    auto cr = server->CreateCritter(critter_pid, false);
     REQUIRE(cr != nullptr);
 
     auto critter_id_func = server->FindFunc<int64_t, Critter*>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
@@ -677,7 +687,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
     SECTION("CompletesWholeRoute")
     {
         vector<hstring> map_pids {map_pid};
-        auto* loc = server->MapMngr.CreateLocation(location_pid, map_pids);
+        auto loc = server->MapMngr.CreateLocation(location_pid, map_pids);
         REQUIRE(loc != nullptr);
 
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
@@ -691,7 +701,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto* map = loc->GetMapByIndex(0);
         REQUIRE(map != nullptr);
 
-        auto* cr = server->CreateCritter(critter_pid, false);
+        auto cr = server->CreateCritter(critter_pid, false);
         REQUIRE(cr != nullptr);
 
         server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, mdir {}, std::nullopt);
@@ -765,7 +775,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
     SECTION("StopsAtFirstBlockedHexWithoutTeleport")
     {
         vector<hstring> map_pids {map_pid};
-        auto* loc = server->MapMngr.CreateLocation(location_pid, map_pids);
+        auto loc = server->MapMngr.CreateLocation(location_pid, map_pids);
         REQUIRE(loc != nullptr);
 
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
@@ -779,7 +789,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto* map = loc->GetMapByIndex(0);
         REQUIRE(map != nullptr);
 
-        auto* cr = server->CreateCritter(critter_pid, false);
+        auto cr = server->CreateCritter(critter_pid, false);
         REQUIRE(cr != nullptr);
 
         server->MapMngr.TransferToMap(cr, map, SERVER_TEST_MOVE_START_HEX, mdir {}, std::nullopt);
@@ -818,6 +828,584 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         CHECK(finished_moving->GetPreBlockHex() == expected_stop_hex);
         CHECK(finished_moving->GetBlockHex() == blocked_hex);
     }
+}
+
+// ============================================================================
+// Per-entity sync rail (multithreading): SyncContext minimal-cover / escalation /
+// ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
+// tests in Test_EntitySync.cpp cannot reach this — they have no entity hierarchy
+// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under the
+// engine singleton lock, then the lock is released because SyncEntities refuses to
+// run while a singleton lock is held (deadlock prevention).
+// ============================================================================
+
+TEST_CASE("ServerEngineSyncContextEntityCover")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map = loc->GetMapByIndex(0);
+    REQUIRE(map != nullptr);
+
+    auto* cr_a = server->CreateCritter(critter_pid, false);
+    auto* cr_b = server->CreateCritter(critter_pid, false);
+    auto* cr_c = server->CreateCritter(critter_pid, false);
+    REQUIRE(cr_a != nullptr);
+    REQUIRE(cr_b != nullptr);
+    REQUIRE(cr_c != nullptr);
+
+    server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_c, map, mpos {14, 14}, mdir {}, std::nullopt);
+
+    // Parent wiring (Critter._parent = Map) must be established for the cover logic.
+    REQUIRE(cr_a->GetParentRaw() == static_cast<ServerEntity*>(map));
+    REQUIRE(cr_b->GetParentRaw() == static_cast<ServerEntity*>(map));
+    REQUIRE(cr_c->GetParentRaw() == static_cast<ServerEntity*>(map));
+
+    server->Unlock();
+    locked = false;
+
+    SyncContext ctx;
+    ctx.Activate();
+    auto deactivate = scope_exit([&ctx]() noexcept {
+        safe_call([&ctx] {
+            ctx.Release();
+            ctx.Deactivate();
+        });
+    });
+
+    // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
+    // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
+    // is the production access gate — the hierarchy walk that accepts e's own OR any ancestor lock,
+    // plus the null/empty short-circuits.
+
+    // Empty context: no held locks → the access gate grants everything, including a null entity.
+    CHECK(ctx.IsEmpty());
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(nullptr));
+
+    // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
+    {
+        vector<ServerEntity*> one {cr_a};
+        ctx.SyncEntities(one);
+        CHECK_FALSE(ctx.IsEmpty());
+        CHECK(ctx.ValidateAccess(cr_a)); // cr_a's own lock is held
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK_FALSE(IsEntityAccessValid(cr_b)); // sibling: no lock in its chain is held
+        CHECK_FALSE(IsEntityAccessValid(cr_c));
+        CHECK_FALSE(IsEntityAccessValid(map));
+
+        // Negative: the binding-level gate (ServerEntity::ValidateAccess, hit by every script
+        // property read / method call) must THROW on an uncovered entity, not merely report false —
+        // an unsynced access is a rejected error, never silently allowed. The covered entity passes.
+        CHECK_NOTHROW(cr_a->ValidateAccess());
+        CHECK_THROWS_AS(cr_b->ValidateAccess(), ScriptException);
+        CHECK_THROWS_AS(map->ValidateAccess(), ScriptException);
+    }
+    ctx.Release();
+    CHECK(ctx.IsEmpty());
+
+    // Two siblings sharing a map escalate to the SINGLE map lock: their own locks are dropped, the
+    // map's own lock is held, and the hierarchy walk grants access to every critter on the map.
+    {
+        vector<ServerEntity*> both {cr_a, cr_b};
+        ctx.SyncEntities(both);
+        CHECK(ctx.ValidateAccess(map)); // escalated → the map's own lock is held
+        CHECK_FALSE(ctx.ValidateAccess(cr_a)); // the siblings' own locks were dropped
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a)); // accessible via the map ancestor lock
+        CHECK(IsEntityAccessValid(cr_b));
+        CHECK(IsEntityAccessValid(cr_c)); // unrequested sibling, also covered by the map lock
+        CHECK(IsEntityAccessValid(map));
+    }
+    ctx.Release();
+
+    // Explicit {critter, its own map}: BOTH locks are kept (no parent-cover reduction), so the
+    // critter survives a reparent that a parent-only cover would strand.
+    {
+        vector<ServerEntity*> pair {cr_a, map};
+        ctx.SyncEntities(pair);
+        CHECK(ctx.ValidateAccess(cr_a)); // own lock kept
+        CHECK(ctx.ValidateAccess(map)); // map lock kept
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(cr_c)); // map lock covers siblings
+    }
+    ctx.Release();
+
+    // EnsureEntitySynced adds one lock and is idempotent when already covered.
+    ctx.EnsureEntitySynced(cr_a);
+    CHECK(ctx.ValidateAccess(cr_a));
+    ctx.EnsureEntitySynced(cr_a);
+    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_b));
+    ctx.Release();
+
+    // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
+    ctx.SyncEntity(cr_a);
+    CHECK(ctx.ValidateAccess(cr_a));
+    ctx.SyncEntity(cr_b);
+    CHECK_FALSE(ctx.ValidateAccess(cr_a));
+    CHECK(ctx.ValidateAccess(cr_b));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
+    ctx.Release();
+    CHECK(ctx.IsEmpty());
+    CHECK(IsEntityAccessValid(cr_a)); // empty again → unrestricted
+}
+
+// ============================================================================
+// Symmetric Critter<->Player auto-widening + the ancestor-coverage verify fix.
+// Critter::GetSyncWidenEntity returns its Player and Player::GetSyncWidenEntity
+// returns its controlled Critter, so a Sync of either half must cover both.
+// ============================================================================
+
+TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map = loc->GetMapByIndex(0);
+    REQUIRE(map != nullptr);
+
+    auto* cr_a = server->CreateCritter(critter_pid, true);
+    auto* cr_b = server->CreateCritter(critter_pid, true);
+    REQUIRE(cr_a != nullptr);
+    REQUIRE(cr_b != nullptr);
+
+    auto* player_a = CreateLoggedPlayer(server.get(), "SyncWidenPlayerA");
+    auto* player_b = CreateLoggedPlayer(server.get(), "SyncWidenPlayerB");
+    REQUIRE(player_a != nullptr);
+    REQUIRE(player_b != nullptr);
+
+    cr_a->AttachPlayer(player_a);
+    player_a->SetControlledCritter(cr_a);
+    cr_b->AttachPlayer(player_b);
+    player_b->SetControlledCritter(cr_b);
+
+    server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
+
+    // The widen link must be live in both directions before we test the cover.
+    REQUIRE(cr_a->GetSyncWidenEntity() == static_cast<ServerEntity*>(player_a));
+    REQUIRE(player_a->GetSyncWidenEntity() == static_cast<ServerEntity*>(cr_a));
+
+    server->Unlock();
+    locked = false;
+
+    SyncContext ctx;
+    ctx.Activate();
+    auto deactivate = scope_exit([&ctx]() noexcept {
+        safe_call([&ctx] {
+            ctx.Release();
+            ctx.Deactivate();
+        });
+    });
+
+    // Syncing a player-controlled critter auto-widens to also lock its Player (both own locks held);
+    // the other player is untouched.
+    {
+        vector<ServerEntity*> one {cr_a};
+        ctx.SyncEntities(one);
+        CHECK(ctx.ValidateAccess(cr_a)); // own lock
+        CHECK(ctx.ValidateAccess(player_a)); // widened: player's own lock held
+        CHECK_FALSE(ctx.ValidateAccess(player_b));
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(player_a));
+        CHECK_FALSE(IsEntityAccessValid(player_b));
+    }
+    ctx.Release();
+
+    // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held).
+    {
+        vector<ServerEntity*> one {player_a};
+        ctx.SyncEntities(one);
+        CHECK(ctx.ValidateAccess(player_a));
+        CHECK(ctx.ValidateAccess(cr_a));
+        CHECK(IsEntityAccessValid(player_a));
+        CHECK(IsEntityAccessValid(cr_a));
+    }
+    ctx.Release();
+
+    // Ancestor-coverage regression (the engine fix): syncing BOTH players widens each to its critter;
+    // the two critters share the map and escalate to the single map lock (their own locks dropped), so
+    // each widen target is now covered only by its ANCESTOR (map) lock, not its own. The verify-after-
+    // acquire step must accept that ancestor coverage; otherwise it re-walks and burns the retry budget,
+    // throwing EntitySyncException. This is the exact path the engine fix (widen re-check walks the
+    // parent chain) repaired.
+    {
+        vector<ServerEntity*> players {player_a, player_b};
+        REQUIRE_NOTHROW(ctx.SyncEntities(players));
+        CHECK(ctx.ValidateAccess(player_a)); // players' own locks held
+        CHECK(ctx.ValidateAccess(player_b));
+        CHECK(ctx.ValidateAccess(map)); // critters escalated → the map's own lock is held
+        CHECK_FALSE(ctx.ValidateAccess(cr_a)); // the critters' own locks were dropped by escalation
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(player_a));
+        CHECK(IsEntityAccessValid(cr_a)); // accessible via the map ancestor lock — the fix
+        CHECK(IsEntityAccessValid(cr_b));
+        CHECK(IsEntityAccessValid(map));
+    }
+    ctx.Release();
+}
+
+// ============================================================================
+// Concurrency stress — hammer the lock-free cover computation + verify-after-acquire /
+// retry-if-escaped loop. Many reader threads run independent SyncContexts (Sync a random
+// entity pair, validate, release) while reparenter threads flip entity parents lock-free
+// via SetParent — the exact race the verify loop is built to tolerate (a concurrent
+// SetParent moving a requested entity out of the just-computed cover). Assertions are
+// timing-INDEPENDENT so the test never flakes: every reader iteration is accounted for
+// exactly once (no deadlock / lost work), forward progress is made, and nothing crashes
+// or corrupts (the atomic _parent + TryAddRef-after-load + the engine asserts would trip
+// otherwise). EntitySyncException is an ACCEPTED outcome under extreme churn — the bounded
+// retry deliberately gives up rather than livelock.
+// ============================================================================
+
+TEST_CASE("ServerEngineSyncContextReparentStress")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid, map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map_a = loc->GetMapByIndex(0);
+    auto* map_b = loc->GetMapByIndex(1);
+    auto* map_c = loc->GetMapByIndex(2);
+    REQUIRE(map_a != nullptr);
+    REQUIRE(map_b != nullptr);
+    REQUIRE(map_c != nullptr);
+
+    constexpr int32_t CRITTER_COUNT = 12;
+    constexpr int32_t READER_THREADS = 6;
+    constexpr int32_t READER_ITERS = 12000;
+    constexpr int32_t REPARENTER_THREADS = 4;
+
+    vector<Critter*> critters;
+    for (int32_t i = 0; i < CRITTER_COUNT; i++) {
+        auto* cr = server->CreateCritter(critter_pid, false);
+        REQUIRE(cr != nullptr);
+        cr->SetParent(map_a); // parent only — escalation reads _parent, not the map critter list
+        critters.push_back(cr);
+    }
+
+    server->Unlock();
+    locked = false;
+
+    // Reparent targets include nullptr so the detach / no-parent / cover-recompute paths are churned
+    // alongside same-map (escalation) and cross-map (escape → retry) transitions.
+    ServerEntity* const targets[] = {map_a, map_b, map_c, nullptr};
+
+    std::atomic_bool stop {false};
+    std::atomic<int64_t> syncs_ok {0};
+    std::atomic<int64_t> sync_giveups {0};
+    std::atomic<int64_t> reparents {0};
+
+    const auto reparenter_fn = [&](int32_t tid) {
+        uint64_t step = numeric_cast<uint64_t>(tid);
+        while (!stop.load(std::memory_order_relaxed)) {
+            for (int32_t i = tid; i < CRITTER_COUNT; i += REPARENTER_THREADS) {
+                critters[numeric_cast<size_t>(i)]->SetParent(targets[(step + numeric_cast<uint64_t>(i)) % 4U]);
+                reparents.fetch_add(1, std::memory_order_relaxed);
+            }
+            step++;
+        }
+    };
+
+    const auto reader_fn = [&](int32_t tid) {
+        SyncContext ctx;
+        ctx.Activate();
+
+        vector<ServerEntity*> req(2);
+        for (int32_t it = 0; it < READER_ITERS; it++) {
+            req[0] = critters[numeric_cast<size_t>((it + tid) % CRITTER_COUNT)];
+            req[1] = critters[numeric_cast<size_t>((it * 3 + tid + 1) % CRITTER_COUNT)];
+
+            try {
+                ctx.SyncEntities(req);
+                syncs_ok.fetch_add(1, std::memory_order_relaxed);
+                // Exercise the validator's own walk-and-verify under concurrent reparenting; the
+                // result legitimately races a SetParent that lands after Sync returns, so it is
+                // observed (to drive the code path) but not asserted.
+                (void)IsEntityAccessValid(req[0]);
+                (void)IsEntityAccessValid(req[1]);
+            }
+            catch (const EntitySyncException&) {
+                sync_giveups.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            ctx.Release();
+        }
+
+        ctx.Deactivate();
+    };
+
+    vector<std::thread> reparenter_threads;
+    vector<std::thread> reader_threads;
+    for (int32_t i = 0; i < REPARENTER_THREADS; i++) {
+        reparenter_threads.emplace_back(reparenter_fn, i);
+    }
+    for (int32_t i = 0; i < READER_THREADS; i++) {
+        reader_threads.emplace_back(reader_fn, i);
+    }
+    for (auto& t : reader_threads) {
+        t.join();
+    }
+    stop.store(true);
+    for (auto& t : reparenter_threads) {
+        t.join();
+    }
+
+    INFO("syncs_ok=" << syncs_ok.load() << " giveups=" << sync_giveups.load() << " reparents=" << reparents.load());
+    // No deadlock (every thread joined) and no crash (control reached here). Every reader
+    // iteration completed exactly once — either a valid cover or a bounded give-up — so no
+    // work was lost or double-counted.
+    CHECK(syncs_ok.load() + sync_giveups.load() == int64_t {READER_THREADS} * int64_t {READER_ITERS});
+    CHECK(syncs_ok.load() > 0); // forward progress — the retry loop is not failing every call
+    CHECK(reparents.load() > 0);
+
+    // Detach the critters so the maps' refcounts drop cleanly before Shutdown.
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+    for (auto* cr : critters) {
+        cr->SetParent(nullptr);
+    }
+}
+
+// ============================================================================
+// Flat acquisition: an ancestor (map) cover GRANTS access to a descendant but does NOT exclude
+// another thread's own-lock on that descendant. This is the load-bearing design invariant of the
+// whole sync model — a regression that made ancestor locks exclude descendant locks would deadlock
+// or starve. ReparentStress hammers overlapping covers with reparent noise; this isolates and
+// directly proves the positive non-exclusion property.
+// ============================================================================
+
+TEST_CASE("ServerEngineSyncContextFlatAcquisition")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map = loc->GetMapByIndex(0);
+    REQUIRE(map != nullptr);
+
+    auto* cr_a = server->CreateCritter(critter_pid, false);
+    auto* cr_b = server->CreateCritter(critter_pid, false);
+    REQUIRE(cr_a != nullptr);
+    REQUIRE(cr_b != nullptr);
+    server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
+
+    server->Unlock();
+    locked = false;
+
+    SECTION("AncestorAndDescendantLocksHeldSimultaneously")
+    {
+        // T1 holds the map (ancestor) lock and keeps holding it. While it does, T2 must be able to
+        // acquire cr_a's OWN lock — proving the ancestor cover does not exclude the descendant lock.
+        std::atomic_bool t1_holds_map {false};
+        std::atomic_bool t2_got_cr {false};
+        std::atomic_bool t2_may_finish {false};
+
+        std::thread t1([&]() {
+            SyncContext ctx;
+            ctx.Activate();
+            vector<ServerEntity*> req {map};
+            ctx.SyncEntities(req); // ancestor cover: the map's own lock
+            t1_holds_map.store(true);
+            while (!t2_may_finish.load(std::memory_order_acquire)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            ctx.Release();
+            ctx.Deactivate();
+        });
+
+        while (!t1_holds_map.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        std::thread t2([&]() {
+            SyncContext ctx;
+            ctx.Activate();
+            vector<ServerEntity*> req {cr_a};
+            ctx.SyncEntities(req); // descendant own lock — must succeed while T1 holds the map lock
+            t2_got_cr.store(true);
+            ctx.Release();
+            ctx.Deactivate();
+        });
+
+        // Bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A model that
+        // made the ancestor cover EXCLUDE the descendant lock would leave t2_got_cr false here.
+        for (int i = 0; i < 2000 && !t2_got_cr.load(std::memory_order_acquire); i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        CHECK(t2_got_cr.load());
+
+        // Release T1 regardless, so both threads finish cleanly even on failure (no hang).
+        t2_may_finish.store(true, std::memory_order_release);
+        t1.join();
+        t2.join();
+    }
+
+    SECTION("ConcurrentAncestorAndSiblingLockLivenessLoop")
+    {
+        // Both threads hammer their (independent) locks: one always covers via the map ancestor, the
+        // other always takes cr_a's own lock. Both must complete every iteration — no deadlock/starve.
+        constexpr int32_t ITERS = 20000;
+        std::atomic<int64_t> ancestor_done {0};
+        std::atomic<int64_t> sibling_done {0};
+
+        std::thread ancestor_thread([&]() {
+            SyncContext ctx;
+            ctx.Activate();
+            vector<ServerEntity*> req {map};
+            for (int32_t i = 0; i < ITERS; i++) {
+                ctx.SyncEntities(req);
+                CHECK(IsEntityAccessValid(cr_a)); // descendant reachable via the ancestor cover
+                CHECK(IsEntityAccessValid(cr_b));
+                ctx.Release();
+                ancestor_done.fetch_add(1, std::memory_order_relaxed);
+            }
+            ctx.Deactivate();
+        });
+
+        std::thread sibling_thread([&]() {
+            SyncContext ctx;
+            ctx.Activate();
+            vector<ServerEntity*> req {cr_a};
+            for (int32_t i = 0; i < ITERS; i++) {
+                ctx.SyncEntities(req);
+                CHECK(IsEntityAccessValid(cr_a)); // own lock
+                ctx.Release();
+                sibling_done.fetch_add(1, std::memory_order_relaxed);
+            }
+            ctx.Deactivate();
+        });
+
+        ancestor_thread.join();
+        sibling_thread.join();
+
+        CHECK(ancestor_done.load() == int64_t {ITERS});
+        CHECK(sibling_done.load() == int64_t {ITERS});
+    }
+
+    // Detach so the map refcount drops cleanly before Shutdown.
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+    cr_a->SetParent(nullptr);
+    cr_b->SetParent(nullptr);
 }
 
 FO_END_NAMESPACE

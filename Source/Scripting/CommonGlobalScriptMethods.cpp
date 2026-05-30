@@ -40,6 +40,7 @@
 #include "LineTracer.h"
 #include "ScriptSystem.h"
 #include "TextPack.h"
+#include "TimeEvents.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -65,90 +66,6 @@ FO_SCRIPT_API void Common_Game_RequestQuit(BaseEngine* engine, bool success = tr
     ignore_unused(engine);
 
     App->RequestQuit(success);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void> func)
-{
-    ignore_unused(engine);
-
-    return func.Call();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t> func, any_t param1)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t> func, any_t param1, any_t param2)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1, param2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, ScriptFunc<void, any_t, any_t, any_t> func, any_t param1, any_t param2, any_t param3)
-{
-    ignore_unused(engine);
-
-    return func.Call(param1, param2, param3);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1, param2);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API bool Common_Game_Invoke(BaseEngine* engine, string_view funcName, any_t param1, any_t param2, any_t param3)
-{
-    const auto func_name = engine->Hashes.ToHashedString(funcName);
-    auto func = engine->FindFunc<void, any_t, any_t, any_t>(func_name);
-
-    if (!func) {
-        throw ScriptException("Script function not found", funcName);
-    }
-
-    return func.Call(param1, param2, param3);
 }
 
 ///@ ExportMethod
@@ -663,6 +580,24 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan d
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void, TimeEventContext*> func)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void, TimeEventContext*> func, any_t data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, ScriptFunc<void, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, to_vector(data));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(BaseEngine* engine)
 {
     return LanguageName {engine->Hashes.ToHashedString(engine->Settings.Language)};
@@ -687,6 +622,24 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan d
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void, TimeEventContext*> func)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void, TimeEventContext*> func, any_t data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(BaseEngine* engine, timespan delay, timespan repeat, ScriptFunc<void, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void> func)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
@@ -700,6 +653,12 @@ FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<
 
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void, vector<any_t>> func)
+{
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(BaseEngine* engine, ScriptFunc<void, TimeEventContext*> func)
 {
     return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
 }
@@ -729,6 +688,12 @@ FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, ScriptFunc<void
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, ScriptFunc<void, TimeEventContext*> func)
+{
+    engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(BaseEngine* engine, uint32_t id)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, {}, id);
@@ -753,6 +718,12 @@ FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, ScriptFunc<vo
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, ScriptFunc<void, TimeEventContext*> func, timespan repeat)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(BaseEngine* engine, uint32_t id, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
@@ -771,6 +742,18 @@ FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, ScriptFunc<v
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, ScriptFunc<void, TimeEventContext*> func, any_t data)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, ScriptFunc<void, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, to_vector(data));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, uint32_t id, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, vector<any_t> {std::move(data)});
@@ -780,38 +763,6 @@ FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, uint32_t id,
 FO_SCRIPT_API void Common_Game_SetTimeEventData(BaseEngine* engine, uint32_t id, readonly_vector<any_t> data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, to_vector(data));
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_StopCurrentTimeEvent(BaseEngine* engine)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.StopTimeEvent(entity, {}, te->Id);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_RepeatCurrentTimeEvent(BaseEngine* engine, timespan repeat)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, repeat, std::nullopt);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, any_t data)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, vector<any_t> {std::move(data)});
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Common_Game_SetCurrentTimeEventData(BaseEngine* engine, readonly_vector<any_t> data)
-{
-    if (auto&& [entity, te] = engine->TimeEventMngr.GetCurTimeEvent(); entity != nullptr) {
-        engine->TimeEventMngr.ModifyTimeEvent(entity, {}, te->Id, std::nullopt, to_vector(data));
-    }
 }
 
 FO_END_NAMESPACE

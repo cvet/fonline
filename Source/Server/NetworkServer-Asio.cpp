@@ -90,7 +90,7 @@ private:
     asio::io_context _context {};
     asio::ip::tcp::acceptor _acceptor;
     NewConnectionCallback _connectionCallback;
-    std::thread _runThread {};
+    thread _runThread {};
 };
 
 auto NetworkServer::StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>

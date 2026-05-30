@@ -79,9 +79,9 @@ protected:
 private:
     AsyncSendCallback _sendCallback {};
     std::atomic_bool _sendCallbackSet {};
-    AsyncReceiveCallback _receiveCallback {};
-    vector<uint8_t> _initReceiveBuf {};
-    std::mutex _receiveLocker {};
+    mutex _receiveLocker {};
+    AsyncReceiveCallback _receiveCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
+    vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
     DisconnectCallback _disconnectCallback {};
     std::atomic_bool _disconnectCallbackSet {};
     std::atomic_bool _isDisconnected {};

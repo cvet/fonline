@@ -36,6 +36,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "ExceptionHandling.h"
+#include "Threading.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -117,8 +118,8 @@ public:
 
 private:
     HashFunc _hashFunc;
-    unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
-    mutable std::shared_mutex _hashStorageLocker {};
+    mutable shared_mutex _hashStorageLocker {};
+    unordered_map<hstring::hash_t, hstring::entry> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
 };
 
 FO_END_NAMESPACE

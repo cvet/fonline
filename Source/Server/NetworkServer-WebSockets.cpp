@@ -111,7 +111,7 @@ private:
     raw_ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
     web_server_t _server {};
-    std::thread _runThread {};
+    thread _runThread {};
 };
 
 auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>

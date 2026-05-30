@@ -224,14 +224,14 @@ private:
     void StartPanic(string_view message);
 
     raw_ptr<DataBaseSettings> _settings;
-    mutable std::mutex _stateLocker {};
-    std::thread _commitThread {};
-    std::condition_variable _commitThreadSignal {};
-    std::condition_variable _commitThreadDoneSignal {};
-    bool _commitThreadStopRequested {};
-    bool _commitThreadActive {};
-    deque<shared_ptr<CommitOperationData>> _pendingCommitOperations {};
-    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers {};
+    mutable mutex _stateLocker {};
+    thread _commitThread {};
+    std::condition_variable_any _commitThreadSignal {};
+    std::condition_variable_any _commitThreadDoneSignal {};
+    bool _commitThreadStopRequested FO_TSA_GUARDED_BY(_stateLocker) {};
+    bool _commitThreadActive FO_TSA_GUARDED_BY(_stateLocker) {};
+    deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
+    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};
@@ -243,8 +243,8 @@ private:
     timespan _reconnectRetryPeriod {};
     nanotime _reconnectRetryTime {};
     DataBasePanicCallback _panicCallback {};
-    mutable std::mutex _dbRequestsMetricLocker {};
-    mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets {vector<DbRequestsPerMinuteBucket>(60)};
+    mutable mutex _dbRequestsMetricLocker {};
+    mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets FO_TSA_GUARDED_BY(_dbRequestsMetricLocker) {vector<DbRequestsPerMinuteBucket>(60)};
     mutable std::atomic_size_t _dbRequestsPerMinute {};
     unordered_map<string, hstring> _collectionNames {};
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};

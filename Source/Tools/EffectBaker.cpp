@@ -144,7 +144,8 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     vector<std::future<void>> file_bakings;
 
     for (auto& file_ : filtered_files) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)]() FO_DEFERRED {
+        auto task_name = strex("BakeEffect-{}", file_.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
             const auto& path = file.GetPath();
             const auto content = file.GetStr();
             BakeShaderProgram(path, content);
@@ -384,12 +385,12 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // Make all asynchronously
     vector<std::future<void>> file_bakings;
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_spirv));
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_glsl));
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_glsl_es));
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_hlsl));
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_mac));
-    file_bakings.emplace_back(std::async(GetAsyncMode(), make_msl_ios));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv", make_spirv));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl", make_glsl));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl_es", make_glsl_es));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-hlsl", make_hlsl));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_mac", make_msl_mac));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_ios", make_msl_ios));
 
     for (auto& file_baking : file_bakings) {
         file_baking.get();

@@ -738,22 +738,6 @@ namespace MapOpsTest
         return 0;
     }
 
-    // ========== Game.GetGlobalMapCritters ==========
-
-    int TestGameGetGlobalMapCritters()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        // Global map critters (no map assigned)
-        array<Critter> globalCritters = Game.GetGlobalMapCritters(CritterFindType::Any);
-        // NPC critters without a map should be on global map
-        if (globalCritters.isEmpty()) return -2;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
  )" + R"(
     // ========== Proto-based overloads ==========
 
@@ -1328,11 +1312,6 @@ TEST_CASE("MapLocationRelationship")
     SECTION("GameGetLocations")
     {
         RUN_FUNC("MapOpsTest::TestGameGetLocations");
-    }
-
-    SECTION("GameGetGlobalMapCritters")
-    {
-        RUN_FUNC("MapOpsTest::TestGameGetGlobalMapCritters");
     }
 }
 

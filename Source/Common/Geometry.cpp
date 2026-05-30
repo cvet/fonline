@@ -372,7 +372,7 @@ auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
 }
 
-auto GeometryHelper::HexesInRadius(int32_t radius) -> int32_t
+auto GeometryHelper::HexesInRadius(int32_t radius) noexcept -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 

@@ -44,6 +44,8 @@ Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Prope
     ItemProperties(GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetEntityLock(&_ownedLock);
 }
 
 Item::~Item()
@@ -63,9 +65,9 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
         return nullptr;
     }
 
-    for (auto* item : *_innerItems) {
+    for (auto& item : *_innerItems) {
         if (item->GetId() == item_id) {
-            return item;
+            return item.get();
         }
     }
 
@@ -80,9 +82,9 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Ite
         return nullptr;
     }
 
-    for (auto* item : *_innerItems) {
+    for (auto& item : *_innerItems) {
         if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
-            return item;
+            return item.get();
         }
     }
 
@@ -93,18 +95,21 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
+    vector<Item*> result;
+
     if (!_innerItems) {
-        return {};
+        return result;
     }
 
-    if (stack_id.empty()) {
-        return *_innerItems;
+    result.reserve(_innerItems->size());
+
+    for (auto& item : *_innerItems) {
+        if (stack_id.empty() || item->GetContainerStack() == stack_id) {
+            result.emplace_back(item.get());
+        }
     }
-    else {
-        return vec_filter(*_innerItems, [stack_id](const Item* item) -> bool { //
-            return item->GetContainerStack() == stack_id;
-        });
-    }
+
+    return result;
 }
 
 auto Item::HasInnerItems() const noexcept -> bool
@@ -114,16 +119,39 @@ auto Item::HasInnerItems() const noexcept -> bool
     return _innerItems && !_innerItems->empty();
 }
 
-auto Item::GetAllInnerItems() -> span<Item*>
+auto Item::GetAllInnerItems() -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_innerItems);
 
-    return *_innerItems;
+    vector<Item*> result;
+    result.reserve(_innerItems->size());
+
+    for (auto& item : *_innerItems) {
+        result.emplace_back(item.get());
+    }
+
+    return result;
 }
 
-auto Item::GetRawInnerItems() -> vector<Item*>&
+auto Item::GetAllInnerItems() const -> vector<const Item*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(_innerItems);
+
+    vector<const Item*> result;
+    result.reserve(_innerItems->size());
+
+    for (const auto& item : *_innerItems) {
+        result.emplace_back(item.get());
+    }
+
+    return result;
+}
+
+auto Item::GetRawInnerItems() -> vector<refcount_ptr<Item>>&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -143,6 +171,9 @@ void Item::SetItemToContainer(Item* item)
 
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
+    item->SetParent(this);
+
+    PropagateEntityLock(item, GetEntityLock());
 }
 
 auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
@@ -185,6 +216,9 @@ void Item::RemoveItemFromContainer(Item* item)
     FO_RUNTIME_ASSERT(_innerItems);
     FO_RUNTIME_ASSERT(item);
 
+    RevertEntityLock(item);
+
+    item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId({});
     item->SetContainerStack({});

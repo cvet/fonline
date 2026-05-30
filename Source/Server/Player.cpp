@@ -49,6 +49,8 @@ Player::Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> co
     _connection {std::move(connection)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetEntityLock(&_ownedLock);
 }
 
 Player::~Player()
@@ -76,6 +78,13 @@ void Player::SetControlledCritter(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     _controlledCr = cr;
+}
+
+auto Player::GetSyncWidenEntity() noexcept -> ServerEntity*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _controlledCr.get();
 }
 
 void Player::DetachCritter()
@@ -203,13 +212,13 @@ void Player::Send_AddCritter(const Critter* cr)
         out_buf->Write(vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full);
     }
 
-    out_buf->Write(cr->GetIsAttached());
-    out_buf->Write(numeric_cast<uint16_t>(cr->GetAttachedCritters().size()));
+    const auto cr_attached = cr->GetAttachedCritters();
 
-    if (cr->HasAttachedCritters()) {
-        for (const auto& attached_cr : cr->GetAttachedCritters()) {
-            out_buf->Write(attached_cr->GetId());
-        }
+    out_buf->Write(cr->GetIsAttached());
+    out_buf->Write(numeric_cast<uint16_t>(cr_attached.size()));
+
+    for (const auto& attached_cr : cr_attached) {
+        out_buf->Write(attached_cr->GetId());
     }
 
     if (cr->IsMoving()) {
@@ -540,11 +549,14 @@ void Player::Send_Attachments(const Critter* from_cr)
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
 
     out_buf->Write(from_cr->GetId());
+
     out_buf->Write(from_cr->GetIsAttached());
     out_buf->Write(from_cr->GetAttachMaster());
-    out_buf->Write(numeric_cast<uint16_t>(from_cr->GetAttachedCritters().size()));
 
-    for (const auto& attached_cr : from_cr->GetAttachedCritters()) {
+    const auto from_cr_attached = from_cr->GetAttachedCritters();
+    out_buf->Write(numeric_cast<uint16_t>(from_cr_attached.size()));
+
+    for (const auto& attached_cr : from_cr_attached) {
         out_buf->Write(attached_cr->GetId());
     }
 }

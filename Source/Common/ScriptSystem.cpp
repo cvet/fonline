@@ -34,6 +34,7 @@
 #include "ScriptSystem.h"
 #include "Application.h"
 #include "EngineBase.h"
+#include "Entity.h"
 #include "FileSystem.h"
 #include "Geometry.h"
 #include "Properties.h"
@@ -284,7 +285,6 @@ void ScriptSystem::ShutdownBackends()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _loopCallbacks.clear();
     _engineTypes.clear();
     _globalFuncMap.clear();
     _initFunc.clear();
@@ -332,13 +332,64 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> a
     return true;
 }
 
-void ScriptSystem::AddLoopCallback(function<void()> callback)
+auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(callback);
+    const auto range = _globalFuncMap.equal_range(func_name);
 
-    _loopCallbacks.emplace_back(std::move(callback));
+    for (auto it = range.first; it != range.second; ++it) {
+        if (ValidateArgs(it->second.get(), arg_types, ArgMapTypeIndex<void>())) {
+            return it->second.get();
+        }
+    }
+
+    return nullptr;
+}
+
+auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> ScriptFuncDesc*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto range = _globalFuncMap.equal_range(func_name);
+
+    const auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
+        if (func_arg.Kind != caller_arg.Kind) {
+            return false;
+        }
+        if (func_arg.BaseType != caller_arg.BaseType) {
+            return false;
+        }
+        if (func_arg.KeyType != caller_arg.KeyType) {
+            return false;
+        }
+
+        // Not comparing IsMutable.
+        return true;
+    };
+
+    for (auto it = range.first; it != range.second; ++it) {
+        const auto* func = it->second.get();
+
+        if (!func->Call || func->Ret.Kind != ComplexTypeKind::None || func->Args.size() != arg_types.size()) {
+            continue;
+        }
+
+        bool args_match = true;
+
+        for (size_t i = 0; i < arg_types.size(); i++) {
+            if (!args_compatible(func->Args[i].Type, arg_types[i])) {
+                args_match = false;
+                break;
+            }
+        }
+
+        if (args_match) {
+            return it->second.get();
+        }
+    }
+
+    return nullptr;
 }
 
 void ScriptSystem::AddGlobalScriptFunc(ScriptFuncDesc* func)
@@ -355,21 +406,9 @@ void ScriptSystem::InitModules()
 {
     FO_STACK_TRACE_ENTRY();
 
+    UnfreezeGlobalVars();
     RunModuleFuncs(_initFunc, "Module initialization failed");
-}
-
-void ScriptSystem::ProcessScriptEvents()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto& callback : _loopCallbacks) {
-        try {
-            callback();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-    }
+    FreezeGlobalVars();
 }
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*

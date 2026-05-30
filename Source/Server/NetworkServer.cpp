@@ -62,7 +62,7 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
     _disconnectCallbackSet = true;
 
     {
-        std::scoped_lock locker(_receiveLocker);
+        scoped_lock locker {_receiveLocker};
 
         _receiveCallback = std::move(receive);
 
@@ -116,7 +116,7 @@ void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_receiveLocker);
+    scoped_lock locker {_receiveLocker};
 
     if (_receiveCallback) {
         _receiveCallback(buf);

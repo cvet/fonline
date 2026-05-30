@@ -206,7 +206,7 @@ extern void SetExceptionCallback(ExceptionCallback callback) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(ExceptionHandling->CallbackLocker);
+    std::scoped_lock locker {ExceptionHandling->CallbackLocker};
 
     ExceptionHandling->Callback = std::move(callback);
 }
@@ -215,7 +215,7 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(ExceptionHandling->CallbackLocker);
+    std::scoped_lock locker {ExceptionHandling->CallbackLocker};
 
     return ExceptionHandling->Callback;
 }

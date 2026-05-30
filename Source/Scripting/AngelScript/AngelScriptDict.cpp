@@ -1001,6 +1001,10 @@ static auto Compare(bool check_less, int32_t type_id, const ScriptDictTypeData* 
             }
         }
 
+        if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 && type_data != nullptr && !type_data->EqFunc && !type_data->CmpFunc) {
+            return false;
+        }
+
         auto* ctx = AngelScript::asGetActiveContext();
         FO_RUNTIME_ASSERT(ctx);
         FO_RUNTIME_ASSERT(ctx->GetEngine() == engine);
@@ -1136,6 +1140,7 @@ void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("dict<T1,T2>", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_METHOD(ScriptDict, Release), FO_SCRIPT_METHOD_CONV));
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "T2& opIndex(const T1&in key)", FO_SCRIPT_METHOD(ScriptDict, GetOrCreate), FO_SCRIPT_METHOD_CONV));
+    FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "const T2& opIndex(const T1&in key) const", FO_SCRIPT_METHOD(ScriptDict, Get), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in key)", FO_SCRIPT_METHOD(ScriptDict, Set), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in key, const T2&in defVal)", FO_SCRIPT_METHOD(ScriptDict, SetIfNotExist), FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in key)", FO_SCRIPT_METHOD(ScriptDict, Remove), FO_SCRIPT_METHOD_CONV));

@@ -131,7 +131,7 @@ Current `../../.vscode/launch.json` entries use:
 
 These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
 
-The AngelScript debugger requires `Script.DebuggerEnabled = True`. The current `LocalTest` subconfig enables it, while `GameplayTests` disables it.
+The AngelScript debugger requires `AngelScript.DebuggerEnabled = True`. The current `LocalTest` subconfig enables it, while `GameplayTests` disables it.
 
 ## Fast Route Selection
 
@@ -203,7 +203,7 @@ If you need to trace the current debugging flow through the live repository, sta
 Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
 
 - verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../.vscode/tasks.json` and `../../LastFrontier.fomain` confirm the documented split between `LocalTest` debug launches with `Script.DebuggerEnabled = True` and `GameplayTests` runs with `Script.DebuggerEnabled = False`
+- `../../.vscode/tasks.json` and `../../LastFrontier.fomain` confirm the documented split between `LocalTest` debug launches with `AngelScript.DebuggerEnabled = True` and `GameplayTests` runs with `AngelScript.DebuggerEnabled = False`
 - `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
 - `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
 - `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table

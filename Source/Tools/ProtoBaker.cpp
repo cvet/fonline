@@ -82,7 +82,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     vector<std::future<void>> file_bakings;
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time)) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Server", [&]() FO_DEFERRED {
             auto engine = BakerServerEngine(*_context->BakedFiles);
             engine.MapScriptTypes(&engine);
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -94,7 +94,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Client", [&]() FO_DEFERRED {
             auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
@@ -102,7 +102,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED {
+        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Mapper", [&]() FO_DEFERRED {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);

@@ -277,7 +277,8 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
     vector<std::future<void>> file_bakings;
 
     for (File& file_ : files_to_bake) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, &files, file = std::move(file_)]() FO_DEFERRED {
+        const auto task_name = strex("BakeModelInfo-{}", file_.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, file = std::move(file_)]() FO_DEFERRED {
             if (_context->BakeChecker) {
                 const uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, file.GetPath());
 

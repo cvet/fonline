@@ -2791,7 +2791,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
             SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
             run_in_separate_thread = true;
-            auto fut = std::async(std::launch::async, [&] { callback(); });
+            auto fut = run_async("SplashCallback", [&] { callback(); });
             const auto start_time = SDL_GetTicks();
 
             while (true) {

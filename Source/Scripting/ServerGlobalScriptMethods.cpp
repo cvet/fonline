@@ -33,9 +33,11 @@
 
 #include "Common.h"
 
+#include "EntitySync.h"
 #include "FileSystem.h"
 #include "Geometry.h"
 #include "NetworkServer.h"
+#include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
@@ -224,19 +226,15 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, It
     return dist;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_GetItem(ServerEngine* server, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = server->EntityMngr.GetItem(itemId);
-    if (item == nullptr || item->IsDestroyed()) {
-        return nullptr;
-    }
-
-    return item;
+    auto item = server->EntityMngr.GetItem(itemId);
+    return item.release_ownership();
 }
 
 ///@ ExportMethod
@@ -338,8 +336,8 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ident_t id)
 {
-    if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
-        server->EntityMngr.DestroyEntity(entity);
+    if (auto entity = server->EntityMngr.GetEntity(id)) {
+        server->EntityMngr.DestroyEntity(entity.get());
     }
 }
 
@@ -355,8 +353,8 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, FO_NULLABLE S
 FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_vector<ident_t> ids)
 {
     for (const auto id : ids) {
-        if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
-            server->EntityMngr.DestroyEntity(entity);
+        if (auto entity = server->EntityMngr.GetEntity(id)) {
+            server->EntityMngr.DestroyEntity(entity.get());
         }
     }
 }
@@ -397,23 +395,23 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId)
 {
-    auto* item = server->EntityMngr.GetItem(itemId);
+    auto item = server->EntityMngr.GetItem(itemId);
 
     if (item != nullptr) {
-        server->ItemMngr.DestroyItem(item);
+        server->ItemMngr.DestroyItem(item.get());
     }
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32_t count)
 {
-    auto* item = server->EntityMngr.GetItem(itemId);
+    auto item = server->EntityMngr.GetItem(itemId);
 
     if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
 
         if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
+            server->ItemMngr.DestroyItem(item.get());
         }
         else {
             item->SetCount(cur_count - count);
@@ -436,10 +434,10 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vecto
 {
     for (const auto item_id : itemIds) {
         if (item_id) {
-            auto* item = server->EntityMngr.GetItem(item_id);
+            auto item = server->EntityMngr.GetItem(item_id);
 
             if (item != nullptr) {
-                server->ItemMngr.DestroyItem(item);
+                server->ItemMngr.DestroyItem(item.get());
             }
         }
     }
@@ -457,8 +455,8 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, Critter* cr)
 FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetControlledByPlayer()) {
-            server->CrMngr.DestroyCritter(cr);
+        if (auto cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetControlledByPlayer()) {
+            server->CrMngr.DestroyCritter(cr.get());
         }
     }
 }
@@ -478,8 +476,8 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_ve
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (Critter* cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetControlledByPlayer()) {
-                server->CrMngr.DestroyCritter(cr);
+            if (auto cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetControlledByPlayer()) {
+                server->CrMngr.DestroyCritter(cr.get());
             }
         }
     }
@@ -574,10 +572,10 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, FO_NULLABLE
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, ident_t locId)
 {
-    auto* loc = server->EntityMngr.GetLocation(locId);
+    auto loc = server->EntityMngr.GetLocation(locId);
 
     if (loc != nullptr) {
-        server->MapMngr.DestroyLocation(loc);
+        server->MapMngr.DestroyLocation(loc.get());
     }
 }
 
@@ -592,36 +590,38 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, FO_NULLABLE Map*
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, ident_t mapId)
 {
-    auto* map = server->EntityMngr.GetMap(mapId);
+    auto map = server->EntityMngr.GetMap(mapId);
 
     if (map != nullptr) {
-        server->MapMngr.DestroyMap(map);
+        server->MapMngr.DestroyMap(map.get());
     }
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId)
 {
     if (!crId) {
         return nullptr;
     }
 
-    return server->EntityMngr.GetCritter(crId);
+    auto cr = server->EntityMngr.GetCritter(crId);
+    return cr.release_ownership();
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
 {
-    vector<Critter*> critters;
-    critters.reserve(server->EntityMngr.GetCritters().size());
+    auto critters = server->EntityMngr.GetCritters();
+    vector<Critter*> result;
+    result.reserve(critters.size());
 
-    for (auto& cr : server->EntityMngr.GetCritters() | std::views::values) {
+    for (auto& cr : critters) {
         if (cr->CheckFind(findType)) {
-            critters.emplace_back(cr.get());
+            result.emplace_back(cr.release_ownership());
         }
     }
 
-    return critters;
+    return result;
 }
 
 ///@ ExportMethod
@@ -664,240 +664,239 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* serv
     return server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
 {
     if (!playerId) {
         return nullptr;
     }
 
-    return server->EntityMngr.GetPlayer(playerId);
+    auto player = server->EntityMngr.GetPlayer(playerId);
+    return player.release_ownership();
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetGlobalMapCritters(ServerEngine* server, CritterFindType findType)
-{
-    return server->CrMngr.GetGlobalMapCritters(findType);
-}
-
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ident_t mapId)
 {
-    return server->EntityMngr.GetMap(mapId);
+    auto map = server->EntityMngr.GetMap(mapId);
+    return map.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetMapByPid(mapPid, skipCount);
+    auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
+    return map.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
+    auto map = server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
+    return map.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server)
 {
-    vector<Map*> maps;
-    maps.reserve(server->EntityMngr.GetLocationsCount());
+    vector<Map*> result;
+    result.reserve(server->EntityMngr.GetMapsCount());
 
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
-        maps.emplace_back(map.get());
+    for (auto& map : server->EntityMngr.GetMaps()) {
+        result.emplace_back(map.get());
     }
 
-    return maps;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, hstring pid)
 {
-    vector<Map*> maps;
+    vector<Map*> result;
 
     if (!pid) {
-        maps.reserve(server->EntityMngr.GetLocationsCount());
+        result.reserve(server->EntityMngr.GetMapsCount());
     }
 
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
+    for (auto& map : server->EntityMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
-            maps.emplace_back(map.get());
+            result.emplace_back(map.get());
         }
     }
 
-    return maps;
+    return result;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, ProtoMap* proto)
 {
-    vector<Map*> maps;
+    vector<Map*> result;
 
     if (proto == nullptr) {
-        maps.reserve(server->EntityMngr.GetLocationsCount());
+        result.reserve(server->EntityMngr.GetMapsCount());
     }
 
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
+    for (auto& map : server->EntityMngr.GetMaps()) {
         if (proto == nullptr || proto->GetProtoId() == map->GetProtoId()) {
-            maps.emplace_back(map.get());
+            result.emplace_back(map.get());
         }
     }
 
-    return maps;
+    return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ident_t locId)
 {
-    return server->EntityMngr.GetLocation(locId);
+    auto loc = server->EntityMngr.GetLocation(locId);
+    return loc.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetLocationByPid(locPid, skipCount);
+    auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
+    return loc.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
+    auto loc = server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
+    return loc.release_ownership();
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    auto locs = server->EntityMngr.GetLocations();
 
-    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
+    for (auto& loc : locs) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
-            return loc.get();
+            return loc.release_ownership();
         }
     }
 
     return nullptr;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server)
 {
-    auto& locs = server->EntityMngr.GetLocations();
-
+    auto locs = server->EntityMngr.GetLocations();
     vector<Location*> result;
     result.reserve(locs.size());
 
-    for (auto& loc : locs | std::views::values) {
-        result.emplace_back(loc.get());
+    for (auto& loc : locs) {
+        result.emplace_back(loc.release_ownership());
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, hstring pid)
 {
-    auto& locs = server->EntityMngr.GetLocations();
+    auto locs = server->EntityMngr.GetLocations();
     vector<Location*> result;
 
     if (!pid) {
         result.reserve(locs.size());
     }
 
-    for (auto& loc : locs | std::views::values) {
+    for (auto& loc : locs) {
         if (!pid || pid == loc->GetProtoId()) {
-            result.emplace_back(loc.get());
+            result.emplace_back(loc.release_ownership());
         }
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, ProtoLocation* proto)
 {
-    auto& locs = server->EntityMngr.GetLocations();
+    auto locs = server->EntityMngr.GetLocations();
     vector<Location*> result;
 
     if (proto == nullptr) {
         result.reserve(locs.size());
     }
 
-    for (auto& loc : locs | std::views::values) {
+    for (auto& loc : locs) {
         if (proto == nullptr || proto->GetProtoId() == loc->GetProtoId()) {
-            result.emplace_back(loc.get());
+            result.emplace_back(loc.release_ownership());
         }
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
-    auto& locs = server->EntityMngr.GetLocations();
-
+    auto locs = server->EntityMngr.GetLocations();
     vector<Location*> result;
     result.reserve(locs.size());
 
-    for (auto& loc : locs | std::views::values) {
+    for (auto& loc : locs) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(loc.get());
+            result.emplace_back(loc.release_ownership());
         }
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, hstring pid)
 {
-    auto& items = server->EntityMngr.GetItems();
+    auto items = server->EntityMngr.GetItems();
     vector<Item*> result;
 
     if (!pid) {
         result.reserve(items.size());
     }
 
-    for (auto& item : items | std::views::values) {
+    for (auto& item : items) {
         if (!pid || pid == item->GetProtoId()) {
-            result.emplace_back(item.get());
+            result.emplace_back(item.release_ownership());
         }
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, ProtoItem* proto)
 {
-    auto& items = server->EntityMngr.GetItems();
+    auto items = server->EntityMngr.GetItems();
     vector<Item*> result;
 
     if (proto == nullptr) {
         result.reserve(items.size());
     }
 
-    for (auto& item : items | std::views::values) {
+    for (auto& item : items) {
         if (proto == nullptr || proto->GetProtoId() == item->GetProtoId()) {
-            result.emplace_back(item.get());
+            result.emplace_back(item.release_ownership());
         }
     }
 
     return result;
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
 {
-    auto& players = server->EntityMngr.GetPlayers();
-
+    auto players = server->EntityMngr.GetPlayers();
     vector<Player*> result;
     result.reserve(players.size());
 
-    for (auto& player : players | std::views::values) {
-        result.emplace_back(player.get());
+    for (auto& player : players) {
+        result.emplace_back(player.release_ownership());
     }
 
     return result;
@@ -1214,7 +1213,15 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring coll
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server)
 {
-    return server->CrMngr.GetNonPlayerCritters();
+    auto npcs = server->CrMngr.GetNonPlayerCritters();
+    vector<Critter*> result;
+    result.reserve(npcs.size());
+
+    for (auto& cr : npcs) {
+        result.emplace_back(cr.get());
+    }
+
+    return result;
 }
 
 ///@ ExportMethod
@@ -1222,9 +1229,9 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, hstri
 {
     vector<Critter*> result;
 
-    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
-        if (!cr->IsDestroyed() && (!pid || pid == cr->GetProtoId())) {
-            result.emplace_back(cr);
+    for (auto& cr : server->CrMngr.GetNonPlayerCritters()) {
+        if (!pid || pid == cr->GetProtoId()) {
+            result.emplace_back(cr.get());
         }
     }
 
@@ -1234,11 +1241,13 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, hstri
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, ProtoCritter* proto)
 {
+    FO_RUNTIME_ASSERT(proto);
+
     vector<Critter*> result;
 
-    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
-        if (!cr->IsDestroyed() && (proto == nullptr || proto->GetProtoId() == cr->GetProtoId())) {
-            result.emplace_back(cr);
+    for (auto& cr : server->CrMngr.GetNonPlayerCritters()) {
+        if (proto->GetProtoId() == cr->GetProtoId()) {
+            result.emplace_back(cr.get());
         }
     }
 
@@ -1267,15 +1276,13 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ServerEngine* server, FO_N
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEngine* server, ProtoMap* proto)
 {
-    auto* static_map = server->MapMngr.GetStaticMap(proto);
+    auto static_map = server->MapMngr.GetStaticMap(proto);
     return vec_transform(static_map->StaticItems, [](auto&& item) -> StaticItem* { return item.get(); });
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ServerEngine* server, ProtoMap* proto)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_RUNTIME_ASSERT(proto);
 
     const auto* static_map = server->MapMngr.GetStaticMap(proto);
@@ -1442,6 +1449,126 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view c
         }
         output += line;
     });
+}
+
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ServerEntity* entities[] = {entity};
+    ctx->SyncEntities(entities);
+}
+
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity1, ServerEntity* entity2)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ServerEntity* entities[] = {entity1, entity2};
+    ctx->SyncEntities(entities);
+}
+
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity1, ServerEntity* entity2, ServerEntity* entity3)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ServerEntity* entities[] = {entity1, entity2, entity3};
+    ctx->SyncEntities(entities);
+}
+
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, readonly_vector<ServerEntity*> entities)
+{
+    vector<ServerEntity*> non_null;
+    non_null.reserve(entities.size());
+
+    for (auto* entity : entities) {
+        if (entity == nullptr) {
+            throw ScriptException("Entity in array arg is null");
+        }
+
+        non_null.emplace_back(entity);
+    }
+
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->SyncEntities(non_null);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->Release();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_Lock(ServerEngine* server)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->LockSingleton(server->GetEntityLock());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_Unlock(ServerEngine* server)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->UnlockSingleton(server->GetEntityLock());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int64_t Server_Game_GetProcessMemoryUsage(ServerEngine* server)
+{
+    ignore_unused(server);
+    return static_cast<int64_t>(Platform::GetProcessMemoryUsage());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int64_t Server_Game_GetAllocatorMemoryUsage(ServerEngine* server)
+{
+    ignore_unused(server);
+    return static_cast<int64_t>(AllocatorGetInUseBytes());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetEntityRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetEntitiesCount());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetPlayerRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetPlayersCount());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetLocationRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetLocationsCount());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetMapRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetMapsCount());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetCritterRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetCrittersCount());
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetItemRegistryCount(ServerEngine* server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetItemsCount());
 }
 
 FO_END_NAMESPACE

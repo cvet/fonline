@@ -36,6 +36,7 @@
 #include "AnyData.h"
 #include "Application.h"
 #include "ClientDataValidation.h"
+#include "EntitySync.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "NetCommand.h"
@@ -76,599 +77,793 @@ ServerEngine::ServerEngine(GlobalSettings& settings, FileSystem&& resources) :
         return true;
     });
 
-    // Health file
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitHealthFileJob");
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitHealthFileJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitScriptSystemJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitNetworkingJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitStorageJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitMetadataJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitLanguageJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitMapsJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitClientPacksJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitGameLogicJob(); }));
+    _starter.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return InitDoneJob(); }));
+}
 
-        if (Settings.WriteHealthFile) {
-            const auto exe_path = Platform::GetExePath();
-            const string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+ServerEngine::~ServerEngine()
+{
+    FO_STACK_TRACE_ENTRY();
+}
 
-            const auto write_health_file = [health_file_name](string_view text) FO_DEFERRED {
-                std::ofstream health_file {std::filesystem::path {fs_make_path(health_file_name)}, std::ios::binary | std::ios::trunc};
+auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
+{
+    FO_STACK_TRACE_ENTRY();
 
-                if (!health_file) {
-                    return false;
-                }
+    if (callbacks.empty()) {
+        return EventResult::ContinueChain;
+    }
 
-                if (!text.empty()) {
-                    health_file.write(text.data(), static_cast<std::streamsize>(text.size()));
-                }
+    // Engine-wide invariant: a primary SyncContext is always active when an event fires.
+    FO_RUNTIME_ASSERT(GetCurrentSyncContext() != nullptr);
 
-                health_file.flush();
-                return !!health_file;
-            };
+    bool had_exception = false;
 
-            if (write_health_file("Starting...")) {
-                _mainWorker.AddJob([this, write_health_file]() FO_DEFERRED {
-                    FO_STACK_TRACE_ENTRY_NAMED("HealthFileJob");
+    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work.
+    for (const auto& cb : copy(callbacks)) {
+        EventResult result = EventResult::ContinueChain;
 
-                    if (_started && _healthWriter.GetJobsCount() == 0) {
-                        _healthWriter.AddJob([health_info = GetHealthInfo(), write_health_file, &settings_ = Settings]() FO_DEFERRED {
-                            FO_STACK_TRACE_ENTRY_NAMED("HealthFileWriteJob");
+        try {
+            // Wrap each callback in its own nested SyncContext on top of the dispatcher's primary
+            // cover. Inner `Sync::Lock(...)` only mutates the nested layer; the primary's locks
+            // (the event's entity args) survive across the chain.
+            SyncContext nested;
+            nested.Activate();
+            auto cleanup = scope_exit([&]() noexcept {
+                nested.Release();
+                nested.Deactivate();
+            });
 
-                            string buf;
-                            buf.reserve(health_info.size() + 128);
-                            buf += strex("{} v{}\n\n", settings_.GameName, settings_.GameVersion);
-                            buf += health_info;
-                            write_health_file(buf);
+            result = cb.Callback(call);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            had_exception = true;
 
-                            return std::nullopt;
-                        });
-                    }
-
-                    return std::chrono::milliseconds {300};
-                });
-            }
-            else {
-                WriteLog(LogType::Warning, "Can't write health file '{}'", health_file_name);
+            if (cb.HasExplicitResult) {
+                return EventResult::StopChain;
             }
         }
 
-        return std::nullopt;
-    });
-
-    // Script system
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
-
-        WriteLog("Initialize script system");
-
-        MapScriptTypes(this);
-        MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
-        MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
-        MapEngineType<StaticItem>(GetBaseType("StaticItem"));
-        MapEngineType<Critter>(GetBaseType(Critter::ENTITY_TYPE_NAME));
-        MapEngineType<Map>(GetBaseType(Map::ENTITY_TYPE_NAME));
-        MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
-
-#if FO_ANGELSCRIPT_SCRIPTING
-        InitAngelScriptScripting(this, Settings, Resources);
-#endif
-
-        return std::nullopt;
-    });
-
-    // Network
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
-
-        WriteLog("Start networking");
-
-        if (!Settings.DisableInterthreadCommunication) {
-            if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
-                _connectionServers.emplace_back(std::move(conn_server));
-            }
+        if (result == EventResult::StopChain) {
+            return EventResult::StopChain;
         }
+    }
 
-        if (Settings.DisableNetworking) {
-            WriteLog("Skip remote networking startup");
-            return std::nullopt;
-        }
+    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+}
 
-        if (Settings.EnableUdp) {
-            if (auto conn_server = NetworkServer::StartUdpSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
-                _connectionServers.emplace_back(std::move(conn_server));
-            }
-        }
+auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
+{
+    FO_STACK_TRACE_ENTRY();
 
-#if FO_HAVE_ASIO
-        if (auto conn_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
-            _connectionServers.emplace_back(std::move(conn_server));
-        }
-#endif
-#if FO_HAVE_WEB_SOCKETS
-        if (auto conn_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
-            _connectionServers.emplace_back(std::move(conn_server));
-        }
-#endif
-
-        return std::nullopt;
-    });
-
-    // Data base
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitStorageJob");
-
-        DataBaseCollectionSchemas collection_schemas;
-        collection_schemas.reserve(3 + GetEntityTypes().size() + Settings.CustomCollections.size());
-
-        unordered_map<hstring, DataBaseKeyType> registered_collection_types {};
-        registered_collection_types.reserve(2 + GetEntityTypes().size() + Settings.CustomCollections.size());
-
-        const auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
-            FO_RUNTIME_ASSERT(!collection_name.as_str().empty());
-
-            if (registered_collection_types.contains(collection_name)) {
-                throw DataBaseException("Duplicate database collection name", collection_name.as_str());
-            }
-
-            registered_collection_types.emplace(collection_name, key_type);
-            collection_schemas.emplace_back(collection_name, key_type);
-            return true;
-        };
-
-        const auto register_custom_collection = [&](string_view entry) {
-            const auto separator = entry.find(':');
-
-            if (separator == string_view::npos || separator == 0 || separator + 1 >= entry.size() || entry.find(':', separator + 1) != string_view::npos) {
-                throw DataBaseException("Invalid database collection setting", entry);
-            }
-
-            const auto collection_name = strex(entry.substr(0, separator)).trim().str();
-            const auto key_type_name = strex(entry.substr(separator + 1)).trim().str();
-
-            if (collection_name.empty() || key_type_name.empty()) {
-                throw DataBaseException("Invalid database collection setting", entry);
-            }
-
-            DataBaseKeyType key_type;
-
-            if (strex(key_type_name).lower().trim().str() == "int") {
-                key_type = DataBaseKeyType::IntId;
-            }
-            else if (strex(key_type_name).lower().trim().str() == "str") {
-                key_type = DataBaseKeyType::String;
-            }
-            else {
-                throw DataBaseException("Unknown database key type", key_type_name);
-            }
-
-            register_collection(Hashes.ToHashedString(collection_name), key_type);
-        };
-
-        register_collection(GameCollectionName, DataBaseKeyType::IntId);
-        register_collection(HistoryCollectionName, DataBaseKeyType::IntId);
-        register_collection(HashReportsCollectionName, DataBaseKeyType::String);
-
-        for (const auto& type_desc : GetEntityTypes() | std::views::values) {
-            register_collection(type_desc.PropRegistrator->GetTypeNamePlural(), DataBaseKeyType::IntId);
-        }
-        for (const auto& entry : Settings.CustomCollections) {
-            register_custom_collection(entry);
-        }
-
-        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, collection_schemas, [] {
-            FO_RUNTIME_ASSERT(App);
-            App->RequestQuit(false);
+    return [this, body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+        SyncContext sync_ctx;
+        sync_ctx.Activate();
+        auto cleanup = scope_exit([&]() noexcept {
+            sync_ctx.Release();
+            sync_ctx.Deactivate();
         });
 
+        return body();
+    };
+}
+
+void ServerEngine::LockForPropertyAccess() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _entityLock->Acquire(NextSyncTicket());
+}
+
+void ServerEngine::UnlockForPropertyAccess() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _entityLock->Release();
+}
+
+void ServerEngine::LockForPropertyAccessShared() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _entityLock->AcquireShared(NextSyncTicket());
+}
+
+void ServerEngine::UnlockForPropertyAccessShared() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _entityLock->ReleaseShared();
+}
+
+void ServerEngine::FlushExactSyncTime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(GameTime.IsTimeSynchronized());
+
+    _persistedSyncTimeMark = GameTime.GetSynchronizedTime();
+    const auto* prop = GetPropertySynchronizedTime();
+    const auto value = AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())};
+    DbStorage.Update(GameCollectionName, ident_t {1}, prop->GetName(), value);
+}
+
+void ServerEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _workerPool->Submit(delay, [body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+        body();
         return std::nullopt;
     });
+}
 
-    // Engine data
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitMetadataJob");
+auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        WriteLog("Setup engine");
+    if (!Settings.WriteHealthFile) {
+        return std::nullopt;
+    }
 
-        // Properties that saving to database
-        for (const auto& type_desc : GetEntityTypes() | std::views::values) {
-            const auto& registrator = type_desc.PropRegistrator;
+    const auto exe_path = Platform::GetExePath();
+    _healthFileName = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
 
+    if (WriteHealthFile("Starting...")) {
+        _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return HealthFileJob(); }));
+    }
+    else {
+        WriteLog(LogType::Warning, "Can't write health file '{}'", _healthFileName);
+    }
+
+    return std::nullopt;
+}
+
+auto ServerEngine::HealthFileJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_started && _healthWriter.GetJobsCount() == 0) {
+        _healthWriter.AddJob([this, health_info = GetHealthInfo()]() FO_DEFERRED { return HealthFileWriteJob(health_info); });
+    }
+
+    return std::chrono::milliseconds {Settings.HealthFilePeriodMs};
+}
+
+auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string buf;
+    buf.reserve(health_info.size() + 128);
+    buf += strex("{} v{}\n\n", Settings.GameName, Settings.GameVersion);
+    buf += health_info;
+    WriteHealthFile(buf);
+
+    return std::nullopt;
+}
+
+auto ServerEngine::WriteHealthFile(string_view text) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
+
+    if (!health_file) {
+        return false;
+    }
+
+    if (!text.empty()) {
+        health_file.write(text.data(), static_cast<std::streamsize>(text.size()));
+    }
+
+    health_file.flush();
+    return !!health_file;
+}
+
+auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    WriteLog("Initialize script system");
+
+    MapScriptTypes(this);
+    MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
+    MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
+    MapEngineType<StaticItem>(GetBaseType("StaticItem"));
+    MapEngineType<Critter>(GetBaseType(Critter::ENTITY_TYPE_NAME));
+    MapEngineType<Map>(GetBaseType(Map::ENTITY_TYPE_NAME));
+    MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    InitAngelScriptScripting(this, Settings, Resources);
+#endif
+
+    return std::nullopt;
+}
+
+auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    WriteLog("Start networking");
+
+    if (auto conn_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+        _connectionServers.emplace_back(std::move(conn_server));
+    }
+
+    if (Settings.DisableNetworking) {
+        WriteLog("Skip remote networking startup");
+        return std::nullopt;
+    }
+
+    if (Settings.EnableUdp) {
+        if (auto conn_server = NetworkServer::StartUdpSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+            _connectionServers.emplace_back(std::move(conn_server));
+        }
+    }
+
+#if FO_HAVE_ASIO
+    if (auto conn_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+        _connectionServers.emplace_back(std::move(conn_server));
+    }
+#endif
+#if FO_HAVE_WEB_SOCKETS
+    if (auto conn_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })) {
+        _connectionServers.emplace_back(std::move(conn_server));
+    }
+#endif
+
+    return std::nullopt;
+}
+
+auto ServerEngine::InitStorageJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DataBaseCollectionSchemas collection_schemas;
+    collection_schemas.reserve(3 + GetEntityTypes().size() + Settings.CustomCollections.size());
+
+    unordered_map<hstring, DataBaseKeyType> registered_collection_types {};
+    registered_collection_types.reserve(2 + GetEntityTypes().size() + Settings.CustomCollections.size());
+
+    const auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
+        FO_RUNTIME_ASSERT(!collection_name.as_str().empty());
+
+        if (registered_collection_types.contains(collection_name)) {
+            throw DataBaseException("Duplicate database collection name", collection_name.as_str());
+        }
+
+        registered_collection_types.emplace(collection_name, key_type);
+        collection_schemas.emplace_back(collection_name, key_type);
+        return true;
+    };
+
+    const auto register_custom_collection = [&](string_view entry) {
+        const auto separator = entry.find(':');
+
+        if (separator == string_view::npos || separator == 0 || separator + 1 >= entry.size() || entry.find(':', separator + 1) != string_view::npos) {
+            throw DataBaseException("Invalid database collection setting", entry);
+        }
+
+        const auto collection_name = strex(entry.substr(0, separator)).trim().str();
+        const auto key_type_name = strex(entry.substr(separator + 1)).trim().str();
+
+        if (collection_name.empty() || key_type_name.empty()) {
+            throw DataBaseException("Invalid database collection setting", entry);
+        }
+
+        DataBaseKeyType key_type;
+
+        if (strex(key_type_name).lower().trim().str() == "int") {
+            key_type = DataBaseKeyType::IntId;
+        }
+        else if (strex(key_type_name).lower().trim().str() == "str") {
+            key_type = DataBaseKeyType::String;
+        }
+        else {
+            throw DataBaseException("Unknown database key type", key_type_name);
+        }
+
+        register_collection(Hashes.ToHashedString(collection_name), key_type);
+    };
+
+    register_collection(GameCollectionName, DataBaseKeyType::IntId);
+    register_collection(HistoryCollectionName, DataBaseKeyType::IntId);
+    register_collection(HashReportsCollectionName, DataBaseKeyType::String);
+
+    for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+        register_collection(type_desc.PropRegistrator->GetTypeNamePlural(), DataBaseKeyType::IntId);
+    }
+    for (const auto& entry : Settings.CustomCollections) {
+        register_custom_collection(entry);
+    }
+
+    DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, collection_schemas, [] {
+        FO_RUNTIME_ASSERT(App);
+        App->RequestQuit(false);
+    });
+
+    return std::nullopt;
+}
+
+auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    WriteLog("Setup engine");
+
+    // Properties that saving to database
+    const auto* sync_time_prop = GetPropertySynchronizedTime();
+    sync_time_prop->AddPostSetter([this](Entity* entity, const Property* prop_) FO_DEFERRED { OnSaveSynchronizedTime(entity, prop_); });
+
+    for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+        const auto& registrator = type_desc.PropRegistrator;
+
+        for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
+            const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+
+            if (prop->IsDisabled()) {
+                continue;
+            }
+            if (!prop->IsPersistent()) {
+                continue;
+            }
+            if (prop == sync_time_prop) {
+                continue;
+            }
+
+            prop->AddPostSetter([this](Entity* entity, const Property* prop_) FO_DEFERRED { OnSaveEntityValue(entity, prop_); });
+        }
+    }
+
+    // Properties that sending to clients
+    {
+        const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
                 const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
                 }
-                if (!prop->IsPersistent()) {
+                if (!prop->IsSynced()) {
                     continue;
                 }
 
-                prop->AddPostSetter([this](Entity* entity, const Property* prop_) FO_DEFERRED { OnSaveEntityValue(entity, prop_); });
+                prop->AddPostSetter(callback);
             }
-        }
+        };
 
-        // Properties that sending to clients
-        {
-            const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-                for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                    const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendLocationValue(entity, prop); });
 
-                    if (prop->IsDisabled()) {
-                        continue;
-                    }
-                    if (!prop->IsSynced()) {
-                        continue;
-                    }
-
-                    prop->AddPostSetter(callback);
-                }
-            };
-
-            set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendGlobalValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendPlayerValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendItemValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCritterValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendMapValue(entity, prop); });
-            set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendLocationValue(entity, prop); });
-
-            for (const auto& type_desc : GetEntityTypes() | std::views::values) {
-                if (type_desc.Exported) {
-                    continue;
-                }
-
-                set_send_callbacks(type_desc.PropRegistrator.get(), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCustomEntityValue(entity, prop); });
+        for (const auto& type_desc : GetEntityTypes() | std::views::values) {
+            if (type_desc.Exported) {
+                continue;
             }
+
+            set_send_callbacks(type_desc.PropRegistrator.get(), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCustomEntityValue(entity, prop); });
         }
+    }
 
-        // Properties with custom behaviours
-        {
-            const auto set_setter = [](const auto* registrator, int32_t prop_index, PropertySetCallback callback) {
-                const auto* prop = registrator->GetPropertyByIndex(prop_index);
-                prop->AddSetter(std::move(callback));
-            };
-            const auto set_post_setter = [](const auto* registrator, int32_t prop_index, PropertyPostSetCallback callback) {
-                const auto* prop = registrator->GetPropertyByIndex(prop_index);
-                prop->AddPostSetter(std::move(callback));
-            };
+    // Properties with custom behaviours
+    {
+        const auto set_setter = [](const auto* registrator, int32_t prop_index, PropertySetCallback callback) {
+            const auto* prop = registrator->GetPropertyByIndex(prop_index);
+            prop->AddSetter(std::move(callback));
+        };
+        const auto set_post_setter = [](const auto* registrator, int32_t prop_index, PropertyPostSetCallback callback) {
+            const auto* prop = registrator->GetPropertyByIndex(prop_index);
+            prop->AddPostSetter(std::move(callback));
+        };
 
-            set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
-            set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) FO_DEFERRED { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHidden(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
-            set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemMultihexLines(entity, prop); });
-        }
+        set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) FO_DEFERRED { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHidden(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemMultihexLines(entity, prop); });
+    }
 
-        return std::nullopt;
-    });
+    return std::nullopt;
+}
 
-    // Language
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitLanguageJob");
+auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        WriteLog("Load language data");
+    WriteLog("Load language data");
 
-        _defaultLang = TextPack {Hashes};
-        _defaultLang.LoadFromResources(Resources, Settings.Language);
+    _defaultLang = TextPack {Hashes};
+    _defaultLang.LoadFromResources(Resources, Settings.Language);
 
-        return std::nullopt;
-    });
+    return std::nullopt;
+}
 
-    // Maps
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitMapsJob");
+auto ServerEngine::InitMapsJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        WriteLog("Load maps data");
+    WriteLog("Load maps data");
 
-        MapMngr.LoadFromResources();
+    MapMngr.LoadFromResources();
 
-        return std::nullopt;
-    });
+    return std::nullopt;
+}
 
-    // Resource packs for client
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitUpdaterBackendJob");
+auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        if (IsPackaged()) {
-            WriteLog("Initialize updater backend with client resources using {} storage", Settings.UpdateFilesInMemory ? "memory" : "disk");
+    if (IsPackaged()) {
+        WriteLog("Initialize updater backend with client resources using {} storage", Settings.UpdateFilesInMemory ? "memory" : "disk");
 
-            auto updater_backend = SafeAlloc::MakeUnique<UpdaterBackend>();
-            updater_backend->LoadFromClientResources(Settings);
-            _updaterBackend = std::move(updater_backend);
+        auto updater_backend = SafeAlloc::MakeUnique<UpdaterBackend>();
+        updater_backend->LoadFromClientResources(Settings);
+        _updaterBackend = std::move(updater_backend);
+    }
+    else {
+        WriteLog("Skip updater backend initialization in unpackaged mode");
+    }
+
+    return std::nullopt;
+}
+
+auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    WriteLog("Start game logic");
+
+    try {
+        // Globals
+        const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
+
+        if (globals_doc.Empty()) {
+            AnyData::Document doc;
+            doc.Emplace("_Name", string("Globals"));
+            DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
+            SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
         else {
-            WriteLog("Skip updater backend initialization in unpackaged mode");
-        }
-
-        return std::nullopt;
-    });
-
-    // Game logic
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
-
-        WriteLog("Start game logic");
-
-        try {
-            // Globals
-            const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
-
-            if (globals_doc.Empty()) {
-                AnyData::Document doc;
-                doc.Emplace("_Name", string("Globals"));
-                DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
-                SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
-            }
-            else {
-                if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
-                    throw ServerInitException("Failed to load globals document");
-                }
-            }
-
-            GameTime.SetSynchronizedTime(GetSynchronizedTime());
-            FrameAdvance();
-
-            // Scripting
-            WriteLog("Init script modules");
-
-            ServerInitHook(this);
-            InitModules();
-
-            if (OnInit.Fire() == EventResult::StopChain) {
-                throw ServerInitException("Initialization script failed");
-            }
-
-            LoadReportedHashes();
-
-            // Init world
-            if (globals_doc.Empty()) {
-                WriteLog("Generate world");
-
-                if (OnGenerateWorld.Fire() == EventResult::StopChain) {
-                    throw ServerInitException("Generate world script failed");
-                }
-            }
-            else {
-                WriteLog("Restore world");
-
-                size_t errors = 0;
-
-                try {
-                    EntityMngr.LoadEntities();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                    errors++;
-                }
-
-                if (errors != 0) {
-                    throw ServerInitException("Something went wrong during world restoring");
-                }
-            }
-
-            WriteLog("Start world");
-
-            // Start script
-            if (OnStart.Fire() == EventResult::StopChain) {
-                throw ServerInitException("Start script failed");
+            if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
+                throw ServerInitException("Failed to load globals document");
             }
         }
-        catch (...) {
-            // Don't change database
-            DbStorage.ClearChanges();
 
-            throw;
-        }
-
-        // Start automatic committing only after successful initialization
-        DbStorage.StartCommitChanges();
-        DbStorage.WaitCommitChanges();
-
-        // Advance time after initialization
+        GameTime.SetSynchronizedTime(GetSynchronizedTime());
         FrameAdvance();
 
-        return std::nullopt;
-    });
+        // Worker pool
+        const auto worker_threads = Settings.WorkerThreads != 0 ? Settings.WorkerThreads : 0;
+        _workerPool = SafeAlloc::MakeUnique<WorkerPool>("ServerPool", worker_threads, _shutdownInProgress, /*start_paused*/ true);
 
-    // Done, fill regular jobs
-    _starter.AddJob([this]() FO_DEFERRED {
-        FO_STACK_TRACE_ENTRY_NAMED("InitDoneJob");
+        TimeEventManager::DispatcherHooks hooks;
+        hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
+        hooks.Cancel = [this](uint32_t event_id) { OnTimeEventCancel(event_id); };
+        TimeEventMngr.SetDispatcherHooks(std::move(hooks));
 
-        WriteLog("Start server complete!");
+        // Scripting
+        WriteLog("Init script modules");
 
-        _started = true;
+        ServerInitHook(this);
+        InitModules();
 
-        _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
-        _loopBalancer.StartLoop();
+        if (OnInit.Fire() == EventResult::StopChain) {
+            throw ServerInitException("Initialization script failed");
+        }
 
-        _stats.LoopCounterBegin = nanotime::now();
-        _stats.ServerStartTime = nanotime::now();
+        LoadReportedHashes();
 
-        // Sync point
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("SyncPointJob");
+        // Init world
+        if (globals_doc.Empty()) {
+            WriteLog("Generate world");
 
-            SyncPoint();
+            if (OnGenerateWorld.Fire() == EventResult::StopChain) {
+                throw ServerInitException("Generate world script failed");
+            }
+        }
+        else {
+            WriteLog("Restore world");
 
-            return std::chrono::milliseconds {0};
-        });
+            size_t errors = 0;
 
-        // Advance time
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
-
-            FrameAdvance();
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Script subsystems update
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
-
-            ProcessScriptEvents();
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Process unlogined players
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
-
-            vector<refcount_ptr<Player>> unlogined_players;
-
-            {
-                std::scoped_lock locker {_unloginedPlayersLocker};
-
-                unlogined_players = _unloginedPlayers;
+            try {
+                EntityMngr.LoadEntities();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
             }
 
-            for (auto& player : unlogined_players) {
-                if (player->IsDestroyed()) {
-                    continue;
-                }
-
-                auto* connection = player->GetConnection();
-
-                try {
-                    ProcessConnection(connection);
-                    ProcessUnloginedPlayer(player.get());
-                }
-                catch (const UnknownMessageException&) {
-                    WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
-                    connection->HardDisconnect();
-                }
-                catch (const NetBufferException& ex) {
-                    if (!connection->IsHandshakeComplete()) {
-                        WriteLog(LogType::Warning, "Invalid handshake data from host {}:{}: {}", connection->GetHost(), connection->GetPort(), ex.what());
-                    }
-                    else {
-                        ReportExceptionAndContinue(ex);
-                    }
-
-                    connection->HardDisconnect();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
+            if (errors != 0) {
+                throw ServerInitException("Something went wrong during world restoring");
             }
+        }
 
-            _stats.CurOnline = unlogined_players.size() + EntityMngr.GetPlayers().size();
-            _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
+        WriteLog("Start world");
 
-            return std::chrono::milliseconds {0};
-        });
+        // Start script
+        if (OnStart.Fire() == EventResult::StopChain) {
+            throw ServerInitException("Start script failed");
+        }
+    }
+    catch (...) {
+        // Don't change database
+        DbStorage.ClearChanges();
 
-        // Process players
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("PlayersJob");
+        throw;
+    }
 
-            for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
-                auto* connection = player->GetConnection();
+    // Start automatic committing only after successful initialization
+    DbStorage.StartCommitChanges();
+    DbStorage.WaitCommitChanges();
 
-                try {
-                    FO_RUNTIME_ASSERT(!player->IsDestroyed());
+    // Advance time after initialization
+    FrameAdvance();
 
-                    ProcessConnection(connection);
-                    ProcessPlayer(player);
-                }
-                catch (const NetBufferException& ex) {
-                    ReportExceptionAndContinue(ex);
-                    connection->HardDisconnect();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-            }
+    return std::nullopt;
+}
 
-            return std::chrono::milliseconds {0};
-        });
+auto ServerEngine::InitDoneJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        // Process critters
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("CrittersJob");
+    FO_RUNTIME_ASSERT(!_started);
+    FO_RUNTIME_ASSERT(_workerPool);
 
-            for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
-                if (cr->IsDestroyed()) {
-                    continue;
-                }
+    WriteLog("Start server complete!");
 
-                try {
-                    ProcessCritterMoving(cr);
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-            }
+    _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
+    _loopBalancer.StartLoop();
 
-            return std::chrono::milliseconds {0};
-        });
+    _stats.LoopCounterBegin = nanotime::now();
+    _stats.ServerStartTime = nanotime::now();
 
-        // Time events
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("TimeEventsJob");
+    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return SyncPointJob(); }));
+    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return FrameTimeJob(); }));
+    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return PoolSyncJob(); }));
+    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return LogDispatchJob(); }));
+    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return LoopJob(); }));
 
-            TimeEventMngr.ProcessTimeEvents();
+    _workerPool->Resume();
 
-            return std::chrono::milliseconds {0};
-        });
+    // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
+    // external observers (tests, network OnNewConnection) only see a fully-running server.
+    _started = true;
 
-        // Clients log
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
+    return std::nullopt;
+}
 
-            DispatchLogToClients();
+void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay)
+{
+    FO_STACK_TRACE_ENTRY();
 
-            return std::chrono::milliseconds {0};
-        });
+    const auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
 
-        // Loop stats
-        _mainWorker.AddJob([this]() FO_DEFERRED {
-            FO_STACK_TRACE_ENTRY_NAMED("LoopJob");
+    _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> {
+        if (!entity_hold->IsGlobal()) {
+            auto* ctx = _workerPool->GetCurrentSyncContext();
+            FO_RUNTIME_ASSERT(ctx);
+            ctx->SyncEntity(dynamic_cast<ServerEntity*>(entity_hold.get()));
+        }
 
-            _loopBalancer.EndLoop();
-            _loopBalancer.StartLoop();
+        if (entity_hold->IsDestroyed()) {
+            return std::nullopt;
+        }
 
-            const auto cur_time = nanotime::now();
-            const auto loop_duration = _loopBalancer.GetLoopDuration();
-
-            // Calculate loop average time
-            _stats.LoopTimeStamps.emplace_back(cur_time, loop_duration);
-            _stats.LoopWholeAvgTime += loop_duration;
-
-            while (cur_time - _stats.LoopTimeStamps.front().first > std::chrono::milliseconds {Settings.LoopAverageTimeInterval}) {
-                _stats.LoopWholeAvgTime -= _stats.LoopTimeStamps.front().second;
-                _stats.LoopTimeStamps.pop_front();
-            }
-
-            _stats.LoopAvgTime = _stats.LoopWholeAvgTime.value() / _stats.LoopTimeStamps.size();
-
-            // Calculate loops per second
-            if (cur_time - _stats.LoopCounterBegin >= std::chrono::seconds(1)) {
-                _stats.LoopsPerSecond = _stats.LoopCounter;
-                _stats.LoopCounter = 0;
-                _stats.LoopCounterBegin = cur_time;
-            }
-            else {
-                _stats.LoopCounter++;
-            }
-
-            // Fill statistics
-            _stats.LoopsCount++;
-            _stats.LoopMaxTime = _stats.LoopMaxTime ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
-            _stats.LoopMinTime = _stats.LoopMinTime ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
-            _stats.LoopLastTime = loop_duration;
-            _stats.Uptime = cur_time - _stats.ServerStartTime;
-
-#if FO_TRACY
-            TracyPlot("Server loops per second", numeric_cast<int64_t>(_stats.LoopsPerSecond));
-#endif
-
-            return std::chrono::milliseconds {0};
-        });
-
-        return std::nullopt;
+        return TimeEventMngr.FireAndAdvance(entity_hold.get(), event_id);
     });
 }
 
-ServerEngine::~ServerEngine()
+void ServerEngine::OnTimeEventCancel(uint32_t event_id)
 {
     FO_STACK_TRACE_ENTRY();
+
+    const auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
+    _workerPool->Cancel(key);
+}
+
+auto ServerEngine::SyncPointJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SyncPoint();
+
+    return std::chrono::milliseconds {Settings.SyncPeriodMs}; // 100 FPS by default
+}
+
+auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FrameAdvance();
+
+    return std::chrono::nanoseconds {Settings.FrameTimePeriodNs};
+}
+
+void ServerEngine::OnPlayerConnected(Player* unlogined_player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(reinterpret_cast<uintptr_t>(unlogined_player))};
+
+    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+
+    _workerPool->Submit(key, [this, unlogined_player_ = refcount_ptr<Player>(unlogined_player)]() mutable -> std::optional<timespan> {
+        auto* ctx = _workerPool->GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ctx->SyncEntity(unlogined_player_.get());
+
+        if (unlogined_player_->IsDestroyed()) {
+            return std::nullopt;
+        }
+
+        auto* connection = unlogined_player_->GetConnection();
+
+        try {
+            ProcessConnection(connection);
+            ProcessUnloginedPlayer(unlogined_player_.get());
+        }
+        catch (const UnknownMessageException&) {
+            WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
+            connection->HardDisconnect();
+        }
+        catch (const NetBufferException& ex) {
+            ReportExceptionAndContinue(ex);
+            connection->HardDisconnect();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        if (unlogined_player_->IsDestroyed()) {
+            return std::nullopt;
+        }
+
+        return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
+    });
+}
+
+void ServerEngine::OnPlayerLogined(Player* player, Player* unlogined_player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (unlogined_player != nullptr) {
+        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(reinterpret_cast<uintptr_t>(unlogined_player))};
+        _workerPool->Cancel(unlogined_key);
+    }
+
+    if (player != unlogined_player) {
+        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(reinterpret_cast<uintptr_t>(player))};
+        _workerPool->Cancel(same_addr_key);
+    }
+
+    const auto key = WorkerJobKey {.Type = WorkerJobType::Player, .Id = static_cast<size_t>(player->GetId().underlying_value())};
+
+    player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+
+    _workerPool->Submit(key, [this, player_ = refcount_ptr<Player>(player)]() mutable -> std::optional<timespan> {
+        auto* ctx = _workerPool->GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ctx->SyncEntity(player_.get());
+
+        if (player_->IsDestroyed()) {
+            return std::nullopt;
+        }
+
+        auto* connection = player_->GetConnection();
+
+        try {
+            ProcessConnection(connection);
+            ProcessPlayer(player_.get());
+        }
+        catch (const NetBufferException& ex) {
+            ReportExceptionAndContinue(ex);
+            connection->HardDisconnect();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        if (player_->IsDestroyed()) {
+            return std::nullopt;
+        }
+
+        return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
+    });
+}
+
+auto ServerEngine::PoolSyncJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // _workerPool is reset to null during Shutdown after Server::Shutdown drains the pool.
+    // _mainWorker may still pick up this rescheduled job between the workerPool.reset() and
+    // _mainWorker.Clear() calls — null-check so the late tick is a no-op instead of UB.
+    if (_workerPool) {
+        _workerPool->WaitIdle();
+    }
+
+    return std::chrono::milliseconds {0};
+}
+
+auto ServerEngine::LogDispatchJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DispatchLogToClients();
+
+    return std::chrono::milliseconds {0};
+}
+
+auto ServerEngine::LoopJob() -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _loopBalancer.EndLoop();
+    _loopBalancer.StartLoop();
+
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
+        _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayersCount();
+    }
+
+    _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
+
+    const auto cur_time = nanotime::now();
+    const auto loop_duration = _loopBalancer.GetLoopDuration();
+
+    // Calculate loop average time
+    _stats.LoopTimeStamps.emplace_back(cur_time, loop_duration);
+    _stats.LoopWholeAvgTime += loop_duration;
+
+    while (cur_time - _stats.LoopTimeStamps.front().first > std::chrono::milliseconds {Settings.LoopAverageTimeInterval}) {
+        _stats.LoopWholeAvgTime -= _stats.LoopTimeStamps.front().second;
+        _stats.LoopTimeStamps.pop_front();
+    }
+
+    _stats.LoopAvgTime = _stats.LoopWholeAvgTime.value() / _stats.LoopTimeStamps.size();
+
+    // Calculate loops per second
+    if (cur_time - _stats.LoopCounterBegin >= std::chrono::seconds(1)) {
+        _stats.LoopsPerSecond = _stats.LoopCounter;
+        _stats.LoopCounter = 0;
+        _stats.LoopCounterBegin = cur_time;
+    }
+    else {
+        _stats.LoopCounter++;
+    }
+
+    // Fill statistics
+    _stats.LoopsCount++;
+    _stats.LoopMaxTime = _stats.LoopMaxTime ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
+    _stats.LoopMinTime = _stats.LoopMinTime ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
+    _stats.LoopLastTime = loop_duration;
+    _stats.Uptime = cur_time - _stats.ServerStartTime;
+
+#if FO_TRACY
+    TracyPlot("Server loops per second", numeric_cast<int64_t>(_stats.LoopsPerSecond));
+#endif
+
+    return std::chrono::milliseconds {0};
 }
 
 void ServerEngine::Shutdown()
@@ -677,17 +872,88 @@ void ServerEngine::Shutdown()
 
     WriteLog("Stop server");
 
+    // Flip the shutdown flag as the very first thing so the `OnTimeEventSchedule` lambda body
+    // can bail out before calling `SyncEntity` on freshly-picked jobs. Per-engine atomic (not a
+    // process-wide static) so parallel test workers hosted in the same process don't cascade
+    // each other's shutdown.
+    _shutdownInProgress.store(true, std::memory_order_release);
+
+    // Wake every worker currently parked inside `EntityLock::Acquire` on one of this engine's
+    // entity locks. `AbortPendingWaiters` notify_one's each waiting `WaitEntry` so the waiter
+    // throws `GenericException` and unwinds its job — no poll, no thundering herd, strict FIFO
+    // is unaffected for non-shutdown traffic.
+    {
+        WriteLog("Shutdown stage: AbortPendingWaiters on entity locks");
+
+        const auto entities = EntityMngr.GetEntities();
+        size_t aborted_locks = 0;
+
+        for (auto& entity : entities) {
+            if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
+                lock->AbortPendingWaiters();
+                aborted_locks++;
+            }
+        }
+
+        WriteLog("Shutdown stage: AbortPendingWaiters complete (locks={})", aborted_locks);
+    }
+
+    // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
+    // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
+    // and friends can satisfy the engine-wide invariant that any entity touch happens under a
+    // primary SyncContext.
+    SyncContext shutdown_ctx;
+    shutdown_ctx.Activate();
+    auto shutdown_cleanup = scope_exit([&]() noexcept {
+        safe_call([&] { shutdown_ctx.Release(); });
+        shutdown_ctx.Deactivate();
+    });
+
+    WriteLog("Shutdown stage: willFinishDispatcher");
     _willFinishDispatcher();
+    WriteLog("Shutdown stage: starter.Clear");
     _starter.Clear();
+
+    // Cancel every pending entity TimeEvent BEFORE draining the worker pool. Each TimeEvent
+    // schedule goes through `OnTimeEventSchedule` which Submits a `_workerPool` job. If the test
+    // run leaked critters with periodic time events (Ai / Health / Modifiers / etc.) and we go
+    // straight to `_workerPool->Clear/WaitIdle`, the in-flight jobs keep re-scheduling because
+    // `TimeEventMngr.FireAndAdvance` returns a non-empty delay. `ClearTimeEvents` calls the
+    // `Cancel` hook (`_workerPool->Cancel(event_id)`) for every event-id, which both removes
+    // pending jobs from the pool's queue and marks any currently-running job as
+    // `_cancelOnFinish` so it won't re-enqueue when it returns.
+    WriteLog("Shutdown stage: TimeEventMngr.ClearTimeEvents (entityCount={})", EntityMngr.GetEntitiesCount());
+    TimeEventMngr.ClearTimeEvents();
+
+    // Drain the worker pool BEFORE clearing _mainWorker. `PoolSyncJob` on the main worker calls
+    // `_workerPool->WaitIdle()` each tick, so if _mainWorker is still running while a pool job
+    // is in flight, _mainWorker.Clear() can't preempt PoolSyncJob's wait and the whole Shutdown
+    // hangs. After workerPool.reset() PoolSyncJob's null-check makes the late tick a no-op.
+    WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
+    TimeEventMngr.ClearDispatcherHooks();
+    WriteLog("Shutdown stage: workerPool.Clear");
+    _workerPool->Clear();
+    WriteLog("Shutdown stage: workerPool.WaitIdle");
+    _workerPool->WaitIdle();
+    WriteLog("Shutdown stage: workerPool.reset");
+    _workerPool.reset();
+
+    WriteLog("Shutdown stage: mainWorker.Clear");
     _mainWorker.Clear();
+    WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
 
+    WriteLog("Shutdown stage: OnFinish.Fire");
     OnFinish.Fire();
 
+    WriteLog("Shutdown stage: UnsubscribeAllEvents");
     UnsubscribeAllEvents();
+    WriteLog("Shutdown stage: ClearAllTimeEvents");
     ClearAllTimeEvents();
 
-    for (auto& entity : EntityMngr.GetEntities() | std::views::values) {
+    WriteLog("Shutdown stage: per-entity unsubscribe (count={})", EntityMngr.GetEntitiesCount());
+
+    for (auto& entity : EntityMngr.GetEntities()) {
         entity->UnsubscribeAllEvents();
         entity->ClearAllTimeEvents();
 
@@ -697,27 +963,42 @@ void ServerEngine::Shutdown()
         }
     }
 
+    WriteLog("Shutdown stage: TimeEventMngr.ClearTimeEvents (late, expected no-op)");
     TimeEventMngr.ClearTimeEvents();
 
-    _shutdownInProgress = true;
-
+    WriteLog("Shutdown stage: DestroyInnerEntities");
     EntityMngr.DestroyInnerEntities(this);
+    WriteLog("Shutdown stage: DestroyAllEntities (count={})", EntityMngr.GetEntitiesCount());
     EntityMngr.DestroyAllEntities();
+    WriteLog("Shutdown stage: ShutdownBackends");
     ShutdownBackends();
+
+    WriteLog("Shutdown stage: FlushExactEntityId");
+    EntityMngr.FlushExactEntityId();
+    WriteLog("Shutdown stage: FlushExactSyncTime");
+    FlushExactSyncTime();
+
+    WriteLog("Shutdown stage: DbStorage.WaitCommitChanges");
     DbStorage.WaitCommitChanges();
 
     // Logging clients
+    WriteLog("Shutdown stage: log callbacks");
+
     SetLogCallback("LogToClients", nullptr);
     _logClients.clear();
 
     // Logined players
-    for (auto& player : copy(EntityMngr.GetPlayers()) | std::views::values) {
+    WriteLog("Shutdown stage: disconnect logined players (count={})", EntityMngr.GetPlayersCount());
+
+    for (auto& player : EntityMngr.GetPlayers()) {
         player->GetConnection()->HardDisconnect();
     }
 
     // Unlogined players
+    WriteLog("Shutdown stage: disconnect unlogined players");
+
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
             player->GetConnection()->HardDisconnect();
@@ -728,6 +1009,8 @@ void ServerEngine::Shutdown()
     }
 
     // Shutdown servers
+    WriteLog("Shutdown stage: connection servers (count={})", _connectionServers.size());
+
     for (auto& conn_server : _connectionServers) {
         conn_server->Shutdown();
     }
@@ -742,6 +1025,15 @@ void ServerEngine::Shutdown()
     FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
+namespace
+{
+    // Per-thread SyncContext bound to the lifetime of an external `ServerEngine::Lock` call. Tests
+    // (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
+    // their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
+    // constructs+activates one, Unlock releases+deactivates it.
+    thread_local unique_ptr<SyncContext> tls_externalLockSyncCtx {};
+}
+
 auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -751,7 +1043,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     }
 
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
-        std::unique_lock locker {_syncLocker};
+        unique_lock locker {_syncLocker};
 
         _syncRequest++;
 
@@ -768,6 +1060,11 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         }
     }
 
+    // Now this thread is allowed to touch engine state — stand up a SyncContext to satisfy the
+    // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
+    FO_RUNTIME_ASSERT(!tls_externalLockSyncCtx);
+    tls_externalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
+    tls_externalLockSyncCtx->Activate();
     return true;
 }
 
@@ -775,8 +1072,13 @@ void ServerEngine::Unlock()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(tls_externalLockSyncCtx);
+    tls_externalLockSyncCtx->Release();
+    tls_externalLockSyncCtx->Deactivate();
+    tls_externalLockSyncCtx.reset();
+
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
-        std::unique_lock locker {_syncLocker};
+        unique_lock locker {_syncLocker};
 
         FO_RUNTIME_ASSERT(_syncRequest > 0);
 
@@ -791,7 +1093,7 @@ void ServerEngine::SyncPoint()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker {_syncLocker};
+    unique_lock locker {_syncLocker};
 
     if (_syncRequest > 0) {
         _syncPointReady = true;
@@ -838,7 +1140,7 @@ void ServerEngine::DrawGui()
 
     auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
 
-    constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+    constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
     const auto info_row = [](const char* key, string_view value) {
         ImGui::TableNextRow();
@@ -849,7 +1151,7 @@ void ServerEngine::DrawGui()
     };
 
     const auto begin_info_table = [](const char* id) -> bool {
-        if (ImGui::BeginTable(id, 2, TABLE_FLAGS)) {
+        if (ImGui::BeginTable(id, 2, table_flags)) {
             ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 220.0f);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
             return true;
@@ -934,8 +1236,9 @@ void ServerEngine::DrawGui()
         return "?";
     };
 
-    function<void(Item*)> draw_item;
-    draw_item = [&](Item* item) {
+    function<void(const Item*)> draw_item;
+
+    draw_item = [&](const Item* item) {
         ImGui::PushID(static_cast<const void*>(item));
 
         const auto label = strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount()).str();
@@ -966,9 +1269,10 @@ void ServerEngine::DrawGui()
                 const auto inner_items = item->GetAllInnerItems();
 
                 if (ImGui::TreeNode(strex("Inner items ({})", inner_items.size()).c_str())) {
-                    for (auto* inner : inner_items) {
+                    for (const auto* inner : inner_items) {
                         draw_item(inner);
                     }
+
                     ImGui::TreePop();
                 }
             }
@@ -979,7 +1283,7 @@ void ServerEngine::DrawGui()
         ImGui::PopID();
     };
 
-    const auto draw_critter = [&](Critter* cr) {
+    const auto draw_critter = [&](const Critter* cr) {
         ImGui::PushID(static_cast<const void*>(cr));
 
         const char* cond_str = cond_to_str(cr->GetCondition());
@@ -1013,13 +1317,14 @@ void ServerEngine::DrawGui()
                 ImGui::TreePop();
             }
 
-            const auto inv_items = cr->GetInvItems();
+            auto inv_items = cr->GetInvItems();
 
             if (!inv_items.empty()) {
                 if (ImGui::TreeNode(strex("Inventory ({})", inv_items.size()).c_str())) {
                     for (auto& item : inv_items) {
                         draw_item(item.get());
                     }
+
                     ImGui::TreePop();
                 }
             }
@@ -1030,7 +1335,7 @@ void ServerEngine::DrawGui()
         ImGui::PopID();
     };
 
-    const auto draw_map = [&](Map* map) {
+    const auto draw_map = [&](const Map* map) {
         ImGui::PushID(static_cast<const void*>(map));
 
         const auto label = strex("{} ({})", map->GetProtoId(), map->GetId()).str();
@@ -1062,18 +1367,20 @@ void ServerEngine::DrawGui()
 
             if (!critters.empty()) {
                 if (ImGui::TreeNode(strex("Critters ({})", critters.size()).c_str())) {
-                    for (auto& cr : critters) {
+                    for (const auto& cr : critters) {
                         draw_critter(cr.get());
                     }
+
                     ImGui::TreePop();
                 }
             }
 
             if (!items.empty()) {
                 if (ImGui::TreeNode(strex("Items ({})", items.size()).c_str())) {
-                    for (auto& item : items) {
+                    for (const auto& item : items) {
                         draw_item(item.get());
                     }
+
                     ImGui::TreePop();
                 }
             }
@@ -1085,13 +1392,13 @@ void ServerEngine::DrawGui()
     };
 
     if (ImGui::CollapsingHeader(strex("Players ({})###Players", EntityMngr.GetPlayersCount()).c_str())) {
-        for (auto& player : EntityMngr.GetPlayers() | std::views::values) {
+        for (const auto& player : EntityMngr.GetPlayers()) {
             ImGui::PushID(static_cast<const void*>(player.get()));
 
             const auto label = strex("{} ({})", player->GetName(), player->GetId()).str();
 
             if (ImGui::TreeNode(label.c_str())) {
-                auto* cr = player->GetControlledCritter();
+                const auto* cr = player->GetControlledCritter();
                 const auto* connection = player->GetConnection();
 
                 if (begin_info_table("##PlayerSummary")) {
@@ -1132,12 +1439,12 @@ void ServerEngine::DrawGui()
     }
 
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         if (ImGui::CollapsingHeader(strex("Unlogined players ({})###UnloginedPlayers", _unloginedPlayers.size()).c_str())) {
             int32_t index = 0;
 
-            for (auto& player : _unloginedPlayers) {
+            for (const auto& player : _unloginedPlayers) {
                 ImGui::PushID(index++);
 
                 const auto* connection = player->GetConnection();
@@ -1166,7 +1473,7 @@ void ServerEngine::DrawGui()
     }
 
     if (ImGui::CollapsingHeader(strex("Locations ({})###Locations", EntityMngr.GetLocationsCount()).c_str())) {
-        for (auto& loc : EntityMngr.GetLocations() | std::views::values) {
+        for (const auto& loc : EntityMngr.GetLocations()) {
             ImGui::PushID(static_cast<const void*>(loc.get()));
 
             const auto label = strex("{} ({})", loc->GetProtoId(), loc->GetId()).str();
@@ -1187,9 +1494,10 @@ void ServerEngine::DrawGui()
 
                 if (loc->HasMaps()) {
                     if (ImGui::TreeNode(strex("Maps ({})", loc->GetMapsCount()).c_str())) {
-                        for (auto& map : loc->GetMaps()) {
-                            draw_map(map.get());
+                        for (const auto* map : loc->GetMaps()) {
+                            draw_map(map);
                         }
+
                         ImGui::TreePop();
                     }
                 }
@@ -1250,12 +1558,29 @@ auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker {_unloginedPlayersLocker};
+    Player* unlogined_player;
 
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
-    auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
-    _unloginedPlayers.emplace_back(std::move(new_player));
-    return _unloginedPlayers.back().get();
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
+
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
+        auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
+        _unloginedPlayers.emplace_back(std::move(new_player));
+        unlogined_player = _unloginedPlayers.back().get();
+    }
+
+    // Widen the outer SyncContext's cover to include the freshly-created unlogined player so
+    // the caller (script via `Game.CreateUnloginedPlayer()` or any engine path running inside
+    // a job's SyncContext) can immediately read/write its properties without a separate
+    // `Sync::Lock(player)`. Network-thread path has no current context — the conditional skips
+    // safely there; the player isn't reachable from script until it's placed into the unlogined
+    // list anyway.
+    if (auto* outermost = SyncContext::GetOutermostOnThisThread(); outermost != nullptr) {
+        outermost->EnsureEntitySynced(unlogined_player);
+    }
+
+    OnPlayerConnected(unlogined_player);
+    return unlogined_player;
 }
 
 void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
@@ -1265,10 +1590,15 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
-        vec_remove_unique_value(_unloginedPlayers, unlogined_player);
-        unlogined_player->MarkAsDestroyed();
+        const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
+
+        if (it != _unloginedPlayers.end()) {
+            _unloginedPlayers.erase(it);
+            unlogined_player->MarkAsDestroyed();
+        }
+
         return;
     }
 
@@ -1491,7 +1821,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         string str = strex("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
             _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.GetFrameTime(), GameTime.GetFrameTime() - _stats.ServerStartTime);
@@ -1501,16 +1831,16 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         const auto cr_id = buf.Read<ident_t>();
         const auto cr_hex = buf.Read<mpos>();
 
-        auto* cr = EntityMngr.GetCritter(cr_id);
+        auto cr = EntityMngr.GetCritter(cr_id);
 
-        if (cr == nullptr) {
+        if (!cr) {
             logcb("Critter not found");
             break;
         }
 
-        auto* map = EntityMngr.GetMap(cr->GetMapId());
+        auto map = cr->GetParent<Map>();
 
-        if (map == nullptr) {
+        if (!map) {
             logcb("Critter is on global");
             break;
         }
@@ -1520,7 +1850,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
             break;
         }
 
-        MapMngr.TransferToMap(cr, map, cr_hex, cr->GetDir(), std::nullopt);
+        MapMngr.TransferToMap(cr.get(), map.get(), cr_hex, cr->GetDir(), std::nullopt);
     } break;
     case CMD_DISCONCRIT: {
         const auto cr_id = buf.Read<ident_t>();
@@ -1530,9 +1860,9 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
             return;
         }
 
-        auto* cr = EntityMngr.GetCritter(cr_id);
+        auto cr = EntityMngr.GetCritter(cr_id);
 
-        if (cr == nullptr) {
+        if (!cr) {
             logcb("Critter not found");
             return;
         }
@@ -1561,7 +1891,7 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         const auto is_set = buf.Read<bool>();
         const auto property_value = buf.Read<string>();
 
-        auto* cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
+        auto cr = !cr_id ? player_cr : EntityMngr.GetCritter(cr_id);
 
         if (cr != nullptr) {
             const auto* prop = GetPropertyRegistrator("Critter")->FindProperty(property_name);
@@ -1593,14 +1923,14 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         const auto pid = buf.Read<hstring>(Hashes);
         const auto count = buf.Read<int32_t>();
 
-        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
+        auto map = player_cr->GetParent<Map>();
 
-        if (map == nullptr || !map->GetSize().is_valid_pos(hex)) {
+        if (!map || !map->GetSize().is_valid_pos(hex)) {
             logcb("Wrong hexes or critter on global map");
             return;
         }
 
-        ItemMngr.CreateItemOnHex(map, hex, pid, count, nullptr);
+        ItemMngr.CreateItemOnHex(map.get(), hex, pid, count, nullptr);
         logcb("Item(s) added");
     } break;
     case CMD_ADDITEM_SELF: {
@@ -1620,14 +1950,14 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         const auto dir = mdir(buf.Read<hdir>());
         const auto pid = buf.Read<hstring>(Hashes);
 
-        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
-        CrMngr.CreateCritterOnMap(pid, nullptr, map, hex, dir);
+        auto map = player_cr->GetParent<Map>();
+        CrMngr.CreateCritterOnMap(pid, nullptr, map.get(), hex, dir);
 
         logcb("Npc created");
     } break;
     case CMD_ADDLOCATION: {
         const auto pid = buf.Read<hstring>(Hashes);
-        auto* loc = MapMngr.CreateLocation(pid);
+        const auto* loc = MapMngr.CreateLocation(pid);
 
         if (loc == nullptr) {
             logcb("Location not created");
@@ -1673,9 +2003,9 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         }
 
         // Find map
-        auto* map = EntityMngr.GetMap(player_cr->GetMapId());
+        auto map = player_cr->GetParent<Map>();
 
-        if (map == nullptr) {
+        if (!map) {
             logcb("Map not found");
             return;
         }
@@ -1683,8 +2013,8 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         // Regenerate
         auto hex = player_cr->GetHex();
         auto dir = player_cr->GetDir();
-        MapMngr.RegenerateMap(map);
-        MapMngr.TransferToMap(player_cr, map, hex, dir, 5);
+        MapMngr.RegenerateMap(map.get());
+        MapMngr.TransferToMap(player_cr, map.get(), hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
     case CMD_LOG: {
@@ -1877,10 +2207,10 @@ void ServerEngine::UnloadCritter(Critter* cr)
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
-    auto* map = EntityMngr.GetMap(cr->GetMapId());
+    auto map = cr->GetParent<Map>();
     FO_RUNTIME_ASSERT(!cr->GetMapId() || map);
 
-    MapMngr.RemoveCritterFromMap(cr, map);
+    MapMngr.RemoveCritterFromMap(cr, map.get());
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     if (cr->GetIsAttached()) {
@@ -1932,8 +2262,8 @@ void ServerEngine::UnloadCritterInnerEntities(Critter* cr)
         if (item->HasInnerItems()) {
             auto& inner_items = item->GetRawInnerItems();
 
-            for (auto* inner_item : inner_items) {
-                unload_item(inner_item);
+            for (auto& inner_item : inner_items) {
+                unload_item(inner_item.get());
             }
 
             inner_items.clear();
@@ -1991,6 +2321,16 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     cr->AttachPlayer(player);
 
+    // Widen the outer SyncContext's cover to include the newly-attached critter — the player
+    // is already locked there (by whoever fired the event/job that's currently switching), so
+    // attaching cr to the SAME outer cover means subsequent per-callback nested contexts in the
+    // event chain (e.g. OnPlayerLogin handlers running after PlayerInit attaches the critter)
+    // inherit the cr lock recursively. Without this, every downstream handler that touches
+    // `player.GetControlledCritter().X` has to sync the critter again on its own.
+    if (auto* outermost = SyncContext::GetOutermostOnThisThread(); outermost != nullptr) {
+        outermost->EnsureEntitySynced(cr);
+    }
+
     SendCritterInitialInfo(cr, prev_cr);
 
     if (prev_cr != nullptr) {
@@ -2017,7 +2357,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     cr->Send_TimeSync();
 
-    const auto* map = EntityMngr.GetMap(cr->GetMapId());
+    const auto map = EntityMngr.GetMap(cr->GetMapId());
     const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
 
     if (same_map) {
@@ -2032,21 +2372,21 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
         for (const auto item_id : prev_cr->GetVisibleItems()) {
             if (!cr->IsSeeItem(item_id)) {
-                if (const auto* item = EntityMngr.GetItem(item_id); item != nullptr) {
-                    cr->Send_RemoveItemFromMap(item);
+                if (const auto item = EntityMngr.GetItem(item_id); item != nullptr) {
+                    cr->Send_RemoveItemFromMap(item.get());
                 }
             }
         }
     }
     else {
-        cr->Send_LoadMap(map);
+        cr->Send_LoadMap(map.get());
     }
 
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
     cr->Send_AddCritter(cr);
 
-    if (map == nullptr) {
+    if (!map) {
         for (const auto& group_cr : cr->GetGlobalMapGroup()) {
             if (group_cr != cr) {
                 cr->Send_AddCritter(group_cr.get());
@@ -2069,8 +2409,8 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
                 continue;
             }
 
-            if (const auto* item = EntityMngr.GetItem(item_id); item != nullptr) {
-                cr->Send_AddItemOnMap(item);
+            if (const auto item = EntityMngr.GetItem(item_id); item != nullptr) {
+                cr->Send_AddItemOnMap(item.get());
             }
         }
     }
@@ -2277,7 +2617,7 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
     }
 
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
             send_to_connection(player->GetConnection());
@@ -2316,7 +2656,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
@@ -2342,7 +2682,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
-    auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
+    const auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -2362,6 +2702,8 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
         return nullptr;
     }
 
+    OnPlayerLogined(player, unlogined_player);
+
     return player;
 }
 
@@ -2375,7 +2717,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
@@ -2393,11 +2735,12 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
     }};
 
-    Player* player = EntityMngr.GetPlayer(player_id);
+    auto player_ref = EntityMngr.GetPlayer(player_id);
+    Player* player = player_ref.get();
 
     if (player == nullptr) {
         player = unlogined_player;
-        auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
+        const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
@@ -2448,6 +2791,9 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         }
     }
 
+    OnPlayerLogined(player, unlogined_player);
+
+    disconnect_on_error.release();
     return player;
 }
 
@@ -2460,7 +2806,7 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
     {
-        std::scoped_lock locker {_unloginedPlayersLocker};
+        scoped_lock locker {_unloginedPlayersLocker};
 
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
@@ -2529,7 +2875,7 @@ void ServerEngine::Process_Move(Player* player)
 
     in_buf.Unlock();
 
-    auto* map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
         WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
@@ -2568,7 +2914,7 @@ void ServerEngine::Process_Move(Player* player)
     const auto cr_hex = cr->GetHex();
 
     if (cr_hex != start_hex) {
-        const auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
+        const auto find_result = MapMngr.FindPath(map.get(), cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
             WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
@@ -2595,14 +2941,14 @@ void ServerEngine::Process_Move(Player* player)
 
         const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
 
-        for (size_t i = 0; i < steps.size(); i++) {
+        for (const auto& step : steps) {
             auto next_hex = validate_hex;
 
-            if (!GeometryHelper::MoveHexByDir(next_hex, steps[i], map->GetSize())) {
+            if (!GeometryHelper::MoveHexByDir(next_hex, step, map->GetSize())) {
                 break;
             }
 
-            const auto block = PathFinding::CheckHexWithMultihex(next_hex, steps[i], multihex, map->GetSize(), check_hex);
+            const auto block = PathFinding::CheckHexWithMultihex(next_hex, step, multihex, map->GetSize(), check_hex);
 
             if (block == HexBlockResult::Blocked) {
                 break;
@@ -2670,7 +3016,7 @@ void ServerEngine::Process_StopMove(Player* player)
 
     in_buf.Unlock();
 
-    auto* map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
         WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
@@ -2706,7 +3052,7 @@ void ServerEngine::Process_StopMove(Player* player)
 
     const uint32_t stop_moving_uid = cr->GetMovingUid();
 
-    ReconcileCritterStopPosition(player, cr, map, client_hex, client_hex_offset, client_dir);
+    ReconcileCritterStopPosition(player, cr, map.get(), client_hex, client_hex_offset, client_dir);
 
     if (cr->IsDestroyed() || map->IsDestroyed()) {
         return;
@@ -2732,7 +3078,7 @@ void ServerEngine::Process_Dir(Player* player)
 
     in_buf.Unlock();
 
-    auto* map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
     if (map == nullptr) {
         WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
@@ -2806,18 +3152,21 @@ void ServerEngine::Process_Property(Player* player)
 
     bool is_public = false;
     const Property* prop = nullptr;
+    refcount_ptr<ServerEntity> entity_ref;
     Entity* entity = nullptr;
 
     switch (type) {
     case NetProperty::Game:
         is_public = true;
         prop = GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
             entity = this;
         }
         break;
     case NetProperty::Player:
         prop = GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
             entity = player;
         }
@@ -2825,12 +3174,15 @@ void ServerEngine::Process_Property(Player* player)
     case NetProperty::Critter:
         is_public = true;
         prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
-            entity = EntityMngr.GetCritter(cr_id);
+            entity_ref = EntityMngr.GetCritter(cr_id);
+            entity = entity_ref.get();
         }
         break;
     case NetProperty::Chosen:
         prop = GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
             entity = cr;
         }
@@ -2838,24 +3190,35 @@ void ServerEngine::Process_Property(Player* player)
     case NetProperty::MapItem:
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
-            auto* item = EntityMngr.GetItem(item_id);
-            entity = item != nullptr && !item->GetHidden() ? item : nullptr;
+            auto item = EntityMngr.GetItem(item_id);
+            if (item != nullptr && !item->GetHidden()) {
+                entity_ref = item;
+                entity = item.get();
+            }
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
-            auto* cr_ = EntityMngr.GetCritter(cr_id);
-            if (cr_ != nullptr) {
+            auto cr_ = EntityMngr.GetCritter(cr_id);
+
+            if (cr_) {
                 auto* item = cr_->GetInvItem(item_id);
-                entity = item != nullptr && !item->GetHidden() ? item : nullptr;
+
+                if (item != nullptr && !item->GetHidden()) {
+                    entity_ref = cr_; // cr_ keeps the inventory item alive via cr_'s lock
+                    entity = item;
+                }
             }
         }
         break;
     case NetProperty::ChosenItem:
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
             auto* item = cr->GetInvItem(item_id);
             entity = item != nullptr && !item->GetHidden() ? item : nullptr;
@@ -2864,16 +3227,20 @@ void ServerEngine::Process_Property(Player* player)
     case NetProperty::Map:
         is_public = true;
         prop = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
-            entity = EntityMngr.GetMap(cr->GetMapId());
+            entity_ref = cr->GetParent<Map>();
+            entity = entity_ref.get();
         }
         break;
     case NetProperty::Location:
         is_public = true;
         prop = GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME)->GetPropertyByIndex(property_index);
+
         if (prop != nullptr) {
-            auto* map = EntityMngr.GetMap(cr->GetMapId());
-            if (map != nullptr) {
+            auto map = cr->GetParent<Map>();
+
+            if (map) {
                 entity = map->GetLocation();
             }
         }
@@ -2920,6 +3287,12 @@ void ServerEngine::Process_Property(Player* player)
     {
         player->SetIgnoreSendEntityProperty(entity, prop);
         auto revert_send_ignore = scope_exit([player]() noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
+
+        // Take the entity's per-property auto-lock so this network-driven write serializes
+        // through the same primitive used by script-side `Game.X` / `entity.X` access.
+        // For non-engine entities `LockForPropertyAccess` is the default no-op virtual.
+        entity->LockForPropertyAccess();
+        auto unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccess(); });
 
         entity->SetValueFromData(prop, prop_data);
     }
@@ -2984,6 +3357,35 @@ void ServerEngine::OnSaveEntityValue(Entity* entity, const Property* prop)
     }
 }
 
+void ServerEngine::OnSaveSynchronizedTime(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Dedicated PostSetter for `Game.SynchronizedTime` — throttles DB writes to ~once per
+    // `SyncTimePersistLead` of game time, persisting `live + lead` so the write provides
+    // headroom and the next write doesn't fire until live crosses the mark. Init-phase
+    // sets (before time is synchronized) and `FlushExactSyncTime` write through directly.
+    FO_RUNTIME_ASSERT(entity == this);
+    FO_RUNTIME_ASSERT(prop == GetPropertySynchronizedTime());
+
+    if (!GameTime.IsTimeSynchronized()) {
+        // Init / external pin path: persist the exact property value.
+        auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
+        DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
+        return;
+    }
+
+    const auto time = GameTime.GetSynchronizedTime();
+
+    if (time < _persistedSyncTimeMark) {
+        return;
+    }
+
+    _persistedSyncTimeMark = time + SyncTimePersistLead;
+    const auto ahead_value = AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())};
+    DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), ahead_value);
+}
+
 void ServerEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2991,7 +3393,7 @@ void ServerEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
     ignore_unused(entity);
 
     if (prop->IsPublicSync()) {
-        for (auto& player : EntityMngr.GetPlayers() | std::views::values) {
+        for (auto& player : EntityMngr.GetPlayers()) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }
@@ -3039,9 +3441,9 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
         } break;
         case ItemOwnership::CritterInventory: {
             if (prop->IsPublicSync() || prop->IsOwnerSync()) {
-                auto* cr = EntityMngr.GetCritter(item->GetCritterId());
+                auto cr = item->GetParent<Critter>();
 
-                if (cr != nullptr) {
+                if (cr) {
                     if (item->CanSendItem(false)) {
                         cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
@@ -3056,9 +3458,9 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
         } break;
         case ItemOwnership::MapHex: {
             if (prop->IsPublicSync()) {
-                auto* map = EntityMngr.GetMap(item->GetMapId());
+                auto map = item->GetParent<Map>();
 
-                if (map != nullptr) {
+                if (map) {
                     if (item->CanSendItem(true)) {
                         map->SendProperty(NetProperty::MapItem, prop, item);
                     }
@@ -3095,7 +3497,7 @@ void ServerEngine::OnSendLocationValue(Entity* entity, const Property* prop)
         auto* loc = dynamic_cast<Location*>(entity);
         FO_RUNTIME_ASSERT(loc);
 
-        for (auto& map : loc->GetMaps()) {
+        for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
         }
     }
@@ -3158,12 +3560,12 @@ void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
     FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = EntityMngr.GetMap(item->GetMapId());
+        auto map = item->GetParent<Map>();
         FO_RUNTIME_ASSERT(map);
         map->ChangeViewItem(item);
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto* cr = EntityMngr.GetCritter(item->GetCritterId());
+        auto cr = item->GetParent<Critter>();
         FO_RUNTIME_ASSERT(cr);
 
         if (item->GetHidden()) {
@@ -3184,11 +3586,11 @@ void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
-    const auto* item = dynamic_cast<Item*>(entity);
+    auto* item = dynamic_cast<Item*>(entity);
     FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = EntityMngr.GetMap(item->GetMapId());
+        auto map = item->GetParent<Map>();
 
         if (map != nullptr) {
             map->RecacheHexFlags(item->GetHex());
@@ -3206,7 +3608,7 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
     FO_RUNTIME_ASSERT(item);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        const auto* map = EntityMngr.GetMap(item->GetMapId());
+        const auto map = item->GetParent<Map>();
 
         if (map != nullptr) {
             throw NotImplementedException(FO_LINE_STR);
@@ -3220,10 +3622,10 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
 
     // Moving
     if (cr->IsMoving()) {
-        auto* map = EntityMngr.GetMap(cr->GetMapId());
+        auto map = cr->GetParent<Map>();
 
         if (map != nullptr && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map);
+            ProcessCritterMovingBySteps(cr, map.get());
 
             if (cr->IsDestroyed()) {
                 return;
@@ -3366,7 +3768,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         if (progress.Completed) {
             const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
-            StopCritterMoving(cr, MovingState::Success, incorrect_final_position ? function<void()> {} : function<void()> {[] { }});
+            StopCritterMoving(cr, MovingState::Success, incorrect_final_position ? nullptr : [] { });
             return;
         }
 
@@ -3622,11 +4024,52 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     }
 
     const bool was_moving = cr->IsMoving();
+    const auto movement_key = WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())};
+
+    if (was_moving) {
+        _workerPool->Cancel(movement_key);
+    }
 
     cr->StopMoving(MovingState::Stopped);
     cr->SetMoving(std::move(moving));
     cr->GetMoving()->ValidateRuntimeState();
     cr->SetMovingSpeed(cr->GetMoving()->GetSpeed());
+
+    _workerPool->Submit(movement_key, [this, cr_ = refcount_ptr<Critter>(cr)]() mutable -> std::optional<timespan> {
+        // Sync FIRST. IsDestroyed/IsMoving/GetMapId all read mutable state and are a race
+        // without the lock. Inside a `_workerPool` movement job body — primary SyncContext
+        // is guaranteed.
+        auto* ctx = _workerPool->GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ctx->SyncEntity(cr_.get());
+
+        // Now we hold the critter's lock — GetMapId() is race-free and we can widen the cover
+        // to include the map without re-reading from a stale snapshot.
+        const auto map_id = cr_->GetMapId();
+        auto map = map_id ? EntityMngr.GetMap(map_id) : refcount_ptr<Map> {};
+
+        if (map != nullptr) {
+            ServerEntity* sync_entities[] = {map.get(), cr_.get()};
+            ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+        }
+
+        if (cr_->IsDestroyed() || !cr_->IsMoving()) {
+            return std::nullopt;
+        }
+
+        try {
+            ProcessCritterMoving(cr_.get());
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+
+        if (cr_->IsDestroyed() || !cr_->IsMoving()) {
+            return std::nullopt;
+        }
+
+        return std::chrono::milliseconds {Settings.CritterMovingPeriodMs};
+    });
 
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); });
 
@@ -3637,7 +4080,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* map = EntityMngr.GetMap(cr->GetMapId());
+    const auto map = cr->GetParent<Map>();
     FO_RUNTIME_ASSERT(map);
 
     const auto start_hex = cr->GetHex();
@@ -3652,6 +4095,9 @@ void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<v
     if (!cr->IsMoving()) {
         return;
     }
+
+    const auto key = WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())};
+    _workerPool->Cancel(key);
 
     cr->StopMoving(reason);
 
@@ -3720,6 +4166,14 @@ void ServerEngine::Process_RemoteCall(Player* player)
     }
 
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
+
+    // Process_RemoteCall is reached only via `ProcessUnloginedPlayer` / `ProcessPlayer`, both
+    // running inside a `_workerPool` job body — primary SyncContext is guaranteed.
+    // SyncEntity(player) auto-widens to the controlled critter via GetSyncWidenEntity.
+    auto* ctx = _workerPool->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->SyncEntity(player);
+
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }
 

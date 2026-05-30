@@ -296,7 +296,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_outBufLocker);
+    scoped_lock locker {_outBufLocker};
 
     if (_outBuf.IsEmpty()) {
         return {};
@@ -321,9 +321,15 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_inBufLocker);
+    {
+        scoped_lock locker {_inBufLocker};
 
-    _inBuf.AddData(buf);
+        _inBuf.AddData(buf);
+    }
+
+    if (_dataArrivedCallback) {
+        _dataArrivedCallback();
+    }
 }
 
 void ServerConnection::HardDisconnect()
@@ -340,6 +346,13 @@ void ServerConnection::GracefulDisconnect()
     _gracefulDisconnected = true;
 
     WriteMsg(NetMessage::Disconnect);
+}
+
+void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _dataArrivedCallback = std::move(callback);
 }
 
 FO_END_NAMESPACE

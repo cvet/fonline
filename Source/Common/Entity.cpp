@@ -68,6 +68,21 @@ void Entity::Release() const noexcept
     }
 }
 
+auto Entity::TryAddRef() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    int32_t count = _refCounter.load(std::memory_order_relaxed);
+
+    while (count > 0) {
+        if (_refCounter.compare_exchange_weak(count, count + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -195,7 +210,6 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
 
     bool had_exception = false;
 
-    // Callbacks vector may be changed/invalidated during cycle work
     for (const auto& cb : copy(callbacks)) {
         EventResult result = EventResult::ContinueChain;
 
@@ -433,34 +447,23 @@ void EntityEvent::Subscribe(Entity::EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_callbacks == nullptr) {
-        _callbacks = &_entity->GetEventCallbacks(_callbackName);
-    }
-
-    _entity->SubscribeEvent(*_callbacks, std::move(callback));
+    _entity->SubscribeEvent(_callbackName, std::move(callback));
 }
 
 void EntityEvent::Unsubscribe(uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_callbacks == nullptr) {
-        return;
-    }
-
-    _entity->UnsubscribeEvent(*_callbacks, subscription_ptr);
+    _entity->UnsubscribeEvent(_callbackName, subscription_ptr);
 }
 
 void EntityEvent::UnsubscribeAll() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_callbacks == nullptr) {
-        return;
-    }
-
     _entity->UnsubscribeAllEvent(_callbackName);
-    _callbacks = nullptr;
 }
+
+Entity::~Entity() = default;
 
 FO_END_NAMESPACE

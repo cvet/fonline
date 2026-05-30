@@ -375,7 +375,7 @@ void EngineMetadata::RegisterRefType(string_view name)
     RegisterBaseType(name);
 }
 
-void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
+void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -391,8 +391,17 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<pair<s
 
     auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, Hashes, *this);
 
-    for (const auto& [field_name, field_type] : layout) {
-        fields_registrator->RegisterProperty({"Common", field_type, field_name});
+    for (const auto& field_tokens : layout) {
+        FO_RUNTIME_ASSERT_STR(field_tokens.size() >= 2, strex("RefType '{}' field needs at least name and type tokens", name));
+
+        vector<string_view> tokens;
+        tokens.reserve(field_tokens.size() + 1);
+        tokens.emplace_back("Common");
+        tokens.emplace_back(field_tokens[1]); // Type
+        tokens.emplace_back(field_tokens[0]); // Name
+        tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
+
+        fields_registrator->RegisterProperty(tokens);
     }
 
     ref_type.FieldsRegistrator = fields_registrator.get();
@@ -1152,6 +1161,15 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
     FO_RUNTIME_ASSERT(min_value <= max_value);
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+}
+
+void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(delay, body);
+
+    throw InvalidCallException("ScheduleDelayedCallback not supported on this engine");
 }
 
 void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)

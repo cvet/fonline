@@ -365,6 +365,32 @@ extern void MemFree(void* ptr) noexcept
 #endif
 }
 
+extern auto AllocatorGetInUseBytes() noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && (FO_DEBUG || FO_TRACY)
+#if FO_TRACY
+    tracy::rpmalloc_global_statistics_t stats {};
+    tracy::rpmalloc_global_statistics(&stats);
+#else
+    rpmalloc_global_statistics_t stats {};
+    ::rpmalloc_global_statistics(&stats);
+#endif
+
+    const size_t mapped = stats.mapped;
+    const size_t cached = stats.cached;
+
+    if (mapped >= cached) {
+        return mapped - cached;
+    }
+    return mapped;
+
+#else
+    return 0;
+#endif
+}
+
 extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();

@@ -72,6 +72,8 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(cr->GetId());
 
+    PropagateEntityLock(item, cr->GetEntityLock());
+
     cr->SetItem(item);
 
     auto item_ids = cr->GetItemIds();
@@ -103,6 +105,8 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     FO_RUNTIME_ASSERT(item);
 
     cr->RemoveItem(item);
+
+    RevertEntityLock(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
 
@@ -247,9 +251,12 @@ void CritterManager::DestroyCritter(Critter* cr)
                 }
 
                 if (cr->GetMapId()) {
-                    auto* map = _engine->EntityMngr.GetMap(cr->GetMapId());
+                    auto map = cr->GetParent<Map>();
                     FO_RUNTIME_ASSERT(map);
-                    _engine->MapMngr.RemoveCritterFromMap(cr, map);
+                    auto* ctx = _engine->GetCurrentSyncContext();
+                    FO_RUNTIME_ASSERT(ctx);
+                    ctx->EnsureEntitySynced(map.get());
+                    _engine->MapMngr.RemoveCritterFromMap(cr, map.get());
                 }
                 else {
                     FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
@@ -262,10 +269,9 @@ void CritterManager::DestroyCritter(Critter* cr)
         }
     }
 
-    // Invalidate for use
+    _engine->TimeEventMngr.CancelAllForEntity(cr);
+    cr->SetParent(nullptr);
     cr->MarkAsDestroyed();
-
-    // Erase from main collection
     _engine->EntityMngr.UnregisterCritter(cr);
 }
 
@@ -273,68 +279,56 @@ void CritterManager::DestroyInventory(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
     for (InfinityLoopDetector detector {cr->GetInvItems().size()}; cr->HasItems(); detector.AddLoop()) {
-        _engine->ItemMngr.DestroyItem(cr->GetInvItems().front().get());
+        auto* item = cr->GetInvItems().front().get();
+        ctx->EnsureEntitySynced(item);
+        _engine->ItemMngr.DestroyItem(item);
     }
 }
 
-auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
+auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& all_critters = _engine->EntityMngr.GetCritters();
+    auto all_critters = _engine->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> result;
+    result.reserve(all_critters.size());
 
-    vector<Critter*> non_player_critters;
-    non_player_critters.reserve(all_critters.size());
-
-    for (auto& cr : all_critters | std::views::values) {
+    for (auto& cr : all_critters) {
         if (!cr->GetControlledByPlayer()) {
-            non_player_critters.emplace_back(cr.get());
+            result.emplace_back(cr);
         }
     }
 
-    return non_player_critters;
+    return result;
 }
 
-auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>
+auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& all_critters = _engine->EntityMngr.GetCritters();
+    auto all_critters = _engine->EntityMngr.GetCritters();
 
-    vector<Critter*> player_critters;
-    player_critters.reserve(all_critters.size());
+    vector<refcount_ptr<Critter>> result;
+    result.reserve(all_critters.size());
 
-    for (auto& cr : all_critters | std::views::values) {
-        if (cr->GetControlledByPlayer() && (!on_global_map_only || !cr->GetMapId())) {
-            player_critters.emplace_back(cr.get());
+    for (auto& cr : all_critters) {
+        if (cr->GetControlledByPlayer()) {
+            result.emplace_back(cr);
         }
     }
 
-    return player_critters;
-}
-
-auto CritterManager::GetGlobalMapCritters(CritterFindType find_type) -> vector<Critter*>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto& all_critters = _engine->EntityMngr.GetCritters();
-
-    vector<Critter*> critters;
-    critters.reserve(all_critters.size());
-
-    for (auto& cr : all_critters | std::views::values) {
-        if (!cr->GetMapId() && cr->CheckFind(find_type)) {
-            critters.emplace_back(cr.get());
-        }
-    }
-
-    return critters;
+    return result;
 }
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(cr);
 
     const auto* proto = _engine->GetProtoItem(item_pid);
 

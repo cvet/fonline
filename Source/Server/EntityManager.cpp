@@ -33,6 +33,7 @@
 
 #include "EntityManager.h"
 #include "CritterManager.h"
+#include "EntitySync.h"
 #include "ItemManager.h"
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
@@ -59,143 +60,326 @@ EntityManager::EntityManager(ServerEngine* engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto EntityManager::GetEntity(ident_t id) const noexcept -> const ServerEntity*
+auto EntityManager::GetEntity(ident_t id) const noexcept -> refcount_ptr<const ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return it->second.get();
+        return refcount_ptr<const ServerEntity>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetEntity(ident_t id) noexcept -> ServerEntity*
+auto EntityManager::GetEntity(ident_t id) noexcept -> refcount_ptr<ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return it->second.get();
+        return refcount_ptr<ServerEntity>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetPlayer(ident_t id) const noexcept -> const Player*
+auto EntityManager::GetEntities() noexcept -> vector<refcount_ptr<ServerEntity>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<ServerEntity>> result;
+    result.reserve(_allEntities.size());
+
+    for (auto& [id, ptr] : _allEntities) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetEntitiesCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allEntities.size();
+}
+
+auto EntityManager::GetPlayer(ident_t id) const noexcept -> refcount_ptr<const Player>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
-        return it->second.get();
+        return refcount_ptr<const Player>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetPlayer(ident_t id) noexcept -> Player*
+auto EntityManager::GetPlayer(ident_t id) noexcept -> refcount_ptr<Player>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
-        return it->second.get();
+        return refcount_ptr<Player>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetLocation(ident_t id) const noexcept -> const Location*
+auto EntityManager::GetPlayers() noexcept -> vector<refcount_ptr<Player>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<Player>> result;
+    result.reserve(_allPlayers.size());
+
+    for (auto& [id, ptr] : _allPlayers) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetPlayersCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allPlayers.size();
+}
+
+auto EntityManager::GetLocation(ident_t id) const noexcept -> refcount_ptr<const Location>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
-        return it->second.get();
+        return refcount_ptr<const Location>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetLocation(ident_t id) noexcept -> Location*
+auto EntityManager::GetLocation(ident_t id) noexcept -> refcount_ptr<Location>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
-        return it->second.get();
+        return refcount_ptr<Location>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetMap(ident_t id) const noexcept -> const Map*
+auto EntityManager::GetLocations() noexcept -> vector<refcount_ptr<Location>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<Location>> result;
+    result.reserve(_allLocations.size());
+
+    for (const auto& [id, ptr] : _allLocations) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetLocationsCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allLocations.size();
+}
+
+auto EntityManager::GetMap(ident_t id) const noexcept -> refcount_ptr<const Map>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
-        return it->second.get();
+        return refcount_ptr<const Map>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetMap(ident_t id) noexcept -> Map*
+auto EntityManager::GetMap(ident_t id) noexcept -> refcount_ptr<Map>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
-        return it->second.get();
+        return refcount_ptr<Map>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetCritter(ident_t id) const noexcept -> const Critter*
+auto EntityManager::GetMaps() noexcept -> vector<refcount_ptr<Map>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<Map>> result;
+    result.reserve(_allMaps.size());
+
+    for (const auto& [id, ptr] : _allMaps) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetMapsCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allMaps.size();
+}
+
+auto EntityManager::GetCritter(ident_t id) const noexcept -> refcount_ptr<const Critter>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second.get();
+        return refcount_ptr<const Critter>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetCritter(ident_t id) noexcept -> Critter*
+auto EntityManager::GetCritter(ident_t id) noexcept -> refcount_ptr<Critter>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second.get();
+        return refcount_ptr<Critter>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetItem(ident_t id) const noexcept -> const Item*
+auto EntityManager::GetCritters() noexcept -> vector<refcount_ptr<Critter>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<Critter>> result;
+    result.reserve(_allCritters.size());
+
+    for (const auto& [id, ptr] : _allCritters) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetCrittersCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allCritters.size();
+}
+
+auto EntityManager::GetItem(ident_t id) const noexcept -> refcount_ptr<const Item>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
-        return it->second.get();
+        return refcount_ptr<const Item>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-auto EntityManager::GetItem(ident_t id) noexcept -> Item*
+auto EntityManager::GetItem(ident_t id) noexcept -> refcount_ptr<Item>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
 
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
-        return it->second.get();
+        return refcount_ptr<Item>(it->second.get());
     }
 
-    return nullptr;
+    return {};
 }
 
-void EntityManager::LoadEntities()
+auto EntityManager::GetItems() noexcept -> vector<refcount_ptr<Item>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    vector<refcount_ptr<Item>> result;
+    result.reserve(_allItems.size());
+
+    for (const auto& [id, ptr] : _allItems) {
+        result.emplace_back(ptr.get_no_const());
+    }
+
+    return result;
+}
+
+auto EntityManager::GetItemsCount() const noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock lock {_registryLock};
+
+    return _allItems.size();
+}
+
+// Thread-safety analysis is disabled here: LoadEntities runs single-threaded during server init (before the worker
+// pool processes any entity), so it reads the registry maps without _registryLock and iterates them while calling
+// back into the engine (CallInit / ProcessVisible*), which itself re-locks the registry — holding the lock across
+// that would self-deadlock. See Engine/Docs/ThreadSafetyAnalysis.md.
+void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Load entities");
+
+    const int64_t last = _engine->GetLastEntityId().underlying_value();
+    const int64_t start = _engine->Settings.EntityStartId;
+    _lastEntityId = std::max(last, start);
+    _persistedEntityId = _lastEntityId;
 
     bool is_error = false;
 
@@ -233,6 +417,18 @@ void EntityManager::LoadEntities()
             _engine->MapMngr.ProcessVisibleItems(cr);
         }
     }
+}
+
+void EntityManager::FlushExactEntityId()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
+
+    _persistedEntityId = _lastEntityId;
+    _engine->LockForPropertyAccess();
+    _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
+    _engine->UnlockForPropertyAccess();
 }
 
 auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Location*
@@ -619,7 +815,23 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
             if (custom_entity != nullptr) {
                 FO_RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
 
+                if (auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
+                    custom_entity->SetParent(holder_entity);
+                }
+
                 holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+
+                // Propagate holder's lock to loaded custom entity. ServerEntity holders supply
+                // their own lock; engine-as-holder supplies the engine's singleton lock.
+                if (const auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
+                    auto* holder_lock = holder_entity->GetEntityLock();
+                    FO_RUNTIME_ASSERT(holder_lock);
+                    custom_entity->SetEntityLock(holder_lock);
+                }
+                else {
+                    FO_RUNTIME_ASSERT(_engine.get() == holder);
+                    custom_entity->SetEntityLock(_engine->GetEntityLock());
+                }
 
                 // Inner entities
                 LoadInnerEntities(custom_entity, is_error);
@@ -841,6 +1053,8 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id, bool persistent)
         player->SetId(id);
     }
 
+    scoped_lock lock {_registryLock};
+
     RegisterEntity(player);
     player->SetPersistent(persistent);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
@@ -850,6 +1064,8 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id, bool persistent)
 void EntityManager::UnregisterPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     const auto it = _allPlayers.find(player->GetId());
     FO_RUNTIME_ASSERT(it != _allPlayers.end());
@@ -861,14 +1077,27 @@ void EntityManager::RegisterLocation(Location* loc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterEntity(loc);
-    const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
-    FO_RUNTIME_ASSERT(inserted);
+    {
+        scoped_lock lock {_registryLock};
+
+        RegisterEntity(loc);
+        const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
+        FO_RUNTIME_ASSERT(inserted);
+    }
+
+    // Engine-wide invariant: Register* is reached only from a thread that already has a
+    // SyncContext active (worker-pool jobs, _starter / _mainWorker jobs wrapped via
+    // WrapJobWithSync, or the Shutdown setup ctx). Any caller without one is a bug.
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(loc);
 }
 
 void EntityManager::UnregisterLocation(Location* loc)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     const auto it = _allLocations.find(loc->GetId());
     FO_RUNTIME_ASSERT(it != _allLocations.end());
@@ -880,14 +1109,25 @@ void EntityManager::RegisterMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterEntity(map);
-    const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
-    FO_RUNTIME_ASSERT(inserted);
+    {
+        scoped_lock lock {_registryLock};
+
+        RegisterEntity(map);
+        const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
+        FO_RUNTIME_ASSERT(inserted);
+    }
+
+    // See RegisterLocation: SyncContext invariant.
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(map);
 }
 
 void EntityManager::UnregisterMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     const auto it = _allMaps.find(map->GetId());
     FO_RUNTIME_ASSERT(it != _allMaps.end());
@@ -899,14 +1139,25 @@ void EntityManager::RegisterCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterEntity(cr);
-    const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
-    FO_RUNTIME_ASSERT(inserted);
+    {
+        scoped_lock lock {_registryLock};
+
+        RegisterEntity(cr);
+        const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
+        FO_RUNTIME_ASSERT(inserted);
+    }
+
+    // See RegisterLocation: SyncContext invariant.
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(cr);
 }
 
 void EntityManager::UnregisterCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     const auto it = _allCritters.find(cr->GetId());
     FO_RUNTIME_ASSERT(it != _allCritters.end());
@@ -918,14 +1169,25 @@ void EntityManager::RegisterItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterEntity(item);
-    const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
-    FO_RUNTIME_ASSERT(inserted);
+    {
+        scoped_lock lock {_registryLock};
+
+        RegisterEntity(item);
+        const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
+        FO_RUNTIME_ASSERT(inserted);
+    }
+
+    // See RegisterLocation: SyncContext invariant.
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(item);
 }
 
 void EntityManager::UnregisterItem(Item* item, bool delete_from_db)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     const auto it = _allItems.find(item->GetId());
     FO_RUNTIME_ASSERT(it != _allItems.end());
@@ -937,6 +1199,8 @@ void EntityManager::RegisterCustomEntity(CustomEntity* custom_entity)
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock lock {_registryLock};
+
     RegisterEntity(custom_entity);
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
@@ -946,6 +1210,8 @@ void EntityManager::RegisterCustomEntity(CustomEntity* custom_entity)
 void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db)
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_registryLock};
 
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto it = custom_entities.find(custom_entity->GetId());
@@ -995,6 +1261,8 @@ void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<
 
     processed.emplace(entity);
 
+    EnsureCascadeNodeSynced(entity);
+
     if (!entity->IsPersistent()) {
         WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
@@ -1016,6 +1284,8 @@ void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_s
 
     processed.emplace(entity);
 
+    EnsureCascadeNodeSynced(entity);
+
     ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakeNonPersistentRecursive(child, processed); });
 
     if (entity->IsPersistent()) {
@@ -1025,11 +1295,30 @@ void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_s
     }
 }
 
+void EntityManager::EnsureCascadeNodeSynced(ServerEntity* entity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+
+    // The (de)persist cascade walks an owned subtree (every node is reachable from a root the caller
+    // already covers), so pulling each node's own lock into the current sync context is safe — and
+    // necessary during a destroy cascade. There, a node is detached from its parent BEFORE being
+    // de-persisted (e.g. CritterManager::RemoveItemFromCritter clears the critter id, then calls
+    // MakePersistent(false) on the now-orphaned item), which severs the ancestor cover the caller
+    // relied on and would otherwise trip ForEachPersistentChildEntity's access validation. This
+    // mirrors the inner-item EnsureEntitySynced already used in ItemManager::DestroyItem.
+    if (auto* ctx = _engine->GetCurrentSyncContext(); ctx != nullptr) {
+        ctx->EnsureEntitySynced(entity);
+    }
+}
+
 void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(entity);
+    ValidateEntityAccess(entity);
 
     if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
         for (auto* map : copy_hold_ref(loc->GetMaps())) {
@@ -1097,14 +1386,24 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Caller must hold _registryLock (unique).
     if (!entity->GetId()) {
-        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, _engine->Settings.EntityStartId);
-        const auto id = ident_t {id_num};
-
+        const uint64_t id_num = ++_lastEntityId;
+        const ident_t id {numeric_cast<int64_t>(id_num)};
         FO_RUNTIME_ASSERT(_allEntities.count(id) == 0);
 
-        _engine->SetLastEntityId(id);
+        if (id_num > _persistedEntityId) {
+            _persistedEntityId = id_num + _engine->Settings.EntityIdReserveBatch - 1;
+
+            _engine->LockForPropertyAccess();
+            _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_persistedEntityId)});
+            _engine->UnlockForPropertyAccess();
+        }
+
         entity->SetId(id);
+    }
+    else {
+        _lastEntityId = std::max(_lastEntityId, entity->GetId().underlying_value());
     }
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
@@ -1115,13 +1414,14 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Caller must hold _registryLock (unique) for the erase portion.
     const auto entity_id = entity->GetId();
     const auto type_name_plural = entity->GetTypeNamePlural();
     FO_RUNTIME_ASSERT(entity_id);
 
     const auto it = _allEntities.find(entity_id);
     FO_RUNTIME_ASSERT(it != _allEntities.end());
-    _allEntities.erase(it); // Maybe last pointer to this entity
+    _allEntities.erase(it);
 
     if (delete_from_db && entity->IsPersistent()) {
         _engine->DbStorage.Delete(type_name_plural, entity_id);
@@ -1164,12 +1464,13 @@ void EntityManager::DestroyInnerEntities(Entity* holder)
     }
 }
 
-void EntityManager::DestroyAllEntities()
+void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto destroy_entities = [this](auto& entities) {
+    const auto destroy_entities = [this](auto& entities) FO_TSA_NO_ANALYSIS {
         for (auto&& [id, entity] : copy(entities)) {
+            entity->SetParent(nullptr);
             entity->MarkAsDestroyed();
             entities.erase(id);
             _allEntities.erase(id);
@@ -1203,12 +1504,18 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     auto* entity = CreateCustomEntity(type_name, pid);
     FO_RUNTIME_ASSERT(entity);
 
-    if (const auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
+    if (auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
         FO_RUNTIME_ASSERT(holder_with_id->GetId());
         entity->SetCustomHolderId(holder_with_id->GetId());
+        entity->SetParent(holder_with_id);
     }
     else {
         FO_RUNTIME_ASSERT(_engine.get() == holder);
+        // Holder is the global engine singleton; no ServerEntity parent to track. The engine
+        // isn't a ServerEntity, so SetParent is skipped, but the engine still owns its own
+        // EntityLock (the same one Game.Lock()/Unlock() use). We propagate that lock directly
+        // into _entityLock below so the validator's parent-chain walk finds a real cover on
+        // the first iteration (against the entity itself, not via parent).
     }
 
     entity->SetCustomHolderEntry(entry);
@@ -1226,6 +1533,18 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
         if (holder_type.HolderEntries.at(entry).Persistent && holder_with_id->IsPersistent()) {
             MakePersistent(entity, true);
         }
+    }
+
+    // Propagate holder's lock to custom entity. ServerEntity holders supply their own lock;
+    // engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes).
+    if (const auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
+        auto* holder_lock = holder_entity->GetEntityLock();
+        FO_RUNTIME_ASSERT(holder_lock);
+        entity->SetEntityLock(holder_lock);
+    }
+    else {
+        FO_RUNTIME_ASSERT(_engine.get() == holder);
+        entity->SetEntityLock(_engine->GetEntityLock());
     }
 
     ForEachCustomEntityView(entity, [entity](Player* player, bool owner) { player->Send_AddCustomEntity(entity, owner); });
@@ -1279,7 +1598,12 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             return nullptr;
         }
 
-        FO_RUNTIME_ASSERT(_allCustomEntities[type_name].count(id) == 0);
+        {
+            shared_lock lock {_registryLock};
+
+            const auto type_it = _allCustomEntities.find(type_name);
+            FO_RUNTIME_ASSERT(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0);
+        }
 
         const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
@@ -1336,19 +1660,32 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
     }
 }
 
-auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*
+auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<CustomEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& custom_entities = _allCustomEntities[type_name];
-    const auto it = custom_entities.find(id);
+    shared_lock lock {_registryLock};
 
-    return it != custom_entities.end() ? it->second.get() : nullptr;
+    const auto type_it = _allCustomEntities.find(type_name);
+
+    if (type_it == _allCustomEntities.end()) {
+        return {};
+    }
+
+    const auto it = type_it->second.find(id);
+
+    if (it != type_it->second.end()) {
+        return refcount_ptr<CustomEntity>(it->second.get());
+    }
+
+    return {};
 }
 
 void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(entity);
 
     if (entity->IsDestroying() || entity->IsDestroyed()) {
         return;
@@ -1363,8 +1700,10 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     Entity* holder;
 
     if (const auto id = entity->GetCustomHolderId()) {
-        holder = GetEntity(id);
-        FO_RUNTIME_ASSERT(holder);
+        auto holder_ref = GetEntity(id);
+        FO_RUNTIME_ASSERT(holder_ref);
+        ValidateEntityAccess(holder_ref.get());
+        holder = holder_ref.get();
     }
     else {
         holder = _engine.get();
@@ -1384,6 +1723,8 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
     holder_props.SetValue(holder_prop, inner_entity_ids);
 
+    _engine->TimeEventMngr.CancelAllForEntity(entity);
+    entity->SetParent(nullptr);
     entity->MarkAsDestroyed();
     UnregisterCustomEntity(entity, true);
 }
@@ -1391,6 +1732,8 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function<void(Player* player, bool owner)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(entity);
 
     const auto view_callback = [&](Player* player, bool owner) {
         if (player != nullptr) {
@@ -1402,13 +1745,15 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
 
     find_players_recursively = [this, &find_players_recursively, &view_callback](Entity* holder, EntityHolderEntrySync derived_sync) {
         if (const auto* custom_entity = dynamic_cast<CustomEntity*>(holder); custom_entity != nullptr) {
-            if (Entity* custom_entity_holder = GetEntity(custom_entity->GetCustomHolderId()); custom_entity_holder != nullptr) {
+            if (auto custom_entity_holder = GetEntity(custom_entity->GetCustomHolderId())) {
+                ValidateEntityAccess(custom_entity_holder.get());
+
                 const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
                 const auto entry = custom_entity->GetCustomHolderEntry();
                 const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 
                 if (entry_sync == EntityHolderEntrySync::OwnerSync || entry_sync == EntityHolderEntrySync::PublicSync) {
-                    find_players_recursively(custom_entity_holder, std::min(entry_sync, derived_sync));
+                    find_players_recursively(custom_entity_holder.get(), std::min(entry_sync, derived_sync));
                 }
             }
         }
@@ -1425,13 +1770,13 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             view_callback(player, true);
         }
         else if (const auto* game = dynamic_cast<ServerEngine*>(holder); game != nullptr) {
-            for (auto& game_player : GetPlayers() | std::views::values) {
+            for (auto& game_player : GetPlayers()) {
                 view_callback(game_player.get(), false);
             }
         }
         else if (auto* loc = dynamic_cast<Location*>(holder); loc != nullptr) {
-            for (auto& loc_map : loc->GetMaps()) {
-                find_players_recursively(loc_map.get(), derived_sync);
+            for (auto* loc_map : loc->GetMaps()) {
+                find_players_recursively(loc_map, derived_sync);
             }
         }
         else if (auto* map = dynamic_cast<Map*>(holder)) {
@@ -1442,13 +1787,16 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
         else if (const auto* item = dynamic_cast<Item*>(holder)) {
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
-                if (auto* item_cr = GetCritter(item->GetCritterId()); item_cr != nullptr) {
-                    find_players_recursively(item_cr, derived_sync);
+                if (auto item_cr = GetCritter(item->GetCritterId())) {
+                    ValidateEntityAccess(item_cr.get());
+                    find_players_recursively(item_cr.get(), derived_sync);
                 }
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_sync == EntityHolderEntrySync::PublicSync) {
-                    if (auto* item_map = GetMap(item->GetMapId()); item_map != nullptr) {
+                    if (auto item_map = GetMap(item->GetMapId())) {
+                        ValidateEntityAccess(item_map.get());
+
                         for (auto& map_cr : item_map->GetPlayerCritters()) {
                             if (map_cr->IsSeeItem(item->GetId())) {
                                 view_callback(map_cr->GetPlayer(), false);
@@ -1458,8 +1806,9 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
                 }
             } break;
             case ItemOwnership::ItemContainer: {
-                if (auto* item_cont = GetItem(item->GetContainerId()); item_cont != nullptr) {
-                    find_players_recursively(item_cont, derived_sync);
+                if (auto item_cont = GetItem(item->GetContainerId())) {
+                    ValidateEntityAccess(item_cont.get());
+                    find_players_recursively(item_cont.get(), derived_sync);
                 }
             } break;
             default:

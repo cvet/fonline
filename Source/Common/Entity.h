@@ -89,6 +89,8 @@ protected:
     raw_ptr<Properties> _propsRef;
 };
 
+class TimeEventContext;
+
 enum class EntityHolderEntrySync : uint8_t
 {
     NoSync,
@@ -158,7 +160,7 @@ public:
     struct TimeEventData
     {
         using FuncType = variant<ScriptFunc<void>, ScriptFunc<void, any_t>, ScriptFunc<void, vector<any_t>>, // All possible variants for time events
-            ScriptFunc<void, ScriptSelfEntity*>, ScriptFunc<void, ScriptSelfEntity*, any_t>, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>;
+            ScriptFunc<void, TimeEventContext*>, ScriptFunc<void, ScriptSelfEntity*>, ScriptFunc<void, ScriptSelfEntity*, any_t>, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>;
 
         uint32_t Id {};
         FuncType Func {};
@@ -214,25 +216,39 @@ public:
     void ClearInnerEntities();
 
     void AddRef() const noexcept;
+    auto TryAddRef() const noexcept -> bool;
     void Release() const noexcept;
+
+    virtual void ValidateAccess() const { }
+
+    virtual void LockForPropertyAccess() noexcept { }
+    virtual void UnlockForPropertyAccess() noexcept { }
+
+    // Shared ("read") variant of the above. Defaults to the exclusive lock so any entity that only
+    // overrides the exclusive pair stays correct; the Game singleton (`ServerEngine`) overrides this
+    // to take its engine-global lock in shared mode so concurrent property reads don't serialize.
+    virtual void LockForPropertyAccessShared() noexcept { LockForPropertyAccess(); }
+    virtual void UnlockForPropertyAccessShared() noexcept { UnlockForPropertyAccess(); }
 
     void MarkAsDestroying() noexcept;
     void MarkAsDestroyed() noexcept;
 
 protected:
     Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept;
-    virtual ~Entity() = default;
+    virtual ~Entity();
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
     auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     bool _nonConstHelper {};
 
+protected:
+    virtual auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
+
 private:
     auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
     void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
     void UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept;
-    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 
     Properties _props;
     unique_ptr<map<string, vector<EventCallbackData>>> _events {};
@@ -314,9 +330,17 @@ class EntityManagerApi
 public:
     virtual auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* = 0;
     virtual auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* = 0;
-    virtual auto GetCustomEntity(hstring type_name, ident_t id) -> Entity* = 0;
+    virtual auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<Entity> = 0;
     virtual void DestroyEntity(Entity* entity) = 0;
     virtual ~EntityManagerApi() = default;
 };
+
+// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
+inline void ValidateEntityAccess(const Entity* entity)
+{
+    if (entity != nullptr) {
+        entity->ValidateAccess();
+    }
+}
 
 FO_END_NAMESPACE

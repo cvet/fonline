@@ -88,14 +88,14 @@ FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId = any
     return self->GetInnerItems(stackId);
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
 {
-    Map* map;
+    refcount_ptr<Map> map;
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+        auto cr = self->GetParent<Critter>();
 
         if (cr == nullptr) {
             throw ScriptException("Critter ownership, critter not found");
@@ -105,16 +105,16 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
             return nullptr;
         }
 
-        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+        map = cr->GetParent<Map>();
 
-        if (map == nullptr) {
+        if (!map) {
             throw ScriptException("Critter ownership, map not found");
         }
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        map = self->GetParent<Map>();
 
-        if (map == nullptr) {
+        if (!map) {
             throw ScriptException("Hex ownership, map not found");
         }
     } break;
@@ -123,29 +123,29 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+        auto cont = self->GetParent<Item>();
 
-        if (cont == nullptr) {
+        if (!cont) {
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = Server_Item_GetMap(cont);
+        map = Server_Item_GetMap(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map;
+    return map.release_ownership();
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
-    Map* map;
+    refcount_ptr<Map> map;
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+        auto cr = self->GetParent<Critter>();
 
         if (cr == nullptr) {
             throw ScriptException("Critter ownership, critter not found");
@@ -156,7 +156,7 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
             return nullptr;
         }
 
-        map = self->GetEngine()->EntityMngr.GetMap(cr->GetMapId());
+        map = cr->GetParent<Map>();
 
         if (map == nullptr) {
             throw ScriptException("Critter ownership, map not found");
@@ -165,9 +165,9 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
         hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        map = self->GetParent<Map>();
 
-        if (map == nullptr) {
+        if (!map) {
             throw ScriptException("Hex ownership, map not found");
         }
 
@@ -178,31 +178,31 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+        auto cont = self->GetParent<Item>();
 
-        if (cont == nullptr) {
+        if (!cont) {
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = Server_Item_GetMapPosition(cont, hex);
+        map = Server_Item_GetMapPosition(cont.get(), hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map;
+    return map.release_ownership();
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
 {
-    Critter* cr;
+    refcount_ptr<Critter> cr;
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        cr = self->GetEngine()->EntityMngr.GetCritter(self->GetCritterId());
+        cr = self->GetParent<Critter>();
 
-        if (cr == nullptr) {
+        if (!cr) {
             throw ScriptException("Critter ownership, critter not found");
         }
     } break;
@@ -214,26 +214,26 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto* cont = self->GetEngine()->EntityMngr.GetItem(self->GetContainerId());
+        auto cont = self->GetParent<Item>();
 
-        if (cont == nullptr) {
+        if (!cont) {
             throw ScriptException("Container ownership, container not found");
         }
 
-        cr = Server_Item_GetCritter(cont);
+        cr = Server_Item_GetCritter(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return cr;
+    return cr.release_ownership();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+        auto map = self->GetParent<Map>();
         FO_RUNTIME_ASSERT(map);
         map->ChangeViewItem(self);
         map->RecacheHexFlags(self->GetHex());

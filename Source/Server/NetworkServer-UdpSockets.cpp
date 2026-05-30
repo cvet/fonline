@@ -83,7 +83,7 @@ public:
     void Shutdown() override;
 
 private:
-    [[nodiscard]] auto GenerateSessionId() -> uint32_t;
+    [[nodiscard]] uint32_t GenerateSessionId() FO_TSA_REQUIRES(_connectionsLocker);
     [[nodiscard]] auto MakeEndpointKey(string_view host, uint16_t port) const -> string;
     void Run();
     void ProcessIncomingPackets();
@@ -94,11 +94,11 @@ private:
     NewConnectionCallback _connectionCallback {};
     udp_socket _socket {};
     std::atomic_bool _stopped {};
-    std::thread _runThread {};
-    std::mutex _connectionsLocker {};
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions {};
-    unordered_map<string, uint32_t> _endpointToSession {};
+    thread _runThread {};
+    mutex _connectionsLocker {};
+    std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_connectionsLocker) {MakeSeededRandomGenerator()};
+    unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions FO_TSA_GUARDED_BY(_connectionsLocker) {};
+    unordered_map<string, uint32_t> _endpointToSession FO_TSA_GUARDED_BY(_connectionsLocker) {};
     vector<uint8_t> _packetBuf {};
 };
 
@@ -273,7 +273,7 @@ void NetworkServer_UdpSockets::Shutdown()
     }
 }
 
-auto NetworkServer_UdpSockets::GenerateSessionId() -> uint32_t
+uint32_t NetworkServer_UdpSockets::GenerateSessionId()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -343,7 +343,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         shared_ptr<NetworkServerConnection_UdpSockets> connection;
 
         {
-            std::scoped_lock locker(_connectionsLocker);
+            scoped_lock locker {_connectionsLocker};
             const auto it = _sessions.find(packet.SessionId);
 
             if (it != _sessions.end()) {
@@ -365,7 +365,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
     bool is_new_connection = false;
 
     {
-        std::scoped_lock locker(_connectionsLocker);
+        scoped_lock locker {_connectionsLocker};
 
         const auto endpoint_key = MakeEndpointKey(host, port);
         const auto endpoint_it = _endpointToSession.find(endpoint_key);
@@ -407,7 +407,7 @@ void NetworkServer_UdpSockets::TickConnections(nanotime now)
     vector<shared_ptr<NetworkServerConnection_UdpSockets>> connections;
 
     {
-        std::scoped_lock locker(_connectionsLocker);
+        scoped_lock locker {_connectionsLocker};
 
         for (const auto& [_, connection] : _sessions) {
             connections.emplace_back(connection);
@@ -420,7 +420,7 @@ void NetworkServer_UdpSockets::TickConnections(nanotime now)
         }
     }
 
-    std::scoped_lock locker(_connectionsLocker);
+    scoped_lock locker {_connectionsLocker};
 
     for (auto it = _sessions.begin(); it != _sessions.end();) {
         if (!it->second->IsDisconnected() || it->second->HasPendingDisconnect()) {

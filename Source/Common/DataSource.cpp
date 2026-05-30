@@ -731,7 +731,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         return nullptr;
     }
 
-    auto locker = std::scoped_lock(_datFileLocker);
+    scoped_lock locker {_datFileLocker};
 
     const auto* ptr = it->second;
     uint8_t type = 0;
@@ -951,7 +951,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
         return nullptr;
     }
 
-    auto locker = std::scoped_lock(_zipHandleLocker);
+    scoped_lock locker {_zipHandleLocker};
 
     const auto& info = it->second;
     auto pos = info.Pos;
@@ -1153,7 +1153,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    auto locker = std::scoped_lock(_zipHandleLocker);
+    scoped_lock locker {_zipHandleLocker};
 
     const auto& info = it->second;
     auto pos = info.Pos;

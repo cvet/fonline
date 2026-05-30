@@ -214,8 +214,8 @@ void MasterBaker::BakeAllInternal()
         FileCollection FilteredFiles {};
         vector<unique_ptr<BaseBaker>> Bakers {};
         std::atomic_int BakedFiles {};
-        std::mutex BakedFilePathsLocker {};
-        unordered_set<string> BakedFilePaths {};
+        mutex BakedFilePathsLocker {};
+        unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
         bool FirstBake {};
         bool OutputAdded {};
         TimeMeter BakingTime {};
@@ -247,7 +247,8 @@ void MasterBaker::BakeAllInternal()
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
             // to be guarded; without it concurrent emplace() races on the bucket array.
             {
-                std::scoped_lock lock(context->BakedFilePathsLocker);
+                scoped_lock lock {context->BakedFilePathsLocker};
+
                 context->BakedFilePaths.emplace(path);
             }
 
@@ -315,7 +316,7 @@ void MasterBaker::BakeAllInternal()
 
     size_t errors = 0;
     const auto& res_packs = _settings->GetResourcePacks();
-    const auto async_mode = _settings->SingleThreadBaking ? std::launch::deferred : std::launch::async | std::launch::deferred;
+    const auto async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
 
     // Prepare bake contexts
     vector<unique_ptr<PackBakeContext>> pack_bake_contexts;
@@ -326,7 +327,7 @@ void MasterBaker::BakeAllInternal()
         for (const auto& res_pack : res_packs) {
             const ResourcePackInfo* res_pack_ptr = &res_pack;
             const string output_path = make_output_path(res_pack.Name);
-            prepare_res_bakings.emplace_back(std::async(async_mode, [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
+            prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
 
         for (auto& prepare_res_baking : prepare_res_bakings) {
@@ -354,7 +355,7 @@ void MasterBaker::BakeAllInternal()
         for (auto& bake_context : pack_bake_contexts) {
             if (!bake_context->Done) {
                 PackBakeContext* bake_context_ptr = bake_context.get();
-                res_bakings.emplace_back(std::async(async_mode, [&bake_pack, bake_context_ptr, bake_order]() FO_DEFERRED { bake_pack(bake_context_ptr, bake_order); }));
+                res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context_ptr->PackName, bake_order), [&bake_pack, bake_context_ptr, bake_order]() FO_DEFERRED { bake_pack(bake_context_ptr, bake_order); }));
             }
         }
 
@@ -399,6 +400,8 @@ void MasterBaker::BakeAllInternal()
     unordered_set<string> actual_resource_names;
 
     for (auto& bake_context : pack_bake_contexts) {
+        scoped_lock lock {bake_context->BakedFilePathsLocker};
+
         for (const auto& res_name : bake_context->BakedFilePaths) {
             actual_resource_names.emplace(exclude_all_ext(strex(bake_context->PackName).combine_path(res_name)));
         }
@@ -562,7 +565,8 @@ BakerDataSource::BakerDataSource(BakingSettings& settings) :
 
     // Evaluate output files
     const auto check_file = [&](string_view path, uint64_t write_time) {
-        auto locker = std::scoped_lock(_outputFilesLocker);
+        scoped_lock locker {_outputFilesLocker};
+
         _outputFiles.emplace(path, write_time);
         return false;
     };
@@ -597,7 +601,8 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
     const auto output_path = MakeOutputPath(res_pack_name, path);
 
     if (write_time > fs_last_write_time(output_path)) {
-        auto locker = std::scoped_lock(_outputFilesLocker);
+        scoped_lock locker {_outputFilesLocker};
+
         _outputFiles.at(string(path)) = write_time;
         return true;
     }
@@ -623,7 +628,8 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_t
     uint64_t input_write_time;
 
     {
-        auto locker = std::scoped_lock(_outputFilesLocker);
+        scoped_lock locker {_outputFilesLocker};
+
         const auto it = _outputFiles.find(path);
 
         if (it == _outputFiles.end()) {
@@ -680,7 +686,8 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_t
 
         if (fs_exists(output_path)) {
             {
-                auto locker = std::scoped_lock(_outputFilesLocker);
+                scoped_lock locker {_outputFilesLocker};
+
                 input_write_time = _outputFiles.at(string(path));
                 FO_RUNTIME_ASSERT(input_write_time < fs_last_write_time(output_path));
             }
@@ -697,7 +704,7 @@ auto BakerDataSource::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::scoped_lock(_outputFilesLocker);
+    scoped_lock locker {_outputFilesLocker};
 
     return _outputFiles.contains(path);
 }
@@ -736,7 +743,7 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
         fixed_dir.resize(fixed_dir.size() - 1);
     }
 
-    auto locker = std::scoped_lock(_outputFilesLocker);
+    scoped_lock locker {_outputFilesLocker};
 
     vector<string> result;
     result.reserve(_outputFiles.size());

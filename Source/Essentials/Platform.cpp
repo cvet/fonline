@@ -37,6 +37,7 @@
 
 #if FO_WINDOWS
 #include "WinApi-Include.h"
+#include <psapi.h>
 #endif
 
 #if FO_LINUX || FO_MAC
@@ -47,12 +48,20 @@
 #include <unistd.h>
 #endif
 
+#if FO_LINUX || FO_ANDROID
+#include <cstdio>
+#endif
+
 #if FO_MAC
 #include <libproc.h>
+#include <mach/mach.h>
+#include <mach/task.h>
+#include <mach/task_info.h>
 #endif
 
 #if FO_ANDROID
 #include <android/log.h>
+#include <unistd.h>
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -183,6 +192,49 @@ auto Platform::GetCurrentProcessIdStr() noexcept -> string
     return strex("{}", ::getpid()).str();
 #else
     return "0";
+#endif
+}
+
+auto Platform::GetProcessMemoryUsage() noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    PROCESS_MEMORY_COUNTERS pmc {};
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), &pmc, sizeof(pmc)) != 0) {
+        return static_cast<size_t>(pmc.WorkingSetSize);
+    }
+    return 0;
+
+#elif FO_LINUX || FO_ANDROID
+    // /proc/self/statm: size resident shared text lib data dt (values in pages)
+    std::FILE* file = std::fopen("/proc/self/statm", "r");
+    if (file == nullptr) {
+        return 0;
+    }
+    unsigned long size_pages = 0;
+    unsigned long rss_pages = 0;
+    const int matched = std::fscanf(file, "%lu %lu", &size_pages, &rss_pages);
+    std::fclose(file);
+    if (matched != 2) {
+        return 0;
+    }
+    const long page_size = ::sysconf(_SC_PAGESIZE);
+    if (page_size <= 0) {
+        return 0;
+    }
+    return static_cast<size_t>(rss_pages) * static_cast<size_t>(page_size);
+
+#elif FO_MAC
+    mach_task_basic_info_data_t info {};
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS) {
+        return static_cast<size_t>(info.resident_size);
+    }
+    return 0;
+
+#else
+    return 0;
 #endif
 }
 
