@@ -1297,7 +1297,13 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
     FO_RUNTIME_ASSERT(padding >= 0);
     FO_RUNTIME_ASSERT(effect->GetUsage() == EffectUsage::QuadSprite);
 
-    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
+    const auto* source_spr = spr;
+
+    if (const auto* sheet = dynamic_cast<const SpriteSheet*>(spr); sheet != nullptr) {
+        source_spr = sheet->GetCurSpr();
+    }
+
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(source_spr);
 
     if (atlas_spr == nullptr) {
         return;
