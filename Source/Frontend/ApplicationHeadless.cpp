@@ -42,8 +42,8 @@ struct Application::Context
     vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
 };
 
-static constexpr int32_t MAX_ATLAS_WIDTH_ = 2048;
-static constexpr int32_t MAX_ATLAS_HEIGHT_ = 2048;
+static constexpr int32_t MAX_ATLAS_WIDTH_ = 8192;
+static constexpr int32_t MAX_ATLAS_HEIGHT_ = 8192;
 static constexpr int32_t MAX_BONES_ = 32;
 const int32_t& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
 const int32_t& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
