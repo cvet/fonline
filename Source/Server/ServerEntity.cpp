@@ -147,7 +147,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     // Engine-wide invariant: a primary SyncContext is always active when an event fires.
-    FO_RUNTIME_ASSERT(SyncContext::GetCurrentOnThisThread() != nullptr);
+    FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread() != nullptr);
 
     bool had_exception = false;
 

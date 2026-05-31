@@ -103,7 +103,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     // Engine-wide invariant: a primary SyncContext is always active when an event fires.
-    FO_RUNTIME_ASSERT(GetCurrentSyncContext() != nullptr);
+    FO_STRONG_ASSERT(GetCurrentSyncContext() != nullptr);
 
     bool had_exception = false;
 
@@ -795,14 +795,9 @@ auto ServerEngine::PoolSyncJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    // _workerPool is reset to null during Shutdown after Server::Shutdown drains the pool.
-    // _mainWorker may still pick up this rescheduled job between the workerPool.reset() and
-    // _mainWorker.Clear() calls — null-check so the late tick is a no-op instead of UB.
-    if (_workerPool) {
-        _workerPool->WaitIdle();
-    }
-
-    return std::chrono::milliseconds {0};
+    // WorkerPool hosts long-lived recurring jobs (time events, movement, connections). Waiting for
+    // full pool-idle here can freeze FrameTimeJob, which those jobs need for forward progress.
+    return std::chrono::milliseconds {Settings.SyncPeriodMs};
 }
 
 auto ServerEngine::LogDispatchJob() -> std::optional<timespan>

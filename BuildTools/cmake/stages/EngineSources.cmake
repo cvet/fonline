@@ -342,6 +342,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/EffectManager.h"

@@ -1388,7 +1388,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
     // Caller must hold _registryLock (unique).
     if (!entity->GetId()) {
-        const uint64_t id_num = ++_lastEntityId;
+        const int64_t id_num = ++_lastEntityId;
         const ident_t id {numeric_cast<int64_t>(id_num)};
         FO_RUNTIME_ASSERT(_allEntities.count(id) == 0);
 
@@ -1403,7 +1403,8 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
         entity->SetId(id);
     }
     else {
-        _lastEntityId = std::max(_lastEntityId, entity->GetId().underlying_value());
+        const int64_t id_num = entity->GetId().underlying_value();
+        _lastEntityId = std::max(_lastEntityId, id_num);
     }
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);

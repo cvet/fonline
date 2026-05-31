@@ -344,16 +344,25 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
     }
 
     auto* current_ctx = SyncContext::GetCurrentOnThisThread();
-    FO_RUNTIME_ASSERT(current_ctx != nullptr);
+    FO_STRONG_ASSERT(current_ctx != nullptr);
 
     if (current_ctx->IsEmpty()) {
         return true;
     }
 
+    const auto try_hold_entity = [](const ServerEntity* e) -> refcount_ptr<const ServerEntity> {
+        if (e != nullptr && e->TryAddRef()) {
+            return refcount_ptr<const ServerEntity>(refcount_ptr<const ServerEntity>::adopt, e);
+        }
+        else {
+            return {};
+        }
+    };
+
     for (int32_t attempt = 0; attempt < MAX_VALIDATE_ATTEMPTS; attempt++) {
         EntityLock* found_lock = nullptr;
 
-        for (refcount_ptr<const ServerEntity> current = entity; current; current = current->GetParentRaw()) {
+        for (auto current = try_hold_entity(entity); current; current = current->GetParentRaw()) {
             auto* lock = current->GetEntityLock();
 
             if (lock == nullptr) {
@@ -373,7 +382,7 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         // Verify: re-walk and confirm the chain still leads through found_lock.
         bool still_covers = false;
 
-        for (refcount_ptr<const ServerEntity> verify = entity; verify; verify = verify->GetParentRaw()) {
+        for (auto verify = try_hold_entity(entity); verify; verify = verify->GetParentRaw()) {
             if (verify->GetEntityLock() == found_lock) {
                 still_covers = true;
                 break;
