@@ -81,6 +81,8 @@ public:
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
+    void ReleaseScriptGlobalsAndReportGC();
+
     raw_ptr<const ScriptSettings> _settings;
     raw_ptr<EngineMetadata> _meta {};
     raw_ptr<ScriptSystem> _scriptSys {}; // Maybe null

@@ -115,6 +115,8 @@ AngelScriptBackend::~AngelScriptBackend()
     _engine.reset();
     _entityMngr.reset();
 
+    ReleaseScriptGlobalsAndReportGC();
+
     if (_asEngine) {
         const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
         FO_STRONG_ASSERT(as_engine_ref_count == 0);
@@ -728,6 +730,112 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
 
     priority = parsed_priority;
     return true;
+}
+
+void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_asEngine) {
+        return;
+    }
+
+    // Drop every script-side reference held by module global variables, then run a full GC so the now-unrooted
+    // object graphs are reclaimed before final shutdown. AngelScript also releases globals during module
+    // discard, but doing it explicitly here (while the engine is fully alive) lets the collector collapse the
+    // graphs in a normal multi-iteration cycle, so the engine cleans up after itself without per-system manual
+    // cleanup in game scripts.
+    size_t released_globals = 0;
+
+    for (AngelScript::asUINT module_index = 0; module_index < _asEngine->GetModuleCount(); module_index++) {
+        auto* mod = _asEngine->GetModuleByIndex(module_index);
+
+        if (mod == nullptr) {
+            continue;
+        }
+
+        for (AngelScript::asUINT var_index = 0; var_index < mod->GetGlobalVarCount(); var_index++) {
+            int32_t type_id = 0;
+
+            if (mod->GetGlobalVar(var_index, nullptr, nullptr, &type_id, nullptr) < 0) {
+                continue;
+            }
+
+            const auto* type_info = _asEngine->GetTypeInfoById(type_id);
+
+            if (type_info == nullptr) {
+                continue; // Primitive global, nothing to release
+            }
+
+            const bool is_funcdef = type_info->GetFuncdefSignature() != nullptr;
+            const bool is_object = (type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0;
+
+            if (!is_funcdef && !is_object) {
+                continue; // Enum or other non-pointer global
+            }
+
+            auto* slot = static_cast<void**>(mod->GetAddressOfGlobalVar(var_index));
+
+            if (slot == nullptr || *slot == nullptr) {
+                continue;
+            }
+
+            // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
+            // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
+            // standard module teardown skips it. Value-type object globals store the instance inline and are
+            // destructed by the module teardown, so they are left untouched here.
+            if (is_funcdef) {
+                static_cast<AngelScript::asIScriptFunction*>(*slot)->Release();
+                *slot = nullptr;
+                released_globals++;
+            }
+            else if ((type_info->GetFlags() & AngelScript::asOBJ_REF) != 0) {
+                _asEngine->ReleaseScriptObject(*slot, type_info);
+                *slot = nullptr;
+                released_globals++;
+            }
+        }
+    }
+
+    // Collapse object graphs that were kept alive only by the released globals. A single asGC_FULL_CYCLE
+    // runs the collector to completion, but destructors can release the last reference to other objects,
+    // so iterate until the live count stops dropping.
+    AngelScript::asUINT gc_size = 0;
+    _asEngine->GetGCStatistics(&gc_size);
+
+    for (int32_t pass = 0; pass < 8 && gc_size != 0; pass++) {
+        _asEngine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
+
+        AngelScript::asUINT new_gc_size = 0;
+        _asEngine->GetGCStatistics(&new_gc_size);
+
+        if (new_gc_size == gc_size) {
+            break; // Steady state — survivors are not collectable from the script side
+        }
+
+        gc_size = new_gc_size;
+    }
+
+    // Report any GC objects that survive (kept alive by references the collector cannot reclaim, e.g. a
+    // pre-existing GUI screen-graph cycle). The subsequent ShutDownAndRelease force-releases them; the
+    // by-type summary here confirms the global release ran and points at the owning system.
+    if (gc_size != 0) {
+        unordered_map<string, size_t> survivors_by_type;
+
+        for (AngelScript::asUINT i = 0; i < gc_size; i++) {
+            AngelScript::asITypeInfo* type_info = nullptr;
+
+            if (_asEngine->GetObjectInGC(i, nullptr, nullptr, &type_info) >= 0 && type_info != nullptr) {
+                survivors_by_type[type_info->GetName()]++;
+            }
+        }
+
+        WriteLog("AngelScript shutdown: released {} global var(s), {} GC object(s) still alive:", released_globals, gc_size);
+
+        for (const auto& [type_name, type_count] : survivors_by_type) {
+            WriteLog("- {} x {}", type_count, type_name);
+        }
+    }
 }
 
 void AngelScriptBackend::AddCleanupCallback(function<void()> callback)
