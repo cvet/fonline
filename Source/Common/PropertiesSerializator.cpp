@@ -390,6 +390,26 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, const Property* p
     }
 }
 
+static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, string_view value_name) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool failed = false;
+    const int32_t enum_value = name_resolver.ResolveEnumValue(base_type.Name, value_name, &failed);
+
+    if (!failed) {
+        return enum_value;
+    }
+
+    // Removed or renamed enum value in persisted data: migrate it via ///@ MigrationRule Enum <EnumName> <Old> <New>.
+    if (const auto migrated = name_resolver.CheckMigrationRule(hash_resolver.ToHashedString("Enum"), hash_resolver.ToHashedString(base_type.Name), hash_resolver.ToHashedString(value_name)); migrated.has_value()) {
+        return name_resolver.ResolveEnumValue(base_type.Name, migrated.value().as_str());
+    }
+
+    // No migration rule: keep the original throwing behavior for genuinely unknown values.
+    return name_resolver.ResolveEnumValue(base_type.Name, value_name);
+}
+
 static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
@@ -435,7 +455,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
             (void)name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
         }
         else {
-            enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);
+            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, decoded);
         }
 
         if (base_type.Size == sizeof(uint8_t)) {
@@ -1467,7 +1487,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         int32_t enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
-            enum_value = name_resolver.ResolveEnumValue(base_type.Name, value.AsString());
+            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, value.AsString());
         }
         else if (value.Type() == AnyData::ValueType::Int64) {
             enum_value = numeric_cast<int32_t>(value.AsInt64());
@@ -1767,7 +1787,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
             }
             else if (dict_key_type.IsEnum) {
-                const int32_t enum_value = name_resolver.ResolveEnumValue(dict_key_type.Name, dict_key);
+                const int32_t enum_value = ResolveEnumValueWithMigration(dict_key_type, hash_resolver, name_resolver, dict_key);
 
                 if (dict_key_type.Size == sizeof(uint8_t)) {
                     *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(enum_value);

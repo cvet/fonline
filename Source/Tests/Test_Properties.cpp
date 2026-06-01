@@ -380,7 +380,20 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
-        [[nodiscard]] auto CheckMigrationRule(hstring, hstring, hstring) const noexcept -> optional<hstring> override { return std::nullopt; }
+        void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
+
+        [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override
+        {
+            if (const auto it = _migration_rules.find(rule_name); it != _migration_rules.end()) {
+                if (const auto it2 = it->second.find(extra_info); it2 != it->second.end()) {
+                    if (const auto it3 = it2->second.find(target); it3 != it2->second.end()) {
+                        return it3->second;
+                    }
+                }
+            }
+
+            return std::nullopt;
+        }
         [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override
         {
             const auto type_it = _protos.find(type_name.as_hash());
@@ -407,6 +420,7 @@ namespace
         unordered_map<string, RefTypeDesc> _ref_types {};
         unordered_map<string, int32_t> _enum_values {};
         unordered_map<int32_t, string> _enum_names {};
+        unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migration_rules {};
         HashStorage _proto_hashes {};
         unique_ptr<PropertyRegistrator> _proto_registrator {};
         unordered_map<string, unique_ptr<PropertyRegistrator>> _ref_type_registrators {};
@@ -1938,6 +1952,31 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     from_any.SetValueAsAnyProps(enum_prop->GetRegIndex(), any_t {string {"ModeA"}});
     CHECK(from_any.GetValue<hstring>(hash_prop) == hashes.ToHashedString("beta"));
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+}
+
+TEST_CASE("PropertiesEnumValueMigration")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+
+    // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution.
+    resolver.AddMigrationRule(hashes.ToHashedString("Enum"), hashes.ToHashedString("Mode"), hashes.ToHashedString("ModeLegacy"), hashes.ToHashedString("ModeA"));
+
+    PropertyRegistrator registrator("EnumMigrationEntity", EngineSideKind::ServerSide, hashes, resolver);
+    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    // Removed value name resolves through the migration rule.
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeLegacy"}}, hashes, resolver));
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+
+    // Current value name still loads directly.
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeB"}}, hashes, resolver));
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
+
+    // Unknown value without a migration rule still throws.
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeNonexistent"}}, hashes, resolver));
 }
 
 TEST_CASE("PropertiesNumericWidthConversions")
