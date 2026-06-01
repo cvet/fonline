@@ -1268,6 +1268,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
         vbuf[i].PosX = numeric_cast<float32_t>(pos.x);
         vbuf[i].PosY = numeric_cast<float32_t>(pos.y);
+        vbuf[i].PosZ = point.PointPosZ;
         vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
 
         // TexU/TexV = caller's PrimitivePoint::TexUV + draw_area top-left.

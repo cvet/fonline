@@ -375,7 +375,7 @@ private:
     void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t intensity);
     void MarkLight(LightSource* ls, mpos hex, int32_t intensity);
     void CalculateHexLight(mpos hex, const Field& field);
-    void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const;
+    void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
     void OnScreenSizeChanged();
@@ -451,7 +451,6 @@ private:
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
     unordered_map<LightSource*, size_t> _visibleLightSources {};
     vector<vector<PrimitivePoint>> _lightPoints {};
-    vector<vector<PrimitivePoint>> _lightSoftPoints {};
     size_t _globalLights {};
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};

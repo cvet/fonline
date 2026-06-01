@@ -108,7 +108,6 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
     _hexField = SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
 
     _lightPoints.resize(1);
-    _lightSoftPoints.resize(1);
 
     _screenRawHex = ConvertToScreenRawHex(ipos32(GetWorkHex()));
     InitView();
@@ -163,7 +162,6 @@ void MapView::OnDestroySelf()
     _fogs = {};
     _visibleLightSources.clear();
     _lightPoints.clear();
-    _lightSoftPoints.clear();
     _lightSources.clear();
     _critters.clear();
     _crittersMap.clear();
@@ -1350,9 +1348,6 @@ void MapView::ProcessLighting()
         for (auto& points : _lightPoints) {
             points.clear();
         }
-        for (auto& points : _lightSoftPoints) {
-            points.clear();
-        }
 
         size_t cur_points = 0;
 
@@ -1361,18 +1356,17 @@ void MapView::ProcessLighting()
 
             // Split large entries to fit into 16-bit index
             if constexpr (sizeof(vindex_t) == 2) {
-                while (_lightPoints[cur_points].size() > 0x7FFF || _lightSoftPoints.size() > 0x7FFF) {
+                while (_lightPoints[cur_points].size() > 0x7FFF) {
                     cur_points++;
 
                     if (cur_points >= _lightPoints.size()) {
                         _lightPoints.emplace_back();
-                        _lightSoftPoints.emplace_back();
                         break;
                     }
                 }
             }
 
-            LightFanToPrimitves(ls, _lightPoints[cur_points], _lightSoftPoints[cur_points]);
+            LightFanToPrimitves(ls, _lightPoints[cur_points]);
         }
     }
 }
@@ -1896,7 +1890,7 @@ void MapView::CalculateHexLight(mpos hex, const Field& field)
     }
 }
 
-void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points, vector<PrimitivePoint>& soft_points) const
+void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1908,34 +1902,26 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     center_pos.x += GameSettings::MAP_HEX_WIDTH / 2;
     center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
-    // Every fan vertex's PrimitivePoint::TexUV is set to the same constant —
-    // the absolute map-origin-anchored pixel position of the current screen
-    // anchor hex (`_screenRawHex`). SpriteManager::DrawPoints then adds the
-    // current `draw_area` top-left, so the value the shader sees on
-    // `InTexCoord` is `world_pos_of_screen_origin` for this batch. The
-    // varying is therefore constant across the triangle and not subject to
-    // barycentric interpolation rounding — any high-frequency hash keyed off
-    // `gl_FragCoord.xy + InTexCoord` (= the fragment's absolute map pixel
-    // position) gets per-pixel-stable input even while the fan triangle is
-    // deforming under smooth sprite movement.
+    // Per-light ovalization metadata.
     const auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
     const fpos32 screen_anchor_tex = {numeric_cast<float32_t>(screen_anchor_ox), numeric_cast<float32_t>(screen_anchor_oy)};
-
-    // Per-light falloff metadata forwarded to the shader via EggData (vertex
-    // attribute slot 3). x = the radius the fan was traced to (in hexes —
-    // recomputed here to match ApplyLightFan), y = the normalized center alpha
-    // [0..1]. A light shader recovers each fragment's hex-distance-from-edge as
-    // `radius * Color.a / centerAlpha` and can then fade over a fixed hex band
-    // independent of the light's total length. Same constant on every vertex.
-    const auto fan_radius = numeric_cast<float32_t>(std::max(1, ls->Distance));
+    const auto natural_radius = std::max(1, ls->Distance);
+    const auto fan_radius = numeric_cast<float32_t>(natural_radius);
     const auto center_alpha_norm = numeric_cast<float32_t>(ls->CenterColor.comp.a) / 255.0f;
     const fpos32 light_egg_data = {fan_radius, center_alpha_norm};
+    const auto semi_x_px = fan_radius * numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
+    const auto semi_y_px = fan_radius * numeric_cast<float32_t>(GameSettings::MAP_HEX_LINE_HEIGHT);
 
-    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get(), .TexUV = screen_anchor_tex, .EggData = light_egg_data};
+    const auto rim_dell = [semi_x_px, semi_y_px](float32_t ox, float32_t oy) noexcept -> float32_t {
+        const float32_t nx = ox / semi_x_px;
+        const float32_t ny = oy / semi_y_px;
+        return std::sqrt(nx * nx + ny * ny);
+    };
+
+    const auto center_point = PrimitivePoint {.PointPos = center_pos, .PointColor = ls->CenterColor, .PointOffset = ls->Offset.get(), .TexUV = screen_anchor_tex, .EggData = light_egg_data, .PointPosZ = 0.0f};
 
     const auto points_start_size = points.size();
     points.reserve(points.size() + ls->FanHexes.size() * 3);
-    soft_points.reserve(soft_points.size() + ls->FanHexes.size() * 3);
 
     for (size_t i = 0; i < ls->FanHexes.size(); i++) {
         const auto& fan_hex = ls->FanHexes[i];
@@ -1943,11 +1929,13 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         const uint8_t alpha = std::get<1>(fan_hex);
         const bool use_offsets = std::get<2>(fan_hex);
 
-        const auto [ox, oy] = GeometryHelper::GetHexOffset(ls->Hex, hex);
-        const ipos32 pos = {center_pos.x + ox, center_pos.y + oy};
+        const auto [ox_int, oy_int] = GeometryHelper::GetHexOffset(ls->Hex, hex);
+        const float32_t ox = numeric_cast<float32_t>(ox_int);
+        const float32_t oy = numeric_cast<float32_t>(oy_int);
+        const ipos32 pos = {center_pos.x + iround<int32_t>(ox), center_pos.y + iround<int32_t>(oy)};
         const ucolor color = ucolor(ls->CenterColor, alpha);
         const ipos32* offset = use_offsets ? ls->Offset.get() : nullptr;
-        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset, .TexUV = screen_anchor_tex, .EggData = light_egg_data};
+        const auto edge_point = PrimitivePoint {.PointPos = pos, .PointColor = color, .PointOffset = offset, .TexUV = screen_anchor_tex, .EggData = light_egg_data, .PointPosZ = rim_dell(ox, oy)};
 
         points.emplace_back(edge_point);
 
@@ -1963,28 +1951,6 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
     }
 
     FO_RUNTIME_ASSERT(points.size() % 3 == 0);
-
-    for (size_t i = points_start_size; i < points.size(); i += 3) {
-        const auto& cur = points[i];
-        const auto& next = points[i + 1];
-
-        if ((next.PointPos - cur.PointPos).idist() > GameSettings::MAP_HEX_WIDTH) {
-            soft_points.emplace_back(PrimitivePoint {.PointPos = next.PointPos, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
-            soft_points.emplace_back(PrimitivePoint {.PointPos = cur.PointPos, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
-
-            const auto dist_comp = (cur.PointPos - center_pos).idist() > (next.PointPos - center_pos).idist();
-            const auto x = numeric_cast<float32_t>(dist_comp ? next.PointPos.x - cur.PointPos.x : cur.PointPos.x - next.PointPos.x);
-            const auto y = numeric_cast<float32_t>(dist_comp ? next.PointPos.y - cur.PointPos.y : cur.PointPos.y - next.PointPos.y);
-            const auto changed_xy = GeometryHelper::ChangeStepsCoords({x, y}, dist_comp ? -2.5f : 2.5f);
-
-            if (dist_comp) {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {cur.PointPos.x + iround<int32_t>(changed_xy.x), cur.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = cur.PointColor, .PointOffset = cur.PointOffset, .PPointColor = cur.PPointColor, .TexUV = cur.TexUV, .EggData = light_egg_data});
-            }
-            else {
-                soft_points.emplace_back(PrimitivePoint {.PointPos = {next.PointPos.x + iround<int32_t>(changed_xy.x), next.PointPos.y + iround<int32_t>(changed_xy.y)}, .PointColor = next.PointColor, .PointOffset = next.PointOffset, .PPointColor = next.PPointColor, .TexUV = next.TexUV, .EggData = light_egg_data});
-            }
-        }
-    }
 }
 
 void MapView::SetHiddenRoof(mpos hex)
@@ -2524,13 +2490,29 @@ void MapView::DrawMap()
                 for (auto& points : _lightPoints) {
                     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light.get());
                 }
-                for (auto& points : _lightSoftPoints) {
-                    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light.get());
-                }
-
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
-                _rtLight->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushLight.get());
+                auto* flush_light = _engine->EffectMngr.Effects.FlushLight.get();
+
+                if (flush_light->IsNeedCameraBuf()) {
+                    const ipos32 anchor_hex_pos = GetHexMapPos(mpos(0, 0));
+                    const ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+                    const fpos32 anchor_world = fpos32(anchor_hex_pos + hex_center) - _scrollOffset;
+                    const auto rt_size = _rtLight->GetTexture()->Size;
+                    const float32_t sw_f = numeric_cast<float32_t>(_screenSize.width);
+                    const float32_t sh_f = numeric_cast<float32_t>(_screenSize.height);
+                    auto& cam_buf = flush_light->CameraBuf = RenderEffect::CameraBuffer();
+                    cam_buf->MapAnchorScreenPos[0] = step_xf - (anchor_world.x + source_x) / sw_f;
+                    cam_buf->MapAnchorScreenPos[1] = step_yf - (anchor_world.y + source_y) / sh_f;
+                    cam_buf->MapAnchorScreenPos[2] = numeric_cast<float32_t>(rt_size.width) / sw_f;
+                    cam_buf->MapAnchorScreenPos[3] = numeric_cast<float32_t>(rt_size.height) / sh_f;
+                    cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
+                    cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
+                    cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
+                }
+
+                _rtLight->SetCustomDrawEffect(flush_light);
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
                 _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
