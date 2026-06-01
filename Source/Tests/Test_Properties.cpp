@@ -2028,6 +2028,47 @@ TEST_CASE("PropertiesNumericWidthConversions")
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
 }
 
+TEST_CASE("PropertiesNumericRangeValidation")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("NumericRangeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {int64_t {128}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {float64_t {127.6}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {int64_t {-1}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {float64_t {-0.6}}, hashes, resolver));
+
+    const auto float32_overflow = static_cast<float64_t>(std::numeric_limits<float32_t>::max()) * 2.0;
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {float32_overflow}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::numeric_limits<float64_t>::infinity()}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "128", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "-1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "9223372036854775808", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "9223372036854775808.0", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "-9223372036854775809", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, "3.5e38", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "127.4", hashes, resolver));
+    CHECK(props.GetValue<int8_t>(int8_prop) == 127);
+
+    const string long_float_text = string {"1."} + string(1200, '0');
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, long_float_text, hashes, resolver));
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.0f));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {long_float_text}, hashes, resolver));
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.0f));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {long_float_text}, hashes, resolver));
+    CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(1.0));
+}
+
 TEST_CASE("PropertiesTextScalarWidthConversions")
 {
     HashStorage hashes {};

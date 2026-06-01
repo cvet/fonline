@@ -163,6 +163,8 @@ Entity state is serialized through property data, not by hand-copying entity fie
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
 - text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
 
+When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
+
 Persistence backends store `AnyData::Document` records. For database commit/recovery details, see [Persistence.md](Persistence.md).
 
 ## Tests to inspect
