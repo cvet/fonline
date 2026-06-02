@@ -147,15 +147,9 @@ public:
     ~DummyNetConnection() override = default;
 
 protected:
-    void DispatchImpl() override
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-    }
+    void DispatchImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
 
-    void DisconnectImpl() override
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-    }
+    void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
 };
 
 auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings, DummyConnectionState state) -> shared_ptr<NetworkServerConnection>

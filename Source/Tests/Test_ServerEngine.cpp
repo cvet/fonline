@@ -49,41 +49,6 @@ namespace
     const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
-    class StableTestConnection final : public NetworkServerConnection
-    {
-    public:
-        explicit StableTestConnection(ServerNetworkSettings& settings) :
-            NetworkServerConnection(settings)
-        {
-            FO_STACK_TRACE_ENTRY();
-
-            _host = "StableTest";
-        }
-        StableTestConnection(const StableTestConnection&) = delete;
-        StableTestConnection(StableTestConnection&&) noexcept = delete;
-        auto operator=(const StableTestConnection&) = delete;
-        auto operator=(StableTestConnection&&) noexcept = delete;
-        ~StableTestConnection() override = default;
-
-    protected:
-        void DispatchImpl() override
-        {
-            FO_STACK_TRACE_ENTRY();
-        }
-
-        void DisconnectImpl() override
-        {
-            FO_STACK_TRACE_ENTRY();
-        }
-    };
-
-    static auto CreateStableTestConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return SafeAlloc::MakeShared<StableTestConnection>(settings);
-    }
-
     static auto MakeServerTestSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -365,7 +330,7 @@ namespace ServerEngineTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto unlogined_player = server->CreateUnloginedPlayer(CreateStableTestConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
         if (unlogined_player == nullptr) {
             return nullptr;

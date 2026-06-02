@@ -42,41 +42,6 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    class StableTestConnection final : public NetworkServerConnection
-    {
-    public:
-        explicit StableTestConnection(ServerNetworkSettings& settings) :
-            NetworkServerConnection(settings)
-        {
-            FO_STACK_TRACE_ENTRY();
-
-            _host = "StableTest";
-        }
-        StableTestConnection(const StableTestConnection&) = delete;
-        StableTestConnection(StableTestConnection&&) noexcept = delete;
-        auto operator=(const StableTestConnection&) = delete;
-        auto operator=(StableTestConnection&&) noexcept = delete;
-        ~StableTestConnection() override = default;
-
-    protected:
-        void DispatchImpl() override
-        {
-            FO_STACK_TRACE_ENTRY();
-        }
-
-        void DisconnectImpl() override
-        {
-            FO_STACK_TRACE_ENTRY();
-        }
-    };
-
-    static auto CreateStableTestConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return SafeAlloc::MakeShared<StableTestConnection>(settings);
-    }
-
     static auto MakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -210,7 +175,7 @@ namespace EntityLifecycle
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto unlogined_player = server->CreateUnloginedPlayer(CreateStableTestConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
         if (unlogined_player == nullptr) {
             return nullptr;
