@@ -694,7 +694,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
     FO_RUNTIME_ASSERT(moving);
 
     out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime())));
-    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime())));
+    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(nanotime::now())));
     out_buf.Write(moving->GetSpeed());
     out_buf.Write(moving->GetStartHex());
     out_buf.Write(numeric_cast<uint16_t>(moving->GetSteps().size()));

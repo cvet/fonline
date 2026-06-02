@@ -217,6 +217,9 @@ void Item::RemoveItemFromContainer(Item* item)
     FO_RUNTIME_ASSERT(item);
 
     RevertEntityLock(item);
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);

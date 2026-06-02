@@ -445,10 +445,6 @@ void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::Time
         return;
     }
 
-    if (te->FireTime > time) {
-        return;
-    }
-
     if (te->RepeatDuration && result.CallResult) {
         const auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
         te->FireTime = next_fire_time;
@@ -461,6 +457,12 @@ void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::Time
 auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), {});
+
+    if (te->Id == 0) {
+        return {};
+    }
 
     auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(te->Id, te->RepeatDuration, te->Data);
     bool call_result = false;
@@ -599,23 +601,36 @@ auto TimeEventManager::FireAndAdvance(Entity* entity, uint32_t event_id) -> opti
     }
 
     const auto fired = FireTimeEvent(entity, te);
-    PostFireTimeEvent(entity, te, fired);
 
-    if (entity->IsDestroyed() || te->Id == 0) {
-        // Either the entity was destroyed during fire, or PostFire removed the event because it
-        // was a one-shot or the script asked to stop.
-        return std::nullopt;
+    nanotime next_fire_time;
+
+    {
+        std::scoped_lock lock {_timeEventLocker};
+
+        PostFireTimeEvent(entity, te, fired);
+
+        if (entity->IsDestroyed()) {
+            // The handler destroyed its owner; the fired event is done and must not be rescheduled.
+            return std::nullopt;
+        }
+
+        if (te->Id == 0) {
+            // PostFire removed the event because it was a one-shot or the script asked to stop.
+            return std::nullopt;
+        }
+
+        next_fire_time = te->FireTime;
     }
 
     const auto now = _engine->GetFrameTime();
 
-    if (te->FireTime <= now) {
+    if (next_fire_time <= now) {
         // Edge case: handler took long enough that next FireTime is already in the past. Schedule
         // an immediate rerun (tiny non-zero delay so the dispatcher doesn't busy-loop).
         return MIN_REPEAT_TIME;
     }
 
-    return te->FireTime - now;
+    return next_fire_time - now;
 }
 
 FO_END_NAMESPACE

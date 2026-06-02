@@ -92,6 +92,8 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         }
     }
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(item);
     _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
 
     return item;
@@ -107,6 +109,9 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     cr->RemoveItem(item);
 
     RevertEntityLock(item);
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
 
@@ -130,6 +135,8 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
         _engine->EntityMngr.MakePersistent(item, false);
     }
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(item);
     _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
 }
 
@@ -138,6 +145,24 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
+
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (ctx->IsEmpty()) {
+        ctx->SyncEntity(map);
+        release_empty_sync_context = true;
+    }
+
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            ctx->Release();
+        }
+    });
+
+    ValidateEntityAccess(map);
     FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
 
     const auto* proto = _engine->GetProtoCritter(proto_id);
@@ -191,9 +216,12 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     if (!cr->IsDestroyed()) {
         if (map != nullptr) {
+            ValidateEntityAccess(map);
+            ValidateEntityAccess(cr.get());
             _engine->OnMapCritterIn.Fire(map, cr.get());
         }
         else {
+            ValidateEntityAccess(cr.get());
             _engine->OnGlobalMapCritterIn.Fire(cr.get());
         }
 
@@ -225,6 +253,7 @@ void CritterManager::DestroyCritter(Critter* cr)
     cr->MarkAsDestroying();
 
     // Finish event
+    ValidateEntityAccess(cr);
     _engine->OnCritterFinish.Fire(cr);
 
     // Tear off from environment

@@ -38,6 +38,19 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("WorkThread")
 {
+    SECTION("RunThreadJoinConsumesHandle")
+    {
+        std::atomic_bool ran = false;
+        thread worker = run_thread("JoinHandleWorker", [&] { ran = true; });
+
+        REQUIRE(worker.joinable());
+
+        worker.join();
+
+        CHECK(ran.load());
+        CHECK_FALSE(worker.joinable());
+    }
+
     SECTION("ExecutesQueuedJobsAndWaitsForCompletion")
     {
         WorkThread worker {"TestWorker"};

@@ -56,6 +56,12 @@ FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Player_HardDisconnect(Player* self)
+{
+    self->GetEngine()->HardDisconnectPlayer(self);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
 {
     if (name.empty()) {

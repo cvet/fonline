@@ -558,6 +558,8 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
+        ValidateEntityAccess(self);
+        ValidateEntityAccess(item);
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
     else {
@@ -573,9 +575,13 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
         if (item_swap != nullptr) {
+            ValidateEntityAccess(self);
+            ValidateEntityAccess(item_swap);
             self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);
         }
 
+        ValidateEntityAccess(self);
+        ValidateEntityAccess(item);
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
 }
@@ -749,7 +755,7 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
         return failed_moving.release_ownership();
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, nanotime::now(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving.release_ownership();
 }

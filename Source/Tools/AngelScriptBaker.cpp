@@ -89,7 +89,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     // Process files
     vector<std::future<void>> file_bakings;
     mutex messages_locker;
-    unordered_set<string> messages FO_TSA_GUARDED_BY(messages_locker);
+    unordered_set<string> messages;
 
     const auto message_callback = [&](string_view message) {
         scoped_lock lock {messages_locker};

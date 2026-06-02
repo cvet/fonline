@@ -110,7 +110,7 @@ void EntityLock::Acquire(uint64_t ticket)
     locker.unlock();
 
     if (state == WaitEntry::STATE_ABORTED) {
-        throw GenericException("EntityLock::Acquire aborted: shutdown in progress");
+        throw EntityLockWaitAbortedException("EntityLock::Acquire aborted: shutdown in progress");
     }
 
     FO_RUNTIME_ASSERT(state == WaitEntry::STATE_GRANTED);
@@ -170,7 +170,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
     locker.unlock();
 
     if (state == WaitEntry::STATE_ABORTED) {
-        throw GenericException("EntityLock::AcquireShared aborted: shutdown in progress");
+        throw EntityLockWaitAbortedException("EntityLock::AcquireShared aborted: shutdown in progress");
     }
 
     FO_RUNTIME_ASSERT(state == WaitEntry::STATE_GRANTED);
@@ -344,12 +344,13 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
     }
 
     auto* current_ctx = SyncContext::GetCurrentOnThisThread();
-    FO_STRONG_ASSERT(current_ctx != nullptr);
+    FO_STRONG_ASSERT(current_ctx);
 
     if (current_ctx->IsEmpty()) {
         return true;
     }
 
+    // Try to find a covering lock, verify it still covers after acquire, retry if it doesn't.
     const auto try_hold_entity = [](const ServerEntity* e) -> refcount_ptr<const ServerEntity> {
         if (e != nullptr && e->TryAddRef()) {
             return refcount_ptr<const ServerEntity>(refcount_ptr<const ServerEntity>::adopt, e);
@@ -376,6 +377,21 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         }
 
         if (found_lock == nullptr) {
+            // A player-controlled critter and its Player are coupled through GetSyncWidenEntity (not
+            // parent containment), and SyncEntities co-locks them (symmetric auto-widen). Accessing
+            // one is therefore valid whenever the other is covered — mirror the widen-aware cover
+            // check SyncEntities performs at verify time (search the widen-linked entity's own +
+            // ancestor locks). This only relaxes access; the entity's own chain failed above.
+            if (auto* widen = const_cast<ServerEntity*>(entity)->GetSyncWidenEntity(); widen != nullptr) {
+                for (auto current = try_hold_entity(widen); current; current = current->GetParentRaw()) {
+                    auto* lock = current->GetEntityLock();
+
+                    if (lock == nullptr || lock->IsLockedByCurrentThread()) {
+                        return true;
+                    }
+                }
+            }
+
             return false;
         }
 
@@ -526,10 +542,16 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
                 widened = false;
 
                 vector<ServerEntity*> snapshot;
-                snapshot.reserve(lock_to_entity.size());
+                snapshot.reserve(lock_to_entity.size() + entities.size());
 
                 for (auto& [lock, entity] : lock_to_entity) {
                     snapshot.push_back(entity);
+                }
+
+                for (auto* entity : entities) {
+                    if (entity != nullptr) {
+                        snapshot.push_back(entity);
+                    }
                 }
 
                 for (auto* entity : snapshot) {
@@ -723,6 +745,14 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
         return;
     }
 
+    // A fully empty sync context is the legacy/unrestricted access mode. Registering a freshly
+    // created entity inside that mode must not turn the scope into a partial lock set, otherwise the
+    // very next access to an unrelated entity starts failing spuriously. Singleton locks (Game.Lock)
+    // still make the context restricted, so fresh entities created under them must be added.
+    if (_heldLocks.empty() && _singletonLocks.empty()) {
+        return;
+    }
+
     auto* lock = entity->GetEntityLock();
 
     if (lock == nullptr) {
@@ -773,6 +803,22 @@ void SyncContext::Release() noexcept
     // even when paired calls were balanced (no-op on empty buckets).
     ReleaseLocks();
     ReleaseSingletonLocks();
+}
+
+auto SyncContext::GetHeldEntityIds() const -> vector<ident_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ident_t> ids;
+    ids.reserve(_heldLockOwners.size());
+
+    for (const auto& owner : _heldLockOwners) {
+        if (owner && owner->GetId()) {
+            ids.emplace_back(owner->GetId());
+        }
+    }
+
+    return ids;
 }
 
 void SyncContext::LockSingleton(EntityLock* lock)
@@ -888,6 +934,8 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
     // keeps its hold. Because the thread never blocks while holding a lock, no wait-for cycle can
     // form. Locks already owned by this thread (the parent cover) succeed immediately via
     // TryAcquire's re-entrant fast path and never trigger back-off.
+    const bool can_wait_for_fair_turn = _previousContext == nullptr;
+
     for (int32_t spins = 0;;) {
         size_t acquired = 0;
 
@@ -903,12 +951,17 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
             locks[i]->Release();
         }
 
-        // Escalating back-off: spin-yield first so a briefly-contended lock is taken promptly, then
-        // fall back to a short sleep so a longer-held lock's owner isn't starved by a busy spinner.
-        if (++spins < 64) {
+        // Escalating back-off: spin-yield first so a briefly-contended lock is taken promptly. A
+        // top-level context can then queue briefly for the contended lock and release it immediately,
+        // which gives the lock a visible exclusive waiter and prevents an endless stream of shared
+        // readers from starving this sync attempt. Nested contexts must keep the non-parking rule
+        // because their parent may already hold unrelated locks.
+        if (++spins < 64 || !can_wait_for_fair_turn) {
             std::this_thread::yield();
         }
         else {
+            locks[acquired]->Acquire(NextSyncTicket());
+            locks[acquired]->Release();
             std::this_thread::sleep_for(std::chrono::microseconds(50));
         }
     }

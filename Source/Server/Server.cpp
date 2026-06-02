@@ -103,7 +103,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     // Engine-wide invariant: a primary SyncContext is always active when an event fires.
-    FO_STRONG_ASSERT(GetCurrentSyncContext() != nullptr);
+    FO_STRONG_ASSERT(GetCurrentSyncContext());
 
     bool had_exception = false;
 
@@ -867,15 +867,11 @@ void ServerEngine::Shutdown()
 
     WriteLog("Stop server");
 
-    // Flip the shutdown flag as the very first thing so the `OnTimeEventSchedule` lambda body
-    // can bail out before calling `SyncEntity` on freshly-picked jobs. Per-engine atomic (not a
-    // process-wide static) so parallel test workers hosted in the same process don't cascade
-    // each other's shutdown.
     _shutdownInProgress.store(true, std::memory_order_release);
 
     // Wake every worker currently parked inside `EntityLock::Acquire` on one of this engine's
     // entity locks. `AbortPendingWaiters` notify_one's each waiting `WaitEntry` so the waiter
-    // throws `GenericException` and unwinds its job — no poll, no thundering herd, strict FIFO
+    // throws `EntityLockWaitAbortedException` and unwinds its job — no poll, no thundering herd, strict FIFO
     // is unaffected for non-shutdown traffic.
     {
         WriteLog("Shutdown stage: AbortPendingWaiters on entity locks");
@@ -1659,6 +1655,8 @@ void ServerEngine::ProcessPlayer(Player* player)
     if (connection->IsHardDisconnected()) {
         WriteLog("Disconnected player {}", player->GetName());
 
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(player->GetControlledCritter());
         OnPlayerLogout.Fire(player);
 
         player->DetachCritter();
@@ -1799,6 +1797,8 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
 
     const auto cmd = buf.Read<uint8_t>();
     auto* player_cr = player->GetControlledCritter();
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(player_cr);
     const auto allow_command = OnPlayerAllowCommand.Fire(player, cmd) == EventResult::ContinueChain;
 
     if (!allow_command) {
@@ -2106,7 +2106,31 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
 
     MapMngr.AddCritterToMap(cr.get(), nullptr, {}, hdir {}, {});
 
+    bool release_empty_sync_context = false;
+
     if (!cr->IsDestroyed()) {
+        auto* ctx = GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+
+        if (ctx->IsEmpty()) {
+            ctx->SyncEntity(cr.get());
+            release_empty_sync_context = true;
+        }
+        else {
+            ctx->EnsureEntitySynced(cr.get());
+        }
+    }
+
+    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
+                ctx->Release();
+            }
+        }
+    });
+
+    if (!cr->IsDestroyed()) {
+        ValidateEntityAccess(cr.get());
         OnGlobalMapCritterIn.Fire(cr.get());
     }
     if (!cr->IsDestroyed()) {
@@ -2160,7 +2184,31 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     EntityMngr.MakePersistent(cr, true, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
+    bool release_empty_sync_context = false;
+
     if (!cr->IsDestroyed()) {
+        auto* ctx = GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+
+        if (ctx->IsEmpty()) {
+            ctx->SyncEntity(cr);
+            release_empty_sync_context = true;
+        }
+        else {
+            ctx->EnsureEntitySynced(cr);
+        }
+    }
+
+    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
+                ctx->Release();
+            }
+        }
+    });
+
+    if (!cr->IsDestroyed()) {
+        ValidateEntityAccess(cr);
         OnGlobalMapCritterIn.Fire(cr);
     }
     if (!cr->IsDestroyed()) {
@@ -2169,6 +2217,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         MapMngr.ProcessVisibleItems(cr);
     }
     if (!cr->IsDestroyed()) {
+        ValidateEntityAccess(cr);
         OnCritterLoad.Fire(cr);
     }
 
@@ -2197,6 +2246,7 @@ void ServerEngine::UnloadCritter(Critter* cr)
 
     cr->MarkAsDestroying();
 
+    ValidateEntityAccess(cr);
     OnCritterUnload.Fire(cr);
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
@@ -2285,7 +2335,33 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
     FO_RUNTIME_ASSERT(player);
     FO_RUNTIME_ASSERT(!player->IsDestroyed());
 
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (ctx->IsEmpty()) {
+        ServerEntity* sync_entities[] = {player, cr};
+        ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+        release_empty_sync_context = true;
+    }
+    else {
+        ctx->EnsureEntitySynced(player);
+        ctx->EnsureEntitySynced(player->GetControlledCritter());
+        ctx->EnsureEntitySynced(cr);
+    }
+
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            ctx->Release();
+        }
+    });
+
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(cr);
+
     Critter* prev_cr = player->GetControlledCritter();
+    ValidateEntityAccess(prev_cr);
 
     if (cr == nullptr) {
         if (prev_cr == nullptr) {
@@ -2299,14 +2375,17 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
-    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
-
     if (prev_cr == cr) {
         throw GenericException("Player critter already selected");
     }
     if (!cr->GetControlledByPlayer()) {
         throw GenericException("Critter can't be controlled by player");
     }
+    if (cr->GetPlayer() != nullptr) {
+        throw GenericException("Critter already attached to player");
+    }
+
+    WriteLog(LogType::Info, "Switch player {} to critter {}", player->GetName(), cr->GetName());
 
     player->ResetViewMap();
 
@@ -2316,19 +2395,12 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     cr->AttachPlayer(player);
 
-    // Widen the outer SyncContext's cover to include the newly-attached critter — the player
-    // is already locked there (by whoever fired the event/job that's currently switching), so
-    // attaching cr to the SAME outer cover means subsequent per-callback nested contexts in the
-    // event chain (e.g. OnPlayerLogin handlers running after PlayerInit attaches the critter)
-    // inherit the cr lock recursively. Without this, every downstream handler that touches
-    // `player.GetControlledCritter().X` has to sync the critter again on its own.
-    if (auto* outermost = SyncContext::GetOutermostOnThisThread(); outermost != nullptr) {
-        outermost->EnsureEntitySynced(cr);
-    }
-
     SendCritterInitialInfo(cr, prev_cr);
 
     if (prev_cr != nullptr) {
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(prev_cr);
         OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
     }
 }
@@ -2350,9 +2422,45 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 
 void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
+    FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(prev_cr);
+
+    auto map = EntityMngr.GetMap(cr->GetMapId());
+
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (ctx->IsEmpty()) {
+        if (map != nullptr) {
+            ServerEntity* sync_entities[] = {cr, map.get()};
+            ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+        }
+        else {
+            ctx->SyncEntity(cr);
+        }
+        release_empty_sync_context = true;
+    }
+    else {
+        ctx->EnsureEntitySynced(cr);
+        ctx->EnsureEntitySynced(map.get());
+    }
+
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            ctx->Release();
+        }
+    });
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(prev_cr);
+    ValidateEntityAccess(map.get());
+
     cr->Send_TimeSync();
 
-    const auto map = EntityMngr.GetMap(cr->GetMapId());
     const bool same_map = prev_cr != nullptr && prev_cr->GetMapId() == cr->GetMapId();
 
     if (same_map) {
@@ -2410,6 +2518,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         }
     }
 
+    ValidateEntityAccess(cr);
     OnCritterSendInitialInfo.Fire(cr);
 
     cr->Send_PlaceToGameComplete();
@@ -2684,6 +2793,8 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
     player->SetLogined(true);
     player->Send_LoginSuccess();
 
+    ValidateEntityAccess(player);
+
     if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
@@ -2754,6 +2865,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         player->SetLogined(true);
         player->Send_LoginSuccess();
 
+        ValidateEntityAccess(player);
+
         if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
             player->DetachCritter();
             player->ResetViewMap();
@@ -2766,10 +2879,22 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         }
     }
     else {
+        auto* ctx = GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ServerEntity* sync_entities[] = {player, unlogined_player};
+        ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+        if (player->IsDestroyed() || unlogined_player->IsDestroyed()) {
+            return nullptr;
+        }
+
         // Kick previous
         player->SwapConnection(unlogined_player);
         unlogined_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
+
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(unlogined_player);
 
         if (OnPlayerLogin.Fire(player, unlogined_player) == Entity::EventResult::StopChain) {
             player->SetLogined(false);
@@ -2825,6 +2950,8 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
     player->SetLogined(true);
     player->Send_LoginSuccess();
 
+    ValidateEntityAccess(player);
+
     if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
         player->DetachCritter();
         player->MarkAsDestroyed();
@@ -2836,6 +2963,43 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
     }
 
     return player;
+}
+
+void ServerEngine::HardDisconnectPlayer(Player* player)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (ctx->IsEmpty()) {
+        ctx->SyncEntity(player);
+        release_empty_sync_context = true;
+    }
+    else {
+        ctx->EnsureEntitySynced(player);
+    }
+
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            ctx->Release();
+        }
+    });
+
+    if (player->IsDestroyed()) {
+        return;
+    }
+
+    player->GetConnection()->HardDisconnect();
+
+    if (player->GetLogined()) {
+        ProcessPlayer(player);
+    }
+    else {
+        ProcessUnloginedPlayer(player);
+    }
 }
 
 void ServerEngine::Process_Move(Player* player)
@@ -2877,9 +3041,20 @@ void ServerEngine::Process_Move(Player* player)
         return;
     }
 
-    Critter* cr = map->GetCritter(cr_id);
+    auto cr_ref = EntityMngr.GetCritter(cr_id);
+    auto* ctx = _workerPool->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
 
-    if (cr == nullptr) {
+    ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
+    ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+    if (player->IsDestroyed() || map->IsDestroyed()) {
+        return;
+    }
+
+    Critter* cr = cr_ref.get();
+
+    if (cr == nullptr || cr->IsDestroyed() || map->GetCritter(cr_id) != cr) {
         WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
@@ -2898,6 +3073,9 @@ void ServerEngine::Process_Move(Player* player)
     }
 
     int32_t corrected_speed = speed;
+
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(cr);
 
     if (OnPlayerMoveCritter.Fire(player, cr, corrected_speed) == EventResult::StopChain) {
         WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
@@ -3018,9 +3196,20 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
-    Critter* cr = map->GetCritter(cr_id);
+    auto cr_ref = EntityMngr.GetCritter(cr_id);
+    auto* ctx = _workerPool->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
 
-    if (cr == nullptr) {
+    ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
+    ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+    if (player->IsDestroyed() || map->IsDestroyed()) {
+        return;
+    }
+
+    Critter* cr = cr_ref.get();
+
+    if (cr == nullptr || cr->IsDestroyed() || map->GetCritter(cr_id) != cr) {
         WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
@@ -3038,6 +3227,9 @@ void ServerEngine::Process_StopMove(Player* player)
     }
 
     int32_t zero_speed = 0;
+
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(cr);
 
     if (OnPlayerMoveCritter.Fire(player, cr, zero_speed) == EventResult::StopChain) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
@@ -3080,14 +3272,28 @@ void ServerEngine::Process_Dir(Player* player)
         return;
     }
 
-    auto* cr = map->GetCritter(cr_id);
+    auto cr_ref = EntityMngr.GetCritter(cr_id);
+    auto* ctx = _workerPool->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
 
-    if (cr == nullptr) {
+    ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
+    ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+    if (player->IsDestroyed() || map->IsDestroyed()) {
+        return;
+    }
+
+    auto* cr = cr_ref.get();
+
+    if (cr == nullptr || cr->IsDestroyed() || map->GetCritter(cr_id) != cr) {
         WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     mdir checked_dir = dir;
+
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(cr);
 
     if (OnPlayerDirCritter.Fire(player, cr, checked_dir) == EventResult::StopChain) {
         WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
@@ -3671,7 +3877,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    const auto current_time = GameTime.GetFrameTime();
+    const auto current_time = nanotime::now();
     const auto max_hex_updates = moving->GetSteps().size() + 1;
 
     for (size_t i = 0; i < max_hex_updates; i++) {
@@ -3719,6 +3925,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                 return;
             }
 
+            ValidateEntityAccess(cr);
             OnCritterMoved.Fire(cr, old_hex);
 
             if (!validate_moving(target_hex)) {
@@ -3864,6 +4071,9 @@ auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map
 
     mdir checked_dir = client_dir;
 
+    ValidateEntityAccess(player);
+    ValidateEntityAccess(cr);
+
     if (OnPlayerDirCritter.Fire(player, cr, checked_dir) != EventResult::StopChain) {
         if (cr->IsDestroyed() || map->IsDestroyed()) {
             return false;
@@ -3991,6 +4201,7 @@ auto ServerEngine::MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) 
         return false;
     }
 
+    ValidateEntityAccess(cr);
     OnCritterMoved.Fire(cr, old_hex);
 
     if (!validate_moved_critter()) {
@@ -4068,6 +4279,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
 
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); });
 
+    ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr, was_moving);
 }
 
@@ -4080,7 +4292,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<
 
     const auto start_hex = cr->GetHex();
 
-    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, nanotime::now(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
 void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend)
@@ -4103,6 +4315,7 @@ void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<v
         cr->SendAndBroadcast_Moving();
     }
 
+    ValidateEntityAccess(cr);
     OnCritterStopMoving.Fire(cr);
 }
 
@@ -4124,12 +4337,13 @@ void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
         return;
     }
 
-    const auto cur_time = GameTime.GetFrameTime();
+    const auto cur_time = nanotime::now();
     cr->GetMoving()->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
 
     cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); }, [cr](Player* p) { p->Send_MovingSpeed(cr); });
 
+    ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr, true);
 }
 

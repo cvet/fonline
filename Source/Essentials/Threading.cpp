@@ -121,9 +121,6 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
         return true;
     }
 
-    bool spawn_new_worker = false;
-    string new_worker_name;
-
     {
         std::lock_guard locker(pool.Locker);
 
@@ -151,26 +148,22 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
         // the earlier long-lived task and never parks again. Keeping workers >= pending tasks
         // guarantees forward progress for every submitted task.
         if (pool.Pending.size() > pool.IdleCount && can_spawn_worker) {
-            new_worker_name = strex("{}-{}", pool.NamePrefix, pool.Workers.size());
-            spawn_new_worker = true;
+            // Reserve/register the worker while still holding the pool lock so concurrent
+            // submitters see the updated size and cannot overshoot MaxWorkers.
+            spawn_pool_worker(pool, strex("{}-{}", pool.NamePrefix, pool.Workers.size()));
         }
-    }
-
-    if (spawn_new_worker) {
-        // Spawn the OS thread outside the pool lock — `set_this_thread_name` (Tracy / OS thread
-        // table) does its own locking and we don't want to hold the pool lock across it.
-        spawn_pool_worker(pool, new_worker_name);
     }
 
     pool.WorkSignal.notify_one();
     return true;
 }
 
+// Caller must hold `pool.Locker`.
 static void spawn_pool_worker(Pool& pool, const string& worker_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::thread worker {[worker_name, pool_ptr = &pool] {
+    pool.Workers.emplace_back([worker_name, pool_ptr = &pool] {
         try {
             set_this_thread_name(worker_name);
         }
@@ -179,10 +172,7 @@ static void spawn_pool_worker(Pool& pool, const string& worker_name)
         }
 
         worker_loop(pool_ptr);
-    }};
-
-    std::lock_guard locker(pool.Locker);
-    pool.Workers.emplace_back(std::move(worker));
+    });
 }
 
 static void worker_loop(Pool* pool) noexcept
@@ -420,7 +410,9 @@ void thread::join()
     FO_STACK_TRACE_ENTRY();
 
     if (_future.valid()) {
-        _future.wait();
+        auto future = std::move(_future);
+        _runningThreadId.reset();
+        future.get();
     }
 }
 

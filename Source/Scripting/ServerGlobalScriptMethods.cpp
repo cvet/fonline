@@ -609,6 +609,17 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_GetCritter(ServerEngine* server, 
 }
 
 ///@ ExportMethod PassOwnership
+FO_SCRIPT_API FO_NULLABLE ServerEntity* Server_Game_GetEntity(ServerEngine* server, ident_t entityId)
+{
+    if (!entityId) {
+        return nullptr;
+    }
+
+    auto entity = server->EntityMngr.GetEntity(entityId);
+    return entity.release_ownership();
+}
+
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
 {
     auto critters = server->EntityMngr.GetCritters();
@@ -627,7 +638,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, Cri
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
 {
-    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
     return server->CreateUnloginedPlayer(std::move(dummy_net_conn));
 }
 
@@ -1503,6 +1514,14 @@ FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
     auto* ctx = server->GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
     ctx->Release();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Game_GetHeldSyncEntityIds(ServerEngine* server)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    return ctx->GetHeldEntityIds();
 }
 
 ///@ ExportMethod

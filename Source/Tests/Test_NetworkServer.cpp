@@ -90,6 +90,23 @@ TEST_CASE("NetworkServerDummyConnectionIsDisconnected")
     CHECK(conn->IsDisconnected());
 }
 
+TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
+{
+    auto settings = MakeServerNetworkSettings();
+
+    auto conn = NetworkServer::CreateDummyConnection(settings, NetworkServer::DummyConnectionState::Connected);
+    REQUIRE(conn != nullptr);
+
+    CHECK(conn->GetHost() == "Dummy");
+    CHECK_FALSE(conn->IsDisconnected());
+
+    conn->Dispatch();
+    CHECK_FALSE(conn->IsDisconnected());
+
+    conn->Disconnect();
+    CHECK(conn->IsDisconnected());
+}
+
 TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
     auto settings = MakeServerNetworkSettings();

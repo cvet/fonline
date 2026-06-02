@@ -935,6 +935,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
 
     loc->SetInitCalled();
 
+    ValidateEntityAccess(loc);
     _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
@@ -964,6 +965,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
 
     map->SetInitCalled();
 
+    ValidateEntityAccess(map);
     _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
@@ -1001,6 +1003,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
 
     cr->SetInitCalled();
 
+    ValidateEntityAccess(cr);
     _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
@@ -1030,6 +1033,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
 
     item->SetInitCalled();
 
+    ValidateEntityAccess(item);
     _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {

@@ -129,11 +129,16 @@ void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
 class DummyNetConnection : public NetworkServerConnection
 {
 public:
-    explicit DummyNetConnection(ServerNetworkSettings& settings) :
+    explicit DummyNetConnection(ServerNetworkSettings& settings, NetworkServer::DummyConnectionState state) :
         NetworkServerConnection(settings)
     {
+        FO_STACK_TRACE_ENTRY();
+
         _host = "Dummy";
-        Disconnect();
+
+        if (state == NetworkServer::DummyConnectionState::Disconnected) {
+            Disconnect();
+        }
     }
     DummyNetConnection(const DummyNetConnection&) = delete;
     DummyNetConnection(DummyNetConnection&&) noexcept = delete;
@@ -142,15 +147,22 @@ public:
     ~DummyNetConnection() override = default;
 
 protected:
-    void DispatchImpl() override { }
-    void DisconnectImpl() override { }
+    void DispatchImpl() override
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+    }
+
+    void DisconnectImpl() override
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+    }
 };
 
-auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>
+auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings, DummyConnectionState state) -> shared_ptr<NetworkServerConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeShared<DummyNetConnection>(settings);
+    return SafeAlloc::MakeShared<DummyNetConnection>(settings, state);
 }
 
 FO_END_NAMESPACE

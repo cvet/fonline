@@ -202,6 +202,7 @@ void ItemManager::DestroyItem(Item* item)
     item->MarkAsDestroying();
 
     // Finish events
+    ValidateEntityAccess(item);
     _engine->OnItemFinish.Fire(item);
 
     // Tear off from environment

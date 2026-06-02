@@ -338,6 +338,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/EntityProperties.h"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"

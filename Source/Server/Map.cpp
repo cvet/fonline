@@ -314,6 +314,9 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
         if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(dropper);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
     }
@@ -391,6 +394,9 @@ void Map::RemoveItem(ident_t item_id)
     vec_remove_unique_value(field.Items, item);
 
     RevertEntityLock(item);
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -425,6 +431,8 @@ void Map::RemoveItem(ident_t item_id)
 
         if (cr->RemoveVisibleItem(item->GetId())) {
             cr->Send_RemoveItemFromMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
@@ -458,6 +466,8 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         for (auto* cr : copy_hold_ref(_critters)) {
             if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapChanged.Fire(item);
             }
         }
@@ -536,12 +546,16 @@ void Map::ChangeViewItem(Item* item)
             if (!cr->CanSeeItemOnMap(item)) {
                 cr->RemoveVisibleItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
         }
         else if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
         }
     }
@@ -1011,6 +1025,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 }
             }
 
+            ValidateEntityAccess(item.get());
+            ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, false, dir);
 
             if (cr->IsDestroyed()) {
@@ -1031,6 +1047,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 }
             }
 
+            ValidateEntityAccess(item.get());
+            ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, true, dir);
 
             if (cr->IsDestroyed()) {
@@ -1045,6 +1063,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 continue;
             }
 
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, false, dir);
 
             if (cr->IsDestroyed()) {
@@ -1059,6 +1079,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 continue;
             }
 
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, true, dir);
 
             if (cr->IsDestroyed()) {

@@ -391,7 +391,9 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     next_delay = job.Body();
                 }
                 catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
+                    if (!_shutdownFlag->load(std::memory_order_acquire)) {
+                        ReportExceptionAndContinue(ex);
+                    }
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();

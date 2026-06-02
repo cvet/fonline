@@ -107,6 +107,7 @@ public:
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
     auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
     auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
+    void HardDisconnectPlayer(Player* player);
 
     auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;

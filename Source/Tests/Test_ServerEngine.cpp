@@ -49,6 +49,41 @@ namespace
     const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
+    class StableTestConnection final : public NetworkServerConnection
+    {
+    public:
+        explicit StableTestConnection(ServerNetworkSettings& settings) :
+            NetworkServerConnection(settings)
+        {
+            FO_STACK_TRACE_ENTRY();
+
+            _host = "StableTest";
+        }
+        StableTestConnection(const StableTestConnection&) = delete;
+        StableTestConnection(StableTestConnection&&) noexcept = delete;
+        auto operator=(const StableTestConnection&) = delete;
+        auto operator=(StableTestConnection&&) noexcept = delete;
+        ~StableTestConnection() override = default;
+
+    protected:
+        void DispatchImpl() override
+        {
+            FO_STACK_TRACE_ENTRY();
+        }
+
+        void DisconnectImpl() override
+        {
+            FO_STACK_TRACE_ENTRY();
+        }
+    };
+
+    static auto CreateStableTestConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return SafeAlloc::MakeShared<StableTestConnection>(settings);
+    }
+
     static auto MakeServerTestSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -285,9 +320,11 @@ namespace ServerEngineTest
         const auto critter_type = proto_engine.Hashes.ToHashedString("Critter");
         const auto location_type = proto_engine.Hashes.ToHashedString("Location");
         const auto map_type = proto_engine.Hashes.ToHashedString("Map");
+        const auto item_type = proto_engine.Hashes.ToHashedString("Item");
         const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
         const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
+        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
@@ -296,6 +333,7 @@ namespace ServerEngineTest
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
+        runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("ServerEngineTest.fos-bin-server", script_blob);
 
@@ -327,7 +365,7 @@ namespace ServerEngineTest
     {
         FO_RUNTIME_ASSERT(server);
 
-        auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
+        auto unlogined_player = server->CreateUnloginedPlayer(CreateStableTestConnection(server->Settings));
 
         if (unlogined_player == nullptr) {
             return nullptr;
@@ -336,6 +374,16 @@ namespace ServerEngineTest
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         return server->LoginPlayerToNewRecord(unlogined_player);
+    }
+
+    static auto CreateStandalonePlayer(ServerEngine* server, string_view name) -> refcount_ptr<Player>
+    {
+        FO_RUNTIME_ASSERT(server);
+
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings));
+        auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        player->SetName(name);
+        return player;
     }
 
     static auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
@@ -962,13 +1010,30 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
     ctx.Release();
 
-    // EnsureEntitySynced adds one lock and is idempotent when already covered.
+    // EnsureEntitySynced is a no-op in fully empty/unrestricted mode: registering a fresh entity must
+    // not accidentally turn the scope into a partial lock set. Once a scope is restricted (including
+    // a singleton Game.Lock-style lock), it adds one lock and is idempotent when already covered.
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(ctx.IsEmpty());
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
+
+    ctx.LockSingleton(server->GetEntityLock());
     ctx.EnsureEntitySynced(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(IsEntityAccessValid(cr_a));
     CHECK_FALSE(IsEntityAccessValid(cr_b));
+    ctx.Release();
+
+    ctx.SyncEntity(cr_a);
+    ctx.EnsureEntitySynced(cr_a);
+    CHECK(ctx.ValidateAccess(cr_a));
+    ctx.EnsureEntitySynced(cr_a);
+    CHECK(ctx.ValidateAccess(cr_a));
+    ctx.EnsureEntitySynced(cr_b);
+    CHECK(ctx.ValidateAccess(cr_b));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
 
     // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
@@ -1010,6 +1075,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
     const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
     const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    const auto item_pid = server->Hashes.ToHashedString("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -1031,8 +1097,10 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     REQUIRE(cr_a != nullptr);
     REQUIRE(cr_b != nullptr);
 
-    auto* player_a = CreateLoggedPlayer(server.get(), "SyncWidenPlayerA");
-    auto* player_b = CreateLoggedPlayer(server.get(), "SyncWidenPlayerB");
+    auto player_a_holder = CreateStandalonePlayer(server.get(), "SyncWidenPlayerA");
+    auto player_b_holder = CreateStandalonePlayer(server.get(), "SyncWidenPlayerB");
+    auto* player_a = player_a_holder.get();
+    auto* player_b = player_b_holder.get();
     REQUIRE(player_a != nullptr);
     REQUIRE(player_b != nullptr);
 
@@ -1041,8 +1109,30 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     cr_b->AttachPlayer(player_b);
     player_b->SetControlledCritter(cr_b);
 
+    auto detach_players = scope_exit([&]() noexcept {
+        safe_call([&] {
+            SyncContext cleanup_ctx;
+            cleanup_ctx.Activate();
+            auto deactivate_cleanup = scope_exit([&cleanup_ctx]() noexcept {
+                safe_call([&cleanup_ctx] {
+                    cleanup_ctx.Release();
+                    cleanup_ctx.Deactivate();
+                });
+            });
+
+            if (cr_a->GetPlayer() != nullptr) {
+                cr_a->DetachPlayer();
+            }
+            if (cr_b->GetPlayer() != nullptr) {
+                cr_b->DetachPlayer();
+            }
+        });
+    });
+
     server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
+    auto* item_a = server->ItemMngr.AddItemCritter(cr_a, item_pid, 1);
+    REQUIRE(item_a != nullptr);
 
     // The widen link must be live in both directions before we test the cover.
     REQUIRE(cr_a->GetSyncWidenEntity() == static_cast<ServerEntity*>(player_a));
@@ -1083,6 +1173,21 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         CHECK(ctx.ValidateAccess(cr_a));
         CHECK(IsEntityAccessValid(player_a));
         CHECK(IsEntityAccessValid(cr_a));
+    }
+    ctx.Release();
+
+    // Duplicate-lock regression: an inventory item can share the holder critter's propagated lock.
+    // The lock-set representative may be the item, but widening still has to inspect the explicitly
+    // requested holder so the controlled Player lock is included.
+    {
+        vector<ServerEntity*> item_holder_map {item_a, cr_a, map};
+        REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_map));
+        CHECK(ctx.ValidateAccess(item_a));
+        CHECK(ctx.ValidateAccess(cr_a));
+        CHECK(ctx.ValidateAccess(map));
+        CHECK(ctx.ValidateAccess(player_a));
+        CHECK(IsEntityAccessValid(item_a));
+        CHECK(IsEntityAccessValid(player_a));
     }
     ctx.Release();
 

@@ -38,6 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EntitySyncException);
+FO_DECLARE_EXCEPTION_EXT(EntityLockWaitAbortedException, EntitySyncException);
 
 class ServerEngine;
 class ServerEntity;
@@ -126,6 +127,7 @@ public:
 
     [[nodiscard]] auto ValidateAccess(const ServerEntity* entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
+    [[nodiscard]] auto GetHeldEntityIds() const -> vector<ident_t>;
 
     void Activate() noexcept;
     void Deactivate() noexcept;
