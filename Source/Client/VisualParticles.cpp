@@ -191,6 +191,22 @@ auto ParticleSystem::GetDrawSize() const -> isize32
     return {max_draw_width, max_draw_height};
 }
 
+auto ParticleSystem::GetDrawInScene() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < _impl->System->getNbGroups(); i++) {
+        auto&& group = _impl->System->getGroup(i);
+        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
+
+        if (renderer && renderer->GetDrawInScene()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 auto ParticleSystem::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();

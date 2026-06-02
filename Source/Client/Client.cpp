@@ -166,6 +166,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterElevation(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
@@ -184,6 +185,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemPicMap(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemElevation(entity, prop); });
     }
 
     _eventUnsubscriber += window.GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
@@ -2145,6 +2147,19 @@ void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
     }
 }
 
+void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        cr->RefreshSprite();
+    }
+}
+
 void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2245,6 +2260,20 @@ void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->SetSpriteVisiblity(!item->GetHideSprite());
+    }
+}
+
+void ClientEngine::OnSetItemElevation(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->RefreshSprite();
+        item->GetMap()->MeasureMapBorders(item);
     }
 }
 

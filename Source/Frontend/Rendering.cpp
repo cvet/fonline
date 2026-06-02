@@ -156,9 +156,39 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         throw GenericException("Unknown blend equation type", s);
     };
 
+    static auto get_depth_func = [](string_view s) -> DepthFuncType {
+        if (s == "Always") {
+            return DepthFuncType::Always;
+        }
+        if (s == "Never") {
+            return DepthFuncType::Never;
+        }
+        if (s == "Less") {
+            return DepthFuncType::Less;
+        }
+        if (s == "LessEqual") {
+            return DepthFuncType::LessEqual;
+        }
+        if (s == "Equal") {
+            return DepthFuncType::Equal;
+        }
+        if (s == "GreaterEqual") {
+            return DepthFuncType::GreaterEqual;
+        }
+        if (s == "Greater") {
+            return DepthFuncType::Greater;
+        }
+        if (s == "NotEqual") {
+            return DepthFuncType::NotEqual;
+        }
+
+        throw GenericException("Unknown depth func type", s);
+    };
+
     const auto blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
     const auto blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
     const auto depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
+    const auto depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
@@ -171,6 +201,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
         _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
 
         const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);

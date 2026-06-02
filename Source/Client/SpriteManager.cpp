@@ -1077,6 +1077,15 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     const auto& sprites = mspr_list.GetActiveSprites();
     const bool apply_brightness = _settings->Brightness != 0;
 
+    const auto get_map_sprite_depth = [&](const MapSprite* mspr) -> float32_t {
+        const float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
+        const float32_t world_z = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(mspr->GetHex(), elevation)).z;
+        const float32_t layer_bias = numeric_cast<float32_t>(static_cast<int32_t>(mspr->GetDrawOrder())) * _settings->MapLayerDepthBias;
+        return std::clamp(world_z * _settings->MapDepthScale + layer_bias, -9.0f, 9.0f);
+    };
+
+    _directDrawSprites.clear();
+
     for (uint32_t i = range_begin; i < range_end; i++) {
         const auto& mspr = sprites[i];
         FO_RUNTIME_ASSERT(mspr->IsValid());
@@ -1094,6 +1103,14 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         // Skip not visible
         if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
+            continue;
+        }
+
+        if (spr->IsDirectDraw()) {
+            const float32_t depth = get_map_sprite_depth(mspr.get());
+            const fpos32 scene_pos = {numeric_cast<float32_t>(mspr_rect.x) + numeric_cast<float32_t>(spr->GetSize().width) * 0.5f, //
+                numeric_cast<float32_t>(mspr_rect.y) + numeric_cast<float32_t>(spr->GetSize().height) * 0.5f};
+            _directDrawSprites.emplace_back(DirectDrawSprite {.Spr = spr, .ScenePos = scene_pos, .Depth = depth});
             continue;
         }
 
@@ -1153,8 +1170,15 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
         const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
-        const auto start_vpos = _spritesDrawBuf->VertCount;
-        const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
+        const size_t start_vpos = _spritesDrawBuf->VertCount;
+        const size_t ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
+
+        auto& vbuf = _spritesDrawBuf->Vertices;
+        const float32_t pos_z = get_map_sprite_depth(mspr.get());
+
+        for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+            vbuf[j].PosZ = pos_z;
+        }
 
         // Rotation and map projection.
         const int16_t angle_deg = mspr->GetAngle();
@@ -1167,7 +1191,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             const float32_t y_scale = map_proj ? std::cos(_settings->MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
             const float32_t cx = xf + wf * 0.5f;
             const float32_t cy = yf + hf * 0.5f;
-            auto& vbuf = _spritesDrawBuf->Vertices;
 
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
                 const float32_t dx = vbuf[j].PosX - cx;
@@ -1182,8 +1205,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr->GetHex(), mspr->GetEggAppearence());
 
         if (use_first_egg || use_second_egg) {
-            auto& vbuf = _spritesDrawBuf->Vertices;
-
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
                 vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
                 vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
@@ -1205,6 +1226,12 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     }
 
     Flush();
+
+    for (const auto& dd : _directDrawSprites) {
+        dd.Spr->DrawInScene(dd.ScenePos, dd.Depth);
+    }
+
+    _directDrawSprites.clear();
 }
 
 auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool

@@ -230,6 +230,32 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (depth_func) {
+    case DepthFuncType::Always:
+        return D3D11_COMPARISON_ALWAYS;
+    case DepthFuncType::Never:
+        return D3D11_COMPARISON_NEVER;
+    case DepthFuncType::Less:
+        return D3D11_COMPARISON_LESS;
+    case DepthFuncType::LessEqual:
+        return D3D11_COMPARISON_LESS_EQUAL;
+    case DepthFuncType::Equal:
+        return D3D11_COMPARISON_EQUAL;
+    case DepthFuncType::GreaterEqual:
+        return D3D11_COMPARISON_GREATER_EQUAL;
+    case DepthFuncType::Greater:
+        return D3D11_COMPARISON_GREATER;
+    case DepthFuncType::NotEqual:
+        return D3D11_COMPARISON_NOT_EQUAL;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     FO_STACK_TRACE_ENTRY();
@@ -811,6 +837,12 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
 #endif
 
+            if (usage == EffectUsage::QuadSprite) {
+                depth_stencil_desc.DepthEnable = TRUE;
+                depth_stencil_desc.DepthWriteMask = d3d_effect->_depthWrite[pass] ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->_depthFunc[pass]);
+            }
+
             const auto d3d_create_depth_stencil_state = _ctx->D3DDevice->CreateDepthStencilState(&depth_stencil_desc, d3d_effect->DepthStencilState[pass].get_pp());
 
             if (FAILED(d3d_create_depth_stencil_state)) {
@@ -822,7 +854,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     return std::move(d3d_effect);
 }
 
-auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -858,7 +890,7 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float
     return result;
 }
 
-auto Direct3D_Renderer::GetViewPort() -> irect32
+auto Direct3D_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -48,8 +48,8 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer->CreateTexture(size, linear_filtered, with_depth); }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer->CreateDrawBuffer(is_static); }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer->CreateEffect(usage, name, loader); }
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override { return _renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return _renderer->IsRenderTargetFlipped(); }
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return _renderer->IsRenderTargetFlipped(); }
 
     void SetRenderTarget(RenderTexture* tex) override
     {

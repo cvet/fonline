@@ -95,6 +95,12 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     int32_t x = _hexOffset.x + _pHexOffset->x - spr_size.width / 2 + spr_offset.x;
     int32_t y = _hexOffset.y + _pHexOffset->y - spr_size.height + spr_offset.y;
 
+    if (_elevation != 0) {
+        const float32_t elevation = numeric_cast<float32_t>(_elevation);
+        const float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        y -= iround<int32_t>(map_elevation_y);
+    }
+
     if (_pSprOffset) {
         x += _pSprOffset->x;
         y += _pSprOffset->y;
@@ -199,6 +205,13 @@ void MapSprite::SetHidden(bool hidden) noexcept
     _hidden = hidden;
 }
 
+void MapSprite::SetElevation(int16_t elevation) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _elevation = elevation;
+}
+
 void MapSprite::SetAngle(int16_t angle) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -287,6 +300,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
     mspr->_color = ucolor::clear;
+    mspr->_elevation = 0;
     mspr->_angle = 0;
     mspr->_mapProjection = false;
     mspr->_drawEffect = effect;

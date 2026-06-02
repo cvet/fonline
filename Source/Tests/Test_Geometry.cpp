@@ -392,4 +392,57 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     }
 }
 
+TEST_CASE("Map camera world projection")
+{
+    const int32_t coords[] = {-50, -5, 0, 1, 7, 50};
+
+    SECTION("ProjectWorldToMap of GetHexWorldPos reproduces GetHexPos at ground level")
+    {
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                const ipos32 legacy = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                const vec3 world = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry});
+                const vec3 projected = GeometryHelper::ProjectWorldToMap(world);
+                INFO("rx=" << rx << " ry=" << ry);
+                CHECK(is_float_equal(projected.x, numeric_cast<float32_t>(legacy.x)));
+                CHECK(is_float_equal(projected.y, numeric_cast<float32_t>(legacy.y)));
+            }
+        }
+    }
+
+    SECTION("mpos overload matches ipos32 overload")
+    {
+        for (int16_t rx = 0; rx < 10; rx++) {
+            for (int16_t ry = 0; ry < 10; ry++) {
+                const vec3 from_mpos = GeometryHelper::GetHexWorldPos(mpos {rx, ry});
+                const vec3 from_ipos = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry});
+                CHECK(is_float_equal(from_mpos.x, from_ipos.x));
+                CHECK(is_float_equal(from_mpos.y, from_ipos.y));
+                CHECK(is_float_equal(from_mpos.z, from_ipos.z));
+            }
+        }
+    }
+
+    SECTION("Elevation raises the sprite on screen and brings it nearer the camera")
+    {
+        const vec3 ground = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, 0.0f));
+        const vec3 raised = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, 100.0f));
+        // Higher elevation appears higher on screen (smaller Y in the Y-down map convention).
+        CHECK(raised.y < ground.y);
+        // Higher elevation is nearer the camera (larger depth), so it draws on top.
+        CHECK(raised.z > ground.z);
+        // X is unaffected by elevation.
+        CHECK(is_float_equal(raised.x, ground.x));
+    }
+
+    SECTION("Southward hexes are nearer the camera than northward hexes (painter order)")
+    {
+        const vec3 north = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 0}));
+        const vec3 south = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 10}));
+        // Larger hex.y maps further down-screen and nearer the camera, matching the legacy painter's order.
+        CHECK(south.y > north.y);
+        CHECK(south.z > north.z);
+    }
+}
+
 FO_END_NAMESPACE

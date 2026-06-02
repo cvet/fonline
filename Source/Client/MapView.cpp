@@ -83,7 +83,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
     const auto map_rt_size = isize32(_screenSize.width + GameSettings::MAP_HEX_WIDTH, _screenSize.height + GameSettings::MAP_HEX_LINE_HEIGHT * 2);
 
     if (!_engine->Settings.MapDirectDraw) {
-        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, true);
+        _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(true, map_rt_size, true);
         _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap.get());
 
         if (!_engine->Settings.DisableIndoorMask) {
@@ -2446,7 +2446,7 @@ void MapView::DrawMap()
             else {
                 FO_RUNTIME_ASSERT(_rtMap);
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap.get());
-                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
+                _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
                 const int32_t draw_x = iround<int32_t>(std::floor(_scrollOffset.x)) + step_x * _screenSize.width;
                 const int32_t draw_y = iround<int32_t>(std::floor(_scrollOffset.y)) + step_y * _screenSize.height;

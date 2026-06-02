@@ -1,6 +1,7 @@
 [Effect]
 BlendFunc = SrcAlpha One
 DepthWrite = False
+DepthFunc = LessEqual
 
 [VertexShader]
 layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };

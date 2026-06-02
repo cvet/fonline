@@ -59,7 +59,6 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
-    [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { return _model.get(); }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 

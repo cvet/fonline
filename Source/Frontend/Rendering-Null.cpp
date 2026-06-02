@@ -297,7 +297,7 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
     return SafeAlloc::MakeUnique<Null_Effect>(usage, name, loader);
 }
 
-auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -333,14 +333,14 @@ auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t
     return result;
 }
 
-auto Null_Renderer::GetViewPort() -> irect32
+auto Null_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _viewPortRect;
 }
 
-auto Null_Renderer::IsRenderTargetFlipped() -> bool
+auto Null_Renderer::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -116,6 +116,7 @@ public:
     [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
+    [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjection() const noexcept -> bool { return _mapProjection; }
@@ -127,6 +128,7 @@ public:
     void SetFixedAlpha(uint8_t alpha) noexcept;
     void SetLight(CornerType corner, const ucolor* light, msize size) noexcept;
     void SetHidden(bool hidden) noexcept;
+    void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjection(bool map_projection) noexcept;
     void CreateExtraChain(MapSprite** mspr);
@@ -154,6 +156,7 @@ private:
     raw_ptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
     ucolor _color {};
+    int16_t _elevation {};
     int16_t _angle {};
     bool _mapProjection {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};

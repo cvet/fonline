@@ -188,6 +188,8 @@ FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base sp
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 FIXED_SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Model projection factor
+FIXED_SETTING(float32_t, Render, MapDepthScale, 0.0003f); // Map sprite world-Z to clip-depth scale (shared depth buffer; provisional linear normalization
+FIXED_SETTING(float32_t, Render, MapLayerDepthBias, 0.02f); // Per-DrawOrder depth bias separating co-hex sprite layers in the shared depth buffer
 FIXED_SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
 FIXED_SETTING(int32_t, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
 FIXED_SETTING(float32_t, Render, EggTransparencyTransitionFactor, 0.9f); // Fraction of egg mask kept fully transparent before linear fade to opaque

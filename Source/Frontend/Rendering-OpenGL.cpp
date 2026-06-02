@@ -94,6 +94,7 @@ FO_BEGIN_NAMESPACE
     X(glDeleteTextures, PFNGLDELETETEXTURESPROC); \
     X(glDeleteVertexArrays, PFNGLDELETEVERTEXARRAYSPROC); \
     X(glDeleteVertexArraysAPPLE, PFNGLDELETEVERTEXARRAYSAPPLEPROC); \
+    X(glDepthFunc, PFNGLDEPTHFUNCPROC); \
     X(glDepthMask, PFNGLDEPTHMASKPROC); \
     X(glDetachShader, PFNGLDETACHSHADERPROC); \
     X(glDisable, PFNGLDISABLEPROC); \
@@ -763,7 +764,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     return std::move(opengl_effect);
 }
 
-auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -799,7 +800,7 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
     return result;
 }
 
-auto OpenGL_Renderer::GetViewPort() -> irect32
+auto OpenGL_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1200,6 +1201,32 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertDepthFunc(DepthFuncType name) -> GLenum
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (name) {
+    case DepthFuncType::Always:
+        return GL_ALWAYS;
+    case DepthFuncType::Never:
+        return GL_NEVER;
+    case DepthFuncType::Less:
+        return GL_LESS;
+    case DepthFuncType::LessEqual:
+        return GL_LEQUAL;
+    case DepthFuncType::Equal:
+        return GL_EQUAL;
+    case DepthFuncType::GreaterEqual:
+        return GL_GEQUAL;
+    case DepthFuncType::Greater:
+        return GL_GREATER;
+    case DepthFuncType::NotEqual:
+        return GL_NOTEQUAL;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 OpenGL_Effect::~OpenGL_Effect()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1280,6 +1307,10 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
     }
 #endif
+
+    if (_usage == EffectUsage::QuadSprite) {
+        GL(glEnable(GL_DEPTH_TEST));
+    }
 
     if (opengl_dbuf->VertexArrObj != 0) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
@@ -1404,6 +1435,9 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_FALSE));
         }
+        if (_usage == EffectUsage::QuadSprite) {
+            GL(glDepthFunc(ConvertDepthFunc(_depthFunc[pass])));
+        }
 
         if constexpr (sizeof(vindex_t) == 2) {
             GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
@@ -1468,6 +1502,11 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
     }
 #endif
+
+    if (_usage == EffectUsage::QuadSprite) {
+        GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
+        GL(glDisable(GL_DEPTH_TEST));
+    }
 }
 
 FO_END_NAMESPACE

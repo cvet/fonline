@@ -655,6 +655,50 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
     }
 }
 
+auto GeometryHelper::GetHexWorldPos(mpos hex, float32_t elevation) -> vec3
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return GetHexWorldPos(ipos32(hex), elevation);
+}
+
+auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, float32_t elevation) -> vec3
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Real-3D map-camera world frame: +X right, +Y up (elevation), +Z map-south, one world unit == one
+    // pixel of hex spacing. The fixed map camera is a parallel (orthographic) projection that rigidly tilts
+    // the world about X by MAP_CAMERA_ANGLE; ground northing is foreshortened by sin(angle) (== 1 /
+    // GetYProj()) and elevation by cos(angle). Anchoring the ground point at z = legacy_y / sin(angle) makes
+    // ProjectWorldToMap reproduce the legacy GetHexPos screen position exactly at elevation 0. Models render
+    // in this same frame, so they need no extra transform (see
+    // Docs/Plans/2026-05-29-sprites-real-3d-coordinates.md).
+    const ipos32 hex_pos = GetHexPos(raw_hex);
+    const float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
+
+    return vec3 {numeric_cast<float32_t>(hex_pos.x), elevation, numeric_cast<float32_t>(hex_pos.y) / sin_a};
+}
+
+auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Reference map-camera projection (no scroll/zoom): rigid tilt about X by MAP_CAMERA_ANGLE, parallel
+    // projection. Returns map-space pixels in .x/.y (legacy convention, Y down) and view depth in .z (larger
+    // == nearer the camera == drawn on top). The (.y, .z) pair is an orthonormal rotation of the world
+    // (Z, Y) pair, so this is a true rigid camera tilt rather than a shear. The Phase 1 GPU view-projection
+    // matrix must agree with this contract; it is pinned by Test_Geometry.cpp.
+    const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+    const float32_t sin_a = std::sin(angle_rad);
+    const float32_t cos_a = std::cos(angle_rad);
+
+    const float32_t screen_x = world_pos.x;
+    const float32_t screen_y = sin_a * world_pos.z - cos_a * world_pos.y;
+    const float32_t depth = cos_a * world_pos.z + sin_a * world_pos.y;
+
+    return vec3 {screen_x, screen_y, depth};
+}
+
 auto GeometryHelper::GetHexAxialCoord(mpos hex) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();

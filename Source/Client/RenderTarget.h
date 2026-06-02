@@ -76,7 +76,7 @@ public:
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor;
-    [[nodiscard]] auto GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&;
+    [[nodiscard]] auto GetRenderTargetStack() const -> const vector<raw_ptr<RenderTarget>>&;
     [[nodiscard]] auto GetCurrentRenderTarget() const -> const RenderTarget*;
     [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
 

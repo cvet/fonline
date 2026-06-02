@@ -13,7 +13,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjectionMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }

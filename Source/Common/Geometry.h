@@ -194,6 +194,9 @@ public:
     [[nodiscard]] static auto GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
     [[nodiscard]] static auto GetHexPos(mpos hex) -> ipos32;
     [[nodiscard]] static auto GetHexPos(ipos32 raw_hex) -> ipos32;
+    [[nodiscard]] static auto GetHexWorldPos(mpos hex, float32_t elevation = 0.0f) -> vec3;
+    [[nodiscard]] static auto GetHexWorldPos(ipos32 raw_hex, float32_t elevation = 0.0f) -> vec3;
+    [[nodiscard]] static auto ProjectWorldToMap(vec3 world_pos) -> vec3;
     [[nodiscard]] static auto GetHexAxialCoord(mpos hex) -> ipos32;
     [[nodiscard]] static auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
     [[nodiscard]] static auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) -> ipos32;
