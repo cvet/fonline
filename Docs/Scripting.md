@@ -85,6 +85,18 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+### AngelScript backend shutdown
+
+`~AngelScriptBackend()` tears the runtime down in a fixed order: stop the debugger endpoint, run the registered cleanup callbacks, reset the context manager, then reset the backend-owned `_engine` / `_meta` / `_scriptSys` / `_entityMngr` holders. It then calls `ReleaseScriptGlobalsAndReportGC()` **before** `asIScriptEngine::ShutDownAndRelease()` (which asserts the returned engine ref count is `0`), and finally runs the post-cleanup callbacks.
+
+`ReleaseScriptGlobalsAndReportGC()` makes the runtime clean up after itself so embedding games do not need per-system reference cleanup at shutdown:
+
+- It walks every module's global variables and drops the script-side reference each one holds: funcdef-typed globals (function handles / delegates) are `Release()`d, and `asOBJ_REF` object globals (handles, arrays, dictionaries, script classes) go through `ReleaseScriptObject()`; the slot is nulled so the standard module teardown skips it. Value-type object globals store their instance inline and are left to module discard (resetting them early would risk a double-free). AngelScript already releases globals during module discard inside `ShutDownAndRelease()`, but doing it explicitly here — while the engine is fully alive — lets the garbage collector collapse the now-unrooted object graphs in a normal multi-iteration cycle.
+- It then runs `GarbageCollect(asGC_FULL_CYCLE)` repeatedly (up to 8 passes) until `GetGCStatistics()` reports a steady live count, because object destructors can release the last reference to further objects.
+- Any GC objects still alive after that are kept by references the collector cannot reclaim (e.g. a cyclic graph). They are force-released by the subsequent `ShutDownAndRelease()`; the method logs a concise `AngelScript shutdown: released N global var(s), M GC object(s) still alive:` line plus a per-type histogram so the surviving types point at the owning system rather than the warning being silenced by hand. (A known residual is *shown* GUI screen graphs from the core scripts, whose cyclic refcount the collector cannot resolve — a separate, GUI-internal issue.)
+
+Because the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on every entity and `DestroyAllEntities()` during `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
+
 ## Attributes, declarations, and metadata
 
 `Source/Scripting/AngelScript/AngelScriptAttributes.cpp` parses engine-specific script attributes and declaration tags. Important contracts include:

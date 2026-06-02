@@ -131,8 +131,9 @@ struct PrimitivePoint
     ucolor PointColor {};
     raw_ptr<const ipos32> PointOffset {};
     raw_ptr<const ucolor> PPointColor {};
-    fpos32 TexUV {}; // Custom data for shader.
-    fpos32 EggData {}; // Custom data for shader.
+    fpos32 TexUV {}; // Custom data for shader
+    fpos32 EggData {}; // Custom data for shader
+    float32_t PointPosZ {}; // Free-form per-vertex scalar forwarded to Vertex2D::PosZ → shader InPosition.z
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 

@@ -380,7 +380,20 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
-        [[nodiscard]] auto CheckMigrationRule(hstring, hstring, hstring) const noexcept -> optional<hstring> override { return std::nullopt; }
+        void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
+
+        [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override
+        {
+            if (const auto it = _migration_rules.find(rule_name); it != _migration_rules.end()) {
+                if (const auto it2 = it->second.find(extra_info); it2 != it->second.end()) {
+                    if (const auto it3 = it2->second.find(target); it3 != it2->second.end()) {
+                        return it3->second;
+                    }
+                }
+            }
+
+            return std::nullopt;
+        }
         [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override
         {
             const auto type_it = _protos.find(type_name.as_hash());
@@ -407,6 +420,7 @@ namespace
         unordered_map<string, RefTypeDesc> _ref_types {};
         unordered_map<string, int32_t> _enum_values {};
         unordered_map<int32_t, string> _enum_names {};
+        unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migration_rules {};
         HashStorage _proto_hashes {};
         unique_ptr<PropertyRegistrator> _proto_registrator {};
         unordered_map<string, unique_ptr<PropertyRegistrator>> _ref_type_registrators {};
@@ -1940,6 +1954,31 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
+TEST_CASE("PropertiesEnumValueMigration")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+
+    // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution.
+    resolver.AddMigrationRule(hashes.ToHashedString("Enum"), hashes.ToHashedString("Mode"), hashes.ToHashedString("ModeLegacy"), hashes.ToHashedString("ModeA"));
+
+    PropertyRegistrator registrator("EnumMigrationEntity", EngineSideKind::ServerSide, hashes, resolver);
+    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    // Removed value name resolves through the migration rule.
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeLegacy"}}, hashes, resolver));
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+
+    // Current value name still loads directly.
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeB"}}, hashes, resolver));
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
+
+    // Unknown value without a migration rule still throws.
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, enum_prop, AnyData::Value {string {"ModeNonexistent"}}, hashes, resolver));
+}
+
 TEST_CASE("PropertiesNumericWidthConversions")
 {
     HashStorage hashes {};
@@ -1987,6 +2026,47 @@ TEST_CASE("PropertiesNumericWidthConversions")
     CHECK(props.GetValue<string>(string_prop) == "true");
     CHECK(PropertiesSerializator::SavePropertyToText(&props, string_prop, hashes, resolver) == "true");
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
+}
+
+TEST_CASE("PropertiesNumericRangeValidation")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("NumericRangeEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {int64_t {128}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, int8_prop, AnyData::Value {float64_t {127.6}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {int64_t {-1}}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, uint8_prop, AnyData::Value {float64_t {-0.6}}, hashes, resolver));
+
+    const auto float32_overflow = static_cast<float64_t>(std::numeric_limits<float32_t>::max()) * 2.0;
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {float32_overflow}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::numeric_limits<float64_t>::infinity()}, hashes, resolver));
+
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "128", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "-1", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "9223372036854775808", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "9223372036854775808.0", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int64_prop, "-9223372036854775809", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, "3.5e38", hashes, resolver));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "127.4", hashes, resolver));
+    CHECK(props.GetValue<int8_t>(int8_prop) == 127);
+
+    const string long_float_text = string {"1."} + string(1200, '0');
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromText(&props, float32_prop, long_float_text, hashes, resolver));
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.0f));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {long_float_text}, hashes, resolver));
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(1.0f));
+    CHECK_NOTHROW(PropertiesSerializator::LoadPropertyFromValue(&props, float64_prop, AnyData::Value {long_float_text}, hashes, resolver));
+    CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(1.0));
 }
 
 TEST_CASE("PropertiesTextScalarWidthConversions")

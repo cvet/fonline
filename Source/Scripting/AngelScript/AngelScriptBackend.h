@@ -44,13 +44,13 @@ class ScriptArray;
 
 FO_BEGIN_NAMESPACE
 
-struct AngelScriptSettings;
+struct ScriptSettings;
 class DebuggerEndpointServer;
 
 class AngelScriptBackend : public ScriptSystemBackend
 {
 public:
-    explicit AngelScriptBackend(const AngelScriptSettings& settings);
+    explicit AngelScriptBackend(const ScriptSettings& settings);
     AngelScriptBackend(const AngelScriptBackend&) noexcept = delete;
     auto operator=(const AngelScriptBackend&) noexcept -> AngelScriptBackend& = delete;
     AngelScriptBackend(AngelScriptBackend&&) noexcept = delete;
@@ -81,7 +81,9 @@ public:
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
-    raw_ptr<const AngelScriptSettings> _settings;
+    void ReleaseScriptGlobalsAndReportGC();
+
+    raw_ptr<const ScriptSettings> _settings;
     raw_ptr<EngineMetadata> _meta {};
     raw_ptr<ScriptSystem> _scriptSys {}; // Maybe null
     raw_ptr<BaseEngine> _engine {}; // Maybe null

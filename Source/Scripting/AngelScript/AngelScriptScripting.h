@@ -42,10 +42,10 @@
 
 FO_BEGIN_NAMESPACE
 
-struct AngelScriptSettings;
+struct ScriptSettings;
 
-void InitAngelScriptScripting(EngineMetadata* meta, const AngelScriptSettings& settings, const FileSystem& resources);
-auto CompileAngelScript(EngineMetadata* meta, const AngelScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
+void InitAngelScriptScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources);
+auto CompileAngelScript(EngineMetadata* meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
 
 FO_END_NAMESPACE
 

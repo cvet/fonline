@@ -89,7 +89,7 @@ static void PrepareAngelScriptRuntime()
     });
 }
 
-void InitAngelScriptScripting(EngineMetadata* meta, const AngelScriptSettings& settings, const FileSystem& resources)
+void InitAngelScriptScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -107,7 +107,7 @@ void InitAngelScriptScripting(EngineMetadata* meta, const AngelScriptSettings& s
     pas_backend->BindRequiredStuff();
 }
 
-auto CompileAngelScript(EngineMetadata* meta, const AngelScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
+auto CompileAngelScript(EngineMetadata* meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 

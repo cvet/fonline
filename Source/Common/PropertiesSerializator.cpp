@@ -265,18 +265,93 @@ static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> str
     return decoded_storage;
 }
 
+template<typename T>
+static auto GetIntegralMaxFloat64() noexcept -> float64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    float64_t max_value = static_cast<float64_t>(std::numeric_limits<T>::max());
+
+    if constexpr (std::same_as<T, int64_t>) {
+        max_value = std::nextafter(max_value, 0.0);
+    }
+
+    return max_value;
+}
+
+static auto ParseStrictFloatText(string_view text) -> float64_t;
+
 static auto ParseStrictIntText(string_view text) -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
     auto value = strvex(text);
     value.trim();
+    const string_view str = value.strv();
 
-    if (!value.is_number()) {
+    if (str.empty()) {
         throw PropertySerializationException("Invalid numeric value", text);
     }
 
-    return value.to_int64();
+    const char* ptr = str.data();
+    const char* end_ptr = ptr + str.length();
+    bool negative = false;
+    int32_t base = 10;
+
+    if (*ptr == '-') {
+        ptr++;
+        negative = true;
+    }
+
+    if (end_ptr - ptr >= 2 && ptr[0] == '0' && (ptr[1] == 'x' || ptr[1] == 'X')) {
+        ptr += 2;
+        base = 16;
+    }
+
+    if (ptr == end_ptr) {
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+
+    uint64_t parsed_value = 0;
+    const auto parse_result = std::from_chars(ptr, end_ptr, parsed_value, base);
+
+    if (parse_result.ec != std::errc() || parse_result.ptr != end_ptr) {
+        if (parse_result.ec == std::errc::result_out_of_range) {
+            throw PropertySerializationException("Numeric value out of range", text);
+        }
+
+        if (base == 10) {
+            const float64_t float_value = ParseStrictFloatText(str);
+            const float64_t min_value = static_cast<float64_t>(std::numeric_limits<int64_t>::min());
+            const float64_t max_value = GetIntegralMaxFloat64<int64_t>();
+            const float64_t comparable_value = std::trunc(float_value);
+
+            if (comparable_value < min_value || comparable_value > max_value) {
+                throw PropertySerializationException("Numeric value out of range", text);
+            }
+
+            return static_cast<int64_t>(float_value);
+        }
+
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+
+    constexpr auto max_value = static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
+    constexpr auto min_abs_value = max_value + 1U;
+
+    if (negative) {
+        if (parsed_value > min_abs_value) {
+            throw PropertySerializationException("Numeric value out of range", text);
+        }
+
+        return parsed_value == min_abs_value ? std::numeric_limits<int64_t>::min() : -static_cast<int64_t>(parsed_value);
+    }
+
+    if (parsed_value > max_value) {
+        throw PropertySerializationException("Numeric value out of range", text);
+    }
+
+    return static_cast<int64_t>(parsed_value);
 }
 
 static auto ParseStrictFloatText(string_view text) -> float64_t
@@ -285,12 +360,34 @@ static auto ParseStrictFloatText(string_view text) -> float64_t
 
     auto value = strvex(text);
     value.trim();
+    const string_view str = value.strv();
 
-    if (!value.is_number()) {
+    if (str.empty()) {
         throw PropertySerializationException("Invalid numeric value", text);
     }
 
-    return value.to_float64();
+    const char* ptr = str.data();
+    const char* end_ptr = ptr + str.length();
+
+    if (str.back() == 'f') {
+        end_ptr -= 1;
+    }
+
+    if (ptr == end_ptr) {
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+
+    float64_t parsed_value = 0.0;
+    const auto parse_result = std::from_chars(ptr, end_ptr, parsed_value);
+
+    if (parse_result.ec != std::errc() || parse_result.ptr != end_ptr) {
+        throw PropertySerializationException("Invalid numeric value", text);
+    }
+    if (!std::isfinite(parsed_value)) {
+        throw PropertySerializationException("Numeric value out of range", text);
+    }
+
+    return parsed_value;
 }
 
 static auto ParseStrictBoolText(string_view text) -> bool
@@ -300,23 +397,24 @@ static auto ParseStrictBoolText(string_view text) -> bool
     auto value = strvex(text);
     value.trim();
 
-    if (!value.is_explicit_bool() && !value.is_number()) {
-        throw PropertySerializationException("Invalid bool value", text);
+    if (value.is_explicit_bool()) {
+        return value.to_bool();
     }
 
-    if (value.is_number()) {
-        const auto int_value = value.to_int64();
-        const auto float_value = value.to_float64();
+    const auto float_value = ParseStrictFloatText(value.strv());
+    const auto int_value = std::trunc(float_value);
 
-        if (!is_float_equal(float_value, numeric_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
-            throw PropertySerializationException("Invalid bool numeric value", text);
-        }
+    if (!is_float_equal(float_value, int_value) || (int_value != 0.0 && int_value != 1.0)) {
+        throw PropertySerializationException("Invalid bool numeric value", text);
     }
 
-    return value.to_bool();
+    return int_value != 0.0;
 }
 
 static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
+
+template<typename T>
+static auto ConvertFloat64ToNumber(float64_t value) -> T;
 
 static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& primitive_type, string_view text)
 {
@@ -351,7 +449,7 @@ static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& p
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsSingleFloat) {
-        const auto value = numeric_cast<float32_t>(ParseStrictFloatText(text));
+        const auto value = ConvertFloat64ToNumber<float32_t>(ParseStrictFloatText(text));
         AppendRawBytes(data, &value, sizeof(value));
     }
     else if (primitive_type.IsDoubleFloat) {
@@ -388,6 +486,26 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, const Property* p
     if (ReadTextTokenView(s, token) != nullptr) {
         throw PropertySerializationException("Wrong struct size (from text)");
     }
+}
+
+static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, string_view value_name) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool failed = false;
+    const int32_t enum_value = name_resolver.ResolveEnumValue(base_type.Name, value_name, &failed);
+
+    if (!failed) {
+        return enum_value;
+    }
+
+    // Removed or renamed enum value in persisted data: migrate it via ///@ MigrationRule Enum <EnumName> <Old> <New>.
+    if (const auto migrated = name_resolver.CheckMigrationRule(hash_resolver.ToHashedString("Enum"), hash_resolver.ToHashedString(base_type.Name), hash_resolver.ToHashedString(value_name)); migrated.has_value()) {
+        return name_resolver.ResolveEnumValue(base_type.Name, migrated.value().as_str());
+    }
+
+    // No migration rule: keep the original throwing behavior for genuinely unknown values.
+    return name_resolver.ResolveEnumValue(base_type.Name, value_name);
 }
 
 static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
@@ -428,14 +546,24 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, const Property* prop, 
     else if (base_type.IsEnum) {
         string decoded_storage;
         const auto decoded = DecodeTextIfNeeded(text, decoded_storage);
+        int64_t parsed_enum_value = 0;
         int32_t enum_value = 0;
+        bool is_numeric_value = false;
 
-        if (strvex(decoded).is_number()) {
-            enum_value = numeric_cast<int32_t>(strvex(decoded).to_int64());
+        try {
+            parsed_enum_value = ParseStrictIntText(decoded);
+            is_numeric_value = true;
+        }
+        catch (const PropertySerializationException&) {
+            is_numeric_value = false;
+        }
+
+        if (is_numeric_value) {
+            enum_value = numeric_cast<int32_t>(parsed_enum_value);
             (void)name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
         }
         else {
-            enum_value = name_resolver.ResolveEnumValue(base_type.Name, decoded);
+            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, decoded);
         }
 
         if (base_type.Size == sizeof(uint8_t)) {
@@ -1148,6 +1276,44 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> const s
 };
 
 template<typename T>
+static auto ConvertFloat64ToNumber(float64_t value) -> T
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!std::isfinite(value)) {
+        throw PropertySerializationException("Numeric value is not finite", value, typeid(T).name());
+    }
+
+    if constexpr (std::same_as<T, bool>) {
+        return !is_float_equal(value, 0.0);
+    }
+    else if constexpr (std::integral<T>) {
+        const float64_t rounded_value = std::round(value);
+        const float64_t min_value = static_cast<float64_t>(std::numeric_limits<T>::min());
+        const float64_t max_value = GetIntegralMaxFloat64<T>();
+
+        if (rounded_value < min_value || rounded_value > max_value) {
+            throw PropertySerializationException("Numeric value out of range", value, typeid(T).name());
+        }
+
+        return numeric_cast<T>(std::llround(value));
+    }
+    else if constexpr (std::same_as<T, float32_t>) {
+        constexpr auto min_value = static_cast<float64_t>(std::numeric_limits<float32_t>::lowest());
+        constexpr auto max_value = static_cast<float64_t>(std::numeric_limits<float32_t>::max());
+
+        if (value < min_value || value > max_value) {
+            throw PropertySerializationException("Numeric value out of range", value, typeid(T).name());
+        }
+
+        return numeric_cast<float32_t>(value);
+    }
+    else {
+        return numeric_cast<T>(value);
+    }
+}
+
+template<typename T>
 static void ConvertToNumber(const AnyData::Value& value, T& result_value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1161,15 +1327,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if constexpr (std::same_as<T, bool>) {
-            result_value = !is_float_equal(value.AsDouble(), 0.0);
-        }
-        else if constexpr (std::integral<T>) {
-            result_value = iround<T>(value.AsDouble());
-        }
-        else {
-            result_value = numeric_cast<T>(value.AsDouble());
-        }
+        result_value = ConvertFloat64ToNumber<T>(value.AsDouble());
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
         if constexpr (std::same_as<T, bool>) {
@@ -1184,31 +1342,29 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     }
     else if (value.Type() == AnyData::ValueType::String) {
         const auto& str = value.AsString();
+        const auto str_value = strvex(str);
 
-        if (strvex(str).is_number()) {
+        if (str_value.is_explicit_bool()) {
             if constexpr (std::same_as<T, bool>) {
-                result_value = strvex(str).to_bool();
+                result_value = str_value.to_bool();
             }
             else if constexpr (std::floating_point<T>) {
-                result_value = numeric_cast<T>(strvex(str).to_float64());
+                result_value = str_value.to_bool() ? 1.0f : 0.0f;
             }
             else {
-                result_value = numeric_cast<T>(strvex(str).to_int64());
-            }
-        }
-        else if (strvex(str).is_explicit_bool()) {
-            if constexpr (std::same_as<T, bool>) {
-                result_value = strvex(str).to_bool();
-            }
-            else if constexpr (std::floating_point<T>) {
-                result_value = strvex(str).to_bool() ? 1.0f : 0.0f;
-            }
-            else {
-                result_value = strvex(str).to_bool() ? 1 : 0;
+                result_value = str_value.to_bool() ? 1 : 0;
             }
         }
         else {
-            throw PropertySerializationException("Unable to convert value to number", str);
+            if constexpr (std::same_as<T, bool>) {
+                result_value = !is_float_equal(ParseStrictFloatText(str), 0.0);
+            }
+            else if constexpr (std::floating_point<T>) {
+                result_value = ConvertFloat64ToNumber<T>(ParseStrictFloatText(str));
+            }
+            else {
+                result_value = numeric_cast<T>(ParseStrictIntText(str));
+            }
         }
     }
     else {
@@ -1467,7 +1623,7 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         int32_t enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
-            enum_value = name_resolver.ResolveEnumValue(base_type.Name, value.AsString());
+            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, value.AsString());
         }
         else if (value.Type() == AnyData::ValueType::Int64) {
             enum_value = numeric_cast<int32_t>(value.AsInt64());
@@ -1767,7 +1923,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 *reinterpret_cast<hstring::hash_t*>(pdata) = hash_resolver.ToHashedString(dict_key).as_hash();
             }
             else if (dict_key_type.IsEnum) {
-                const int32_t enum_value = name_resolver.ResolveEnumValue(dict_key_type.Name, dict_key);
+                const int32_t enum_value = ResolveEnumValueWithMigration(dict_key_type, hash_resolver, name_resolver, dict_key);
 
                 if (dict_key_type.Size == sizeof(uint8_t)) {
                     *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(enum_value);
@@ -1780,31 +1936,31 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
             else if (dict_key_type.IsInt8) {
-                *reinterpret_cast<int8_t*>(pdata) = numeric_cast<int8_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int8_t*>(pdata) = numeric_cast<int8_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsInt16) {
-                *reinterpret_cast<int16_t*>(pdata) = numeric_cast<int16_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int16_t*>(pdata) = numeric_cast<int16_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsInt32) {
-                *reinterpret_cast<int32_t*>(pdata) = numeric_cast<int32_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int32_t*>(pdata) = numeric_cast<int32_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsInt64) {
-                *reinterpret_cast<int64_t*>(pdata) = numeric_cast<int64_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<int64_t*>(pdata) = numeric_cast<int64_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsUInt8) {
-                *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint8_t*>(pdata) = numeric_cast<uint8_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsUInt16) {
-                *reinterpret_cast<uint16_t*>(pdata) = numeric_cast<uint16_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint16_t*>(pdata) = numeric_cast<uint16_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsUInt32) {
-                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(strvex(dict_key).to_int64());
+                *reinterpret_cast<uint32_t*>(pdata) = numeric_cast<uint32_t>(ParseStrictIntText(dict_key));
             }
             else if (dict_key_type.IsSingleFloat) {
-                *reinterpret_cast<float32_t*>(pdata) = numeric_cast<float32_t>(strvex(dict_key).to_float32());
+                *reinterpret_cast<float32_t*>(pdata) = ConvertFloat64ToNumber<float32_t>(ParseStrictFloatText(dict_key));
             }
             else if (dict_key_type.IsDoubleFloat) {
-                *reinterpret_cast<float64_t*>(pdata) = numeric_cast<float64_t>(strvex(dict_key).to_float64());
+                *reinterpret_cast<float64_t*>(pdata) = numeric_cast<float64_t>(ParseStrictFloatText(dict_key));
             }
             else if (dict_key_type.IsBool) {
                 *reinterpret_cast<bool*>(pdata) = strvex(dict_key).to_bool();

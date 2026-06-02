@@ -152,14 +152,18 @@ macro(SetOptionValues)
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
 		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
+		get_property(_soptHasCache CACHE ${optionName} PROPERTY VALUE SET)
+		get_property(_soptCacheType CACHE ${optionName} PROPERTY TYPE)
 
 		# Shadow default: if the current cache value differs from the default we last applied, the value
-		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it; otherwise (unset, or
-		# still our default) -> (re)apply the current cmake-file default with FORCE. This keeps the cmake
-		# file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no longer sticks at
-		# an old number) while still honoring real overrides. CMake exposes no -D provenance, so comparing
-		# against the last-applied default is the detection mechanism.
+		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it. On a first configure,
+		# untyped -D / preset cache entries have no shadow yet, so preserve those as initial overrides too.
+		# Otherwise (unset, or still our default) -> (re)apply the current cmake-file default with FORCE.
+		# This keeps the cmake file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no
+		# longer sticks at an old number) while still honoring real overrides.
 		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+			set(_soptResolved "${${optionName}}")
+		elseif(_soptHasCache AND _soptCacheType STREQUAL "UNINITIALIZED" AND NOT DEFINED ${_soptShadow})
 			set(_soptResolved "${${optionName}}")
 		else()
 			set(_soptResolved "${optionValue}")
@@ -179,6 +183,8 @@ macro(SetOptionValues)
 	endwhile()
 
 	unset(_soptShadow)
+	unset(_soptHasCache)
+	unset(_soptCacheType)
 	unset(_soptResolved)
 	unset(_soptUpper)
 endmacro()

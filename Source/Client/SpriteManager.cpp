@@ -1268,6 +1268,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
         vbuf[i].PosX = numeric_cast<float32_t>(pos.x);
         vbuf[i].PosY = numeric_cast<float32_t>(pos.y);
+        vbuf[i].PosZ = point.PointPosZ;
         vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
 
         // TexU/TexV = caller's PrimitivePoint::TexUV + draw_area top-left.
@@ -1297,7 +1298,13 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
     FO_RUNTIME_ASSERT(padding >= 0);
     FO_RUNTIME_ASSERT(effect->GetUsage() == EffectUsage::QuadSprite);
 
-    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
+    const auto* source_spr = spr;
+
+    if (const auto* sheet = dynamic_cast<const SpriteSheet*>(spr); sheet != nullptr) {
+        source_spr = sheet->GetCurSpr();
+    }
+
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(source_spr);
 
     if (atlas_spr == nullptr) {
         return;

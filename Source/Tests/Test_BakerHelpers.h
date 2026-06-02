@@ -278,7 +278,7 @@ namespace BakerTests
         return instance;
     }
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, const AngelScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto CompileInlineScripts(EngineMetadata* meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
