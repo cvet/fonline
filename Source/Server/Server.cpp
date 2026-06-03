@@ -3970,7 +3970,16 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 
         if (progress.Completed) {
             const bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
-            StopCritterMoving(cr, MovingState::Success, incorrect_final_position ? nullptr : [] { });
+
+            if (incorrect_final_position) {
+                // Send final position update to client to correct it.
+                StopCritterMoving(cr, MovingState::Success);
+            }
+            else {
+                // Normal completion, skip sending of final position update.
+                StopCritterMoving(cr, MovingState::Success, [] { });
+            }
+
             return;
         }
 
