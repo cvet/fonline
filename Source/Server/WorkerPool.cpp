@@ -120,7 +120,7 @@ void WorkerPool::Submit(JobKey key, timespan delay, Job job)
         }
 
         if (_runningKeys.contains(key)) {
-            _pendingRerun[key] = std::move(job);
+            _pendingRerun[key] = ScheduledJob {nanotime::now() + delay, key, std::move(job)};
             _cancelOnFinish.erase(key);
         }
         else if (!_queuedKeys.contains(key)) {
@@ -413,9 +413,15 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 const bool wake_requested = _wakeRequests.erase(job.Key) != 0;
 
                 if (auto it = _pendingRerun.find(job.Key); it != _pendingRerun.end()) {
-                    EnqueueJob(nanotime::now(), job.Key, std::move(it->second));
-                    _queuedKeys.insert(job.Key);
+                    auto entry = std::move(it->second);
                     _pendingRerun.erase(it);
+
+                    if (wake_requested) {
+                        entry.FireTime = nanotime::now();
+                    }
+
+                    EnqueueJob(entry.FireTime, entry.Key, std::move(entry.Body));
+                    _queuedKeys.insert(job.Key);
                     need_wake = true;
                 }
                 else if (next_delay.has_value() && !cancelled) {

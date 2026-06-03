@@ -77,7 +77,6 @@ public:
     [[nodiscard]] auto GetThreadCount() const noexcept -> int32_t { return numeric_cast<int32_t>(_workers.size()); }
     [[nodiscard]] auto GetPendingJobCount() const -> size_t;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
-    [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> SyncContext* { return SyncContext::GetCurrentOnThisThread(); }
 
     void Resume();
     void Submit(Job job);
@@ -110,7 +109,7 @@ private:
     vector<ScheduledJob> _jobs FO_TSA_GUARDED_BY(_mutex) {}; // Sorted ascending by FireTime
     unordered_set<JobKey> _queuedKeys FO_TSA_GUARDED_BY(_mutex) {};
     unordered_set<JobKey> _runningKeys FO_TSA_GUARDED_BY(_mutex) {};
-    unordered_map<JobKey, Job> _pendingRerun FO_TSA_GUARDED_BY(_mutex) {};
+    unordered_map<JobKey, ScheduledJob> _pendingRerun FO_TSA_GUARDED_BY(_mutex) {};
     unordered_set<JobKey> _cancelOnFinish FO_TSA_GUARDED_BY(_mutex) {};
     unordered_set<JobKey> _wakeRequests FO_TSA_GUARDED_BY(_mutex) {};
     std::condition_variable_any _workSignal {};

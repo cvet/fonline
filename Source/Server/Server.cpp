@@ -660,7 +660,7 @@ void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t eve
 
     _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> {
         if (!entity_hold->IsGlobal()) {
-            auto* ctx = _workerPool->GetCurrentSyncContext();
+            auto* ctx = GetCurrentSyncContext();
             FO_RUNTIME_ASSERT(ctx);
             ctx->SyncEntity(dynamic_cast<ServerEntity*>(entity_hold.get()));
         }
@@ -708,7 +708,7 @@ void ServerEngine::OnPlayerConnected(Player* unlogined_player)
     unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
     _workerPool->Submit(key, [this, unlogined_player_ = refcount_ptr<Player>(unlogined_player)]() mutable -> std::optional<timespan> {
-        auto* ctx = _workerPool->GetCurrentSyncContext();
+        auto* ctx = GetCurrentSyncContext();
         FO_RUNTIME_ASSERT(ctx);
         ctx->SyncEntity(unlogined_player_.get());
 
@@ -761,7 +761,7 @@ void ServerEngine::OnPlayerLogined(Player* player, Player* unlogined_player)
     player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
     _workerPool->Submit(key, [this, player_ = refcount_ptr<Player>(player)]() mutable -> std::optional<timespan> {
-        auto* ctx = _workerPool->GetCurrentSyncContext();
+        auto* ctx = GetCurrentSyncContext();
         FO_RUNTIME_ASSERT(ctx);
         ctx->SyncEntity(player_.get());
 
@@ -3042,7 +3042,7 @@ void ServerEngine::Process_Move(Player* player)
     }
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto* ctx = _workerPool->GetCurrentSyncContext();
+    auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
@@ -3197,7 +3197,7 @@ void ServerEngine::Process_StopMove(Player* player)
     }
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto* ctx = _workerPool->GetCurrentSyncContext();
+    auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
@@ -3273,7 +3273,7 @@ void ServerEngine::Process_Dir(Player* player)
     }
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto* ctx = _workerPool->GetCurrentSyncContext();
+    auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
@@ -4245,7 +4245,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
         // Sync FIRST. IsDestroyed/IsMoving/GetMapId all read mutable state and are a race
         // without the lock. Inside a `_workerPool` movement job body — primary SyncContext
         // is guaranteed.
-        auto* ctx = _workerPool->GetCurrentSyncContext();
+        auto* ctx = GetCurrentSyncContext();
         FO_RUNTIME_ASSERT(ctx);
         ctx->SyncEntity(cr_.get());
 
@@ -4379,7 +4379,7 @@ void ServerEngine::Process_RemoteCall(Player* player)
     // Process_RemoteCall is reached only via `ProcessUnloginedPlayer` / `ProcessPlayer`, both
     // running inside a `_workerPool` job body — primary SyncContext is guaranteed.
     // SyncEntity(player) auto-widens to the controlled critter via GetSyncWidenEntity.
-    auto* ctx = _workerPool->GetCurrentSyncContext();
+    auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
     ctx->SyncEntity(player);
 

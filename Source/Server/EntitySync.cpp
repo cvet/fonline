@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 
 static constexpr int32_t MAX_VALIDATE_ATTEMPTS = 32;
 
-static thread_local SyncContext* СurrentContext {};
+static thread_local SyncContext* CurrentContext {};
 static std::atomic<uint64_t> TicketCounter {};
 
 EntityLock::EntityLock()
@@ -438,8 +438,8 @@ SyncContext::~SyncContext()
     FO_STRONG_ASSERT(_heldLocks.empty());
     FO_STRONG_ASSERT(_singletonLocks.empty());
 
-    if (СurrentContext == this) {
-        СurrentContext = _previousContext;
+    if (CurrentContext == this) {
+        CurrentContext = _previousContext;
         _previousContext = nullptr;
     }
 }
@@ -450,16 +450,16 @@ void SyncContext::Activate() noexcept
 
     // Save the previous current so a nested context (e.g. one created per event callback)
     // can pop back cleanly. Outer-most Activate sees the slot empty and saves nullptr.
-    _previousContext = СurrentContext;
-    СurrentContext = this;
+    _previousContext = CurrentContext;
+    CurrentContext = this;
 }
 
 void SyncContext::Deactivate() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (СurrentContext == this) {
-        СurrentContext = _previousContext;
+    if (CurrentContext == this) {
+        CurrentContext = _previousContext;
         _previousContext = nullptr;
     }
 }
@@ -496,7 +496,7 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
         throw EntitySyncException("Cannot call Sync() while holding a singleton lock (e.g. Game.Lock()) — Unlock first to avoid the per-property auto-lock deadlock");
     }
 
-    СurrentContext = this;
+    CurrentContext = this;
 
     // Lock acquisition with verify-after-acquire / retry-if-escaped.
     //
@@ -989,14 +989,14 @@ auto SyncContext::GetCurrentOnThisThread() noexcept -> SyncContext*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return СurrentContext;
+    return CurrentContext;
 }
 
 auto SyncContext::GetOutermostOnThisThread() noexcept -> SyncContext*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* ctx = СurrentContext;
+    auto* ctx = CurrentContext;
 
     if (ctx == nullptr) {
         return nullptr;

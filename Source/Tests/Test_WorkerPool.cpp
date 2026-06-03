@@ -194,6 +194,43 @@ TEST_CASE("WorkerPoolKeyed")
         CHECK(latest_value.load() == 3);
     }
 
+    SECTION("PendingRerunHonoursSubmittedDelayWhileRunning")
+    {
+        std::atomic<bool> shutdown_flag {false};
+        WorkerPool pool {"test", 1, shutdown_flag};
+        std::atomic_int run_count {0};
+        std::atomic_bool first_run_started {false};
+        std::atomic_int first_run_release {0};
+        std::atomic<int64_t> rerun_after_ms {0};
+
+        const WorkerJobKey key {WorkerJobType::Player, 8};
+
+        pool.Submit(key, [&]() -> std::optional<timespan> {
+            run_count.fetch_add(1);
+            first_run_started.store(true);
+            while (first_run_release.load() == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+            return std::nullopt;
+        });
+
+        REQUIRE(WaitFor([&] { return first_run_started.load(); }));
+
+        const auto submit_time = std::chrono::steady_clock::now();
+        pool.Submit(key, std::chrono::milliseconds {80}, [&]() -> std::optional<timespan> {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - submit_time).count();
+            rerun_after_ms.store(elapsed);
+            run_count.fetch_add(1);
+            return std::nullopt;
+        });
+
+        first_run_release.store(1);
+
+        REQUIRE(WaitFor([&] { return run_count.load() == 2; }, std::chrono::milliseconds {2000}));
+        CHECK(rerun_after_ms.load() >= 70);
+        pool.WaitIdle();
+    }
+
     SECTION("DistinctTypeSameIdAreSeparateKeys")
     {
         // {Player, 42} and {CritterMovement, 42} must NOT collide.
