@@ -1517,11 +1517,11 @@ FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Game_GetHeldSyncEntityIds(ServerEngine* server)
+FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
-    return ctx->GetHeldEntityIds();
+    return ctx->GetHeldEntities();
 }
 
 ///@ ExportMethod

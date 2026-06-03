@@ -846,20 +846,20 @@ void SyncContext::Release() noexcept
     ReleaseSingletonLocks();
 }
 
-auto SyncContext::GetHeldEntityIds() const -> vector<ident_t>
+auto SyncContext::GetHeldEntities() const -> vector<ServerEntity*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<ident_t> ids;
-    ids.reserve(_heldLockOwners.size());
+    vector<ServerEntity*> entities;
+    entities.reserve(_heldLockOwners.size());
 
     for (const auto& owner : _heldLockOwners) {
         if (owner && owner->GetId()) {
-            ids.emplace_back(owner->GetId());
+            entities.emplace_back(owner.get());
         }
     }
 
-    return ids;
+    return entities;
 }
 
 void SyncContext::LockSingleton(EntityLock* lock)
