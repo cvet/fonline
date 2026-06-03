@@ -574,31 +574,72 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             }
         }
 
-        // Try to escalate: for each entity, check if its parent's lock covers another entity in the set
+        // Try to escalate: for each explicitly requested / widened entity, check if its parent's
+        // lock covers another entity in the set. Keep the entity list separate from
+        // lock_to_entity: inventory items can share a propagated lock with their holder, but the
+        // holder still has to participate in sibling escalation (item + holder + recipient).
+        vector<ServerEntity*> escalation_entities;
+        escalation_entities.reserve(lock_to_entity.size() + entities.size());
+
+        const auto add_escalation_entity = [&escalation_entities](ServerEntity* entity) {
+            if (entity != nullptr && std::ranges::find(escalation_entities, entity) == escalation_entities.end()) {
+                escalation_entities.emplace_back(entity);
+            }
+        };
+
+        for (auto* entity : entities) {
+            add_escalation_entity(entity);
+        }
+        for (auto& [lock, entity] : lock_to_entity) {
+            ignore_unused(lock);
+            add_escalation_entity(entity);
+        }
+
         bool changed = true;
 
         while (changed) {
             changed = false;
 
-            // Gather entity pointers from the map
-            vector<pair<EntityLock*, ServerEntity*>> entries(lock_to_entity.begin(), lock_to_entity.end());
+            // Gather entity pointers that still have a lock representative in the current cover.
+            vector<ServerEntity*> entries;
+            entries.reserve(escalation_entities.size());
+
+            for (auto* entity : escalation_entities) {
+                if (entity == nullptr) {
+                    continue;
+                }
+
+                auto* lock = entity->GetEntityLock();
+
+                if (lock != nullptr && lock_to_entity.count(lock) != 0) {
+                    entries.emplace_back(entity);
+                }
+            }
 
             for (size_t i = 0; i < entries.size(); i++) {
                 for (size_t j = i + 1; j < entries.size(); j++) {
                     // GetParentRaw — escalation runs while computing which locks to acquire, the
                     // entries are not yet covered by any held lock so the validating GetParent
                     // would throw. Snapshot here may be stale; the verify step below catches it.
-                    auto parent_i = entries[i].second->GetParentRaw();
-                    auto parent_j = entries[j].second->GetParentRaw();
+                    auto parent_i = entries[i]->GetParentRaw();
+                    auto parent_j = entries[j]->GetParentRaw();
 
                     if (parent_i && parent_j && parent_i == parent_j) {
                         auto* parent_lock = parent_i->GetEntityLock();
 
                         if (parent_lock != nullptr) {
+                            auto* lock_i = entries[i]->GetEntityLock();
+                            auto* lock_j = entries[j]->GetEntityLock();
+
+                            if (parent_lock == lock_i && parent_lock == lock_j) {
+                                continue;
+                            }
+
                             // Both entities share the same parent — escalate to parent lock
-                            lock_to_entity.erase(entries[i].first);
-                            lock_to_entity.erase(entries[j].first);
+                            lock_to_entity.erase(lock_i);
+                            lock_to_entity.erase(lock_j);
                             lock_to_entity.emplace(parent_lock, parent_i.get());
+                            add_escalation_entity(parent_i.get());
                             changed = true;
                             break;
                         }

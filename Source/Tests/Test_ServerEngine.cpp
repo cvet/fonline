@@ -1156,6 +1156,25 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
+    // Duplicate-lock sibling-escalation regression: an inventory item and its holder share the
+    // holder's propagated lock, but the holder must still be considered explicitly. Otherwise
+    // Sync(item, holder, same-map-recipient) keeps only the two critter locks instead of escalating
+    // to the shared map, so a map-level verifier can race a partial stack split.
+    {
+        vector<ServerEntity*> item_holder_recipient {item_a, cr_a, cr_b};
+        REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
+        CHECK(ctx.ValidateAccess(map)); // holder + recipient escalated to their shared map
+        CHECK(ctx.ValidateAccess(player_a)); // widened from the requested holder
+        CHECK(ctx.ValidateAccess(player_b)); // widened from the requested recipient
+        CHECK_FALSE(ctx.ValidateAccess(item_a)); // item's propagated holder lock was dropped
+        CHECK_FALSE(ctx.ValidateAccess(cr_a));
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(item_a)); // still covered through item -> holder -> map
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(cr_b));
+    }
+    ctx.Release();
+
     // Ancestor-coverage regression (the engine fix): syncing BOTH players widens each to its critter;
     // the two critters share the map and escalate to the single map lock (their own locks dropped), so
     // each widen target is now covered only by its ANCESTOR (map) lock, not its own. The verify-after-
