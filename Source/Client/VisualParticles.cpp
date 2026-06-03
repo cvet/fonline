@@ -221,7 +221,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
 
     mat44 result_pos_mat;
 
-    if (_impl->BaseSystem->getTransform().isLocalIdentity()) {
+    if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
         vec3 result_pos_rot {};
         vec3 result_pos_pos {};
         vec3 result_pos_scale {};
@@ -300,10 +300,10 @@ void ParticleSystem::Draw()
 
     const auto view_offset_mat = glm::translate(mat44 {1.0f}, vec3 {-_viewOffset.x, -_viewOffset.y, -_viewOffset.z});
     const auto cam_rot_mat = glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
-    mat44 view = view_offset_mat * cam_rot_mat;
+    mat44 view = cam_rot_mat * view_offset_mat;
     mat44 proj = _projMat;
 
-    _particleMngr->_projMatColMaj = view * proj;
+    _particleMngr->_projMatColMaj = proj * view;
     _particleMngr->_viewMatColMaj = view;
 
     _impl->System->renderParticles();
