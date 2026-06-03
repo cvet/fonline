@@ -68,9 +68,6 @@ struct AngelScriptContextExtendedData
     raw_ptr<AngelScript::asIScriptContext> Root {};
     raw_ptr<AngelScript::asIScriptContext> Parent {};
     int32_t ExceptionCount {};
-    refcount_ptr<const Entity> DeferredPropertyEntity {};
-    raw_ptr<const Property> DeferredProperty {};
-    raw_ptr<AngelScript::asIScriptFunction> DeferredPropertyCallback {};
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
     std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
@@ -100,13 +97,10 @@ public:
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
     ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
 
-    [[nodiscard]] auto IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool;
-
     auto RequestContext() -> AngelScript::asIScriptContext*;
     void ReturnContext(AngelScript::asIScriptContext* ctx) noexcept;
     auto PrepareContext(AngelScript::asIScriptFunction* func) -> AngelScript::asIScriptContext*;
     void SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback);
-    void MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func);
     auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool;
     void SuspendScriptContext(AngelScript::asIScriptContext* ctx, nanotime time);
     void ResumeSpecificContext(AngelScript::asIScriptContext* ctx);

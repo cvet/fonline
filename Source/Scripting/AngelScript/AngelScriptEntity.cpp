@@ -668,7 +668,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     });
 }
 
-static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool deferred)
+static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -738,68 +738,55 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen, bool defe
         }
     }
 
-    if (deferred && has_value_ref) {
-        throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
+    if (has_value_ref) {
+        // Value-transforming setter: runs before the value is stored so it can rewrite prop_data.
+        prop->AddSetter([=](Entity* entity, const Property*, PropertyRawData& prop_data) FO_DEFERRED {
+            int32_t as_result = 0;
+            CheckScriptEntityAccessAndNonDestroyed(entity);
+
+            auto* context_mngr = backend->GetContextMngr();
+            auto* ctx = context_mngr->PrepareContext(func);
+            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+
+            FO_AS_VERIFY(ctx->SetArgObject(0, entity));
+
+            if (has_proto_enum) {
+                FO_AS_VERIFY(ctx->SetArgWord(1, prop->GetRegIndex()));
+            }
+
+            PropertyRawData value_ref_space;
+            auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
+            ConvertPropsToScriptObject(prop, prop_data, construct_addr, as_engine);
+            FO_AS_VERIFY(ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr));
+
+            const auto run_ok = context_mngr->RunContext(ctx, false);
+            FO_RUNTIME_ASSERT(run_ok);
+
+            prop_data = ConvertScriptToPropsObject(prop, construct_addr);
+            prop_data.StoreIfPassed();
+            FreeConstructAddrSpace(prop, construct_addr);
+        });
     }
+    else {
+        // React-only setter: runs after the value is committed (post-setter), so the callback sees the new value
+        // and executes inside the writing caller's lock cover.
+        prop->AddPostSetter([=](Entity* entity, const Property*) FO_DEFERRED {
+            int32_t as_result = 0;
+            CheckScriptEntityAccessAndNonDestroyed(entity);
 
-    prop->AddSetter([=, &as_result](Entity* entity, const Property*, PropertyRawData& prop_data) FO_DEFERRED {
-        CheckScriptEntityAccessAndNonDestroyed(entity);
+            auto* context_mngr = backend->GetContextMngr();
+            auto* ctx = context_mngr->PrepareContext(func);
+            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
 
-        auto* context_mngr = backend->GetContextMngr();
+            FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
-        if (deferred && context_mngr->IsDeferredPropertySetterScheduled(entity, prop, func)) {
-            return;
-        }
-
-        auto* ctx = context_mngr->PrepareContext(func);
-        auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
-
-        FO_AS_VERIFY(ctx->SetArgObject(0, entity));
-
-        if (has_proto_enum) {
-            FO_AS_VERIFY(ctx->SetArgWord(1, prop->GetRegIndex()));
-        }
-
-        if (!deferred) {
-            if (has_value_ref) {
-                PropertyRawData value_ref_space;
-                auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
-                ConvertPropsToScriptObject(prop, prop_data, construct_addr, as_engine);
-                FO_AS_VERIFY(ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr));
-
-                const auto run_ok = context_mngr->RunContext(ctx, false);
-                FO_RUNTIME_ASSERT(run_ok);
-
-                prop_data = ConvertScriptToPropsObject(prop, construct_addr);
-                prop_data.StoreIfPassed();
-                FreeConstructAddrSpace(prop, construct_addr);
+            if (has_proto_enum) {
+                FO_AS_VERIFY(ctx->SetArgWord(1, prop->GetRegIndex()));
             }
-            else {
-                context_mngr->RunContext(ctx, true);
-            }
-        }
-        else {
-            // Will be run from the scheduler
-            context_mngr->MarkDeferredPropertySetter(ctx, entity, prop, func);
-            ignore_unused(has_value_ref);
-            ignore_unused(prop_data);
-            return_ctx.release();
-        }
-    });
-}
 
-static void Game_AddPropertySetter_Deferred(AngelScript::asIScriptGeneric* gen)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    Game_AddPropertySetter(gen, true);
-}
-
-static void Game_AddPropertySetter_NonDeferred(AngelScript::asIScriptGeneric* gen)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    Game_AddPropertySetter(gen, false);
+            context_mngr->RunContext(ctx, true);
+        });
+    }
 }
 
 static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
@@ -1091,8 +1078,7 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
 
     const auto register_entity_props = [&](const char* name) {
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void SetPropertyGetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_SetPropertyGetter), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void AddPropertySetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_AddPropertySetter_NonDeferred), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void AddPropertyDeferredSetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_AddPropertySetter_Deferred), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void AddPropertySetter({}Property prop, ?&in func)", name).c_str(), FO_SCRIPT_GENERIC(Game_AddPropertySetter), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("void GetPropertyInfo({}Property prop, bool&out isDisabled, bool&out isVirtual, bool&out isDict, bool&out isArray, bool&out isStringLike, string&out enumName, bool&out isInt, bool&out isFloat, bool&out isBool, int&out baseSize, bool&out isSynced) const", name).c_str(), FO_SCRIPT_GENERIC(Game_GetPropertyInfo), FO_SCRIPT_GENERIC_CONV, cast_to_void(const_name(name))));
     };
 

@@ -238,9 +238,6 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
             _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
         }
 
-        ctx_ext->DeferredPropertyEntity = nullptr;
-        ctx_ext->DeferredProperty = nullptr;
-        ctx_ext->DeferredPropertyCallback = nullptr;
         ctx_ext->Parent = nullptr;
         ctx_ext->Root = nullptr;
         ctx_ext->Exception = {};
@@ -287,38 +284,6 @@ void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScrip
     FO_STACK_TRACE_ENTRY();
 
     _contextSetupCallback = std::move(context_setup_callback);
-}
-
-auto AngelScriptContextManager::IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    scoped_lock lock {_poolLocker};
-
-    for (const auto& ctx : _busyContexts) {
-        const auto* ctx_ext = AngelScriptContextExtendedData::Get(const_cast<AngelScript::asIScriptContext*>(ctx.get()));
-        FO_RUNTIME_ASSERT(ctx_ext);
-
-        if (ctx_ext->DeferredPropertyEntity == entity && ctx_ext->DeferredProperty == prop && ctx_ext->DeferredPropertyCallback == func) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void AngelScriptContextManager::MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
-
-    ctx_ext->DeferredPropertyEntity = entity;
-    ctx_ext->DeferredProperty = prop;
-    ctx_ext->DeferredPropertyCallback = func;
 }
 
 auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool

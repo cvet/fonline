@@ -138,8 +138,7 @@ static constexpr array CALLBACK_ATTRIBUTE_RULES {
     CallbackAttributeRule {.AttributeName = "TimeEvent", .UsageName = "time-event APIs (StartTimeEvent, StopTimeEvent, CountTimeEvent, RepeatTimeEvent, SetTimeEventData)", .MethodName = "SetTimeEventData", .ObjectTypeSuffix = {}},
     CallbackAttributeRule {.AttributeName = "AnimCallback", .UsageName = "AddAnimCallback", .MethodName = "AddAnimCallback", .ObjectTypeSuffix = {}},
     CallbackAttributeRule {.AttributeName = "PropertyGetter", .UsageName = "property getter APIs (SetPropertyGetter)", .MethodName = "SetPropertyGetter", .ObjectTypeSuffix = {}},
-    CallbackAttributeRule {.AttributeName = "PropertySetter", .UsageName = "property setter APIs (AddPropertySetter, AddPropertyDeferredSetter)", .MethodName = "AddPropertySetter", .ObjectTypeSuffix = {}},
-    CallbackAttributeRule {.AttributeName = "PropertySetter", .UsageName = "property setter APIs (AddPropertySetter, AddPropertyDeferredSetter)", .MethodName = "AddPropertyDeferredSetter", .ObjectTypeSuffix = {}},
+    CallbackAttributeRule {.AttributeName = "PropertySetter", .UsageName = "property setter API (AddPropertySetter)", .MethodName = "AddPropertySetter", .ObjectTypeSuffix = {}},
 };
 
 static auto IsWhitespaceLexem(const Preprocessor::Lexem& lex) noexcept -> bool

@@ -257,13 +257,6 @@ namespace
         (void)gen->GetAddressOfArg(1);
     }
 
-    static void DummyProperty_AddPropertyDeferredSetter(asIScriptGeneric* gen)
-    {
-        (void)gen->GetObject();
-        (void)gen->GetAddressOfArg(0);
-        (void)gen->GetAddressOfArg(1);
-    }
-
     static void DummyCritter_AddAnimCallback(asIScriptGeneric* gen)
     {
         (void)gen->GetObject();
@@ -368,7 +361,6 @@ namespace
         REQUIRE(engine->RegisterGlobalFunction("DummyPropertyApi@ GetDummyPropertyApi()", asFUNCTION(GetDummyPropertyApi), asCALL_CDECL) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void SetPropertyGetter(int prop, PropertyGetterFunc@+ func)", asFUNCTION(DummyProperty_SetPropertyGetter), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertySetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertySetter), asCALL_GENERIC) >= 0);
-        REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertyDeferredSetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertyDeferredSetter), asCALL_GENERIC) >= 0);
     }
 
     static void RegisterDummyAnimCallbackApi(asIScriptEngine* engine)
@@ -1058,11 +1050,6 @@ void OnSet(int entity)
 void RegisterSetter()
 {
     GetDummyPropertyApi().AddPropertySetter(1, OnSet);
-}
-
-void RegisterDeferredSetter()
-{
-    GetDummyPropertyApi().AddPropertyDeferredSetter(1, OnSet);
 }
 )";
 
@@ -2071,7 +2058,7 @@ void TakesIntPlease(int? value)
 
         const auto event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
-        CHECK(event_error.find("Functions passed to property setter APIs (AddPropertySetter, AddPropertyDeferredSetter) must be marked [[PropertySetter]]") != string::npos);
+        CHECK(event_error.find("Functions passed to property setter API (AddPropertySetter) must be marked [[PropertySetter]]") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
     }
 
@@ -2113,7 +2100,7 @@ void TakesIntPlease(int? value)
 
         const auto event_error = ValidateEventSubscriptions(mod);
         CHECK(!event_error.empty());
-        CHECK(event_error.find("Functions marked [[PropertySetter]] can only be passed to property setter APIs (AddPropertySetter, AddPropertyDeferredSetter)") != string::npos);
+        CHECK(event_error.find("Functions marked [[PropertySetter]] can only be passed to property setter API (AddPropertySetter)") != string::npos);
         CHECK(event_error.find("void OnSet(int)") != string::npos);
     }
 
