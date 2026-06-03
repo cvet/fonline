@@ -53,7 +53,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
     ValidateEntityAccess(item);
 
     if (item->GetOwnership() == ItemOwnership::Nowhere) {
-        throw GenericException("Item does not has holder", item->GetId(), item->GetProtoId());
+        throw GenericException("Item does not have a holder", item->GetId(), item->GetProtoId());
     }
 
     auto holder = item->GetParent();

@@ -321,14 +321,17 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
+    DataArrivedCallback callback;
+
     {
         scoped_lock locker {_inBufLocker};
 
         _inBuf.AddData(buf);
+        callback = _dataArrivedCallback;
     }
 
-    if (_dataArrivedCallback) {
-        _dataArrivedCallback();
+    if (callback) {
+        callback();
     }
 }
 
@@ -351,6 +354,10 @@ void ServerConnection::GracefulDisconnect()
 void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Same lock as AsyncReceiveData: that runs on the network thread and may read this callback
+    // concurrently, so the assignment must be synchronized to avoid a torn std::function move.
+    scoped_lock locker {_inBufLocker};
 
     _dataArrivedCallback = std::move(callback);
 }
