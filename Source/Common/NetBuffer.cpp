@@ -356,7 +356,7 @@ auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 
     if (failed) {
         ResetBuf();
-        throw UnresolvedHashException("Can't resolve received hash", hash);
+        throw NetBufferException("Can't resolve received hash", hash);
     }
 
     return result;

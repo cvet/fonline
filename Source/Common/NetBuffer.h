@@ -39,11 +39,6 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetBufferException);
 FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
-// Thrown when an incoming hashed string can't be resolved against the local hash storage.
-// Convention: pass the unresolved hash as the second constructor argument (right after the message),
-// so it is recoverable as the first exception param — params().front() — formatted as an unsigned
-// decimal, without a dedicated field. See NetInBuffer::ReadHashedString and the client report flow.
-FO_DECLARE_EXCEPTION_EXT(UnresolvedHashException, NetBufferException);
 
 class NetBuffer
 {
@@ -91,6 +86,7 @@ public:
     ~NetOutBuffer() override = default;
 
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
+    [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
     void Push(const_span<uint8_t> buf);
     void Push(const void* buf, size_t len);

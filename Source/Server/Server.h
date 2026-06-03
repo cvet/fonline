@@ -231,6 +231,7 @@ private:
 
     void LoadReportedHashes();
     void RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash);
+    void ProcessPendingUnresolvedHash(ServerConnection* connection);
     void SendAllReportedHashes(ServerConnection* connection);
     void BroadcastReportedString(string_view reported_string);
 

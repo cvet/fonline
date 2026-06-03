@@ -142,7 +142,7 @@ TEST_CASE("NetBuffer")
         CHECK(read_value.as_str() == "net_hash_value");
     }
 
-    SECTION("UnresolvedHashThrowsWithHashAndCanBeLearned")
+    SECTION("UnresolvedHashReportsWithHandlerAndCanBeLearned")
     {
         HashStorage sender {};
         const auto value = sender.ToHashedString("runtime_only_hash");
@@ -152,21 +152,14 @@ TEST_CASE("NetBuffer")
 
         // A receiver that doesn't know this hash yet fails and reports the raw hash
         HashStorage receiver {};
+        hstring::hash_t reported_hash = 0;
+        receiver.SetResolveHashFailureHandler([&reported_hash](hstring::hash_t hash) { reported_hash = hash; });
+
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
 
-        try {
-            (void)in_buf.Read<hstring>(receiver);
-            FAIL("Expected UnresolvedHashException");
-        }
-        catch (const UnresolvedHashException& ex) {
-            // The unresolved hash travels as the exception's first param (unsigned decimal)
-            REQUIRE_FALSE(ex.params().empty());
-            hstring::hash_t reported = 0;
-            const auto& hash_param = ex.params().front();
-            (void)std::from_chars(hash_param.data(), hash_param.data() + hash_param.size(), reported);
-            CHECK(reported == value.as_hash());
-        }
+        CHECK_THROWS_AS(in_buf.Read<hstring>(receiver), NetBufferException);
+        CHECK(reported_hash == value.as_hash());
 
         // Learning the string (as the client does from the server's HashList) makes the same hash resolve
         const auto learned = receiver.ToHashedString("runtime_only_hash");

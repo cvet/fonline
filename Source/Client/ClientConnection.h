@@ -78,6 +78,7 @@ public:
     void Connect();
     void Process();
     void Disconnect();
+    void FlushPendingData();
 
     raw_ptr<NetInBuffer> InBuf {&_netIn};
     raw_ptr<NetOutBuffer> OutBuf {&_netOut};
@@ -90,7 +91,6 @@ private:
     auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
-    void Net_SendUnresolvedHash(hstring::hash_t hash); // Send and flush immediately.
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 

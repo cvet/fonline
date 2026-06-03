@@ -92,7 +92,7 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 
 ### Serialization, values, strings, and hashes
 
-`DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives.
+`DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
 
 ### Filesystem, compression, sockets, and work threads
 

@@ -91,6 +91,8 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     InitAngelScriptScripting(this, Settings, Resources);
 #endif
 
+    Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
+
     _curLang = TextPack {Hashes};
     _curLang.LoadFromResources(Resources, Settings.Language);
 
@@ -533,6 +535,21 @@ void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     _conn.OutBuf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
     _conn.OutBuf->Push(data);
     _conn.OutBuf->EndMsg();
+}
+
+void ClientEngine::HandleUnresolvedHash(hstring::hash_t hash)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_conn.IsConnected() || _conn.OutBuf->IsMsgStarted()) {
+        return;
+    }
+
+    _conn.OutBuf->StartMsg(NetMessage::UnresolvedHash);
+    _conn.OutBuf->Write(hash);
+    _conn.OutBuf->EndMsg();
+
+    _conn.FlushPendingData();
 }
 
 void ClientEngine::Net_SendDir(CritterHexView* cr)

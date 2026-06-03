@@ -1588,6 +1588,8 @@ void ServerEngine::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
+        ProcessPendingUnresolvedHash(connection);
+
         scoped_lock locker {_unloginedPlayersLocker};
 
         const auto it = std::ranges::find(_unloginedPlayers, unlogined_player);
@@ -1660,6 +1662,8 @@ void ServerEngine::ProcessPlayer(Player* player)
     auto* connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
+        ProcessPendingUnresolvedHash(connection);
+
         WriteLog("Disconnected player {}", player->GetName());
 
         ValidateEntityAccess(player);
@@ -2646,10 +2650,29 @@ void ServerEngine::Process_UnresolvedHash(ServerConnection* connection)
     in_buf.Unlock();
 
     RegisterClientReportedHash(connection, hash);
+}
 
-    // The client reports a bad hash only right before dropping (it can't keep parsing the stream),
-    // so tear down the server side too instead of waiting for the socket close or an inactivity timeout.
-    connection->HardDisconnect();
+void ServerEngine::ProcessPendingUnresolvedHash(ServerConnection* connection)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto in_buf = connection->ReadBuf();
+
+    if (!in_buf->NeedProcess()) {
+        return;
+    }
+
+    const auto msg = in_buf->ReadMsg();
+
+    if (msg != NetMessage::UnresolvedHash) {
+        return;
+    }
+
+    const auto hash = in_buf->Read<hstring::hash_t>();
+
+    in_buf.Unlock();
+
+    RegisterClientReportedHash(connection, hash);
 }
 
 void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash)

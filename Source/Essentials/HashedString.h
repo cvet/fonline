@@ -109,17 +109,23 @@ class HashStorage : public HashResolver
 {
 public:
     using HashFunc = uint64_t (*)(const void* data, size_t len);
+    using ResolveHashFailureHandler = function<void(hstring::hash_t hash)>;
 
     explicit HashStorage(HashFunc hash_func = hashing_ex::hash);
     auto CheckHashedString(string_view s) const noexcept -> bool;
     auto ToHashedString(string_view s) -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
     auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
+    void SetResolveHashFailureHandler(ResolveHashFailureHandler handler);
 
 private:
+    void HandleResolveHashFailure(hstring::hash_t h) const noexcept;
+
     HashFunc _hashFunc;
     mutable shared_mutex _hashStorageLocker {};
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
+    mutable shared_mutex _resolveHashFailureHandlerLocker {};
+    ResolveHashFailureHandler _resolveHashFailureHandler FO_TSA_GUARDED_BY(_resolveHashFailureHandlerLocker) {};
 };
 
 FO_END_NAMESPACE

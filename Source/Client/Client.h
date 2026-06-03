@@ -298,6 +298,7 @@ protected:
     auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
 
     void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
+    void HandleUnresolvedHash(hstring::hash_t hash);
 
     void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
     void Net_SendDir(CritterHexView* cr);
