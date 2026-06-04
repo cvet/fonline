@@ -2438,7 +2438,8 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     ValidateEntityAccess(cr);
     ValidateEntityAccess(prev_cr);
 
-    auto map = EntityMngr.GetMap(cr->GetMapId());
+    auto map = cr->GetParent<Map>();
+    FO_RUNTIME_ASSERT(!!cr->GetMapId() == !!map);
 
     auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
@@ -2446,7 +2447,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     bool release_empty_sync_context = false;
 
     if (ctx->IsEmpty()) {
-        if (map != nullptr) {
+        if (map) {
             ServerEntity* sync_entities[] = {cr, map.get()};
             ctx->SyncEntities(span<ServerEntity*> {sync_entities});
         }
@@ -4293,10 +4294,10 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
 
         // Now we hold the critter's lock — GetMapId() is race-free and we can widen the cover
         // to include the map without re-reading from a stale snapshot.
-        const auto map_id = cr_->GetMapId();
-        auto map = map_id ? EntityMngr.GetMap(map_id) : refcount_ptr<Map> {};
+        auto map = cr_->GetParent<Map>();
+        FO_RUNTIME_ASSERT(!!cr_->GetMapId() == !!map);
 
-        if (map != nullptr) {
+        if (map) {
             ServerEntity* sync_entities[] = {map.get(), cr_.get()};
             ctx->SyncEntities(span<ServerEntity*> {sync_entities});
         }

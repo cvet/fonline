@@ -152,7 +152,9 @@ void Critter::MarkIsForPlayer()
     SetControlledByPlayer(true);
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 
-    if (auto map = _engine->EntityMngr.GetMap(GetMapId())) {
+    if (GetMapId()) {
+        auto map = GetParent<Map>();
+        FO_RUNTIME_ASSERT(map);
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -166,7 +168,9 @@ void Critter::UnmarkIsForPlayer()
 
     SetControlledByPlayer(false);
 
-    if (auto map = _engine->EntityMngr.GetMap(GetMapId())) {
+    if (GetMapId()) {
+        auto map = GetParent<Map>();
+        FO_RUNTIME_ASSERT(map);
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -800,10 +804,10 @@ auto Critter::GetMapSpectators() -> ref_hold_vector<Player*>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (const auto map_id = GetMapId()) {
-        if (auto map = GetEngine()->EntityMngr.GetMap(map_id); map && map->HasSpectatorPlayers()) {
-            return copy_hold_ref(map->GetSpectatorPlayers());
-        }
+    auto map = GetParent<Map>();
+
+    if (map && map->HasSpectatorPlayers()) {
+        return copy_hold_ref(map->GetSpectatorPlayers());
     }
 
     return ref_hold_vector<Player*>(0);

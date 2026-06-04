@@ -1702,13 +1702,13 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
         DestroyInnerEntities(entity);
     }
 
-    Entity* holder;
+    refcount_ptr<ServerEntity> holder;
 
     if (const auto id = entity->GetCustomHolderId()) {
-        auto holder_ref = GetEntity(id);
-        FO_RUNTIME_ASSERT(holder_ref);
-        ValidateEntityAccess(holder_ref.get());
-        holder = holder_ref.get();
+        holder = entity->GetParent();
+        FO_RUNTIME_ASSERT(holder);
+        FO_RUNTIME_ASSERT(holder->GetId() == id);
+        ValidateEntityAccess(holder.get());
     }
     else {
         holder = _engine.get();
@@ -1722,7 +1722,7 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
     const auto entry = entity->GetCustomHolderEntry();
     holder->RemoveInnerEntity(entry, entity);
 
-    const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
+    const auto* holder_prop = _engine->GetEntityHolderIdsProp(holder.get(), entry);
     auto& holder_props = holder->GetPropertiesForEdit();
     auto inner_entity_ids = holder_props.GetValueFast<vector<ident_t>>(holder_prop);
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
@@ -1749,8 +1749,11 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
     function<void(Entity*, EntityHolderEntrySync)> find_players_recursively;
 
     find_players_recursively = [this, &find_players_recursively, &view_callback](Entity* holder, EntityHolderEntrySync derived_sync) {
-        if (const auto* custom_entity = dynamic_cast<CustomEntity*>(holder); custom_entity != nullptr) {
-            if (auto custom_entity_holder = GetEntity(custom_entity->GetCustomHolderId())) {
+        if (auto* custom_entity = dynamic_cast<CustomEntity*>(holder); custom_entity != nullptr) {
+            auto custom_entity_holder = custom_entity->GetParent();
+
+            if (custom_entity_holder) {
+                FO_RUNTIME_ASSERT(custom_entity_holder->GetId() == custom_entity->GetCustomHolderId());
                 ValidateEntityAccess(custom_entity_holder.get());
 
                 const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
@@ -1789,32 +1792,35 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
                 view_callback(map_cr->GetPlayer(), false);
             }
         }
-        else if (const auto* item = dynamic_cast<Item*>(holder)) {
+        else if (auto* item = dynamic_cast<Item*>(holder)) {
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
-                if (auto item_cr = GetCritter(item->GetCritterId())) {
-                    ValidateEntityAccess(item_cr.get());
-                    find_players_recursively(item_cr.get(), derived_sync);
-                }
+                auto item_cr = item->GetParent<Critter>();
+                FO_RUNTIME_ASSERT(item_cr);
+                FO_RUNTIME_ASSERT(item_cr->GetId() == item->GetCritterId());
+                ValidateEntityAccess(item_cr.get());
+                find_players_recursively(item_cr.get(), derived_sync);
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_sync == EntityHolderEntrySync::PublicSync) {
-                    if (auto item_map = GetMap(item->GetMapId())) {
-                        ValidateEntityAccess(item_map.get());
+                    auto item_map = item->GetParent<Map>();
+                    FO_RUNTIME_ASSERT(item_map);
+                    FO_RUNTIME_ASSERT(item_map->GetId() == item->GetMapId());
+                    ValidateEntityAccess(item_map.get());
 
-                        for (auto& map_cr : item_map->GetPlayerCritters()) {
-                            if (map_cr->IsSeeItem(item->GetId())) {
-                                view_callback(map_cr->GetPlayer(), false);
-                            }
+                    for (auto& map_cr : item_map->GetPlayerCritters()) {
+                        if (map_cr->IsSeeItem(item->GetId())) {
+                            view_callback(map_cr->GetPlayer(), false);
                         }
                     }
                 }
             } break;
             case ItemOwnership::ItemContainer: {
-                if (auto item_cont = GetItem(item->GetContainerId())) {
-                    ValidateEntityAccess(item_cont.get());
-                    find_players_recursively(item_cont.get(), derived_sync);
-                }
+                auto item_cont = item->GetParent<Item>();
+                FO_RUNTIME_ASSERT(item_cont);
+                FO_RUNTIME_ASSERT(item_cont->GetId() == item->GetContainerId());
+                ValidateEntityAccess(item_cont.get());
+                find_players_recursively(item_cont.get(), derived_sync);
             } break;
             default:
                 break;
