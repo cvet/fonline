@@ -66,10 +66,11 @@ The essentials layer should stay dependency-light. It is included by most of the
 1. `BasicCore.h` — compiler/OS gates, standard library surface, namespace macros, base aliases, exception declaration helpers, and compile-time constants.
 2. `GlobalData.h` — process-wide create/delete callback registration for engine global data.
 3. `StackTrace.h`, `BaseLogging.h`, `ExceptionHandling.h`, `Logging.h` — diagnostic and failure-reporting foundation.
-4. `SmartPointers.h`, `MemorySystem.h` — pointer and allocation helpers.
-5. `Containers.h`, `StringUtils.h`, `CommonHelpers.h` — reusable container/string/utility helpers.
-6. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` — value, serialization, hashing, time, compression, and type helpers.
-7. `WorkThread.h`, `DiskFileSystem.h`, `NetSockets.h`, `Platform.h` — threading, disk access, socket, and host OS abstractions.
+4. `Threading.h` — Clang Thread Safety Analysis macros (`FO_TSA_*`), the snake_case synchronization primitives (`fo::mutex` / `fo::shared_mutex` / `fo::scoped_lock` / `fo::shared_lock` / `fo::unique_lock`), the `fo::thread` pool-task handle, and the `run_thread` / `run_async` worker pools. Deliberately positioned right after `ExceptionHandling.h` (its deepest dependency) so even low-layer value headers such as `HashedString.h` can guard their state with the primitives. See [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md).
+5. `SmartPointers.h`, `MemorySystem.h` — pointer and allocation helpers.
+6. `Containers.h`, `StringUtils.h`, `CommonHelpers.h` — reusable container/string/utility helpers.
+7. `SafeArithmetics.h`, `DataSerialization.h`, `HashedString.h`, `StrongType.h`, `TimeRelated.h`, `ExtendedTypes.h`, `Compressor.h` — value, serialization, hashing, time, compression, and type helpers.
+8. `WorkThread.h`, `DiskFileSystem.h`, `NetSockets.h`, `Platform.h` — the `WorkThread` job runner, disk access, socket, and host OS abstractions.
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 

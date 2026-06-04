@@ -113,6 +113,7 @@ AngelScriptBackend::~AngelScriptBackend()
     _meta.reset();
     _scriptSys.reset();
     _engine.reset();
+    _settings.reset();
     _entityMngr.reset();
 
     ReleaseScriptGlobalsAndReportGC();
@@ -389,10 +390,10 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     const auto records = DeserializeFunctionAttributeRecords(reader);
     reader.VerifyEnd();
 
-    if (const auto bind_error = BindFunctionAttributeRecords(mod, records); !bind_error.empty()) {
+    if (const auto bind_error = BindFunctionAttributeRecords(mod, records, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptException(bind_error);
     }
-    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt); !usage_error.empty()) {
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptException(usage_error);
     }
     if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
@@ -589,10 +590,10 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Unable to build module", as_result);
     }
 
-    if (const auto bind_error = BindFunctionAttributeRecords(mod, parsed_attributes); !bind_error.empty()) {
+    if (const auto bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptCompilerException("Unable to bind function attributes", bind_error);
     }
-    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt); !usage_error.empty()) {
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptCompilerException("Attributed function usage validation failed", usage_error);
     }
     if (const auto special_attr_error = ValidateSpecialFunctionAttributes(mod, lnt); !special_attr_error.empty()) {
@@ -638,6 +639,48 @@ void AngelScriptBackend::BindRequiredStuff()
 
     BindAngelScriptRemoteCalls(_asEngine.get());
 
+    if (HasEntityMngr() && _asEngine->GetModuleCount() == 1) {
+        const auto* mod = _asEngine->GetModuleByIndex(0);
+        const auto global_count = mod->GetGlobalVarCount();
+
+        vector<string> violations;
+
+        for (AngelScript::asUINT i = 0; i < global_count; i++) {
+            const char* name = nullptr;
+            const char* name_space = nullptr;
+            int type_id = 0;
+            bool is_const = false;
+
+            mod->GetGlobalVar(i, &name, &name_space, &type_id, &is_const);
+
+            const auto* decl = mod->GetGlobalVarDeclaration(i, true);
+            const auto decl_str = string_view(decl != nullptr ? decl : "");
+            const auto explicitly_const = decl_str.starts_with("const ");
+
+            if (is_const || explicitly_const) {
+                continue;
+            }
+
+            const auto ns_view = string_view(name_space != nullptr ? name_space : "");
+
+            if (IsScriptNamespaceAllowed(ns_view, _settings->MutableGlobalsAllowedNamespaces)) {
+                continue;
+            }
+
+            violations.emplace_back(!decl_str.empty() ? string(decl_str) : (name != nullptr ? string(name) : string("<unknown>")));
+        }
+
+        if (!violations.empty()) {
+            string msg = strex("Found {} mutable global variable(s):", violations.size());
+
+            for (const auto& v : violations) {
+                msg += strex("\n  - {}", v);
+            }
+
+            throw ScriptCompilerException(msg);
+        }
+    }
+
     // Index all functions
     if (_scriptSys) {
         FO_RUNTIME_ASSERT(_asEngine->GetModuleCount() == 1);
@@ -666,15 +709,9 @@ void AngelScriptBackend::BindRequiredStuff()
     if (HasGameEngine()) {
         auto* engine = GetGameEngine();
 
-        engine->AddLoopCallback([this, engine]() FO_DEFERRED {
-            const auto time = engine->GameTime.GetFrameTime();
+        const auto overrun_report_time = std::chrono::milliseconds(_settings->OverrunReportTime);
 
-            if (_debuggerEndpointServer == nullptr || !_debuggerEndpointServer->IsPaused()) {
-                _contextMngr->ResumeSuspendedContexts(time);
-            }
-        });
-
-        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), std::chrono::milliseconds(_settings->OverrunReportTime), [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
+        _contextMngr = SafeAlloc::MakeUnique<AngelScriptContextManager>(_asEngine.get(), overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer != nullptr) {
                 nlohmann::json body;
                 body["reason"] = reason;
@@ -700,6 +737,10 @@ void AngelScriptBackend::BindRequiredStuff()
             if (_debuggerEndpointServer != nullptr) {
                 _debuggerEndpointServer->SetupContext(ctx, reason);
             }
+        });
+
+        _contextMngr->SetDelayedScheduler([engine](timespan delay, function<void()> body) { //
+            engine->ScheduleDelayedCallback(delay, std::move(body));
         });
     }
 }

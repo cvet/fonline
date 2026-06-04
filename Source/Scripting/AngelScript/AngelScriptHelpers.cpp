@@ -132,6 +132,19 @@ void CheckScriptEntityNonDestroyed(const Entity* entity)
     }
 }
 
+void CheckScriptEntityAccessAndNonDestroyed(const Entity* entity)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (entity != nullptr) {
+        entity->ValidateAccess();
+
+        if (entity->IsDestroyed()) {
+            throw ScriptException("Access to destroyed entity");
+        }
+    }
+}
+
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1636,6 +1649,27 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
     }
 
     return hash_resolver.ToHashedString(func_name);
+}
+
+auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (allowed_namespaces.empty() || ns.empty()) {
+        return false;
+    }
+
+    for (const auto& allowed : allowed_namespaces) {
+        if (allowed.empty()) {
+            continue;
+        }
+
+        if (ns.starts_with(allowed)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int32_t

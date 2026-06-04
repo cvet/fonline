@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#pragma once
+
 #include "BasicCore.h"
 #include "Containers.h"
 
@@ -63,6 +65,13 @@ struct Platform
     // Linux & Mac: getpid
     // Other: "0"
     static auto GetCurrentProcessIdStr() noexcept -> string;
+
+    // Resident memory of the current process in bytes.
+    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS::WorkingSetSize)
+    // Linux & Android: /proc/self/statm (RSS pages * page size)
+    // Mac: task_info MACH_TASK_BASIC_INFO (resident_size)
+    // Other: 0
+    static auto GetProcessMemoryUsage() noexcept -> size_t;
 
     // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
     // Linux & Mac: dlopen/dlclose/dlsym

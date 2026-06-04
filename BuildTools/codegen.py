@@ -2147,6 +2147,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .Setter = true' if 'Setter' in method_tag.flags else '') +
                     (', .PassOwnership = true' if 'PassOwnership' in method_tag.flags else '') +
                     (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
+                    (', .Async = true' if 'Async' in method_tag.flags else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 

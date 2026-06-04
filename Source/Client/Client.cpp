@@ -253,6 +253,35 @@ void ClientEngine::Shutdown()
     FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
+void ClientEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto fire_time = GameTime.GetFrameTime() + delay;
+    const auto pos = std::ranges::lower_bound(_scheduledCallbacks, fire_time, {}, &ScheduledCallback::FireTime);
+    _scheduledCallbacks.insert(pos, ScheduledCallback {.FireTime = fire_time, .Body = std::move(body)});
+}
+
+void ClientEngine::ProcessScheduledCallbacks()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Sorted ascending by FireTime — peek only the front, stop at first not-yet-due entry.
+    const auto now = GameTime.GetFrameTime();
+
+    while (!_scheduledCallbacks.empty() && _scheduledCallbacks.front().FireTime <= now) {
+        auto body = std::move(_scheduledCallbacks.front().Body);
+        _scheduledCallbacks.erase(_scheduledCallbacks.begin());
+
+        try {
+            body();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+    }
+}
+
 auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -332,7 +361,7 @@ void ClientEngine::MainLoop()
 
     _conn.Process();
     ProcessInputEvents();
-    ProcessScriptEvents();
+    ProcessScheduledCallbacks();
     TimeEventMngr.ProcessTimeEvents();
     OnLoop.Fire();
 

@@ -76,8 +76,8 @@ public:
     ~MapManager() = default;
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> StaticMap*;
-    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> Location*;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> Map*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_ptr<Location>;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_ptr<Map>;
     [[nodiscard]] auto FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset = {}, function<bool(const Item*)> gag_callback = {}) const -> FindPathOutput;
     [[nodiscard]] auto TracePath(const Map* map, mpos start_hex, mpos target_hex, int32_t max_dist = 0, float32_t angle = 0.0f, const Critter* find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
 

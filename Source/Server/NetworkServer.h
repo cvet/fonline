@@ -79,9 +79,9 @@ protected:
 private:
     AsyncSendCallback _sendCallback {};
     std::atomic_bool _sendCallbackSet {};
-    AsyncReceiveCallback _receiveCallback {};
-    vector<uint8_t> _initReceiveBuf {};
-    std::mutex _receiveLocker {};
+    mutex _receiveLocker {};
+    AsyncReceiveCallback _receiveCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
+    vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
     DisconnectCallback _disconnectCallback {};
     std::atomic_bool _disconnectCallbackSet {};
     std::atomic_bool _isDisconnected {};
@@ -91,6 +91,12 @@ class NetworkServer
 {
 public:
     using NewConnectionCallback = function<void(shared_ptr<NetworkServerConnection>)>;
+
+    enum class DummyConnectionState : uint8_t
+    {
+        Connected,
+        Disconnected,
+    };
 
     NetworkServer() = default;
     NetworkServer(const NetworkServer&) = delete;
@@ -110,7 +116,7 @@ public:
     [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 
-    [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings) -> shared_ptr<NetworkServerConnection>;
+    [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
 };
 
 FO_END_NAMESPACE

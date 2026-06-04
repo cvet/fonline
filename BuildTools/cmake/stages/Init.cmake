@@ -221,6 +221,19 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 		$<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
 endif()
 
+# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
+# Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
+# FO_TSA_* annotation macros are no-ops on MSVC/GCC, and third-party code is silenced via DisableLibWarnings, so the
+# analysis is confined to first-party engine + SourceExt code. clang-cl uses the cl-style driver, so the GNU-style
+# warning flags are routed through the clang front end with /clang:.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	if(MSVC)
+		AddCompileOptionsList(/clang:-Wthread-safety /clang:-Werror=thread-safety)
+	else()
+		AddCompileOptionsList(-Wthread-safety -Werror=thread-safety)
+	endif()
+endif()
+
 # Engine settings
 AddCompileDefinitionsList(
 	"FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""

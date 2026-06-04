@@ -503,14 +503,14 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
     const auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         _docReadRetryMarkers.emplace(collection_name, id);
     }
 
     auto release_reader = scope_exit([&]() noexcept {
         safe_call([&]() {
-            std::scoped_lock locker {_stateLocker};
+            scoped_lock locker {_stateLocker};
 
             _docReadRetryMarkers.erase({collection_name, id});
         });
@@ -533,7 +533,7 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
         vector<shared_ptr<CommitOperationData>> pending_ops;
 
         {
-            std::scoped_lock locker {_stateLocker};
+            scoped_lock locker {_stateLocker};
 
             if (_docReadRetryMarkers.erase({collection_name, id}) == 0) {
                 _docReadRetryMarkers.emplace(collection_name, id);
@@ -576,7 +576,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     ValidateCollectionKey(collection_name, id);
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
@@ -596,7 +596,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     ValidateCollectionKey(collection_name, id);
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
@@ -616,7 +616,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     ValidateCollectionKey(collection_name, id);
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
@@ -633,7 +633,7 @@ void DataBaseImpl::StartCommitChanges()
     FO_STACK_TRACE_ENTRY();
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         _commitThreadActive = true;
     }
@@ -645,7 +645,7 @@ void DataBaseImpl::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker {_stateLocker};
+    unique_lock locker {_stateLocker};
 
     if (!_commitThreadActive) {
         return;
@@ -665,7 +665,7 @@ void DataBaseImpl::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker {_stateLocker};
+    scoped_lock locker {_stateLocker};
 
     _pendingCommitOperations.clear();
 }
@@ -685,10 +685,13 @@ void DataBaseImpl::DrawGui()
     };
 
     size_t pending_count = 0;
+    bool commit_thread_active = false;
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
+
         pending_count = _pendingCommitOperations.size();
+        commit_thread_active = _commitThreadActive;
     }
 
     if (ImGui::BeginTable("##DbSummary", 2, TABLE_FLAGS)) {
@@ -699,7 +702,7 @@ void DataBaseImpl::DrawGui()
         info_row("Backend failed", strex("{}", _backendFailed.load()).str());
         info_row("Panic started", strex("{}", _panicStarted.load()).str());
         info_row("Op log enabled", strex("{}", _opLogEnabled).str());
-        info_row("Commit thread active", strex("{}", _commitThreadActive).str());
+        info_row("Commit thread active", strex("{}", commit_thread_active).str());
         info_row("Pending commit operations", strex("{}", pending_count).str());
         info_row("Pending changes panic threshold", strex("{}", _pendingChangesPanicThreshold).str());
         info_row("DB requests per minute", strex("{}", GetDbRequestsPerMinute()).str());
@@ -746,7 +749,7 @@ void DataBaseImpl::ScheduleCommit()
     bool should_notify = false;
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         if (!_pendingCommitOperations.empty()) {
             should_notify = true;
@@ -765,7 +768,7 @@ void DataBaseImpl::StartCommitThread()
     FO_RUNTIME_ASSERT(!_commitThread.joinable());
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         _commitThreadStopRequested = false;
     }
@@ -781,13 +784,14 @@ void DataBaseImpl::StopCommitThread() noexcept
         FO_RUNTIME_ASSERT(_commitThread.joinable());
 
         {
-            std::scoped_lock locker {_stateLocker};
+            scoped_lock locker {_stateLocker};
 
             _commitThreadStopRequested = true;
         }
 
         _commitThreadSignal.notify_one();
         _commitThread.join();
+        _commitThread = {};
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -807,7 +811,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
             bool stop_requested = false;
 
             {
-                std::unique_lock locker {_stateLocker};
+                unique_lock locker {_stateLocker};
 
                 while ((!_commitThreadActive || _pendingCommitOperations.empty()) && !_commitThreadStopRequested && !_backendFailed) {
                     _commitThreadDoneSignal.notify_all();
@@ -834,7 +838,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 while (has_changes) {
                     CommitNextChange();
 
-                    std::scoped_lock locker {_stateLocker};
+                    scoped_lock locker {_stateLocker};
 
                     has_changes = !_pendingCommitOperations.empty();
                 }
@@ -877,7 +881,7 @@ void DataBaseImpl::CommitNextChange() noexcept
     shared_ptr<CommitOperationData> op;
 
     {
-        std::scoped_lock locker {_stateLocker};
+        scoped_lock locker {_stateLocker};
 
         if (_pendingCommitOperations.empty()) {
             return;
@@ -963,7 +967,7 @@ void DataBaseImpl::CommitNextChange() noexcept
     }
 
     try {
-        std::scoped_lock state_locker {_stateLocker};
+        scoped_lock state_locker {_stateLocker};
 
         _pendingCommitOperations.pop_front();
     }
@@ -983,7 +987,7 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
 
     const auto now_second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
-    std::scoped_lock locker {_dbRequestsMetricLocker};
+    scoped_lock locker {_dbRequestsMetricLocker};
 
     auto& bucket = _dbRequestsPerMinuteBuckets[static_cast<size_t>(now_second % numeric_cast<int64_t>(_dbRequestsPerMinuteBuckets.size()))];
 

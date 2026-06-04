@@ -47,7 +47,7 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 struct ServerServiceAppData
 {
     refcount_ptr<ServerEngine> Server {};
-    std::thread ServerThread {};
+    thread ServerThread {};
     uint32_t LastState {};
     uint32_t CheckPoint {};
 #if FO_WINDOWS

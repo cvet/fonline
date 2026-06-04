@@ -43,10 +43,63 @@ FO_DECLARE_EXCEPTION(TimeEventException);
 
 class BaseEngine;
 
+///@ ExportRefType Common RefCounted Export = GetId, GetData, GetDataArray, HasData, IsStopped, GetRepeat, Stop, Repeat, SetData, SetDataArray
+class TimeEventContext final : public RefCounted<TimeEventContext>
+{
+public:
+    explicit TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data);
+    TimeEventContext(const TimeEventContext&) = delete;
+    TimeEventContext(TimeEventContext&&) noexcept = delete;
+    auto operator=(const TimeEventContext&) = delete;
+    auto operator=(TimeEventContext&&) noexcept = delete;
+    ~TimeEventContext() = default;
+
+    [[nodiscard]] auto GetId() const noexcept -> uint32_t { return _id; }
+    [[nodiscard]] auto GetData() const noexcept -> any_t { return !_data.empty() ? _data.front() : any_t {}; }
+    [[nodiscard]] auto GetDataArray() const noexcept -> vector<any_t> { return _data; }
+    [[nodiscard]] auto HasData() const noexcept -> bool { return !_data.empty(); }
+    [[nodiscard]] auto IsStopped() const noexcept -> bool { return _stopped; }
+    [[nodiscard]] auto GetRepeat() const noexcept -> timespan { return _repeat; }
+    [[nodiscard]] auto IsRepeatChanged() const noexcept -> bool { return _repeatChanged; }
+    [[nodiscard]] auto IsDataChanged() const noexcept -> bool { return _dataChanged; }
+    [[nodiscard]] auto GetDataRaw() const noexcept -> const vector<any_t>& { return _data; }
+
+    void Stop() noexcept;
+    void Repeat(timespan repeat) noexcept;
+    void SetData(any_t data);
+    void SetDataArray(readonly_vector<any_t> data);
+
+private:
+    uint32_t _id;
+    timespan _repeat;
+    vector<any_t> _data;
+    bool _stopped {};
+    bool _repeatChanged {};
+    bool _dataChanged {};
+};
+
 class TimeEventManager
 {
 public:
     static const timespan MIN_REPEAT_TIME;
+
+    struct ReadyTimeEvent
+    {
+        refcount_ptr<Entity> OwnerEntity {};
+        shared_ptr<Entity::TimeEventData> Event {};
+    };
+
+    struct FiredTimeEvent
+    {
+        bool CallResult {};
+        refcount_ptr<TimeEventContext> Context {};
+    };
+
+    struct DispatcherHooks
+    {
+        function<void(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay)> Schedule {};
+        function<void(uint32_t event_id)> Cancel {};
+    };
 
     explicit TimeEventManager(BaseEngine& engine);
     TimeEventManager(const TimeEventManager&) = delete;
@@ -55,26 +108,34 @@ public:
     auto operator=(TimeEventManager&&) noexcept = delete;
     ~TimeEventManager() = default;
 
-    [[nodiscard]] auto GetCurTimeEvent() -> pair<Entity*, const Entity::TimeEventData*> { return {_curTimeEventEntity.get(), _curTimeEvent.get()}; }
     [[nodiscard]] auto CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
+
+    void SetDispatcherHooks(DispatcherHooks hooks);
+    void ClearDispatcherHooks();
 
     auto StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
     void ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
     void StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id);
     void ProcessTimeEvents();
     void ClearTimeEvents();
+    void CancelAllForEntity(Entity* entity);
+    auto CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>;
+    auto FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent;
+    void PostFireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result);
+    auto FireAndAdvance(Entity* entity, uint32_t event_id) -> optional<timespan>;
 
 private:
     void AddEntityTimeEventPolling(Entity* entity);
     void RemoveEntityTimeEventPolling(Entity* entity);
     void ProcessEntityTimeEvents(Entity* entity);
-    auto FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> bool;
+    void NotifySchedule(Entity* entity, uint32_t event_id, timespan delay);
+    void NotifyCancel(uint32_t event_id);
 
     raw_ptr<BaseEngine> _engine;
+    mutable std::recursive_mutex _timeEventLocker {};
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
-    raw_ptr<Entity> _curTimeEventEntity {};
-    raw_ptr<const Entity::TimeEventData> _curTimeEvent {};
-    uint32_t _timeEventCounter {};
+    std::atomic_uint32_t _timeEventCounter {};
+    DispatcherHooks _dispatcher {};
     any_t _emptyAnyValue {};
     bool _nonConstHelper {};
 };

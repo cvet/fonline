@@ -216,28 +216,47 @@ static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 3);
-        FO_RUNTIME_ASSERT(tokens.size() % 2 == 1);
+        FO_RUNTIME_ASSERT(!tokens.empty());
 
         meta->RegisterRefType(tokens[0]);
     }
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 3);
-        FO_RUNTIME_ASSERT(tokens.size() % 2 == 1);
+        FO_RUNTIME_ASSERT(!tokens.empty());
 
         const auto& name = tokens[0];
-        vector<pair<string_view, string_view>> layout;
-        layout.reserve((tokens.size() - 1) / 2);
+        vector<vector<string_view>> layout;
 
-        for (size_t i = 1; i < tokens.size(); i += 2) {
-            const auto type = meta->ResolveComplexType(tokens[i + 1]);
-            FO_RUNTIME_ASSERT_STR(!type.IsMutable, strex("Invalid RefType field type '{}' for field '{}' in '{}'", tokens[i + 1], tokens[i], name));
-            FO_RUNTIME_ASSERT_STR(type.Kind != ComplexTypeKind::Callback, strex("Invalid RefType callback field '{}' in '{}'", tokens[i], name));
-            FO_RUNTIME_ASSERT_STR(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, strex("Invalid RefType entity field '{}' in '{}'", tokens[i], name));
-            FO_RUNTIME_ASSERT_STR(!type.KeyType.has_value() || !type.KeyType->IsEntity, strex("Invalid RefType dict key type '{}' for field '{}' in '{}'", tokens[i + 1], tokens[i], name));
-            layout.emplace_back(tokens[i], tokens[i + 1]);
+        for (size_t i = 1; i < tokens.size();) {
+            FO_RUNTIME_ASSERT_STR(i + 2 < tokens.size(), strex("Truncated RefType field record in '{}'", name));
+
+            const auto field_name = tokens[i];
+            const auto field_type = tokens[i + 1];
+            const auto flag_count_signed = strex(tokens[i + 2]).to_int32();
+            FO_RUNTIME_ASSERT_STR(flag_count_signed >= 0, strex("Negative flag count for RefType field '{}' in '{}'", field_name, name));
+            const auto flag_count = numeric_cast<size_t>(flag_count_signed);
+
+            FO_RUNTIME_ASSERT_STR(i + 3 + flag_count <= tokens.size(), strex("Truncated RefType flags for field '{}' in '{}'", field_name, name));
+
+            const auto type = meta->ResolveComplexType(field_type);
+            FO_RUNTIME_ASSERT_STR(!type.IsMutable, strex("Invalid RefType field type '{}' for field '{}' in '{}'", field_type, field_name, name));
+            FO_RUNTIME_ASSERT_STR(type.Kind != ComplexTypeKind::Callback, strex("Invalid RefType callback field '{}' in '{}'", field_name, name));
+            FO_RUNTIME_ASSERT_STR(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, strex("Invalid RefType entity field '{}' in '{}'", field_name, name));
+            FO_RUNTIME_ASSERT_STR(!type.KeyType.has_value() || !type.KeyType->IsEntity, strex("Invalid RefType dict key type '{}' for field '{}' in '{}'", field_type, field_name, name));
+
+            vector<string_view> field_tokens;
+            field_tokens.reserve(2 + flag_count);
+            field_tokens.emplace_back(field_name);
+            field_tokens.emplace_back(field_type);
+
+            for (size_t k = 0; k < flag_count; k++) {
+                field_tokens.emplace_back(tokens[i + 3 + k]);
+            }
+
+            layout.emplace_back(std::move(field_tokens));
+            i += 3 + flag_count;
         }
+
         meta->RegisterRefTypeLayout(name, layout);
     }
 }

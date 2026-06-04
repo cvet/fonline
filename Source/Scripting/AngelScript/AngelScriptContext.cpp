@@ -77,8 +77,8 @@ struct AngelScriptTracyCallEntry
 
 struct AngelScriptTracyData
 {
-    unordered_map<size_t, AngelScriptTracyCallEntry> CacheEntries {};
-    std::mutex CacheLocker {};
+    mutex CacheLocker {};
+    unordered_map<size_t, AngelScriptTracyCallEntry> CacheEntries FO_TSA_GUARDED_BY(CacheLocker) {};
 };
 FO_GLOBAL_DATA(AngelScriptTracyData, AngelScriptTracy);
 
@@ -182,6 +182,8 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock lock {_poolLocker};
+
     if (_freeContexts.empty()) {
         CreateContext();
     }
@@ -223,6 +225,8 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
+        scoped_lock lock {_poolLocker};
+
         refcount_ptr ctx_holder = ctx;
         vec_remove_unique_value(_busyContexts, ctx);
         vec_add_unique_value(_freeContexts, ctx);
@@ -234,10 +238,6 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
             _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
         }
 
-        ctx_ext->SuspendEndTime = {};
-        ctx_ext->DeferredPropertyEntity = nullptr;
-        ctx_ext->DeferredProperty = nullptr;
-        ctx_ext->DeferredPropertyCallback = nullptr;
         ctx_ext->Parent = nullptr;
         ctx_ext->Root = nullptr;
         ctx_ext->Exception = {};
@@ -284,36 +284,6 @@ void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScrip
     FO_STACK_TRACE_ENTRY();
 
     _contextSetupCallback = std::move(context_setup_callback);
-}
-
-auto AngelScriptContextManager::IsDeferredPropertySetterScheduled(const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func) const -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (const auto& ctx : _busyContexts) {
-        const auto* ctx_ext = AngelScriptContextExtendedData::Get(const_cast<AngelScript::asIScriptContext*>(ctx.get()));
-        FO_RUNTIME_ASSERT(ctx_ext);
-
-        if (ctx_ext->DeferredPropertyEntity == entity && ctx_ext->DeferredProperty == prop && ctx_ext->DeferredPropertyCallback == func) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void AngelScriptContextManager::MarkDeferredPropertySetter(AngelScript::asIScriptContext* ctx, const Entity* entity, const Property* prop, AngelScript::asIScriptFunction* func)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
-
-    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
-
-    ctx_ext->DeferredPropertyEntity = entity;
-    ctx_ext->DeferredProperty = prop;
-    ctx_ext->DeferredPropertyCallback = func;
 }
 
 auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool
@@ -455,57 +425,33 @@ void AngelScriptContextManager::SuspendScriptContext(AngelScript::asIScriptConte
         ctx->Suspend();
     }
 
-    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
-
-    ctx_ext->SuspendEndTime = time;
+    FO_RUNTIME_ASSERT(_delayedScheduler);
+    const auto now = GetGameEngine(_asEngine.get())->GameTime.GetFrameTime();
+    const auto delay = time > now ? time - now : timespan::zero;
+    _delayedScheduler(delay, [this, ctx]() { ResumeSpecificContext(ctx); });
 }
 
-void AngelScriptContextManager::ResumeSuspendedContexts(nanotime time)
+void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptContext* ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_busyContexts.empty()) {
-        return;
-    }
+    {
+        scoped_lock lock {_poolLocker};
 
-    vector<AngelScript::asIScriptContext*> resume_contexts;
-    vector<AngelScript::asIScriptContext*> finish_contexts;
+        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return busy.get() == ctx; });
+        FO_RUNTIME_ASSERT(it != _busyContexts.end());
 
-    for (auto& ctx : _busyContexts) {
-        if (ctx->GetState() == AngelScript::asEXECUTION_PREPARED || ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
-            const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx.get());
-            FO_RUNTIME_ASSERT(ctx_ext);
-
-            if (time >= ctx_ext->SuspendEndTime) {
-                const bool entity_destroyed = ctx_ext->DeferredPropertyEntity && ctx_ext->DeferredPropertyEntity->IsDestroyed();
-
-                if (entity_destroyed) {
-                    finish_contexts.emplace_back(ctx.get());
-                }
-                else {
-                    resume_contexts.emplace_back(ctx.get());
-                }
-            }
-        }
-        else {
-            BreakIntoDebugger();
-            finish_contexts.emplace_back(ctx.get());
+        if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
+            return;
         }
     }
 
-    for (auto* ctx : resume_contexts) {
-        try {
-            auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx); });
-            RunContext(ctx, true);
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
+    try {
+        auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx); });
+        RunContext(ctx, true);
     }
-
-    for (auto* ctx : finish_contexts) {
-        ReturnContext(ctx);
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
     }
 }
 
@@ -642,7 +588,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript
     const auto func_key = std::bit_cast<size_t>(func);
 
     {
-        std::scoped_lock lock {AngelScriptTracy->CacheLocker};
+        scoped_lock lock {AngelScriptTracy->CacheLocker};
 
         if (const auto it = AngelScriptTracy->CacheEntries.find(func_key); it != AngelScriptTracy->CacheEntries.end()) {
             entry = &it->second;
@@ -656,7 +602,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript
         const auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt));
         const auto* func_decl = func->GetDeclaration(true);
 
-        std::scoped_lock lock {AngelScriptTracy->CacheLocker};
+        scoped_lock lock {AngelScriptTracy->CacheLocker};
 
         entry = &AngelScriptTracy->CacheEntries.emplace(func_key, AngelScriptTracyCallEntry {}).first->second;
 

@@ -61,6 +61,8 @@ Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* loca
     else {
         _hexField = SafeAlloc::MakeUnique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
+
+    SetEntityLock(&_ownedLock);
 }
 
 Map::~Map()
@@ -99,6 +101,7 @@ void Map::SetLocation(Location* loc) noexcept
     FO_STACK_TRACE_ENTRY();
 
     _mapLocation = loc;
+    SetParent(loc);
 }
 
 auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool skip_unsafe) const -> optional<mpos>
@@ -160,6 +163,8 @@ void Map::AddCritter(Critter* cr)
         vec_add_unique_value(_nonPlayerCritters, cr);
     }
 
+    cr->SetParent(this);
+
     AddCritterToField(cr);
 
     if (IsPersistent()) {
@@ -183,6 +188,8 @@ void Map::RemoveCritter(Critter* cr)
     else {
         vec_remove_unique_value(_nonPlayerCritters, cr);
     }
+
+    cr->SetParent(nullptr);
 
     RemoveCritterFromField(cr);
 
@@ -286,6 +293,8 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     item->SetMapId(GetId());
     item->SetHex(hex);
 
+    PropagateEntityLock(item, GetEntityLock());
+
     SetItem(item);
 
     auto item_ids = GetItemIds();
@@ -297,7 +306,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     }
 
     // Process critters view
-    for (auto* cr : copy_hold_ref(GetCritters())) {
+    for (auto* cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -305,6 +314,9 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
         if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(dropper);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
     }
@@ -323,6 +335,7 @@ void Map::SetItem(Item* item)
 
     _itemsMap.emplace(item->GetId(), item);
     vec_add_unique_value(_items, item);
+    item->SetParent(this);
 
     const auto hex = item->GetHex();
     auto& field = _hexField->GetCellForWriting(hex);
@@ -367,15 +380,11 @@ void Map::RemoveItem(ident_t item_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    Item* item;
-
-    {
-        FO_RUNTIME_ASSERT(item_id);
-        const auto it = _itemsMap.find(item_id);
-        FO_RUNTIME_ASSERT(it != _itemsMap.end());
-        item = it->second.get();
-        _itemsMap.erase(it);
-    }
+    FO_RUNTIME_ASSERT(item_id);
+    const auto it = _itemsMap.find(item_id);
+    FO_RUNTIME_ASSERT(it != _itemsMap.end());
+    Item* item = it->second.get();
+    _itemsMap.erase(it);
 
     vec_remove_unique_value(_items, item);
 
@@ -384,6 +393,12 @@ void Map::RemoveItem(ident_t item_id)
 
     vec_remove_unique_value(field.Items, item);
 
+    RevertEntityLock(item);
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->EnsureEntitySynced(item);
+
+    item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetMapId(ident_t {});
     item->SetHex({});
@@ -409,13 +424,15 @@ void Map::RemoveItem(ident_t item_id)
     }
 
     // Process critters view
-    for (auto* cr : copy_hold_ref(GetCritters())) {
+    for (auto* cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
 
         if (cr->RemoveVisibleItem(item->GetId())) {
             cr->Send_RemoveItemFromMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
@@ -434,7 +451,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         const auto* map = dynamic_cast<Map*>(entity);
         FO_RUNTIME_ASSERT(map == this);
 
-        for (auto& cr : GetCritters()) {
+        for (auto& cr : _critters) {
             cr->Send_Property(type, prop, entity);
         }
 
@@ -446,9 +463,11 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         auto* item = dynamic_cast<Item*>(entity);
         FO_RUNTIME_ASSERT(item);
 
-        for (auto* cr : copy_hold_ref(GetCritters())) {
+        for (auto* cr : copy_hold_ref(_critters)) {
             if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapChanged.Fire(item);
             }
         }
@@ -518,7 +537,7 @@ void Map::ChangeViewItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto* cr : copy_hold_ref(GetCritters())) {
+    for (auto* cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -527,12 +546,16 @@ void Map::ChangeViewItem(Item* item)
             if (!cr->CanSeeItemOnMap(item)) {
                 cr->RemoveVisibleItem(item->GetId());
                 cr->Send_RemoveItemFromMap(item);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
         }
         else if (cr->CanSeeItemOnMap(item)) {
             cr->AddVisibleItem(item->GetId());
             cr->Send_AddItemOnMap(item);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
         }
     }
@@ -586,9 +609,9 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*
     return nullptr;
 }
 
-auto Map::GetItemsOnHex(mpos hex) noexcept -> span<raw_ptr<Item>>
+auto Map::GetItemsOnHex(mpos hex) noexcept -> vector<raw_ptr<Item>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -630,7 +653,7 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>
     return items;
 }
 
-auto Map::GetTriggerItemsOnHex(mpos hex) -> vector<Item*>
+auto Map::GetTriggerItemsOnHex(mpos hex) noexcept -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -677,6 +700,8 @@ void Map::RecacheHexFlags(mpos hex)
 void Map::RecacheHexFlags(Field& field)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
 
     field.HasCritter = !field.Critters.empty();
     field.HasTriggerItem = false;
@@ -966,7 +991,7 @@ auto Map::GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticIt
     return _staticMap->HexField->GetCellForWriting(hex).TriggerItems;
 }
 
-auto Map::IsOutsideArea(mpos hex) const -> bool
+auto Map::IsOutsideArea(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1000,6 +1025,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 }
             }
 
+            ValidateEntityAccess(item.get());
+            ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, false, dir);
 
             if (cr->IsDestroyed()) {
@@ -1020,6 +1047,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 }
             }
 
+            ValidateEntityAccess(item.get());
+            ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, true, dir);
 
             if (cr->IsDestroyed()) {
@@ -1034,6 +1063,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 continue;
             }
 
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, false, dir);
 
             if (cr->IsDestroyed()) {
@@ -1048,6 +1079,8 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
                 continue;
             }
 
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, true, dir);
 
             if (cr->IsDestroyed()) {

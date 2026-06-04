@@ -495,7 +495,10 @@ public:
 
     void MapScriptTypes(EngineMetadata* meta);
     void InitModules();
-    void ProcessScriptEvents();
+
+    auto IsGlobalVarsFrozen() const noexcept -> bool { return _globalVarsFrozen.load(std::memory_order_acquire); }
+    void FreezeGlobalVars() noexcept { _globalVarsFrozen.store(true, std::memory_order_release); }
+    void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
 
     void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
     void ShutdownBackends();
@@ -529,18 +532,8 @@ public:
         return {};
     }
 
-    [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*
-    {
-        const auto range = _globalFuncMap.equal_range(func_name);
-
-        for (auto it = range.first; it != range.second; ++it) {
-            if (ValidateArgs(it->second.get(), arg_types, ArgMapTypeIndex<void>())) {
-                return it->second.get();
-            }
-        }
-
-        return nullptr;
-    }
+    [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*;
+    [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> ScriptFuncDesc*;
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
@@ -600,7 +593,6 @@ public:
 
     [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
-    void AddLoopCallback(function<void()> callback);
     void AddGlobalScriptFunc(ScriptFuncDesc* func);
     void AddInitFunc(ScriptFunc<void> func, int32_t priority);
 
@@ -646,10 +638,10 @@ private:
     }
 
     vector<unique_ptr<ScriptSystemBackend>> _backends {};
-    vector<function<void()>> _loopCallbacks {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, raw_ptr<ScriptFuncDesc>> _globalFuncMap {};
     vector<pair<ScriptFunc<void>, int32_t>> _initFunc {};
+    std::atomic_bool _globalVarsFrozen {};
 };
 
 class ScriptHelpers final

@@ -55,45 +55,47 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
-    [[nodiscard]] auto GetEntity(ident_t id) const noexcept -> const ServerEntity*;
-    [[nodiscard]] auto GetEntity(ident_t id) noexcept -> ServerEntity*;
-    [[nodiscard]] auto GetEntities() noexcept -> unordered_map<ident_t, refcount_ptr<ServerEntity>>& { return _allEntities; }
-    [[nodiscard]] auto GetEntitiesCount() const noexcept -> size_t { return _allEntities.size(); }
-    [[nodiscard]] auto GetPlayer(ident_t id) const noexcept -> const Player*;
-    [[nodiscard]] auto GetPlayer(ident_t id) noexcept -> Player*;
-    [[nodiscard]] auto GetPlayers() noexcept -> unordered_map<ident_t, raw_ptr<Player>>& { return _allPlayers; }
-    [[nodiscard]] auto GetPlayersCount() const noexcept -> size_t { return _allPlayers.size(); }
-    [[nodiscard]] auto GetLocation(ident_t id) const noexcept -> const Location*;
-    [[nodiscard]] auto GetLocation(ident_t id) noexcept -> Location*;
-    [[nodiscard]] auto GetLocations() noexcept -> unordered_map<ident_t, raw_ptr<Location>>& { return _allLocations; }
-    [[nodiscard]] auto GetLocationsCount() const noexcept -> size_t { return _allLocations.size(); }
-    [[nodiscard]] auto GetMap(ident_t id) const noexcept -> const Map*;
-    [[nodiscard]] auto GetMap(ident_t id) noexcept -> Map*;
-    [[nodiscard]] auto GetMaps() noexcept -> unordered_map<ident_t, raw_ptr<Map>>& { return _allMaps; }
-    [[nodiscard]] auto GetMapsCount() const noexcept -> size_t { return _allMaps.size(); }
-    [[nodiscard]] auto GetCritter(ident_t id) const noexcept -> const Critter*;
-    [[nodiscard]] auto GetCritter(ident_t id) noexcept -> Critter*;
-    [[nodiscard]] auto GetCritters() noexcept -> unordered_map<ident_t, raw_ptr<Critter>>& { return _allCritters; }
-    [[nodiscard]] auto GetCrittersCount() const noexcept -> size_t { return _allCritters.size(); }
-    [[nodiscard]] auto GetItem(ident_t id) const noexcept -> const Item*;
-    [[nodiscard]] auto GetItem(ident_t id) noexcept -> Item*;
-    [[nodiscard]] auto GetItems() noexcept -> unordered_map<ident_t, raw_ptr<Item>>& { return _allItems; }
-    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t { return _allItems.size(); }
+    [[nodiscard]] auto GetEntity(ident_t id) const noexcept -> refcount_ptr<const ServerEntity>;
+    [[nodiscard]] auto GetEntity(ident_t id) noexcept -> refcount_ptr<ServerEntity>;
+    [[nodiscard]] auto GetEntities() noexcept -> vector<refcount_ptr<ServerEntity>>;
+    [[nodiscard]] auto GetEntitiesCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetPlayer(ident_t id) const noexcept -> refcount_ptr<const Player>;
+    [[nodiscard]] auto GetPlayer(ident_t id) noexcept -> refcount_ptr<Player>;
+    [[nodiscard]] auto GetPlayers() noexcept -> vector<refcount_ptr<Player>>;
+    [[nodiscard]] auto GetPlayersCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetLocation(ident_t id) const noexcept -> refcount_ptr<const Location>;
+    [[nodiscard]] auto GetLocation(ident_t id) noexcept -> refcount_ptr<Location>;
+    [[nodiscard]] auto GetLocations() noexcept -> vector<refcount_ptr<Location>>;
+    [[nodiscard]] auto GetLocationsCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetMap(ident_t id) const noexcept -> refcount_ptr<const Map>;
+    [[nodiscard]] auto GetMap(ident_t id) noexcept -> refcount_ptr<Map>;
+    [[nodiscard]] auto GetMaps() noexcept -> vector<refcount_ptr<Map>>;
+    [[nodiscard]] auto GetMapsCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetCritter(ident_t id) const noexcept -> refcount_ptr<const Critter>;
+    [[nodiscard]] auto GetCritter(ident_t id) noexcept -> refcount_ptr<Critter>;
+    [[nodiscard]] auto GetCritters() noexcept -> vector<refcount_ptr<Critter>>;
+    [[nodiscard]] auto GetCrittersCount() const noexcept -> size_t;
+    [[nodiscard]] auto GetItem(ident_t id) const noexcept -> refcount_ptr<const Item>;
+    [[nodiscard]] auto GetItem(ident_t id) noexcept -> refcount_ptr<Item>;
+    [[nodiscard]] auto GetItems() noexcept -> vector<refcount_ptr<Item>>;
+    [[nodiscard]] auto GetItemsCount() const noexcept -> size_t;
 
     template<typename T>
-    [[nodiscard]] auto Get(ident_t id) noexcept -> T*
+    [[nodiscard]] auto Get(ident_t id) noexcept -> refcount_ptr<T>
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
+        shared_lock lock {_registryLock};
         const auto it = _allEntities.find(id);
-        return it != _allEntities.end() ? dynamic_cast<T*>(it->second.get()) : nullptr;
+        return it != _allEntities.end() ? refcount_ptr<T>(dynamic_cast<T*>(it->second.get())) : refcount_ptr<T>();
     }
 
     template<typename T>
-    [[nodiscard]] auto Get(ident_t id) const noexcept -> const T*
+    [[nodiscard]] auto Get(ident_t id) const noexcept -> refcount_ptr<const T>
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
+        shared_lock lock {_registryLock};
         const auto it = _allEntities.find(id);
-        return it != _allEntities.end() ? dynamic_cast<const T*>(it->second.get()) : nullptr;
+        return it != _allEntities.end() ? refcount_ptr<const T>(dynamic_cast<const T*>(it->second.get())) : refcount_ptr<const T>();
     }
 
     void LoadEntities();
@@ -124,17 +126,19 @@ public:
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> CustomEntity*;
     auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> CustomEntity*;
-    auto GetCustomEntity(hstring type_name, ident_t id) -> CustomEntity*;
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<CustomEntity>;
     void DestroyCustomEntity(CustomEntity* entity);
     void ForEachCustomEntityView(CustomEntity* entity, const function<void(Player* player, bool owner)>& callback);
 
     void DestroyEntity(Entity* entity);
     void DestroyInnerEntities(Entity* holder);
     void DestroyAllEntities();
+    void FlushExactEntityId();
 
 private:
     void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
+    void EnsureCascadeNodeSynced(ServerEntity* entity);
     void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
 
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;
@@ -142,18 +146,22 @@ private:
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
     auto StoreEntityDoc(ServerEntity* entity) -> AnyData::Document;
 
-    void RegisterEntity(ServerEntity* entity);
-    void UnregisterEntity(ServerEntity* entity, bool delete_from_db);
+    void RegisterEntity(ServerEntity* entity) FO_TSA_REQUIRES(_registryLock);
+    void UnregisterEntity(ServerEntity* entity, bool delete_from_db) FO_TSA_REQUIRES(_registryLock);
 
     raw_ptr<ServerEngine> _engine;
 
-    unordered_map<ident_t, raw_ptr<Player>> _allPlayers {};
-    unordered_map<ident_t, raw_ptr<Location>> _allLocations {};
-    unordered_map<ident_t, raw_ptr<Map>> _allMaps {};
-    unordered_map<ident_t, raw_ptr<Critter>> _allCritters {};
-    unordered_map<ident_t, raw_ptr<Item>> _allItems {};
-    unordered_map<hstring, unordered_map<ident_t, raw_ptr<CustomEntity>>> _allCustomEntities {};
-    unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities {};
+    mutable shared_mutex _registryLock {};
+    unordered_map<ident_t, raw_ptr<Player>> _allPlayers FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<ident_t, raw_ptr<Location>> _allLocations FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<ident_t, raw_ptr<Map>> _allMaps FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<ident_t, raw_ptr<Critter>> _allCritters FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<ident_t, raw_ptr<Item>> _allItems FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<hstring, unordered_map<ident_t, raw_ptr<CustomEntity>>> _allCustomEntities FO_TSA_GUARDED_BY(_registryLock) {};
+    unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities FO_TSA_GUARDED_BY(_registryLock) {};
+
+    int64_t _lastEntityId {};
+    int64_t _persistedEntityId {};
 
     const hstring _playerTypeName {};
     const hstring _locationTypeName {};

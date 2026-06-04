@@ -124,7 +124,7 @@ InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnect
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(InterthreadListenersLocker);
+    scoped_lock locker {InterthreadListenersLocker};
 
     if (InterthreadListeners.count(_virtualPort) != 0) {
         throw NetworkServerException("Port is busy", _virtualPort);
@@ -141,7 +141,7 @@ void InterthreadServer::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(InterthreadListenersLocker);
+    scoped_lock locker {InterthreadListenersLocker};
 
     FO_RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
     InterthreadListeners.erase(_virtualPort);

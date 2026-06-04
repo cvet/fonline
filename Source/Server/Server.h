@@ -54,6 +54,7 @@
 #include "ServerConnection.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
+#include "WorkerPool.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -75,18 +76,27 @@ public:
     ~ServerEngine() override;
 
     [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return this; }
-
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
+    [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> SyncContext* { return SyncContext::GetCurrentOnThisThread(); }
+    [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock* { return _entityLock.get(); }
 
     void Shutdown() override;
+    void FlushExactSyncTime();
+
+    void LockForPropertyAccess() noexcept override;
+    void UnlockForPropertyAccess() noexcept override;
+    void LockForPropertyAccessShared() noexcept override;
+    void UnlockForPropertyAccessShared() noexcept override;
+
+    void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
 
     auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* override { return EntityMngr.CreateCustomEntity(type_name, pid); }
-    auto GetCustomEntity(hstring type_name, ident_t id) -> Entity* override { return EntityMngr.GetCustomEntity(type_name, id); }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<Entity> override { return EntityMngr.GetCustomEntity(type_name, id); }
     void DestroyEntity(Entity* entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
@@ -97,6 +107,7 @@ public:
     auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
     auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
     auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
+    void HardDisconnectPlayer(Player* player);
 
     auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
     auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
@@ -107,7 +118,7 @@ public:
 
     void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
     void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
-    void StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend = nullptr);
+    void StopCritterMoving(Critter* cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
 
     ///@ ExportEvent
@@ -223,6 +234,8 @@ private:
     void SendAllReportedHashes(ServerConnection* connection);
     void BroadcastReportedString(string_view reported_string);
 
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
+
     void Process_Handshake(ServerConnection* connection);
     void Process_Ping(ServerConnection* connection);
     void Process_UnresolvedHash(ServerConnection* connection);
@@ -234,6 +247,7 @@ private:
     void Process_RemoteCall(Player* player);
 
     void OnSaveEntityValue(Entity* entity, const Property* prop);
+    void OnSaveSynchronizedTime(Entity* entity, const Property* prop);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
@@ -274,24 +288,36 @@ private:
     auto InitDoneJob() -> std::optional<timespan>;
     auto SyncPointJob() -> std::optional<timespan>;
     auto FrameTimeJob() -> std::optional<timespan>;
-    auto ScriptSystemJob() -> std::optional<timespan>;
-    auto UnloginedPlayersJob() -> std::optional<timespan>;
-    auto PlayersJob() -> std::optional<timespan>;
-    auto CrittersJob() -> std::optional<timespan>;
-    auto TimeEventsJob() -> std::optional<timespan>;
+    auto PoolSyncJob() -> std::optional<timespan>;
     auto LogDispatchJob() -> std::optional<timespan>;
     auto LoopJob() -> std::optional<timespan>;
+
+    void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
+    void OnTimeEventCancel(uint32_t event_id);
+    void OnPlayerConnected(Player* unlogined_player);
+    void OnPlayerLogined(Player* player, Player* unlogined_player);
+
+    auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
 
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
+    unique_ptr<WorkerPool> _workerPool {};
 
-    std::mutex _syncLocker {};
-    std::condition_variable _syncWaitSignal {};
-    std::condition_variable _syncRunSignal {};
-    int32_t _syncRequest {};
-    bool _syncPointReady {};
+    synctime _persistedSyncTimeMark {};
+    static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
+
+    // Singleton-`Game` lock storage. _entityLock is wired to _ownedLock at construction; same
+    // pattern as ServerEntity subclasses (mutable raw_ptr to a member EntityLock).
+    EntityLock _ownedLock {};
+    mutable raw_ptr<EntityLock> _entityLock {&_ownedLock};
+
+    mutex _syncLocker {};
+    std::condition_variable_any _syncWaitSignal {};
+    std::condition_variable_any _syncRunSignal {};
+    int32_t _syncRequest FO_TSA_GUARDED_BY(_syncLocker) {};
+    bool _syncPointReady FO_TSA_GUARDED_BY(_syncLocker) {};
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
@@ -303,8 +329,8 @@ private:
     vector<string> _logLines {};
     TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
-    vector<refcount_ptr<Player>> _unloginedPlayers {};
-    mutable std::mutex _unloginedPlayersLocker {};
+    mutable mutex _unloginedPlayersLocker {};
+    vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
 
     // Strings behind hashes that clients reported as unresolvable. Stored raw (not registered) and broadcast
     // to all clients so they can resolve these hashes too. Accessed only from the main worker (handshake

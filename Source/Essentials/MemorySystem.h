@@ -251,4 +251,6 @@ inline auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept
     return size == 0 || std::memcmp(ptr1, ptr2, size) == 0;
 }
 
+extern auto AllocatorGetInUseBytes() noexcept -> size_t;
+
 FO_END_NAMESPACE

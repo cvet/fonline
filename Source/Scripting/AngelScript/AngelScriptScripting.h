@@ -42,6 +42,8 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ScriptSettings;
+
 void InitAngelScriptScripting(EngineMetadata* meta, const ScriptSettings& settings, const FileSystem& resources);
 auto CompileAngelScript(EngineMetadata* meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
 

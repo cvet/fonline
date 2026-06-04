@@ -84,9 +84,9 @@ FO_SCRIPT_API int32_t Server_Location_GetMapCount(Location* self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, hstring mapPid)
 {
-    for (auto& map : self->GetMaps()) {
+    for (auto* map : self->GetMaps()) {
         if (map->GetProtoId() == mapPid) {
-            return map.get();
+            return map;
         }
     }
 
@@ -96,9 +96,9 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, hstring ma
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, ProtoMap* mapProto)
 {
-    for (auto& map : self->GetMaps()) {
+    for (auto* map : self->GetMaps()) {
         if (map->GetProtoId() == mapProto->GetProtoId()) {
-            return map.get();
+            return map;
         }
     }
 
@@ -108,28 +108,20 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, ProtoMap* 
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32_t index)
 {
-    auto maps = self->GetMaps();
-
-    if (index < 0 || index >= numeric_cast<int32_t>(maps.size())) {
-        throw ScriptException("Invalid index arg", index);
-    }
-
-    return maps[index].get();
+    return self->GetMapByIndex(index);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
 {
-    auto maps = self->GetMaps();
-    vector<Map*> result = vec_transform(maps, [](auto&& map) -> Map* { return map.get(); });
-    return result;
+    return self->GetMaps();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
 {
-    for (auto& map : self->GetMaps()) {
-        self->GetEngine()->MapMngr.RegenerateMap(map.get());
+    for (auto* map : self->GetMaps()) {
+        self->GetEngine()->MapMngr.RegenerateMap(map);
     }
 }
 

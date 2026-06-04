@@ -43,16 +43,19 @@ FO_BEGIN_NAMESPACE
 class ServerConnection final
 {
 public:
-    class OutBufAccessor
+    using DataArrivedCallback = function<void()>;
+
+    class FO_TSA_SCOPED_CAPABILITY OutBufAccessor
     {
     public:
-        explicit OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg);
+        explicit OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) FO_TSA_ACQUIRE(owner->_outBufLocker);
         OutBufAccessor() = delete;
         OutBufAccessor(const OutBufAccessor&) = delete;
-        OutBufAccessor(OutBufAccessor&&) noexcept = default;
+        // Move ctor cannot express capability transfer for the analyzer; the moved-from guard is left inert by the move
+        OutBufAccessor(OutBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
-        ~OutBufAccessor() noexcept(false);
+        ~OutBufAccessor() noexcept(false) FO_TSA_RELEASE();
         auto operator->() noexcept -> NetOutBuffer* { return _outBuf.get(); }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
@@ -63,20 +66,21 @@ public:
         stack_unwind_detector _isStackUnwinding {};
     };
 
-    class InBufAccessor
+    class FO_TSA_SCOPED_CAPABILITY InBufAccessor
     {
     public:
-        explicit InBufAccessor(ServerConnection* owner);
+        explicit InBufAccessor(ServerConnection* owner) FO_TSA_ACQUIRE(owner->_inBufLocker);
         InBufAccessor() = delete;
         InBufAccessor(const InBufAccessor&) = delete;
-        InBufAccessor(InBufAccessor&&) noexcept = default;
+        // Move ctor cannot express capability transfer for the analyzer; the moved-from guard is left inert by the move
+        InBufAccessor(InBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
-        ~InBufAccessor();
+        ~InBufAccessor() FO_TSA_RELEASE();
         auto operator->() noexcept -> NetInBuffer* { return _inBuf.get(); }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
-        void Lock();
-        void Unlock() noexcept;
+        void Lock() FO_TSA_ACQUIRE();
+        void Unlock() noexcept FO_TSA_RELEASE();
 
     private:
         raw_ptr<ServerConnection> _owner;
@@ -117,6 +121,7 @@ public:
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
+    void SetDataArrivedCallback(DataArrivedCallback callback);
     void MarkHandshakeComplete() noexcept;
     void EnsureActivityTime(nanotime time) noexcept;
     void RegisterActivity(nanotime time) noexcept;
@@ -125,9 +130,11 @@ public:
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
-    auto WriteMsg(NetMessage msg) -> OutBufAccessor { return OutBufAccessor(this, msg); }
-    auto WriteBuf() -> OutBufAccessor { return OutBufAccessor(this, std::nullopt); }
-    auto ReadBuf() -> InBufAccessor { return InBufAccessor(this); }
+    // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
+    // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
+    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(this, msg); }
+    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(this, std::nullopt); }
+    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(this); }
 
     void HardDisconnect();
     void GracefulDisconnect();
@@ -153,14 +160,15 @@ private:
 
     raw_ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
+    mutex _inBufLocker {};
     NetInBuffer _inBuf;
-    std::mutex _inBufLocker {};
+    mutex _outBufLocker {};
     NetOutBuffer _outBuf;
-    std::mutex _outBufLocker {};
     vector<uint8_t> _sendBuf {};
     StreamCompressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
+    DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
 };
 

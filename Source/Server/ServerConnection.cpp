@@ -296,7 +296,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_outBufLocker);
+    scoped_lock locker {_outBufLocker};
 
     if (_outBuf.IsEmpty()) {
         return {};
@@ -321,9 +321,18 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_inBufLocker);
+    DataArrivedCallback callback;
 
-    _inBuf.AddData(buf);
+    {
+        scoped_lock locker {_inBufLocker};
+
+        _inBuf.AddData(buf);
+        callback = _dataArrivedCallback;
+    }
+
+    if (callback) {
+        callback();
+    }
 }
 
 void ServerConnection::HardDisconnect()
@@ -340,6 +349,17 @@ void ServerConnection::GracefulDisconnect()
     _gracefulDisconnected = true;
 
     WriteMsg(NetMessage::Disconnect);
+}
+
+void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Same lock as AsyncReceiveData: that runs on the network thread and may read this callback
+    // concurrently, so the assignment must be synchronized to avoid a torn std::function move.
+    scoped_lock locker {_inBufLocker};
+
+    _dataArrivedCallback = std::move(callback);
 }
 
 FO_END_NAMESPACE

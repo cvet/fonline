@@ -76,7 +76,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
     function<InterthreadDataCallback(InterthreadDataCallback)> listener;
 
     {
-        std::scoped_lock locker(InterthreadListenersLocker);
+        scoped_lock locker {InterthreadListenersLocker};
 
         const auto it = InterthreadListeners.find(port);
 

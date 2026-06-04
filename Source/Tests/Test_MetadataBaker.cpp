@@ -199,7 +199,7 @@ namespace TestRefTypeProps
         const auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
-        CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Steps", "int32[]", "Tags", "hstring[]", "Note", "string"}) == 1);
+        CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Steps", "int32[]", "0", "Tags", "hstring[]", "0", "Note", "string", "0"}) == 1);
 
         const auto property_it = tags.find("Property");
         if (property_it != tags.end()) {
@@ -340,7 +340,47 @@ namespace TestRefTypeFlags
 )");
 
         MetadataBaker baker(rig.MakeContext());
-        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("RefType fields don't support property flags"));
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("RefType fields only allow the 'Component' flag"));
+    }
+
+    SECTION("accepts ref type component marker and component sub-properties")
+    {
+        rig.AddSourceFile("Scripts/TestRefTypeComponent.fos", R"(
+namespace TestRefTypeComponent
+{
+///@ RefType Server RouteSnapshot
+///@ Property RouteSnapshot Server bool Marker Component
+///@ Property RouteSnapshot Server int32 Marker.Steps
+///@ Property RouteSnapshot Server string Marker.Note
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
+
+        const auto& output = rig.Outputs.at("TestPack.fometa-server");
+        const auto tags = read_baked_tags(output);
+        const auto ref_type_it = tags.find("RefType");
+
+        REQUIRE(ref_type_it != tags.end());
+        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating.
+        CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"}) == 1);
+    }
+
+    SECTION("rejects ref type component sub-property without declared component")
+    {
+        rig.AddSourceFile("Scripts/TestRefTypeComponentMissing.fos", R"(
+namespace TestRefTypeComponentMissing
+{
+///@ RefType Server RouteSnapshot
+///@ Property RouteSnapshot Server int32 Missing.Steps
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("RefType component is not declared"));
     }
 
     SECTION("rejects property owners that are not ref types")

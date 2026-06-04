@@ -44,6 +44,8 @@ Location::Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto,
     LocationProperties(GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetEntityLock(&_ownedLock);
 }
 
 Location::~Location()
@@ -53,6 +55,48 @@ Location::~Location()
     if (!_engine->IsShutdownInProgress()) {
         FO_RUNTIME_VERIFY(_locMaps.empty());
     }
+}
+
+auto Location::GetMaps() const -> vector<const Map*>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    vector<const Map*> result;
+    result.reserve(_locMaps.size());
+
+    for (const auto& map : _locMaps) {
+        result.emplace_back(map.get());
+    }
+
+    return result;
+}
+
+auto Location::GetMaps() -> vector<Map*>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    vector<Map*> result;
+    result.reserve(_locMaps.size());
+
+    for (auto& map : _locMaps) {
+        result.emplace_back(map.get());
+    }
+
+    return result;
+}
+
+auto Location::GetMapsCount() const -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _locMaps.size();
+}
+
+auto Location::HasMaps() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_locMaps.empty();
 }
 
 auto Location::GetMapByIndex(int32_t index) noexcept -> Map*

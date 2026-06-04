@@ -188,7 +188,7 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemOnHex(Map* self, mpos hex, Ite
     }
 
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto hex_items = self->GetItemsOnHex(hex);
+    auto hex_items = self->GetItemsOnHex(hex);
 
     for (auto& item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -263,7 +263,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, hstring pid)
 {
-    const auto map_items = self->GetItems();
+    auto map_items = self->GetItems();
 
     vector<Item*> result;
     result.reserve(map_items.size());
@@ -284,7 +284,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ProtoItem* proto)
         throw ScriptException("Item proto arg is null");
     }
 
-    const auto map_items = self->GetItems();
+    auto map_items = self->GetItems();
 
     vector<Item*> result;
     result.reserve(map_items.size());
@@ -305,7 +305,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(Map* self, mpos hex)
         throw ScriptException("Invalid hex arg");
     }
 
-    const auto hex_items = self->GetItemsOnHex(hex);
+    auto hex_items = self->GetItemsOnHex(hex);
     return vec_transform(hex_items, [](auto&& item) -> Item* { return item.get(); });
 }
 
@@ -369,7 +369,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int
 FO_SCRIPT_API vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property, int32_t propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_items = self->GetItems();
+    auto map_items = self->GetItems();
 
     vector<Item*> result;
     result.reserve(map_items.size());
@@ -392,7 +392,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(Map* self, mpos hex, ItemPr
         throw ScriptException("Invalid hex arg");
     }
 
-    const auto hex_items = self->GetItemsOnHex(hex);
+    auto hex_items = self->GetItemsOnHex(hex);
 
     vector<Item*> result;
     result.reserve(hex_items.size());
@@ -601,7 +601,7 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Map_GetCritterOnHex(Map* self, mpos he
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Map_GetCritter(Map* self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
@@ -659,7 +659,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInRadius(Map* self, mpos he
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
@@ -676,7 +676,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
@@ -697,7 +697,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, ProtoCritter* p
     }
 
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
@@ -714,7 +714,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, ProtoCritter* p
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
     vector<Critter*> critters;
 
     critters.reserve(map_critters.size());
@@ -748,7 +748,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(Map* self, mpos from
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos hex, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     for (auto cr : map_critters) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
@@ -763,7 +763,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos hex, int32_t radius, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
@@ -778,7 +778,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(Map* self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<Critter*> critters;
-    const auto map_critters = self->GetCritters();
+    auto map_critters = self->GetCritters();
 
     for (auto& cr : map_critters) {
         const auto hex = cr->GetHex();

@@ -408,7 +408,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ClientEngine* client,
     vector<CritterView*> critters;
 
     if (client->GetCurMap() != nullptr) {
-        const auto map_critters = client->GetCurMap()->GetCritters();
+        auto map_critters = client->GetCurMap()->GetCritters();
         critters.reserve(map_critters.size());
 
         for (auto& cr : map_critters) {

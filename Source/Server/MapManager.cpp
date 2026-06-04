@@ -66,8 +66,7 @@ void MapManager::LoadFromResources()
             throw MapManagerException("Map proto not found for static map", map_pid);
         }
 
-        constexpr std::launch async_flags = std::launch::async | std::launch::deferred;
-        static_map_loadings.emplace_back(map_proto, std::async(async_flags, [this, map_proto, &map_file_header]() FO_DEFERRED {
+        static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, &map_file_header]() FO_DEFERRED {
             auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
@@ -126,6 +125,7 @@ void MapManager::LoadFromResources()
                         cr_props.RestoreAllData(props_data);
 
                         auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, cr_proto, &cr_props);
+                        cr->SetEntityLock(nullptr);
 
                         static_map->CritterBillets.emplace_back(cr_id, cr);
 
@@ -166,6 +166,7 @@ void MapManager::LoadFromResources()
                         item_props.RestoreAllData(props_data);
 
                         auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine.get(), ident_t {}, item_proto, &item_props);
+                        item->SetEntityLock(nullptr);
                         static_map->ItemBillets.emplace_back(item_id, item);
 
                         // Checks
@@ -405,14 +406,23 @@ void MapManager::DestroyMapContent(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Each child critter / item has its own EntityLock; the parent walk doesn't reach the map's
+    // (or location's) lock once the child is detached during destruction. Pull each into the
+    // current SyncContext before handing it to the destruction path so its validator passes.
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
     for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems(); detector.AddLoop()) {
         for (auto* cr : copy_hold_ref(map->GetPlayerCritters())) {
+            ctx->EnsureEntitySynced(cr);
             TransferToGlobal(cr, {});
         }
         for (auto* cr : copy_hold_ref(map->GetNonPlayerCritters())) {
+            ctx->EnsureEntitySynced(cr);
             _engine->CrMngr.DestroyCritter(cr);
         }
         for (auto* item : copy_hold_ref(map->GetItems())) {
+            ctx->EnsureEntitySynced(item);
             _engine->ItemMngr.DestroyItem(item);
         }
     }
@@ -431,6 +441,25 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine.get(), ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterLocation(loc.get());
+
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (ctx->IsEmpty()) {
+        ctx->SyncEntity(loc.get());
+        release_empty_sync_context = true;
+    }
+    else {
+        ctx->EnsureEntitySynced(loc.get());
+    }
+
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            ctx->Release();
+        }
+    });
 
     for (const auto map_pid : map_pids) {
         const auto* map_proto = _engine->GetProtoMap(map_pid);
@@ -465,6 +494,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(loc);
     FO_RUNTIME_ASSERT(loc);
     FO_RUNTIME_ASSERT(!loc->IsDestroyed());
     FO_RUNTIME_ASSERT(!loc->IsDestroying());
@@ -488,6 +518,8 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     }
 
     if (!map->IsDestroyed()) {
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(map.get());
         loc->OnMapAdded.Fire(map.get());
     }
 
@@ -502,6 +534,7 @@ void MapManager::RegenerateMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(map);
     FO_RUNTIME_ASSERT(map);
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
@@ -514,14 +547,14 @@ void MapManager::RegenerateMap(Map* map)
     }
 }
 
-auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> Map*
+auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_ptr<Location>
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& map : _engine->EntityMngr.GetMaps() | std::views::values) {
-        if (map->GetProtoId() == map_pid) {
+    for (auto& loc : _engine->EntityMngr.GetLocations()) {
+        if (loc->GetProtoId() == loc_pid) {
             if (skip_count <= 0) {
-                return map.get();
+                return loc.get();
             }
 
             skip_count--;
@@ -531,14 +564,14 @@ auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> Ma
     return nullptr;
 }
 
-auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> Location*
+auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_ptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& loc : _engine->EntityMngr.GetLocations() | std::views::values) {
-        if (loc->GetProtoId() == loc_pid) {
+    for (auto& map : _engine->EntityMngr.GetMaps()) {
+        if (map->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
-                return loc.get();
+                return map.get();
             }
 
             skip_count--;
@@ -552,6 +585,8 @@ void MapManager::DestroyLocation(Location* loc)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(loc);
+
     if (loc->IsDestroying() || loc->IsDestroyed()) {
         return;
     }
@@ -559,19 +594,24 @@ void MapManager::DestroyLocation(Location* loc)
     // Destroy location in couple with maps
     loc->MarkAsDestroying();
 
-    for (auto& map : loc->GetMaps()) {
+    for (auto* map : loc->GetMaps()) {
         map->MarkAsDestroying();
     }
 
+    ValidateEntityAccess(loc);
     _engine->OnLocationFinish.Fire(loc);
 
-    for (auto& map : loc->GetMaps()) {
-        _engine->OnMapFinish.Fire(map.get());
+    for (auto* map : loc->GetMaps()) {
+        ValidateEntityAccess(map);
+        _engine->OnMapFinish.Fire(map);
     }
 
-    for (auto* map : copy_hold_ref(loc->GetMaps())) {
+    for (auto* map : loc->GetMaps()) {
+        auto* ctx = _engine->GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ctx->EnsureEntitySynced(map);
+
         DestroyMapInternal(map);
-        loc->RemoveMap(map);
     }
 
     for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {
@@ -585,6 +625,8 @@ void MapManager::DestroyLocation(Location* loc)
         }
     }
 
+    _engine->TimeEventMngr.CancelAllForEntity(loc);
+    loc->SetParent(nullptr);
     loc->MarkAsDestroyed();
     _engine->EntityMngr.UnregisterLocation(loc);
 }
@@ -593,22 +635,29 @@ void MapManager::DestroyMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(map);
+
     if (map->IsDestroying() || map->IsDestroyed()) {
         return;
     }
 
     map->MarkAsDestroying();
+    ValidateEntityAccess(map);
     _engine->OnMapFinish.Fire(map);
 
     refcount_ptr loc = map->GetLocation();
+    ValidateEntityAccess(loc.get());
+    ValidateEntityAccess(map);
     loc->OnMapRemoved.Fire(map);
+
     DestroyMapInternal(map);
-    loc->RemoveMap(map);
 }
 
 void MapManager::DestroyMapInternal(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(map);
 
     // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
     while (map->HasSpectatorPlayers()) {
@@ -632,6 +681,14 @@ void MapManager::DestroyMapInternal(Map* map)
         }
     }
 
+    _engine->TimeEventMngr.CancelAllForEntity(map);
+
+    auto loc = map->GetLocation();
+    FO_RUNTIME_ASSERT(loc);
+    ValidateEntityAccess(loc);
+    loc->RemoveMap(map);
+
+    map->SetParent(nullptr);
     map->MarkAsDestroyed();
     _engine->EntityMngr.UnregisterMap(map);
 }
@@ -639,6 +696,8 @@ void MapManager::DestroyMapInternal(Map* map)
 auto MapManager::TracePath(const Map* map, mpos start_hex, mpos target_hex, int32_t max_dist, float32_t angle, const Critter* find_cr, CritterFindType find_type, bool check_last_movable, bool collect_critters) const -> TraceResult
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(map);
 
     TraceResult output;
     output.FullyTraced = false;
@@ -706,6 +765,7 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
+    ValidateEntityAccess(map);
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
     if (cut == 0) {
@@ -753,7 +813,6 @@ void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, option
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
-    FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
 
     Transfer(cr, map, hex, dir, safe_radius, {});
 }
@@ -769,6 +828,33 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* sync_ctx = _engine->GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(sync_ctx);
+
+    bool release_empty_sync_context = false;
+
+    if (sync_ctx->IsEmpty()) {
+        ServerEntity* sync_entities[] = {cr, map};
+        sync_ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+        release_empty_sync_context = true;
+    }
+
+    sync_ctx->EnsureEntitySynced(cr);
+    sync_ctx->EnsureEntitySynced(map);
+
+    auto release_empty_sync = scope_exit([sync_ctx, release_empty_sync_context]() noexcept {
+        if (release_empty_sync_context) {
+            sync_ctx->Release();
+        }
+    });
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(map);
+
+    if (map != nullptr) {
+        FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
+    }
+
     if (cr->IsMapTransfersLocked()) {
         throw GenericException("Critter transfers locked");
     }
@@ -777,8 +863,12 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     const auto prev_map_id = cr->GetMapId();
-    auto* prev_map = prev_map_id ? _engine->EntityMngr.GetMap(prev_map_id) : nullptr;
+    auto prev_map_ref = prev_map_id ? cr->GetParent<Map>() : refcount_ptr<Map> {};
+    Map* prev_map = prev_map_ref.get();
     FO_RUNTIME_ASSERT(!prev_map_id || !!prev_map);
+
+    sync_ctx->EnsureEntitySynced(prev_map);
+    ValidateEntityAccess(prev_map);
 
     cr->StopMoving();
 
@@ -789,8 +879,8 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     vector<raw_ptr<Critter>> attached_critters;
 
     if (cr->HasAttachedCritters()) {
-        const auto attached = cr->GetAttachedCritters();
-        attached_critters.assign(attached.begin(), attached.end());
+        const auto attached_span = cr->GetAttachedCritters();
+        attached_critters.assign(attached_span.begin(), attached_span.end());
 
         for (auto& attached_cr : attached_critters) {
             attached_cr->DetachFromCritter();
@@ -878,9 +968,12 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
         }
 
         if (map != nullptr) {
+            ValidateEntityAccess(map);
+            ValidateEntityAccess(cr);
             _engine->OnMapCritterIn.Fire(map, cr);
         }
         else {
+            ValidateEntityAccess(cr);
             _engine->OnGlobalMapCritterIn.Fire(cr);
         }
 
@@ -891,6 +984,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             return;
         }
 
+        ValidateEntityAccess(cr);
         _engine->OnCritterSendInitialInfo.Fire(cr);
 
         if (cr->IsDestroyed()) {
@@ -922,12 +1016,17 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
         }
     }
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(prev_map);
     _engine->OnCritterTransfer.Fire(cr, prev_map);
 }
 
 void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, ident_t global_cr_id)
 {
     FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(map);
 
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
     cr->LockMapTransfers();
@@ -959,13 +1058,18 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         auto& cr_group = cr->GetRawGlobalMapGroup();
         FO_RUNTIME_ASSERT(!cr_group);
 
-        auto* global_cr = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : nullptr;
+        auto global_cr_ref = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : refcount_ptr<Critter> {};
+        Critter* global_cr = global_cr_ref.get();
 
         cr->SetMapId({});
+        cr->SetParent(nullptr);
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
+            _engine->LockForPropertyAccess();
             const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
             _engine->SetLastGlobalMapTripId(trip_id);
+            _engine->UnlockForPropertyAccess();
+
             cr->SetGlobalMapTripId(trip_id);
 
             cr_group = SafeAlloc::MakeShared<vector<raw_ptr<Critter>>>();
@@ -991,18 +1095,25 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(map);
+
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(cr);
         _engine->OnMapCritterOut.Fire(map, cr);
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(!map->IsDestroyed());
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
 
         for (auto* other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
+            ValidateEntityAccess(other);
+            ValidateEntityAccess(cr);
             other->OnCritterDisappeared.Fire(cr);
             FO_RUNTIME_ASSERT(!cr->IsDestroyed());
             FO_RUNTIME_ASSERT(!map->IsDestroyed());
@@ -1030,6 +1141,7 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     else {
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(!cr->GetMapId());
+        ValidateEntityAccess(cr);
         _engine->OnGlobalMapCritterOut.Fire(cr);
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(!cr->GetMapId());
@@ -1050,17 +1162,20 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(cr);
+
     if (cr->IsDestroyed()) {
         return;
     }
 
-    if (const auto map_id = cr->GetMapId()) {
-        auto* map = _engine->EntityMngr.GetMap(map_id);
+    if (cr->GetMapId()) {
+        auto map = cr->GetParent<Map>();
         FO_RUNTIME_ASSERT(map);
+        ValidateEntityAccess(map.get());
 
         for (auto* target : copy_hold_ref(map->GetCritters())) {
-            ProcessCritterLook(map, cr, target);
-            ProcessCritterLook(map, target, cr);
+            ProcessCritterLook(map.get(), cr, target);
+            ProcessCritterLook(map.get(), target, cr);
         }
     }
     else {
@@ -1075,6 +1190,9 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     FO_NON_CONST_METHOD_HINT();
 
     FO_RUNTIME_ASSERT(map && cr && target);
+    ValidateEntityAccess(map);
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(target);
 
     if (cr == target) {
         return;
@@ -1109,6 +1227,8 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     if (is_see) {
         if (target->AddVisibleCritter(cr, vis_mode)) {
             cr->Send_AddCritter(target);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(target);
             cr->OnCritterAppeared.Fire(target);
         }
         else {
@@ -1117,6 +1237,8 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
             if (prev_mode != vis_mode) {
                 cr->SetVisibleCritterMode(target->GetId(), vis_mode);
                 cr->Send_CritterVisibilityMode(target, vis_mode);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterVisibilityModeChanged.Fire(target, vis_mode);
             }
         }
@@ -1124,6 +1246,8 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     else {
         if (target->RemoveVisibleCritter(cr)) {
             cr->Send_RemoveCritter(target);
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(target);
             cr->OnCritterDisappeared.Fire(target);
         }
     }
@@ -1136,11 +1260,15 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     if (show_cr_dist1 != 0) {
         if (show_cr_dist1 >= dist && is_see) {
             if (cr->AddCrIntoVisGroup1(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist1.Fire(target);
             }
         }
         else {
             if (cr->RemoveCrFromVisGroup1(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist1.Fire(target);
             }
         }
@@ -1149,11 +1277,15 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     if (show_cr_dist2 != 0) {
         if (show_cr_dist2 >= dist && is_see) {
             if (cr->AddCrIntoVisGroup2(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist2.Fire(target);
             }
         }
         else {
             if (cr->RemoveCrFromVisGroup2(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist2.Fire(target);
             }
         }
@@ -1162,11 +1294,15 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     if (show_cr_dist3 != 0) {
         if (show_cr_dist3 >= dist && is_see) {
             if (cr->AddCrIntoVisGroup3(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist3.Fire(target);
             }
         }
         else {
             if (cr->RemoveCrFromVisGroup3(target->GetId())) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist3.Fire(target);
             }
         }
@@ -1177,6 +1313,9 @@ auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Cr
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(map);
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(target);
     FO_RUNTIME_ASSERT(!map->IsDestroyed());
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
     FO_RUNTIME_ASSERT(!target->IsDestroyed());
@@ -1188,18 +1327,19 @@ void MapManager::ProcessVisibleItems(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateEntityAccess(cr);
+
     if (cr->IsDestroyed()) {
         return;
     }
 
-    const auto map_id = cr->GetMapId();
-
-    if (!map_id) {
+    if (!cr->GetMapId()) {
         return;
     }
 
-    auto* map = _engine->EntityMngr.GetMap(map_id);
+    auto map = cr->GetParent<Map>();
     FO_RUNTIME_ASSERT(map);
+    ValidateEntityAccess(map.get());
 
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed()) {
@@ -1209,12 +1349,16 @@ void MapManager::ProcessVisibleItems(Critter* cr)
         if (cr->CanSeeItemOnMap(item)) {
             if (cr->AddVisibleItem(item->GetId())) {
                 cr->Send_AddItemOnMap(item);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapAppeared.Fire(item, nullptr);
             }
         }
         else {
             if (cr->RemoveVisibleItem(item->GetId())) {
                 cr->Send_RemoveItemFromMap(item);
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
         }
@@ -1227,6 +1371,9 @@ void MapManager::ViewMap(Player* view_player, Map* map)
 
     FO_RUNTIME_ASSERT(view_player);
     FO_RUNTIME_ASSERT(map);
+
+    ValidateEntityAccess(view_player);
+    ValidateEntityAccess(map);
 
     // Critters: spectator sees every non-destroyed critter on the map
     for (const auto* cr : copy_hold_ref(map->GetCritters())) {

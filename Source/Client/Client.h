@@ -113,6 +113,9 @@ public:
 
     void Shutdown() override;
 
+    void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
+    void ProcessScheduledCallbacks();
+
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
     void ProcessInputEvent(const InputEvent& ev);
@@ -394,6 +397,15 @@ protected:
     unique_ptr<RenderTexture> _videoTex {};
     bool _videoCanInterrupt {};
     vector<tuple<string, bool>> _videoQueue {};
+
+    // Sorted ascending by `FireTime`. Per-frame dispatch in `MainLoop` only needs to peek
+    // the front and pop entries whose deadline passed; nothing scanned every frame.
+    struct ScheduledCallback
+    {
+        nanotime FireTime {};
+        function<void()> Body {};
+    };
+    vector<ScheduledCallback> _scheduledCallbacks {};
 };
 
 FO_END_NAMESPACE

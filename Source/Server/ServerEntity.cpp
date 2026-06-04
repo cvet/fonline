@@ -44,6 +44,18 @@ ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegis
     FO_STACK_TRACE_ENTRY();
 }
 
+ServerEntity::~ServerEntity()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
+    // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
+    // but if something slipped through, this destructor still releases cleanly.
+    if (auto* p = _parent.load(std::memory_order_relaxed); p != nullptr) {
+        p->Release();
+    }
+}
+
 void ServerEntity::SetId(ident_t id) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -71,6 +83,107 @@ void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
     FO_STACK_TRACE_ENTRY();
 
     EntityProperties(GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
+}
+
+void ServerEntity::ValidateAccess() const
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!IsEntityAccessValid(this)) {
+        throw ScriptException("Entity access without sync", GetName());
+    }
+}
+
+auto ServerEntity::GetParent() -> refcount_ptr<ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(this);
+    return refcount_ptr<ServerEntity>(_parent.load(std::memory_order_acquire));
+}
+
+auto ServerEntity::GetParent() const -> refcount_ptr<const ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(this);
+    return refcount_ptr<const ServerEntity>(_parent.load(std::memory_order_acquire));
+}
+
+auto ServerEntity::GetParentRaw() const noexcept -> refcount_ptr<ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ServerEntity* p = _parent.load(std::memory_order_acquire);
+
+    if (p == nullptr || !p->TryAddRef()) {
+        return {};
+    }
+
+    return refcount_ptr<ServerEntity>(refcount_ptr<ServerEntity>::adopt, p);
+}
+
+void ServerEntity::SetParent(ServerEntity* parent) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (parent != nullptr) {
+        parent->AddRef();
+    }
+
+    ServerEntity* old = _parent.exchange(parent, std::memory_order_acq_rel);
+
+    if (old != nullptr) {
+        old->Release();
+    }
+}
+
+auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (callbacks.empty()) {
+        return EventResult::ContinueChain;
+    }
+
+    // Engine-wide invariant: a primary SyncContext is always active when an event fires.
+    FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread());
+
+    bool had_exception = false;
+
+    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work.
+    for (const auto& cb : copy(callbacks)) {
+        EventResult result = EventResult::ContinueChain;
+
+        try {
+            // Wrap this callback in its own nested SyncContext on top of the dispatcher's
+            // primary cover. Inner `Sync::Lock(...)` calls only mutate the nested layer, so
+            // the primary's locks (the event's entity args) are preserved across the chain
+            // and the next sibling sees them locked again.
+            SyncContext nested;
+            nested.Activate();
+            auto cleanup = scope_exit([&]() noexcept {
+                nested.Release();
+                nested.Deactivate();
+            });
+
+            result = cb.Callback(call);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            had_exception = true;
+
+            if (cb.HasExplicitResult) {
+                return EventResult::StopChain;
+            }
+        }
+
+        if (result == EventResult::StopChain) {
+            return EventResult::StopChain;
+        }
+    }
+
+    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
 }
 
 FO_END_NAMESPACE

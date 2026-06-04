@@ -147,6 +147,17 @@ template<typename T>
 }
 
 template<typename T>
+    requires(!std::is_pointer_v<T>)
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<typename T::element_type*>
+{
+    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    for (auto&& ref : value) {
+        ref_vec.add(ref.get());
+    }
+    return ref_vec;
+}
+
+template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<T>
 {
@@ -193,6 +204,17 @@ template<typename T>
 template<typename T, typename U>
     requires(!std::is_pointer_v<U>)
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<typename U::element_type*>
+{
+    auto ref_vec = ref_hold_vector<typename U::element_type*>(value.size());
+    for (auto&& ref : value | std::views::values) {
+        ref_vec.add(ref.get());
+    }
+    return ref_vec;
+}
+
+template<typename T, typename U>
+    requires(!std::is_pointer_v<U>)
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>&& value) -> ref_hold_vector<typename U::element_type*>
 {
     auto ref_vec = ref_hold_vector<typename U::element_type*>(value.size());
     for (auto&& ref : value | std::views::values) {

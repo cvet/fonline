@@ -33,61 +33,16 @@
 
 #include "WorkThread.h"
 #include "ExceptionHandling.h"
-#include "GlobalData.h"
-#include "Platform.h"
 #include "StackTrace.h"
-#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE
-
-struct WorkThreadData
-{
-    WorkThreadData() { set_this_thread_name("Main"); }
-};
-FO_GLOBAL_DATA(WorkThreadData, WorkThread);
-
-static thread_local std::string ThreadName;
-
-extern void set_this_thread_name(const string& name) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    try {
-        ThreadName = name;
-    }
-    catch (...) {
-    }
-
-    Platform::SetThreadName(name);
-
-#if FO_TRACY
-    tracy::SetThreadName(name.c_str());
-#endif
-}
-
-extern auto get_this_thread_name() noexcept -> const std::string&
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (ThreadName.empty()) {
-        static std::atomic_int32_t thread_counter = 0;
-
-        try {
-            ThreadName = strex("{}", ++thread_counter);
-        }
-        catch (...) {
-        }
-    }
-
-    return ThreadName;
-}
 
 WorkThread::WorkThread(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
     _name = name;
-    _thread = run_thread(name, [this] { ThreadEntry(); });
+    _worker = run_thread(name, [this] { ThreadEntry(); });
 }
 
 WorkThread::~WorkThread()
@@ -95,7 +50,7 @@ WorkThread::~WorkThread()
     FO_STACK_TRACE_ENTRY();
 
     {
-        std::unique_lock locker(_dataLocker);
+        scoped_lock locker {_dataLocker};
 
         _finish = true;
     }
@@ -103,7 +58,9 @@ WorkThread::~WorkThread()
     _workSignal.notify_one();
 
     try {
-        _thread.join();
+        if (_worker.joinable()) {
+            _worker.join();
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -117,7 +74,7 @@ auto WorkThread::GetJobsCount() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker(_dataLocker);
+    scoped_lock locker {_dataLocker};
 
     return _jobs.size() + (_jobActive ? 1 : 0);
 }
@@ -126,7 +83,7 @@ void WorkThread::SetExceptionHandler(ExceptionHandler handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker(_dataLocker);
+    scoped_lock locker {_dataLocker};
 
     _exceptionHandler = std::move(handler);
 }
@@ -150,7 +107,7 @@ void WorkThread::AddJobInternal(timespan delay, Job job, bool no_notify)
     FO_STACK_TRACE_ENTRY();
 
     {
-        std::unique_lock locker(_dataLocker);
+        scoped_lock locker {_dataLocker};
 
         const auto fire_time = nanotime::now() + delay;
 
@@ -176,7 +133,7 @@ void WorkThread::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker(_dataLocker);
+    unique_lock locker(_dataLocker);
 
     _clearJobs = true;
 
@@ -193,7 +150,7 @@ void WorkThread::Wait() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker(_dataLocker);
+    unique_lock locker(_dataLocker);
 
     while (!_jobs.empty() || _jobActive) {
         _doneSignal.wait(locker);
@@ -204,7 +161,7 @@ void WorkThread::Pause()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::unique_lock locker(_dataLocker);
+    unique_lock locker(_dataLocker);
 
     _paused = true;
 
@@ -218,7 +175,7 @@ void WorkThread::Resume()
     FO_STACK_TRACE_ENTRY();
 
     {
-        std::unique_lock locker(_dataLocker);
+        scoped_lock locker {_dataLocker};
 
         _paused = false;
     }
@@ -235,7 +192,7 @@ void WorkThread::ThreadEntry() noexcept
             Job job;
 
             {
-                std::unique_lock locker(_dataLocker);
+                unique_lock locker(_dataLocker);
 
                 _jobActive = false;
 
@@ -294,7 +251,7 @@ void WorkThread::ThreadEntry() noexcept
 
                     // Exception handling
                     {
-                        std::unique_lock locker(_dataLocker);
+                        scoped_lock locker {_dataLocker};
 
                         if (_exceptionHandler) {
                             try {

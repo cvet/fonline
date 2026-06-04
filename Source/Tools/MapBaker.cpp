@@ -150,8 +150,8 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     auto client_engine = BakerClientEngine(*_context->BakedFiles);
 
     vector<std::future<void>> proto_loadings;
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->BakedFiles); }));
-    proto_loadings.emplace_back(std::async(GetAsyncMode(), [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterServerProtos", [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterClientProtos", [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->BakedFiles); }));
 
     for (auto& proto_loading : proto_loadings) {
         proto_loading.get();
@@ -287,7 +287,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     for (const auto& entry : filtered_files) {
         const MapBakeEntry* entry_ptr = &entry;
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [&, entry_ptr]() FO_DEFERRED { bake_map(*entry_ptr); }));
+        file_bakings.emplace_back(run_async(GetAsyncMode(), strex("BakeMap-{}", entry_ptr->MapName), [&, entry_ptr]() FO_DEFERRED { bake_map(*entry_ptr); }));
     }
 
     size_t errors = 0;

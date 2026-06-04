@@ -137,18 +137,18 @@ private:
     std::atomic_bool _clientConnected {false};
     std::atomic_bool _hasAnyBreakpoints {false};
     std::atomic_bool _stopped {false};
-    std::thread _thread {};
-    std::thread _discoveryThread {};
-    std::shared_mutex _clientIoLocker {};
-    mutable std::mutex _stackTraceLocker {};
-    StackTraceData _lastStackTrace {};
-    vector<vector<LocalVariableInfo>> _lastLocalsByFrame {};
-    string _lastStoppedSourcePath {};
-    uint32_t _lastStoppedSourceLine {};
-    string _lastStoppedFunction {};
-    bool _hasLastStoppedLocation {};
-    mutable std::mutex _breakpointsLocker {};
-    unordered_map<string, unordered_set<uint32_t>> _lineBreakpoints {};
+    thread _thread {};
+    thread _discovery {};
+    shared_mutex _clientIoLocker {};
+    mutable mutex _stackTraceLocker {};
+    StackTraceData _lastStackTrace FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    vector<vector<LocalVariableInfo>> _lastLocalsByFrame FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    string _lastStoppedSourcePath FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    uint32_t _lastStoppedSourceLine FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    string _lastStoppedFunction FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    bool _hasLastStoppedLocation FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    mutable mutex _breakpointsLocker {};
+    unordered_map<string, unordered_set<uint32_t>> _lineBreakpoints FO_TSA_GUARDED_BY(_breakpointsLocker) {};
     tcp_server _tcpServer {};
     tcp_socket _activeClientSock {};
     udp_socket _discoverySocket {};
@@ -217,7 +217,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
     }
 
     _thread = run_thread("Debugger", [this]() { this->Run(); });
-    _discoveryThread = run_thread("DebuggerDiscovery", [this]() { this->RunDiscoveryResponder(); });
+    _discovery = run_thread("DebuggerDiscovery", [this]() { this->RunDiscoveryResponder(); });
 }
 
 DebuggerEndpointServer::Impl::~Impl()
@@ -272,7 +272,7 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
 
     const string key = strvex(source_path).extract_file_name().str();
 
-    std::scoped_lock locker {_breakpointsLocker};
+    scoped_lock locker {_breakpointsLocker};
 
     if (lines.empty()) {
         _lineBreakpoints.erase(key);
@@ -377,7 +377,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     };
 
     const auto capture_stack_trace = [&](string_view source_path, uint32_t source_line, string_view function_name) {
-        std::scoped_lock locker {_stackTraceLocker};
+        scoped_lock locker {_stackTraceLocker};
 
         _lastStackTrace = GetStackTrace();
         _lastStoppedSourcePath = string {source_path};
@@ -562,7 +562,7 @@ auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32
 
     const string key = strvex(source_path).extract_file_name().str();
 
-    std::scoped_lock locker {_breakpointsLocker};
+    scoped_lock locker {_breakpointsLocker};
 
     const auto it = _lineBreakpoints.find(key);
 
@@ -594,7 +594,7 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
     _singleStepRequested = false;
 
     {
-        std::scoped_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
         _activeClientSock.close();
     }
 
@@ -604,8 +604,8 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
     if (_thread.joinable()) {
         _thread.join();
     }
-    if (_discoveryThread.joinable()) {
-        _discoveryThread.join();
+    if (_discovery.joinable()) {
+        _discovery.join();
     }
 }
 
@@ -670,7 +670,7 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::shared_lock locker {_clientIoLocker};
+    shared_lock locker {_clientIoLocker};
 
     if (!_activeClientSock.can_write(ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT)) {
         return false;
@@ -803,7 +803,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             uint32_t stopped_line {};
 
             {
-                std::scoped_lock locker {_stackTraceLocker};
+                scoped_lock locker {_stackTraceLocker};
 
                 frames = _lastStackTrace;
                 has_stopped_location = _hasLastStoppedLocation;
@@ -886,7 +886,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             vector<LocalVariableInfo> frame_vars;
 
             {
-                std::scoped_lock locker {_stackTraceLocker};
+                scoped_lock locker {_stackTraceLocker};
 
                 const int32_t frames_count = numeric_cast<int32_t>(_lastLocalsByFrame.size());
 
@@ -978,13 +978,13 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
     bool handshake_sent = false;
 
     {
-        std::unique_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
         _activeClientSock = std::move(client_sock);
         _clientConnected = _activeClientSock.is_valid();
     }
 
     const auto clear_active_client = scope_exit([&]() noexcept {
-        std::unique_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
 
         _activeClientSock.close();
         _clientConnected = false;
@@ -999,7 +999,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
         int32_t read_size {};
 
         {
-            std::shared_lock locker {_clientIoLocker};
+            shared_lock locker {_clientIoLocker};
 
             if (!_activeClientSock.is_valid()) {
                 break;

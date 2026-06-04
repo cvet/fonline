@@ -277,7 +277,8 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
     vector<std::future<void>> file_bakings;
 
     for (auto& file_ : filtered_files) {
-        file_bakings.emplace_back(std::async(GetAsyncMode(), [this, file = std::move(file_)]() FO_DEFERRED {
+        const auto task_name = strex("BakeModelMesh-{}", file_.GetPath()).str();
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
             auto data = BakeFbxFile(file.GetPath(), file);
             _context->WriteData(file.GetPath(), data);
         }));

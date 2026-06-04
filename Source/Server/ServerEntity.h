@@ -40,6 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
+class EntityLock;
 class ServerEngine;
 
 class ServerEntity : public Entity
@@ -52,7 +53,7 @@ public:
     ServerEntity(ServerEntity&&) noexcept = delete;
     auto operator=(const ServerEntity&) = delete;
     auto operator=(ServerEntity&&) noexcept = delete;
-    ~ServerEntity() override = default;
+    ~ServerEntity() override;
 
     [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }
     [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine* { return _engine.get(); }
@@ -60,11 +61,41 @@ public:
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
     [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
     [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
+    [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock* { return _entityLock.get(); }
+
+    void ValidateAccess() const override;
+
+    [[nodiscard]] auto GetParent() -> refcount_ptr<ServerEntity>;
+    [[nodiscard]] auto GetParent() const -> refcount_ptr<const ServerEntity>;
+
+    template<typename T>
+    [[nodiscard]] auto GetParent() -> refcount_ptr<T>
+    {
+        ValidateEntityAccess(this);
+        return refcount_ptr<T>(dynamic_cast<T*>(_parent.load(std::memory_order_acquire)));
+    }
+    template<typename T>
+    [[nodiscard]] auto GetParent() const -> refcount_ptr<const T>
+    {
+        ValidateEntityAccess(this);
+        return refcount_ptr<const T>(dynamic_cast<const T*>(_parent.load(std::memory_order_acquire)));
+    }
+
+    // Unchecked parent accessor — for the lock machinery only.
+    [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_ptr<ServerEntity>;
+
+    // Return the entity that should be auto-widened into the SyncContext alongside this one,
+    // outside of the parent-chain.
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> ServerEntity* { return nullptr; }
 
     void SetInitCalled() noexcept { _initCalled = true; }
+    void SetEntityLock(EntityLock* lock) noexcept { _entityLock = lock; }
+    void SetParent(ServerEntity* parent) noexcept;
 
 protected:
     ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept;
+
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
     raw_ptr<ServerEngine> _engine;
 
@@ -76,6 +107,8 @@ private:
     ident_t _id;
     bool _initCalled {};
     bool _isPersistent {};
+    mutable raw_ptr<EntityLock> _entityLock {};
+    std::atomic<ServerEntity*> _parent {};
 };
 
 class CustomEntity : public ServerEntity, public EntityProperties

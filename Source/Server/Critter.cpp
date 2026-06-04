@@ -50,6 +50,8 @@ Critter::Critter(ServerEngine* engine, ident_t id, const ProtoCritter* proto, co
     CritterProperties(GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetEntityLock(&_ownedLock);
 }
 
 Critter::~Critter()
@@ -81,6 +83,13 @@ auto Critter::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     return _player ? _player->GetName() : _proto->GetName();
+}
+
+auto Critter::GetSyncWidenEntity() noexcept -> ServerEntity*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _player.get();
 }
 
 auto Critter::GetOfflineTime() const -> timespan
@@ -143,7 +152,7 @@ void Critter::MarkIsForPlayer()
     SetControlledByPlayer(true);
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 
-    if (auto* map = _engine->EntityMngr.GetMap(GetMapId()); map != nullptr) {
+    if (auto map = _engine->EntityMngr.GetMap(GetMapId())) {
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -157,7 +166,7 @@ void Critter::UnmarkIsForPlayer()
 
     SetControlledByPlayer(false);
 
-    if (auto* map = _engine->EntityMngr.GetMap(GetMapId()); map != nullptr) {
+    if (auto map = _engine->EntityMngr.GetMap(GetMapId())) {
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -223,6 +232,20 @@ void Critter::StopMoving(MovingState reason)
     SetMovingSpeed(0);
 }
 
+void Critter::AddAttachedCritter(Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vec_add_unique_value(_attachedCritters, cr);
+}
+
+void Critter::RemoveAttachedCritter(Critter* cr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vec_remove_unique_value(_attachedCritters, cr);
+}
+
 void Critter::AttachToCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -231,13 +254,13 @@ void Critter::AttachToCritter(Critter* cr)
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
     FO_RUNTIME_ASSERT(!cr->GetIsAttached());
     FO_RUNTIME_ASSERT(!GetIsAttached());
-    FO_RUNTIME_ASSERT(_attachedCritters.empty());
+    FO_RUNTIME_ASSERT(!HasAttachedCritters());
 
     if (IsMoving()) {
         StopMoving(MovingState::Stopped);
     }
 
-    vec_add_unique_value(cr->_attachedCritters, this);
+    cr->AddAttachedCritter(this);
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -252,10 +275,10 @@ void Critter::DetachFromCritter()
     FO_RUNTIME_ASSERT(GetIsAttached());
     FO_RUNTIME_ASSERT(GetAttachMaster());
 
-    auto* cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
+    auto cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     FO_RUNTIME_ASSERT(cr);
 
-    vec_remove_unique_value(cr->_attachedCritters, this);
+    cr->RemoveAttachedCritter(this);
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -272,7 +295,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Sync position
-    auto* map = _engine->EntityMngr.GetMap(GetMapId());
+    auto map = GetParent<Map>();
     FO_RUNTIME_ASSERT(map);
 
     vector<tuple<Critter*, mpos, refcount_ptr<Critter>>> moved_critters;
@@ -280,7 +303,9 @@ void Critter::MoveAttachedCritters()
     const auto new_hex = GetHex();
     const auto new_hex_offset = GetHexOffset();
 
-    for (auto& cr : _attachedCritters) {
+    auto attached = GetAttachedCritters();
+
+    for (auto& cr : attached) {
         FO_RUNTIME_ASSERT(!cr->IsDestroyed());
         FO_RUNTIME_ASSERT(cr->GetIsAttached());
         FO_RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
@@ -514,6 +539,8 @@ auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
     FO_RUNTIME_ASSERT(mode != CritterVisibilityMode::None);
 
+    ValidateEntityAccess(cr);
+
     const auto inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
 
     if (!inserted) {
@@ -539,6 +566,8 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     FO_RUNTIME_ASSERT(cr != this);
     FO_RUNTIME_ASSERT(cr->GetId() != GetId());
     FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+
+    ValidateEntityAccess(cr);
 
     const auto it_map = _visibleCrWhoSeeMeMap.find(cr->GetId());
 
@@ -644,10 +673,10 @@ auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
         return false;
     }
 
-    const auto* map = _engine->EntityMngr.GetMap(GetMapId());
+    const auto map = GetParent<Map>();
     FO_RUNTIME_ASSERT(map);
 
-    return CheckItemVisibilityHook(_engine.get(), map, this, item);
+    return CheckItemVisibilityHook(_engine.get(), map.get(), this, item);
 }
 
 void Critter::ChangeDir(mdir dir)
@@ -664,6 +693,7 @@ void Critter::SetItem(Item* item)
     FO_RUNTIME_ASSERT(item);
 
     vec_add_unique_value(_invItems, item);
+    item->SetParent(this);
 }
 
 void Critter::RemoveItem(Item* item)
@@ -673,6 +703,7 @@ void Critter::RemoveItem(Item* item)
     FO_RUNTIME_ASSERT(item);
 
     vec_remove_unique_value(_invItems, item);
+    item->SetParent(nullptr);
 }
 
 auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
@@ -688,6 +719,36 @@ auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
     }
 
     return nullptr;
+}
+
+auto Critter::GetInvItems() noexcept -> vector<raw_ptr<Item>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    return _invItems;
+}
+
+auto Critter::GetInvItems() const noexcept -> vector<raw_ptr<const Item>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<raw_ptr<const Item>> result;
+    result.reserve(_invItems.size());
+
+    for (const auto& item : _invItems) {
+        result.emplace_back(item.get());
+    }
+
+    return result;
+}
+
+auto Critter::HasItems() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !_invItems.empty();
 }
 
 auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> Item*
@@ -740,7 +801,7 @@ auto Critter::GetMapSpectators() -> ref_hold_vector<Player*>
     FO_NO_STACK_TRACE_ENTRY();
 
     if (const auto map_id = GetMapId()) {
-        if (auto* map = GetEngine()->EntityMngr.GetMap(map_id); map != nullptr && map->HasSpectatorPlayers()) {
+        if (auto map = GetEngine()->EntityMngr.GetMap(map_id); map && map->HasSpectatorPlayers()) {
             return copy_hold_ref(map->GetSpectatorPlayers());
         }
     }

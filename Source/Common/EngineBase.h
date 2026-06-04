@@ -41,7 +41,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "TimeEventManager.h"
+#include "TimeEvents.h"
 #include "Timer.h"
 
 FO_BEGIN_NAMESPACE
@@ -108,7 +108,7 @@ public:
     void RegisterValueType(string_view name);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
-    void RegisterRefTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
+    void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);
     void RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods);
     void RegisterRefTypeMethod(string_view name, MethodDesc&& method);
     void RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods);
@@ -170,6 +170,8 @@ public:
 
     virtual void Shutdown() { }
     void FrameAdvance();
+
+    virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
 
     void SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);

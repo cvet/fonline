@@ -520,6 +520,7 @@ struct MethodDesc
     bool Setter {};
     bool PassOwnership {};
     bool ReturnNullable {};
+    bool Async {};
 };
 
 struct StructLayoutDesc
@@ -840,7 +841,7 @@ extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern std::mutex InterthreadListenersLocker;
+extern mutex InterthreadListenersLocker;
 extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 ///@ ExportEnum

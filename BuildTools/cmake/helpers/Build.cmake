@@ -31,8 +31,17 @@ set(CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE)
 # Disable warnings in third-party libs
 function(DisableLibWarnings)
 	foreach(lib ${ARGV})
+		# -w suppresses ordinary warnings, but Clang 20+ promoted several legacy-C diagnostics to errors BY DEFAULT
+		# (the C23 transition); -w does not downgrade those, so vendored C code (LibreSSL, mongo-c, ...) would fail to
+		# build under clang/clang-cl. Demote that family back to warnings (then -w hides them) so third-party stays
+		# silent on every toolchain.
 		target_compile_options(${lib} PRIVATE
 			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
+			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-error=incompatible-pointer-types
+				-Wno-error=incompatible-function-pointer-types
+				-Wno-error=int-conversion
+				-Wno-error=implicit-function-declaration
+				-Wno-error=implicit-int>
 			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
 	endforeach()
 endfunction()
