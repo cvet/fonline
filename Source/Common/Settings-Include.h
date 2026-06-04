@@ -375,6 +375,7 @@ FIXED_SETTING(int32_t, Server, FrameTimePeriodNs, 900); // Frame-time advance jo
 FIXED_SETTING(int32_t, Server, ConnectionProcessPeriodMs, 100); // Player / unlogined-player connection job re-poll period between data-arrival wakes, in milliseconds
 FIXED_SETTING(int32_t, Server, CritterMovingPeriodMs, 50); // Critter movement-step job period in milliseconds
 FIXED_SETTING(int32_t, Server, HealthFilePeriodMs, 300); // Health-file refresh job period in milliseconds
+FIXED_SETTING(int32_t, Server, ShutdownGraceMs, 5000); // Grace period in milliseconds for in-flight worker jobs to drain on shutdown before parked entity-lock waiters are force-aborted
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

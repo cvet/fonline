@@ -846,14 +846,14 @@ void SyncContext::Release() noexcept
     ReleaseSingletonLocks();
 }
 
-auto SyncContext::GetHeldEntities() const -> vector<ServerEntity*>
+auto SyncContext::GetHeldEntities() -> vector<ServerEntity*>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<ServerEntity*> entities;
     entities.reserve(_heldLockOwners.size());
 
-    for (const auto& owner : _heldLockOwners) {
+    for (auto& owner : _heldLockOwners) {
         if (owner && owner->GetId()) {
             entities.emplace_back(owner.get());
         }

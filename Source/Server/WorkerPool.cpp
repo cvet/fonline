@@ -255,6 +255,23 @@ void WorkerPool::WaitIdle() const
     }
 }
 
+auto WorkerPool::WaitIdle(timespan timeout) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_lock locker {_mutex};
+
+    const auto deadline = nanotime::now() + timeout;
+
+    while (!IsBarrierIdle()) {
+        if (_idleSignal.wait_until(locker, deadline.value()) == std::cv_status::timeout) {
+            return IsBarrierIdle();
+        }
+    }
+
+    return true;
+}
+
 void WorkerPool::Resume()
 {
     FO_STACK_TRACE_ENTRY();

@@ -87,6 +87,7 @@ public:
     auto Cancel(JobKey key) -> bool;
     void Clear();
     void WaitIdle() const;
+    auto WaitIdle(timespan timeout) const -> bool;
 
 private:
     struct ScheduledJob

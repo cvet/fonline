@@ -127,7 +127,7 @@ public:
 
     [[nodiscard]] auto ValidateAccess(const ServerEntity* entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
-    [[nodiscard]] auto GetHeldEntities() const -> vector<ServerEntity*>;
+    [[nodiscard]] auto GetHeldEntities() -> vector<ServerEntity*>;
 
     void Activate() noexcept;
     void Deactivate() noexcept;

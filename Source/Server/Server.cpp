@@ -869,26 +869,6 @@ void ServerEngine::Shutdown()
 
     _shutdownInProgress.store(true, std::memory_order_release);
 
-    // Wake every worker currently parked inside `EntityLock::Acquire` on one of this engine's
-    // entity locks. `AbortPendingWaiters` notify_one's each waiting `WaitEntry` so the waiter
-    // throws `EntityLockWaitAbortedException` and unwinds its job — no poll, no thundering herd, strict FIFO
-    // is unaffected for non-shutdown traffic.
-    {
-        WriteLog("Shutdown stage: AbortPendingWaiters on entity locks");
-
-        const auto entities = EntityMngr.GetEntities();
-        size_t aborted_locks = 0;
-
-        for (auto& entity : entities) {
-            if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
-                lock->AbortPendingWaiters();
-                aborted_locks++;
-            }
-        }
-
-        WriteLog("Shutdown stage: AbortPendingWaiters complete (locks={})", aborted_locks);
-    }
-
     // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
@@ -924,8 +904,34 @@ void ServerEngine::Shutdown()
     TimeEventMngr.ClearDispatcherHooks();
     WriteLog("Shutdown stage: workerPool.Clear");
     _workerPool->Clear();
-    WriteLog("Shutdown stage: workerPool.WaitIdle");
-    _workerPool->WaitIdle();
+
+    // Graceful drain: give in-flight worker jobs a grace window to finish on their own. A job parked
+    // inside `EntityLock::Acquire` still counts as active, so `WaitIdle` blocks on it. If the drain
+    // does not complete within `Server.ShutdownGraceMs`, wake every parked waiter via
+    // `AbortPendingWaiters` — each wakes with `STATE_ABORTED` and throws `EntityLockWaitAbortedException`,
+    // which unwinds its job (the `WorkerPool` run loop swallows it because shutdown is in progress).
+    // Nothing converts the abort into a return value; the exception alone stops the work.
+    WriteLog("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings.ShutdownGraceMs);
+
+    if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings.ShutdownGraceMs})) {
+        WriteLog("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
+
+        const auto entities = EntityMngr.GetEntities();
+        size_t aborted_locks = 0;
+
+        for (auto& entity : entities) {
+            if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
+                lock->AbortPendingWaiters();
+                aborted_locks++;
+            }
+        }
+
+        WriteLog("Shutdown stage: AbortPendingWaiters complete (locks={})", aborted_locks);
+
+        WriteLog("Shutdown stage: workerPool.WaitIdle (post-abort)");
+        _workerPool->WaitIdle();
+    }
+
     WriteLog("Shutdown stage: workerPool.reset");
     _workerPool.reset();
 

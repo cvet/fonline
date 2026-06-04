@@ -538,4 +538,36 @@ TEST_CASE("WorkerPoolClearAndParallelism")
     }
 }
 
+TEST_CASE("WorkerPoolWaitIdleTimeout")
+{
+    // The timed WaitIdle backs the shutdown grace window: while a job is still in flight it must
+    // report "not idle" once the deadline passes, and reach idle once the job drains.
+    SECTION("ReturnsFalseWhileBusyThenTrueWhenDrained")
+    {
+        std::atomic<bool> shutdown_flag {false};
+        WorkerPool pool {"test", 1, shutdown_flag};
+        std::atomic_int started {0};
+        std::atomic_int release {0};
+
+        pool.Submit([&]() -> std::optional<timespan> {
+            started.fetch_add(1);
+            while (release.load() == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+            return std::nullopt;
+        });
+
+        REQUIRE(WaitFor([&] { return started.load() == 1; }));
+
+        // Job is parked on the gate → the pool is not idle, so a short timed wait must give up.
+        CHECK_FALSE(pool.WaitIdle(std::chrono::milliseconds {50}));
+
+        // Release the gate; the timed wait now reaches idle well within its budget.
+        release.store(1);
+        CHECK(pool.WaitIdle(std::chrono::seconds {5}));
+
+        pool.WaitIdle();
+    }
+}
+
 FO_END_NAMESPACE
