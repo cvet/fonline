@@ -100,6 +100,8 @@ auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackDa
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
+
     make_if_not_exists(_events);
 
     if (const auto it = _events->find(event_name); it != _events->end()) {
@@ -112,6 +114,8 @@ auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackDa
 void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
@@ -156,6 +160,8 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_VERIFY_AND_RETURN(!_isDestroyed, EventResult::ContinueChain);
+
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
             return FireEvent(it->second, call);
@@ -168,6 +174,8 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
 void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     FO_NON_CONST_METHOD_HINT();
 
@@ -201,6 +209,8 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t su
 auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY_AND_RETURN(!_isDestroyed, EventResult::ContinueChain);
 
     FO_NON_CONST_METHOD_HINT();
 
@@ -250,6 +260,9 @@ void Entity::MarkAsDestroyed() noexcept
 
     FO_RUNTIME_VERIFY(!_isDestroyed);
 
+    UnsubscribeAllEvents();
+    ClearAllTimeEvents();
+
     _isDestroying = true;
     _isDestroyed = true;
 }
@@ -265,12 +278,16 @@ void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
+
     _props.RestoreData(props_data);
 }
 
 void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     _props.SetValueFromData(prop, prop_data);
 }
@@ -307,12 +324,16 @@ void Entity::SetValueAsInt(const Property* prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
+
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
 void Entity::SetValueAsInt(int32_t prop_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     _props.SetValueAsInt(prop_index, value);
 }
@@ -321,12 +342,16 @@ void Entity::SetValueAsAny(const Property* prop, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
+
     _props.SetPlainDataValueAsAny(prop, value);
 }
 
 void Entity::SetValueAsAny(int32_t prop_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     _props.SetValueAsAny(prop_index, value);
 }
@@ -369,6 +394,10 @@ void Entity::AddInnerEntity(hstring entry, Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
+
     make_if_not_exists(_innerEntities);
 
     if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
@@ -383,8 +412,11 @@ void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_isDestroyed);
     FO_RUNTIME_ASSERT(_innerEntities);
     FO_RUNTIME_ASSERT(entry);
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
     FO_RUNTIME_ASSERT(_innerEntities->count(entry));
 
     auto& entities = _innerEntities->at(entry);
@@ -401,6 +433,8 @@ void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
 void Entity::ClearInnerEntities()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(!_isDestroyed);
 
     _innerEntities.reset();
 }
@@ -423,6 +457,8 @@ auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_VERIFY_AND_RETURN(!_entity->IsDestroyed(), Entity::EventResult::ContinueChain);
+
     FO_STRONG_ASSERT(_callbacks);
     return _entity->FireEvent(*_callbacks, call);
 }
@@ -430,6 +466,8 @@ auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 auto EntityEvent::CheckCallbacks() -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY_AND_RETURN(!_entity->IsDestroyed(), false);
 
     if (_callbacks) {
         return !_callbacks->empty();
@@ -447,12 +485,16 @@ void EntityEvent::Subscribe(Entity::EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(!_entity->IsDestroyed());
+
     _entity->SubscribeEvent(_callbackName, std::move(callback));
 }
 
 void EntityEvent::Unsubscribe(uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_VERIFY_AND_RETURN(!_entity->IsDestroyed());
 
     _entity->UnsubscribeEvent(_callbackName, subscription_ptr);
 }
@@ -461,7 +503,10 @@ void EntityEvent::UnsubscribeAll() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_VERIFY_AND_RETURN(!_entity->IsDestroyed());
+
     _entity->UnsubscribeAllEvent(_callbackName);
+    _callbacks = nullptr;
 }
 
 Entity::~Entity() = default;

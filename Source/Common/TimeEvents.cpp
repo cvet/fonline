@@ -88,6 +88,9 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
+
     const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
 
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
@@ -117,6 +120,9 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
 auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), 0);
 
     const auto& timeEvents = entity->GetRawTimeEvents();
 
@@ -154,6 +160,8 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
 
     struct ResubmitInfo
     {
@@ -214,6 +222,8 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
+    FO_RUNTIME_ASSERT(entity);
+    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed());
 
     vector<uint32_t> cancelled_ids;
 
