@@ -46,6 +46,12 @@ FO_BEGIN_NAMESPACE
 
 extern void ServerInitHook(ServerEngine*);
 
+// Per-thread SyncContext bound to the lifetime of an external `ServerEngine::Lock` call. Tests
+// (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
+// their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
+// constructs+activates one, Unlock releases+deactivates it.
+thread_local unique_ptr<SyncContext> ExternalLockSyncCtx {};
+
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
@@ -145,7 +151,9 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 {
     FO_STACK_TRACE_ENTRY();
 
-    return [this, body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+    FO_NON_CONST_METHOD_HINT();
+
+    return [this, body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         SyncContext sync_ctx;
         sync_ctx.Activate();
         auto cleanup = scope_exit([&]() noexcept {
@@ -153,7 +161,7 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
             sync_ctx.Deactivate();
         });
 
-        return body();
+        return body_();
     };
 }
 
@@ -795,6 +803,8 @@ auto ServerEngine::PoolSyncJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NON_CONST_METHOD_HINT();
+
     // WorkerPool hosts long-lived recurring jobs (time events, movement, connections). Waiting for
     // full pool-idle here can freeze FrameTimeJob, which those jobs need for forward progress.
     return std::chrono::milliseconds {Settings.SyncPeriodMs};
@@ -919,7 +929,7 @@ void ServerEngine::Shutdown()
         const auto entities = EntityMngr.GetEntities();
         size_t aborted_locks = 0;
 
-        for (auto& entity : entities) {
+        for (const auto& entity : entities) {
             if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
                 lock->AbortPendingWaiters();
                 aborted_locks++;
@@ -1022,15 +1032,6 @@ void ServerEngine::Shutdown()
     FO_RUNTIME_ASSERT(GetRefCount() == 1);
 }
 
-namespace
-{
-    // Per-thread SyncContext bound to the lifetime of an external `ServerEngine::Lock` call. Tests
-    // (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
-    // their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
-    // constructs+activates one, Unlock releases+deactivates it.
-    thread_local unique_ptr<SyncContext> tls_externalLockSyncCtx {};
-}
-
 auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -1059,9 +1060,9 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 
     // Now this thread is allowed to touch engine state — stand up a SyncContext to satisfy the
     // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
-    FO_RUNTIME_ASSERT(!tls_externalLockSyncCtx);
-    tls_externalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
-    tls_externalLockSyncCtx->Activate();
+    FO_RUNTIME_ASSERT(!ExternalLockSyncCtx);
+    ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
+    ExternalLockSyncCtx->Activate();
     return true;
 }
 
@@ -1069,10 +1070,10 @@ void ServerEngine::Unlock()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(tls_externalLockSyncCtx);
-    tls_externalLockSyncCtx->Release();
-    tls_externalLockSyncCtx->Deactivate();
-    tls_externalLockSyncCtx.reset();
+    FO_RUNTIME_ASSERT(ExternalLockSyncCtx);
+    ExternalLockSyncCtx->Release();
+    ExternalLockSyncCtx->Deactivate();
+    ExternalLockSyncCtx.reset();
 
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
         unique_lock locker {_syncLocker};
@@ -2671,7 +2672,7 @@ void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstr
         return;
     }
 
-    const string reported_string = hstr.as_str();
+    const string& reported_string = hstr.as_str();
 
     // Already known (already broadcast and persisted)
     if (_reportedStrings.count(reported_string) != 0) {
@@ -2693,6 +2694,8 @@ void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstr
 void ServerEngine::SendAllReportedHashes(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
 
     if (_reportedStrings.empty()) {
         return;
@@ -3577,7 +3580,7 @@ void ServerEngine::OnSaveSynchronizedTime(Entity* entity, const Property* prop)
 
     if (!GameTime.IsTimeSynchronized()) {
         // Init / external pin path: persist the exact property value.
-        auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
+        const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
         DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
         return;
     }
@@ -3638,6 +3641,8 @@ void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
 
     auto* item = dynamic_cast<Item*>(entity);
     FO_RUNTIME_ASSERT(item);
@@ -3761,6 +3766,7 @@ void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
@@ -3790,6 +3796,7 @@ void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
@@ -3809,6 +3816,7 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
@@ -3831,12 +3839,8 @@ void ServerEngine::ProcessCritterMoving(Critter* cr)
     if (cr->IsMoving()) {
         auto map = cr->GetParent<Map>();
 
-        if (map != nullptr && !cr->GetIsAttached()) {
+        if (map && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map.get());
-
-            if (cr->IsDestroyed()) {
-                return;
-            }
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
@@ -4001,7 +4005,7 @@ auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map
 
     FO_RUNTIME_ASSERT(cr->IsMoving());
 
-    auto* moving = cr->GetMoving();
+    const auto* moving = cr->GetMoving();
     FO_RUNTIME_ASSERT(moving);
     moving->ValidateRuntimeState();
 
@@ -4019,7 +4023,7 @@ auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map
     }
 
     const vector<mpos> path_hexes = moving->EvaluatePathHexes(moving->GetStartHex());
-    const auto client_hex_it = std::find(path_hexes.begin(), path_hexes.end(), client_hex);
+    const auto client_hex_it = std::ranges::find(path_hexes, client_hex);
     size_t client_hex_index = 0;
     bool use_movement_path = true;
 

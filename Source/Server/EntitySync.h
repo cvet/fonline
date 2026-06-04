@@ -89,27 +89,27 @@ private:
         //   2 = aborted by AbortPendingWaiters; on wake the waiter removes itself and throws
         // Atomicity carries the cross-thread hand-off; CAS in Release / AbortPendingWaiters
         // disambiguates the abort-races-grant window.
-        static constexpr int STATE_WAITING = 0;
-        static constexpr int STATE_GRANTED = 1;
-        static constexpr int STATE_ABORTED = 2;
+        static constexpr int32_t STATE_WAITING = 0;
+        static constexpr int32_t STATE_GRANTED = 1;
+        static constexpr int32_t STATE_ABORTED = 2;
 
         uint64_t Ticket {};
         std::thread::id Waiter {};
         bool Shared {};
-        std::atomic<int> State {STATE_WAITING};
+        std::atomic<int32_t> State {STATE_WAITING};
     };
 
     // Grants ownership to the next eligible waiter(s) after the lock becomes free. Called under
     // `_mutex` from `Release` / `ReleaseShared`. Exclusive waiters require zero shared holders;
     // a run of consecutive shared waiters at the queue front is granted together (readers batch),
     // stopping at the first exclusive waiter so writers are not starved by a stream of readers.
-    void GrantWaiters() noexcept;
+    void GrantWaiters() noexcept FO_TSA_REQUIRES(_mutex);
 
-    mutable std::mutex _mutex {};
+    mutable mutex _mutex {};
     std::atomic<std::thread::id> _ownerThread {};
-    int32_t _recursionCount {};
-    unordered_map<std::thread::id, int32_t> _sharedHolders {}; // Per-thread shared ("read") holders with their recursion counts.
-    list<WaitEntry> _waitQueue {};
+    int32_t _recursionCount FO_TSA_GUARDED_BY(_mutex) {};
+    unordered_map<std::thread::id, int32_t> _sharedHolders FO_TSA_GUARDED_BY(_mutex) {}; // Per-thread shared ("read") holders with their recursion counts.
+    list<WaitEntry> _waitQueue FO_TSA_GUARDED_BY(_mutex) {};
 };
 
 class SyncContext final
