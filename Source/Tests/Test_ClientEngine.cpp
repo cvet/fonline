@@ -212,4 +212,28 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
     CHECK(loop_calls >= 2);
 }
 
+TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    int32_t callback_count = 0;
+
+    client->ScheduleDelayedCallback(timespan::zero, [&client, &callback_count] {
+        callback_count++;
+
+        client->ScheduleDelayedCallback(timespan::zero, [&callback_count] {
+            callback_count++;
+        });
+    });
+
+    client->ProcessScheduledCallbacks();
+    CHECK(callback_count == 1);
+
+    client->ProcessScheduledCallbacks();
+    CHECK(callback_count == 2);
+}
+
 FO_END_NAMESPACE

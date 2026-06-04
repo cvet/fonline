@@ -266,13 +266,20 @@ void ClientEngine::ProcessScheduledCallbacks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Sorted ascending by FireTime — peek only the front, stop at first not-yet-due entry.
+    // Execute only callbacks that were due when this pass began.
     const auto now = GameTime.GetFrameTime();
+    const auto due_end = std::ranges::upper_bound(_scheduledCallbacks, now, {}, &ScheduledCallback::FireTime);
+    const size_t due_count = numeric_cast<size_t>(std::distance(_scheduledCallbacks.begin(), due_end));
+    vector<function<void()>> callbacks;
+    callbacks.reserve(due_count);
 
-    while (!_scheduledCallbacks.empty() && _scheduledCallbacks.front().FireTime <= now) {
-        auto body = std::move(_scheduledCallbacks.front().Body);
-        _scheduledCallbacks.erase(_scheduledCallbacks.begin());
+    for (auto it = _scheduledCallbacks.begin(); it != due_end; ++it) {
+        callbacks.emplace_back(std::move(it->Body));
+    }
 
+    _scheduledCallbacks.erase(_scheduledCallbacks.begin(), due_end);
+
+    for (auto& body : callbacks) {
         try {
             body();
         }

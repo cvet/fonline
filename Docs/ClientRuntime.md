@@ -96,6 +96,8 @@ Important responsibilities:
 
 For protocol format details, use [Networking.md](Networking.md). For client/server handshake validation, see `Source/Tests/Test_ClientServerIntegration.cpp`, especially `ClientAndServerHandshakeOverInterthreadTransport`.
 
+Client-side script continuations scheduled through `ScheduleDelayedCallback()` are processed once per main-loop pass from a snapshot of callbacks already due at the start of that pass. A callback that schedules another zero-delay callback, including `Yield(0)`, resumes on the next pass instead of re-entering immediately. This prevents script wait loops from starving the next network/input tick.
+
 ## Entity and view model
 
 Client-side game objects are not raw server entities. They are view entities that combine Common-layer entity data with client-only rendering, input, and presentation state.

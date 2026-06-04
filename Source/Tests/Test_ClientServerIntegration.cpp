@@ -412,6 +412,56 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK(disconnected_calls >= 1);
 }
 
+TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] {
+            client->Disconnect();
+            client->Shutdown();
+        });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client.get(), server.get()));
+
+    const auto bytes_received_after_handshake = client->GetConnection().GetBytesReceived();
+
+    bool received_post_handshake_packet = false;
+
+    for (int32_t i = 0; i < 1000; i++) {
+        client->MainLoop();
+
+        if (client->GetConnection().GetBytesReceived() > bytes_received_after_handshake) {
+            received_post_handshake_packet = true;
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(received_post_handshake_packet);
+}
+
 TEST_CASE("ClientReportsUnresolvedHashServerDisconnectsAndTeachesOnReconnect")
 {
     using namespace TestClientServerIntegration;
