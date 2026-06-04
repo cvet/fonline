@@ -132,7 +132,7 @@ private:
     void NotifyCancel(uint32_t event_id);
 
     raw_ptr<BaseEngine> _engine;
-    mutable std::recursive_mutex _timeEventLocker {};
+    mutable std::recursive_mutex _timeEventLocker {}; // Recursive: not modelable by TSA
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     std::atomic_uint32_t _timeEventCounter {};
     DispatcherHooks _dispatcher {};

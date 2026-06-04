@@ -85,7 +85,7 @@ namespace
 
         auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_collections.count(collection_name) == 0) {
                 return {};
@@ -93,7 +93,7 @@ namespace
 
             vector<DataBaseKey> ids;
 
-            for (const auto id : _collections.at(collection_name) | std::views::keys) {
+            for (const auto& id : _collections.at(collection_name) | std::views::keys) {
                 ids.emplace_back(id);
             }
 
@@ -104,7 +104,7 @@ namespace
 
         void PrimeRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
             _collections[collection_name][id] = doc.Copy();
         }
 
@@ -112,7 +112,7 @@ namespace
 
         auto SnapshotRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_collections.count(collection_name) == 0) {
                 return {};
@@ -125,43 +125,43 @@ namespace
 
         [[nodiscard]] auto GetRecordReadCount(ident_t id) const -> size_t
         {
-            std::scoped_lock locker {_readStatsLocker};
+            scoped_lock locker {_readStatsLocker};
             return _recordReadCount.contains(id) ? _recordReadCount.at(id) : 0;
         }
 
         void SetOnGetRecord(function<void()> callback)
         {
-            std::scoped_lock locker {_callbackLocker};
+            scoped_lock locker {_callbackLocker};
             _onGetRecord = std::move(callback);
         }
 
         void SetStrictRecordSemantics(bool enabled = true)
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
             _strictRecordSemantics = enabled;
         }
 
         void SetBackendWriteFailure(bool enabled = true)
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
             _failBackendWrites = enabled;
         }
 
         void WaitUntilCommitOperationWrittenToOpLog()
         {
-            std::unique_lock locker {_mirrorLocker};
-            _mirrorCv.wait(locker, [this] { return _pendingChangesMirrored; });
+            unique_lock locker {_mirrorLocker};
+            _mirrorCv.wait(locker, [this]() FO_TSA_REQUIRES(_mirrorLocker) { return _pendingChangesMirrored; });
         }
 
         void WaitUntilPendingChangesRestored()
         {
-            std::unique_lock locker {_restoreLocker};
-            _restoreCv.wait(locker, [this] { return _pendingChangesRestored; });
+            unique_lock locker {_restoreLocker};
+            _restoreCv.wait(locker, [this]() FO_TSA_REQUIRES(_restoreLocker) { return _pendingChangesRestored; });
         }
 
         void BlockRecordRead(ident_t id)
         {
-            std::scoped_lock locker {_blockedReadLocker};
+            scoped_lock locker {_blockedReadLocker};
             _blockedReadEnabled = true;
             _blockedReadId = id;
             _blockedReadEntered = false;
@@ -169,14 +169,14 @@ namespace
 
         void WaitUntilBlockedReadEntered()
         {
-            std::unique_lock locker {_blockedReadLocker};
-            _blockedReadCv.wait(locker, [this] { return _blockedReadEntered; });
+            unique_lock locker {_blockedReadLocker};
+            _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return _blockedReadEntered; });
         }
 
         void UnblockRecordRead()
         {
             {
-                std::scoped_lock locker {_blockedReadLocker};
+                scoped_lock locker {_blockedReadLocker};
                 _blockedReadEnabled = false;
             }
 
@@ -188,20 +188,20 @@ namespace
         {
             ignore_unused(key_type);
 
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
             _collections.try_emplace(collection_name);
         }
 
         auto TryReconnect() -> bool override
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
             return !_failBackendWrites;
         }
 
         void OnCommitOperationWrittenToOpLog() override
         {
             {
-                std::scoped_lock locker {_mirrorLocker};
+                scoped_lock locker {_mirrorLocker};
                 _pendingChangesMirrored = true;
             }
 
@@ -211,7 +211,7 @@ namespace
         void OnPendingChangesRestored() override
         {
             {
-                std::scoped_lock locker {_restoreLocker};
+                scoped_lock locker {_restoreLocker};
                 _pendingChangesRestored = true;
             }
 
@@ -221,24 +221,24 @@ namespace
         auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
         {
             {
-                std::scoped_lock locker {_readStatsLocker};
+                scoped_lock locker {_readStatsLocker};
                 _recordReadCount[id]++;
             }
 
             {
-                std::unique_lock locker {_blockedReadLocker};
+                unique_lock locker {_blockedReadLocker};
 
                 if (_blockedReadEnabled && _blockedReadId == id) {
                     _blockedReadEntered = true;
                     _blockedReadCv.notify_all();
-                    _blockedReadCv.wait(locker, [this] { return !_blockedReadEnabled; });
+                    _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return !_blockedReadEnabled; });
                 }
             }
 
             {
                 function<void()> callback;
                 {
-                    std::scoped_lock locker {_callbackLocker};
+                    scoped_lock locker {_callbackLocker};
                     callback = std::move(_onGetRecord);
                     _onGetRecord = {};
                 }
@@ -248,7 +248,7 @@ namespace
                 }
             }
 
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_collections.count(collection_name) == 0) {
                 return {};
@@ -261,7 +261,7 @@ namespace
 
         void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_failBackendWrites) {
                 throw DataBaseException("Simulated database write failure");
@@ -278,7 +278,7 @@ namespace
 
         void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_failBackendWrites) {
                 throw DataBaseException("Simulated database write failure");
@@ -299,7 +299,7 @@ namespace
 
         void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
         {
-            std::scoped_lock locker {_collectionsLocker};
+            scoped_lock locker {_collectionsLocker};
 
             if (_failBackendWrites) {
                 throw DataBaseException("Simulated database write failure");
@@ -319,25 +319,25 @@ namespace
     private:
         HashStorage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
-        mutable std::mutex _collectionsLocker {};
-        mutable std::mutex _callbackLocker {};
-        mutable std::mutex _blockedReadLocker {};
-        mutable std::mutex _readStatsLocker {};
-        mutable std::mutex _mirrorLocker {};
-        mutable std::mutex _restoreLocker {};
-        mutable std::condition_variable _blockedReadCv {};
-        mutable std::condition_variable _mirrorCv {};
-        mutable std::condition_variable _restoreCv {};
-        mutable DataBase::Collections _collections {};
-        mutable unordered_map<DataBaseKey, size_t> _recordReadCount {};
-        mutable function<void()> _onGetRecord {};
-        mutable bool _blockedReadEnabled {};
-        mutable bool _blockedReadEntered {};
-        mutable DataBaseKey _blockedReadId {ident_t {}};
-        bool _pendingChangesMirrored {};
-        bool _pendingChangesRestored {};
-        bool _strictRecordSemantics {};
-        bool _failBackendWrites {};
+        mutable mutex _collectionsLocker {};
+        mutable mutex _callbackLocker {};
+        mutable mutex _blockedReadLocker {};
+        mutable mutex _readStatsLocker {};
+        mutable mutex _mirrorLocker {};
+        mutable mutex _restoreLocker {};
+        mutable std::condition_variable_any _blockedReadCv {};
+        mutable std::condition_variable_any _mirrorCv {};
+        mutable std::condition_variable_any _restoreCv {};
+        mutable DataBase::Collections _collections FO_TSA_GUARDED_BY(_collectionsLocker) {};
+        mutable unordered_map<DataBaseKey, size_t> _recordReadCount FO_TSA_GUARDED_BY(_readStatsLocker) {};
+        mutable function<void()> _onGetRecord FO_TSA_GUARDED_BY(_callbackLocker) {};
+        mutable bool _blockedReadEnabled FO_TSA_GUARDED_BY(_blockedReadLocker) {};
+        mutable bool _blockedReadEntered FO_TSA_GUARDED_BY(_blockedReadLocker) {};
+        mutable DataBaseKey _blockedReadId FO_TSA_GUARDED_BY(_blockedReadLocker) {ident_t {}};
+        bool _pendingChangesMirrored FO_TSA_GUARDED_BY(_mirrorLocker) {};
+        bool _pendingChangesRestored FO_TSA_GUARDED_BY(_restoreLocker) {};
+        bool _strictRecordSemantics FO_TSA_GUARDED_BY(_collectionsLocker) {};
+        bool _failBackendWrites FO_TSA_GUARDED_BY(_collectionsLocker) {};
     };
 
     auto MakeDoc(std::initializer_list<pair<string_view, int64_t>> values) -> AnyData::Document
@@ -964,11 +964,11 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
         db.Insert(collection, ident_t {1001}, MakeDoc({{"value", 1}}));
         db.WaitUntilCommitOperationWrittenToOpLog();
 
-        std::mutex fallback_locker;
-        std::condition_variable fallback_cv;
+        mutex fallback_locker;
+        std::condition_variable_any fallback_cv;
         bool stop_completed = false;
         std::thread fallback_thread {[&] {
-            std::unique_lock locker {fallback_locker};
+            unique_lock locker {fallback_locker};
 
             if (!fallback_cv.wait_for(locker, std::chrono::milliseconds {500}, [&] { return stop_completed; })) {
                 db.SetBackendWriteFailure(false);
@@ -980,7 +980,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
         const auto elapsed = std::chrono::steady_clock::now() - start;
 
         {
-            std::scoped_lock locker {fallback_locker};
+            scoped_lock locker {fallback_locker};
             stop_completed = true;
         }
 

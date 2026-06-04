@@ -35,7 +35,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto dir = strex("{}/{}", _storageDir, collection_name).str();
 
@@ -48,7 +48,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
         vector<DataBaseKey> ids;
@@ -99,7 +99,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -129,7 +129,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -171,7 +171,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -218,7 +218,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -252,7 +252,7 @@ private:
             key);
     }
 
-    mutable std::mutex _storageLocker {};
+    mutable mutex _storageLocker {};
     string _storageDir {};
     int32_t _jsonIndent {};
 };

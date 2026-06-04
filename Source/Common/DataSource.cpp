@@ -156,16 +156,16 @@ public:
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, dir, recursive, ext); }
 
 private:
-    auto ReadTree() -> bool;
+    bool ReadTree() FO_TSA_REQUIRES(_datFileLocker);
 
-    mutable std::mutex _datFileLocker {};
-    mutable std::ifstream _datFile {};
+    mutable mutex _datFileLocker {};
+    mutable std::ifstream _datFile FO_TSA_GUARDED_BY(_datFileLocker) {};
     unordered_map<string, uint8_t*> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
     unique_arr_ptr<uint8_t> _memTree {};
     uint64_t _writeTime {};
-    mutable vector<uint8_t> _readBuf {};
+    mutable vector<uint8_t> _readBuf FO_TSA_GUARDED_BY(_datFileLocker) {};
 };
 
 class ZipFile final : public DataSource
@@ -195,8 +195,8 @@ private:
     unordered_map<string, ZipFileInfo> _filesTree {};
     vector<string> _filesTreeNames {};
     string _fileName {};
-    mutable std::mutex _zipHandleLocker {};
-    mutable raw_ptr<void> _zipHandle {};
+    mutable mutex _zipHandleLocker {};
+    mutable raw_ptr<void> _zipHandle FO_TSA_GUARDED_BY(_zipHandleLocker) {};
     uint64_t _writeTime {};
 };
 
@@ -226,8 +226,8 @@ private:
 
     unordered_map<string, EmbeddedFileInfo> _filesTree {};
     vector<string> _filesTreeNames {};
-    mutable std::mutex _zipHandleLocker {};
-    mutable raw_ptr<void> _zipHandle {};
+    mutable mutex _zipHandleLocker {};
+    mutable raw_ptr<void> _zipHandle FO_TSA_GUARDED_BY(_zipHandleLocker) {};
     uint64_t _writeTime {};
 };
 
@@ -528,6 +528,9 @@ FalloutDat::FalloutDat(string_view fname)
     FO_STACK_TRACE_ENTRY();
 
     _fileName = fname;
+
+    scoped_lock locker {_datFileLocker};
+
     _readBuf.resize(0x40000);
     _datFile = fs_open_ifstream(fname);
 
@@ -542,7 +545,7 @@ FalloutDat::FalloutDat(string_view fname)
     }
 }
 
-auto FalloutDat::ReadTree() -> bool
+bool FalloutDat::ReadTree()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -815,6 +818,8 @@ ZipFile::ZipFile(string_view fname)
 
     _fileName = fname;
 
+    scoped_lock locker {_zipHandleLocker};
+
     zlib_filefunc_def ffunc;
 
     auto p_file = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
@@ -907,6 +912,8 @@ ZipFile::~ZipFile()
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_zipHandleLocker};
+
     if (_zipHandle) {
         unzClose(_zipHandle.get());
     }
@@ -978,6 +985,8 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
 EmbeddedFile::EmbeddedFile()
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_zipHandleLocker};
 
     zlib_filefunc_def ffunc;
 
@@ -1097,6 +1106,8 @@ EmbeddedFile::~EmbeddedFile()
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_zipHandleLocker};
+
     if (_zipHandle) {
         unzClose(_zipHandle.get());
     }
@@ -1105,6 +1116,8 @@ EmbeddedFile::~EmbeddedFile()
 auto EmbeddedFile::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_zipHandleLocker};
 
     if (!_zipHandle) {
         return false;
@@ -1122,6 +1135,8 @@ auto EmbeddedFile::IsFileExists(string_view path) const -> bool
 auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_zipHandleLocker};
 
     if (!_zipHandle) {
         return false;
@@ -1143,6 +1158,8 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_zipHandleLocker};
+
     if (!_zipHandle) {
         return nullptr;
     }
@@ -1152,8 +1169,6 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
     if (it == _filesTree.end()) {
         return nullptr;
     }
-
-    scoped_lock locker {_zipHandleLocker};
 
     const auto& info = it->second;
     auto pos = info.Pos;

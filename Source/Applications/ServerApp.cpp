@@ -88,11 +88,11 @@ int main(int argc, char** argv) // Handled by SDL
         isize32 os_size_before_first_child {};
 
         list<pair<vector<string>, CatchedStackTraceData>> log_buffer;
-        std::mutex log_buffer_locker;
+        mutex log_buffer_locker;
         int32_t exception_count = 0;
 
         SetLogCallback("ServerApp", [&](LogType type, string_view str, const CatchedStackTraceData* st) FO_DEFERRED {
-            auto locker = std::unique_lock {log_buffer_locker};
+            scoped_lock locker {log_buffer_locker};
 
             auto lines = strex(str).split('\n');
             log_buffer.emplace_back(std::move(lines), st != nullptr ? *st : CatchedStackTraceData {std::nullopt, GetStackTrace()});
@@ -450,7 +450,7 @@ int main(int argc, char** argv) // Handled by SDL
                                 string log_lines;
 
                                 {
-                                    auto locker = std::unique_lock {log_buffer_locker};
+                                    scoped_lock locker {log_buffer_locker};
 
                                     for (const auto& lines : log_buffer | std::views::keys) {
                                         for (const auto& line : lines) {
@@ -505,7 +505,7 @@ int main(int argc, char** argv) // Handled by SDL
                             const auto log_height = std::min(400.0f, std::max(rect_size.y * 0.4f, 150.0f));
 
                             if (ImGui::BeginChild("##LogChild", ImVec2(0.0f, log_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
-                                auto locker = std::unique_lock {log_buffer_locker};
+                                scoped_lock locker {log_buffer_locker};
 
                                 for (const auto& [lines, st] : log_buffer) {
                                     if (ImGui::TreeNodeEx(lines.front().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {

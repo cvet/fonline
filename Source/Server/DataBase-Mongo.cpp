@@ -56,29 +56,33 @@ public:
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
 
-        mongoc_cursor_t* collections_cursor = mongoc_database_find_collections_with_opts(database, nullptr);
-        const bson_t* collection_doc;
+        {
+            scoped_lock locker {_storageLocker};
 
-        while (mongoc_cursor_next(collections_cursor, &collection_doc)) {
-            bson_iter_t collection_iter;
+            mongoc_cursor_t* collections_cursor = mongoc_database_find_collections_with_opts(database, nullptr);
+            const bson_t* collection_doc;
 
-            if (bson_iter_init_find(&collection_iter, collection_doc, "name")) {
-                const char* collection_name = bson_iter_utf8(&collection_iter, nullptr);
-                mongoc_collection_t* collection = mongoc_database_get_collection(database, collection_name);
+            while (mongoc_cursor_next(collections_cursor, &collection_doc)) {
+                bson_iter_t collection_iter;
 
-                if (collection == nullptr) {
-                    throw DataBaseException("DbMongo Can't get collection", collection_name);
+                if (bson_iter_init_find(&collection_iter, collection_doc, "name")) {
+                    const char* collection_name = bson_iter_utf8(&collection_iter, nullptr);
+                    mongoc_collection_t* collection = mongoc_database_get_collection(database, collection_name);
+
+                    if (collection == nullptr) {
+                        throw DataBaseException("DbMongo Can't get collection", collection_name);
+                    }
+
+                    _collections.emplace(collection_name, collection);
                 }
-
-                _collections.emplace(collection_name, collection);
             }
-        }
 
-        if (mongoc_cursor_error(collections_cursor, &error)) {
-            throw DataBaseException("DbMongo Can't retreive collections", error.message);
-        }
+            if (mongoc_cursor_error(collections_cursor, &error)) {
+                throw DataBaseException("DbMongo Can't retreive collections", error.message);
+            }
 
-        mongoc_cursor_destroy(collections_cursor);
+            mongoc_cursor_destroy(collections_cursor);
+        }
 
         const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
@@ -87,8 +91,13 @@ public:
             throw DataBaseException("DbMongo Can't ping database", error.message);
         }
 
-        _client = client;
-        _database = database;
+        {
+            scoped_lock locker {_storageLocker};
+
+            _client = client;
+            _database = database;
+        }
+
         StartCommitThread();
     }
 
@@ -97,6 +106,8 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         StopCommitThread();
+
+        scoped_lock locker {_storageLocker};
 
         for (auto& value : _collections | std::views::values) {
             mongoc_collection_destroy(value.get());
@@ -114,7 +125,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto it = _collections.find(collection_name.as_str());
 
@@ -138,7 +149,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
 
@@ -214,7 +225,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -264,7 +275,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -290,7 +301,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -332,7 +343,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* collection = GetCollection(collection_name);
 
@@ -358,7 +369,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
@@ -377,7 +388,7 @@ protected:
     }
 
 private:
-    auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
+    mongoc_collection_t* GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -438,11 +449,11 @@ private:
             key);
     }
 
-    raw_ptr<mongoc_client_t> _client {};
-    raw_ptr<mongoc_database_t> _database {};
+    mutable mutex _storageLocker {};
+    raw_ptr<mongoc_client_t> _client FO_TSA_GUARDED_BY(_storageLocker) {};
+    raw_ptr<mongoc_database_t> _database FO_TSA_GUARDED_BY(_storageLocker) {};
+    unordered_map<string, raw_ptr<mongoc_collection_t>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
     char _escapeDot {};
-    mutable std::mutex _storageLocker {};
-    unordered_map<string, raw_ptr<mongoc_collection_t>> _collections {};
 };
 
 auto CreateMongoDataBase(DataBaseSettings& db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> DataBaseImpl*

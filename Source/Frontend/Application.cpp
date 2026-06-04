@@ -2053,7 +2053,7 @@ void Application::WaitForRequestedQuit()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::unique_lock {_quitLocker};
+    unique_lock locker {_quitLocker};
 
     while (!_quit) {
         _quitEvent.wait(locker);
@@ -2697,11 +2697,11 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
         verb_message += strex("\n\n{}", traceback);
     }
 
-    static unordered_set<string> ignore_entries;
-    static std::mutex ignore_entries_locker;
+    static mutex ignore_entries_locker;
+    static unordered_set<string> ignore_entries FO_TSA_GUARDED_BY(ignore_entries_locker);
 
     if (!fatal_error) {
-        auto locker = std::unique_lock {ignore_entries_locker};
+        scoped_lock locker {ignore_entries_locker};
         if (ignore_entries.count(verb_message) != 0) {
             return;
         }
@@ -2748,7 +2748,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
             SDL_SetClipboardText(verb_message.c_str());
         }
         else if (buttonid == 1) {
-            auto locker = std::unique_lock {ignore_entries_locker};
+            scoped_lock locker {ignore_entries_locker};
             ignore_entries.emplace(verb_message);
             break;
         }

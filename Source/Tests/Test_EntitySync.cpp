@@ -287,14 +287,14 @@ TEST_CASE("EntityLock")
     {
         EntityLock lock;
         std::vector<int> order;
-        std::mutex order_mutex;
+        mutex order_mutex;
 
         lock.Acquire(0);
 
         std::thread t1([&]() {
             lock.Acquire(10);
             {
-                std::lock_guard g(order_mutex);
+                scoped_lock g {order_mutex};
                 order.push_back(1);
             }
             lock.Release();
@@ -303,7 +303,7 @@ TEST_CASE("EntityLock")
         std::thread t2([&]() {
             lock.Acquire(5);
             {
-                std::lock_guard g(order_mutex);
+                scoped_lock g {order_mutex};
                 order.push_back(2);
             }
             lock.Release();
@@ -325,7 +325,7 @@ TEST_CASE("EntityLock")
     {
         EntityLock lock;
         std::vector<int> order;
-        std::mutex order_mutex;
+        mutex order_mutex;
 
         lock.Acquire(0);
 
@@ -333,7 +333,7 @@ TEST_CASE("EntityLock")
             return std::thread([&, ticket, id]() {
                 lock.Acquire(ticket);
                 {
-                    std::lock_guard g(order_mutex);
+                    scoped_lock g {order_mutex};
                     order.push_back(id);
                 }
                 lock.Release();

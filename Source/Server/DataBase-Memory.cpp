@@ -26,7 +26,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         _collections.try_emplace(collection_name);
     }
@@ -35,7 +35,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
@@ -54,7 +54,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
@@ -68,7 +68,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
         FO_RUNTIME_ASSERT(!collection.count(id));
@@ -82,7 +82,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
 
@@ -101,7 +101,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
 
@@ -130,7 +130,7 @@ protected:
             ImGui::TextUnformatted(value.data(), value.data() + value.size());
         };
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         if (ImGui::TreeNode(strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).c_str())) {
             if (_collections.empty()) {
@@ -173,8 +173,8 @@ protected:
     }
 
 private:
-    mutable std::mutex _storageLocker {};
-    DataBase::Collections _collections {};
+    mutable mutex _storageLocker {};
+    DataBase::Collections _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
 auto CreateMemoryDataBase(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) -> DataBaseImpl*

@@ -40,6 +40,8 @@ public:
 
         StopCommitThread();
 
+        scoped_lock locker {_storageLocker};
+
         for (auto& value : _collections | std::views::values) {
             unqlite_close(value.get());
         }
@@ -52,7 +54,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto it = _collections.find(collection_name);
 
@@ -73,7 +75,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
         auto* db = GetCollection(collection_name);
@@ -130,38 +132,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        auto* db = GetCollection(collection_name);
-
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
-
-        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        AnyData::Document doc;
-
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(
-            db, key.data(), numeric_cast<int>(key.size()),
-            [](const void* output, unsigned output_len, void* user_data) {
-                bson_t bson;
-
-                if (!bson_init_static(&bson, cast_from_void<const uint8_t*>(output), output_len)) {
-                    throw DataBaseException("DbUnQLite bson_init_static");
-                }
-
-                auto& doc2 = *cast_from_void<AnyData::Document*>(user_data);
-                BsonToDocument(&bson, doc2);
-
-                return UNQLITE_OK;
-            },
-            &doc);
-
-        if (kv_fetch_callback != UNQLITE_OK && kv_fetch_callback != UNQLITE_NOTFOUND) {
-            throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
-        }
-
-        return doc;
+        return GetRecordUnlocked(collection_name, id);
     }
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -170,7 +143,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* db = GetCollection(collection_name);
 
@@ -212,7 +185,7 @@ protected:
 
         FO_RUNTIME_ASSERT(!doc.Empty());
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* db = GetCollection(collection_name);
 
@@ -221,7 +194,7 @@ protected:
         }
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        auto actual_doc = GetRecord(collection_name, id);
+        auto actual_doc = GetRecordUnlocked(collection_name, id);
 
         if (actual_doc.Empty()) {
             throw DataBaseException("DbUnQLite Document not found", collection_name, FormatUnQLiteDbKey(id));
@@ -256,7 +229,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto* db = GetCollection(collection_name);
 
@@ -383,7 +356,7 @@ private:
         }
     }
 
-    auto GetCollection(hstring collection_name) const -> unqlite*
+    unqlite* GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -396,10 +369,46 @@ private:
         return it->second.get_no_const();
     }
 
+    AnyData::Document GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto* db = GetCollection(collection_name);
+
+        if (db == nullptr) {
+            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
+        }
+
+        const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        AnyData::Document doc;
+
+        const auto kv_fetch_callback = unqlite_kv_fetch_callback(
+            db, key.data(), numeric_cast<int>(key.size()),
+            [](const void* output, unsigned output_len, void* user_data) {
+                bson_t bson;
+
+                if (!bson_init_static(&bson, cast_from_void<const uint8_t*>(output), output_len)) {
+                    throw DataBaseException("DbUnQLite bson_init_static");
+                }
+
+                auto& doc2 = *cast_from_void<AnyData::Document*>(user_data);
+                BsonToDocument(&bson, doc2);
+
+                return UNQLITE_OK;
+            },
+            &doc);
+
+        if (kv_fetch_callback != UNQLITE_OK && kv_fetch_callback != UNQLITE_NOTFOUND) {
+            throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
+        }
+
+        return doc;
+    }
+
     string _storageDir {};
     int32_t _openFlags {};
-    mutable std::recursive_mutex _storageLocker {};
-    unordered_map<hstring, raw_ptr<unqlite>> _collections {};
+    mutable mutex _storageLocker {};
+    unordered_map<hstring, raw_ptr<unqlite>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
 auto CreateUnQLiteDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*

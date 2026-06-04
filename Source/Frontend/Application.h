@@ -736,8 +736,8 @@ private:
     bool _hostScreenSizeSaved {};
     std::atomic_bool _quit {};
     std::atomic_bool _quitSuccess {true};
-    std::condition_variable _quitEvent {};
-    std::mutex _quitLocker {};
+    std::condition_variable_any _quitEvent {};
+    mutex _quitLocker {};
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};
     EventDispatcher<> _onFrameEndDispatcher {OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {OnPause};

@@ -464,7 +464,7 @@ void Application::WaitForRequestedQuit()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::unique_lock {_quitLocker};
+    unique_lock locker {_quitLocker};
 
     while (!_quit) {
         _quitEvent.wait(locker);

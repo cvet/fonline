@@ -224,9 +224,7 @@ TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
     client->ScheduleDelayedCallback(timespan::zero, [&client, &callback_count] {
         callback_count++;
 
-        client->ScheduleDelayedCallback(timespan::zero, [&callback_count] {
-            callback_count++;
-        });
+        client->ScheduleDelayedCallback(timespan::zero, [&callback_count] { callback_count++; });
     });
 
     client->ProcessScheduledCallbacks();
