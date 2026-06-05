@@ -212,6 +212,8 @@ void ClientEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
+    Disconnect();
+
     OnFinish.Fire();
 
     UnsubscribeAllEvents();

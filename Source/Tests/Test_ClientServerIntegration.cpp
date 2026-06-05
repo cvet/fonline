@@ -295,6 +295,21 @@ namespace ClientServerIntegrationClient
         return value;
     }
 
+    static auto WaitForServerConnectionCount(ServerEngine* server, size_t expected_connections) -> bool
+    {
+        FO_RUNTIME_ASSERT(server);
+
+        for (int32_t i = 0; i < 2000; i++) {
+            if (GetServerConnectionCount(server) == expected_connections) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
     static auto WaitForConnected(ClientEngine* client, ServerEngine* server, size_t expected_connections = 1) -> bool
     {
         FO_RUNTIME_ASSERT(client);
@@ -365,10 +380,7 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] {
-            client->Disconnect();
-            client->Shutdown();
-        });
+        safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -437,6 +449,59 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK(disconnected_calls >= 1);
 }
 
+TEST_CASE("ClientShutdownDisconnectsActiveConnection")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
+    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
+    bool client_shutdown = false;
+    int32_t shutdown_disconnected_calls = 0;
+
+    const auto shutdown = scope_exit([&server, &client, &client_shutdown]() noexcept {
+        safe_call([&client, &client_shutdown] {
+            if (!client_shutdown) {
+                client->Shutdown();
+            }
+        });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client.get(), server.get()));
+
+    Entity::EventCallbackData shutdown_disconnect_observer;
+    shutdown_disconnect_observer.Callback = [&shutdown_disconnected_calls](FuncCallData&) {
+        shutdown_disconnected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    shutdown_disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&shutdown_disconnected_calls);
+    client->OnDisconnected.Subscribe(std::move(shutdown_disconnect_observer));
+
+    client->Shutdown();
+    client_shutdown = true;
+
+    CHECK_FALSE(client->IsConnecting());
+    CHECK_FALSE(client->IsConnected());
+    CHECK(client->GetCurPlayer() == nullptr);
+    CHECK(shutdown_disconnected_calls == 1);
+    REQUIRE(WaitForServerConnectionCount(server.get(), 0));
+}
+
 TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
 {
     using namespace TestClientServerIntegration;
@@ -500,10 +565,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] {
-            client->Disconnect();
-            client->Shutdown();
-        });
+        safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -532,12 +594,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     CHECK(GetServerConnectionCount(server.get()) == 1);
 
     auto second_client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
-    const auto shutdown_second_client = scope_exit([&second_client]() noexcept {
-        safe_call([&second_client] {
-            second_client->Disconnect();
-            second_client->Shutdown();
-        });
-    });
+    const auto shutdown_second_client = scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); });
 
     second_client->Connect();
     REQUIRE(WaitForConnected(second_client.get(), server.get(), 2));
@@ -558,10 +615,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] {
-            client->Disconnect();
-            client->Shutdown();
-        });
+        safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
             if (server->IsStarted()) {
