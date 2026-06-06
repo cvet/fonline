@@ -123,13 +123,13 @@ TEST_CASE("Logging")
 
         WriteLog(LogType::Info, "info-line");
         WriteLog(LogType::InfoSection, "section-line");
-        WriteLog(LogType::Warning, "warning-line");
+        WriteLog(LogType::Warning, "notice-line");
         WriteLog(LogType::Error, "error-line");
 
         REQUIRE(captured.size() == 4);
         CHECK(captured[0].find("info-line") != string::npos);
         CHECK(captured[1].find("section-line") != string::npos);
-        CHECK(captured[2].find("warning-line") != string::npos);
+        CHECK(captured[2].find("notice-line") != string::npos);
         CHECK(captured[3].find("error-line") != string::npos);
 
         SetLogCallback("type", {});

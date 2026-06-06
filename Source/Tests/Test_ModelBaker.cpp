@@ -17,6 +17,8 @@
 
 FO_BEGIN_NAMESPACE
 
+#if FO_ENABLE_3D
+
 static void WriteTestModelString(DataWriter& writer, string_view value)
 {
     FO_STACK_TRACE_ENTRY();
@@ -83,7 +85,6 @@ static auto MakeTestBakedModel(string_view file_name, string_view root_bone, boo
     return data;
 }
 
-#if FO_ENABLE_3D
 static void AddModelInfoMetadata(BakerTests::TestRig& rig)
 {
     FO_STACK_TRACE_ENTRY();
