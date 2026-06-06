@@ -2260,6 +2260,30 @@ auto ModelInstance::GetAnimDuration() const -> timespan
     return std::chrono::milliseconds(iround<int32_t>(_animDuration * 1000.0f));
 }
 
+auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_bodyAnimController) {
+        return {};
+    }
+
+    float32_t speed = 1.0f;
+    const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+
+    if (anim_index < 0) {
+        return {};
+    }
+
+    auto duration = _bodyAnimController->GetAnimationDuration(anim_index);
+
+    if (speed > 0.0f) {
+        duration /= speed;
+    }
+
+    return std::chrono::milliseconds(iround<int32_t>(duration * 1000.0f));
+}
+
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
     FO_STACK_TRACE_ENTRY();

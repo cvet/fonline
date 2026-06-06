@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **874** `///@ ExportMethod` declarations across these files.
+The current set contains **884** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -191,12 +191,12 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientCritterScriptMethods.cpp`
 
-- Exported methods: 34
+- Exported methods: 37
 - Prefix: `Client_Critter_*`
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
   - display name, online/alive/movement/model/visibility state;
-  - animation availability/playback/stop/refresh;
+  - animation availability/playback/stop/refresh and per-`(state, action)` clip duration (`GetModelAnimDuration`, real cycle length from the model bakers, used to derive footstep spacing);
   - inventory queries on visible client-side critters;
   - text position, particles, animation callbacks, bone positions;
   - local movement helpers.

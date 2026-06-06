@@ -142,6 +142,31 @@ FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStat
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
+{
+#if FO_ENABLE_3D
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    if (!hex_cr->IsModel()) {
+        return {};
+    }
+
+    return hex_cr->GetModel()->GetAnimDuration(stateAnim, actionAnim);
+
+#else
+    ignore_unused(self);
+    ignore_unused(stateAnim);
+    ignore_unused(actionAnim);
+
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);

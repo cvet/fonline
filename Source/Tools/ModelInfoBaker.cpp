@@ -166,6 +166,7 @@ struct BakedModelMeshInfo
     vector<string> DiffuseTextures {};
     vector<string> SkinBoneRefs {};
     vector<string> AnimationNames {};
+    vector<float32_t> AnimationDurations {}; // Parallel to AnimationNames (playback seconds)
     vector<string> AnimationBoneRefs {};
 };
 
@@ -191,6 +192,8 @@ static void ValidateModelDescriptionLayer(int32_t layer, string_view token, stri
 static auto GetBakedModelMeshInfo(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& cache, string_view path) -> const BakedModelMeshInfo&;
 static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view path) -> BakedModelMeshInfo;
 static auto BakedModelMeshHasAnimation(const BakedModelMeshInfo& info, string_view anim_name) -> bool;
+static auto GetBakedModelMeshAnimationDuration(const BakedModelMeshInfo& info, string_view anim_name) -> float32_t;
+static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& files, string_view target_path);
 static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info);
 static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info, string_view owner_bone);
 static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& info);
@@ -222,6 +225,13 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(_context->BakedFiles);
+
+    // The both-sides ModelAnimInfo pack emits a single ConfigFile of per-model animation cycle durations
+    // (read server-side via Game.ReadConfigSection); the full model-info binary stays client-only in CrittersArt.
+    if (_context->PackName == "ModelAnimInfo") {
+        BakeModelAnimInfo(*_context, files, target_path);
+        return;
+    }
 
     vector<File> filtered_files;
 
@@ -1176,6 +1186,125 @@ static auto BakedModelMeshHasAnimation(const BakedModelMeshInfo& info, string_vi
     return false;
 }
 
+static auto GetBakedModelMeshAnimationDuration(const BakedModelMeshInfo& info, string_view anim_name) -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (anim_name == "Base") {
+        return !info.AnimationDurations.empty() ? info.AnimationDurations.front() : 0.0f;
+    }
+
+    for (size_t i = 0; i < info.AnimationNames.size(); i++) {
+        if (strex(info.AnimationNames[i]).compare_ignore_case(anim_name)) {
+            return i < info.AnimationDurations.size() ? info.AnimationDurations[i] : 0.0f;
+        }
+    }
+
+    return 0.0f;
+}
+
+static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& files, string_view target_path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr string_view output_path = "ModelAnimInfo.foinfo";
+
+    if (!target_path.empty() && target_path != output_path) {
+        return;
+    }
+
+    // Collect all (non-template) model descriptions and the newest write time across them and their includes.
+    vector<File> fo3d_files;
+    uint64_t max_write_time = 0;
+
+    for (const FileHeader& file_header : files) {
+        if (strex(file_header.GetPath()).get_file_extension() != "fo3d") {
+            continue;
+        }
+        if (IsModelDescriptionTemplateFile(file_header.GetPath())) {
+            continue;
+        }
+
+        fo3d_files.emplace_back(File::Load(file_header));
+        max_write_time = std::max(max_write_time, GetModelDescriptionMaxWriteTime(files, file_header.GetPath()));
+    }
+
+    if (fo3d_files.empty()) {
+        return;
+    }
+    if (ctx.BakeChecker && !ctx.BakeChecker(output_path, max_write_time)) {
+        return;
+    }
+
+    // Deterministic section order.
+    std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
+
+    const BakerClientEngine client_engine(*ctx.BakedFiles);
+    string config_text;
+
+    for (const File& file : fo3d_files) {
+        ModelDescriptionParser parser(files, client_engine);
+        auto [description, parsed_write_time] = parser.Parse(file.GetPath());
+        ignore_unused(parsed_write_time);
+
+        unordered_map<string, BakedModelMeshInfo> mesh_cache;
+        set<pair<int32_t, int32_t>> seen;
+        string states;
+        string actions;
+        string durations;
+
+        for (const BakerModelDescriptionAnimEntry& anim_entry : description.AnimEntries) {
+            if (!seen.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
+                continue;
+            }
+
+            const string anim_file = anim_entry.FileName == "ModelFile" ? description.Model : strex(file.GetPath()).extract_dir().combine_path(anim_entry.FileName).str();
+            const BakedModelMeshInfo& anim_info = GetBakedModelMeshInfo(*ctx.BakedFiles, mesh_cache, anim_file);
+
+            string anim_name = anim_entry.Name;
+
+            if (!anim_name.empty() && anim_name.front() == '~') {
+                anim_name.erase(anim_name.begin());
+            }
+
+            const float32_t clip_duration = GetBakedModelMeshAnimationDuration(anim_info, anim_name);
+
+            if (clip_duration <= 0.0f) {
+                continue;
+            }
+
+            // Authored playback speed scales the cycle (faster speed -> shorter real cycle). The runtime
+            // moving-speed factor is applied separately at play time and must not be baked in here.
+            float32_t speed = 1.0f;
+
+            for (const auto& [anim_pair, anim_speed] : description.AnimSpeed) {
+                if (anim_pair.first == anim_entry.StateAnim && anim_pair.second == anim_entry.ActionAnim) {
+                    speed = anim_speed;
+                    break;
+                }
+            }
+
+            const float32_t effective_duration = speed > 0.0f ? clip_duration / speed : clip_duration;
+
+            states += strex(" {}", anim_entry.StateAnim);
+            actions += strex(" {}", anim_entry.ActionAnim);
+            durations += strex(" {}", iround<int32_t>(effective_duration * 1000.0f));
+        }
+
+        if (states.empty()) {
+            continue;
+        }
+
+        config_text += strex("[{}]\n", file.GetPath());
+        config_text += strex("StateAnims ={}\n", states);
+        config_text += strex("ActionAnims ={}\n", actions);
+        config_text += strex("DurationsMs ={}\n\n", durations);
+    }
+
+    const auto data = vector<uint8_t>(config_text.begin(), config_text.end());
+    ctx.WriteData(output_path, data);
+}
+
 static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1259,7 +1388,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     }
 
     info.AnimationNames.emplace_back(anim_name);
-    (void)reader.Read<float32_t>(); // Duration
+    info.AnimationDurations.emplace_back(reader.Read<float32_t>()); // Animation playback duration (seconds)
 
     const uint32_t hierarchy_count = reader.Read<uint32_t>();
 
