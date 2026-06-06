@@ -165,30 +165,37 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
     };
 }
 
+void ServerEngine::CountServerStatsJob() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
+}
+
 void ServerEngine::LockForPropertyAccess() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _entityLock->Acquire(NextSyncTicket());
 }
 
 void ServerEngine::UnlockForPropertyAccess() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _entityLock->Release();
 }
 
 void ServerEngine::LockForPropertyAccessShared() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _entityLock->AcquireShared(NextSyncTicket());
 }
 
 void ServerEngine::UnlockForPropertyAccessShared() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     _entityLock->ReleaseShared();
 }
@@ -209,7 +216,9 @@ void ServerEngine::ScheduleDelayedCallback(timespan delay, function<void()> body
 {
     FO_STACK_TRACE_ENTRY();
 
-    _workerPool->Submit(delay, [body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+    _workerPool->Submit(delay, [this, body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+        auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+
         body();
         return std::nullopt;
     });
@@ -639,17 +648,18 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
     WriteLog("Start server complete!");
 
-    _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
-    _loopBalancer.StartLoop();
+    const nanotime stats_begin = nanotime::now();
+    const uint64_t completed_jobs = GetCompletedServerJobsCount();
 
-    _stats.LoopCounterBegin = nanotime::now();
-    _stats.ServerStartTime = nanotime::now();
+    _stats.ServerStartTime = stats_begin;
+    _stats.JobCounterBegin = stats_begin;
+    _stats.JobCounterBeginTotal = completed_jobs;
+    _stats.JobsTotal = completed_jobs;
+    _stats.JobTimeStamps.clear();
+    _stats.JobTimeStamps.emplace_back(stats_begin, completed_jobs);
 
     _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return SyncPointJob(); }));
     _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return FrameTimeJob(); }));
-    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return PoolSyncJob(); }));
-    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return LogDispatchJob(); }));
-    _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return LoopJob(); }));
 
     _workerPool->Resume();
 
@@ -666,19 +676,24 @@ void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t eve
 
     const auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
 
-    _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> {
-        if (!entity_hold->IsGlobal()) {
-            auto* ctx = GetCurrentSyncContext();
-            FO_RUNTIME_ASSERT(ctx);
-            ctx->SyncEntity(dynamic_cast<ServerEntity*>(entity_hold.get()));
-        }
+    _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> { return TimeEventJob(entity_hold.get(), event_id); });
+}
 
-        if (entity_hold->IsDestroyed()) {
-            return std::nullopt;
-        }
+auto ServerEngine::TimeEventJob(Entity* entity, uint32_t event_id) -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        return TimeEventMngr.FireAndAdvance(entity_hold.get(), event_id);
-    });
+    if (!entity->IsGlobal()) {
+        auto* ctx = GetCurrentSyncContext();
+        FO_RUNTIME_ASSERT(ctx);
+        ctx->SyncEntity(dynamic_cast<ServerEntity*>(entity));
+    }
+
+    if (entity->IsDestroyed()) {
+        return std::nullopt;
+    }
+
+    return TimeEventMngr.FireAndAdvance(entity, event_id);
 }
 
 void ServerEngine::OnTimeEventCancel(uint32_t event_id)
@@ -695,7 +710,24 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
     SyncPoint();
 
-    return std::chrono::milliseconds {Settings.SyncPeriodMs}; // 100 FPS by default
+    // Sample server stats at the sync tick: online counts, uptime, job throughput and CPU load.
+    {
+        scoped_lock locker {_unloginedPlayersLocker};
+
+        _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayersCount();
+        _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
+    }
+
+    const auto cur_time = nanotime::now();
+    _stats.Uptime = cur_time - _stats.ServerStartTime;
+    UpdateJobStats(cur_time);
+    UpdateCpuStats(cur_time);
+
+#if FO_TRACY
+    TracyPlot("Server jobs per second", numeric_cast<int64_t>(_stats.JobsPerSecond));
+#endif
+
+    return std::chrono::milliseconds {Settings.SyncPeriodMs};
 }
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
@@ -715,39 +747,46 @@ void ServerEngine::OnPlayerConnected(Player* unlogined_player)
 
     unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
-    _workerPool->Submit(key, [this, unlogined_player_ = refcount_ptr<Player>(unlogined_player)]() mutable -> std::optional<timespan> {
-        auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
-        ctx->SyncEntity(unlogined_player_.get());
+    _workerPool->Submit(key, [this, unlogined_player_ = refcount_ptr<Player>(unlogined_player)]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_.get()); });
+}
 
-        if (unlogined_player_->IsDestroyed()) {
-            return std::nullopt;
-        }
+auto ServerEngine::UnloginedPlayerJob(Player* unlogined_player) -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
 
-        auto* connection = unlogined_player_->GetConnection();
+    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
-        try {
-            ProcessConnection(connection);
-            ProcessUnloginedPlayer(unlogined_player_.get());
-        }
-        catch (const UnknownMessageException&) {
-            WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
-            connection->HardDisconnect();
-        }
-        catch (const NetBufferException& ex) {
-            ReportExceptionAndContinue(ex);
-            connection->HardDisconnect();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->SyncEntity(unlogined_player);
 
-        if (unlogined_player_->IsDestroyed()) {
-            return std::nullopt;
-        }
+    if (unlogined_player->IsDestroyed()) {
+        return std::nullopt;
+    }
 
-        return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
-    });
+    auto* connection = unlogined_player->GetConnection();
+
+    try {
+        ProcessConnection(connection);
+        ProcessUnloginedPlayer(unlogined_player);
+    }
+    catch (const UnknownMessageException&) {
+        WriteLog(LogType::Warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
+        connection->HardDisconnect();
+    }
+    catch (const NetBufferException& ex) {
+        ReportExceptionAndContinue(ex);
+        connection->HardDisconnect();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+
+    if (unlogined_player->IsDestroyed()) {
+        return std::nullopt;
+    }
+
+    return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
 }
 
 void ServerEngine::OnPlayerLogined(Player* player, Player* unlogined_player)
@@ -768,107 +807,159 @@ void ServerEngine::OnPlayerLogined(Player* player, Player* unlogined_player)
 
     player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
-    _workerPool->Submit(key, [this, player_ = refcount_ptr<Player>(player)]() mutable -> std::optional<timespan> {
-        auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
-        ctx->SyncEntity(player_.get());
-
-        if (player_->IsDestroyed()) {
-            return std::nullopt;
-        }
-
-        auto* connection = player_->GetConnection();
-
-        try {
-            ProcessConnection(connection);
-            ProcessPlayer(player_.get());
-        }
-        catch (const NetBufferException& ex) {
-            ReportExceptionAndContinue(ex);
-            connection->HardDisconnect();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-
-        if (player_->IsDestroyed()) {
-            return std::nullopt;
-        }
-
-        return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
-    });
+    _workerPool->Submit(key, [this, player_ = refcount_ptr<Player>(player)]() mutable -> std::optional<timespan> { return PlayerJob(player_.get()); });
 }
 
-auto ServerEngine::PoolSyncJob() -> std::optional<timespan>
+auto ServerEngine::PlayerJob(Player* player) -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
+    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
-    // WorkerPool hosts long-lived recurring jobs (time events, movement, connections). Waiting for
-    // full pool-idle here can freeze FrameTimeJob, which those jobs need for forward progress.
-    return std::chrono::milliseconds {Settings.SyncPeriodMs};
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->SyncEntity(player);
+
+    if (player->IsDestroyed()) {
+        return std::nullopt;
+    }
+
+    auto* connection = player->GetConnection();
+
+    try {
+        ProcessConnection(connection);
+        ProcessPlayer(player);
+    }
+    catch (const NetBufferException& ex) {
+        ReportExceptionAndContinue(ex);
+        connection->HardDisconnect();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+
+    if (player->IsDestroyed()) {
+        return std::nullopt;
+    }
+
+    return std::chrono::milliseconds {Settings.ConnectionProcessPeriodMs};
 }
 
-auto ServerEngine::LogDispatchJob() -> std::optional<timespan>
+void ServerEngine::UpdateJobStats(nanotime cur_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    DispatchLogToClients();
+    const uint64_t completed_jobs = GetCompletedServerJobsCount();
 
-    return std::chrono::milliseconds {0};
+    _stats.JobsTotal = completed_jobs;
+
+    if (!_stats.JobCounterBegin || _stats.JobTimeStamps.empty()) {
+        _stats.JobCounterBegin = cur_time;
+        _stats.JobCounterBeginTotal = completed_jobs;
+        _stats.JobTimeStamps.clear();
+        _stats.JobTimeStamps.emplace_back(cur_time, completed_jobs);
+        return;
+    }
+
+    if (cur_time - _stats.JobCounterBegin < std::chrono::seconds {1}) {
+        return;
+    }
+
+    // Sample once per second so the rolling-minute window stays small (the counters are
+    // monotonic except for a one-time drop when the worker pool is destroyed at shutdown,
+    // which the underflow guards absorb).
+    _stats.JobsPerSecond = completed_jobs >= _stats.JobCounterBeginTotal ? completed_jobs - _stats.JobCounterBeginTotal : 0;
+    _stats.JobCounterBegin = cur_time;
+    _stats.JobCounterBeginTotal = completed_jobs;
+
+    _stats.JobTimeStamps.emplace_back(cur_time, completed_jobs);
+
+    while (_stats.JobTimeStamps.size() > 1 && cur_time - _stats.JobTimeStamps.front().first > std::chrono::minutes {1}) {
+        _stats.JobTimeStamps.pop_front();
+    }
+
+    const uint64_t minute_begin_jobs = _stats.JobTimeStamps.front().second;
+    _stats.JobsPerMinute = completed_jobs >= minute_begin_jobs ? completed_jobs - minute_begin_jobs : 0;
 }
 
-auto ServerEngine::LoopJob() -> std::optional<timespan>
+void ServerEngine::UpdateCpuStats(nanotime cur_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _loopBalancer.EndLoop();
-    _loopBalancer.StartLoop();
+    constexpr timespan CPU_SAMPLE_INTERVAL = std::chrono::seconds {1};
 
-    {
-        scoped_lock locker {_unloginedPlayersLocker};
-        _stats.CurOnline = _unloginedPlayers.size() + EntityMngr.GetPlayersCount();
+    if (_stats.LastCpuUsageSampleTime && cur_time - _stats.LastCpuUsageSampleTime < CPU_SAMPLE_INTERVAL) {
+        return;
     }
 
-    _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
+    Platform::CpuUsageSnapshot current_snapshot = Platform::GetCpuUsageSnapshot();
 
-    const auto cur_time = nanotime::now();
-    const auto loop_duration = _loopBalancer.GetLoopDuration();
+    if (_stats.LastCpuUsageSnapshot.has_value()) {
+        const Platform::CpuUsageSnapshot& previous_snapshot = *_stats.LastCpuUsageSnapshot;
+        const size_t core_count = std::min(previous_snapshot.Cores.size(), current_snapshot.Cores.size());
 
-    // Calculate loop average time
-    _stats.LoopTimeStamps.emplace_back(cur_time, loop_duration);
-    _stats.LoopWholeAvgTime += loop_duration;
+        _stats.CpuCoreLoads.clear();
+        _stats.CpuCoreLoads.reserve(core_count);
+        _stats.CpuUsageAvailable = core_count != 0;
 
-    while (cur_time - _stats.LoopTimeStamps.front().first > std::chrono::milliseconds {Settings.LoopAverageTimeInterval}) {
-        _stats.LoopWholeAvgTime -= _stats.LoopTimeStamps.front().second;
-        _stats.LoopTimeStamps.pop_front();
+        uint64_t previous_idle = 0;
+        uint64_t current_idle = 0;
+        uint64_t previous_total = 0;
+        uint64_t current_total = 0;
+
+        for (size_t i = 0; i < core_count; i++) {
+            const Platform::CpuUsageCoreSnapshot& previous_core = previous_snapshot.Cores[i];
+            const Platform::CpuUsageCoreSnapshot& current_core = current_snapshot.Cores[i];
+
+            _stats.CpuCoreLoads.emplace_back(CalculateBusyCpuLoad(previous_core.IdleTime, current_core.IdleTime, previous_core.TotalTime, current_core.TotalTime));
+
+            previous_idle += previous_core.IdleTime;
+            current_idle += current_core.IdleTime;
+            previous_total += previous_core.TotalTime;
+            current_total += current_core.TotalTime;
+        }
+
+        _stats.CpuSystemLoad = CalculateBusyCpuLoad(previous_idle, current_idle, previous_total, current_total);
+
+        if (_stats.LastCpuUsageSampleTime && current_snapshot.ProcessTimeNs >= previous_snapshot.ProcessTimeNs) {
+            const timespan sample_duration = cur_time - _stats.LastCpuUsageSampleTime;
+            const int64_t sample_duration_ns = sample_duration.nanoseconds();
+
+            if (sample_duration_ns > 0) {
+                const uint64_t process_delta_ns = current_snapshot.ProcessTimeNs - previous_snapshot.ProcessTimeNs;
+                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(std::max<size_t>(core_count, 1)) * 100.0);
+
+                _stats.CpuProcessCoreLoad = numeric_cast<float32_t>(process_core_load);
+                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(std::max<size_t>(core_count, 1)));
+            }
+        }
     }
 
-    _stats.LoopAvgTime = _stats.LoopWholeAvgTime.value() / _stats.LoopTimeStamps.size();
+    _stats.LastCpuUsageSnapshot = std::move(current_snapshot);
+    _stats.LastCpuUsageSampleTime = cur_time;
+}
 
-    // Calculate loops per second
-    if (cur_time - _stats.LoopCounterBegin >= std::chrono::seconds(1)) {
-        _stats.LoopsPerSecond = _stats.LoopCounter;
-        _stats.LoopCounter = 0;
-        _stats.LoopCounterBegin = cur_time;
+auto ServerEngine::CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (current_total <= previous_total) {
+        return 0.0f;
     }
-    else {
-        _stats.LoopCounter++;
-    }
 
-    // Fill statistics
-    _stats.LoopsCount++;
-    _stats.LoopMaxTime = _stats.LoopMaxTime ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
-    _stats.LoopMinTime = _stats.LoopMinTime ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
-    _stats.LoopLastTime = loop_duration;
-    _stats.Uptime = cur_time - _stats.ServerStartTime;
+    const uint64_t total_delta = current_total - previous_total;
+    const uint64_t idle_delta = current_idle >= previous_idle ? current_idle - previous_idle : 0;
+    const uint64_t capped_idle_delta = std::min(idle_delta, total_delta);
+    const uint64_t busy_delta = total_delta - capped_idle_delta;
 
-#if FO_TRACY
-    TracyPlot("Server loops per second", numeric_cast<int64_t>(_stats.LoopsPerSecond));
-#endif
+    return numeric_cast<float32_t>(numeric_cast<float64_t>(busy_delta) * 100.0 / numeric_cast<float64_t>(total_delta));
+}
 
-    return std::chrono::milliseconds {0};
+auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _completedServerStatsJobs.load(std::memory_order_relaxed);
 }
 
 void ServerEngine::Shutdown()
@@ -895,6 +986,18 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: starter.Clear");
     _starter.Clear();
 
+    // Stop + join the network IO threads BEFORE tearing down the worker pool. A connection's
+    // DataArrivedCallback (`[this, key]{ _workerPool->Wake(key); }`) and `OnNewConnection` ->
+    // `_workerPool->Submit` run on the network thread; if the pool is reset first they dereference a
+    // freed pool. `conn_server->Shutdown()` joins the IO thread, so no such callback can fire after.
+    WriteLog("Shutdown stage: connection servers (count={})", _connectionServers.size());
+
+    for (auto& conn_server : _connectionServers) {
+        conn_server->Shutdown();
+    }
+
+    _connectionServers.clear();
+
     // Cancel every pending entity TimeEvent BEFORE draining the worker pool. Each TimeEvent
     // schedule goes through `OnTimeEventSchedule` which Submits a `_workerPool` job. If the test
     // run leaked critters with periodic time events (Ai / Health / Modifiers / etc.) and we go
@@ -906,10 +1009,10 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearTimeEvents (entityCount={})", EntityMngr.GetEntitiesCount());
     TimeEventMngr.ClearTimeEvents();
 
-    // Drain the worker pool BEFORE clearing _mainWorker. `PoolSyncJob` on the main worker calls
-    // `_workerPool->WaitIdle()` each tick, so if _mainWorker is still running while a pool job
-    // is in flight, _mainWorker.Clear() can't preempt PoolSyncJob's wait and the whole Shutdown
-    // hangs. After workerPool.reset() PoolSyncJob's null-check makes the late tick a no-op.
+    // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
+    // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
+    // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
+    // strand it and hang WaitIdle, so the main worker is always torn down last.
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
     WriteLog("Shutdown stage: workerPool.Clear");
@@ -988,12 +1091,6 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: DbStorage.WaitCommitChanges");
     DbStorage.WaitCommitChanges();
 
-    // Logging clients
-    WriteLog("Shutdown stage: log callbacks");
-
-    SetLogCallback("LogToClients", nullptr);
-    _logClients.clear();
-
     // Logined players
     WriteLog("Shutdown stage: disconnect logined players (count={})", EntityMngr.GetPlayersCount());
 
@@ -1014,15 +1111,6 @@ void ServerEngine::Shutdown()
 
         _unloginedPlayers.clear();
     }
-
-    // Shutdown servers
-    WriteLog("Shutdown stage: connection servers (count={})", _connectionServers.size());
-
-    for (auto& conn_server : _connectionServers) {
-        conn_server->Shutdown();
-    }
-
-    _connectionServers.clear();
 
     // Done
     WriteLog("Server stopped!");
@@ -1212,13 +1300,70 @@ void ServerEngine::DrawGui()
             info_row("Maps", strex("{}", EntityMngr.GetMapsCount()).str());
             info_row("Items", strex("{}", EntityMngr.GetItemsCount()).str());
             info_row("Total entities", strex("{}", EntityMngr.GetEntitiesCount()).str());
-            info_row("Loops per second", strex("{}", _stats.LoopsPerSecond).str());
-            info_row("Average loop time", strex("{}", _stats.LoopAvgTime).str());
-            info_row("Min loop time", strex("{}", _stats.LoopMinTime).str());
-            info_row("Max loop time", strex("{}", _stats.LoopMaxTime).str());
+            info_row("Jobs per second", strex("{}", _stats.JobsPerSecond).str());
+            info_row("Jobs per minute", strex("{}", _stats.JobsPerMinute).str());
+            info_row("Total jobs", strex("{}", _stats.JobsTotal).str());
+            info_row("CPU load", _stats.CpuUsageAvailable ? strex("{:.1f}% / {:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad), numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
             info_row("DB requests per minute", strex("{}", DbStorage.GetDbRequestsPerMinute()).str());
 
             ImGui::EndTable();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Performance details")) {
+        const WorkThread::Diagnostics starter_diagnostics = _starter.GetDiagnostics();
+        const WorkThread::Diagnostics main_worker_diagnostics = _mainWorker.GetDiagnostics();
+        const WorkThread::Diagnostics health_writer_diagnostics = _healthWriter.GetDiagnostics();
+        const bool has_worker_pool = _workerPool != nullptr;
+        const WorkerPool::Diagnostics worker_pool_diagnostics = has_worker_pool ? _workerPool->GetDiagnostics() : WorkerPool::Diagnostics {};
+
+        if (begin_info_table("##PerformanceDetailsTable")) {
+            info_row("Jobs per second", strex("{}", _stats.JobsPerSecond).str());
+            info_row("Jobs per minute", strex("{}", _stats.JobsPerMinute).str());
+            info_row("Total jobs", strex("{}", _stats.JobsTotal).str());
+            info_row("Starter completed jobs", strex("{}", starter_diagnostics.CompletedJobs).str());
+            info_row("Starter queued jobs", strex("{}", starter_diagnostics.QueuedJobs).str());
+            info_row("Starter active job", strex("{}", starter_diagnostics.JobActive).str());
+            info_row("Main worker completed jobs", strex("{}", main_worker_diagnostics.CompletedJobs).str());
+            info_row("Main worker queued jobs", strex("{}", main_worker_diagnostics.QueuedJobs).str());
+            info_row("Main worker active job", strex("{}", main_worker_diagnostics.JobActive).str());
+            info_row("Health writer completed jobs", strex("{}", health_writer_diagnostics.CompletedJobs).str());
+            info_row("Health writer queued jobs", strex("{}", health_writer_diagnostics.QueuedJobs).str());
+            info_row("Health writer active job", strex("{}", health_writer_diagnostics.JobActive).str());
+            info_row("Worker pool threads", has_worker_pool ? strex("{}", worker_pool_diagnostics.ThreadCount).str() : string("n/a"));
+            info_row("Worker pool completed jobs", has_worker_pool ? strex("{}", worker_pool_diagnostics.CompletedJobs).str() : string("n/a"));
+            info_row("Worker pool scheduled jobs", has_worker_pool ? strex("{}", worker_pool_diagnostics.ScheduledJobs).str() : string("n/a"));
+            info_row("Worker pool running jobs", has_worker_pool ? strex("{}", worker_pool_diagnostics.RunningJobs).str() : string("n/a"));
+            info_row("Worker pool pending reruns", has_worker_pool ? strex("{}", worker_pool_diagnostics.PendingReruns).str() : string("n/a"));
+            info_row("Worker pool queued keys", has_worker_pool ? strex("{}", worker_pool_diagnostics.QueuedKeys).str() : string("n/a"));
+            info_row("Worker pool active workers", has_worker_pool ? strex("{}", worker_pool_diagnostics.ActiveWorkers).str() : string("n/a"));
+            info_row("Worker pool paused", has_worker_pool ? strex("{}", worker_pool_diagnostics.Paused).str() : string("n/a"));
+            info_row("CPU system load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
+            info_row("CPU process load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
+            info_row("CPU process core load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessCoreLoad)).str() : string("n/a"));
+            info_row("CPU core count", strex("{}", _stats.CpuCoreLoads.size()).str());
+
+            ImGui::EndTable();
+        }
+
+        if (!_stats.CpuCoreLoads.empty() && ImGui::TreeNode("CPU cores")) {
+            if (ImGui::BeginTable("##CpuCoresTable", 2, table_flags)) {
+                ImGui::TableSetupColumn("Core", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("System load", ImGuiTableColumnFlags_WidthStretch);
+
+                for (size_t i = 0; i < _stats.CpuCoreLoads.size(); i++) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(strex("{}", i).c_str());
+                    ImGui::TableSetColumnIndex(1);
+                    const string load = strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuCoreLoads[i])).str();
+                    ImGui::TextUnformatted(load.c_str(), load.c_str() + load.size());
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
         }
     }
 
@@ -1531,10 +1676,10 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Maps: {}\n", EntityMngr.GetMapsCount());
     buf += strex("Items: {}\n", EntityMngr.GetItemsCount());
     buf += strex("Total entities: {}\n", EntityMngr.GetEntitiesCount());
-    buf += strex("Loops per second: {}\n", _stats.LoopsPerSecond);
-    buf += strex("Average loop time: {}\n", _stats.LoopAvgTime);
-    buf += strex("Min loop time: {}\n", _stats.LoopMinTime);
-    buf += strex("Max loop time: {}\n", _stats.LoopMaxTime);
+    buf += strex("Jobs per second: {}\n", _stats.JobsPerSecond);
+    buf += strex("Jobs per minute: {}\n", _stats.JobsPerMinute);
+    buf += strex("Total jobs: {}\n", _stats.JobsTotal);
+    buf += strex("CPU load: {}\n", _stats.CpuUsageAvailable ? strex("system {:.1f}%, process {:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad), numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
     buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
     return buf;
@@ -1544,7 +1689,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_started) {
+    if (!_started || _shutdownInProgress) {
         net_connection->Disconnect();
         return;
     }
@@ -1826,13 +1971,6 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         string istr = strex("Name: {}, Id: {}", player_cr->GetName(), player_cr->GetId());
         logcb(istr);
     } break;
-    case CMD_GAMEINFO: {
-        scoped_lock locker {_unloginedPlayersLocker};
-
-        string str = strex("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
-            _unloginedPlayers.size(), EntityMngr.GetPlayersCount(), EntityMngr.GetCrittersCount(), GameTime.GetFrameTime(), GameTime.GetFrameTime() - _stats.ServerStartTime);
-        logcb(str);
-    } break;
     case CMD_MOVECRIT: {
         const auto cr_id = buf.Read<ident_t>();
         const auto cr_hex = buf.Read<mpos>();
@@ -2023,76 +2161,10 @@ void ServerEngine::Process_Command(NetInBuffer& buf, const LogFunc& logcb_typed,
         MapMngr.TransferToMap(player_cr, map.get(), hex, dir, 5);
         logcb("Regenerate map complete");
     } break;
-    case CMD_LOG: {
-        char flags[16];
-        buf.Pop(flags, 16);
-
-        SetLogCallback("LogToClients", nullptr);
-
-        auto it = std::ranges::find(_logClients, player);
-        if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
-        {
-            logcb("Detached");
-            _logClients.erase(it);
-        }
-        else if (flags[0] == '+' && flags[1] == '\0' && it == _logClients.end()) // Attach current
-        {
-            logcb("Attached");
-            _logClients.emplace_back(player);
-        }
-        else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
-        {
-            logcb("Detached all");
-            _logClients.clear();
-        }
-
-        if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", [this](LogType, string_view str, const CatchedStackTraceData*) FO_DEFERRED { LogToClients(str); });
-        }
-    } break;
     default:
         logcb("Unknown command");
         break;
     }
-}
-
-void ServerEngine::LogToClients(string_view str)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!str.empty() && str.back() == '\n') {
-        _logLines.emplace_back(str, 0, str.length() - 1);
-    }
-    else {
-        _logLines.emplace_back(str);
-    }
-}
-
-void ServerEngine::DispatchLogToClients()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_logLines.empty()) {
-        return;
-    }
-
-    for (const auto& str : _logLines) {
-        for (auto it = _logClients.begin(); it < _logClients.end();) {
-            if (auto& player = *it; !player->IsDestroyed()) {
-                player->Send_InfoMessage(EngineInfoMessage::ServerLog, str);
-                ++it;
-            }
-            else {
-                it = _logClients.erase(it);
-            }
-        }
-    }
-
-    if (_logClients.empty()) {
-        SetLogCallback("LogToClients", nullptr);
-    }
-
-    _logLines.clear();
 }
 
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties* props) -> Critter*
@@ -2622,6 +2694,7 @@ void ServerEngine::LoadReportedHashes()
     FO_STACK_TRACE_ENTRY();
 
     size_t resolved_count = 0;
+    vector<string> loaded;
 
     for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
         // Now resolvable — developers added the missing string after the report, so stop tracking and broadcasting it
@@ -2632,11 +2705,19 @@ void ServerEngine::LoadReportedHashes()
         }
 
         WriteLog(LogType::Warning, "Client-reported hash is still unresolvable on the server: '{}'", reported_string);
-        _reportedStrings.emplace(reported_string);
+        loaded.emplace_back(reported_string);
     }
 
-    if (!_reportedStrings.empty() || resolved_count != 0) {
-        WriteLog("Loaded {} unresolved client-reported hash(es), {} now resolved", _reportedStrings.size(), resolved_count);
+    size_t total;
+
+    {
+        scoped_lock locker {_reportedHashesLocker};
+        _reportedStrings.insert(loaded.begin(), loaded.end());
+        total = _reportedStrings.size();
+    }
+
+    if (total != 0 || resolved_count != 0) {
+        WriteLog("Loaded {} unresolved client-reported hash(es), {} now resolved", total, resolved_count);
     }
 }
 
@@ -2689,7 +2770,13 @@ void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstr
 
     if (failed) {
         // The server can't resolve it either — a deeper content/version mismatch. Log each one once per session.
-        if (_unresolvableReportedHashes.emplace(hash).second) {
+        bool first_report;
+        {
+            scoped_lock locker {_reportedHashesLocker};
+            first_report = _unresolvableReportedHashes.emplace(hash).second;
+        }
+
+        if (first_report) {
             WriteLog(LogType::Warning, "Client {} reported hash {} that the server can't resolve either", connection->GetHost(), hash);
         }
 
@@ -2698,13 +2785,17 @@ void ServerEngine::RegisterClientReportedHash(ServerConnection* connection, hstr
 
     const string& reported_string = hstr.as_str();
 
-    // Already known (already broadcast and persisted)
-    if (_reportedStrings.count(reported_string) != 0) {
-        return;
+    {
+        scoped_lock locker {_reportedHashesLocker};
+
+        // emplace is the atomic check-and-insert; already-known strings (already broadcast and persisted)
+        // return false and are skipped, so only the first reporter persists and broadcasts it.
+        if (!_reportedStrings.emplace(reported_string).second) {
+            return;
+        }
     }
 
     WriteLog(LogType::Warning, "Client {} couldn't resolve hash {}: '{}'", connection->GetHost(), hash, reported_string);
-    _reportedStrings.emplace(reported_string);
 
     // Persist so the list survives a server restart and preloads new clients immediately
     AnyData::Document doc;
@@ -2721,15 +2812,22 @@ void ServerEngine::SendAllReportedHashes(ServerConnection* connection)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (_reportedStrings.empty()) {
+    vector<string> snapshot;
+
+    {
+        scoped_lock locker {_reportedHashesLocker};
+        snapshot.assign(_reportedStrings.begin(), _reportedStrings.end());
+    }
+
+    if (snapshot.empty()) {
         return;
     }
 
     auto out_buf = connection->WriteMsg(NetMessage::HashList);
 
-    out_buf->Write(numeric_cast<uint32_t>(_reportedStrings.size()));
+    out_buf->Write(numeric_cast<uint32_t>(snapshot.size()));
 
-    for (const auto& reported_string : _reportedStrings) {
+    for (const auto& reported_string : snapshot) {
         out_buf->Write(reported_string);
     }
 }
@@ -3855,24 +3953,6 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
     }
 }
 
-void ServerEngine::ProcessCritterMoving(Critter* cr)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Moving
-    if (cr->IsMoving()) {
-        auto map = cr->GetParent<Map>();
-
-        if (map && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map.get());
-        }
-        else {
-            const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
-            StopCritterMoving(cr, reason);
-        }
-    }
-}
-
 void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4284,46 +4364,54 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
     cr->GetMoving()->ValidateRuntimeState();
     cr->SetMovingSpeed(cr->GetMoving()->GetSpeed());
 
-    _workerPool->Submit(movement_key, [this, cr_ = refcount_ptr<Critter>(cr)]() mutable -> std::optional<timespan> {
-        // Sync FIRST. IsDestroyed/IsMoving/GetMapId all read mutable state and are a race
-        // without the lock. Inside a `_workerPool` movement job body — primary SyncContext
-        // is guaranteed.
-        auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
-        ctx->SyncEntity(cr_.get());
-
-        // Now we hold the critter's lock — GetMapId() is race-free and we can widen the cover
-        // to include the map without re-reading from a stale snapshot.
-        auto map = cr_->GetParent<Map>();
-        FO_RUNTIME_ASSERT(!!cr_->GetMapId() == !!map);
-
-        if (map) {
-            ServerEntity* sync_entities[] = {map.get(), cr_.get()};
-            ctx->SyncEntities(span<ServerEntity*> {sync_entities});
-        }
-
-        if (cr_->IsDestroyed() || !cr_->IsMoving()) {
-            return std::nullopt;
-        }
-
-        try {
-            ProcessCritterMoving(cr_.get());
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-
-        if (cr_->IsDestroyed() || !cr_->IsMoving()) {
-            return std::nullopt;
-        }
-
-        return std::chrono::milliseconds {Settings.CritterMovingPeriodMs};
-    });
+    _workerPool->Submit(movement_key, [this, cr_ = refcount_ptr<Critter>(cr)]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_.get()); });
 
     cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); });
 
     ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr, was_moving);
+}
+
+auto ServerEngine::CritterMovingJob(Critter* cr) -> std::optional<timespan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+
+    auto* ctx = GetCurrentSyncContext();
+    FO_RUNTIME_ASSERT(ctx);
+    ctx->SyncEntity(cr);
+
+    auto map = cr->GetParent<Map>();
+    FO_RUNTIME_ASSERT(!!cr->GetMapId() == !!map);
+
+    if (map) {
+        ServerEntity* sync_entities[] = {map.get(), cr};
+        ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+    }
+
+    if (cr->IsDestroyed() || !cr->IsMoving()) {
+        return std::nullopt;
+    }
+
+    try {
+        if (map && !cr->GetIsAttached()) {
+            ProcessCritterMovingBySteps(cr, map.get());
+        }
+        else {
+            const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
+            StopCritterMoving(cr, reason);
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+
+    if (cr->IsDestroyed() || !cr->IsMoving()) {
+        return std::nullopt;
+    }
+
+    return std::chrono::milliseconds {Settings.CritterMovingPeriodMs};
 }
 
 void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator)

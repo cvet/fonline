@@ -360,18 +360,15 @@ VARIABLE_SETTING(int32_t, Server, ServerWidth, 800); // Server window width in p
 VARIABLE_SETTING(int32_t, Server, ServerHeight, 600); // Server window height in pixels (test bench host before any client is spawned)
 FIXED_SETTING(bool, Server, CollapseLogOnStart, false); // If true, log is collapsed on start
 FIXED_SETTING(int32_t, Server, MaxServerLogLines, 1000); // Maximum server log lines in UI
-FIXED_SETTING(int32_t, Server, ServerSleep, -1); // Server sleep duration in milliseconds (-1 to disable)
-FIXED_SETTING(int32_t, Server, LoopsPerSecondCap, 1000); // Loops per second cap
 FIXED_SETTING(int32_t, Server, LockMaxWaitTime, 100); // Maximum lock wait time in milliseconds
 FIXED_SETTING(int32_t, Server, WorkerThreads, 0); // Worker thread count for entity processing (0 = auto)
-FIXED_SETTING(int32_t, Server, LoopAverageTimeInterval, 1000); // Loop average time interval in milliseconds
 FIXED_SETTING(bool, Server, WriteHealthFile, false); // If true, health file is written
 FIXED_SETTING(bool, Server, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled
 FIXED_SETTING(bool, Server, MapInstanceStaticGrid, false); // If true, map instance static grid is enabled
 FIXED_SETTING(int64_t, Server, EntityStartId, 10000000001); // Entity start ID
 FIXED_SETTING(int64_t, Server, EntityIdReserveBatch, 1000); // Entity IDs reserved per persisted-counter bump, so a new entity does not force a DB write of the last-id marker every time
 FIXED_SETTING(int32_t, Server, SyncPeriodMs, 10); // Sync-point job period in milliseconds (100 FPS by default)
-FIXED_SETTING(int32_t, Server, FrameTimePeriodNs, 900); // Frame-time advance job period in nanoseconds
+FIXED_SETTING(int32_t, Server, FrameTimePeriodNs, 900); // Frame-time update job period in nanoseconds
 FIXED_SETTING(int32_t, Server, ConnectionProcessPeriodMs, 100); // Player / unlogined-player connection job re-poll period between data-arrival wakes, in milliseconds
 FIXED_SETTING(int32_t, Server, CritterMovingPeriodMs, 50); // Critter movement-step job period in milliseconds
 FIXED_SETTING(int32_t, Server, HealthFilePeriodMs, 300); // Health-file refresh job period in milliseconds

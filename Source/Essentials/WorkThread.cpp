@@ -79,6 +79,19 @@ auto WorkThread::GetJobsCount() const -> size_t
     return _jobs.size() + (_jobActive ? 1 : 0);
 }
 
+auto WorkThread::GetDiagnostics() const -> Diagnostics
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_dataLocker};
+
+    return Diagnostics {
+        .QueuedJobs = _jobs.size(),
+        .JobActive = _jobActive,
+        .CompletedJobs = _completedJobs,
+    };
+}
+
 void WorkThread::SetExceptionHandler(ExceptionHandler handler)
 {
     FO_STACK_TRACE_ENTRY();
@@ -225,6 +238,8 @@ void WorkThread::ThreadEntry() noexcept
 
                 if (!_jobs.empty()) {
                     const auto cur_time = nanotime::now();
+                    nanotime soonest_fire;
+                    bool has_pending = false;
 
                     for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {
@@ -233,6 +248,17 @@ void WorkThread::ThreadEntry() noexcept
                             _jobActive = true;
                             break;
                         }
+
+                        if (!has_pending || it->first < soonest_fire) {
+                            soonest_fire = it->first;
+                            has_pending = true;
+                        }
+                    }
+
+                    // Nothing is due yet — sleep until the soonest deadline instead of spinning. AddJob /
+                    // Wake / Clear / Pause notify _workSignal, so a new or earlier job breaks the wait.
+                    if (!job && has_pending) {
+                        _workSignal.wait_until(locker, soonest_fire.value());
                     }
                 }
             }
@@ -267,6 +293,11 @@ void WorkThread::ThreadEntry() noexcept
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
+                }
+
+                {
+                    scoped_lock locker {_dataLocker};
+                    _completedJobs++;
                 }
             }
         }

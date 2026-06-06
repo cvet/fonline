@@ -51,6 +51,7 @@ constexpr AngelScript::asPWORD AS_TYPE_FAST_COMPARE_USER_DATA = 1101;
 
 struct ScriptTypeInfoCache
 {
+    std::mutex Locker {};
     unordered_map<string, AngelScript::asITypeInfo*> Map {};
     unordered_map<const Property*, AngelScript::asITypeInfo*> ByProperty {};
 };
@@ -422,6 +423,7 @@ static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const 
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* cache = GetTypeInfoCache(as_engine);
+    std::scoped_lock lock {cache->Locker};
 
     if (const auto it = cache->Map.find(type); it != cache->Map.end()) {
         return it->second;
@@ -440,6 +442,7 @@ static auto LookupCachedTypeInfoForProperty(AngelScript::asIScriptEngine* as_eng
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* cache = GetTypeInfoCache(as_engine);
+    std::scoped_lock lock {cache->Locker};
 
     if (const auto it = cache->ByProperty.find(prop); it != cache->ByProperty.end()) {
         return it->second;

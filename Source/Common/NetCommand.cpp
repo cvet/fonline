@@ -45,7 +45,6 @@ struct CmdDef
 static constexpr CmdDef CMD_LIST[] = {
     {"exit", CMD_EXIT},
     {"myinfo", CMD_MYINFO},
-    {"gameinfo", CMD_GAMEINFO},
     {"move", CMD_MOVECRIT},
     {"disconnect", CMD_DISCONCRIT},
     {"toglobal", CMD_TOGLOBAL},
@@ -58,7 +57,6 @@ static constexpr CmdDef CMD_LIST[] = {
     {"runscript", CMD_RUNSCRIPT},
     {"run", CMD_RUNSCRIPT},
     {"regenmap", CMD_REGENMAP},
-    {"log", CMD_LOG},
 };
 
 auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& hash_resolver) -> bool
@@ -99,11 +97,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf.EndMsg();
     } break;
     case CMD_MYINFO: {
-        buf.StartMsg(msg);
-        buf.Write(cmd);
-        buf.EndMsg();
-    } break;
-    case CMD_GAMEINFO: {
         buf.StartMsg(msg);
         buf.Write(cmd);
         buf.EndMsg();
@@ -255,18 +248,6 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     case CMD_REGENMAP: {
         buf.StartMsg(msg);
         buf.Write(cmd);
-        buf.EndMsg();
-    } break;
-    case CMD_LOG: {
-        string flags;
-        if (!(args_str >> flags) || flags.length() > 2) {
-            logcb("Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all");
-            break;
-        }
-
-        buf.StartMsg(msg);
-        buf.Write(cmd);
-        buf.Write(flags);
         buf.EndMsg();
     } break;
     default:

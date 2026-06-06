@@ -42,6 +42,18 @@ struct Platform
 {
     Platform() = delete;
 
+    struct CpuUsageCoreSnapshot
+    {
+        uint64_t IdleTime {};
+        uint64_t TotalTime {};
+    };
+
+    struct CpuUsageSnapshot
+    {
+        vector<CpuUsageCoreSnapshot> Cores {};
+        uint64_t ProcessTimeNs {};
+    };
+
     // Windows: OutputDebugStringW
     // Android: __android_log_write ANDROID_LOG_INFO
     // Other: none
@@ -72,6 +84,14 @@ struct Platform
     // Mac: task_info MACH_TASK_BASIC_INFO (resident_size)
     // Other: 0
     static auto GetProcessMemoryUsage() noexcept -> size_t;
+
+    // Cumulative CPU counters for the current process and each logical CPU core.
+    // Percent usage is calculated by comparing two snapshots.
+    // Windows: GetProcessTimes + NtQuerySystemInformation(SystemProcessorPerformanceInformation)
+    // Linux & Android: /proc/stat + /proc/self/stat
+    // Mac: host_processor_info(PROCESSOR_CPU_LOAD_INFO) + task_info(MACH_TASK_BASIC_INFO)
+    // Other: empty snapshot
+    static auto GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot;
 
     // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
     // Linux & Mac: dlopen/dlclose/dlsym

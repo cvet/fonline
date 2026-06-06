@@ -83,6 +83,7 @@ public:
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> SyncContext* { return SyncContext::GetCurrentOnThisThread(); }
     [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock* { return _entityLock.get(); }
+    [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
 
     void Shutdown() override;
     void FlushExactSyncTime();
@@ -207,18 +208,20 @@ private:
         size_t MaxOnline {};
         size_t CurOnline {};
 
-        size_t LoopsCount {};
-        timespan LoopLastTime {};
-        timespan LoopMinTime {};
-        timespan LoopMaxTime {};
+        uint64_t JobsTotal {};
+        uint64_t JobsPerSecond {};
+        uint64_t JobsPerMinute {};
+        nanotime JobCounterBegin {};
+        uint64_t JobCounterBeginTotal {};
+        deque<pair<nanotime, uint64_t>> JobTimeStamps {};
 
-        deque<pair<nanotime, timespan>> LoopTimeStamps {};
-        timespan LoopWholeAvgTime {};
-        timespan LoopAvgTime {};
-
-        nanotime LoopCounterBegin {};
-        size_t LoopCounter {};
-        size_t LoopsPerSecond {};
+        optional<Platform::CpuUsageSnapshot> LastCpuUsageSnapshot {};
+        nanotime LastCpuUsageSampleTime {};
+        bool CpuUsageAvailable {};
+        float32_t CpuSystemLoad {};
+        float32_t CpuProcessLoad {};
+        float32_t CpuProcessCoreLoad {};
+        vector<float32_t> CpuCoreLoads {};
     };
 
     void SyncPoint();
@@ -264,15 +267,11 @@ private:
     void OnSetItemRecacheHex(Entity* entity, const Property* prop);
     void OnSetItemMultihexLines(Entity* entity, const Property* prop);
 
-    void ProcessCritterMoving(Critter* cr);
     void ProcessCritterMovingBySteps(Critter* cr, Map* map);
     auto ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
     auto MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool;
     auto MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool;
     void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
-
-    void LogToClients(string_view str);
-    void DispatchLogToClients();
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
@@ -289,28 +288,31 @@ private:
     auto InitDoneJob() -> std::optional<timespan>;
     auto SyncPointJob() -> std::optional<timespan>;
     auto FrameTimeJob() -> std::optional<timespan>;
-    auto PoolSyncJob() -> std::optional<timespan>;
-    auto LogDispatchJob() -> std::optional<timespan>;
-    auto LoopJob() -> std::optional<timespan>;
+    void UpdateJobStats(nanotime cur_time);
+    void UpdateCpuStats(nanotime cur_time);
+    auto CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t;
 
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
+    auto TimeEventJob(Entity* entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
     void OnPlayerConnected(Player* unlogined_player);
+    auto UnloginedPlayerJob(Player* unlogined_player) -> std::optional<timespan>;
     void OnPlayerLogined(Player* player, Player* unlogined_player);
-
+    auto PlayerJob(Player* player) -> std::optional<timespan>;
+    auto CritterMovingJob(Critter* cr) -> std::optional<timespan>;
     auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
+    void CountServerStatsJob() noexcept;
 
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
     unique_ptr<WorkerPool> _workerPool {};
+    std::atomic<uint64_t> _completedServerStatsJobs {};
 
     synctime _persistedSyncTimeMark {};
     static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
 
-    // Singleton-`Game` lock storage. _entityLock is wired to _ownedLock at construction; same
-    // pattern as ServerEntity subclasses (mutable raw_ptr to a member EntityLock).
     EntityLock _ownedLock {};
     mutable raw_ptr<EntityLock> _entityLock {&_ownedLock};
 
@@ -323,22 +325,16 @@ private:
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
     std::atomic_bool _shutdownInProgress {};
-    FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     unique_ptr<UpdaterBackend> _updaterBackend {};
-    vector<refcount_ptr<Player>> _logClients {};
-    vector<string> _logLines {};
     TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _unloginedPlayersLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
 
-    // Strings behind hashes that clients reported as unresolvable. Stored raw (not registered) and broadcast
-    // to all clients so they can resolve these hashes too. Accessed only from the main worker (handshake
-    // processing) plus one-time load at init, so it needs no extra locking.
-    unordered_set<string> _reportedStrings {};
-    // Reported hashes the server itself can't resolve either; kept in memory to log each one once per session.
-    unordered_set<hstring::hash_t> _unresolvableReportedHashes {};
+    mutable mutex _reportedHashesLocker {};
+    unordered_set<string> _reportedStrings FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
+    unordered_set<hstring::hash_t> _unresolvableReportedHashes FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
 
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};

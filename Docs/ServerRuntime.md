@@ -41,6 +41,10 @@ Read this page together with:
 - `Source/Server/ClientDataValidation.cpp`
 - `Source/Server/UpdaterBackend.h`
 - `Source/Server/UpdaterBackend.cpp`
+- `Source/Server/WorkerPool.h`
+- `Source/Server/WorkerPool.cpp`
+- `Source/Essentials/WorkThread.h`
+- `Source/Essentials/WorkThread.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -89,10 +93,14 @@ Major responsibilities:
 - `PlayersJob()`
 - `CrittersJob()`
 - `TimeEventsJob()`
-- `LogDispatchJob()`
-- `LoopJob()`
 
 The public `Lock()` / `Unlock()` pair is used by tests, tooling, and controlled operations that need a consistent view of server state. `Source/Tests/Test_ServerEngine.cpp` repeatedly waits for server startup, locks the server, performs entity/script checks, and unlocks on scope exit.
+
+`WorkThread` and `WorkerPool` each expose a raw completed-job counter through a `GetDiagnostics()` snapshot. `ServerEngine` keeps a separate throughput counter for jobs that should be visible in server stats: the `_starter` initialization sequence is excluded, and recurring service jobs that mostly reflect scheduler cadence (`SyncPointJob`, `TimeEventJob`, `FrameTimeJob`, `HealthFileJob`, and `HealthFileWriteJob`) are excluded too. The always-open Info summary reports jobs per second, jobs per minute, total completed visible jobs, and CPU load for the machine and current process. The separate `Performance details` panel is closed by default and expands raw per-executor job counts, worker-pool internals, and per-core system CPU load. Job throughput is the live server cadence metric. The former loop-based metrics — per-loop time statistics (average/min/max/last loop time), the loops-per-second counter (and its Tracy plot), and the `Server.LoopAverageTimeInterval` setting — were all removed as the server moves from loop-based to event-based execution; only the `Tracy` "Server jobs per second" plot remains.
+
+CPU percentages come from `Platform::GetCpuUsageSnapshot()`: `ServerEngine` samples it about once per second and diffs consecutive snapshots. System load is the busy fraction of the whole machine (and per core); process load is this process's share normalized to one machine's worth of capacity, while `Performance details` also shows the un-normalized "process core load" (which can exceed 100% on multiple cores, like `top`).
+
+The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read only on `_mainWorker` itself (`GetHealthInfo()`) and by the visible server app's `DrawGui`, which reads them behind `Lock()` (serialized against the main worker by the sync point). Because nothing reads them from another thread, the fields are plain (no atomics needed).
 
 ## Server events
 
@@ -240,7 +248,7 @@ Server-side movement helpers include:
 - `StartCritterMoving()` overloads for an existing `MovingContext` or raw path data;
 - `StopCritterMoving()`;
 - `ChangeCritterMovingSpeed()`;
-- `ProcessCritterMoving()`;
+- `CritterMovingJob()` as the self-rescheduling worker-pool body for active movement;
 - `ProcessCritterMovingBySteps()`.
 
 `Source/Tests/Test_ServerEngine.cpp` includes overdue movement tests that verify route completion, condition-independent movement processing, and blocked-hex stopping behavior. Coordinate/pathfinding mechanics remain documented in [MapsMovementGeometry.md](MapsMovementGeometry.md).

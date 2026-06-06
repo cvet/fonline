@@ -42,7 +42,6 @@ FO_BEGIN_NAMESPACE
 // Commands
 static constexpr auto CMD_EXIT = 1;
 static constexpr auto CMD_MYINFO = 2;
-static constexpr auto CMD_GAMEINFO = 3;
 static constexpr auto CMD_MOVECRIT = 5;
 static constexpr auto CMD_DISCONCRIT = 7;
 static constexpr auto CMD_TOGLOBAL = 8;
@@ -53,7 +52,6 @@ static constexpr auto CMD_ADDNPC = 15;
 static constexpr auto CMD_ADDLOCATION = 16;
 static constexpr auto CMD_RUNSCRIPT = 20;
 static constexpr auto CMD_REGENMAP = 25;
-static constexpr auto CMD_LOG = 37;
 
 using LogCallback = function<void(string_view)>;
 

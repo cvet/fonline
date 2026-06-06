@@ -151,6 +151,38 @@ TEST_CASE("WorkThread")
 
         CHECK_FALSE(executed.load());
     }
+
+    SECTION("DiagnosticsTrackCompletedJobs")
+    {
+        WorkThread worker {"DiagnosticsWorker"};
+
+        worker.AddJob([]() -> optional<timespan> { return std::nullopt; });
+        worker.AddJob([]() -> optional<timespan> { return std::nullopt; });
+
+        worker.Wait();
+
+        const WorkThread::Diagnostics diagnostics = worker.GetDiagnostics();
+        CHECK(diagnostics.CompletedJobs == 2);
+        CHECK(diagnostics.QueuedJobs == 0);
+        CHECK_FALSE(diagnostics.JobActive);
+    }
+
+    SECTION("DiagnosticsCountEveryRescheduledRun")
+    {
+        WorkThread worker {"RepeatDiagnosticsWorker"};
+        std::atomic_int32_t runs = 0;
+
+        worker.AddJob([&]() -> optional<timespan> {
+            const int32_t next_run = ++runs;
+            return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
+        });
+
+        worker.Wait();
+
+        // Each execution of the self-rescheduling job is counted, so the server's job-throughput
+        // stats reflect every body run rather than the number of distinct submissions.
+        CHECK(worker.GetDiagnostics().CompletedJobs == 3);
+    }
 }
 
 FO_END_NAMESPACE

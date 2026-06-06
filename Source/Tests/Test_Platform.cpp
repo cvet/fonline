@@ -102,6 +102,22 @@ TEST_CASE("Platform")
         Platform::SetThreadName("platform-test-thread");
         SUCCEED();
     }
+
+    SECTION("CpuUsageSnapshotIsWellFormed")
+    {
+        const Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
+        REQUIRE_FALSE(snapshot.Cores.empty());
+
+        for (const Platform::CpuUsageCoreSnapshot& core : snapshot.Cores) {
+            CHECK(core.TotalTime >= core.IdleTime);
+        }
+#else
+        CHECK(snapshot.Cores.empty());
+        CHECK(snapshot.ProcessTimeNs == 0);
+#endif
+    }
 }
 
 FO_END_NAMESPACE

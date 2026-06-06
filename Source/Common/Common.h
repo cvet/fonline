@@ -798,8 +798,6 @@ public:
     FrameBalancer() = default;
     FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps);
 
-    [[nodiscard]] auto GetLoopDuration() const -> timespan { return _loopDuration; }
-
     void StartLoop();
     void EndLoop();
 

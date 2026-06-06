@@ -91,7 +91,6 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 
 - `CMD_EXIT`
 - `CMD_MYINFO`
-- `CMD_GAMEINFO`
 - `CMD_MOVECRIT`
 - `CMD_DISCONCRIT`
 - `CMD_TOGLOBAL`
@@ -102,7 +101,6 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 - `CMD_ADDLOCATION`
 - `CMD_RUNSCRIPT`
 - `CMD_REGENMAP`
-- `CMD_LOG`
 
 `PackNetCommand()` converts command text into an outgoing network buffer using a log callback and hash resolver.
 

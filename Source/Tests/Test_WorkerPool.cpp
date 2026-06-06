@@ -570,4 +570,51 @@ TEST_CASE("WorkerPoolWaitIdleTimeout")
     }
 }
 
+// ============================================================================
+// WorkerPool — diagnostics
+// ============================================================================
+
+TEST_CASE("WorkerPoolDiagnostics")
+{
+    SECTION("CompletedJobsCountsEveryRun")
+    {
+        std::atomic<bool> shutdown_flag {false};
+        WorkerPool pool {"test", 2, shutdown_flag};
+        std::atomic_int counter {0};
+
+        for (int i = 0; i < 100; i++) {
+            pool.Submit([&]() -> std::optional<timespan> {
+                counter.fetch_add(1, std::memory_order_relaxed);
+                return std::nullopt;
+            });
+        }
+
+        pool.WaitIdle();
+
+        const WorkerPool::Diagnostics diagnostics = pool.GetDiagnostics();
+        CHECK(diagnostics.CompletedJobs == 100);
+        CHECK(diagnostics.ThreadCount == 2);
+        CHECK(diagnostics.ScheduledJobs == 0);
+        CHECK(diagnostics.RunningJobs == 0);
+        CHECK(diagnostics.ActiveWorkers == 0);
+    }
+
+    SECTION("SelfRescheduleCountsEachRun")
+    {
+        std::atomic<bool> shutdown_flag {false};
+        WorkerPool pool {"test", 1, shutdown_flag};
+        std::atomic_int runs {0};
+        const WorkerJobKey key {WorkerJobType::Player, 1};
+
+        pool.Submit(key, [&]() -> std::optional<timespan> {
+            const int next = runs.fetch_add(1, std::memory_order_relaxed) + 1;
+            return next < 3 ? std::optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
+        });
+
+        REQUIRE(WaitFor([&] { return runs.load() == 3; }));
+        pool.WaitIdle();
+        CHECK(pool.GetDiagnostics().CompletedJobs == 3);
+    }
+}
+
 FO_END_NAMESPACE

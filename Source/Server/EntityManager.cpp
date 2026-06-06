@@ -1702,13 +1702,14 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
         DestroyInnerEntities(entity);
     }
 
-    refcount_ptr<ServerEntity> holder;
+    refcount_ptr<Entity> holder;
 
     if (const auto id = entity->GetCustomHolderId()) {
-        holder = entity->GetParent();
-        FO_RUNTIME_ASSERT(holder);
-        FO_RUNTIME_ASSERT(holder->GetId() == id);
-        ValidateEntityAccess(holder.get());
+        auto parent = entity->GetParent();
+        FO_RUNTIME_ASSERT(parent);
+        FO_RUNTIME_ASSERT(parent->GetId() == id);
+        ValidateEntityAccess(parent.get());
+        holder = parent;
     }
     else {
         holder = _engine.get();

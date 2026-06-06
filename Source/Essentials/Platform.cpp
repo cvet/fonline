@@ -55,6 +55,8 @@
 #if FO_MAC
 #include <libproc.h>
 #include <mach/mach.h>
+#include <mach/mach_host.h>
+#include <mach/processor_info.h>
 #include <mach/task.h>
 #include <mach/task_info.h>
 #endif
@@ -236,6 +238,246 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #else
     return 0;
 #endif
+}
+
+auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
+{
+    FO_STACK_TRACE_ENTRY();
+
+    CpuUsageSnapshot result;
+
+#if FO_WINDOWS
+    struct WindowsSystemProcessorPerformanceInformation
+    {
+        LARGE_INTEGER IdleTime {};
+        LARGE_INTEGER KernelTime {};
+        LARGE_INTEGER UserTime {};
+        LARGE_INTEGER DpcTime {};
+        LARGE_INTEGER InterruptTime {};
+        ULONG InterruptCount {};
+    };
+
+    const auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
+        ULARGE_INTEGER value {};
+        value.LowPart = time.dwLowDateTime;
+        value.HighPart = time.dwHighDateTime;
+        return value.QuadPart;
+    };
+
+    FILETIME creation_time {};
+    FILETIME exit_time {};
+    FILETIME kernel_time {};
+    FILETIME user_time {};
+
+    if (::GetProcessTimes(::GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time) != 0) {
+        // FILETIME process times are in 100 ns units.
+        result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
+    }
+
+    using NtQuerySystemInformationFn = LONG(WINAPI*)(ULONG, PVOID, ULONG, PULONG);
+    constexpr ULONG SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS = 8;
+    const auto nt_query_system_information = WinApi_GetProcAddress<NtQuerySystemInformationFn>("ntdll.dll", "NtQuerySystemInformation");
+
+    if (nt_query_system_information != nullptr) {
+        DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+
+        if (processor_count == 0) {
+            processor_count = 1;
+        }
+
+        vector<WindowsSystemProcessorPerformanceInformation> processor_info;
+        processor_info.resize(static_cast<size_t>(processor_count));
+
+        ULONG returned_length = 0;
+        const ULONG buffer_size = static_cast<ULONG>(processor_info.size() * sizeof(WindowsSystemProcessorPerformanceInformation));
+        const LONG status = nt_query_system_information(SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS, processor_info.data(), buffer_size, &returned_length);
+
+        if (status >= 0) {
+            const size_t actual_count = returned_length != 0 ? std::min(processor_info.size(), static_cast<size_t>(returned_length / sizeof(WindowsSystemProcessorPerformanceInformation))) : processor_info.size();
+
+            result.Cores.reserve(actual_count);
+
+            for (size_t i = 0; i < actual_count; i++) {
+                const WindowsSystemProcessorPerformanceInformation& info = processor_info[i];
+                result.Cores.emplace_back(CpuUsageCoreSnapshot {
+                    .IdleTime = static_cast<uint64_t>(info.IdleTime.QuadPart),
+                    .TotalTime = static_cast<uint64_t>(info.KernelTime.QuadPart + info.UserTime.QuadPart),
+                });
+            }
+        }
+    }
+
+    if (result.Cores.empty()) {
+        FILETIME idle_time {};
+        FILETIME system_kernel_time {};
+        FILETIME system_user_time {};
+
+        if (::GetSystemTimes(&idle_time, &system_kernel_time, &system_user_time) != 0) {
+            result.Cores.emplace_back(CpuUsageCoreSnapshot {
+                .IdleTime = file_time_to_uint64(idle_time),
+                .TotalTime = file_time_to_uint64(system_kernel_time) + file_time_to_uint64(system_user_time),
+            });
+        }
+    }
+
+#elif FO_LINUX || FO_ANDROID
+    // /proc/stat per-CPU counters appear in kernel order:
+    //   user nice system idle iowait irq softirq steal guest guest_nice
+    constexpr size_t MAX_CPU_FIELDS = 10;
+    constexpr size_t IDLE_FIELD_INDEX = 3;
+    constexpr size_t IOWAIT_FIELD_INDEX = 4;
+    constexpr size_t TOTAL_TIME_FIELD_COUNT = 8; // user..steal; guest/guest_nice are folded into user/nice
+
+    std::ifstream stat_file {"/proc/stat"};
+
+    if (stat_file) {
+        string line;
+
+        while (std::getline(stat_file, line)) {
+            const string_view line_view {line};
+
+            if (line_view.size() <= 3 || !line_view.starts_with("cpu") || !std::isdigit(static_cast<unsigned char>(line_view[3]))) {
+                continue;
+            }
+
+            const size_t fields_pos = line_view.find(' ');
+
+            if (fields_pos == string_view::npos) {
+                continue;
+            }
+
+            uint64_t values[MAX_CPU_FIELDS] {};
+            size_t values_count = 0;
+            bool parse_failed = false;
+            const vector<string_view> fields = strvex(line_view.substr(fields_pos + 1)).split(' ');
+
+            for (const string_view field : fields) {
+                if (values_count == std::size(values)) {
+                    break;
+                }
+
+                const char* const field_begin = field.data();
+                const char* const field_end = field_begin + field.size();
+                uint64_t value = 0;
+                const auto parse_result = std::from_chars(field_begin, field_end, value);
+
+                if (parse_result.ec != std::errc {} || parse_result.ptr != field_end) {
+                    parse_failed = true;
+                    break;
+                }
+
+                values[values_count] = value;
+                values_count++;
+            }
+
+            if (parse_failed || values_count <= IDLE_FIELD_INDEX) {
+                continue;
+            }
+
+            uint64_t total_time = 0;
+            const size_t total_field_count = std::min<size_t>(values_count, TOTAL_TIME_FIELD_COUNT);
+
+            for (size_t i = 0; i < total_field_count; i++) {
+                total_time += values[i];
+            }
+
+            result.Cores.emplace_back(CpuUsageCoreSnapshot {
+                .IdleTime = values[IDLE_FIELD_INDEX] + (values_count > IOWAIT_FIELD_INDEX ? values[IOWAIT_FIELD_INDEX] : 0),
+                .TotalTime = total_time,
+            });
+        }
+    }
+
+    result.ProcessTimeNs = []() noexcept -> uint64_t {
+        std::ifstream file {"/proc/self/stat"};
+
+        if (!file) {
+            return 0;
+        }
+
+        string text;
+        std::getline(file, text);
+
+        const size_t comm_end = text.rfind(')');
+
+        if (comm_end == string::npos || comm_end + 2 >= text.size()) {
+            return 0;
+        }
+
+        const vector<string_view> fields = strvex(string_view {text.data() + comm_end + 2, text.size() - comm_end - 2}).split(' ');
+
+        if (fields.size() <= 12) {
+            return 0;
+        }
+
+        uint64_t user_ticks = 0;
+        uint64_t system_ticks = 0;
+
+        const char* const user_ticks_begin = fields[11].data();
+        const char* const user_ticks_end = user_ticks_begin + fields[11].size();
+        const auto user_ticks_result = std::from_chars(user_ticks_begin, user_ticks_end, user_ticks);
+
+        if (user_ticks_result.ec != std::errc {} || user_ticks_result.ptr != user_ticks_end) {
+            return 0;
+        }
+
+        const char* const system_ticks_begin = fields[12].data();
+        const char* const system_ticks_end = system_ticks_begin + fields[12].size();
+        const auto system_ticks_result = std::from_chars(system_ticks_begin, system_ticks_end, system_ticks);
+
+        if (system_ticks_result.ec != std::errc {} || system_ticks_result.ptr != system_ticks_end) {
+            return 0;
+        }
+
+        const long ticks_per_second = ::sysconf(_SC_CLK_TCK);
+
+        if (ticks_per_second <= 0) {
+            return 0;
+        }
+
+        return (user_ticks + system_ticks) * 1000000000ULL / static_cast<uint64_t>(ticks_per_second);
+    }();
+
+#elif FO_MAC
+    natural_t processor_count = 0;
+    processor_info_array_t processor_info {};
+    mach_msg_type_number_t processor_info_count = 0;
+
+    if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &processor_info, &processor_info_count) == KERN_SUCCESS) {
+        const auto* load_info = reinterpret_cast<const processor_cpu_load_info_data_t*>(processor_info);
+
+        result.Cores.reserve(static_cast<size_t>(processor_count));
+
+        for (natural_t i = 0; i < processor_count; i++) {
+            const processor_cpu_load_info_data_t& info = load_info[i];
+            const uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
+            const uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
+            const uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
+            const uint64_t nice_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_NICE]);
+
+            result.Cores.emplace_back(CpuUsageCoreSnapshot {
+                .IdleTime = idle_time,
+                .TotalTime = user_time + system_time + idle_time + nice_time,
+            });
+        }
+
+        (void)::vm_deallocate(::mach_task_self(), reinterpret_cast<vm_address_t>(processor_info), processor_info_count * sizeof(integer_t));
+    }
+
+    result.ProcessTimeNs = []() noexcept -> uint64_t {
+        mach_task_basic_info_data_t info {};
+        mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+
+        if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS) {
+            return 0;
+        }
+
+        // task_info time_value_t fields are seconds + microseconds.
+        return static_cast<uint64_t>(info.user_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.user_time.microseconds) * 1000ULL + static_cast<uint64_t>(info.system_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.system_time.microseconds) * 1000ULL;
+    }();
+#endif
+
+    return result;
 }
 
 auto Platform::LoadModule(const string& module_name) noexcept -> void*

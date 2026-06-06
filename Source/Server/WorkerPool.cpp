@@ -298,6 +298,24 @@ auto WorkerPool::GetPendingJobCount() const -> size_t
     return _jobs.size();
 }
 
+auto WorkerPool::GetDiagnostics() const -> Diagnostics
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_mutex};
+
+    return Diagnostics {
+        .ThreadCount = numeric_cast<int32_t>(_workers.size()),
+        .ScheduledJobs = _jobs.size(),
+        .QueuedKeys = _queuedKeys.size(),
+        .RunningJobs = _runningKeys.size(),
+        .PendingReruns = _pendingRerun.size(),
+        .ActiveWorkers = _activeWorkers,
+        .Paused = _paused,
+        .CompletedJobs = _completedJobs,
+    };
+}
+
 auto WorkerPool::IsKeyActive(JobKey key) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -392,6 +410,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
         }
 
         optional<timespan> next_delay;
+        bool job_executed = false;
 
         {
             SyncContext sync_ctx;
@@ -404,6 +423,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             const bool shutdown = _shutdownFlag->load(std::memory_order_acquire);
 
             if (!shutdown) {
+                job_executed = true;
+
                 try {
                     next_delay = job.Body();
                 }
@@ -451,6 +472,10 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             else if (next_delay.has_value()) {
                 EnqueueJob(nanotime::now() + next_delay.value(), ANONYMOUS_JOB, std::move(job.Body));
                 need_wake = true;
+            }
+
+            if (job_executed) {
+                _completedJobs++;
             }
 
             _activeWorkers--;

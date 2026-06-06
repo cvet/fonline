@@ -65,6 +65,18 @@ public:
     using JobKey = WorkerJobKey;
     using Job = function<optional<timespan>()>;
 
+    struct Diagnostics
+    {
+        int32_t ThreadCount {};
+        size_t ScheduledJobs {};
+        size_t QueuedKeys {};
+        size_t RunningJobs {};
+        size_t PendingReruns {};
+        int32_t ActiveWorkers {};
+        bool Paused {};
+        uint64_t CompletedJobs {};
+    };
+
     static constexpr JobKey ANONYMOUS_JOB {};
 
     explicit WorkerPool(string_view name, int32_t thread_count, const std::atomic<bool>& shutdown_flag, bool start_paused = false);
@@ -76,6 +88,7 @@ public:
 
     [[nodiscard]] auto GetThreadCount() const noexcept -> int32_t { return numeric_cast<int32_t>(_workers.size()); }
     [[nodiscard]] auto GetPendingJobCount() const -> size_t;
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
 
     void Resume();
@@ -113,6 +126,7 @@ private:
     unordered_map<JobKey, ScheduledJob> _pendingRerun FO_TSA_GUARDED_BY(_mutex) {};
     unordered_set<JobKey> _cancelOnFinish FO_TSA_GUARDED_BY(_mutex) {};
     unordered_set<JobKey> _wakeRequests FO_TSA_GUARDED_BY(_mutex) {};
+    uint64_t _completedJobs FO_TSA_GUARDED_BY(_mutex) {};
     std::condition_variable_any _workSignal {};
     mutable std::condition_variable_any _idleSignal {};
     int32_t _activeWorkers FO_TSA_GUARDED_BY(_mutex) {};

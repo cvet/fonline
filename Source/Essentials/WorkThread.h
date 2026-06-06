@@ -47,6 +47,13 @@ public:
     using Job = function<optional<timespan>()>;
     using ExceptionHandler = function<bool(const std::exception&)>; // Return true to clear jobs
 
+    struct Diagnostics
+    {
+        size_t QueuedJobs {};
+        bool JobActive {};
+        uint64_t CompletedJobs {};
+    };
+
     explicit WorkThread(string_view name);
     WorkThread(const WorkThread&) = delete;
     WorkThread(WorkThread&&) noexcept = delete;
@@ -56,6 +63,7 @@ public:
 
     [[nodiscard]] auto GetThreadId() const -> std::thread::id { return _worker.get_id(); }
     [[nodiscard]] auto GetJobsCount() const -> size_t;
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
 
     void SetExceptionHandler(ExceptionHandler handler);
     void AddJob(Job job);
@@ -74,6 +82,7 @@ private:
     mutable mutex _dataLocker {};
     ExceptionHandler _exceptionHandler FO_TSA_GUARDED_BY(_dataLocker) {};
     vector<pair<nanotime, Job>> _jobs FO_TSA_GUARDED_BY(_dataLocker) {};
+    uint64_t _completedJobs FO_TSA_GUARDED_BY(_dataLocker) {};
     bool _jobActive FO_TSA_GUARDED_BY(_dataLocker) {};
     bool _paused FO_TSA_GUARDED_BY(_dataLocker) {};
     bool _clearJobs FO_TSA_GUARDED_BY(_dataLocker) {};

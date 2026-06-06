@@ -151,22 +151,6 @@ TEST_CASE("NetCommand")
         CHECK(in_buf.Read<string>() == "gamma");
     }
 
-    SECTION("LogCommandSerializesFlags")
-    {
-        HashStorage hashes {};
-        NetOutBuffer out_buf {8};
-
-        REQUIRE(PackNetCommand("log --", &out_buf, [](string_view) { }, hashes));
-
-        NetInBuffer in_buf {8};
-        in_buf.AddData(out_buf.GetData());
-
-        REQUIRE(in_buf.NeedProcess());
-        CHECK(in_buf.ReadMsg() == NetMessage::SendCommand);
-        CHECK(in_buf.Read<uint8_t>() == CMD_LOG);
-        CHECK(in_buf.Read<string>() == "--");
-    }
-
     SECTION("InvalidArgumentsLogAndDoNotWriteMessage")
     {
         HashStorage hashes {};
@@ -179,25 +163,15 @@ TEST_CASE("NetCommand")
         CHECK(out_buf.GetDataSize() == 0);
     }
 
-    SECTION("InvalidRunscriptAndLogArgumentsDoNotWriteMessage")
+    SECTION("InvalidRunscriptArgumentsDoNotWriteMessage")
     {
         HashStorage hashes {};
         string log_message;
 
-        {
-            NetOutBuffer out_buf {8};
-            REQUIRE(PackNetCommand("runscript", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
-            CHECK(log_message == "No function name provided. Example: runscript module::func param0 param1 param2");
-            CHECK(out_buf.GetDataSize() == 0);
-        }
-
-        {
-            NetOutBuffer out_buf {8};
-            log_message.clear();
-            REQUIRE(PackNetCommand("log +++", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
-            CHECK(log_message == "Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all");
-            CHECK(out_buf.GetDataSize() == 0);
-        }
+        NetOutBuffer out_buf {8};
+        REQUIRE(PackNetCommand("runscript", &out_buf, [&](string_view message) { log_message = string(message); }, hashes));
+        CHECK(log_message == "No function name provided. Example: runscript module::func param0 param1 param2");
+        CHECK(out_buf.GetDataSize() == 0);
     }
 }
 

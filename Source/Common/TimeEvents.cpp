@@ -91,17 +91,16 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
     FO_RUNTIME_ASSERT(entity);
     FO_RUNTIME_ASSERT(!entity->IsDestroyed());
 
+    const auto event_id = ++_timeEventCounter;
     const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
 
     auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
-    te->Id = ++_timeEventCounter;
+    te->Id = event_id;
     te->FuncName = std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func);
     te->Func = std::move(func);
     te->FireTime = _engine->GetFrameTime() + effective_delay;
     te->RepeatDuration = repeat;
     te->Data = std::move(data);
-
-    const auto event_id = te->Id;
 
     {
         std::scoped_lock lock {_timeEventLocker};
@@ -123,6 +122,8 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
 
     FO_RUNTIME_ASSERT(entity);
     FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), 0);
+
+    std::scoped_lock lock {_timeEventLocker};
 
     const auto& timeEvents = entity->GetRawTimeEvents();
 
@@ -287,9 +288,13 @@ void TimeEventManager::ProcessTimeEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock lock {_timeEventLocker};
+    auto entities = [&] {
+        std::scoped_lock lock {_timeEventLocker};
 
-    for (auto* entity : copy_hold_ref(_timeEventEntities)) {
+        return copy_hold_ref(_timeEventEntities);
+    }();
+
+    for (auto* entity : entities) {
         if (entity->IsDestroyed()) {
             RemoveEntityTimeEventPolling(entity);
             continue;
@@ -297,7 +302,14 @@ void TimeEventManager::ProcessTimeEvents()
 
         ProcessEntityTimeEvents(entity);
 
-        if (entity->IsDestroyed() || !entity->HasTimeEvents()) {
+        if (entity->IsDestroyed()) {
+            RemoveEntityTimeEventPolling(entity);
+            continue;
+        }
+
+        std::scoped_lock lock {_timeEventLocker};
+
+        if (!entity->HasTimeEvents()) {
             RemoveEntityTimeEventPolling(entity);
         }
     }
@@ -340,32 +352,58 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& timeEvents = entity->GetRawTimeEvents();
-
-    if (!timeEvents || timeEvents->empty()) {
-        return;
-    }
-
+    vector<shared_ptr<Entity::TimeEventData>> ready_events;
     const auto time = _engine->GetFrameTime();
 
-    for (size_t i = 0; i < timeEvents->size(); i++) {
-        auto te = (*timeEvents)[i];
+    {
+        std::scoped_lock lock {_timeEventLocker};
 
-        if (te->FireTime > time) {
-            continue;
+        auto& timeEvents = entity->GetRawTimeEvents();
+
+        if (!timeEvents || timeEvents->empty()) {
+            return;
         }
 
-        const auto result = FireTimeEvent(entity, te);
+        ready_events.reserve(timeEvents->size());
+
+        for (auto& te : *timeEvents) {
+            if (te->FireTime <= time) {
+                ready_events.emplace_back(te);
+            }
+        }
+    }
+
+    for (auto& te : ready_events) {
+        {
+            std::scoped_lock lock {_timeEventLocker};
+
+            auto& timeEvents = entity->GetRawTimeEvents();
+
+            if (!timeEvents || timeEvents->empty()) {
+                return;
+            }
+
+            if (te->Id == 0) {
+                continue;
+            }
+
+            const auto it = std::ranges::find(timeEvents->begin(), timeEvents->end(), te);
+
+            if (it == timeEvents->end()) {
+                continue;
+            }
+            if (te->FireTime > time) {
+                continue;
+            }
+        }
+
+        const FiredTimeEvent result = FireTimeEvent(entity, te);
 
         if (entity->IsDestroyed()) {
             return;
         }
 
         PostFireTimeEvent(entity, te, result);
-
-        if (te->Id == 0) {
-            i--;
-        }
     }
 }
 
@@ -420,6 +458,8 @@ void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::Time
         return;
     }
 
+    std::scoped_lock lock {_timeEventLocker};
+
     if (te->Id == 0) {
         return;
     }
@@ -470,11 +510,23 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
 
     FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), {});
 
-    if (te->Id == 0) {
+    uint32_t event_id;
+    timespan repeat_duration;
+    vector<any_t> data;
+
+    {
+        std::scoped_lock lock {_timeEventLocker};
+
+        event_id = te->Id;
+        repeat_duration = te->RepeatDuration;
+        data = te->Data;
+    }
+
+    if (event_id == 0) {
         return {};
     }
 
-    auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(te->Id, te->RepeatDuration, te->Data);
+    auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
     bool call_result = false;
 
     if (auto* func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1 != nullptr) {
@@ -483,11 +535,11 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     }
     else if (auto* func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); func2 != nullptr) {
         FO_RUNTIME_ASSERT(entity->IsGlobal());
-        call_result = func2->Call(te->Data.empty() ? _emptyAnyValue : te->Data.front());
+        call_result = func2->Call(data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto* func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); func3 != nullptr) {
         FO_RUNTIME_ASSERT(entity->IsGlobal());
-        call_result = func3->Call(te->Data);
+        call_result = func3->Call(data);
     }
     else if (auto* func4 = std::get_if<ScriptFunc<void, TimeEventContext*>>(&te->Func); func4 != nullptr) {
         FO_RUNTIME_ASSERT(entity->IsGlobal());
@@ -499,11 +551,11 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     }
     else if (auto* func6 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, any_t>>(&te->Func); func6 != nullptr) {
         FO_RUNTIME_ASSERT(!entity->IsGlobal());
-        call_result = func6->Call(entity, te->Data.empty() ? _emptyAnyValue : te->Data.front());
+        call_result = func6->Call(entity, data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto* func7 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>(&te->Func); func7 != nullptr) {
         FO_RUNTIME_ASSERT(!entity->IsGlobal());
-        call_result = func7->Call(entity, te->Data);
+        call_result = func7->Call(entity, data);
     }
     else if (auto* func8 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>(&te->Func); func8 != nullptr) {
         FO_RUNTIME_ASSERT(!entity->IsGlobal());
@@ -513,7 +565,7 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
         FO_UNREACHABLE_PLACE();
     }
 
-    if (!call_result && te->RepeatDuration) {
+    if (!call_result && repeat_duration) {
         WriteLog("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
     }
 
