@@ -517,7 +517,7 @@ static auto ApplyStagedBinaryUpdate() -> bool
 
     if (!fs_rename(staged_path, final_path)) {
         WriteLog("Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
-      
+
         if (final_exists) {
             fs_rename(backup_path, final_path);
         }
