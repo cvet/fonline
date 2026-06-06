@@ -45,7 +45,6 @@ unique_ptr<Application> App {};
 extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
-static void SetupLogging(bool disable_log_tags);
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
 
@@ -76,7 +75,12 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 #endif
 
     // Logging
-    SetupLogging(IsEnumSet(flags, AppInitFlags::DisableLogTags));
+    LogToFile(GetExeLogFileName(), IsEnumSet(flags, AppInitFlags::AppendLogFile));
+
+    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
+        LogDisableTags();
+    }
+
     WriteLog("Starting {}", FO_NICE_NAME);
 
     // Load settings
@@ -136,24 +140,6 @@ static void SetupExceptionCallback(bool show_message_on_exception)
             Application::ShowErrorMessage(message, FormatStackTrace(st), fatal_error);
         }
     });
-}
-
-static void SetupLogging(bool disable_log_tags)
-{
-    FO_STACK_TRACE_ENTRY();
-
-#if !FO_WEB
-    if (const auto exe_path = Platform::GetExePath()) {
-        LogToFile(strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension()));
-    }
-    else {
-        LogToFile(strex("{}.log", FO_DEV_NAME));
-    }
-#endif
-
-    if (disable_log_tags) {
-        LogDisableTags();
-    }
 }
 
 auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
@@ -298,6 +284,17 @@ static void PrebakeResources(BakingSettings& settings)
             throw AppInitException("Baker not found. Unable to bake resources");
         }
     }
+}
+
+auto GetExeLogFileName() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (const auto exe_path = Platform::GetExePath()) {
+        return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
+    }
+
+    return strex("{}.log", FO_DEV_NAME);
 }
 
 #if FO_LINUX || FO_MAC

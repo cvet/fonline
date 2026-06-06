@@ -594,6 +594,7 @@ enum class AppInitFlags : uint8_t
     DisableLogTags = 0x02,
     ShowMessageOnException = 0x04,
     PrebakeResources = 0x08,
+    AppendLogFile = 0x10,
 };
 
 class Application final
@@ -775,6 +776,7 @@ inline auto AppWindow::GetWindowHandleForInput() const -> WindowInternalHandle*
 extern unique_ptr<Application> App;
 extern auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings;
 extern void InitApp(int32_t argc, char** argv, AppInitFlags flags = AppInitFlags::None);
+extern auto GetExeLogFileName() -> string;
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 
 FO_END_NAMESPACE

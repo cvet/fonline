@@ -557,6 +557,13 @@ Application::~Application()
     _currentRenderingWindow = nullptr;
     _previousRenderTarget = nullptr;
 
+    _allWindows.clear();
+    _ctx->NullWindowStubs.clear();
+    _ctx->RenderTargetTex = nullptr;
+
+    // Renderer backends may need the SDL window while releasing their native resources.
+    _ctx->ActiveRenderer = nullptr;
+
     if (MainWindow._windowHandle) {
         if (_ctx->ActiveRendererType != RenderType::Null) {
             SDL_StopTextInput(reinterpret_cast<SDL_Window*>(MainWindow._windowHandle.get()));
@@ -565,12 +572,6 @@ Application::~Application()
 
         MainWindow._windowHandle = nullptr;
     }
-
-    _allWindows.clear();
-    _ctx->NullWindowStubs.clear();
-    _ctx->RenderTargetTex = nullptr;
-
-    _ctx->ActiveRenderer = nullptr;
 
     _ctx->EventsQueue = nullptr;
     _ctx->NextFrameEventsQueue = nullptr;
@@ -2702,6 +2703,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
 
     if (!fatal_error) {
         scoped_lock locker {ignore_entries_locker};
+
         if (ignore_entries.count(verb_message) != 0) {
             return;
         }

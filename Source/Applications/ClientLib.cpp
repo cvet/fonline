@@ -46,6 +46,10 @@ FO_USING_NAMESPACE();
 static_assert(false, "Client runtime library is supported only on Windows, Linux and macOS");
 #endif
 
+FO_BEGIN_NAMESPACE
+extern void ApplicationShutdownHook();
+FO_END_NAMESPACE
+
 struct ClientAppData
 {
     refcount_ptr<ClientEngine> Client {};
@@ -64,7 +68,10 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 {
     FO_STACK_TRACE_ENTRY();
 
+    WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports != nullptr ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || exports == nullptr) {
+        WriteLog("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports != nullptr ? "set" : "null");
         return false;
     }
 
@@ -79,6 +86,8 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     exports->Metadata.BuildHash = FO_BUILD_HASH.c_str();
     exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION.c_str();
     exports->Run = &RunClientRuntime;
+
+    WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
     return true;
 }
 
@@ -95,8 +104,10 @@ static void RunClientRuntime(int32_t argc, char** argv, ClientRuntimeResult* run
     }
 
     try {
-        InitApp(argc, argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources));
-        WriteLog("Compatibility version: {}", App->Settings.CompatibilityVersion);
+        WriteLog("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+
+        InitApp(argc, argv, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
+        WriteLog("Client runtime DLL: ompatibility version: {}", App->Settings.CompatibilityVersion);
 
         auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
 
@@ -106,7 +117,7 @@ static void RunClientRuntime(int32_t argc, char** argv, ClientRuntimeResult* run
             balancer.EndLoop();
         }
 
-        WriteLog("Exit from game");
+        WriteLog("Client runtime DLL: main loop exited");
 
         const bool quit_success = App->GetRequestedQuitSuccess();
         CleanupClientApp();
@@ -114,11 +125,13 @@ static void RunClientRuntime(int32_t argc, char** argv, ClientRuntimeResult* run
         if (runtime_result != nullptr) {
             if (Data->ReloadRequested) {
                 FO_RUNTIME_ASSERT(!Data->StagedRuntimePath.empty());
+                WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
                 runtime_result->ResultKind = ClientRuntimeResultKind::ReloadRequested;
                 runtime_result->Success = true;
                 runtime_result->RequestedRuntimePath = Data->StagedRuntimePath.c_str();
             }
             else {
+                WriteLog("Client runtime DLL: returning shutdown, success {}", quit_success ? "yes" : "no");
                 runtime_result->Success = quit_success;
             }
         }
@@ -134,6 +147,17 @@ static void RunClientRuntime(int32_t argc, char** argv, ClientRuntimeResult* run
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
     }
+
+    if (App) {
+        WriteLog("Client runtime DLL: resetting application before return");
+        App.reset();
+    }
+
+    WriteLog("Client runtime DLL: calling application shutdown hook");
+    safe_call([] { ApplicationShutdownHook(); });
+
+    const string_view result_kind = runtime_result != nullptr ? ClientRuntimeResultKindToString(runtime_result->ResultKind) : string_view("none");
+    WriteLog("Client runtime DLL: finished with {}, result pointer {}, success {}", result_kind, runtime_result != nullptr ? "set" : "null", runtime_result != nullptr && runtime_result->Success ? "yes" : "no");
 }
 
 static void MainEntry([[maybe_unused]] void* data)
@@ -170,6 +194,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     if (!Data->ResourceUpdater) {
+                        WriteLog("Client runtime DLL: creating updater");
                         Data->ResourceUpdater = SafeAlloc::MakeUnique<Updater>(App->Settings, App->MainWindow);
                     }
 
@@ -182,14 +207,17 @@ static void MainEntry([[maybe_unused]] void* data)
 
                     switch (result) {
                     case UpdaterResult::ResourcesReady:
+                        WriteLog("Client runtime DLL: updater finished, resources ready");
                         Data->ResourcesSynced = true;
                         break;
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = GetClientRuntimeLivePath();
                         Data->ReloadRequested = true;
+                        WriteLog("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
                         App->RequestQuit();
                         return;
                     default:
+                        WriteLog("Client runtime DLL: updater failed");
                         ShowUpdaterFailure(result);
                         App->RequestQuit();
                         return;

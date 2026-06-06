@@ -1471,11 +1471,12 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
+            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook', 'ConfigSectionParseHook', 'ConfigEntryParseHook',
                             'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
 
             codegen_tags['EngineHook'].append(EngineHookTag(name, [], comment))
-            hash_recursive(compatibility_hasher, name)
+            if name != 'ApplicationShutdownHook':
+                hash_recursive(compatibility_hasher, name)
 
         except Exception as ex:
             show_error('Invalid tag EngineHook', abs_path + ' (' + str(line_index + 1) + ')', tag_info, ex)
@@ -1792,6 +1793,8 @@ def generate_generic_code() -> None:
         global_lines.append('enum class AppInitFlags : uint8_t;')
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ApplicationInitHook(AppInitFlags, GlobalSettings&) { /* Stub */ }')
+    if not is_engine_hook_enabled('ApplicationShutdownHook'):
+        global_lines.append('void ApplicationShutdownHook() { /* Stub */ }')
     if not is_engine_hook_enabled('ServerInitHook'):
         global_lines.append('class ServerEngine;')
         global_lines.append('void ServerInitHook(ServerEngine*) { /* Stub */ }')

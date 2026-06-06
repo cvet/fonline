@@ -97,6 +97,35 @@ TEST_CASE("BaseLogging")
         CHECK(removed > 0);
     }
 
+    SECTION("LogToFileAppendsWhenRequested")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "append.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        {
+            std::ofstream existing_log(log_path, std::ios::binary | std::ios::trunc);
+            REQUIRE(existing_log);
+            existing_log << "existing\n";
+        }
+
+        LogToFile(string(log_path.string()), true);
+        WriteBaseLog("engine\n");
+
+        LogToFile(NullLogPath);
+
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
+
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        CHECK(content == "existing\nengine\n");
+
+        input.close();
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
     SECTION("AsyncLoggingDeliversAllMessagesInOrder")
     {
         const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
@@ -168,6 +197,36 @@ TEST_CASE("BaseLogging")
         CHECK(content.find("sync-after\n") != std::string::npos);
 
         input.close();
+        const auto removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
+    SECTION("SuspendAsyncLogWritingFlushesWithoutJoiningWorker")
+    {
+        const auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        const auto log_path = temp_root / "logs" / "suspend.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        LogToFile(string(log_path.string()));
+        SetAsyncLogWriting(true);
+
+        // Simulate the crash path: route to the synchronous writer without stopping/joining the worker.
+        SuspendAsyncLogWriting();
+        WriteBaseLog("crash-trace-line\n");
+
+        // The line must already be on disk while the async worker is still running (no join happened).
+        {
+            std::ifstream input(log_path, std::ios::binary);
+            REQUIRE(input);
+
+            std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+            CHECK(content.find("crash-trace-line\n") != std::string::npos);
+        }
+
+        SetAsyncLogWriting(false);
+        LogToFile(NullLogPath);
+
         const auto removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
     }

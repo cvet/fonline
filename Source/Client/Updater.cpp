@@ -60,6 +60,8 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
 {
     FO_STACK_TRACE_ENTRY();
 
+    WriteLog("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
+
     _startTime = nanotime::now();
 
     _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
@@ -241,15 +243,18 @@ void Updater::GetNextFile()
         const auto temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
+            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
+            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
             Abort(StrFilesystemError);
             return;
         }
 
+        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
         try_promote_staged_binary(prev_update_file, prev_path_str);
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
@@ -262,20 +267,24 @@ void Updater::GetNextFile()
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
+                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
                 fs_remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
+                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
+                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
                         Abort(StrFilesystemError);
                         return;
                     }
 
+                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
                     try_promote_staged_binary(next_update_file, prev_path_str);
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
@@ -284,6 +293,7 @@ void Updater::GetNextFile()
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
+                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
             }
         }
 
@@ -300,19 +310,21 @@ void Updater::GetNextFile()
         _tempFile.open(std::filesystem::path {fs_make_path(temp_path)}, open_mode);
 
         if (!_tempFile) {
+            WriteLog("Client updater: failed to open temp file {}", temp_path);
             Abort(StrFilesystemError);
             return;
         }
 
+        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
         RequestUpdateFile(next_update_file);
     }
     else {
         if (_binariesMode) {
-            WriteLog("Binary update staged for reload");
+            WriteLog("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            WriteLog("Resources sync complete");
+            WriteLog("Client updater: finished resource update, resources ready");
             _result = UpdaterResult::ResourcesReady;
         }
     }
@@ -336,14 +348,38 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
+    string_view result_str;
+
+    switch (result) {
+    case ClientConnection::ConnectResult::Success:
+        result_str = "Success";
+        break;
+    case ClientConnection::ConnectResult::CompatibilityOutdated:
+        result_str = "CompatibilityOutdated";
+        break;
+    case ClientConnection::ConnectResult::UpdaterOutdated:
+        result_str = "UpdaterOutdated";
+        break;
+    case ClientConnection::ConnectResult::Failed:
+        result_str = "Failed";
+        break;
+    default:
+        result_str = "Unknown";
+        break;
+    }
+
+    WriteLog("Client updater: server answered {}, client compatibility {}", result_str, _settings->CompatibilityVersion);
+
     if (result == ClientConnection::ConnectResult::Success) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
         _binariesMode = false;
+        WriteLog("Client updater: client is compatible, checking resources");
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
+        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()) ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
 
         if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
             _result = UpdaterResult::PlatformUnsupported;
@@ -353,12 +389,15 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         }
 
         _binariesMode = true;
+        WriteLog("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
         _result = UpdaterResult::UpdaterOutdated;
+        WriteLog("Client updater: protocol is outdated, aborting");
         Abort(StrUpdaterOutdated);
     }
     else {
+        WriteLog("Client updater: connection failed");
         Abort(StrCantConnectToServer);
     }
 }
@@ -393,16 +432,18 @@ void Updater::Net_OnInitData()
     _fileListReceived = true;
 
     const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
+    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
 
     if (data.empty()) {
         if (_binariesMode) {
-            WriteLog("Server returned empty native update list for this target");
+            WriteLog("Client updater: native update list is empty");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
-            WriteLog("Resources sync complete");
+            WriteLog("Client updater: resource update list is empty, resources ready");
             _result = UpdaterResult::ResourcesReady;
         }
+
         return;
     }
 
@@ -424,6 +465,8 @@ void Updater::Net_OnInitData()
         if (runtime_server_prefix.empty()) {
             runtime_server_prefix = runtime_local_prefix;
         }
+
+        WriteLog("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
     }
 
     const auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
@@ -486,11 +529,13 @@ void Updater::Net_OnInitData()
                 }
 
                 _hasMatchingEntries = true;
+                WriteLog("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
             }
 
             is_client_binary = true;
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
+                WriteLog("Client updater: binary already matches {}", file_path);
                 continue;
             }
         }
@@ -528,20 +573,21 @@ void Updater::Net_OnInitData()
     reader.VerifyEnd();
 
     if (!_filesToUpdate.empty()) {
+        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
         GetNextFile();
     }
     else if (_binariesMode) {
         if (_hasMatchingEntries) {
-            WriteLog("Binary update staged for reload");
+            WriteLog("Client updater: binaries already match, requesting reload");
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            WriteLog("Server has no native update payload for this target");
+            WriteLog("Client updater: server has no matching native update payload");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
     }
     else {
-        WriteLog("Resources sync complete");
+        WriteLog("Client updater: resources ready");
         _result = UpdaterResult::ResourcesReady;
     }
 }

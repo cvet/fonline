@@ -289,6 +289,8 @@ void BackwardOStreamBuffer::WriteHeader() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    SuspendAsyncLogWriting();
+
     WriteBaseLog("\nFATAL ERROR!\n");
 
     if (!SafeWriteCrashInfo()) {

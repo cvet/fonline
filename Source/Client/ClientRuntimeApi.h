@@ -81,5 +81,6 @@ extern auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexce
 extern auto IsValidClientRuntimeExports(const ClientRuntimeExports& exports) noexcept -> bool;
 extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeMetadata& metadata, string_view compatibility_version) noexcept -> bool;
 extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string_view compatibility_version) noexcept -> bool;
+extern auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view;
 
 FO_END_NAMESPACE
