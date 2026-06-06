@@ -1,8 +1,8 @@
 # Networking
 
-This document explains the reusable engine networking layers: message buffers, debug/hash handling, legacy net commands, client/server connection abstractions, and the ordered UDP transport.
+This document explains the reusable engine networking layers: message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
 
-Use it when changing `Source/Common/NetBuffer.*`, `NetCommand.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
+Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
 
 ## Ownership model
 
@@ -14,8 +14,6 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 
 - `Source/Common/NetBuffer.h`
 - `Source/Common/NetBuffer.cpp`
-- `Source/Common/NetCommand.h`
-- `Source/Common/NetCommand.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Client/NetworkClient.h`
@@ -84,27 +82,6 @@ The engine recovers from this instead of looping on the disconnect:
 The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `HashStorage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
 
 This is a serialized contract change: `NetMessage::HashList` (server→client) and `NetMessage::UnresolvedHash` (client→server) were added, so the central compatibility marker in `Source/Common/Common.h` is bumped accordingly.
-
-## Net commands
-
-`Source/Common/NetCommand.h` contains legacy/admin-style command IDs and `PackNetCommand()`:
-
-- `CMD_EXIT`
-- `CMD_MYINFO`
-- `CMD_MOVECRIT`
-- `CMD_DISCONCRIT`
-- `CMD_TOGLOBAL`
-- `CMD_PROPERTY`
-- `CMD_ADDITEM`
-- `CMD_ADDITEM_SELF`
-- `CMD_ADDNPC`
-- `CMD_ADDLOCATION`
-- `CMD_RUNSCRIPT`
-- `CMD_REGENMAP`
-
-`PackNetCommand()` converts command text into an outgoing network buffer using a log callback and hash resolver.
-
-Treat command IDs as wire-level compatibility points. If they change, update server/client handling and tests together.
 
 ## Client connection abstraction
 
@@ -249,7 +226,6 @@ Relevant tests include:
 ## Change routing
 
 - Binary framing/encryption/hash serialization: `Source/Common/NetBuffer.*`.
-- Text/admin command packing: `Source/Common/NetCommand.*`.
 - Ordered UDP behavior: `Source/Common/NetworkUdp.*`.
 - Client transport abstraction and implementations: `Source/Client/NetworkClient*`.
 - Server transport abstraction and implementations: `Source/Server/NetworkServer*`.

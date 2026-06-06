@@ -109,7 +109,7 @@ The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read on
 `ServerEngine` declares script-facing events for lifecycle, players, critters, maps, locations, items, movement, and static-item triggers. Important event groups include:
 
 - lifecycle: `OnInit`, `OnGenerateWorld`, `OnStart`, `OnFinish`;
-- player flow: `OnPlayerAllowCommand`, `OnPlayerLogin`, `OnPlayerLogout`, `OnPlayerCritterSwitched`;
+- player flow: `OnPlayerLogin`, `OnPlayerLogout`, `OnPlayerCritterSwitched`;
 - player-controlled motion: `OnPlayerMoveCritter`, `OnPlayerDirCritter`;
 - critter motion/lifecycle: `OnCritterMoved`, `OnCritterStartMoving`, `OnCritterStopMoving`, `OnCritterTransfer`, `OnCritterInit`, `OnCritterFinish`, `OnCritterLoad`, `OnCritterUnload`;
 - map/location lifecycle: `OnLocationInit`, `OnLocationFinish`, `OnMapInit`, `OnMapFinish`;
@@ -161,7 +161,7 @@ The server then processes the player in two broad states:
 
 `Player` also tracks its controlled critter, connection, ignored property-send pair, and optional view-map context.
 
-## Network validation and inbound commands
+## Network validation and inbound messages
 
 The server receives client messages through `ServerConnection` and dispatches them from `ServerEngine` methods such as:
 
@@ -170,7 +170,6 @@ The server receives client messages through `ServerConnection` and dispatches th
 - `Process_Move()`
 - `Process_StopMove()`
 - `Process_Dir()`
-- `Process_Command()`
 - `Process_Property()`
 - `Process_RemoteCall()`
 

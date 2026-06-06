@@ -35,7 +35,6 @@
 
 #include "Client.h"
 #include "ImGuiStuff.h"
-#include "NetCommand.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1423,24 +1422,6 @@ FO_SCRIPT_API void Client_Game_Connect(ClientEngine* client)
 FO_SCRIPT_API void Client_Game_Disconnect(ClientEngine* client)
 {
     client->Disconnect();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API string Client_Game_BuiltInCommand(ClientEngine* client, string_view command)
-{
-    string error;
-
-    if (!PackNetCommand(
-            command, client->GetConnection().OutBuf.get(),
-            [&error](string_view s) {
-                error += s;
-                error += "\n";
-            },
-            client->Hashes)) {
-        return "Unknown command";
-    }
-
-    return strvex(error).trim().str();
 }
 
 ///@ ExportMethod

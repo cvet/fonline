@@ -34,7 +34,6 @@
 #include "Updater.h"
 #include "Application.h"
 #include "DefaultSprites.h"
-#include "NetCommand.h"
 
 FO_BEGIN_NAMESPACE
 

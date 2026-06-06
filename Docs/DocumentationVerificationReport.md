@@ -66,7 +66,7 @@ Scope:
 
 Source areas checked:
 
-- `Source/Common/NetBuffer.*`, `Source/Common/NetCommand.*`, and `Source/Common/NetworkUdp.*` for message framing, hash/debug-hash serialization, admin command packing, and ordered UDP behavior.
+- `Source/Common/NetBuffer.*` and `Source/Common/NetworkUdp.*` for message framing, hash/debug-hash serialization, and ordered UDP behavior.
 - `Source/Client/NetworkClient*` and `Source/Server/NetworkServer*` for transport-neutral client/server abstractions plus interthread, socket, UDP, ASIO, and WebSocket implementations.
 - `Source/Server/Server.*`, `Source/Server/EntityManager.*`, `MapManager.*`, `CritterManager.*`, `ItemManager.*`, `Player.*`, `Critter.*`, `Map.*`, `Location.*`, `Item.*`, `ClientDataValidation.*`, and `UpdaterBackend.*` for authoritative server runtime ownership, entity/session flow, validation, managers, movement, persistence handoff, and updater hosting.
 - `Source/Tests/Test_NetworkUdp.cpp`, `Source/Tests/Test_NetworkClient.cpp`, `Source/Tests/Test_NetworkServer.cpp`, `Source/Tests/Test_ServerEngine.cpp`, `Source/Tests/Test_ServerItems.cpp`, `Source/Tests/Test_ServerMapOperations.cpp`, `Source/Tests/Test_ServerAdvancedOps.cpp`, `Source/Tests/Test_ServerScriptMethods.cpp`, `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp` for the current validation surfaces named by the promoted pages.
@@ -75,7 +75,7 @@ Results:
 
 - Added a `Source paths inspected` section to `Docs/Networking.md` and replaced its generic integration-test wording with the concrete current `Source/Tests/Test_ClientServerIntegration.cpp` reference.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `NetBuffer`, `NetOutBuffer`, `NetInBuffer`, `PackNetCommand`, `NetworkClientConnection`, `NetworkServerConnection`, `NetworkServer`, `UdpOrderedChannel`, UDP packet helpers, `ServerEngine`, server init/job methods, server events, `EntityManager`, `MapManager`, `CritterManager`, `ItemManager`, `Player`, inbound `Process_*` handlers, client-data validation functions, movement helpers, and `UpdaterBackend`.
+- Symbol spot checks found the documented owners and APIs in current source, including `NetBuffer`, `NetOutBuffer`, `NetInBuffer`, `NetworkClientConnection`, `NetworkServerConnection`, `NetworkServer`, `UdpOrderedChannel`, UDP packet helpers, `ServerEngine`, server init/job methods, server events, `EntityManager`, `MapManager`, `CritterManager`, `ItemManager`, `Player`, inbound `Process_*` handlers, client-data validation functions, movement helpers, and `UpdaterBackend`.
 - Current focused test inventory observed for this slice: three `Source/Tests/Test_Network*.cpp` files, five `Source/Tests/Test_Server*.cpp` files, plus `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp`.
 - Promoted in `Docs/DocumentationBacklog.md`: `Networking.md` and `ServerRuntime.md` from `drafted` to `verified`.
 

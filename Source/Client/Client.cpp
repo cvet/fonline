@@ -37,7 +37,6 @@
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "Movement.h"
-#include "NetCommand.h"
 #include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE

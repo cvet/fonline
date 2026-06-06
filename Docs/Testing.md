@@ -132,7 +132,6 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_FogOfWar.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_NetCommand.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`

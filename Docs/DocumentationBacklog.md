@@ -43,7 +43,7 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 - `verified` — [MapsMovementGeometry.md](MapsMovementGeometry.md)
   - Verified against `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, `Source/Tools/MapBaker.*`, and map/movement tests on 2026-05-18.
 - `verified` — [Networking.md](Networking.md)
-  - Verified against `Source/Common/NetBuffer.*`, `NetCommand.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, network tests, and client/server integration tests on 2026-05-18.
+  - Verified against `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, network tests, and client/server integration tests on 2026-05-18.
 - `verified` — [Persistence.md](Persistence.md)
   - Verified against `Source/Server/DataBase.*`, `Source/Server/DataBase-*.cpp`, and `Source/Tests/Test_DataBase.cpp` on 2026-05-18.
 

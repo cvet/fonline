@@ -131,8 +131,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, FO_NULLABLE Player* /*unloginedPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
@@ -246,7 +244,6 @@ private:
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
-    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player);
     void Process_Property(Player* player);
     void Process_RemoteCall(Player* player);
 

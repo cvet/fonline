@@ -386,7 +386,6 @@ enum class NetMessage : uint8_t
     UpdateFileData = 23,
     AddCritter = 25,
     RemoveCritter = 27,
-    SendCommand = 28,
     InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,

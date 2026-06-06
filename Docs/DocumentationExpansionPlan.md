@@ -347,7 +347,6 @@ High-value source areas to document:
 
 **Research:**
 - `Source/Common/NetBuffer.*`
-- `Source/Common/NetCommand.*`
 - `Source/Common/NetworkUdp.*`
 - `Source/Client/NetworkClient*.cpp`
 - `Source/Server/NetworkServer*.cpp`

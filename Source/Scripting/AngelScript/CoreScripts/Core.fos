@@ -1,21 +1,6 @@
 namespace Core // Sort -10
 {
 
-// Internal server commands
-#define COMMAND_EXIT         (1)
-#define COMMAND_MYINFO       (2)
-#define COMMAND_CRITID       (4)
-#define COMMAND_MOVECRIT     (5)
-#define COMMAND_DISCONCRIT   (7)
-#define COMMAND_TOGLOBAL     (8)
-#define COMMAND_PROPERTY     (10)
-#define COMMAND_ADDITEM      (12)
-#define COMMAND_ADDITEM_SELF (14)
-#define COMMAND_ADDNPC       (15)
-#define COMMAND_ADDLOCATION  (16)
-#define COMMAND_RUNSCRIPT    (20)
-#define COMMAND_REGENMAP     (25)
-
 // Invariant check: when the condition is false the invariant is broken, so throw
 // with the given message (plus optional context values, forwarded to the
 // exception). Unlike a bare error throw, a `verify` documents a contract the
