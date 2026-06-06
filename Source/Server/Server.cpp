@@ -3991,7 +3991,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
         }
     };
 
-    const auto current_time = nanotime::now();
+    const auto current_time = GameTime.GetFrameTime();
     const auto max_hex_updates = moving->GetSteps().size() + 1;
 
     for (size_t i = 0; i < max_hex_updates; i++) {
@@ -4423,7 +4423,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<
 
     const auto start_hex = cr->GetHex();
 
-    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, nanotime::now(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
 void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend)
@@ -4468,7 +4468,7 @@ void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
         return;
     }
 
-    const auto cur_time = nanotime::now();
+    const auto cur_time = GameTime.GetFrameTime();
     cr->GetMoving()->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
 

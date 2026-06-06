@@ -755,7 +755,7 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
         return failed_moving.release_ownership();
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, nanotime::now(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving.release_ownership();
 }
