@@ -156,7 +156,7 @@ void HashStorage::SetResolveHashFailureHandler(ResolveHashFailureHandler handler
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::unique_lock {_resolveHashFailureHandlerLocker};
+    unique_lock locker {_resolveHashFailureHandlerLocker};
 
     _resolveHashFailureHandler = std::move(handler);
 }
@@ -165,7 +165,7 @@ void HashStorage::HandleResolveHashFailure(hstring::hash_t h) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::shared_lock {_resolveHashFailureHandlerLocker};
+    unique_lock locker {_resolveHashFailureHandlerLocker};
 
     if (!_resolveHashFailureHandler) {
         return;
