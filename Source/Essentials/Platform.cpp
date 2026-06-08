@@ -240,6 +240,40 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #endif
 }
 
+auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    PROCESS_MEMORY_COUNTERS_EX pmc {};
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc)) != 0) {
+        return pmc.PrivateUsage;
+    }
+    return 0;
+
+#elif FO_LINUX || FO_ANDROID
+    std::FILE* file = std::fopen("/proc/self/status", "r");
+    if (file == nullptr) {
+        return 0;
+    }
+
+    char line[256] {};
+    size_t result = 0;
+    while (std::fgets(line, sizeof(line), file) != nullptr) {
+        size_t value_kib = 0;
+        if (std::sscanf(line, "VmData:%zu kB", &value_kib) == 1) {
+            result = value_kib * 1024;
+            break;
+        }
+    }
+    std::fclose(file);
+    return result;
+
+#else
+    return 0;
+#endif
+}
+
 auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
 {
     FO_STACK_TRACE_ENTRY();

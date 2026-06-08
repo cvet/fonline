@@ -85,6 +85,12 @@ struct Platform
     // Other: 0
     static auto GetProcessMemoryUsage() noexcept -> size_t;
 
+    // Private/committed memory of the current process in bytes when the platform exposes it.
+    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS_EX::PrivateUsage)
+    // Linux & Android: /proc/self/status (VmData)
+    // Other: 0
+    static auto GetProcessPrivateMemoryUsage() noexcept -> size_t;
+
     // Cumulative CPU counters for the current process and each logical CPU core.
     // Percent usage is calculated by comparing two snapshots.
     // Windows: GetProcessTimes + NtQuerySystemInformation(SystemProcessorPerformanceInformation)
