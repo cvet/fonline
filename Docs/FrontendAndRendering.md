@@ -79,6 +79,7 @@ Window responsibilities include:
 
 - size, screen size, position, display rect, focus, fullscreen state;
 - minimize, blink, always-on-top, title, input grabbing, and destruction;
+- distinguishing real OS windows from **virtual** windows (`IsVirtual()`) — host-composited embedded windows used by the multi-client host, whose render size is their own per-window virtual size rather than the shared logical screen size;
 - resolving a native `WindowInternalHandle` for render backends;
 - resolving a `HeadlessWindowStub` in headless/stub contexts.
 
@@ -95,6 +96,8 @@ Input responsibilities include:
 - normalization of mouse, keyboard, wheel, touch tap, touch double-tap, touch scroll, and touch zoom events.
 
 The client turns these lower-level events into script events in `ClientEngine::ProcessInputEvent()`.
+
+SDL mouse-motion events are the primary source for `InputEvent::MouseMoveEvent`. On backends where SDL exposes global mouse coordinates (Windows, macOS, X11, and the whitelisted OS/2 drivers), `Application::BeginFrame()` also polls global mouse state while the app remains focused. If no SDL motion event arrived in that frame and the global position changed, the frontend synthesizes a mouse-move event from the global position. This keeps the game cursor and edge-scroll state updating when the OS pointer has moved outside the client window instead of freezing at the last in-window event. The same host-to-active-window translation path is used for this synthetic event, so embedded virtual clients still receive local logical coordinates through their display rect and aspect-fit mapping.
 
 ### `AppAudio` / `IAppAudio`
 
@@ -187,6 +190,41 @@ Direct3D changes are Windows-specific and should be validated through a Windows 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
 Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
+
+## Screen size, resolution, and letterboxing
+
+Two distinct sizes drive client rendering:
+
+- **Logical screen size** — `Settings.View.ScreenWidth/ScreenHeight`. This is the coordinate space the game renders in: the main render target `_rtMain` (`SpriteManager`), the projection matrix, and the GUI/ImGui display size all use it.
+- **Backbuffer (framebuffer) size** — the actual output surface: the OS window's pixel size in windowed mode, the monitor size in fullscreen, or an embedded client's virtual render texture in the multi-client host.
+
+The game always renders into `_rtMain` at the logical size; the final blit (`Renderer::SetRenderTarget(nullptr)` in the backends) then **stretches/upscales `_rtMain` with aspect ratio preserved** into the backbuffer (centered, with bars only when the aspects differ). This is deliberate: fullscreen must scale the chosen logical resolution up to the monitor without non-proportional distortion. When the two sizes are equal the blit is 1:1 with no bars. Accordingly `_rtMain` is sized to `GetScreenSize()` and is resized on the screen-size-changed event. Dispatchers are semantic: `OnScreenSizeChanged` fires only when the logical screen size changes, while `OnWindowSizeChanged` fires when the physical/host window changes.
+
+Script offscreen surfaces (`Game.ActivateOffscreenSurface` / `Game.PresentOffscreenSurface`) also operate in the logical screen coordinate space, because scripts draw them while `_rtMain` is active. Pooled offscreen render targets must therefore be created at `SpriteManager::GetScreenSize()` and resized when the logical resolution changes before they are reused; otherwise effects such as monitor-noise GUI composition can clip content that moves outside the old resolution.
+
+### Windowed
+
+Window pixel size and logical screen size are kept equal. Resizing the OS window raises `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`; while the main window is not fullscreen, that event writes `Settings.ScreenWidth/Height` from the new pixel size, fires `OnWindowSizeChanged`, and fires `OnScreenSizeChanged` only when those settings actually changed. `Game.SetResolution(w, h)` first updates the logical size through `SetScreenSize`, then resizes the OS window only when the client is neither fullscreen nor virtual; the following OS-window resize is treated as a window-size event only if it reports the same logical size, avoiding a second GUI/map screen-size refresh for the same resolution change.
+
+### Fullscreen (borderless desktop)
+
+The window uses `SDL_SetWindowFullscreenMode(window, nullptr)`, so the framebuffer is always the monitor size and cannot be resized to a sub-monitor resolution. A "resolution" in fullscreen is the **logical** render size: `Game.SetResolution` changes the logical size (`SetScreenSize`), and the backbuffer blit stretches/upscales that logical render to the monitor **with aspect ratio preserved**. Fullscreen startup, fullscreen toggles, and fullscreen `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` events update the renderer/backbuffer only; they must not overwrite `Settings.ScreenWidth/Height` or fire `OnScreenSizeChanged`, otherwise the selected logical resolution collapses to the monitor size and there is nothing left to stretch. `AppWindow::ToggleFullscreen()` marks the transition before calling SDL because SDL can queue the pixel-size event while the OS/window flags still appear to be in the previous mode. This is not a non-proportional stretch; bars are expected only when the selected logical aspect differs from the monitor aspect.
+
+SDL documents that `SDL_SetWindowSize` has no effect while a window is fullscreen or maximized, so the engine must not rely on that call changing the live fullscreen framebuffer. For native non-virtual clients, `Game.SetResolution` still records the requested size as the pending windowed size while fullscreen. When the client leaves fullscreen, `SpriteManager::ToggleFullscreen()` applies that pending size to the restored window and then re-centers the window using the accumulated resolution delta. This preserves both rules: fullscreen presents as aspect-preserving stretch to the monitor, and returning to windowed mode uses the last selected resolution as the OS window size.
+
+### Embedded clients in the multi-client host (virtual windows)
+
+`ServerApp` can host several embedded clients (the `Single`/`Tile`/`Cascade` layouts, `Spawn Client`). Each embedded client is its **own engine instance** with its **own `GlobalSettings`** and a **virtual** `AppWindow` (`IsVirtual()`). A virtual window:
+
+- keeps physical virtual-window size (`_virtualSize`, `GetSize()`) separate from logical client resolution (`_virtualScreenSize`, `GetScreenSize()`);
+- renders game content into `_rtMain` at the logical size, then aspect-fits that render target into `_virtualRenderTex` at the physical virtual-window size;
+- is composited by the host: `ServerApp` draws the client's virtual render texture aspect-fitted and centered into a per-client display rect (`SetDisplayRect`), and maps input back through that rect, `_virtualSize`, and the same aspect-fit content rect used for rendering so black bars do not skew client-local mouse coordinates.
+
+Because each embedded engine owns its settings, a resolution change must update the **owning engine's** settings, not the host's. Virtual `AppWindow::SetScreenSize`/`GetScreenSize` store the logical size in `_virtualScreenSize`, while `SpriteManager::SetScreenSize` mirrors the new size into the embedded engine's own `Settings.ScreenWidth/Height` before the screen-size-changed handlers run. `SetResolution` skips `SetWindowSize` for virtual windows, and `SetScreenSize` does not mutate `_virtualSize`, so changing a client resolution no longer resizes the virtual render texture or the host layout. A standalone client has a single engine where the engine's settings and `App->Settings` are the same instance, so the real window handles it directly.
+
+GUI screens re-center on a resolution change through the client's `OnScreenSizeChanged` handler → `Gui::Callback_OnResolutionChanged()`, which re-runs each screen's layout against the current `Settings.View.ScreenWidth/Height` (a screen with `Anchor: None` is centered against the parent/screen size). This is why both `_rtMain`/`GetScreenSize()` **and** the engine's own settings must reflect the new logical size: the render target controls what is drawn, the settings control where the GUI lays it out.
+
+Local-map viewports recenter instantly on the chosen critter when their screen size actually changes. This keeps the player anchored after resolution changes in standalone clients, fullscreen logical-resolution changes, and embedded virtual clients. `MapView` must derive that size from the logical client screen size, not from the physical OS window/backbuffer size; fullscreen scaling is handled by the final render-target blit.
 
 ## Effects and shader data
 

@@ -246,6 +246,7 @@ public:
     [[nodiscard]] auto GetPosition() const -> ipos32 override { return _state.Position; }
     [[nodiscard]] auto IsFocused() const -> bool override { return !_state.Minimized; }
     [[nodiscard]] auto IsFullscreen() const -> bool override { return _state.Fullscreen; }
+    [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return false; }
     [[nodiscard]] auto GetRender() noexcept -> IAppRender& override { return _render; }
     [[nodiscard]] auto GetInput() noexcept -> IAppInput& override { return _input; }
     [[nodiscard]] auto GetAudio() noexcept -> IAppAudio& override { return _audio; }

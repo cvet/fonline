@@ -305,7 +305,10 @@ FO_SCRIPT_API void Client_Game_DumpAtlases(ClientEngine* client)
 FO_SCRIPT_API void Client_Game_SetResolution(ClientEngine* client, int32_t width, int32_t height)
 {
     client->SprMngr.SetScreenSize({width, height});
-    client->SprMngr.SetWindowSize({width, height});
+
+    if (!client->SprMngr.GetWindow().IsVirtual()) {
+        client->SprMngr.SetWindowSize({width, height});
+    }
 }
 
 ///@ ExportMethod
@@ -681,32 +684,24 @@ FO_SCRIPT_API void Client_Game_BindFont(ClientEngine* client, FontType font, str
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ClientEngine* client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {
-    FO_STACK_TRACE_ENTRY();
-
     client->SetEffect(effectType, effectSubtype, effectPath);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffectScriptValue(ClientEngine* client, EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     client->SetEffectScriptValue(effectType, effectSubtype, valueIndex, value);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffectScriptValues(ClientEngine* client, EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, readonly_vector<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1)
 {
-    FO_STACK_TRACE_ENTRY();
-
     client->SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, const_span<float32_t> {values.data(), values.size()}, valuesOffset, valuesCount);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ClientEngine* client, EffectType effectType, int64_t effectSubtype)
 {
-    FO_STACK_TRACE_ENTRY();
-
     client->ClearEffectScriptValues(effectType, effectSubtype);
 }
 
@@ -734,8 +729,6 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ClientEngine* client, ipos32 p
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyPress(ClientEngine* client, KeyCode key, string_view text = "")
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key == KeyCode::None) {
         return;
     }
@@ -1170,9 +1163,10 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
+    const isize32 surface_size = client->SprMngr.GetScreenSize();
+
     if (client->OffscreenSurfaces.empty()) {
-        const auto window_size = client->SprMngr.GetWindow().GetSize();
-        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, window_size, false);
+        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, surface_size, false);
 
         if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");
@@ -1184,6 +1178,11 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
     raw_ptr<RenderTarget> rt = client->OffscreenSurfaces.back();
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.emplace_back(rt);
+
+    if (rt->GetSize() != surface_size) {
+        client->SprMngr.GetRtMngr().ResizeRenderTarget(rt.get(), surface_size);
+        forceClear = true;
+    }
 
     client->SprMngr.GetRtMngr().PushRenderTarget(rt.get());
 
@@ -1205,8 +1204,6 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ClientEngine* client, bo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype)
 {
-    FO_STACK_TRACE_ENTRY();
-
     raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
@@ -1216,8 +1213,6 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, ipos32 pos, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
@@ -1234,8 +1229,6 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, ipos32 pos, isize32 size, float32_t scriptValue0, float32_t scriptValue1, float32_t scriptValue2, float32_t scriptValue3)
 {
-    FO_STACK_TRACE_ENTRY();
-
     raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
     RenderEffect* effect = client->GetOffscreenEffect(effectSubtype);
 
@@ -1263,8 +1256,6 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int32_t effectSubtype, int32_t fromX, int32_t fromY, int32_t fromW, int32_t fromH, int32_t toX, int32_t toY, int32_t toW, int32_t toH)
 {
-    FO_STACK_TRACE_ENTRY();
-
     raw_ptr<RenderTarget> rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 

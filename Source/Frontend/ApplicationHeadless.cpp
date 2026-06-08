@@ -80,6 +80,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
     MainWindow._title = Settings.GameName;
     MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
+    MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     _allWindows.emplace_back(&MainWindow);
     _activeWindow = &MainWindow;
 }
@@ -145,6 +146,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindo
     auto window = unique_ptr<AppWindow> {new AppWindow {this}};
     window->_isVirtual = true;
     window->_virtualSize = size;
+    window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
     window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
 
@@ -215,6 +217,51 @@ void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
     }
 }
 
+auto Application::IsMainWindowActuallyFullscreen() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return MainWindow._windowHandle != nullptr && MainWindow.ResolveWindowStub()->Fullscreen;
+}
+
+auto Application::IsMainWindowDisplayModeSize(isize32 size) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(size);
+    return false;
+}
+
+auto Application::GetMainWindowBackbufferSize() const -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {Settings.ScreenWidth, Settings.ScreenHeight};
+}
+
+void Application::SyncMainWindowBackbufferSize()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+}
+
+auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (source_size.width <= 0 || source_size.height <= 0 || target_size.width <= 0 || target_size.height <= 0) {
+        return {};
+    }
+
+    const float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
+    const float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
+    const int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
+    const int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
+
+    return {(target_size.width - width) / 2, (target_size.height - height) / 2, width, height};
+}
+
 void Application::BeginWindowRender(AppWindow* window)
 {
     FO_STACK_TRACE_ENTRY();
@@ -233,6 +280,16 @@ void Application::BeginWindowRender(AppWindow* window)
     _previousRenderTarget = _ctx->HeadlessRenderTarget;
     Render.SetRenderTarget(window->_virtualRenderTex.get());
     _currentRenderingWindow = window;
+
+    const isize32 screen_size = window->GetScreenSize();
+
+    if (screen_size.width > 0 && screen_size.height > 0) {
+        _hostScreenWidthSaved = Settings.ScreenWidth;
+        _hostScreenHeightSaved = Settings.ScreenHeight;
+        _hostScreenSizeSaved = true;
+        Settings.ScreenWidth = screen_size.width;
+        Settings.ScreenHeight = screen_size.height;
+    }
 }
 
 void Application::EndWindowRender()
@@ -252,6 +309,12 @@ void Application::EndWindowRender()
     _currentRenderingWindow = nullptr;
 
     if (was_virtual) {
+        if (_hostScreenSizeSaved) {
+            Settings.ScreenWidth = _hostScreenWidthSaved;
+            Settings.ScreenHeight = _hostScreenHeightSaved;
+            _hostScreenSizeSaved = false;
+        }
+
         Render.SetRenderTarget(prev);
     }
 }
@@ -502,6 +565,10 @@ auto AppWindow::GetScreenSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
+    }
+
     return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
@@ -511,11 +578,18 @@ void AppWindow::SetScreenSize(isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
-        App->Settings.ScreenWidth = size.width;
-        App->Settings.ScreenHeight = size.height;
-
-        _onScreenSizeChangedDispatcher();
+    if (_isVirtual) {
+        if (size != _virtualScreenSize) {
+            _virtualScreenSize = size;
+            _onScreenSizeChangedDispatcher();
+        }
+    }
+    else {
+        if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
+            App->Settings.ScreenWidth = size.width;
+            App->Settings.ScreenHeight = size.height;
+            _onScreenSizeChangedDispatcher();
+        }
     }
 }
 
@@ -593,6 +667,8 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     auto* window = ResolveWindowStub();
     const bool changed = window->Fullscreen != enable;
     window->Fullscreen = enable;
+    _app->Settings.Fullscreen = enable;
+    _app->_mainWindowFullscreenBackbufferMode = enable;
 
     return changed;
 }

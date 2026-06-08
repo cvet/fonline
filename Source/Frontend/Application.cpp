@@ -430,28 +430,37 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
     MainWindow._title = Settings.GameName;
     MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
+    MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     _allWindows.emplace_back(&MainWindow);
     _activeWindow = &MainWindow;
 
-    // Snap the host's logical screen size to the OS window's actual pixel size so the renderer
-    // doesn't letterbox/stretch — DPI scaling or OS constraints can make the created window differ
-    // from the configured size, and resizes from this point onwards are tracked in BeginFrame.
-    if (_ctx->ActiveRendererType != RenderType::Null) {
+    if (_ctx->ActiveRendererType != RenderType::Null && !Settings.Fullscreen) {
         int32_t actual_width = Settings.ScreenWidth;
         int32_t actual_height = Settings.ScreenHeight;
         SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &actual_width, &actual_height);
+
         if (actual_width > 0 && actual_height > 0) {
             Settings.ScreenWidth = actual_width;
             Settings.ScreenHeight = actual_height;
             MainWindow._virtualSize = {actual_width, actual_height};
+            MainWindow._virtualScreenSize = {actual_width, actual_height};
         }
     }
 
     if (_ctx->ActiveRendererType != RenderType::Null && IsEnumSet(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Fullscreen) {
-        SDL_SetWindowFullscreen(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), true);
+        auto* sdl_window = static_cast<SDL_Window*>(MainWindow._windowHandle.get());
+
+        if (SDL_SetWindowFullscreen(sdl_window, true)) {
+            _mainWindowFullscreenBackbufferMode = true;
+            SDL_SyncWindow(sdl_window);
+        }
     }
 
     _ctx->ActiveRenderer->Init(Settings, MainWindow._windowHandle.get());
+
+    if (_ctx->ActiveRendererType != RenderType::Null && MainWindow.IsFullscreen()) {
+        SyncMainWindowBackbufferSize();
+    }
 
     if (IsEnumSet(flags, AppInitFlags::ClientMode) && Settings.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);
@@ -627,6 +636,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindo
     auto window = unique_ptr<AppWindow> {new AppWindow {this}};
     window->_isVirtual = true;
     window->_virtualSize = size;
+    window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
     window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
 
@@ -708,6 +718,99 @@ void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
     }
 }
 
+auto Application::IsMainWindowActuallyFullscreen() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_ctx->ActiveRendererType == RenderType::Null || !MainWindow._windowHandle) {
+        return MainWindow._windowHandle ? MainWindow.ResolveWindowStub()->Fullscreen : false;
+    }
+
+    auto* sdl_window = static_cast<SDL_Window*>(MainWindow._windowHandle.get_no_const());
+    return (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+auto Application::IsMainWindowDisplayModeSize(isize32 size) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_ctx->ActiveRendererType == RenderType::Null || !MainWindow._windowHandle || size.width <= 0 || size.height <= 0) {
+        return false;
+    }
+
+    auto* sdl_window = static_cast<SDL_Window*>(MainWindow._windowHandle.get_no_const());
+    const SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window);
+    const SDL_DisplayMode* display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
+    return display_mode != nullptr && display_mode->w == size.width && display_mode->h == size.height;
+}
+
+auto Application::GetMainWindowBackbufferSize() const -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_ctx->ActiveRendererType == RenderType::Null || !MainWindow._windowHandle) {
+        return {Settings.ScreenWidth, Settings.ScreenHeight};
+    }
+
+    auto* sdl_window = static_cast<SDL_Window*>(MainWindow._windowHandle.get_no_const());
+
+    if (Settings.Fullscreen || _mainWindowFullscreenBackbufferMode || IsMainWindowActuallyFullscreen()) {
+        int32_t window_width = Settings.ScreenWidth;
+        int32_t window_height = Settings.ScreenHeight;
+        SDL_GetWindowSizeInPixels(sdl_window, &window_width, &window_height);
+
+        if (window_width > 0 && window_height > 0 && (window_width != Settings.ScreenWidth || window_height != Settings.ScreenHeight)) {
+            return {window_width, window_height};
+        }
+
+        const SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window);
+        const SDL_DisplayMode* display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
+
+        if (display_mode != nullptr && display_mode->w > 0 && display_mode->h > 0) {
+            return {display_mode->w, display_mode->h};
+        }
+    }
+
+    int32_t width = Settings.ScreenWidth;
+    int32_t height = Settings.ScreenHeight;
+    SDL_GetWindowSizeInPixels(sdl_window, &width, &height);
+    return width > 0 && height > 0 ? isize32 {width, height} : isize32 {Settings.ScreenWidth, Settings.ScreenHeight};
+}
+
+void Application::SyncMainWindowBackbufferSize()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    const isize32 backbuffer_size = GetMainWindowBackbufferSize();
+
+    if (backbuffer_size.width > 0 && backbuffer_size.height > 0) {
+        _ctx->ActiveRenderer->OnResizeWindow(backbuffer_size);
+    }
+}
+
+auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (source_size.width <= 0 || source_size.height <= 0 || target_size.width <= 0 || target_size.height <= 0) {
+        return {};
+    }
+
+    const float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
+    const float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
+    const int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
+    const int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
+
+    return {
+        (target_size.width - width) / 2,
+        (target_size.height - height) / 2,
+        width,
+        height,
+    };
+}
+
 void Application::BeginWindowRender(AppWindow* window)
 {
     FO_STACK_TRACE_ENTRY();
@@ -729,15 +832,14 @@ void Application::BeginWindowRender(AppWindow* window)
 
     Render.SetRenderTarget(window->_virtualRenderTex.get());
 
-    // While client code runs we present its own viewport size as the engine's "screen size" —
-    // otherwise OS-window resizes would leak into Settings.ScreenWidth/Height and the client UI
-    // would relayout against the host frame size instead of staying tied to its virtual viewport.
-    if (window->_virtualSize.width > 0 && window->_virtualSize.height > 0) {
+    const isize32 screen_size = window->GetScreenSize();
+
+    if (screen_size.width > 0 && screen_size.height > 0) {
         _hostScreenWidthSaved = Settings.ScreenWidth;
         _hostScreenHeightSaved = Settings.ScreenHeight;
         _hostScreenSizeSaved = true;
-        Settings.ScreenWidth = window->_virtualSize.width;
-        Settings.ScreenHeight = window->_virtualSize.height;
+        Settings.ScreenWidth = screen_size.width;
+        Settings.ScreenHeight = screen_size.height;
     }
 
     Render.ClearRenderTarget(ucolor {0, 0, 0, 255}, true, false);
@@ -775,9 +877,6 @@ auto Application::TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Inside BeginWindowRender/EndWindowRender, callers (e.g. clients polling input.GetMousePosition()
-    // during their own MainLoop) want the position in *their own* viewport's coords — not the active
-    // tab's. Falling back to _activeWindow is only correct outside that scope (BeginFrame event prep).
     auto* window = _currentRenderingWindow.get();
 
     if (window == nullptr) {
@@ -794,8 +893,17 @@ auto Application::TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32
         return pos;
     }
 
-    const auto local_x = iround<int32_t>(numeric_cast<float32_t>(pos.x - rect.x) * numeric_cast<float32_t>(window->_virtualSize.width) / numeric_cast<float32_t>(rect.width));
-    const auto local_y = iround<int32_t>(numeric_cast<float32_t>(pos.y - rect.y) * numeric_cast<float32_t>(window->_virtualSize.height) / numeric_cast<float32_t>(rect.height));
+    const isize32 screen_size = window->GetScreenSize();
+    const irect32 content_rect = MakeAspectFitRect(screen_size, window->_virtualSize);
+
+    if (content_rect.width <= 0 || content_rect.height <= 0) {
+        return pos;
+    }
+
+    const int32_t virtual_x = iround<int32_t>(numeric_cast<float32_t>(pos.x - rect.x) * numeric_cast<float32_t>(window->_virtualSize.width) / numeric_cast<float32_t>(rect.width));
+    const int32_t virtual_y = iround<int32_t>(numeric_cast<float32_t>(pos.y - rect.y) * numeric_cast<float32_t>(window->_virtualSize.height) / numeric_cast<float32_t>(rect.height));
+    const int32_t local_x = iround<int32_t>(numeric_cast<float32_t>(virtual_x - content_rect.x) * numeric_cast<float32_t>(screen_size.width) / numeric_cast<float32_t>(content_rect.width));
+    const int32_t local_y = iround<int32_t>(numeric_cast<float32_t>(virtual_y - content_rect.y) * numeric_cast<float32_t>(screen_size.height) / numeric_cast<float32_t>(content_rect.height));
 
     return {local_x, local_y};
 }
@@ -804,7 +912,11 @@ auto Application::TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* window = _activeWindow.get();
+    auto* window = _currentRenderingWindow.get();
+
+    if (window == nullptr) {
+        window = _activeWindow.get();
+    }
 
     if (window == nullptr || !window->_isVirtual) {
         return pos;
@@ -816,8 +928,17 @@ auto Application::TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32
         return pos;
     }
 
-    const auto host_x = rect.x + iround<int32_t>(numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(rect.width) / numeric_cast<float32_t>(window->_virtualSize.width));
-    const auto host_y = rect.y + iround<int32_t>(numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(rect.height) / numeric_cast<float32_t>(window->_virtualSize.height));
+    const isize32 screen_size = window->GetScreenSize();
+    const irect32 content_rect = MakeAspectFitRect(screen_size, window->_virtualSize);
+
+    if (content_rect.width <= 0 || content_rect.height <= 0) {
+        return pos;
+    }
+
+    const int32_t virtual_x = content_rect.x + iround<int32_t>(numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(content_rect.width) / numeric_cast<float32_t>(screen_size.width));
+    const int32_t virtual_y = content_rect.y + iround<int32_t>(numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(content_rect.height) / numeric_cast<float32_t>(screen_size.height));
+    const int32_t host_x = rect.x + iround<int32_t>(numeric_cast<float32_t>(virtual_x) * numeric_cast<float32_t>(rect.width) / numeric_cast<float32_t>(window->_virtualSize.width));
+    const int32_t host_y = rect.y + iround<int32_t>(numeric_cast<float32_t>(virtual_y) * numeric_cast<float32_t>(rect.height) / numeric_cast<float32_t>(window->_virtualSize.height));
 
     return {host_x, host_y};
 }
@@ -838,8 +959,15 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
         return delta;
     }
 
-    const auto local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(window->_virtualSize.width) / numeric_cast<float32_t>(rect.width));
-    const auto local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(window->_virtualSize.height) / numeric_cast<float32_t>(rect.height));
+    const isize32 screen_size = window->GetScreenSize();
+    const irect32 content_rect = MakeAspectFitRect(screen_size, window->_virtualSize);
+
+    if (content_rect.width <= 0 || content_rect.height <= 0) {
+        return delta;
+    }
+
+    const int32_t local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(window->_virtualSize.width) * numeric_cast<float32_t>(screen_size.width) / (numeric_cast<float32_t>(rect.width) * numeric_cast<float32_t>(content_rect.width)));
+    const int32_t local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(window->_virtualSize.height) * numeric_cast<float32_t>(screen_size.height) / (numeric_cast<float32_t>(rect.height) * numeric_cast<float32_t>(content_rect.height)));
 
     return {local_dx, local_dy};
 }
@@ -1382,6 +1510,7 @@ void Application::BeginFrame()
     SDL_PumpEvents();
 
     SDL_Event sdl_event;
+    bool mouse_motion_event_seen = false;
 
     while (SDL_PollEvent(&sdl_event)) {
         switch (sdl_event.type) {
@@ -1404,6 +1533,9 @@ void Application::BeginFrame()
             ev.MouseY = local_pos.y;
             ev.DeltaX = local_delta.x;
             ev.DeltaY = local_delta.y;
+            mouse_motion_event_seen = true;
+            _lastMouseMoveHostPos = screen_pos;
+            _lastMouseMoveHostPosValid = true;
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(screen_pos)) {
                 _ctx->EventsQueue->emplace_back(ev);
@@ -1793,6 +1925,7 @@ void Application::BeginFrame()
             Input._shiftDown = false;
             Input._ctrlDown = false;
             Input._altDown = false;
+            _lastMouseMoveHostPosValid = false;
             ResetTouchGestures();
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
@@ -1804,13 +1937,20 @@ void Application::BeginFrame()
             SDL_GetWindowSizeInPixels(resized_window, &width, &height);
 
             const bool is_main = (resized_window == static_cast<SDL_Window*>(MainWindow._windowHandle.get()));
+            const isize32 event_size {width, height};
+            const bool fullscreen_backbuffer_resize = is_main && (Settings.Fullscreen || _mainWindowFullscreenBackbufferMode || MainWindow.IsFullscreen() || _mainWindowFullscreenTransition || IsMainWindowDisplayModeSize(event_size));
+            bool screen_size_changed = false;
+            const bool update_logical_size = is_main && !fullscreen_backbuffer_resize;
 
-            if (is_main && (Settings.ScreenWidth != width || Settings.ScreenHeight != height)) {
+            if (update_logical_size && (Settings.ScreenWidth != width || Settings.ScreenHeight != height)) {
                 const isize32 old_host {Settings.ScreenWidth, Settings.ScreenHeight};
-                const isize32 new_host {width, height};
+                const isize32 new_host = event_size;
 
                 Settings.ScreenWidth = width;
                 Settings.ScreenHeight = height;
+                MainWindow._virtualSize = new_host;
+                MainWindow._virtualScreenSize = new_host;
+                screen_size_changed = true;
 
                 if (old_host.width > 0 && old_host.height > 0) {
                     const auto scale = [](int32_t value, int32_t old_dim, int32_t new_dim) { //
@@ -1832,12 +1972,19 @@ void Application::BeginFrame()
                 }
             }
 
-            _ctx->ActiveRenderer->OnResizeWindow({width, height});
+            const isize32 backbuffer_size = event_size;
+
+            if (backbuffer_size.width > 0 && backbuffer_size.height > 0) {
+                _ctx->ActiveRenderer->OnResizeWindow(backbuffer_size);
+            }
 
             for (auto& window : copy(_allWindows)) {
                 if (static_cast<SDL_Window*>(window->_windowHandle.get()) == resized_window) {
                     window->_onWindowSizeChangedDispatcher();
-                    window->_onScreenSizeChangedDispatcher();
+
+                    if (screen_size_changed || !is_main) {
+                        window->_onScreenSizeChangedDispatcher();
+                    }
                 }
             }
         } break;
@@ -1858,6 +2005,10 @@ void Application::BeginFrame()
         default:
             break;
         }
+    }
+
+    if (_mainWindowFullscreenTransition && IsMainWindowActuallyFullscreen() == Settings.Fullscreen) {
+        _mainWindowFullscreenTransition = false;
     }
 
     FlushPendingTouchTap();
@@ -1906,6 +2057,27 @@ void Application::BeginFrame()
                     SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle.get()), &window_x, &window_y);
 
                     const auto screen_pos = WindowPosToScreenPos(_ctx->ActiveRenderer.get(), {Settings.ScreenWidth, Settings.ScreenHeight}, {iround<int32_t>(mouse_x_global) - window_x, iround<int32_t>(mouse_y_global) - window_y});
+                    if (!mouse_motion_event_seen && (!_lastMouseMoveHostPosValid || screen_pos != _lastMouseMoveHostPos)) {
+                        InputEvent::MouseMoveEvent ev;
+                        const ipos32 host_delta = _lastMouseMoveHostPosValid ? ipos32 {screen_pos.x - _lastMouseMoveHostPos.x, screen_pos.y - _lastMouseMoveHostPos.y} : ipos32 {};
+
+                        switch_active_to_hovered_child(screen_pos);
+
+                        const ipos32 local_pos = TranslateHostPosToActiveWindow(screen_pos);
+                        const ipos32 local_delta = ScaleHostDeltaToActiveWindow(host_delta);
+
+                        ev.MouseX = local_pos.x;
+                        ev.MouseY = local_pos.y;
+                        ev.DeltaX = local_delta.x;
+                        ev.DeltaY = local_delta.y;
+
+                        if (!imgui_capture_mouse || host_pos_inside_active_virtual(screen_pos)) {
+                            _ctx->EventsQueue->emplace_back(ev);
+                        }
+                    }
+
+                    _lastMouseMoveHostPos = screen_pos;
+                    _lastMouseMoveHostPosValid = true;
                     io.AddMousePosEvent(numeric_cast<float32_t>(screen_pos.x), numeric_cast<float32_t>(screen_pos.y));
                 }
             }
@@ -2104,6 +2276,10 @@ auto AppWindow::GetScreenSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_isVirtual) {
+        return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
+    }
+
     return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
 }
 
@@ -2111,13 +2287,19 @@ void AppWindow::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
-        App->Settings.ScreenWidth = size.width;
-        App->Settings.ScreenHeight = size.height;
-
-        WebRelated::ApplyCanvasLayout(App->Settings);
-
-        _onScreenSizeChangedDispatcher();
+    if (_isVirtual) {
+        if (size != _virtualScreenSize) {
+            _virtualScreenSize = size;
+            _onScreenSizeChangedDispatcher();
+        }
+    }
+    else {
+        if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
+            App->Settings.ScreenWidth = size.width;
+            App->Settings.ScreenHeight = size.height;
+            WebRelated::ApplyCanvasLayout(App->Settings);
+            _onScreenSizeChangedDispatcher();
+        }
     }
 }
 
@@ -2201,6 +2383,10 @@ auto AppWindow::IsFullscreen() const -> bool
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
+        if (this == &_app->MainWindow) {
+            return _app->_mainWindowFullscreenTransition ? _app->Settings.Fullscreen : _app->IsMainWindowActuallyFullscreen();
+        }
+
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(ResolveWindowHandle())) & SDL_WINDOW_FULLSCREEN) != 0;
     }
 
@@ -2221,23 +2407,62 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
         auto* window = ResolveWindowStub();
         const bool changed = window->Fullscreen != enable;
         window->Fullscreen = enable;
+        _app->Settings.Fullscreen = enable;
         return changed;
     }
 
-    const auto is_fullscreen = IsFullscreen();
+    if (this == &_app->MainWindow && _app->_mainWindowFullscreenTransition) {
+        return false;
+    }
+
+    const bool is_fullscreen = IsFullscreen();
     auto* sdl_window = static_cast<SDL_Window*>(ResolveWindowHandle());
 
-    if (!is_fullscreen && enable) {
-        if (SDL_SetWindowFullscreen(sdl_window, true)) {
-            SDL_SyncWindow(sdl_window);
-            return IsFullscreen();
+    if (is_fullscreen == enable) {
+        _app->Settings.Fullscreen = is_fullscreen;
+
+        if (this == &_app->MainWindow) {
+            _app->_mainWindowFullscreenBackbufferMode = enable;
         }
+
+        return false;
+    }
+
+    if (!is_fullscreen && enable) {
+        const bool previous_setting = _app->Settings.Fullscreen;
+        const bool previous_backbuffer_mode = _app->_mainWindowFullscreenBackbufferMode;
+        _app->_mainWindowFullscreenTransition = true;
+        _app->Settings.Fullscreen = true;
+        _app->_mainWindowFullscreenBackbufferMode = true;
+
+        const bool result = SDL_SetWindowFullscreen(sdl_window, true);
+
+        if (result) {
+            SDL_SyncWindow(sdl_window);
+            _app->SyncMainWindowBackbufferSize();
+            return true;
+        }
+
+        _app->Settings.Fullscreen = previous_setting;
+        _app->_mainWindowFullscreenBackbufferMode = previous_backbuffer_mode;
+        _app->_mainWindowFullscreenTransition = false;
     }
     else if (is_fullscreen && !enable) {
-        if (SDL_SetWindowFullscreen(sdl_window, false)) {
+        const bool previous_setting = _app->Settings.Fullscreen;
+        _app->_mainWindowFullscreenTransition = true;
+        _app->Settings.Fullscreen = false;
+
+        const bool result = SDL_SetWindowFullscreen(sdl_window, false);
+
+        if (result) {
             SDL_SyncWindow(sdl_window);
-            return !IsFullscreen();
+            _app->_mainWindowFullscreenBackbufferMode = false;
+            _app->SyncMainWindowBackbufferSize();
+            return true;
         }
+
+        _app->Settings.Fullscreen = previous_setting;
+        _app->_mainWindowFullscreenTransition = false;
     }
 
     return false;
@@ -2466,7 +2691,19 @@ auto AppInput::GetMousePosition() const -> ipos32
     float32_t x = 100;
     float32_t y = 100;
 
-    if (_app->_ctx->ActiveRendererType != RenderType::Null) {
+    if (_app->_ctx->ActiveRendererType != RenderType::Null && _app->_mouseCanUseGlobalState && _app->MainWindow.IsFocused()) {
+        float32_t mouse_x_global;
+        float32_t mouse_y_global;
+        SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
+
+        int32_t window_x;
+        int32_t window_y;
+        SDL_GetWindowPosition(static_cast<SDL_Window*>(_app->MainWindow._windowHandle.get_no_const()), &window_x, &window_y);
+
+        x = mouse_x_global - numeric_cast<float32_t>(window_x);
+        y = mouse_y_global - numeric_cast<float32_t>(window_y);
+    }
+    else if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
 

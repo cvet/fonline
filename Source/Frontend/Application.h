@@ -395,6 +395,7 @@ public:
     [[nodiscard]] virtual auto GetPosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto IsFocused() const -> bool = 0;
     [[nodiscard]] virtual auto IsFullscreen() const -> bool = 0;
+    [[nodiscard]] virtual auto IsVirtual() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto GetRender() noexcept -> IAppRender& = 0;
     [[nodiscard]] virtual auto GetInput() noexcept -> IAppInput& = 0;
     [[nodiscard]] virtual auto GetAudio() noexcept -> IAppAudio& = 0;
@@ -441,7 +442,7 @@ public:
     [[nodiscard]] auto GetOnScreenSizeChanged() noexcept -> EventObserver<>& override { return OnScreenSizeChanged; }
     [[nodiscard]] auto GetOnLowMemory() noexcept -> EventObserver<>& override;
     [[nodiscard]] auto GetWindowHandleForInput() const -> WindowInternalHandle* override;
-    [[nodiscard]] auto IsVirtual() const noexcept -> bool { return _isVirtual; }
+    [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return _isVirtual; }
     [[nodiscard]] auto GetTitle() const noexcept -> const string& { return _title; }
     [[nodiscard]] auto GetRenderTexture() noexcept -> RenderTexture* { return _virtualRenderTex.get(); }
     // The screen rect (in host ImGui display coords) where this window's render texture is drawn by
@@ -480,6 +481,7 @@ private:
     bool _isVirtual {};
     string _title {};
     isize32 _virtualSize {};
+    isize32 _virtualScreenSize {};
     ipos32 _virtualPosition {};
     isize32 _virtualLayoutSize {};
     irect32 _displayRect {};
@@ -688,6 +690,11 @@ private:
 
     auto CreateInternalWindow(isize32 size) -> WindowInternalHandle*;
     void EnsureVirtualRenderTexture(AppWindow* window, isize32 size);
+    [[nodiscard]] auto IsMainWindowActuallyFullscreen() const -> bool;
+    [[nodiscard]] auto IsMainWindowDisplayModeSize(isize32 size) const -> bool;
+    [[nodiscard]] auto GetMainWindowBackbufferSize() const -> isize32;
+    void SyncMainWindowBackbufferSize();
+    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
     auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
     auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
     auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;
@@ -715,6 +722,8 @@ private:
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};
     int32_t _mouseButtonsDown {};
+    ipos32 _lastMouseMoveHostPos {};
+    bool _lastMouseMoveHostPosValid {};
     TouchPointState _touchPrimary {};
     TouchPointState _touchSecondary {};
     PendingTouchTapState _pendingTouchTap {};
@@ -735,6 +744,8 @@ private:
     int32_t _hostScreenWidthSaved {};
     int32_t _hostScreenHeightSaved {};
     bool _hostScreenSizeSaved {};
+    bool _mainWindowFullscreenTransition {};
+    bool _mainWindowFullscreenBackbufferMode {};
     std::atomic_bool _quit {};
     std::atomic_bool _quitSuccess {true};
     std::condition_variable_any _quitEvent {};

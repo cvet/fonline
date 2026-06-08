@@ -96,18 +96,18 @@ SpriteManager::SpriteManager(RenderSettings& settings, IAppWindow& window, FileS
     _spriteEffectDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _spriteEffectDrawBuf->IndCount = 6;
 
-    const auto window_size = _window->GetSize();
+    const isize32 screen_size = _window->GetScreenSize();
 
 #if !FO_DIRECT_SPRITES_DRAW
-    _rtMain = _rtMngr.CreateRenderTarget(false, window_size, true);
+    _rtMain = _rtMngr.CreateRenderTarget(false, screen_size, true);
 #endif
 
     _eventUnsubscriber += _window->GetOnLowMemory() += [this]() FO_DEFERRED { CleanupSpriteCache(); };
     _eventUnsubscriber += _window->GetOnScreenSizeChanged() += [this]() FO_DEFERRED {
-        const auto new_window_size = _window->GetSize();
+        const isize32 new_screen_size = _window->GetScreenSize();
 
         if (_rtMain) {
-            _rtMngr.ResizeRenderTarget(_rtMain.get(), new_window_size);
+            _rtMngr.ResizeRenderTarget(_rtMain.get(), new_screen_size);
         }
     };
 }
@@ -132,6 +132,12 @@ void SpriteManager::SetWindowSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (IsFullscreen() && !_window->IsVirtual()) {
+        _pendingWindowedSize = size;
+        return;
+    }
+
+    _pendingWindowedSize.reset();
     _window->SetSize(size);
 }
 
@@ -146,17 +152,25 @@ void SpriteManager::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto diff_w = size.width - _settings->ScreenWidth;
-    const auto diff_h = size.height - _settings->ScreenHeight;
+    const isize32 current_screen_size = GetScreenSize();
+    const int32_t diff_w = size.width - current_screen_size.width;
+    const int32_t diff_h = size.height - current_screen_size.height;
 
-    if (!IsFullscreen()) {
-        const auto window_pos = _window->GetPosition();
+    if (!_window->IsVirtual()) {
+        if (!IsFullscreen()) {
+            const ipos32 window_pos = _window->GetPosition();
 
-        _window->SetPosition({window_pos.x - diff_w / 2, window_pos.y - diff_h / 2});
+            _window->SetPosition({window_pos.x - diff_w / 2, window_pos.y - diff_h / 2});
+        }
+        else {
+            _windowSizeDiff.x += diff_w / 2;
+            _windowSizeDiff.y += diff_h / 2;
+        }
     }
-    else {
-        _windowSizeDiff.x += diff_w / 2;
-        _windowSizeDiff.y += diff_h / 2;
+
+    if (_window->IsVirtual()) {
+        _settings->ScreenWidth = size.width;
+        _settings->ScreenHeight = size.height;
     }
 
     _window->SetScreenSize(size);
@@ -171,8 +185,13 @@ void SpriteManager::ToggleFullscreen()
     }
     else {
         if (_window->ToggleFullscreen(false)) {
+            if (_pendingWindowedSize.has_value()) {
+                _window->SetSize(_pendingWindowedSize.value());
+                _pendingWindowedSize.reset();
+            }
+
             if (_windowSizeDiff != ipos32 {}) {
-                const auto window_pos = _window->GetPosition();
+                const ipos32 window_pos = _window->GetPosition();
 
                 _window->SetPosition({window_pos.x - _windowSizeDiff.x, window_pos.y - _windowSizeDiff.y});
                 _windowSizeDiff = {};
@@ -282,11 +301,39 @@ void SpriteManager::EndScene()
     if (_rtMain) {
         FO_RUNTIME_ASSERT(_rtMain == _rtMngr.GetCurrentRenderTarget());
         _rtMngr.PopRenderTarget();
-        DrawRenderTarget(_rtMain.get(), false);
+
+        if (_window->IsVirtual()) {
+            const irect32 region_to = MakeAspectFitRect(_rtMain->GetTexture()->Size, _window->GetSize());
+            DrawRenderTarget(_rtMain.get(), false, nullptr, &region_to);
+        }
+        else {
+            DrawRenderTarget(_rtMain.get(), false);
+        }
     }
 
     FO_RUNTIME_ASSERT(_rtMngr.GetRenderTargetStack().empty());
     FO_RUNTIME_ASSERT(_scissorStack.empty());
+}
+
+auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (source_size.width <= 0 || source_size.height <= 0 || target_size.width <= 0 || target_size.height <= 0) {
+        return {};
+    }
+
+    const float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
+    const float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
+    const int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
+    const int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
+
+    return {
+        (target_size.width - width) / 2,
+        (target_size.height - height) / 2,
+        width,
+        height,
+    };
 }
 
 void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const frect32* region_from, const irect32* region_to, RenderEffect* custom_effect)

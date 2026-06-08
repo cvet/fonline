@@ -232,6 +232,7 @@ private:
 
     [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
     [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
+    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void RefreshScissor();
     void EnableScissor();
@@ -270,6 +271,7 @@ private:
     EggSlot _eggSlots[EGG_SLOT_COUNT] {};
 
     ipos32 _windowSizeDiff {};
+    optional<isize32> _pendingWindowedSize {};
 
     EventUnsubscriber _eventUnsubscriber {};
 };

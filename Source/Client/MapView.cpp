@@ -3927,6 +3927,14 @@ void MapView::SetScreenSize(isize32 size)
         rt_mngr.ResizeRenderTarget(_rtLight.get(), map_rt_size);
     }
 
+    if (!_viewField.empty()) {
+        auto* chosen = _engine->GetMapChosen();
+
+        if (chosen != nullptr && chosen->GetMap() == this) {
+            InstantScrollTo(chosen->GetHex());
+        }
+    }
+
     RebuildMapNow();
 }
 
