@@ -591,6 +591,12 @@ void MapManager::DestroyLocation(Location* loc)
         return;
     }
 
+    for (auto* map : loc->GetMaps()) {
+        ValidateEntityAccess(map);
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_RUNTIME_ASSERT(!map->IsDestroying());
+    }
+
     // Destroy location in couple with maps
     loc->MarkAsDestroying();
 
@@ -600,10 +606,14 @@ void MapManager::DestroyLocation(Location* loc)
 
     ValidateEntityAccess(loc);
     _engine->OnLocationFinish.Fire(loc);
+    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
 
     for (auto* map : loc->GetMaps()) {
         ValidateEntityAccess(map);
         _engine->OnMapFinish.Fire(map);
+        FO_RUNTIME_ASSERT(!loc->IsDestroyed());
+        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_RUNTIME_ASSERT(map->GetLocation() == loc);
     }
 
     for (auto* map : loc->GetMaps()) {
@@ -636,6 +646,8 @@ void MapManager::DestroyMap(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     ValidateEntityAccess(map);
+    refcount_ptr map_holder = map;
+    ignore_unused(map_holder);
 
     if (map->IsDestroying() || map->IsDestroyed()) {
         return;
@@ -644,11 +656,15 @@ void MapManager::DestroyMap(Map* map)
     map->MarkAsDestroying();
     ValidateEntityAccess(map);
     _engine->OnMapFinish.Fire(map);
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
 
     refcount_ptr loc = map->GetLocation();
     ValidateEntityAccess(loc.get());
     ValidateEntityAccess(map);
     loc->OnMapRemoved.Fire(map);
+    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
+    FO_RUNTIME_ASSERT(map->GetLocation() == loc.get());
 
     DestroyMapInternal(map);
 }
@@ -971,10 +987,28 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             ValidateEntityAccess(map);
             ValidateEntityAccess(cr);
             _engine->OnMapCritterIn.Fire(map, cr);
+
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return;
+            }
+            if (cr->GetMapId() != map->GetId()) {
+                return;
+            }
+
+            FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
         }
         else {
             ValidateEntityAccess(cr);
             _engine->OnGlobalMapCritterIn.Fire(cr);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
+            if (cr->GetMapId()) {
+                return;
+            }
+
+            FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
         }
 
         ProcessVisibleCritters(cr);
@@ -989,6 +1023,17 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
 
         if (cr->IsDestroyed()) {
             return;
+        }
+
+        if (map != nullptr) {
+            if (map->IsDestroyed() || cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
+                return;
+            }
+        }
+        else {
+            if (cr->GetMapId()) {
+                return;
+            }
         }
 
         cr->Send_PlaceToGameComplete();
@@ -1016,6 +1061,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
         }
     }
 
+    // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
     ValidateEntityAccess(cr);
     ValidateEntityAccess(prev_map);
     _engine->OnCritterTransfer.Fire(cr, prev_map);
@@ -1099,25 +1145,41 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     ValidateEntityAccess(map);
 
     FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    refcount_ptr cr_holder = cr;
+    ignore_unused(cr_holder);
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        refcount_ptr map_holder = map;
+        ignore_unused(map_holder);
         ValidateEntityAccess(map);
         ValidateEntityAccess(cr);
         _engine->OnMapCritterOut.Fire(map, cr);
-        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
+            return;
+        }
+
         FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
 
         for (auto* other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
+            if (other->IsDestroyed()) {
+                continue;
+            }
+
             ValidateEntityAccess(other);
             ValidateEntityAccess(cr);
             other->OnCritterDisappeared.Fire(cr);
-            FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return;
+            }
+
             FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+            FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
         }
 
         cr->ClearVisibleEnitites();
@@ -1143,8 +1205,13 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         FO_RUNTIME_ASSERT(!cr->GetMapId());
         ValidateEntityAccess(cr);
         _engine->OnGlobalMapCritterOut.Fire(cr);
-        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
         FO_RUNTIME_ASSERT(!cr->GetMapId());
+        FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
 
         cr->SetGlobalMapTripId({});
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -1193,17 +1260,32 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     ValidateEntityAccess(map);
     ValidateEntityAccess(cr);
     ValidateEntityAccess(target);
+    refcount_ptr map_holder = map;
+    refcount_ptr cr_holder = cr;
+    refcount_ptr target_holder = target;
+    ignore_unused(map_holder);
+    ignore_unused(cr_holder);
+    ignore_unused(target_holder);
+    const auto is_look_context_changed = [map, cr, target]() noexcept -> bool {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (map->IsDestroyed() || cr->IsDestroyed() || target->IsDestroyed()) {
+            return true;
+        }
+        if (cr->GetMapId() != map->GetId()) {
+            return true;
+        }
+        if (target->GetMapId() != map->GetId()) {
+            return true;
+        }
+
+        return false;
+    };
 
     if (cr == target) {
         return;
     }
-    if (map->IsDestroyed() || cr->IsDestroyed() || target->IsDestroyed()) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId()) {
-        return;
-    }
-    if (target->GetMapId() != map->GetId()) {
+    if (is_look_context_changed()) {
         return;
     }
 
@@ -1230,6 +1312,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
             ValidateEntityAccess(cr);
             ValidateEntityAccess(target);
             cr->OnCritterAppeared.Fire(target);
+
+            if (is_look_context_changed()) {
+                return;
+            }
         }
         else {
             const auto prev_mode = cr->GetVisibleCritterMode(target->GetId());
@@ -1240,6 +1326,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterVisibilityModeChanged.Fire(target, vis_mode);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
     }
@@ -1249,6 +1339,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
             ValidateEntityAccess(cr);
             ValidateEntityAccess(target);
             cr->OnCritterDisappeared.Fire(target);
+
+            if (is_look_context_changed()) {
+                return;
+            }
         }
     }
 
@@ -1263,6 +1357,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist1.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
         else {
@@ -1270,6 +1368,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist1.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
     }
@@ -1280,6 +1382,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist2.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
         else {
@@ -1287,6 +1393,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist2.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
     }
@@ -1297,6 +1407,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterAppearedDist3.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
         else {
@@ -1304,6 +1418,10 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
                 cr->OnCritterDisappearedDist3.Fire(target);
+
+                if (is_look_context_changed()) {
+                    return;
+                }
             }
         }
     }

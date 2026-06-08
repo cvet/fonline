@@ -48,6 +48,8 @@ class EntityManager;
 class MapManager;
 class CritterManager;
 
+FO_DECLARE_EXCEPTION(ItemManagerException);
+
 class ItemManager final
 {
 public:
@@ -74,6 +76,7 @@ public:
 private:
     auto GetItemHolder(Item* item) -> Entity*;
     void RemoveItemHolder(Item* item, Entity* holder);
+    void RestoreSplitItem(Item* item, Item* splitted_item);
 
     raw_ptr<ServerEngine> _engine;
 };

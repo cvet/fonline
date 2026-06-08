@@ -53,7 +53,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
     ValidateEntityAccess(item);
 
     if (item->GetOwnership() == ItemOwnership::Nowhere) {
-        throw GenericException("Item does not have a holder", item->GetId(), item->GetProtoId());
+        throw ItemManagerException("Item does not have a holder", item->GetId(), item->GetProtoId());
     }
 
     auto holder = item->GetParent();
@@ -78,7 +78,7 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
             _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
         else {
-            throw GenericException("Item owner (critter inventory) not found");
+            throw ItemManagerException("Item owner (critter inventory) not found");
         }
     } break;
     case ItemOwnership::MapHex: {
@@ -86,7 +86,7 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
             map->RemoveItem(item->GetId());
         }
         else {
-            throw GenericException("Item owner (map) not found");
+            throw ItemManagerException("Item owner (map) not found");
         }
     } break;
     case ItemOwnership::ItemContainer: {
@@ -94,7 +94,7 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
             cont->RemoveItemFromContainer(item);
         }
         else {
-            throw GenericException("Item owner (container) not found");
+            throw ItemManagerException("Item owner (container) not found");
         }
     } break;
     default:
@@ -113,7 +113,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
     const auto* proto = _engine->GetProtoItem(pid);
 
     if (proto == nullptr) {
-        throw GenericException("Item proto not found", pid);
+        throw ItemManagerException("Item proto not found", pid);
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
@@ -144,7 +144,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
     _engine->EntityMngr.CallInit(item.get(), true);
 
     if (item->IsDestroyed()) {
-        throw GenericException("Item destroyed during init", pid);
+        throw ItemManagerException("Item destroyed during init", pid);
     }
 
     FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
@@ -156,19 +156,34 @@ auto ItemManager::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(map);
+    refcount_ptr map_holder = map;
+    ignore_unused(map_holder);
+
     if (count <= 0) {
-        throw GenericException("Invalid items cound");
+        throw ItemManagerException("Invalid items cound");
     }
 
     const auto* proto = _engine->GetProtoItem(pid);
 
     if (proto == nullptr) {
-        throw GenericException("Item proto not found", pid);
+        throw ItemManagerException("Item proto not found", pid);
     }
 
     const auto add_item = [&]() -> Item* {
         auto* item = CreateItem(pid, proto->GetStackable() ? count : 1, props);
+        refcount_ptr item_holder = item;
+        ignore_unused(item_holder);
+
         map->AddItem(item, hex, nullptr);
+
+        if (item->IsDestroyed() || map->IsDestroyed()) {
+            throw ItemManagerException("Map item add event destroyed the committed entity", pid);
+        }
+        if (item->GetOwnership() != ItemOwnership::MapHex || item->GetMapId() != map->GetId() || item->GetHex() != hex || map->GetItem(item->GetId()) != item) {
+            throw ItemManagerException("Map item add event moved the committed item", pid);
+        }
+
         return item;
     };
 
@@ -204,6 +219,7 @@ void ItemManager::DestroyItem(Item* item)
     // Finish events
     ValidateEntityAccess(item);
     _engine->OnItemFinish.Fire(item);
+    FO_RUNTIME_ASSERT(!item->IsDestroyed());
 
     // Tear off from environment
     for (InfinityLoopDetector detector; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities(); detector.AddLoop()) {
@@ -256,6 +272,20 @@ auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
     return new_item;
 }
 
+void ItemManager::RestoreSplitItem(Item* item, Item* splitted_item)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(splitted_item);
+
+    if (!item->IsDestroyed() && item->GetProtoId() == splitted_item->GetProtoId()) {
+        item->SetCount(item->GetCount() + splitted_item->GetCount());
+    }
+
+    DestroyItem(splitted_item);
+}
+
 auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
@@ -263,19 +293,38 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     FO_RUNTIME_ASSERT(count >= 0);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cr);
+    refcount_ptr item_holder = item;
+    refcount_ptr to_cr_holder = to_cr;
+    ignore_unused(item_holder);
+    ignore_unused(to_cr_holder);
 
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
         return item;
     }
 
     auto* holder = GetItemHolder(item);
+    refcount_ptr holder_holder = holder;
+    ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
+
+        if (item->IsDestroyed() || to_cr->IsDestroyed()) {
+            return nullptr;
+        }
+
         return _engine->CrMngr.AddItemToCritter(to_cr, item, true);
     }
     else {
         auto* splitted_item = SplitItem(item, count);
+        refcount_ptr splitted_item_holder = splitted_item;
+        ignore_unused(splitted_item_holder);
+
+        if (to_cr->IsDestroyed()) {
+            RestoreSplitItem(item, splitted_item);
+            return nullptr;
+        }
+
         return _engine->CrMngr.AddItemToCritter(to_cr, splitted_item, true);
     }
 }
@@ -287,21 +336,59 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
     FO_RUNTIME_ASSERT(count >= 0);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_map);
+    refcount_ptr item_holder = item;
+    refcount_ptr to_map_holder = to_map;
+    ignore_unused(item_holder);
+    ignore_unused(to_map_holder);
 
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHex() == to_hex) {
         return item;
     }
 
     auto* holder = GetItemHolder(item);
+    refcount_ptr holder_holder = holder;
+    ignore_unused(holder_holder);
+    Critter* dropper = dynamic_cast<Critter*>(holder);
+    refcount_ptr dropper_holder = dropper;
+    ignore_unused(dropper_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
-        to_map->AddItem(item, to_hex, dynamic_cast<Critter*>(holder));
+
+        if (item->IsDestroyed() || to_map->IsDestroyed()) {
+            return nullptr;
+        }
+
+        to_map->AddItem(item, to_hex, dropper);
+
+        if (item->IsDestroyed() || to_map->IsDestroyed()) {
+            return nullptr;
+        }
+        if (item->GetOwnership() != ItemOwnership::MapHex || item->GetMapId() != to_map->GetId() || to_map->GetItem(item->GetId()) != item) {
+            return nullptr;
+        }
+
         return item;
     }
     else {
         auto* splitted_item = SplitItem(item, count);
-        to_map->AddItem(splitted_item, to_hex, dynamic_cast<Critter*>(holder));
+        refcount_ptr splitted_item_holder = splitted_item;
+        ignore_unused(splitted_item_holder);
+
+        if (to_map->IsDestroyed()) {
+            RestoreSplitItem(item, splitted_item);
+            return nullptr;
+        }
+
+        to_map->AddItem(splitted_item, to_hex, dropper);
+
+        if (splitted_item->IsDestroyed() || to_map->IsDestroyed()) {
+            return nullptr;
+        }
+        if (splitted_item->GetOwnership() != ItemOwnership::MapHex || splitted_item->GetMapId() != to_map->GetId() || to_map->GetItem(splitted_item->GetId()) != splitted_item) {
+            return nullptr;
+        }
+
         return splitted_item;
     }
 }
@@ -313,19 +400,38 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     FO_RUNTIME_ASSERT(count >= 0);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cont);
+    refcount_ptr item_holder = item;
+    refcount_ptr to_cont_holder = to_cont;
+    ignore_unused(item_holder);
+    ignore_unused(to_cont_holder);
 
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return item;
     }
 
     auto* holder = GetItemHolder(item);
+    refcount_ptr holder_holder = holder;
+    ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
+
+        if (item->IsDestroyed() || to_cont->IsDestroyed()) {
+            return nullptr;
+        }
+
         return to_cont->AddItemToContainer(item, stack_id);
     }
     else {
         auto* splitted_item = SplitItem(item, count);
+        refcount_ptr splitted_item_holder = splitted_item;
+        ignore_unused(splitted_item_holder);
+
+        if (to_cont->IsDestroyed()) {
+            RestoreSplitItem(item, splitted_item);
+            return nullptr;
+        }
+
         return to_cont->AddItemToContainer(splitted_item, stack_id);
     }
 }
@@ -341,7 +447,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const
     const auto* proto = _engine->GetProtoItem(pid);
 
     if (proto == nullptr) {
-        throw GenericException("Item proto not found", pid);
+        throw ItemManagerException("Item proto not found", pid);
     }
 
     auto* item = cont->GetInnerItemByPid(pid, stack_id);
@@ -389,7 +495,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
     const auto* proto = _engine->GetProtoItem(pid);
 
     if (proto == nullptr) {
-        throw GenericException("Item proto not found", pid);
+        throw ItemManagerException("Item proto not found", pid);
     }
 
     auto* item = cr->GetInvItemByPid(pid);

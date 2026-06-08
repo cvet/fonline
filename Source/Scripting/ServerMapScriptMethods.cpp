@@ -1078,7 +1078,7 @@ FO_SCRIPT_API int32_t Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir, in
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, FO_NULLABLE Critter* cr, mpos hex, mdir dir)
+FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, mdir dir)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");

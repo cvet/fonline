@@ -176,6 +176,7 @@ private:
 
     void SetMultihexCritter(Critter* cr, bool set);
     void RecacheHexFlags(Field& field);
+    [[nodiscard]] auto IsMapItemContextChanged(const Item* item, ident_t map_id, mpos hex) const -> bool;
 
     raw_ptr<StaticMap> _staticMap {};
     msize _mapSize {};

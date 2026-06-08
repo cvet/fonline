@@ -44,6 +44,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(EntityManagerException);
+
 class EntityManager final
 {
 public:

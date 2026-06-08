@@ -1813,6 +1813,7 @@ void ServerEngine::ProcessPlayer(Player* player)
         ValidateEntityAccess(player);
         ValidateEntityAccess(player->GetControlledCritter());
         OnPlayerLogout.Fire(player);
+        FO_RUNTIME_ASSERT(!player->IsDestroyed());
 
         player->DetachCritter();
         player->ResetViewMap();
@@ -2247,6 +2248,10 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     SendCritterInitialInfo(cr, prev_cr);
 
+    if (cr->IsDestroyed() || player->GetControlledCritter() != cr || cr->GetPlayer() != player) {
+        return;
+    }
+
     if (prev_cr != nullptr) {
         ValidateEntityAccess(player);
         ValidateEntityAccess(cr);
@@ -2371,6 +2376,21 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 
     ValidateEntityAccess(cr);
     OnCritterSendInitialInfo.Fire(cr);
+
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
+    if (map != nullptr) {
+        if (map->IsDestroyed() || cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
+            return;
+        }
+    }
+    else {
+        if (cr->GetMapId()) {
+            return;
+        }
+    }
 
     cr->Send_PlaceToGameComplete();
     cr->Send_TimeSync();
@@ -2693,7 +2713,9 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
 
     ValidateEntityAccess(player);
 
-    if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
+    const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+
+    if (login_result == Entity::EventResult::StopChain) {
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
         player->DetachCritter();
@@ -2765,7 +2787,9 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
 
         ValidateEntityAccess(player);
 
-        if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
+        const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+
+        if (login_result == Entity::EventResult::StopChain) {
             player->DetachCritter();
             player->ResetViewMap();
             player->MarkAsDestroyed();
@@ -2794,7 +2818,9 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         ValidateEntityAccess(player);
         ValidateEntityAccess(unlogined_player);
 
-        if (OnPlayerLogin.Fire(player, unlogined_player) == Entity::EventResult::StopChain) {
+        const EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);
+
+        if (login_result == Entity::EventResult::StopChain) {
             player->SetLogined(false);
             player->GetConnection()->GracefulDisconnect();
             return nullptr;
@@ -2850,7 +2876,9 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
 
     ValidateEntityAccess(player);
 
-    if (OnPlayerLogin.Fire(player, nullptr) == Entity::EventResult::StopChain) {
+    const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+
+    if (login_result == Entity::EventResult::StopChain) {
         player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
@@ -2861,43 +2889,6 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
     }
 
     return player;
-}
-
-void ServerEngine::HardDisconnectPlayer(Player* player)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        ctx->SyncEntity(player);
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(player);
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    if (player->IsDestroyed()) {
-        return;
-    }
-
-    player->GetConnection()->HardDisconnect();
-
-    if (player->GetLogined()) {
-        ProcessPlayer(player);
-    }
-    else {
-        ProcessUnloginedPlayer(player);
-    }
 }
 
 void ServerEngine::Process_Move(Player* player)
@@ -2975,7 +2966,18 @@ void ServerEngine::Process_Move(Player* player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    if (OnPlayerMoveCritter.Fire(player, cr, corrected_speed) == EventResult::StopChain) {
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != cr) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != cr) {
+        return;
+    }
+    if (move_result == EventResult::StopChain) {
         WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
         player->Send_Moving(cr);
         return;
@@ -3129,7 +3131,18 @@ void ServerEngine::Process_StopMove(Player* player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    if (OnPlayerMoveCritter.Fire(player, cr, zero_speed) == EventResult::StopChain) {
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != cr) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != cr) {
+        return;
+    }
+    if (move_result == EventResult::StopChain) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
         return;
@@ -3139,7 +3152,13 @@ void ServerEngine::Process_StopMove(Player* player)
 
     ReconcileCritterStopPosition(player, cr, map.get(), client_hex, client_hex_offset, client_dir);
 
-    if (cr->IsDestroyed() || map->IsDestroyed()) {
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != cr) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != cr) {
         return;
     }
     if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
@@ -3193,7 +3212,18 @@ void ServerEngine::Process_Dir(Player* player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    if (OnPlayerDirCritter.Fire(player, cr, checked_dir) == EventResult::StopChain) {
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != cr) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != cr) {
+        return;
+    }
+    if (dir_result == EventResult::StopChain) {
         WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
         player->Send_Dir(cr);
         return;
@@ -3964,11 +3994,19 @@ auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    if (OnPlayerDirCritter.Fire(player, cr, checked_dir) != EventResult::StopChain) {
-        if (cr->IsDestroyed() || map->IsDestroyed()) {
-            return false;
-        }
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
 
+    if (player->GetConnection()->IsHardDisconnected() || player->GetConnection()->IsGracefulDisconnected()) {
+        return false;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != cr) {
+        return false;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
+        return false;
+    }
+
+    if (dir_result != EventResult::StopChain) {
         cr->ChangeDir(checked_dir);
     }
 
@@ -4274,9 +4312,6 @@ void ServerEngine::Process_RemoteCall(Player* player)
 
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 
-    // Process_RemoteCall is reached only via `ProcessUnloginedPlayer` / `ProcessPlayer`, both
-    // running inside a `_workerPool` job body — primary SyncContext is guaranteed.
-    // SyncEntity(player) auto-widens to the controlled critter via GetSyncWidenEntity.
     auto* ctx = GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
     ctx->SyncEntity(player);

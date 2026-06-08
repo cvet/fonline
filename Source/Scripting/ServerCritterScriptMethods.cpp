@@ -534,11 +534,17 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
         throw ScriptException("Item id arg is zero");
     }
 
+    refcount_ptr self_holder = self;
+    ignore_unused(self_holder);
+
     auto* item = self->GetInvItem(itemId);
 
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
+
+    refcount_ptr item_holder = item;
+    ignore_unused(item_holder);
 
     // To slot arg is equal of current item slot
     if (item->GetCritterSlot() == slot) {
@@ -575,11 +581,15 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
         self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
         if (item_swap != nullptr) {
+            refcount_ptr item_swap_holder = item_swap;
+            ignore_unused(item_swap_holder);
+
             ValidateEntityAccess(self);
             ValidateEntityAccess(item_swap);
             self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);
         }
 
+        // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
         ValidateEntityAccess(self);
         ValidateEntityAccess(item);
         self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);

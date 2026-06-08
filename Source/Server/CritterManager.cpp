@@ -53,6 +53,10 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     FO_RUNTIME_ASSERT(cr);
     FO_RUNTIME_ASSERT(item);
+    refcount_ptr cr_holder = cr;
+    refcount_ptr item_holder = item;
+    ignore_unused(cr_holder);
+    ignore_unused(item_holder);
 
     if (item->GetStackable()) {
         auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
@@ -95,6 +99,13 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     ValidateEntityAccess(cr);
     ValidateEntityAccess(item);
     _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
+
+    if (cr->IsDestroyed() || item->IsDestroyed()) {
+        throw CritterManagerException("Critter item add event destroyed the committed entity", cr->GetId(), item->GetId());
+    }
+    if (item->GetOwnership() != ItemOwnership::CritterInventory || item->GetCritterId() != cr->GetId() || cr->GetInvItem(item->GetId()) != item) {
+        throw CritterManagerException("Critter item add event moved the committed item", cr->GetId(), item->GetId());
+    }
 
     return item;
 }
@@ -145,6 +156,8 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     FO_STACK_TRACE_ENTRY();
 
     FO_RUNTIME_ASSERT(map);
+    refcount_ptr map_holder = map;
+    ignore_unused(map_holder);
 
     auto* ctx = _engine->GetCurrentSyncContext();
     FO_RUNTIME_ASSERT(ctx);
@@ -168,7 +181,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* proto = _engine->GetProtoCritter(proto_id);
 
     if (proto == nullptr) {
-        throw GenericException("Critter proto not found", proto_id);
+        throw CritterManagerException("Critter proto not found", proto_id);
     }
 
     int32_t multihex;
@@ -212,6 +225,8 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     const auto* loc = map->GetLocation();
     FO_RUNTIME_ASSERT(loc);
 
+    const ident_t target_map_id = map->GetId();
+
     _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, dir, ident_t {});
 
     if (!cr->IsDestroyed()) {
@@ -233,7 +248,13 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     }
 
     if (cr->IsDestroyed()) {
-        throw GenericException("Critter destroyed during init");
+        throw CritterManagerException("Critter destroyed during init");
+    }
+    if (map->IsDestroyed()) {
+        throw CritterManagerException("Critter map add event destroyed the target map", proto_id);
+    }
+    if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || map->GetCritter(cr->GetId()) != cr.get()) {
+        throw CritterManagerException("Critter map add event moved the committed critter", proto_id);
     }
 
     return cr.get();
@@ -255,6 +276,7 @@ void CritterManager::DestroyCritter(Critter* cr)
     // Finish event
     ValidateEntityAccess(cr);
     _engine->OnCritterFinish.Fire(cr);
+    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
 
     // Tear off from environment
     {
@@ -362,7 +384,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
     const auto* proto = _engine->GetProtoItem(item_pid);
 
     if (proto == nullptr) {
-        throw GenericException("Item proto not found", item_pid);
+        throw CritterManagerException("Item proto not found", item_pid);
     }
 
     if (proto->GetStackable()) {

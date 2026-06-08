@@ -58,7 +58,7 @@ FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_HardDisconnect(Player* self)
 {
-    self->GetEngine()->HardDisconnectPlayer(self);
+    self->GetConnection()->HardDisconnect();
 }
 
 ///@ ExportMethod

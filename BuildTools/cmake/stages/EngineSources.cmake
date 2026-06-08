@@ -442,6 +442,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp"

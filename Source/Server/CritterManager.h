@@ -50,6 +50,8 @@ class EntityManager;
 class MapManager;
 class ItemManager;
 
+FO_DECLARE_EXCEPTION(CritterManagerException);
+
 class CritterManager final
 {
 public:

@@ -1232,7 +1232,7 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool e
     FO_RUNTIME_ASSERT(entity->GetId());
 
     if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
-        throw GenericException("Can't change persistence of player", player->GetId());
+        throw EntityManagerException("Can't change persistence of player", player->GetId());
     }
 
     if (persistent) {

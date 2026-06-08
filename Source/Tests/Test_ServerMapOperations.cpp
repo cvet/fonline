@@ -999,6 +999,2201 @@ namespace MapOpsTest
         Game.DestroyLocation(loc);
         return 0;
     }
+
+    // ========== Reentrant map events ==========
+
+    int ReentrantEventMode = 0;
+    ident ReentrantTargetCrId = ZERO_IDENT;
+    ident ReentrantOtherCrId = ZERO_IDENT;
+    ident ReentrantTargetItemId = ZERO_IDENT;
+    ident ReentrantOtherItemId = ZERO_IDENT;
+    ident ReentrantTargetMapId = ZERO_IDENT;
+    ident ReentrantTargetLocId = ZERO_IDENT;
+    int ReentrantMapOutCalls = 0;
+    int ReentrantMapInCalls = 0;
+    int ReentrantGlobalOutCalls = 0;
+    int ReentrantGlobalInCalls = 0;
+    int ReentrantCritterTransferCalls = 0;
+    int ReentrantOtherCritterTransferCalls = 0;
+    int ReentrantInitialInfoCalls = 0;
+    int ReentrantCritterLoadCalls = 0;
+    int ReentrantCritterInitCalls = 0;
+    int ReentrantMapInitCalls = 0;
+    int ReentrantMapFinishCalls = 0;
+    int ReentrantMapAddedCalls = 0;
+    int ReentrantMapRemovedCalls = 0;
+    int ReentrantNestedDestroyCaught = 0;
+    int ReentrantCritterAppearedCalls = 0;
+    int ReentrantCritterDisappearedCalls = 0;
+    int ReentrantCritterAppearedDist1Calls = 0;
+    int ReentrantCritterAppearedDist2Calls = 0;
+    int ReentrantCritterDisappearedDist1Calls = 0;
+    int ReentrantItemAppearedCalls = 0;
+    int ReentrantItemDisappearedCalls = 0;
+    int ReentrantItemChangedCalls = 0;
+    int ReentrantCritterItemMovedCalls = 0;
+    int ReentrantOtherCritterItemMovedFromInventoryCalls = 0;
+    int ReentrantOtherCritterItemMovedFromMainCalls = 0;
+    int ReentrantCritterWalkCalls = 0;
+    int ReentrantOtherCritterWalkCalls = 0;
+    int ReentrantNestedTransferCaught = 0;
+    bool ReentrantMapOutSawOnMap = false;
+    bool ReentrantMapInSawAttached = false;
+    bool ReentrantGlobalOutSawTrip = false;
+    bool ReentrantCritterAppearedSawOnMap = false;
+    bool ReentrantCritterDisappearedSawOnMap = false;
+    bool ReentrantItemAppearedSawOnMap = false;
+    bool ReentrantItemDisappearedSawDetached = false;
+    bool ReentrantItemChangedSawOnMap = false;
+
+    void ResetReentrantEventState()
+    {
+        ReentrantEventMode = 0;
+        ReentrantTargetCrId = ZERO_IDENT;
+        ReentrantOtherCrId = ZERO_IDENT;
+        ReentrantTargetItemId = ZERO_IDENT;
+        ReentrantOtherItemId = ZERO_IDENT;
+        ReentrantTargetMapId = ZERO_IDENT;
+        ReentrantTargetLocId = ZERO_IDENT;
+        ReentrantMapOutCalls = 0;
+        ReentrantMapInCalls = 0;
+        ReentrantGlobalOutCalls = 0;
+        ReentrantGlobalInCalls = 0;
+        ReentrantCritterTransferCalls = 0;
+        ReentrantOtherCritterTransferCalls = 0;
+        ReentrantInitialInfoCalls = 0;
+        ReentrantCritterLoadCalls = 0;
+        ReentrantCritterInitCalls = 0;
+        ReentrantMapInitCalls = 0;
+        ReentrantMapFinishCalls = 0;
+        ReentrantMapAddedCalls = 0;
+        ReentrantMapRemovedCalls = 0;
+        ReentrantNestedDestroyCaught = 0;
+        ReentrantCritterAppearedCalls = 0;
+        ReentrantCritterDisappearedCalls = 0;
+        ReentrantCritterAppearedDist1Calls = 0;
+        ReentrantCritterAppearedDist2Calls = 0;
+        ReentrantCritterDisappearedDist1Calls = 0;
+        ReentrantItemAppearedCalls = 0;
+        ReentrantItemDisappearedCalls = 0;
+        ReentrantItemChangedCalls = 0;
+        ReentrantCritterItemMovedCalls = 0;
+        ReentrantOtherCritterItemMovedFromInventoryCalls = 0;
+        ReentrantOtherCritterItemMovedFromMainCalls = 0;
+        ReentrantCritterWalkCalls = 0;
+        ReentrantOtherCritterWalkCalls = 0;
+        ReentrantNestedTransferCaught = 0;
+        ReentrantMapOutSawOnMap = false;
+        ReentrantMapInSawAttached = false;
+        ReentrantGlobalOutSawTrip = false;
+        ReentrantCritterAppearedSawOnMap = false;
+        ReentrantCritterDisappearedSawOnMap = false;
+        ReentrantItemAppearedSawOnMap = false;
+        ReentrantItemDisappearedSawDetached = false;
+        ReentrantItemChangedSawOnMap = false;
+    }
+
+    [[Event]]
+    void OnReentrantMapCritterOut(Map map, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantMapOutCalls++;
+
+        if (ReentrantEventMode == 1) {
+            ReentrantMapOutSawOnMap = cr.MapId == map.Id && map.GetCritter(cr.Id) !is null;
+        }
+        else if (ReentrantEventMode == 6) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 2) {
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null) {
+                try {
+                    cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+                }
+                catch {
+                    ReentrantNestedTransferCaught++;
+                }
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantMapCritterIn(Map map, Critter cr)
+    {
+        if (ReentrantTargetCrId == ZERO_IDENT) {
+            ReentrantTargetCrId = cr.Id;
+        }
+        else if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantMapInCalls++;
+
+        if (ReentrantEventMode == 3) {
+            ReentrantMapInSawAttached = cr.MapId == map.Id && map.GetCritter(cr.Id) !is null;
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 18) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 35) {
+            if (map.Id == ReentrantTargetMapId) {
+                return;
+            }
+
+            ReentrantMapInSawAttached = cr.MapId == map.Id && map.GetCritter(cr.Id) !is null;
+
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null) {
+                cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+            }
+        }
+        else if (ReentrantEventMode == 37) {
+            ReentrantMapInSawAttached = cr.MapId == map.Id && map.GetCritter(cr.Id) !is null;
+            Game.DestroyMap(map);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantGlobalMapCritterIn(Critter cr)
+    {
+        if (ReentrantTargetCrId == ZERO_IDENT) {
+            ReentrantTargetCrId = cr.Id;
+        }
+        else if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantGlobalInCalls++;
+
+        if (ReentrantEventMode == 19) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 38) {
+            cr.MakeControllable(false);
+            Game.DestroyCritter(cr);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterTransfer(Critter cr, Map? prevMap)
+    {
+        if (cr.Id == ReentrantTargetCrId) {
+            ReentrantCritterTransferCalls++;
+        }
+        else if (cr.Id == ReentrantOtherCrId) {
+            ReentrantOtherCritterTransferCalls++;
+
+            if (ReentrantEventMode == 34) {
+                Critter? target = Game.GetCritter(ReentrantTargetCrId);
+
+                if (target !is null) {
+                    Game.DestroyCritter(target);
+                }
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantGlobalMapCritterOut(Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantGlobalOutCalls++;
+
+        if (ReentrantEventMode == 4) {
+            ReentrantGlobalOutSawTrip = cr.GlobalMapTripId != 0;
+        }
+        else if (ReentrantEventMode == 8) {
+            Game.DestroyCritter(cr);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterSendInitialInfo(Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantInitialInfoCalls++;
+    }
+
+    [[Event]]
+    void OnReentrantCritterLoad(Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterLoadCalls++;
+    }
+
+    [[Event]]
+    void OnReentrantCritterInit(Critter cr, bool firstTime)
+    {
+        if (ReentrantTargetCrId == ZERO_IDENT) {
+            ReentrantTargetCrId = cr.Id;
+        }
+        else if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterInitCalls++;
+
+        if (ReentrantEventMode == 40) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 41) {
+            Map? map = Game.GetMap(cr.MapId);
+
+            if (map !is null) {
+                Game.DestroyMap(map);
+            }
+        }
+        else if (ReentrantEventMode == 42) {
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null && cr.MapId != targetMap.Id) {
+                cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantMapInit(Map map, bool firstTime)
+    {
+        if (ReentrantTargetMapId != ZERO_IDENT && map.Id != ReentrantTargetMapId) {
+            return;
+        }
+
+        ReentrantTargetMapId = map.Id;
+        ReentrantMapInitCalls++;
+
+        if (ReentrantEventMode == 22) {
+            Game.DestroyMap(map);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantMapFinish(Map map)
+    {
+        if (map.Id != ReentrantTargetMapId) {
+            return;
+        }
+
+        ReentrantMapFinishCalls++;
+
+        if (ReentrantEventMode == 20 && ReentrantMapFinishCalls == 1) {
+            Location? loc = map.GetLocation();
+
+            if (loc !is null && loc.Id == ReentrantTargetLocId) {
+                try {
+                    Game.DestroyLocation(loc);
+                }
+                catch {
+                    ReentrantNestedDestroyCaught++;
+                }
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantMapAdded(Location loc, Map map)
+    {
+        if (ReentrantTargetLocId != ZERO_IDENT && loc.Id != ReentrantTargetLocId) {
+            return;
+        }
+
+        ReentrantTargetLocId = loc.Id;
+        ReentrantTargetMapId = map.Id;
+        ReentrantMapAddedCalls++;
+
+        if (ReentrantEventMode == 23) {
+            Game.DestroyLocation(loc);
+        }
+        else if (ReentrantEventMode == 39) {
+            Game.DestroyMap(map);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantMapRemoved(Location loc, Map map)
+    {
+        if (map.Id != ReentrantTargetMapId || loc.Id != ReentrantTargetLocId) {
+            return;
+        }
+
+        ReentrantMapRemovedCalls++;
+
+        if (ReentrantEventMode == 21) {
+            try {
+                Game.DestroyLocation(loc);
+            }
+            catch {
+                ReentrantNestedDestroyCaught++;
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterAppeared(Critter observer, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterAppearedCalls++;
+
+        if (ReentrantEventMode == 14) {
+            Map? map = Game.GetMap(observer.MapId);
+            ReentrantCritterAppearedSawOnMap = cr.MapId == observer.MapId && map !is null && map.GetCritter(cr.Id) !is null;
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 15) {
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null) {
+                cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterDisappeared(Critter observer, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterDisappearedCalls++;
+
+        if (ReentrantEventMode == 5) {
+            Map? map = Game.GetMap(ReentrantTargetMapId);
+            ReentrantCritterDisappearedSawOnMap = cr.MapId == ReentrantTargetMapId && map !is null && map.GetCritter(cr.Id) !is null;
+        }
+        else if (ReentrantEventMode == 7) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 17) {
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null) {
+                cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterAppearedDist1(Critter observer, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterAppearedDist1Calls++;
+
+        if (ReentrantEventMode == 16) {
+            Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+            if (targetMap !is null) {
+                cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterAppearedDist2(Critter observer, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterAppearedDist2Calls++;
+    }
+
+    [[Event]]
+    void OnReentrantCritterDisappearedDist1(Critter observer, Critter cr)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        ReentrantCritterDisappearedDist1Calls++;
+    }
+
+    [[Event]]
+    void OnReentrantItemOnMapAppeared(Critter observer, Item item, Critter dropper)
+    {
+        if (ReentrantTargetItemId == ZERO_IDENT) {
+            ReentrantTargetItemId = item.Id;
+        }
+        else if (item.Id != ReentrantTargetItemId) {
+            return;
+        }
+
+        ReentrantItemAppearedCalls++;
+
+        if (ReentrantEventMode == 9) {
+            ReentrantItemAppearedSawOnMap = item.MapId == observer.MapId && observer.MapId != ZERO_IDENT;
+            Game.DestroyItem(item);
+        }
+        else if (ReentrantEventMode == 30) {
+            ReentrantItemAppearedSawOnMap = item.MapId == observer.MapId && observer.MapId != ZERO_IDENT;
+
+            Critter? receiver = Game.GetCritter(ReentrantTargetCrId);
+
+            if (receiver !is null) {
+                Game.MoveItem(item, receiver);
+            }
+        }
+        else if (ReentrantEventMode == 38) {
+            ReentrantItemAppearedSawOnMap = item.MapId == observer.MapId && observer.MapId != ZERO_IDENT;
+
+            Map? map = Game.GetMap(observer.MapId);
+
+            if (map !is null) {
+                Game.DestroyMap(map);
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantItemOnMapDisappeared(Critter observer, Item item, Critter picker)
+    {
+        if (item.Id != ReentrantTargetItemId) {
+            return;
+        }
+
+        ReentrantItemDisappearedCalls++;
+
+        if (ReentrantEventMode == 10) {
+            ReentrantItemDisappearedSawDetached = item.MapId == ZERO_IDENT;
+            Game.DestroyItem(item);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantItemOnMapChanged(Critter observer, Item item)
+    {
+        if (item.Id != ReentrantTargetItemId) {
+            return;
+        }
+
+        ReentrantItemChangedCalls++;
+
+        if (ReentrantEventMode == 11) {
+            ReentrantItemChangedSawOnMap = item.MapId == observer.MapId && observer.MapId != ZERO_IDENT;
+            Game.DestroyItem(item);
+        }
+        else if (ReentrantEventMode == 33) {
+            ReentrantItemChangedSawOnMap = item.MapId == observer.MapId && observer.MapId != ZERO_IDENT;
+
+            if (ReentrantItemChangedCalls == 1) {
+                Critter? receiver = Game.GetCritter(ReentrantTargetCrId);
+
+                if (receiver !is null) {
+                    Game.MoveItem(item, receiver);
+                }
+            }
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterItemMoved(Critter cr, Item item, CritterItemSlot fromSlot)
+    {
+        if (ReentrantEventMode == 27) {
+            if (item.Id == ReentrantOtherItemId) {
+                if (fromSlot == CritterItemSlot::Inventory) {
+                    ReentrantOtherCritterItemMovedFromInventoryCalls++;
+                }
+                else if (fromSlot == CritterItemSlot::Main) {
+                    ReentrantOtherCritterItemMovedFromMainCalls++;
+                }
+            }
+            else if (item.Id == ReentrantTargetItemId) {
+                ReentrantCritterItemMovedCalls++;
+
+                Item? movedItem = Game.GetItem(ReentrantOtherItemId);
+                Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+                if (movedItem !is null && targetMap !is null) {
+                    Game.MoveItem(movedItem, targetMap, mpos(52, 50));
+                }
+            }
+
+            return;
+        }
+        if (ReentrantEventMode == 28) {
+            if (item.Id == ReentrantTargetItemId && fromSlot == CritterItemSlot::Outside) {
+                ReentrantCritterItemMovedCalls++;
+
+                Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+                if (targetMap !is null) {
+                    Game.MoveItem(item, targetMap, mpos(52, 50));
+                }
+            }
+
+            return;
+        }
+        if (ReentrantEventMode == 36) {
+            if (item.Id == ReentrantTargetItemId) {
+                ReentrantCritterItemMovedCalls++;
+
+                Item? victim = Game.GetItem(ReentrantOtherItemId);
+
+                if (victim !is null) {
+                    Game.DestroyItem(victim);
+                }
+            }
+            else if (item.Id == ReentrantOtherItemId) {
+                ReentrantOtherCritterItemMovedFromInventoryCalls++;
+            }
+
+            return;
+        }
+
+        if (item.Id != ReentrantTargetItemId) {
+            return;
+        }
+
+        ReentrantCritterItemMovedCalls++;
+
+        if (ReentrantEventMode == 12) {
+            Game.DestroyItem(item);
+        }
+        else if (ReentrantEventMode == 13) {
+            Game.DestroyCritter(cr);
+        }
+    }
+
+    [[Event]]
+    void OnReentrantCritterWalk(Item item, Critter cr, bool isIn, mdir dir)
+    {
+        if (cr.Id != ReentrantTargetCrId) {
+            return;
+        }
+
+        if (ReentrantEventMode == 31) {
+            if (item.Id == ReentrantTargetItemId) {
+                ReentrantCritterWalkCalls++;
+
+                Map? targetMap = Game.GetMap(ReentrantTargetMapId);
+
+                if (targetMap !is null) {
+                    cr.TransferToMap(targetMap, mpos(60, 60), mdir(0));
+                }
+            }
+            else if (item.Id == ReentrantOtherItemId) {
+                ReentrantOtherCritterWalkCalls++;
+            }
+
+            return;
+        }
+        if (ReentrantEventMode == 32) {
+            if (item.Id == ReentrantTargetItemId) {
+                ReentrantCritterWalkCalls++;
+
+                Location? loc = Game.GetLocation(ReentrantTargetLocId);
+
+                if (loc !is null) {
+                    Game.DestroyLocation(loc);
+                }
+            }
+            else if (item.Id == ReentrantOtherItemId) {
+                ReentrantOtherCritterWalkCalls++;
+            }
+
+            return;
+        }
+
+        ReentrantCritterWalkCalls++;
+
+        if (ReentrantEventMode == 24) {
+            Game.DestroyCritter(cr);
+        }
+        else if (ReentrantEventMode == 25 && item.Id == ReentrantTargetItemId) {
+            Game.DestroyItem(item);
+        }
+    }
+
+    int TestMapCritterOutEventRunsBeforeDetach()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 1;
+
+        Game.OnMapCritterOut.Subscribe(OnReentrantMapCritterOut);
+
+        cr.TransferToGlobal();
+
+        if (ReentrantMapOutCalls != 1) return -4;
+        if (!ReentrantMapOutSawOnMap) return -5;
+        if (cr.MapId != ZERO_IDENT) return -6;
+        if (cr.GlobalMapTripId == 0) return -7;
+
+        Game.DestroyCritter(cr);
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapCritterOutEventMayDestroyCritter()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 6;
+
+        Game.OnMapCritterOut.Subscribe(OnReentrantMapCritterOut);
+
+        cr.TransferToGlobal();
+
+        if (Game.GetCritter(crId) !is null) return -4;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapCritterOutEventBlocksNestedTransfer()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ReentrantTargetCrId = cr.Id;
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 2;
+
+        Game.OnMapCritterOut.Subscribe(OnReentrantMapCritterOut);
+
+        cr.TransferToGlobal();
+
+        if (ReentrantMapOutCalls != 1) return -4;
+        if (ReentrantNestedTransferCaught != 1) return -5;
+        if (cr.MapId != ZERO_IDENT) return -6;
+        if (cr.GlobalMapTripId == 0) return -7;
+        if (map2.GetCritter(cr.Id) !is null) return -8;
+
+        Game.DestroyCritter(cr);
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestCritterDisappearedEventRunsBeforeDetach()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        if (observer is null || cr is null) return -3;
+
+        array<Critter> seen = observer.GetCritters(CritterSeeType::WhoISee, CritterFindType::Any);
+        bool observerSeesCr = false;
+        for (uint i = 0; i < seen.length(); i++) {
+            if (seen[i].Id == cr.Id) {
+                observerSeesCr = true;
+                break;
+            }
+        }
+        if (!observerSeesCr) return -4;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetMapId = map.Id;
+        ReentrantEventMode = 5;
+
+        observer.OnCritterDisappeared.Subscribe(OnReentrantCritterDisappeared);
+
+        cr.TransferToGlobal();
+
+        if (ReentrantCritterDisappearedCalls != 1) return -5;
+        if (!ReentrantCritterDisappearedSawOnMap) return -6;
+        if (cr.MapId != ZERO_IDENT) return -7;
+        if (cr.GlobalMapTripId == 0) return -8;
+
+        Game.DestroyCritter(cr);
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterDisappearedEventMayDestroyCritter()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        if (observer is null || cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 7;
+
+        observer.OnCritterDisappeared.Subscribe(OnReentrantCritterDisappeared);
+
+        cr.TransferToGlobal();
+
+        if (Game.GetCritter(crId) !is null) return -4;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapCritterInEventMayDestroyEnteringCritter()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 3;
+
+        Game.OnMapCritterIn.Subscribe(OnReentrantMapCritterIn);
+
+        cr.TransferToMap(map2, mpos(60, 60), mdir(0));
+
+        if (ReentrantMapInCalls != 1) return -4;
+        if (!ReentrantMapInSawAttached) return -5;
+        if (Game.GetCritter(crId) !is null) return -6;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestMapCritterInEventMayDestroyBeforeInitialInfo()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 18;
+
+        Game.OnMapCritterIn.Subscribe(OnReentrantMapCritterIn);
+        Game.OnCritterSendInitialInfo.Subscribe(OnReentrantCritterSendInitialInfo);
+
+        cr.TransferToMap(map2, mpos(60, 60), mdir(0));
+
+        if (ReentrantMapInCalls != 1) return -4;
+        if (ReentrantInitialInfoCalls != 0) return -5;
+        if (Game.GetCritter(crId) !is null) return -6;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestMapAddCritterEventMayDestroyCritterThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ReentrantEventMode = 3;
+
+        Game.OnMapCritterIn.Subscribe(OnReentrantMapCritterIn);
+
+        bool caught = false;
+
+        try {
+            map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -3;
+        if (ReentrantMapInCalls != 1) return -4;
+        if (!ReentrantMapInSawAttached) return -5;
+        if (Game.GetCritter(ReentrantTargetCrId) !is null) return -6;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapAddCritterEventMayDestroyMapThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident locId = loc.Id;
+        ident mapId = map.Id;
+        ReentrantEventMode = 37;
+
+        Game.OnMapCritterIn.Subscribe(OnReentrantMapCritterIn);
+
+        bool caught = false;
+
+        try {
+            map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -3;
+        if (ReentrantMapInCalls != 1) return -4;
+        if (!ReentrantMapInSawAttached) return -5;
+        if (Game.GetCritter(ReentrantTargetCrId) !is null) return -6;
+        if (Game.GetMap(mapId) !is null) return -7;
+
+        Location? aliveLoc = Game.GetLocation(locId);
+
+        if (aliveLoc !is null) {
+            Game.DestroyLocation(aliveLoc);
+        }
+
+        return 0;
+    }
+
+    int TestMapAddCritterEventMayMoveCritterAwayThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 35;
+
+        Game.OnMapCritterIn.Subscribe(OnReentrantMapCritterIn);
+
+        bool caught = false;
+
+        try {
+            map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        Critter? cr = Game.GetCritter(ReentrantTargetCrId);
+
+        if (!caught) return -3;
+        if (ReentrantMapInCalls != 2) return -4;
+        if (!ReentrantMapInSawAttached) return -5;
+        if (cr is null) return -6;
+        if (map1.GetCritter(ReentrantTargetCrId) !is null) return -7;
+        if (map2.GetCritter(ReentrantTargetCrId) is null) return -8;
+        if (cr.MapId != map2.Id) return -9;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestMapAddCritterInitEventMayDestroyCritterThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ReentrantEventMode = 40;
+
+        Game.OnCritterInit.Subscribe(OnReentrantCritterInit);
+
+        bool caught = false;
+
+        try {
+            map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -3;
+        if (ReentrantCritterInitCalls != 1) return -4;
+        if (ReentrantTargetCrId == ZERO_IDENT) return -5;
+        if (Game.GetCritter(ReentrantTargetCrId) !is null) return -6;
+        if (Game.GetMap(map.Id) is null) return -7;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapAddCritterInitEventMayDestroyMapThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        ident locId = loc.Id;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident mapId = map.Id;
+        ReentrantEventMode = 41;
+
+        Game.OnCritterInit.Subscribe(OnReentrantCritterInit);
+
+        bool caught = false;
+
+        try {
+            map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -3;
+        if (ReentrantCritterInitCalls != 1) return -4;
+        if (ReentrantTargetCrId == ZERO_IDENT) return -5;
+        if (Game.GetCritter(ReentrantTargetCrId) !is null) return -6;
+        if (Game.GetMap(mapId) !is null) return -7;
+
+        Location? aliveLoc = Game.GetLocation(locId);
+
+        if (aliveLoc !is null) {
+            Game.DestroyLocation(aliveLoc);
+        }
+
+        return 0;
+    }
+
+    int TestMapAddCritterInitEventMayMoveCritterAwayThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 42;
+
+        Game.OnCritterInit.Subscribe(OnReentrantCritterInit);
+
+        bool caught = false;
+
+        try {
+            map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        }
+        catch {
+            caught = true;
+        }
+
+        Critter? cr = Game.GetCritter(ReentrantTargetCrId);
+
+        if (!caught) return -3;
+        if (ReentrantCritterInitCalls != 1) return -4;
+        if (ReentrantTargetCrId == ZERO_IDENT) return -5;
+        if (cr is null) return -6;
+        if (map1.GetCritter(ReentrantTargetCrId) !is null) return -7;
+        if (map2.GetCritter(ReentrantTargetCrId) is null) return -8;
+        if (cr.MapId != map2.Id) return -9;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestGlobalMapCritterOutEventKeepsTrip()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        cr.TransferToGlobal();
+        if (cr.GlobalMapTripId == 0) return -4;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 4;
+
+        Game.OnGlobalMapCritterOut.Subscribe(OnReentrantGlobalMapCritterOut);
+
+        cr.TransferToMap(map, mpos(60, 60), mdir(0));
+
+        if (ReentrantGlobalOutCalls != 1) return -5;
+        if (!ReentrantGlobalOutSawTrip) return -6;
+        if (cr.MapId != map.Id) return -7;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGlobalMapCritterOutEventMayDestroyCritter()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        cr.TransferToGlobal();
+        if (cr.GlobalMapTripId == 0) return -4;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 8;
+
+        Game.OnGlobalMapCritterOut.Subscribe(OnReentrantGlobalMapCritterOut);
+
+        cr.TransferToMap(map, mpos(60, 60), mdir(0));
+
+        if (Game.GetCritter(crId) !is null) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGlobalMapCritterInEventMayDestroyBeforeInitialInfo()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 19;
+
+        Game.OnGlobalMapCritterIn.Subscribe(OnReentrantGlobalMapCritterIn);
+        Game.OnCritterSendInitialInfo.Subscribe(OnReentrantCritterSendInitialInfo);
+
+        cr.TransferToGlobal();
+
+        if (ReentrantGlobalInCalls != 1) return -4;
+        if (ReentrantInitialInfoCalls != 0) return -5;
+        if (Game.GetCritter(crId) !is null) return -6;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGlobalMapAddCritterEventMayDestroyCritterThrows()
+    {
+        ResetReentrantEventState();
+
+        ReentrantEventMode = 19;
+
+        Game.OnGlobalMapCritterIn.Subscribe(OnReentrantGlobalMapCritterIn);
+
+        bool caught = false;
+
+        try {
+            Game.CreateCritter("TestCritter".hstr(), false);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -1;
+        if (ReentrantGlobalInCalls != 1) return -2;
+        if (ReentrantTargetCrId == ZERO_IDENT) return -3;
+        if (Game.GetCritter(ReentrantTargetCrId) !is null) return -4;
+
+        return 0;
+    }
+
+    int TestGlobalMapLoadCritterEventMayDestroyBeforeCritterLoad()
+    {
+        ResetReentrantEventState();
+
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
+        if (cr is null) return -1;
+
+        cr.MakePersistent(true);
+
+        ident crId = cr.Id;
+
+        Game.UnloadCritter(cr);
+
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 38;
+
+        Game.OnGlobalMapCritterIn.Subscribe(OnReentrantGlobalMapCritterIn);
+        Game.OnCritterLoad.Subscribe(OnReentrantCritterLoad);
+
+        bool caught = false;
+
+        try {
+            Game.LoadCritter(crId, true);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -2;
+        if (ReentrantGlobalInCalls != 1) return -3;
+        if (ReentrantCritterLoadCalls != 0) return -4;
+        if (Game.GetCritter(crId) !is null) return -5;
+
+        return 0;
+    }
+
+    int TestAttachedCritterTransferEventMayDestroyLeaderBeforeFinalTransfer()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        Critter leader = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        Critter follower = map1.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0));
+        if (leader is null || follower is null) return -3;
+
+        ident leaderId = leader.Id;
+        ident followerId = follower.Id;
+        ReentrantTargetCrId = leaderId;
+        ReentrantOtherCrId = followerId;
+        ReentrantEventMode = 34;
+
+        follower.AttachToCritter(leader);
+
+        Game.OnCritterTransfer.Subscribe(OnReentrantCritterTransfer);
+
+        leader.TransferToMap(map2, mpos(60, 60), mdir(0));
+
+        if (ReentrantOtherCritterTransferCalls != 1) return -4;
+        if (ReentrantCritterTransferCalls != 0) return -5;
+        if (Game.GetCritter(leaderId) !is null) return -6;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestCritterAppearedEventMayDestroyTarget()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> hiddenProps = {{CritterProperty::LookDistance, 0}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), hiddenProps);
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), hiddenProps);
+        if (observer is null || cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 14;
+
+        observer.OnCritterAppeared.Subscribe(OnReentrantCritterAppeared);
+
+        observer.LookDistance = 10;
+
+        if (ReentrantCritterAppearedCalls != 1) return -4;
+        if (!ReentrantCritterAppearedSawOnMap) return -5;
+        if (Game.GetCritter(crId) !is null) return -6;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterAppearedEventStopsDistanceGroupsAfterTransfer()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        dict<CritterProperty, int> observerProps = {{CritterProperty::LookDistance, 0}, {CritterProperty::ShowCritterDist1, 10}};
+        dict<CritterProperty, int> targetProps = {{CritterProperty::LookDistance, 0}};
+        Critter observer = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), observerProps);
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), targetProps);
+        if (observer is null || cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 15;
+
+        observer.OnCritterAppeared.Subscribe(OnReentrantCritterAppeared);
+        observer.OnCritterAppearedDist1.Subscribe(OnReentrantCritterAppearedDist1);
+
+        observer.LookDistance = 10;
+
+        if (ReentrantCritterAppearedCalls != 1) return -4;
+        if (ReentrantCritterAppearedDist1Calls != 0) return -5;
+        if (Game.GetCritter(crId) is null) return -6;
+        if (cr.MapId != map2.Id) return -7;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestCritterAppearedDistEventStopsNextDistanceGroupsAfterTransfer()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        dict<CritterProperty, int> observerProps = {{CritterProperty::LookDistance, 0}, {CritterProperty::ShowCritterDist1, 10}, {CritterProperty::ShowCritterDist2, 10}};
+        dict<CritterProperty, int> targetProps = {{CritterProperty::LookDistance, 0}};
+        Critter observer = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), observerProps);
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), targetProps);
+        if (observer is null || cr is null) return -3;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 16;
+
+        observer.OnCritterAppearedDist1.Subscribe(OnReentrantCritterAppearedDist1);
+        observer.OnCritterAppearedDist2.Subscribe(OnReentrantCritterAppearedDist2);
+
+        observer.LookDistance = 10;
+
+        if (ReentrantCritterAppearedDist1Calls != 1) return -4;
+        if (ReentrantCritterAppearedDist2Calls != 0) return -5;
+        if (Game.GetCritter(crId) is null) return -6;
+        if (cr.MapId != map2.Id) return -7;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestCritterDisappearedEventStopsDistanceGroupsAfterTransfer()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        dict<CritterProperty, int> observerProps = {{CritterProperty::LookDistance, 10}, {CritterProperty::ShowCritterDist1, 10}};
+        dict<CritterProperty, int> targetProps = {{CritterProperty::LookDistance, 0}};
+        Critter observer = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), observerProps);
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), targetProps);
+        if (observer is null || cr is null) return -3;
+
+        array<Critter> seen = observer.GetCritters(CritterSeeType::WhoISee, CritterFindType::Any);
+        bool observerSeesCr = false;
+        for (uint i = 0; i < seen.length(); i++) {
+            if (seen[i].Id == cr.Id) {
+                observerSeesCr = true;
+                break;
+            }
+        }
+        if (!observerSeesCr) return -4;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 17;
+
+        observer.OnCritterDisappeared.Subscribe(OnReentrantCritterDisappeared);
+        observer.OnCritterDisappearedDist1.Subscribe(OnReentrantCritterDisappearedDist1);
+
+        observer.LookDistance = 0;
+
+        if (ReentrantCritterDisappearedCalls != 1) return -5;
+        if (ReentrantCritterDisappearedDist1Calls != 0) return -6;
+        if (Game.GetCritter(crId) is null) return -7;
+        if (cr.MapId != map2.Id) return -8;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestItemOnMapAppearedEventMayDestroyItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter dropper = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        if (observer is null || dropper is null) return -3;
+
+        Item item = dropper.AddItem("TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantEventMode = 9;
+
+        observer.OnItemOnMapAppeared.Subscribe(OnReentrantItemOnMapAppeared);
+
+        Item? moved = Game.MoveItem(item, map, mpos(52, 50));
+
+        if (ReentrantItemAppearedCalls != 1) return -5;
+        if (!ReentrantItemAppearedSawOnMap) return -6;
+        if (moved !is null) return -7;
+        if (Game.GetItem(itemId) !is null) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestItemOnMapAppearedEventMayMoveItemAway()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter source = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(53, 50), mdir(0), props);
+        if (observer is null || source is null || receiver is null) return -3;
+
+        Item item = source.AddItem("TestItem2".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantTargetCrId = receiver.Id;
+        ReentrantEventMode = 30;
+
+        observer.OnItemOnMapAppeared.Subscribe(OnReentrantItemOnMapAppeared);
+
+        Item? moved = Game.MoveItem(item, map, mpos(52, 50));
+
+        if (ReentrantItemAppearedCalls != 1) return -5;
+        if (!ReentrantItemAppearedSawOnMap) return -6;
+        if (moved !is null) return -7;
+        if (map.GetItem(itemId) !is null) return -8;
+        if (receiver.GetItem(itemId) is null) return -9;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapAddItemEventMayDestroyItemThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        if (observer is null) return -3;
+
+        ReentrantEventMode = 9;
+
+        observer.OnItemOnMapAppeared.Subscribe(OnReentrantItemOnMapAppeared);
+
+        bool caught = false;
+
+        try {
+            map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -4;
+        if (ReentrantItemAppearedCalls != 1) return -5;
+        if (!ReentrantItemAppearedSawOnMap) return -6;
+        if (Game.GetItem(ReentrantTargetItemId) !is null) return -7;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapAddItemEventMayDestroyMapThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident locId = loc.Id;
+        ident mapId = map.Id;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        if (observer is null) return -3;
+
+        ReentrantEventMode = 38;
+
+        observer.OnItemOnMapAppeared.Subscribe(OnReentrantItemOnMapAppeared);
+
+        bool caught = false;
+
+        try {
+            map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -4;
+        if (ReentrantItemAppearedCalls != 1) return -5;
+        if (!ReentrantItemAppearedSawOnMap) return -6;
+        if (Game.GetItem(ReentrantTargetItemId) !is null) return -7;
+        if (Game.GetMap(mapId) !is null) return -8;
+
+        Location? aliveLoc = Game.GetLocation(locId);
+
+        if (aliveLoc !is null) {
+            Game.DestroyLocation(aliveLoc);
+        }
+
+        return 0;
+    }
+
+    int TestMapAddItemEventMayMoveItemAwayThrows()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(53, 50), mdir(0), props);
+        if (observer is null || receiver is null) return -3;
+
+        ReentrantTargetCrId = receiver.Id;
+        ReentrantEventMode = 30;
+
+        observer.OnItemOnMapAppeared.Subscribe(OnReentrantItemOnMapAppeared);
+
+        bool caught = false;
+
+        try {
+            map.AddItem(mpos(52, 50), "TestItem2".hstr(), 1);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (!caught) return -4;
+        if (ReentrantItemAppearedCalls != 1) return -5;
+        if (!ReentrantItemAppearedSawOnMap) return -6;
+        if (map.GetItem(ReentrantTargetItemId) !is null) return -7;
+        if (receiver.GetItem(ReentrantTargetItemId) is null) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestItemOnMapDisappearedEventMayDestroyItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        if (observer is null || receiver is null) return -3;
+
+        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantEventMode = 10;
+
+        observer.OnItemOnMapDisappeared.Subscribe(OnReentrantItemOnMapDisappeared);
+
+        Item? moved = Game.MoveItem(item, receiver);
+
+        if (ReentrantItemDisappearedCalls != 1) return -5;
+        if (!ReentrantItemDisappearedSawDetached) return -6;
+        if (moved !is null) return -7;
+        if (Game.GetItem(itemId) !is null) return -8;
+        if (receiver.GetItem(itemId) !is null) return -9;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestItemOnMapChangedEventMayDestroyItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        if (observer is null) return -3;
+
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantEventMode = 11;
+
+        observer.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
+
+        item.Count = item.Count + 1;
+
+        if (ReentrantItemChangedCalls != 1) return -5;
+        if (!ReentrantItemChangedSawOnMap) return -6;
+        if (Game.GetItem(itemId) !is null) return -7;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestItemOnMapChangedEventMayMoveItemAwayBeforeNextObserver()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        dict<CritterProperty, int> props = {{CritterProperty::LookDistance, 10}};
+        Critter observer1 = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
+        Critter observer2 = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(53, 50), mdir(0), props);
+        if (observer1 is null || observer2 is null || receiver is null) return -3;
+
+        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantTargetCrId = receiver.Id;
+        ReentrantEventMode = 33;
+
+        observer1.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
+        observer2.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
+
+        item.Count = item.Count + 1;
+
+        if (ReentrantItemChangedCalls != 1) return -5;
+        if (!ReentrantItemChangedSawOnMap) return -6;
+        if (map.GetItem(itemId) !is null) return -7;
+        if (receiver.GetItem(itemId) is null) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterItemMovedEventMayDestroyItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item item = cr.AddItem("TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantEventMode = 12;
+
+        Game.OnCritterItemMoved.Subscribe(OnReentrantCritterItemMoved);
+
+        Item? moved = Game.MoveItem(item, map, mpos(51, 50));
+
+        if (ReentrantCritterItemMovedCalls != 1) return -5;
+        if (moved !is null) return -6;
+        if (Game.GetItem(itemId) !is null) return -7;
+        if (map.GetItem(itemId) !is null) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterItemMovedAddEventMayMoveItemAway()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (receiver is null) return -3;
+
+        Item item = map.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+        ReentrantTargetItemId = itemId;
+        ReentrantTargetMapId = map.Id;
+        ReentrantEventMode = 28;
+
+        Game.OnCritterItemMoved.Subscribe(OnReentrantCritterItemMoved);
+
+        bool caught = false;
+
+        try {
+            Game.MoveItem(item, receiver);
+        }
+        catch {
+            caught = true;
+        }
+
+        if (ReentrantCritterItemMovedCalls != 1) return -5;
+        if (!caught) return -6;
+        if (map.GetItem(itemId) is null) return -7;
+        if (receiver.GetItem(itemId) !is null) return -8;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterItemMovedSwapEventMayMoveOriginalItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item equipped = cr.AddItem("TestItem".hstr(), 1);
+        Item moving = cr.AddItem("TestItem2".hstr(), 1);
+        if (equipped is null || moving is null) return -4;
+
+        cr.ChangeItemSlot(equipped.Id, CritterItemSlot::Main);
+        if (equipped.CritterSlot != CritterItemSlot::Main) return -5;
+        if (moving.CritterSlot != CritterItemSlot::Inventory) return -6;
+
+        ident equippedId = equipped.Id;
+        ident movingId = moving.Id;
+        ReentrantTargetItemId = equippedId;
+        ReentrantOtherItemId = movingId;
+        ReentrantTargetMapId = map.Id;
+        ReentrantEventMode = 27;
+
+        Game.OnCritterItemMoved.Subscribe(OnReentrantCritterItemMoved);
+
+        cr.ChangeItemSlot(moving.Id, CritterItemSlot::Main);
+
+        if (ReentrantCritterItemMovedCalls != 1) return -7;
+        if (ReentrantOtherCritterItemMovedFromMainCalls != 1) return -8;
+        if (ReentrantOtherCritterItemMovedFromInventoryCalls != 1) return -9;
+        if (map.GetItem(movingId) is null) return -10;
+        if (cr.GetItem(movingId) !is null) return -11;
+        if (equipped.CritterSlot != CritterItemSlot::Inventory) return -12;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterItemMovedSwapEventMayDestroyOriginalItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item equipped = cr.AddItem("TestItem".hstr(), 1);
+        Item moving = cr.AddItem("TestItem2".hstr(), 1);
+        if (equipped is null || moving is null) return -4;
+
+        cr.ChangeItemSlot(equipped.Id, CritterItemSlot::Main);
+        if (equipped.CritterSlot != CritterItemSlot::Main) return -5;
+        if (moving.CritterSlot != CritterItemSlot::Inventory) return -6;
+
+        ident equippedId = equipped.Id;
+        ident movingId = moving.Id;
+        ReentrantTargetItemId = equippedId;
+        ReentrantOtherItemId = movingId;
+        ReentrantEventMode = 36;
+
+        Game.OnCritterItemMoved.Subscribe(OnReentrantCritterItemMoved);
+
+        cr.ChangeItemSlot(moving.Id, CritterItemSlot::Main);
+
+        if (ReentrantCritterItemMovedCalls != 1) return -7;
+        if (ReentrantOtherCritterItemMovedFromInventoryCalls != 1) return -8;
+        if (Game.GetItem(movingId) !is null) return -9;
+        if (cr.GetItem(movingId) !is null) return -10;
+        if (equipped.CritterSlot != CritterItemSlot::Inventory) return -11;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterWalkEventMayDestroyCritter()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        item.IsTrigger = true;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantEventMode = 24;
+
+        item.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+
+        map.VerifyTrigger(cr, mpos(51, 50), mdir(0));
+
+        if (ReentrantCritterWalkCalls != 1) return -5;
+        if (Game.GetCritter(crId) !is null) return -6;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterWalkEventMayDestroyItem()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        if (item is null) return -4;
+
+        item.IsTrigger = true;
+
+        ident crId = cr.Id;
+        ident itemId = item.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetItemId = itemId;
+        ReentrantEventMode = 25;
+
+        item.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+
+        map.VerifyTrigger(cr, mpos(51, 50), mdir(0));
+
+        if (ReentrantCritterWalkCalls != 1) return -5;
+        if (Game.GetCritter(crId) is null) return -6;
+        if (Game.GetItem(itemId) !is null) return -7;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestCritterWalkEventMayTransferCritterBeforeNextTrigger()
+    {
+        ResetReentrantEventState();
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -1;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -2;
+
+        Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item firstTrigger = map1.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        Item secondTrigger = map1.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        if (firstTrigger is null || secondTrigger is null) return -4;
+
+        firstTrigger.IsTrigger = true;
+        secondTrigger.IsTrigger = true;
+
+        ident crId = cr.Id;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetItemId = firstTrigger.Id;
+        ReentrantOtherItemId = secondTrigger.Id;
+        ReentrantTargetMapId = map2.Id;
+        ReentrantEventMode = 31;
+
+        firstTrigger.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+        secondTrigger.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+
+        map1.VerifyTrigger(cr, mpos(51, 50), mdir(0));
+
+        if (ReentrantCritterWalkCalls != 1) return -5;
+        if (ReentrantOtherCritterWalkCalls != 0) return -6;
+        if (Game.GetCritter(crId) is null) return -7;
+        if (cr.MapId != map2.Id) return -8;
+        if (map1.GetCritter(crId) !is null) return -9;
+        if (map2.GetCritter(crId) is null) return -10;
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        return 0;
+    }
+
+    int TestCritterWalkEventMayDestroyMapBeforeNextTrigger()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
+        if (cr is null) return -3;
+
+        Item firstTrigger = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        Item secondTrigger = map.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        if (firstTrigger is null || secondTrigger is null) return -4;
+
+        firstTrigger.IsTrigger = true;
+        secondTrigger.IsTrigger = true;
+
+        ident locId = loc.Id;
+        ident mapId = map.Id;
+        ident crId = cr.Id;
+        ident secondTriggerId = secondTrigger.Id;
+        ReentrantTargetLocId = locId;
+        ReentrantTargetCrId = crId;
+        ReentrantTargetItemId = firstTrigger.Id;
+        ReentrantOtherItemId = secondTriggerId;
+        ReentrantEventMode = 32;
+
+        firstTrigger.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+        secondTrigger.OnCritterWalk.Subscribe(OnReentrantCritterWalk);
+
+        map.VerifyTrigger(cr, mpos(51, 50), mdir(0));
+
+        if (ReentrantCritterWalkCalls != 1) return -5;
+        if (ReentrantOtherCritterWalkCalls != 0) return -6;
+        if (Game.GetLocation(locId) !is null) return -7;
+        if (Game.GetMap(mapId) !is null) return -8;
+        if (Game.GetCritter(crId) !is null) return -9;
+        if (Game.GetItem(secondTriggerId) !is null) return -10;
+
+        return 0;
+    }
+
+    int TestMapFinishEventCannotDestroyOwningLocation()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident locId = loc.Id;
+        ident mapId = map.Id;
+        ReentrantTargetMapId = mapId;
+        ReentrantTargetLocId = locId;
+        ReentrantEventMode = 20;
+
+        Game.OnMapFinish.Subscribe(OnReentrantMapFinish);
+
+        Game.DestroyMap(map);
+
+        if (ReentrantMapFinishCalls != 1) return -3;
+        if (ReentrantNestedDestroyCaught != 1) return -4;
+        if (Game.GetLocation(locId) is null) return -5;
+        if (Game.GetMap(mapId) !is null) return -6;
+
+        Location? aliveLoc = Game.GetLocation(locId);
+        if (aliveLoc is null) return -7;
+        Game.DestroyLocation(aliveLoc);
+        return 0;
+    }
+
+    int TestMapRemovedEventCannotDestroyOwningLocation()
+    {
+        ResetReentrantEventState();
+
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        ident locId = loc.Id;
+        ident mapId = map.Id;
+        ReentrantTargetMapId = mapId;
+        ReentrantTargetLocId = locId;
+        ReentrantEventMode = 21;
+
+        loc.OnMapRemoved.Subscribe(OnReentrantMapRemoved);
+
+        Game.DestroyMap(map);
+
+        if (ReentrantMapRemovedCalls != 1) return -3;
+        if (ReentrantNestedDestroyCaught != 1) return -4;
+        if (Game.GetLocation(locId) is null) return -5;
+        if (Game.GetMap(mapId) !is null) return -6;
+
+        Location? aliveLoc = Game.GetLocation(locId);
+        if (aliveLoc is null) return -7;
+        Game.DestroyLocation(aliveLoc);
+        return 0;
+    }
+
+    int TestMapInitEventMayDestroyMap()
+    {
+        ResetReentrantEventState();
+
+        ReentrantEventMode = 22;
+        Game.OnMapInit.Subscribe(OnReentrantMapInit);
+
+        array<hstring> mapPids = {"TestMap".hstr()};
+        Location loc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (loc is null) return -1;
+
+        ident mapId = ReentrantTargetMapId;
+        if (mapId == ZERO_IDENT) return -2;
+        if (ReentrantMapInitCalls != 1) return -3;
+        if (Game.GetMap(mapId) !is null) return -4;
+        if (loc.GetMapCount() != 0) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapAddedEventMayDestroyLocation()
+    {
+        ResetReentrantEventState();
+
+        Location loc = Game.CreateLocation("TestLocation".hstr());
+        if (loc is null) return -1;
+
+        ident locId = loc.Id;
+        ReentrantTargetLocId = locId;
+        ReentrantEventMode = 23;
+        loc.OnMapAdded.Subscribe(OnReentrantMapAdded);
+
+        bool caught = false;
+
+        try {
+            loc.AddMap("TestMap".hstr());
+        }
+        catch {
+            caught = true;
+        }
+
+        ident mapId = ReentrantTargetMapId;
+        if (!caught) return -2;
+        if (ReentrantMapAddedCalls != 1) return -3;
+        if (mapId == ZERO_IDENT) return -4;
+        if (Game.GetMap(mapId) !is null) return -5;
+        if (Game.GetLocation(locId) !is null) return -6;
+        return 0;
+    }
+
+    int TestMapAddedEventMayDestroyMap()
+    {
+        ResetReentrantEventState();
+
+        Location loc = Game.CreateLocation("TestLocation".hstr());
+        if (loc is null) return -1;
+
+        ident locId = loc.Id;
+        ReentrantTargetLocId = locId;
+        ReentrantEventMode = 39;
+        loc.OnMapAdded.Subscribe(OnReentrantMapAdded);
+
+        bool caught = false;
+
+        try {
+            loc.AddMap("TestMap".hstr());
+        }
+        catch {
+            caught = true;
+        }
+
+        ident mapId = ReentrantTargetMapId;
+        Location? aliveLoc = Game.GetLocation(locId);
+
+        if (!caught) return -2;
+        if (ReentrantMapAddedCalls != 1) return -3;
+        if (mapId == ZERO_IDENT) return -4;
+        if (Game.GetMap(mapId) !is null) return -5;
+        if (aliveLoc is null) return -6;
+        if (aliveLoc.GetMapCount() != 0) return -7;
+
+        Game.DestroyLocation(aliveLoc);
+        return 0;
+    }
 }
 )";
 
@@ -1051,6 +3246,32 @@ namespace MapOpsTest
         return protos_data;
     }
 
+    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+    {
+        vector<uint8_t> props_data;
+        set<hstring> str_hashes;
+
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        proto.SetStackable(true);
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+
+        vector<uint8_t> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32_t>(uint32_t {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
+
+        return protos_data;
+    }
+
     static auto MakeResources() -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -1068,7 +3289,8 @@ namespace MapOpsTest
         const auto map_type = proto_engine.Hashes.ToHashedString("Map");
 
         const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
+        const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
         const auto fomap_blob = MakeEmptyMapBlob();
@@ -1078,6 +3300,7 @@ namespace MapOpsTest
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("MapOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("MapOpsItem.fopro-bin-server", item_blob);
+        runtime_source->AddFile("MapOpsItem2.fopro-bin-server", item2_blob);
         runtime_source->AddFile("MapOpsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("TestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
@@ -1377,6 +3600,231 @@ TEST_CASE("MapAddWithProperties")
     SECTION("AddCritterWithProperties")
     {
         RUN_FUNC("MapOpsTest::TestMapAddCritterWithProperties");
+    }
+}
+
+TEST_CASE("MapReentrantEvents")
+{
+    MAKE_SERVER;
+
+    SECTION("MapCritterOutEventRunsBeforeDetach")
+    {
+        RUN_FUNC("MapOpsTest::TestMapCritterOutEventRunsBeforeDetach");
+    }
+
+    SECTION("MapCritterOutEventMayDestroyCritter")
+    {
+        RUN_FUNC("MapOpsTest::TestMapCritterOutEventMayDestroyCritter");
+    }
+
+    SECTION("MapCritterOutEventBlocksNestedTransfer")
+    {
+        RUN_FUNC("MapOpsTest::TestMapCritterOutEventBlocksNestedTransfer");
+    }
+
+    SECTION("CritterDisappearedEventRunsBeforeDetach")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterDisappearedEventRunsBeforeDetach");
+    }
+
+    SECTION("CritterDisappearedEventMayDestroyCritter")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterDisappearedEventMayDestroyCritter");
+    }
+
+    SECTION("MapCritterInEventMayDestroyEnteringCritter")
+    {
+        RUN_FUNC("MapOpsTest::TestMapCritterInEventMayDestroyEnteringCritter");
+    }
+
+    SECTION("MapCritterInEventMayDestroyBeforeInitialInfo")
+    {
+        RUN_FUNC("MapOpsTest::TestMapCritterInEventMayDestroyBeforeInitialInfo");
+    }
+
+    SECTION("MapAddCritterEventMayDestroyCritterThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterEventMayDestroyCritterThrows");
+    }
+
+    SECTION("MapAddCritterEventMayDestroyMapThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterEventMayDestroyMapThrows");
+    }
+
+    SECTION("MapAddCritterEventMayMoveCritterAwayThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterEventMayMoveCritterAwayThrows");
+    }
+
+    SECTION("MapAddCritterInitEventMayDestroyCritterThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterInitEventMayDestroyCritterThrows");
+    }
+
+    SECTION("MapAddCritterInitEventMayDestroyMapThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterInitEventMayDestroyMapThrows");
+    }
+
+    SECTION("MapAddCritterInitEventMayMoveCritterAwayThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddCritterInitEventMayMoveCritterAwayThrows");
+    }
+
+    SECTION("GlobalMapCritterOutEventKeepsTrip")
+    {
+        RUN_FUNC("MapOpsTest::TestGlobalMapCritterOutEventKeepsTrip");
+    }
+
+    SECTION("GlobalMapCritterOutEventMayDestroyCritter")
+    {
+        RUN_FUNC("MapOpsTest::TestGlobalMapCritterOutEventMayDestroyCritter");
+    }
+
+    SECTION("GlobalMapCritterInEventMayDestroyBeforeInitialInfo")
+    {
+        RUN_FUNC("MapOpsTest::TestGlobalMapCritterInEventMayDestroyBeforeInitialInfo");
+    }
+
+    SECTION("GlobalMapAddCritterEventMayDestroyCritterThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestGlobalMapAddCritterEventMayDestroyCritterThrows");
+    }
+
+    SECTION("GlobalMapLoadCritterEventMayDestroyBeforeCritterLoad")
+    {
+        RUN_FUNC("MapOpsTest::TestGlobalMapLoadCritterEventMayDestroyBeforeCritterLoad");
+    }
+
+    SECTION("AttachedCritterTransferEventMayDestroyLeaderBeforeFinalTransfer")
+    {
+        RUN_FUNC("MapOpsTest::TestAttachedCritterTransferEventMayDestroyLeaderBeforeFinalTransfer");
+    }
+
+    SECTION("CritterAppearedEventMayDestroyTarget")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterAppearedEventMayDestroyTarget");
+    }
+
+    SECTION("CritterAppearedEventStopsDistanceGroupsAfterTransfer")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterAppearedEventStopsDistanceGroupsAfterTransfer");
+    }
+
+    SECTION("CritterAppearedDistEventStopsNextDistanceGroupsAfterTransfer")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterAppearedDistEventStopsNextDistanceGroupsAfterTransfer");
+    }
+
+    SECTION("CritterDisappearedEventStopsDistanceGroupsAfterTransfer")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterDisappearedEventStopsDistanceGroupsAfterTransfer");
+    }
+
+    SECTION("ItemOnMapAppearedEventMayDestroyItem")
+    {
+        RUN_FUNC("MapOpsTest::TestItemOnMapAppearedEventMayDestroyItem");
+    }
+
+    SECTION("ItemOnMapAppearedEventMayMoveItemAway")
+    {
+        RUN_FUNC("MapOpsTest::TestItemOnMapAppearedEventMayMoveItemAway");
+    }
+
+    SECTION("MapAddItemEventMayDestroyItemThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddItemEventMayDestroyItemThrows");
+    }
+
+    SECTION("MapAddItemEventMayDestroyMapThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddItemEventMayDestroyMapThrows");
+    }
+
+    SECTION("MapAddItemEventMayMoveItemAwayThrows")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddItemEventMayMoveItemAwayThrows");
+    }
+
+    SECTION("ItemOnMapDisappearedEventMayDestroyItem")
+    {
+        RUN_FUNC("MapOpsTest::TestItemOnMapDisappearedEventMayDestroyItem");
+    }
+
+    SECTION("ItemOnMapChangedEventMayDestroyItem")
+    {
+        RUN_FUNC("MapOpsTest::TestItemOnMapChangedEventMayDestroyItem");
+    }
+
+    SECTION("ItemOnMapChangedEventMayMoveItemAwayBeforeNextObserver")
+    {
+        RUN_FUNC("MapOpsTest::TestItemOnMapChangedEventMayMoveItemAwayBeforeNextObserver");
+    }
+
+    SECTION("CritterItemMovedEventMayDestroyItem")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterItemMovedEventMayDestroyItem");
+    }
+
+    SECTION("CritterItemMovedAddEventMayMoveItemAway")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterItemMovedAddEventMayMoveItemAway");
+    }
+
+    SECTION("CritterItemMovedSwapEventMayMoveOriginalItem")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterItemMovedSwapEventMayMoveOriginalItem");
+    }
+
+    SECTION("CritterItemMovedSwapEventMayDestroyOriginalItem")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterItemMovedSwapEventMayDestroyOriginalItem");
+    }
+
+    SECTION("CritterWalkEventMayDestroyCritter")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterWalkEventMayDestroyCritter");
+    }
+
+    SECTION("CritterWalkEventMayDestroyItem")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterWalkEventMayDestroyItem");
+    }
+
+    SECTION("CritterWalkEventMayTransferCritterBeforeNextTrigger")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterWalkEventMayTransferCritterBeforeNextTrigger");
+    }
+
+    SECTION("CritterWalkEventMayDestroyMapBeforeNextTrigger")
+    {
+        RUN_FUNC("MapOpsTest::TestCritterWalkEventMayDestroyMapBeforeNextTrigger");
+    }
+
+    SECTION("MapFinishEventCannotDestroyOwningLocation")
+    {
+        RUN_FUNC("MapOpsTest::TestMapFinishEventCannotDestroyOwningLocation");
+    }
+
+    SECTION("MapRemovedEventCannotDestroyOwningLocation")
+    {
+        RUN_FUNC("MapOpsTest::TestMapRemovedEventCannotDestroyOwningLocation");
+    }
+
+    SECTION("MapInitEventMayDestroyMap")
+    {
+        RUN_FUNC("MapOpsTest::TestMapInitEventMayDestroyMap");
+    }
+
+    SECTION("MapAddedEventMayDestroyLocation")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddedEventMayDestroyLocation");
+    }
+
+    SECTION("MapAddedEventMayDestroyMap")
+    {
+        RUN_FUNC("MapOpsTest::TestMapAddedEventMayDestroyMap");
     }
 }
 

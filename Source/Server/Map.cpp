@@ -288,6 +288,10 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     FO_RUNTIME_ASSERT(item);
     FO_RUNTIME_ASSERT(!item->GetStatic());
     FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    refcount_ptr map_holder = this;
+    refcount_ptr item_holder = item;
+    ignore_unused(map_holder);
+    ignore_unused(item_holder);
 
     item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
@@ -305,6 +309,9 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
         _engine->EntityMngr.MakePersistent(item, true);
     }
 
+    const ident_t initial_item_map_id = item->GetMapId();
+    const mpos initial_item_hex = item->GetHex();
+
     // Process critters view
     for (auto* cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
@@ -318,6 +325,10 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
             ValidateEntityAccess(item);
             ValidateEntityAccess(dropper);
             cr->OnItemOnMapAppeared.Fire(item, dropper);
+
+            if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
+                return;
+            }
         }
     }
 
@@ -384,6 +395,10 @@ void Map::RemoveItem(ident_t item_id)
     const auto it = _itemsMap.find(item_id);
     FO_RUNTIME_ASSERT(it != _itemsMap.end());
     Item* item = it->second.get();
+    refcount_ptr map_holder = this;
+    refcount_ptr item_holder = item;
+    ignore_unused(map_holder);
+    ignore_unused(item_holder);
     _itemsMap.erase(it);
 
     vec_remove_unique_value(_items, item);
@@ -434,6 +449,10 @@ void Map::RemoveItem(ident_t item_id)
             ValidateEntityAccess(cr);
             ValidateEntityAccess(item);
             cr->OnItemOnMapDisappeared.Fire(item, nullptr);
+
+            if (IsDestroyed() || item->IsDestroyed()) {
+                return;
+            }
         }
     }
 
@@ -462,6 +481,16 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
         FO_RUNTIME_ASSERT(item);
+        FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+        FO_RUNTIME_ASSERT(item->GetMapId() == GetId());
+        FO_RUNTIME_ASSERT(GetItem(item->GetId()) == item);
+        refcount_ptr map_holder = this;
+        refcount_ptr item_holder = item;
+        ignore_unused(map_holder);
+        ignore_unused(item_holder);
+
+        const ident_t initial_item_map_id = item->GetMapId();
+        const mpos initial_item_hex = item->GetHex();
 
         for (auto* cr : copy_hold_ref(_critters)) {
             if (cr->CheckVisibleItem(item->GetId())) {
@@ -469,6 +498,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(item);
                 cr->OnItemOnMapChanged.Fire(item);
+
+                if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
+                    return;
+                }
             }
         }
 
@@ -537,6 +570,18 @@ void Map::ChangeViewItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(item);
+    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+    FO_RUNTIME_ASSERT(item->GetMapId() == GetId());
+    FO_RUNTIME_ASSERT(GetItem(item->GetId()) == item);
+    refcount_ptr map_holder = this;
+    refcount_ptr item_holder = item;
+    ignore_unused(map_holder);
+    ignore_unused(item_holder);
+
+    const ident_t initial_item_map_id = item->GetMapId();
+    const mpos initial_item_hex = item->GetHex();
+
     for (auto* cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
@@ -549,6 +594,10 @@ void Map::ChangeViewItem(Item* item)
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(item);
                 cr->OnItemOnMapDisappeared.Fire(item, nullptr);
+
+                if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
+                    return;
+                }
             }
         }
         else if (cr->CanSeeItemOnMap(item)) {
@@ -557,8 +606,34 @@ void Map::ChangeViewItem(Item* item)
             ValidateEntityAccess(cr);
             ValidateEntityAccess(item);
             cr->OnItemOnMapAppeared.Fire(item, nullptr);
+
+            if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
+                return;
+            }
         }
     }
+}
+
+auto Map::IsMapItemContextChanged(const Item* item, ident_t map_id, mpos hex) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_RUNTIME_ASSERT(item);
+
+    if (IsDestroyed() || item->IsDestroyed()) {
+        return true;
+    }
+    if (item->GetOwnership() != ItemOwnership::MapHex || item->GetMapId() != map_id || item->GetHex() != hex) {
+        return true;
+    }
+
+    const auto it = _itemsMap.find(item->GetId());
+
+    if (it == _itemsMap.end() || it->second.get() != item) {
+        return true;
+    }
+
+    return false;
 }
 
 auto Map::IsBlockItemOnHex(mpos hex) const noexcept -> bool
@@ -1013,14 +1088,37 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_RUNTIME_ASSERT(cr);
+
+    const ident_t initial_cr_map_id = cr->GetMapId();
+    const mpos initial_cr_hex = cr->GetHex();
+
+    const auto is_trigger_context_changed = [this, cr, initial_cr_map_id, initial_cr_hex]() noexcept -> bool {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (IsDestroyed() || cr->IsDestroyed()) {
+            return true;
+        }
+        if (cr->GetMapId() != initial_cr_map_id || cr->GetHex() != initial_cr_hex) {
+            return true;
+        }
+        if (initial_cr_map_id == GetId() && GetCritter(cr->GetId()) != cr) {
+            return true;
+        }
+
+        return false;
+    };
+
+    if (is_trigger_context_changed()) {
+        return;
+    }
+
     if (IsTriggerStaticItemOnHex(from_hex)) {
         for (auto& item : GetTriggerStaticItemsOnHex(from_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc.Call(cr, item.get(), false, dir)) {
-                    // Nop
-                }
+                item->TriggerScriptFunc.Call(cr, item.get(), false, dir);
 
-                if (cr->IsDestroyed()) {
+                if (is_trigger_context_changed()) {
                     return;
                 }
             }
@@ -1029,7 +1127,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
             ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, false, dir);
 
-            if (cr->IsDestroyed()) {
+            if (is_trigger_context_changed()) {
                 return;
             }
         }
@@ -1038,11 +1136,9 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
     if (IsTriggerStaticItemOnHex(to_hex)) {
         for (auto& item : GetTriggerStaticItemsOnHex(to_hex)) {
             if (item->TriggerScriptFunc) {
-                if (!item->TriggerScriptFunc.Call(cr, item.get(), true, dir)) {
-                    // Nop
-                }
+                item->TriggerScriptFunc.Call(cr, item.get(), true, dir);
 
-                if (cr->IsDestroyed()) {
+                if (is_trigger_context_changed()) {
                     return;
                 }
             }
@@ -1051,7 +1147,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
             ValidateEntityAccess(cr);
             _engine->OnStaticItemWalk.Fire(item.get(), cr, true, dir);
 
-            if (cr->IsDestroyed()) {
+            if (is_trigger_context_changed()) {
                 return;
             }
         }
@@ -1067,7 +1163,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
             ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, false, dir);
 
-            if (cr->IsDestroyed()) {
+            if (is_trigger_context_changed()) {
                 return;
             }
         }
@@ -1083,7 +1179,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
             ValidateEntityAccess(cr);
             item->OnCritterWalk.Fire(cr, true, dir);
 
-            if (cr->IsDestroyed()) {
+            if (is_trigger_context_changed()) {
                 return;
             }
         }
