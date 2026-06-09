@@ -2888,6 +2888,8 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
         return nullptr;
     }
 
+    OnPlayerLogined(player, unlogined_player);
+
     return player;
 }
 

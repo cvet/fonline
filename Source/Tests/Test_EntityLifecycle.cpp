@@ -1321,6 +1321,35 @@ TEST_CASE("PlayerRegistrationCppApi")
         CHECK(logout_calls == 1);
     }
 
+    SECTION("TempSessionPlayerHardDisconnectDefersDestructionToPlayerJob")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        const auto initial_player_count = server->EntityMngr.GetPlayersCount();
+        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        REQUIRE(unlogined_player != nullptr);
+        unlogined_player->SetName("TempSessionDisconnect");
+
+        auto* player = server->LoginPlayerToTempSession(unlogined_player);
+        REQUIRE(player != nullptr);
+
+        int32_t login_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
+        CHECK(login_calls == 1);
+
+        player->GetConnection()->HardDisconnect();
+
+        REQUIRE(WaitForUnlockedServerCondition(server.get(), server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
+
+        CHECK(server->EntityMngr.GetPlayersCount() == initial_player_count);
+
+        int32_t logout_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLogoutCalls"), logout_calls));
+        CHECK(logout_calls == 1);
+    }
+
     SECTION("CritterInitialInfoMayDetachPlayerBeforeSwitchNotification")
     {
         auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
