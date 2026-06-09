@@ -609,6 +609,8 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     const auto port = IntegrationTestPort.fetch_add(1);
 
     auto server_settings = MakeServerTestSettings(port);
+    // Linux debug stack traces for the expected script exception below can outlive the default ping window.
+    BakerTests::OverrideSetting(server_settings.ClientPingTime, 120000);
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
