@@ -165,7 +165,7 @@ These managers are renderer-facing but not renderer-specific. They talk through 
 
 ### Fonts and Inline Color Tags
 
-`FontManager::FormatText()` strips `@color 0xBBGGRR@` / `@color 0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
+`FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 
 ## Input and script-facing hooks
 

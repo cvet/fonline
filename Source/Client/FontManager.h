@@ -72,7 +72,7 @@ enum class FontFlag : uint32_t
     AlignRight = 0x0010, // Right-align each line within the rect
     AlignBottom = 0x0020, // Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from "skip from top" to "skip from bottom"
     KeepTail = 0x0040, // When the text block is taller than the rect, render its tail (skip the leading overflowing lines)
-    NoColorize = 0x0080, // Strip inline color tags (@color 0x...@ / @color@), but render text with the base color as-is
+    NoColorize = 0x0080, // Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is
     Justify = 0x0100, // Justify each line: distribute extra spaces between words to fill the rect width
     Bordered = 0x0200, // Render glyphs from the bordered/outlined font texture variant instead of the regular one
 };

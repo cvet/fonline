@@ -532,7 +532,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     auto cury = 0;
     auto& color_offset = fi.ColorOffset;
 
-    // Colorize: strip `@color ...@` markers and write parsed colors into TextColor.
+    // Colorize: strip `@color:...@` markers and write parsed colors into TextColor.
     ucolor* dots = nullptr;
     string buf;
     buf.reserve(str.size());
@@ -952,15 +952,17 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
         reset = true;
         return true;
     }
-    if (value.front() != ' ' && value.front() != '\t') {
+    if (value.front() != ':') {
         return false;
     }
 
-    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) {
-        value.remove_prefix(1);
-    }
+    value.remove_prefix(1);
+
     while (!value.empty() && (value.back() == ' ' || value.back() == '\t')) {
         value.remove_suffix(1);
+    }
+    while (!value.empty() && (value.front() == ' ' || value.front() == '\t')) {
+        value.remove_prefix(1);
     }
 
     if (!IsInlineColorHex(value)) {
