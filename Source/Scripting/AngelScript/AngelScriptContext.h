@@ -73,6 +73,7 @@ struct AngelScriptContextExtendedData
     std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
+    std::atomic_bool ExecutionActive {};
 
 #if FO_TRACY
     bool TracyExecutionActive {};

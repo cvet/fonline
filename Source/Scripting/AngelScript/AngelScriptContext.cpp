@@ -296,6 +296,11 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_RUNTIME_ASSERT(ctx_ext);
 
+        const bool already_active = ctx_ext->ExecutionActive.exchange(true);
+        FO_RUNTIME_ASSERT(!already_active);
+
+        auto execution_active_guard = scope_exit([ctx_ext]() noexcept { ctx_ext->ExecutionActive.store(false); });
+
 #if FO_TRACY
         FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionActive);
         FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionCalls);
@@ -439,9 +444,20 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         scoped_lock lock {_poolLocker};
 
         const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return busy.get() == ctx; });
-        FO_RUNTIME_ASSERT(it != _busyContexts.end());
 
+        if (it == _busyContexts.end()) {
+            return;
+        }
         if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
+            return;
+        }
+
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+        FO_RUNTIME_ASSERT(ctx_ext);
+
+        if (ctx_ext->ExecutionActive.load()) {
+            FO_RUNTIME_ASSERT(_delayedScheduler);
+            _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
     }
