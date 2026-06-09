@@ -35,6 +35,10 @@ Read this page together with:
 - `Source/Client/PlayerView.h`
 - `Source/Client/DefaultSprites.h`
 - `Source/Client/DefaultSprites.cpp`
+- `Source/Client/3dStuff.h`
+- `Source/Client/3dStuff.cpp`
+- `Source/Client/3dAnimation.h`
+- `Source/Client/3dAnimation.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ParticleSprites.h`
@@ -114,6 +118,14 @@ Primary view types:
 - custom client entities — created by `CreateCustomEntityView()` when a synced custom entity entry arrives.
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
+
+## Critter model animation
+
+3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
+animation-specific speed (`AnimSpeed`) to the body/action controller, while `RefreshMoveAnimation()` assigns gait and
+movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
+the model base/link/global speed only; it must not inherit the current body action's `AnimSpeed`, otherwise fast actions
+such as use/pick-up make the leg cycle run too quickly while the critter is moving.
 
 ## `MapView`: map presentation and local spatial state
 

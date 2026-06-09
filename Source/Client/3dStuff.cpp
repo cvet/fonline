@@ -1214,6 +1214,13 @@ auto ModelInstance::GetSpeed() const -> float32_t
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
 }
 
+auto ModelInstance::GetMovementSpeed() const -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
+}
+
 auto ModelInstance::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();
@@ -2037,7 +2044,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         _bodyAnimController->AdvanceTime(elapsed * GetSpeed());
 
         if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
-            _moveAnimController->AdvanceTime(elapsed * GetSpeed());
+            _moveAnimController->AdvanceTime(elapsed * GetMovementSpeed());
 
             if (_turnAnimPlaying && !_moveAnimController->GetTrackEnable(_curMoveTrack)) {
                 _turnAnimPlaying = false;

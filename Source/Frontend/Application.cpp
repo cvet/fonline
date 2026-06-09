@@ -268,11 +268,11 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         {SDL_BUTTON_LEFT, MouseButton::Left},
         {SDL_BUTTON_RIGHT, MouseButton::Right},
         {SDL_BUTTON_MIDDLE, MouseButton::Middle},
-        {SDL_BUTTON_MASK(4), MouseButton::Ext0},
-        {SDL_BUTTON_MASK(5), MouseButton::Ext1},
-        {SDL_BUTTON_MASK(6), MouseButton::Ext2},
-        {SDL_BUTTON_MASK(7), MouseButton::Ext3},
-        {SDL_BUTTON_MASK(8), MouseButton::Ext4},
+        {SDL_BUTTON_X1, MouseButton::Ext0},
+        {SDL_BUTTON_X2, MouseButton::Ext1},
+        {6, MouseButton::Ext2},
+        {7, MouseButton::Ext3},
+        {8, MouseButton::Ext4},
     });
 
     if (!Settings.Input.DisableGamepad) {
@@ -1550,21 +1550,24 @@ void Application::BeginFrame()
             switch_active_to_hovered_child(button_screen_pos);
 
             const bool button_to_client = !imgui_capture_mouse || host_pos_inside_active_virtual(button_screen_pos);
+            const auto button_it = _ctx->MouseButtonsMap->find(sdl_event.button.button);
 
-            if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-                InputEvent::MouseDownEvent ev;
-                ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
+            if (button_it != _ctx->MouseButtonsMap->end()) {
+                if (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                    InputEvent::MouseDownEvent ev;
+                    ev.Button = button_it->second;
 
-                if (button_to_client) {
-                    _ctx->EventsQueue->emplace_back(ev);
+                    if (button_to_client) {
+                        _ctx->EventsQueue->emplace_back(ev);
+                    }
                 }
-            }
-            else {
-                InputEvent::MouseUpEvent ev;
-                ev.Button = (*_ctx->MouseButtonsMap)[sdl_event.button.button];
+                else {
+                    InputEvent::MouseUpEvent ev;
+                    ev.Button = button_it->second;
 
-                if (button_to_client) {
-                    _ctx->EventsQueue->emplace_back(ev);
+                    if (button_to_client) {
+                        _ctx->EventsQueue->emplace_back(ev);
+                    }
                 }
             }
 

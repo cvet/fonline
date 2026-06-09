@@ -306,6 +306,7 @@ private:
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float32_t;
+    [[nodiscard]] auto GetMovementSpeed() const -> float32_t;
     [[nodiscard]] auto GetTime() const -> nanotime;
 
     void GenerateCombinedMeshes();

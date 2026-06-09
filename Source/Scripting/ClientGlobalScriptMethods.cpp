@@ -708,7 +708,7 @@ FO_SCRIPT_API void Client_Game_ClearEffectScriptValues(ClientEngine* client, Eff
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateMouseClick(ClientEngine* client, ipos32 pos, MouseButton button)
 {
-    const auto prev_pos = client->MousePos;
+    const ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
         client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, pos.x - prev_pos.x, pos.y - prev_pos.y}});

@@ -95,6 +95,10 @@ Input responsibilities include:
 - gamepad state;
 - normalization of mouse, keyboard, wheel, touch tap, touch double-tap, touch scroll, and touch zoom events.
 
+Mouse button input preserves the concrete platform button id when mapping to script-facing `MouseButton`
+values (`Left`, `Right`, `Middle`, `Ext0`/`Ext1`, ...); unknown native buttons are ignored rather than
+falling back to a primary click.
+
 The client turns these lower-level events into script events in `ClientEngine::ProcessInputEvent()`.
 
 SDL mouse-motion events are the primary source for `InputEvent::MouseMoveEvent`. On backends where SDL exposes global mouse coordinates (Windows, macOS, X11, and the whitelisted OS/2 drivers), `Application::BeginFrame()` also polls global mouse state while the app remains focused. If no SDL motion event arrived in that frame and the global position changed, the frontend synthesizes a mouse-move event from the global position. This keeps the game cursor and edge-scroll state updating when the OS pointer has moved outside the client window instead of freezing at the last in-window event. The same host-to-active-window translation path is used for this synthetic event, so embedded virtual clients still receive local logical coordinates through their display rect and aspect-fit mapping.
