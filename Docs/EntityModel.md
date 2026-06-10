@@ -109,6 +109,8 @@ A `Properties` instance can have base properties. This is used heavily by protot
 
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
 
+Proto-derived overlays keep the dense property index lazy: small overlays use a linear scan over their sorted entries, and `_overlayEntryIndex` is built only after the overlay entry count reaches the engine threshold. This avoids allocating an index sized to every registered property for the common low-entry overlay case while keeping dense lookup for larger overlays.
+
 ## Prototypes
 
 `Source/Common/EntityProtos.h` defines prototype entities:

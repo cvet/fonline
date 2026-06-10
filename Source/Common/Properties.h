@@ -383,6 +383,9 @@ public:
     void SetValue(const Property* prop, PropertyRawData& prop_data);
 
 private:
+    auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
+    void ReleaseOverlayEntryIndex() noexcept;
+
     raw_ptr<const PropertyRegistrator> _registrator;
     raw_ptr<const Properties> _baseProps {};
 
