@@ -575,7 +575,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
         result_entities.reserve(entities->size());
 
         for (auto& entity : *entities) {
-            CheckScriptEntityNonNull(entity);
+            CheckScriptEntityNonNull(entity.get());
             CheckScriptEntityAccessAndNonDestroyed(entity.get());
             result_entities.emplace_back(entity.get());
         }
