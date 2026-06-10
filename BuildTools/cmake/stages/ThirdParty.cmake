@@ -32,9 +32,11 @@ RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 # Host runtime libs we deliberately use through SDL3 and engine code.
 if(FO_LINUX)
 	# X11 for display, OpenGL for rendering, ALSA for audio backend.
-	RegisterFindPackageHandler(X11    PassThroughFindPackage)
-	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
-	RegisterFindPackageHandler(ALSA   PassThroughFindPackage)
+	# CMake's FindX11 also probes Freetype for Xft support.
+	RegisterFindPackageHandler(X11      PassThroughFindPackage)
+	RegisterFindPackageHandler(Freetype PassThroughFindPackage)
+	RegisterFindPackageHandler(OpenGL   PassThroughFindPackage)
+	RegisterFindPackageHandler(ALSA     PassThroughFindPackage)
 endif()
 if(FO_MAC)
 	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
