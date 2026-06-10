@@ -121,7 +121,10 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 
     auto send = [this]() FO_DEFERRED -> const_span<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
-    auto disconnect = [this]() FO_DEFERRED { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
+    auto disconnect = [this]() FO_DEFERRED {
+        WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+        AsyncReceiveData({});
+    };
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
@@ -130,6 +133,12 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 ServerConnection::~ServerConnection()
 {
     FO_STACK_TRACE_ENTRY();
+
+    {
+        scoped_lock locker {_inBufLocker};
+
+        _dataArrivedCallback = {};
+    }
 
     _netConnection->Disconnect();
 }
@@ -326,7 +335,10 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
     {
         scoped_lock locker {_inBufLocker};
 
-        _inBuf.AddData(buf);
+        if (!buf.empty()) {
+            _inBuf.AddData(buf);
+        }
+
         callback = _dataArrivedCallback;
     }
 
