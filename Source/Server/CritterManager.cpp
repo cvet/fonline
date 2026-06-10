@@ -309,8 +309,7 @@ void CritterManager::DestroyCritter(Critter* cr)
                     ctx->EnsureEntitySynced(map.get());
                     _engine->MapMngr.RemoveCritterFromMap(cr, map.get());
                 }
-                else {
-                    FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+                else if (cr->GetRawGlobalMapGroup()) {
                     _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
                 }
             }
