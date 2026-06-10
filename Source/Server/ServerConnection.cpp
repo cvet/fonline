@@ -134,11 +134,11 @@ ServerConnection::~ServerConnection()
 {
     FO_STACK_TRACE_ENTRY();
 
-    {
+    safe_call([this] {
         scoped_lock locker {_inBufLocker};
 
         _dataArrivedCallback = {};
-    }
+    });
 
     _netConnection->Disconnect();
 }
