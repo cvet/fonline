@@ -1093,6 +1093,7 @@ namespace MapOpsTest
         ReentrantItemChangedSawOnMap = false;
     }
 
+ )" + R"(
     [[Event]]
     void OnReentrantMapCritterOut(Map map, Critter cr)
     {
@@ -1237,6 +1238,7 @@ namespace MapOpsTest
         ReentrantCritterLoadCalls++;
     }
 
+ )" + R"(
     [[Event]]
     void OnReentrantCritterInit(Critter cr, bool firstTime)
     {
@@ -1420,6 +1422,7 @@ namespace MapOpsTest
         ReentrantCritterAppearedDist2Calls++;
     }
 
+ )" + R"(
     [[Event]]
     void OnReentrantCritterDisappearedDist1(Critter observer, Critter cr)
     {
@@ -1576,6 +1579,7 @@ namespace MapOpsTest
         }
     }
 
+ )" + R"(
     [[Event]]
     void OnReentrantCritterWalk(Item item, Critter cr, bool isIn, mdir dir)
     {
@@ -1792,6 +1796,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestMapCritterInEventMayDestroyEnteringCritter()
     {
         ResetReentrantEventState();
@@ -2003,6 +2008,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestMapAddCritterInitEventMayDestroyMapThrows()
     {
         ResetReentrantEventState();
@@ -2146,6 +2152,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestGlobalMapCritterInEventMayDestroyBeforeInitialInfo()
     {
         ResetReentrantEventState();
@@ -2305,6 +2312,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestCritterAppearedEventStopsDistanceGroupsAfterTransfer()
     {
         ResetReentrantEventState();
@@ -2538,6 +2546,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestMapAddItemEventMayDestroyMapThrows()
     {
         ResetReentrantEventState();
@@ -2729,6 +2738,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestCritterItemMovedEventMayDestroyItem()
     {
         ResetReentrantEventState();
@@ -2887,6 +2897,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestCritterWalkEventMayDestroyCritter()
     {
         ResetReentrantEventState();
@@ -2956,6 +2967,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestCritterWalkEventMayTransferCritterBeforeNextTrigger()
     {
         ResetReentrantEventState();
@@ -3047,6 +3059,7 @@ namespace MapOpsTest
         return 0;
     }
 
+ )" + R"(
     int TestMapFinishEventCannotDestroyOwningLocation()
     {
         ResetReentrantEventState();
