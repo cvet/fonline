@@ -24,6 +24,7 @@ Removed paths:
 - depcomp
 - include/Makefile.am
 - include/Makefile.in
+- include/ogg/Makefile.am
 - install-sh
 - libogg.spec
 - libogg.spec.in
@@ -36,3 +37,8 @@ Removed paths:
 - ogg-uninstalled.pc.in
 - src/Makefile.am
 - src/Makefile.in
+
+FOnline build notes:
+- `BuildTools/cmake/stages/ThirdParty.cmake` generates
+  `config_types.h` into the build directory for the custom static Ogg target.
+  (FOnline Patch)

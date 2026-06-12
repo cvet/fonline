@@ -183,13 +183,33 @@ endif()
 
 # Ogg
 SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
+SetValue(FO_OGG_CONFIG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ThirdParty/ogg/include")
+include(CheckIncludeFiles)
+check_include_files(inttypes.h INCLUDE_INTTYPES_H)
+check_include_files(stdint.h INCLUDE_STDINT_H)
+check_include_files(sys/types.h INCLUDE_SYS_TYPES_H)
+foreach(FO_OGG_INCLUDE_VAR IN ITEMS INCLUDE_INTTYPES_H INCLUDE_STDINT_H INCLUDE_SYS_TYPES_H)
+    if(NOT DEFINED ${FO_OGG_INCLUDE_VAR} OR "${${FO_OGG_INCLUDE_VAR}}" STREQUAL "")
+        SetValue(${FO_OGG_INCLUDE_VAR} 0)
+    endif()
+endforeach()
+SetValue(SIZE16 int16_t)
+SetValue(USIZE16 uint16_t)
+SetValue(SIZE32 int32_t)
+SetValue(USIZE32 uint32_t)
+SetValue(SIZE64 int64_t)
+SetValue(USIZE64 uint64_t)
+include("${FO_OGG_DIR}/cmake/CheckSizes.cmake")
+# (FOnline Patch) The engine builds Ogg through a custom static target instead
+# of upstream CMake, so generate the Unix type header that os_types.h includes.
+configure_file("${FO_OGG_DIR}/include/ogg/config_types.h.in" "${FO_OGG_CONFIG_INCLUDE_DIR}/ogg/config_types.h" @ONLY)
 SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
     "${FO_OGG_DIR}/src/framing.c")
 AddStaticThirdPartyLibrary(Ogg
     SOURCE_LIST FO_OGG_SOURCE
     APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_OGG_DIR}/include")
+    INCLUDE_DIRS "${FO_OGG_DIR}/include" "${FO_OGG_CONFIG_INCLUDE_DIR}")
 
 # Vorbis
 SetValue(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
