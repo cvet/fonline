@@ -4,6 +4,7 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - ci/
 - contrib/
 - projects/
@@ -14,6 +15,7 @@ Removed paths:
 - .editorconfig
 - .editorconfig-checker.json
 - .gitignore
+- .markdownlint.yml
 - .yamllint.yml
 - aclocal.m4
 - autogen.sh
@@ -26,7 +28,9 @@ Removed paths:
 - depcomp
 - example.c
 - install-sh
+- INSTALL
 - libpng.3
+- libpng-manual.txt
 - libpngpf.3
 - ltmain.sh
 - Makefile.am
@@ -45,4 +49,3 @@ Removed paths:
 - scripts/smakefile.ppc
 - test-driver
 - TODO
-
