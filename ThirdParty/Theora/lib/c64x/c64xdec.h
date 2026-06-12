@@ -5,30 +5,29 @@
  * GOVERNED BY A BSD-STYLE SOURCE LICENSE INCLUDED WITH THIS SOURCE *
  * IN 'COPYING'. PLEASE READ THESE TERMS BEFORE DISTRIBUTING.       *
  *                                                                  *
- * THE Theora SOURCE CODE IS COPYRIGHT (C) 2002-2009                *
- * by the Xiph.Org Foundation and contributors http://www.xiph.org/ *
+ * THE Theora SOURCE CODE IS COPYRIGHT (C) 2002-2007                *
+ * by the Xiph.Org Foundation and contributors                      *
+ * https://www.xiph.org/                                            *
  *                                                                  *
  ********************************************************************
- function:
-    last mod: $Id: cpu.h 16503 2009-08-22 18:14:02Z giles $
+
+  function:
 
  ********************************************************************/
+#if !defined(_c64x_c64xdec_H)
+# define _c64x_c64xdec_H (1)
+# include "c64xint.h"
 
-#if !defined(_x86_cpu_H)
-# define _x86_cpu_H (1)
-#include "internal.h"
+# if defined(OC_C64X_ASM)
+#  define oc_dec_accel_init oc_dec_accel_init_c64x
+#  define oc_dec_dc_unpredict_mcu_plane oc_dec_dc_unpredict_mcu_plane_c64x
+# endif
 
-#define OC_CPU_X86_MMX      (1<<0)
-#define OC_CPU_X86_3DNOW    (1<<1)
-#define OC_CPU_X86_3DNOWEXT (1<<2)
-#define OC_CPU_X86_MMXEXT   (1<<3)
-#define OC_CPU_X86_SSE      (1<<4)
-#define OC_CPU_X86_SSE2     (1<<5)
-#define OC_CPU_X86_PNI      (1<<6)
-#define OC_CPU_X86_SSSE3    (1<<7)
-#define OC_CPU_X86_SSE4_1   (1<<8)
-#define OC_CPU_X86_SSE4_2   (1<<9)
-#define OC_CPU_X86_SSE4A    (1<<10)
-#define OC_CPU_X86_SSE5     (1<<11)
+# include "../decint.h"
+
+void oc_dec_accel_init_c64x(oc_dec_ctx *_dec);
+
+void oc_dec_dc_unpredict_mcu_plane_c64x(oc_dec_ctx *_dec,
+ oc_dec_pipeline_state *_pipe,int _pli);
 
 #endif

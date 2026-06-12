@@ -4,13 +4,18 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - doc/
 - examples/
 - m4/
 - macosx/
 - symbian/
 - tests/
+- tools/
 - win32/
+- .gitignore
+- .gitlab-ci.yml
+- .travis.yml
 - aclocal.m4
 - autogen.sh
 - compile
@@ -37,4 +42,3 @@ Removed paths:
 - theoradec-uninstalled.pc.in
 - theoraenc.pc.in
 - theoraenc-uninstalled.pc.in
-
