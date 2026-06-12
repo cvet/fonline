@@ -437,7 +437,6 @@ SetValue(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imconfig.h"
     "${FO_DEAR_IMGUI_DIR}/imgui.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui.h"
-    "${FO_DEAR_IMGUI_DIR}/imgui_demo.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_draw.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_internal.h"
     "${FO_DEAR_IMGUI_DIR}/imgui_tables.cpp"

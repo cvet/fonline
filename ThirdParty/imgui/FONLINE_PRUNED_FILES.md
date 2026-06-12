@@ -7,6 +7,7 @@ Removed paths:
 - backends/
 - docs/
 - examples/
+- imgui_demo.cpp
 - misc/cpp/
 - misc/fonts/
 - misc/freetype/
@@ -20,4 +21,3 @@ Removed paths:
 - misc/debuggers/imgui.natstepfilter
 - misc/debuggers/imgui_lldb.py
 - misc/debuggers/README.txt
-
