@@ -123,7 +123,7 @@ private:
 
     HashFunc _hashFunc;
     mutable shared_mutex _hashStorageLocker {};
-    unordered_map<hstring::hash_t, hstring::entry> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
+    unordered_map<hstring::hash_t, unique_ptr<hstring::entry>> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
     mutable shared_mutex _resolveHashFailureHandlerLocker {};
     ResolveHashFailureHandler _resolveHashFailureHandler FO_TSA_GUARDED_BY(_resolveHashFailureHandlerLocker) {};
 };
