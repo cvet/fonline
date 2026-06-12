@@ -4,15 +4,22 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - doc/
 - macosx/
 - win32/
+- .gitignore
+- .gitlab-ci.yml
+- .travis.yml
 - aclocal.m4
+- appveyor.yml
+- autogen.sh
 - compile
 - config.guess
 - config.h.in
 - config.sub
 - configure
+- configure.ac
 - configure.in
 - depcomp
 - include/Makefile.am
@@ -29,4 +36,3 @@ Removed paths:
 - ogg-uninstalled.pc.in
 - src/Makefile.am
 - src/Makefile.in
-
