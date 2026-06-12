@@ -452,22 +452,12 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_RUNTIME_ASSERT(ctx_ext);
 
-        // SuspendScriptContext schedules this resume from inside the script call (Global_Yield),
-        // before the VM unwinds out of Execute() and the context state actually becomes
-        // SUSPENDED. On a multithreaded scheduler the resume job can fire inside that window:
-        // the context is still flagged as executing while its state still reads ACTIVE. The
-        // executing flag therefore must be checked BEFORE the state check — otherwise this
-        // resume would be dropped below and the suspended coroutine lost forever (observed as
-        // permanently hung [[Async]] server flows). While the previous run is still unwinding,
-        // re-arm the resume and retry shortly.
         if (ctx_ext->ExecutionActive.load()) {
             FO_RUNTIME_ASSERT(_delayedScheduler);
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
 
-        // Not executing and not suspended: the context already finished or was aborted and is
-        // about to leave the busy list — nothing to resume.
         if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
             return;
         }
