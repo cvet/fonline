@@ -66,7 +66,10 @@ auto mdir::hex() const noexcept -> hdir
         return hdir(_value / 60);
     }
     else {
-        return hdir((_value - 45 / 2) / 45);
+        constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
+        constexpr int32_t half_step = step / 2;
+        const int32_t shifted_angle = _value + 360 - half_step;
+        return hdir(shifted_angle / step);
     }
 }
 

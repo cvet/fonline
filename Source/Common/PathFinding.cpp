@@ -290,10 +290,12 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     while (hex_index > 1) {
         hex_index--;
 
-        int32_t best_step_dir = -1;
+        mdir best_step_dir;
+        mpos best_step_hex;
+        bool step_ok = false;
         float32_t best_step_angle_diff = 0.0f;
 
-        const auto check_hex = [&](int32_t dir, ipos32 step_raw_hex) {
+        const auto check_hex = [&](mdir dir, ipos32 step_raw_hex) {
             if (!map_size.is_valid_pos(step_raw_hex)) {
                 return;
             }
@@ -307,105 +309,33 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             const float32_t angle = GeometryHelper::GetDirAngle(step_hex, input.FromHex);
             const float32_t angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
 
-            if (best_step_dir == -1 || hex_index == 0) {
+            if (!step_ok) {
                 best_step_dir = dir;
-                best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+                best_step_hex = step_hex;
+                best_step_angle_diff = angle_diff;
+                step_ok = true;
             }
             else if (angle_diff < best_step_angle_diff) {
                 best_step_dir = dir;
+                best_step_hex = step_hex;
                 best_step_angle_diff = angle_diff;
             }
         };
 
-        bool step_ok = false;
-
-        if ((cur_hex.x % 2) != 0) {
-            check_hex(3, ipos32 {cur_hex.x - 1, cur_hex.y - 1});
-            check_hex(2, ipos32 {cur_hex.x, cur_hex.y - 1});
-            check_hex(5, ipos32 {cur_hex.x, cur_hex.y + 1});
-            check_hex(0, ipos32 {cur_hex.x + 1, cur_hex.y});
-            check_hex(4, ipos32 {cur_hex.x - 1, cur_hex.y});
-            check_hex(1, ipos32 {cur_hex.x + 1, cur_hex.y - 1});
-
-            if (best_step_dir == 3) {
-                raw_steps[hex_index - 1] = hdir::SouthWest;
-                cur_hex.x--;
-                cur_hex.y--;
-                step_ok = true;
-            }
-            else if (best_step_dir == 2) {
-                raw_steps[hex_index - 1] = hdir::SouthEast;
-                cur_hex.y--;
-                step_ok = true;
-            }
-            else if (best_step_dir == 5) {
-                raw_steps[hex_index - 1] = hdir::NorthWest;
-                cur_hex.y++;
-                step_ok = true;
-            }
-            else if (best_step_dir == 0) {
-                raw_steps[hex_index - 1] = hdir::NorthEast;
-                cur_hex.x++;
-                step_ok = true;
-            }
-            else if (best_step_dir == 4) {
-                raw_steps[hex_index - 1] = hdir::West;
-                cur_hex.x--;
-                step_ok = true;
-            }
-            else if (best_step_dir == 1) {
-                raw_steps[hex_index - 1] = hdir::East;
-                cur_hex.x++;
-                cur_hex.y--;
-                step_ok = true;
-            }
-        }
-        else {
-            check_hex(3, ipos32 {cur_hex.x - 1, cur_hex.y});
-            check_hex(2, ipos32 {cur_hex.x, cur_hex.y - 1});
-            check_hex(5, ipos32 {cur_hex.x, cur_hex.y + 1});
-            check_hex(0, ipos32 {cur_hex.x + 1, cur_hex.y + 1});
-            check_hex(4, ipos32 {cur_hex.x - 1, cur_hex.y + 1});
-            check_hex(1, ipos32 {cur_hex.x + 1, cur_hex.y});
-
-            if (best_step_dir == 3) {
-                raw_steps[hex_index - 1] = hdir::SouthWest;
-                cur_hex.x--;
-                step_ok = true;
-            }
-            else if (best_step_dir == 2) {
-                raw_steps[hex_index - 1] = hdir::SouthEast;
-                cur_hex.y--;
-                step_ok = true;
-            }
-            else if (best_step_dir == 5) {
-                raw_steps[hex_index - 1] = hdir::NorthWest;
-                cur_hex.y++;
-                step_ok = true;
-            }
-            else if (best_step_dir == 0) {
-                raw_steps[hex_index - 1] = hdir::NorthEast;
-                cur_hex.x++;
-                cur_hex.y++;
-                step_ok = true;
-            }
-            else if (best_step_dir == 4) {
-                raw_steps[hex_index - 1] = hdir::West;
-                cur_hex.x--;
-                cur_hex.y++;
-                step_ok = true;
-            }
-            else if (best_step_dir == 1) {
-                raw_steps[hex_index - 1] = hdir::East;
-                cur_hex.x++;
-                step_ok = true;
-            }
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            const mdir dir = hdir(dir_value);
+            ipos32 step_raw_hex {cur_hex.x, cur_hex.y};
+            GeometryHelper::MoveHexByDirUnsafe(step_raw_hex, dir.reverse());
+            check_hex(dir, step_raw_hex);
         }
 
         if (!step_ok) {
             output.Result = FindPathOutput::ResultType::BacktraceError;
             return output;
         }
+
+        raw_steps[hex_index - 1] = best_step_dir;
+        cur_hex = best_step_hex;
     }
 
     if (raw_steps.empty()) {

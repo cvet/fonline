@@ -95,6 +95,28 @@ TEST_CASE("PathFinding::FindPath")
         CHECK(output.Result == FindPathOutput::ResultType::AlreadyHere);
     }
 
+    SECTION("AdjacentPathWorksForEveryDirection")
+    {
+        const mpos from {10, 10};
+
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            const mdir dir = hdir(dir_value);
+            ipos32 raw_to {from.x, from.y};
+            GeometryHelper::MoveHexByDirUnsafe(raw_to, dir);
+            REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw_to));
+
+            const mpos to = TEST_MAP_SIZE.from_raw_pos(raw_to);
+            auto settings = MakeClearSettings(from, to);
+            auto output = PathFinding::FindPath(settings);
+
+            INFO("dir=" << dir_value);
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+            REQUIRE(output.Steps.size() == 1);
+            CHECK(output.Steps[0] == dir);
+            CHECK(output.NewToHex == to);
+        }
+    }
+
     SECTION("InvalidFromHexReturnsInvalidHexes")
     {
         auto settings = MakeClearSettings(mpos {100, 100}, mpos {5, 5});
@@ -639,8 +661,15 @@ TEST_CASE("PathFinding::FindPath")
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
         CHECK(output.NewToHex == mpos {17, 10});
-        // Path should be longer than direct due to maze
-        CHECK(output.Steps.size() > 15);
+
+        const int32_t direct_dist = GeometryHelper::GetDistance(mpos {2, 10}, mpos {17, 10});
+
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            CHECK(output.Steps.size() > numeric_cast<size_t>(direct_dist));
+        }
+        else {
+            CHECK(output.Steps.size() >= numeric_cast<size_t>(direct_dist));
+        }
     }
 }
 
