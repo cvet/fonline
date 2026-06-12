@@ -25,4 +25,4 @@ Removed paths:
 - misc/*.py
 - misc/*.sh
 
-Retained files: ufbx.c, ufbx.h, LICENSE, README.md.
+Retained files: ufbx.c, ufbx.h, misc/ufbx.natvis, misc/ufbxi.natvis, LICENSE, README.md.
