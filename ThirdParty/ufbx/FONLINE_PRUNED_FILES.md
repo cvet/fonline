@@ -4,9 +4,14 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - bindgen/
+- data/
+- examples/
 - extra/
 - test/
+- .gitattributes
+- .gitignore
 - misc/cmake/
 - misc/deflate_benchmark/
 - misc/deflate_testcases/
@@ -20,3 +25,4 @@ Removed paths:
 - misc/*.py
 - misc/*.sh
 
+Retained files: ufbx.c, ufbx.h, LICENSE, README.md.
