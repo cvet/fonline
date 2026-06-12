@@ -334,6 +334,8 @@ set (BUILD_SOURCE_DIR ${CMAKE_BINARY_DIR})
 
 # Enable CTest
 include (CTest)
+set (ENABLE_TESTS OFF) # (FOnline Patch) tests are pruned from the vendored engine copy.
+set (ENABLE_EXAMPLES OFF) # (FOnline Patch) examples are pruned from the vendored engine copy.
 if (ENABLE_TESTS AND BUILD_TESTING) # (FOnline Patch) tests are pruned from the vendored engine copy.
    include (TestFixtures)
    include (src/libmongoc/tests/import-tests.cmake)
