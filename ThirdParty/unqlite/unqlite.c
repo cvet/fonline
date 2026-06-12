@@ -47772,7 +47772,7 @@ JX9_PRIVATE const jx9_io_stream * jx9VmGetStreamDevice(
 		  * registered schemes and will report the error as soon as his comparison function
 		  * fail.
 		  */
-	`tpComp = &pOut->sScheme;
+	 	pComp = &pOut->sScheme;
 		SyStringInitFromBuf(pComp, zUri, (sxu32)(zCur - zUri - 1));
 		SyStringLeftTrim(pComp);
 	 }
