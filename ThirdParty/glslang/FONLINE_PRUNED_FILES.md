@@ -26,3 +26,6 @@ Removed paths:
 - standalone.gclient
 - update_glslang_sources.py
 
+Retained files: StandAlone/DirStackFileIncluder.h is kept because the upstream
+glslang C interface source includes it during the engine build.
+(FOnline Patch)
