@@ -448,9 +448,6 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         if (it == _busyContexts.end()) {
             return;
         }
-        if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
-            return;
-        }
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_RUNTIME_ASSERT(ctx_ext);
@@ -458,6 +455,10 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         if (ctx_ext->ExecutionActive.load()) {
             FO_RUNTIME_ASSERT(_delayedScheduler);
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
+            return;
+        }
+
+        if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
             return;
         }
     }
