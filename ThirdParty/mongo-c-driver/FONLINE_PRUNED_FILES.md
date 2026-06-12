@@ -4,6 +4,8 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .evergreen/
+- .github/
 - build/.gitignore
 - build/bottle.py
 - build/fake_kms_provider_server.py
@@ -15,6 +17,10 @@ Removed paths:
 - build/proc-ctl.py
 - build/requirements.txt
 - build/sphinx/
+- docs/
+- etc/
+- src/common/src/bson-dsl.md
+- src/common/src/mlib/ckdint.md
 - src/common/src/mlib/ckdint.test.cpp
 - src/common/src/mlib/test.h
 - src/common/tests/
@@ -27,6 +33,7 @@ Removed paths:
 - src/libmongoc/examples/
 - src/libmongoc/tests/
 - src/tools/
+- tools/
 - .clang-format
 - .gdbinit
 - .git-blame-ignore-revs
@@ -38,6 +45,7 @@ Removed paths:
 - .ubsan-suppressions
 - CONTRIBUTING.md
 - Earthfile
+- justfile
 - lldb.pyi
 - lldb_bson.py
 - pyproject.toml

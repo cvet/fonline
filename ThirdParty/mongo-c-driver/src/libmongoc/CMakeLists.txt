@@ -17,7 +17,7 @@ include (CheckStructHasMember)
 include (CheckSymbolExists)
 include (CheckTypeSize)
 include (CMakePushCheckState)
-if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
+if (NOT CMAKE_CROSSCOMPILING) # (FOnline Patch) skip optional runtime-library probes in cross builds.
    include (InstallRequiredSystemLibraries)
 endif ()
 
@@ -140,7 +140,7 @@ if (NOT ENABLE_ZSTD STREQUAL OFF)
          message (STATUS "  Not found")
       endif ()
    # The compression format below this version isn't supported. See SERVER-43070
-   elseif (${ZSTD_VERSION} VERSION_LESS "0.8.0")
+   elseif ("${ZSTD_VERSION}" VERSION_LESS "0.8.0")
       if (ENABLE_ZSTD MATCHES "ON")
          message (FATAL_ERROR "Detected zstd version ${ZSTD_VERSION} but version 0.8.0 required")
       else ()
@@ -491,10 +491,10 @@ elseif (NOT ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL OFF)
       find_package (mongocrypt QUIET)
    endif ()
 
-   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.13.0)
+   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.15.1)
       message (STATUS "  libmongocrypt found at ${mongocrypt_DIR}")
       message (STATUS "  libmongocrypt version ${mongocrypt_VERSION} found")
-      message (STATUS "  libmongocrypt version 1.13.0 is required to enable In-Use Encryption Support.")
+      message (STATUS "  libmongocrypt version 1.15.1 is required to enable In-Use Encryption Support.")
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND OFF)
    elseif (mongocrypt_FOUND)
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND ON)
@@ -559,6 +559,7 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-client-side-encryption.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cluster.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cluster-aws.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cluster-oidc.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cluster-sasl.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-collection.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-compression.c
@@ -568,11 +569,7 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-cmd.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-change-stream.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-cmd-deprecated.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-find.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-find-cmd.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-find-opquery.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-legacy.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-array.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-database.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-error.c
@@ -593,12 +590,14 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-http.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-init.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-interrupt.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-jitter-source.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-list.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-linux-distro-scanner.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-log.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-log-and-monitor-private.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-memcmp.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cmd.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-cache.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-callback.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-env.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opcode.c
@@ -609,6 +608,8 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-read-concern.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-read-prefs.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rpc.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-retryable-cmd.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-retry-backoff-generator.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-server-api.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-server-description.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-server-stream.c
@@ -754,6 +755,22 @@ configure_file (
    "${PROJECT_BINARY_DIR}/src/mongoc/mongoc-config.h"
 )
 
+set(MONGOC_CXX_COMPILER_ID "Unknown")
+set(MONGOC_CXX_COMPILER_VERSION "")
+
+if(DEFINED CMAKE_CXX_COMPILER_ID)
+    set(MONGOC_CXX_COMPILER_ID "${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+if(DEFINED CMAKE_CXX_COMPILER_VERSION)
+    set(MONGOC_CXX_COMPILER_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
+endif()
+
+configure_file (
+   "${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-config-private.h.in"
+   "${PROJECT_BINARY_DIR}/src/mongoc/mongoc-config-private.h"
+)
+
 configure_file (
    "${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-version.h.in"
    "${PROJECT_BINARY_DIR}/src/mongoc/mongoc-version.h"
@@ -839,7 +856,7 @@ if (TARGET bson::static)
    target_include_directories (mcd_rpc PUBLIC ${PROJECT_SOURCE_DIR}/src)
    target_link_libraries (mcd_rpc PUBLIC bson::static)
    if (NOT WIN32 AND ENABLE_PIC)
-      target_compile_options (mcd_rpc PUBLIC -fPIC)
+      set_property (TARGET mcd_rpc PROPERTY POSITION_INDEPENDENT_CODE TRUE)
    endif ()
    set_target_properties (mcd_rpc PROPERTIES OUTPUT_NAME "mcd-rpc")
 endif ()
@@ -924,7 +941,7 @@ if (MONGOC_ENABLE_STATIC_BUILD)
    set_property(TARGET mongoc_static PROPERTY EXPORT_NAME mongoc::static)
    target_link_libraries (mongoc_static PUBLIC ${STATIC_LIBRARIES} bson::static mongo::detail::c_dependencies)
    if (NOT WIN32 AND ENABLE_PIC)
-      target_compile_options (mongoc_static PUBLIC -fPIC)
+      set_property(TARGET mongoc_static PROPERTY POSITION_INDEPENDENT_CODE TRUE)
       message (STATUS "Adding -fPIC to compilation of mongoc_static components")
    endif ()
    if(ENABLE_SRV AND RESOLVE_LIB_NAME)
@@ -933,6 +950,9 @@ if (MONGOC_ENABLE_STATIC_BUILD)
    endif()
    if(SASL_BACKEND STREQUAL "Cyrus")
       set_property(TARGET mongoc_static APPEND PROPERTY pkg_config_LIBS "-lsasl2")
+   endif()
+   if(M_LIBRARY)
+      set_property(TARGET mongoc_static APPEND PROPERTY pkg_config_LIBS "-lm")
    endif()
 
    set_property(TARGET mongoc_static APPEND PROPERTY pkg_config_LIBS ${${TLS_BACKEND}/pkg_config_LIBS})
@@ -1034,6 +1054,8 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/mock_server/mock-server.c
    ${PROJECT_SOURCE_DIR}/tests/mock_server/request.c
    ${PROJECT_SOURCE_DIR}/tests/mock_server/sync-queue.c
+   ${PROJECT_SOURCE_DIR}/tests/stream-tracker.c
+   ${PROJECT_SOURCE_DIR}/tests/test-client-backpressure.c
    ${PROJECT_SOURCE_DIR}/tests/test-conveniences.c
    ${PROJECT_SOURCE_DIR}/tests/test-happy-eyeballs.c
    ${PROJECT_SOURCE_DIR}/tests/test-libmongoc.c
@@ -1078,15 +1100,17 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-log.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-long-namespace.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-max-staleness.c
-   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-mongohouse.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-mongos-pinning.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-oidc.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-oidc-callback.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-oidc-cache.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-opts.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-primary-stepdown.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-queue.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-read-concern.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-read-prefs.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-read-write-concern.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-retry-backoff-generator.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-retryability-helpers.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-retryable-reads.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-retryable-writes.c
@@ -1292,10 +1316,10 @@ if (ENABLE_EXAMPLES AND ENABLE_SHARED)
    mongoc_add_example (fam ${PROJECT_SOURCE_DIR}/examples/find_and_modify_with_opts/fam.c)
 
    if (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION)
-      mongoc_add_example (client-side-encryption-schema-map ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-schema-map.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-      mongoc_add_example (client-side-encryption-server-schema ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-server-schema.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-      mongoc_add_example (client-side-encryption-explicit ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-explicit.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
-      mongoc_add_example (client-side-encryption-auto-decryption ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-auto-decryption.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+      mongoc_add_example (client-side-encryption-schema-map ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-schema-map.c)
+      mongoc_add_example (client-side-encryption-server-schema ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-server-schema.c)
+      mongoc_add_example (client-side-encryption-explicit ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-explicit.c)
+      mongoc_add_example (client-side-encryption-auto-decryption ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-auto-decryption.c)
       mongoc_add_example (client-side-encryption-doc-snippets ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-doc-snippets.c)
    endif ()
 
@@ -1312,12 +1336,10 @@ if (ENABLE_TESTS AND ENABLE_SHARED AND MONGOC_ENABLE_SSL AND NOT WIN32)
    target_link_libraries (benchmark-tls-pooled PRIVATE mongoc::shared ${LIBRARIES})
 endif ()
 
-if (ENABLE_TESTS) #! (FOnline Patch)
 file (COPY ${PROJECT_SOURCE_DIR}/tests/binary DESTINATION ${PROJECT_BINARY_DIR}/tests)
 file (COPY ${PROJECT_SOURCE_DIR}/tests/json DESTINATION ${PROJECT_BINARY_DIR}/tests)
 file (COPY ${PROJECT_SOURCE_DIR}/tests/x509gen DESTINATION ${PROJECT_BINARY_DIR}/tests)
 file (COPY ${PROJECT_SOURCE_DIR}/tests/release_files DESTINATION ${PROJECT_BINARY_DIR}/tests)
-endif()
 
 set (TARGETS_TO_INSTALL)
 

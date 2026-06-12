@@ -77,7 +77,7 @@ include (CheckIncludeFile)
 include (CheckStructHasMember)
 include (CheckSymbolExists)
 include (TestBigEndian)
-if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
+if (NOT CMAKE_CROSSCOMPILING) # (FOnline Patch) skip optional runtime-library probes in cross builds.
    include (InstallRequiredSystemLibraries)
 endif ()
 include (CheckIncludeFiles)
@@ -381,7 +381,7 @@ install(
    DESTINATION "${BSON_INSTALL_CMAKEDIR}"
 )
 
-#! include (CPack) (FOnline Patch)
+# include (CPack) # (FOnline Patch) packaging files are pruned from the vendored engine copy.
 
 if (MONGO_FUZZ)
    add_subdirectory(fuzz)
