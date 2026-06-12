@@ -4,14 +4,23 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - examples/
 - m4/
 - macos/
 - macosx/
 - symbian/
 - test/
+- contrib/oss-fuzz/
 - vq/
 - win32/
+- .gitignore
+- .gitlab-ci.yml
+- .travis.yml
+- .ycm_extra_conf.py
+- appveyor.yml
+- Brewfile
+- debian/
 - aclocal.m4
 - autogen.sh
 - compile
@@ -39,4 +48,3 @@ Removed paths:
 - vorbisenc-uninstalled.pc.in
 - vorbisfile.pc.in
 - vorbisfile-uninstalled.pc.in
-
