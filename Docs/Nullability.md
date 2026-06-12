@@ -163,6 +163,8 @@ There are now two complementary runtime gates:
 
 The AngelScript compiler emits a new `asBC_RefCpyChk` bytecode (defined in [../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h](../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h), handler in [../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp)) whenever the destination of a handle write is **non-nullable** (`T` without `?`) and the destination is **user-declared** (not a compiler-generated temporary). It is a drop-in REFCPY variant that raises a *Null assignment to non-nullable handle* exception when the source handle is null. Emission sites are `PerformAssignment` and `CompileInitializationWithAssignment` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp); `T?` declarations fall back to the original `asBC_REFCPY` and accept null silently.
 
+The non-nullable test is keyed off the **declared** type of the destination, not a smart-cast narrowed view of it: a declared-nullable local or `&` parameter that is currently narrowed (see [Smart-cast](#smart-cast-flow-sensitive-narrowing)) is still a `REFCPY` destination, so `x = null;` inside the narrowing guard is a legal *un-narrowing* write, not a null write into a non-nullable slot. `PerformAssignment` restores the declared nullability on the lvalue before choosing the copy instruction and then invalidates the narrowing, so the next read sees `T?` again. (Before this fix the instruction was chosen from the narrowed type, which compiled the branch into an always-throwing `asBC_RefCpyChk` — the *"Null assignment to non-nullable handle"* ScriptExceptions from `Combat::DeferredAttackHit` and cursor handling were this defect.)
+
 The temp guard matters because `PerformAssignment` is reused for argument-setup slots whose type is inherited from a native parameter (no `?` syntax on the AS side). Nullability of those slots is owned by the native-boundary check below — letting the AS-level check skip temporaries keeps `func(null)` working for `FO_NULLABLE` natives.
 
 This means **script-to-script assignments** of null to a non-nullable handle still throw, even when the value originates from another script function rather than a native call.
@@ -274,10 +276,16 @@ if (a == null || b == null) {
 }
 Item ai = a; Item bi = b;                    // OK — both narrowed after early return
 
-// 4) Assignment invalidates the narrowing on that local
+// 4) Assignment invalidates the narrowing on that local. The write itself goes
+//    through the DECLARED type — narrowing is a read-time refinement only — so
+//    `x = null;` inside the guard is a legal un-narrowing write (plain REFCPY),
+//    not a null write into a non-nullable slot.
 if (x != null) {
     x = GetMaybeNull();           // x becomes nullable again
     Item y = x;                   // compile-time error here
+}
+if (x != null && x.IsBroken()) {
+    x = null;                     // OK — drops the narrowed view, x is `Item?` again
 }
 
 // 5) `&&` / `||` short-circuit narrows every later operand in the chain (any
