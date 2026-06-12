@@ -189,6 +189,13 @@ add_compile_definitions(_MLIB_BUILD_CONFIG=$<CONFIG>)
 if(ENABLE_COVERAGE)
    mongo_platform_link_options(--coverage)
    mongo_platform_compile_options($<BUILD_INTERFACE:--coverage>)
+
+   include(CheckCCompilerFlag)
+   check_c_compiler_flag("-fprofile-update=prefer-atomic" mongo_c_driver_prefer_atomic)
+   if("$CACHE{mongo_c_driver_prefer_atomic}")
+      # Avoid "ERROR: Unexpected negative count" errors on some newer platforms.
+      mongo_platform_compile_options($<BUILD_INTERFACE:-fprofile-update=prefer-atomic>)
+   endif()
 endif()
 
 # Enable multi-threading:
@@ -226,17 +233,19 @@ if(NOT APPLE)
    endif()
 endif()
 
-# Optionally enable C++ to do some C++-specific tests
-include (CheckLanguage)
-check_language (CXX)
-if (CMAKE_CXX_COMPILER)
-   enable_language (CXX)
-   if (NOT CMAKE_CXX_STANDARD)
-      # Default to C++11 for purposes of testing.
-      set (CMAKE_CXX_STANDARD 11)
+# Check for an optional C++ compiler. Result included in handshake metadata. Enables optional C++-specific tests.
+if (NOT CMAKE_CROSSCOMPILING) # (FOnline Patch) skip optional C++ test-language probes in cross builds.
+   include (CheckLanguage)
+   check_language (CXX)
+   if (CMAKE_CXX_COMPILER)
+      enable_language (CXX)
+      if (NOT CMAKE_CXX_STANDARD)
+         # Default to C++11 for purposes of testing.
+         set (CMAKE_CXX_STANDARD 11)
+      endif ()
+   else ()
+      message (STATUS "No CXX support")
    endif ()
-else ()
-   message (STATUS "No CXX support")
 endif ()
 
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -246,9 +255,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    )
 endif ()
 
-if (NOT CMAKE_CROSSCOMPILING) #! (FOnline Patch)
-   include (InstallRequiredSystemLibraries)
-endif ()
+include (InstallRequiredSystemLibraries)
 include (CMakeDependentOption)
 
 # Installation paths
@@ -287,6 +294,7 @@ if(ENABLE_MAINTAINER_FLAGS)
       gnu-like:-Wuninitialized
       # Disabled, for now:
       gnu-like:-Wno-strict-aliasing
+      gnu-like:-Wno-missing-braces
       # Sign-comparison-mismatch:
       gnu-like:-Wsign-compare
       msvc:/we4018
@@ -326,7 +334,9 @@ set (BUILD_SOURCE_DIR ${CMAKE_BINARY_DIR})
 
 # Enable CTest
 include (CTest)
-if (BUILD_TESTING)
+set (ENABLE_TESTS OFF) # (FOnline Patch) tests are pruned from the vendored engine copy.
+set (ENABLE_EXAMPLES OFF) # (FOnline Patch) examples are pruned from the vendored engine copy.
+if (ENABLE_TESTS AND BUILD_TESTING) # (FOnline Patch) tests are pruned from the vendored engine copy.
    include (TestFixtures)
    include (src/libmongoc/tests/import-tests.cmake)
 endif ()
@@ -391,14 +401,14 @@ add_custom_target(mongo_c_driver_examples)
 
 add_subdirectory (src/common)
 
+if (WIN32)
+   add_definitions (-D_CRT_SECURE_NO_WARNINGS)
+   list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_CRT_SECURE_NO_WARNINGS)
+endif ()
+
 if (NOT USING_SYSTEM_BSON)
    message (STATUS "Using bundled libbson")
    add_subdirectory (src/libbson)
-endif ()
-
-if (MSVC)
-   add_definitions (-D_CRT_SECURE_NO_WARNINGS)
-   list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_CRT_SECURE_NO_WARNINGS)
 endif ()
 
 if (ENABLE_MONGOC)
@@ -408,7 +418,7 @@ if (ENABLE_MONGOC)
 
    set (CPACK_RESOURCE_FILE_LICENSE "${mongo-c-driver_SOURCE_DIR}/COPYING")
 
-   #! include (CPack) (FOnline Patch)
+   # include (CPack) # (FOnline Patch) packaging files are pruned from the vendored engine copy.
 
    # Ensure the default behavior: don't ignore RPATH settings.
    set (CMAKE_SKIP_BUILD_RPATH OFF)

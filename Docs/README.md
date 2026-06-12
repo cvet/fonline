@@ -7,6 +7,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [GettingStarted.md](GettingStarted.md) — first route through the engine docs.
 - [EmbeddingProject.md](EmbeddingProject.md) — how a game repository should embed and own the engine.
 - [BuildWorkflow.md](BuildWorkflow.md) — build, presets, platform prerequisites, and validation strategy.
+- [ThirdPartyMaintenance.md](ThirdPartyMaintenance.md) — engine vendored dependency update, pruning, version pin, and local patch workflow.
 - [DocumentationExpansionPlan.md](DocumentationExpansionPlan.md) — roadmap for researching the repository and expanding engine documentation.
 - [DocumentationBacklog.md](DocumentationBacklog.md) — planned and verified documentation slices.
 - [DocumentationVerificationReport.md](DocumentationVerificationReport.md) — source-check reports for recently verified slices.
@@ -25,6 +26,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 ## Build and generation
 
 - [BuildWorkflow.md](BuildWorkflow.md) — build, presets, platform prerequisites, and validation strategy.
+- [ThirdPartyMaintenance.md](ThirdPartyMaintenance.md) — engine vendored dependency update, pruning, version pin, and local patch workflow.
 - [BuildToolsPipeline.md](BuildToolsPipeline.md) — staged CMake pipeline, hooks, helpers, and change routing.
 - [BakingPipeline.md](BakingPipeline.md) — resource baking, baker classes, script compile adjacency, and validation.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — codegen, metadata registration, generated files, and property contracts.

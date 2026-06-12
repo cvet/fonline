@@ -6,8 +6,8 @@
 
 // SPDX-License-Identifier: BSL-1.0
 
-//  Catch v3.14.0
-//  Generated: 2026-04-05 15:03:01.631668
+//  Catch v3.15.0
+//  Generated: 2026-05-12 13:08:21.086523
 //  ----------------------------------------------------------
 //  This file is an amalgamation of multiple different files.
 //  You probably shouldn't edit it directly.
@@ -74,11 +74,11 @@ namespace Catch {
                         samples.data(), samples.data() + samples.size() );
 
                     auto wrap_estimate = [](Estimate<double> e) {
-                        return Estimate<FDuration> {
-                            FDuration(e.point),
-                                FDuration(e.lower_bound),
-                                FDuration(e.upper_bound),
-                                e.confidence_interval,
+                        return Estimate<FDuration>{
+                            FDuration( e.point ),
+                            FDuration( e.lower_bound ),
+                            FDuration( e.upper_bound ),
+                            e.confidence_interval,
                         };
                     };
                     std::vector<FDuration> samples2;
@@ -147,7 +147,7 @@ namespace Catch {
 namespace Catch {
     namespace Benchmark {
         namespace Detail {
-            struct optimized_away_error : std::exception {
+            struct optimized_away_error final : std::exception {
                 const char* what() const noexcept override;
             };
 
@@ -995,6 +995,7 @@ namespace Catch {
 
 
 
+
 #include <cassert>
 #include <stack>
 
@@ -1007,7 +1008,7 @@ namespace Catch {
         m_messageId( builder.m_info.sequence ) {
         MessageInfo info( CATCH_MOVE( builder.m_info ) );
         info.message = builder.m_stream.str();
-        IResultCapture::pushScopedMessage( CATCH_MOVE( info ) );
+        Detail::pushScopedMessage( CATCH_MOVE( info ) );
     }
 
     ScopedMessage::ScopedMessage( ScopedMessage&& old ) noexcept:
@@ -1016,7 +1017,7 @@ namespace Catch {
     }
 
     ScopedMessage::~ScopedMessage() {
-        if ( !m_moved ) { IResultCapture::popScopedMessage( m_messageId ); }
+        if ( !m_moved ) { Detail::popScopedMessage( m_messageId ); }
     }
 
 
@@ -1088,7 +1089,7 @@ namespace Catch {
         assert( m_captured == m_messages.size() );
         if ( m_isScoped ) {
             for ( auto const& message : m_messages ) {
-                IResultCapture::popScopedMessage( message.sequence );
+                Detail::popScopedMessage( message.sequence );
             }
         }
     }
@@ -1097,9 +1098,9 @@ namespace Catch {
         assert( index < m_messages.size() );
         m_messages[index].message += value;
         if ( m_isScoped ) {
-            IResultCapture::pushScopedMessage( CATCH_MOVE( m_messages[index] ) );
+            Detail::pushScopedMessage( CATCH_MOVE( m_messages[index] ) );
         } else {
-            IResultCapture::addUnscopedMessage( CATCH_MOVE( m_messages[index] ) );
+            Detail::addUnscopedMessage( CATCH_MOVE( m_messages[index] ) );
         }
         m_captured++;
     }
@@ -1160,9 +1161,6 @@ namespace Catch {
                 CATCH_INTERNAL_ERROR("Attempted to register active exception under CATCH_CONFIG_DISABLE_EXCEPTIONS!");
 #endif
             }
-            IMutableEnumValuesRegistry& getMutableEnumValuesRegistry() override {
-                return m_enumValuesRegistry;
-            }
 
         private:
             TestRegistry m_testCaseRegistry;
@@ -1170,7 +1168,6 @@ namespace Catch {
             ExceptionTranslatorRegistry m_exceptionTranslatorRegistry;
             TagAliasRegistry m_tagAliasRegistry;
             StartupExceptionRegistry m_exceptionRegistry;
-            Detail::EnumValuesRegistry m_enumValuesRegistry;
         };
     }
 
@@ -2397,7 +2394,7 @@ namespace Catch {
     }
 
     Version const& libraryVersion() {
-        static Version version( 3, 14, 0, "", 0 );
+        static Version version( 3, 15, 0, "", 0 );
         return version;
     }
 
@@ -2686,13 +2683,17 @@ namespace Catch {
 
 namespace Catch {
 
+    void AssertionHandler::finishIncomplete() {
+        m_resultCapture.handleIncomplete( m_assertionInfo );
+    }
+
     AssertionHandler::AssertionHandler
         (   StringRef macroName,
             SourceLineInfo const& lineInfo,
             StringRef capturedExpression,
             ResultDisposition::Flags resultDisposition )
     :   m_assertionInfo{ macroName, lineInfo, capturedExpression, resultDisposition },
-        m_resultCapture( getResultCapture() )
+        m_resultCapture( static_cast<RunContext&>(getResultCapture()) )
     {
         m_resultCapture.notifyAssertionStarted( m_assertionInfo );
     }
@@ -4088,11 +4089,10 @@ namespace Catch {
 
 
 
+
 #include <cassert>
 
 namespace Catch {
-
-    IMutableEnumValuesRegistry::~IMutableEnumValuesRegistry() = default;
 
     namespace Detail {
 
@@ -4119,9 +4119,7 @@ namespace Catch {
             return parsed;
         }
 
-        EnumInfo::~EnumInfo() = default;
-
-        StringRef EnumInfo::lookup( int value ) const {
+        StringRef EnumInfo::lookup( int64_t value ) const {
             for( auto const& valueToName : m_values ) {
                 if( valueToName.first == value )
                     return valueToName.second;
@@ -4129,23 +4127,18 @@ namespace Catch {
             return "{** unexpected enum value **}"_sr;
         }
 
-        Catch::Detail::unique_ptr<EnumInfo> makeEnumInfo( StringRef enumName, StringRef allValueNames, std::vector<int> const& values ) {
-            auto enumInfo = Catch::Detail::make_unique<EnumInfo>();
-            enumInfo->m_name = enumName;
-            enumInfo->m_values.reserve( values.size() );
+        EnumInfo makeEnumInfo( StringRef enumName, StringRef allValueNames, std::vector<int64_t> const& values ) {
+            EnumInfo enumInfo;
+            enumInfo.m_name = enumName;
+            enumInfo.m_values.reserve( values.size() );
 
             const auto valueNames = Catch::Detail::parseEnums( allValueNames );
             assert( valueNames.size() == values.size() );
-            std::size_t i = 0;
-            for( auto value : values )
-                enumInfo->m_values.emplace_back(value, valueNames[i++]);
+            for (size_t i = 0; i < values.size(); ++i) {
+                enumInfo.m_values.emplace_back( values[i], valueNames[i] );
+            }
 
             return enumInfo;
-        }
-
-        EnumInfo const& EnumValuesRegistry::registerEnum( StringRef enumName, StringRef allValueNames, std::vector<int> const& values ) {
-            m_enumInfos.push_back(makeEnumInfo(enumName, allValueNames, values));
-            return *m_enumInfos.back();
         }
 
     } // Detail
@@ -5072,7 +5065,7 @@ namespace Catch {
     namespace {
         //! A no-op implementation, used if no reporter wants output
         //! redirection.
-        class NoopRedirect : public OutputRedirect {
+        class NoopRedirect final : public OutputRedirect {
             void activateImpl() override {}
             void deactivateImpl() override {}
             std::string getStdout() override { return {}; }
@@ -5109,7 +5102,7 @@ namespace Catch {
          * Redirects the `std::cout`, `std::cerr`, `std::clog` streams,
          * but does not touch the actual `stdout`/`stderr` file descriptors.
          */
-        class StreamRedirect : public OutputRedirect {
+        class StreamRedirect final : public OutputRedirect {
             ReusableStringStream m_redirectedOut, m_redirectedErr;
             RedirectedStreamNew m_cout, m_cerr, m_clog;
 
@@ -5220,7 +5213,7 @@ namespace Catch {
          * Works by replacing the file descriptors numbered 1 and 2
          * with an open temporary file.
          */
-        class FileRedirect : public OutputRedirect {
+        class FileRedirect final : public OutputRedirect {
             TempFile m_outFile, m_errFile;
             int m_originalOut = -1;
             int m_originalErr = -1;
@@ -6136,6 +6129,25 @@ namespace Catch {
         }
         CATCH_INTERNAL_STOP_WARNINGS_SUPPRESSION
 
+
+        void pushScopedMessage( MessageInfo&& message ) {
+            Detail::g_messageHolder().addScopedMessage(  CATCH_MOVE( message ) );
+        }
+
+        void popScopedMessage( unsigned int messageId ) {
+            Detail::g_messageHolder().removeMessage( messageId );
+        }
+
+        void emplaceUnscopedMessage( MessageBuilder&& builder ) {
+            Detail::g_messageHolder().addUnscopedMessage( CATCH_MOVE( builder ) );
+        }
+
+        void addUnscopedMessage( MessageInfo&& message ) {
+            Detail::g_messageHolder().addUnscopedMessage( CATCH_MOVE( message ) );
+        }
+
+        bool lastAssertionPassed() { return Detail::g_lastAssertionPassed; }
+
     } // namespace Detail
 
     RunContext::RunContext(IConfig const* _config, IEventListenerPtr&& reporter)
@@ -6269,14 +6281,13 @@ namespace Catch {
             Detail::g_lastAssertionPassed = true;
         } else if (!result.succeeded()) {
             Detail::g_lastAssertionPassed = false;
-            if (result.isOk()) {
-            }
-            else if( m_activeTestCase->getTestCaseInfo().okToFail() ) // Read from a shared state established before the threads could start, this is fine
+            if (result.isOk()) {}
+            else if( m_activeTestCase->getTestCaseInfo().okToFail() ) { // Read from a shared state established before the threads could start, this is fine
                 m_atomicAssertionCount.failedButOk++;
-            else
+            } else {
                 m_atomicAssertionCount.failed++;
-        }
-        else {
+            }
+        } else {
             Detail::g_lastAssertionPassed = true;
         }
 
@@ -6458,7 +6469,7 @@ namespace Catch {
         //      and since IResultCapture::getLastResult is deprecated,
         //      we will leave it as is, until it is finally removed.
         Detail::LockGuard _( m_assertionMutex );
-        return &(*m_lastResult);
+        return &*m_lastResult;
     }
 
     void RunContext::exceptionEarlyReported() {
@@ -6530,10 +6541,6 @@ namespace Catch {
         m_totals.testCases.failed++;
         updateTotalsFromAtomics();
         m_reporter->testRunEnded(TestRunStats(m_runInfo, m_totals, false));
-    }
-
-    bool RunContext::lastAssertionPassed() {
-        return Detail::g_lastAssertionPassed;
     }
 
     void RunContext::assertionPassedFastPath(SourceLineInfo lineInfo) {
@@ -6714,7 +6721,7 @@ namespace Catch {
     }
 
     void RunContext::populateReaction( AssertionReaction& reaction,
-                                       bool has_normal_disposition ) {
+                                       bool has_normal_disposition ) const {
         reaction.shouldDebugBreak = m_shouldDebugBreak;
         reaction.shouldThrow = aborting() || has_normal_disposition;
     }
@@ -6763,22 +6770,6 @@ namespace Catch {
             populateReaction(
                 reaction, info.resultDisposition & ResultDisposition::Normal );
         }
-    }
-
-    void IResultCapture::pushScopedMessage( MessageInfo&& message ) {
-        Detail::g_messageHolder().addScopedMessage(  CATCH_MOVE( message ) );
-    }
-
-    void IResultCapture::popScopedMessage( unsigned int messageId ) {
-        Detail::g_messageHolder().removeMessage( messageId );
-    }
-
-    void IResultCapture::emplaceUnscopedMessage( MessageBuilder&& builder ) {
-        Detail::g_messageHolder().addUnscopedMessage( CATCH_MOVE( builder ) );
-    }
-
-    void IResultCapture::addUnscopedMessage( MessageInfo&& message ) {
-        Detail::g_messageHolder().addUnscopedMessage( CATCH_MOVE( message ) );
     }
 
     void seedRng(IConfig const& config) {
@@ -7112,10 +7103,11 @@ namespace Catch {
 
     TagAlias const* TagAliasRegistry::find( std::string const& alias ) const {
         auto it = m_registry.find( alias );
-        if( it != m_registry.end() )
-            return &(it->second);
-        else
+        if ( it != m_registry.end() ) {
+            return &it->second;
+        } else {
             return nullptr;
+        }
     }
 
     std::string TagAliasRegistry::expandAliases( std::string const& unexpandedTestSpec ) const {
@@ -7562,7 +7554,7 @@ namespace Catch {
 
     void throw_test_failure_exception() {
 #if !defined( CATCH_CONFIG_DISABLE_EXCEPTIONS )
-        throw TestFailureException{};
+        throw TestFailureException{}; //NOLINT(bugprone-std-exception-baseclass)
 #else
         CATCH_ERROR( "Test failure requires aborting test!" );
 #endif
@@ -7570,7 +7562,7 @@ namespace Catch {
 
     void throw_test_skip_exception() {
 #if !defined( CATCH_CONFIG_DISABLE_EXCEPTIONS )
-        throw Catch::TestSkipException();
+        throw Catch::TestSkipException(); //NOLINT(bugprone-std-exception-baseclass)
 #else
         CATCH_ERROR( "Explicitly skipping tests during runtime requires exceptions" );
 #endif
@@ -8674,13 +8666,13 @@ namespace Catch {
 namespace Matchers {
 
     std::string MatcherUntypedBase::toString() const {
-        if (m_cachedToString.empty()) {
-            m_cachedToString = describe();
-        }
-        return m_cachedToString;
+        return describe();
     }
 
-    MatcherUntypedBase::~MatcherUntypedBase() = default;
+    std::string MatcherUntypedBase::describe() const {
+        using namespace std::string_literals;
+        return "Undescribed matcher"s;
+    }
 
 } // namespace Matchers
 } // namespace Catch
@@ -8699,14 +8691,6 @@ namespace Matchers {
         ReusableStringStream sstr;
         sstr << "has size == " << m_target_size;
         return sstr.str();
-    }
-
-    IsEmptyMatcher IsEmpty() {
-        return {};
-    }
-
-    HasSizeMatcher SizeIs(std::size_t sz) {
-        return HasSizeMatcher{ sz };
     }
 
 } // end namespace Matchers
@@ -8962,17 +8946,13 @@ std::string Catch::Matchers::Detail::finalizeDescription(const std::string& desc
 
 namespace Catch {
     namespace Matchers {
-        std::string AllTrueMatcher::describe() const { return "contains only true"; }
 
-        AllTrueMatcher AllTrue() { return AllTrueMatcher{}; }
+        std::string AllTrueMatcher::describe() const { return "contains only true"; }
 
         std::string NoneTrueMatcher::describe() const { return "contains no true"; }
 
-        NoneTrueMatcher NoneTrue() { return NoneTrueMatcher{}; }
-
         std::string AnyTrueMatcher::describe() const { return "contains at least one true"; }
 
-        AnyTrueMatcher AnyTrue() { return AnyTrueMatcher{}; }
     } // namespace Matchers
 } // namespace Catch
 
@@ -9085,7 +9065,11 @@ namespace Matchers {
 
 namespace Catch {
 namespace Matchers {
-    MatcherGenericBase::~MatcherGenericBase() = default;
+
+    std::string MatcherGenericBase::describe() const {
+        using namespace std::string_literals;
+        return "Undescribed generic matcher"s;
+    }
 
     namespace Detail {
 
@@ -10108,9 +10092,8 @@ namespace Catch {
             bool operator()(
                 Detail::unique_ptr<CumulativeReporterBase::SectionNode> const&
                     node ) const {
-                return (
-                    ( node->stats.sectionInfo.name == m_other.name ) &&
-                    ( node->stats.sectionInfo.lineInfo == m_other.lineInfo ) );
+                return node->stats.sectionInfo.name == m_other.name
+                    && node->stats.sectionInfo.lineInfo == m_other.lineInfo;
             }
             void operator=( BySectionInfo const& ) = delete;
 
@@ -10464,7 +10447,7 @@ namespace Catch {
         }
 
         // minimum whitespace to pad tag counts, possibly overwritten below
-        size_t maxTagCountLen = 2;
+        int maxTagCountLen = 2;
 
         // determine necessary padding for tag count column
         if ( ! tags.empty() ) {
@@ -10479,7 +10462,7 @@ namespace Catch {
             // more padding necessary for 3+ digits
             if (maxTagCount >= 100) {
                 auto numDigits = 1 + std::floor( std::log10( maxTagCount ) );
-                maxTagCountLen = static_cast<size_t>( numDigits );
+                maxTagCountLen = static_cast<int>( numDigits );
             }
         }
 

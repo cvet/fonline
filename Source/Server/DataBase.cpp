@@ -1379,8 +1379,8 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_begin(bson, key_data, key_len, &bson_arr)) {
-            throw DataBaseException("ValueToBson bson_append_array_begin", key);
+        if (!bson_append_array_unsafe_begin(bson, key_data, key_len, &bson_arr)) {
+            throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
         const auto& arr = value.AsArray();

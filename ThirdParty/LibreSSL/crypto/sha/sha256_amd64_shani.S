@@ -203,3 +203,7 @@ K256:
 .long	0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208
 .long	0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 .size	K256,.-K256
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
