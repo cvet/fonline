@@ -331,11 +331,11 @@ void MapSpriteList::Invalidate(MapSprite* mspr) noexcept
 
     const auto index = mspr->_index;
     _spritesPool.emplace_back(std::move(_activeSprites[index]));
+    _needSort = true;
 
     if (index < static_cast<uint32_t>(_activeSprites.size() - 1)) [[likely]] {
         _activeSprites[index] = std::move(_activeSprites.back());
         _activeSprites[index]->_index = index;
-        _needSort = true;
         _orderBroken = true;
     }
 
