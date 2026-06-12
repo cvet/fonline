@@ -10,11 +10,14 @@ import socketserver
 import sys
 
 
-class ReusableTCPServer(socketserver.TCPServer):
+class ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
+    daemon_threads = True
 
 
 class NoCacheHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    timeout = 30
+
     def end_headers(self) -> None:
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
@@ -42,7 +45,7 @@ def main() -> None:
 
     serve_dir = os.path.dirname(os.path.realpath(__file__))
     handler = functools.partial(NoCacheHttpRequestHandler, directory=serve_dir)
-    with ReusableTCPServer(('', args.port), handler) as httpd:
+    with ReusableThreadingTCPServer(('', args.port), handler) as httpd:
         print('Serving', serve_dir, 'at port', args.port)
         httpd.serve_forever()
 
