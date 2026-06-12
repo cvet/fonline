@@ -227,7 +227,6 @@ SetValue(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
 SetValue(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/apiwrapper.c"
     "${FO_THEORA_DIR}/lib/bitpack.c"
-    "${FO_THEORA_DIR}/lib/cpu.c"
     "${FO_THEORA_DIR}/lib/decapiwrapper.c"
     "${FO_THEORA_DIR}/lib/decinfo.c"
     "${FO_THEORA_DIR}/lib/decode.c"
