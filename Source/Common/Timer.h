@@ -46,7 +46,7 @@ class GameTimer final
 public:
     explicit GameTimer(TimerSettings& settings);
     GameTimer(const GameTimer&) = delete;
-    GameTimer(GameTimer&&) noexcept = default;
+    GameTimer(GameTimer&&) noexcept = delete;
     auto operator=(const GameTimer&) = delete;
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
