@@ -4,11 +4,10 @@ libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
 sharedlibdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${exec_prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
-Name: zlib
-Description: zlib compression library
-Version: @zlib_VERSION@
-License: Zlib
+Name: minizip
+Description: minizip compression library
+Version: @minizip_VERSION@
 
 Requires:
-Libs: -L${libdir} -L${sharedlibdir} -lz
+Libs: -L${libdir} -L${sharedlibdir} -lz -lminizip
 Cflags: -I${includedir}

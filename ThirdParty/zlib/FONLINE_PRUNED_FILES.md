@@ -4,6 +4,7 @@ This vendored copy is intentionally trimmed for the engine build. When updating
 from upstream, remove these paths again after copying the new version.
 
 Removed paths:
+- .github/
 - amiga/
 - contrib/ada/
 - contrib/amd64/
@@ -19,11 +20,13 @@ Removed paths:
 - contrib/iostream3/
 - contrib/masmx64/
 - contrib/masmx86/
+- contrib/nuget/
 - contrib/pascal/
 - contrib/puff/
 - contrib/testzlib/
 - contrib/untgz/
 - contrib/vstudio/
+- contrib/zlib1-dll/
 - contrib/minizip/configure.ac
 - contrib/minizip/iowin32.c
 - contrib/minizip/iowin32.h
@@ -49,14 +52,18 @@ Removed paths:
 - os400/
 - qnx/
 - test/
+- contrib/minizip/test/
 - watcom/
+- .cmake-format.yaml
+- .gitignore
+- BUILD.bazel
 - configure
 - Makefile
 - Makefile.in
+- MODULE.bazel
 - make_vms.com
 - treebuild.xml
 - win32/Makefile.*
 - win32/VisualC.txt
 - zlib.3
 - zlib.3.pdf
-
