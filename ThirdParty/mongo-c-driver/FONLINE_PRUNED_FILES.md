@@ -22,7 +22,6 @@ Removed paths:
 - src/common/src/bson-dsl.md
 - src/common/src/mlib/ckdint.md
 - src/common/src/mlib/ckdint.test.cpp
-- src/common/src/mlib/test.h
 - src/common/tests/
 - src/kms-message/
 - src/libbson/doc/
@@ -51,3 +50,7 @@ Removed paths:
 - pyproject.toml
 - uv.lock
 - valgrind.suppressions
+
+Retained files: src/common/src/mlib/test.h is kept because runtime mlib headers
+include it for source-location and assertion helpers.
+(FOnline Patch)
