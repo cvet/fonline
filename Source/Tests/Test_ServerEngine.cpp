@@ -1497,4 +1497,190 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     cr_b->SetParent(nullptr);
 }
 
+// ============================================================================
+// Nested cross-entity acquisition must not deadlock. Two worker threads each run a PRIMARY
+// SyncContext that already covers one critter (mirrors a per-player job whose cover is {player,
+// controlled critter} via auto-widen), then each fires a callback whose NESTED SyncContext requests
+// BOTH critters in the OPPOSITE order — exactly what two concurrent group-logout cleanups do
+// (`Groups::OnPlayerLogout` → `KickCritterFromGroup` → `Sync::Lock(cr, leader)`). Thread 1 holds
+// cr_a (parent) and wants {cr_a, cr_b}; thread 2 holds cr_b (parent) and wants {cr_b, cr_a}: a
+// genuine hold-and-wait 2-cycle. A nested acquire that only spins non-parking (holding the parent's
+// lock the whole time) can never break this — the contended lock is permanently held by the other
+// thread's parent. The acquire must escalate to a globally-ordered blocking acquire of the full
+// thread-held union (releasing parent locks across the transition, since no entity state is observed
+// during a lock-set change) so both threads converge. Guarded by a watchdog so a regression reports
+// a clean failure instead of hanging the whole unit-test process.
+// ============================================================================
+
+TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    // Two critters on DIFFERENT maps so each keeps its OWN lock (no sibling escalation to a shared
+    // map lock would collapse the pair and hide the cross-lock contention).
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map_a = loc->GetMapByIndex(0);
+    auto* map_b = loc->GetMapByIndex(1);
+    REQUIRE(map_a != nullptr);
+    REQUIRE(map_b != nullptr);
+
+    auto* cr_a = server->CreateCritter(critter_pid, false);
+    auto* cr_b = server->CreateCritter(critter_pid, false);
+    REQUIRE(cr_a != nullptr);
+    REQUIRE(cr_b != nullptr);
+    server->MapMngr.TransferToMap(cr_a, map_a, mpos {10, 10}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_b, map_b, mpos {12, 12}, mdir {}, std::nullopt);
+
+    server->Unlock();
+    locked = false;
+
+    constexpr int32_t ROUNDS = 400;
+
+    std::atomic<int64_t> rounds_done {0};
+    std::atomic_bool failed {false};
+
+    // Per-round rendezvous taken BEFORE any lock is acquired, so neither thread ever waits at the
+    // barrier while holding a lock (that would be a harness-level deadlock independent of the rail).
+    // Once both threads pass the barrier they acquire {primary cover} then {nested cross cover}
+    // back-to-back, so the two opposite-order cross-acquires overlap and the 2-cycle is hammered
+    // every round. No lock is held across any wait point in the harness itself.
+    std::atomic<int32_t> arrive {0};
+    std::atomic<int32_t> generation {0};
+    std::atomic<int32_t> primary_held {0};
+
+    const auto barrier = [&](int32_t round) {
+        const int32_t gen = generation.load(std::memory_order_acquire);
+        if (arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
+            arrive.store(0, std::memory_order_release);
+            generation.store(round + 1, std::memory_order_release);
+        }
+        else {
+            while (generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+        }
+    };
+
+    const auto cross_thread = [&](ServerEntity* own, ServerEntity* peer) {
+        for (int32_t round = 0; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
+            // Outer rendezvous while holding NO lock, so both threads start the locked section
+            // together (and the per-round primary_held counter starts clean).
+            primary_held.store(0, std::memory_order_relaxed);
+            barrier(round);
+
+            SyncContext primary;
+            primary.Activate();
+
+            // Primary cover: this thread's "own" critter (like a player job's controlled critter,
+            // already covered when an event fires).
+            vector<ServerEntity*> primary_req {own};
+            try {
+                primary.SyncEntities(primary_req);
+
+                // Inner rendezvous holding ONLY the primary: spin (bounded, no lock-ordering hazard —
+                // just an atomic) until the peer also holds its primary. This makes the nested
+                // cross-acquire below near-deterministically collide: both threads request {own, peer}
+                // in OPPOSITE order while each holds (via its primary) the lock the other needs — a
+                // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
+                // escalation; an unfixed engine spins forever (regression caught by the watchdog).
+                primary_held.fetch_add(1, std::memory_order_acq_rel);
+                for (int32_t spin = 0; spin < 100000 && primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire); spin++) {
+                    std::this_thread::yield();
+                }
+
+                // Nested context (like a per-callback FireEvent scope) requesting BOTH critters.
+                SyncContext nested;
+                nested.Activate();
+                auto nested_cleanup = scope_exit([&]() noexcept {
+                    nested.Release();
+                    nested.Deactivate();
+                });
+
+                vector<ServerEntity*> nested_req {own, peer};
+                nested.SyncEntities(nested_req);
+                CHECK(IsEntityAccessValid(own));
+                CHECK(IsEntityAccessValid(peer));
+            }
+            catch (const std::exception&) {
+                failed.store(true, std::memory_order_release);
+            }
+
+            primary.Release();
+            primary.Deactivate();
+            rounds_done.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
+    std::thread t1(cross_thread, cr_a, cr_b);
+    std::thread t2(cross_thread, cr_b, cr_a);
+
+    // Watchdog: a correct implementation finishes the cross-rounds in well under a second even on a
+    // loaded host. If the threads deadlock, detect it and fail cleanly. We can't safely unblock a real
+    // deadlock, so on timeout we Shutdown (aborts pending entity-lock waiters) and detach — but the
+    // fixed engine never reaches the timeout. Both threads run ROUNDS rounds, so the target is 2*ROUNDS.
+    constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
+    const auto deadline = nanotime::now() + timespan {std::chrono::seconds {30}};
+    bool timed_out = false;
+    while (rounds_done.load(std::memory_order_acquire) < total_rounds && !failed.load(std::memory_order_acquire)) {
+        if (nanotime::now() > deadline) {
+            timed_out = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    CHECK_FALSE(timed_out); // a hang here is the sync-rail nested cross-entity deadlock (regression)
+    CHECK_FALSE(failed.load());
+
+    if (timed_out) {
+        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit
+        // rather than hang the whole suite. The CHECK above already recorded the failure.
+        failed.store(true, std::memory_order_release);
+        server->Shutdown();
+        t1.detach();
+        t2.detach();
+    }
+    else {
+        t1.join();
+        t2.join();
+        CHECK(rounds_done.load() == total_rounds);
+    }
+
+    if (!timed_out) {
+        // Detach so the map refcounts drop cleanly before Shutdown.
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        locked = true;
+        cr_a->SetParent(nullptr);
+        cr_b->SetParent(nullptr);
+    }
+}
+
 FO_END_NAMESPACE

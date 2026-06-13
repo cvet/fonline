@@ -59,6 +59,12 @@ public:
     [[nodiscard]] auto IsLockedByCurrentThread() const noexcept -> bool;
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
 
+    // Number of times the calling thread currently holds this lock EXCLUSIVELY (its recursion
+    // count), or 0 if it is not the exclusive owner. Used by the globally-ordered escalation in
+    // `SyncContext::AcquireLocks` to release a parent-held lock down to zero and re-acquire it the
+    // same number of times, restoring the parent context's recursion bookkeeping exactly.
+    [[nodiscard]] auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
+
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
     // `_recursionCount`. Blocks until no shared holders and no other exclusive owner remain.
     void Acquire(uint64_t ticket);
@@ -147,6 +153,14 @@ public:
 
 private:
     void AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<ServerEntity>>&& owners);
+    // Deadlock-breaking escalation used by AcquireLocks when the non-parking back-off cannot make
+    // progress (typically a nested context cross-holding locks against another thread's parent
+    // cover). Releases the full thread-held lock union (this context's prefix is already released by
+    // the caller, plus every ancestor SyncContext's per-Sync and singleton locks) and re-acquires it
+    // in strict ascending-address order via the FIFO-fair blocking `EntityLock::Acquire`, restoring
+    // each ancestor lock's recursion count exactly. Total resource ordering makes this fair acquire
+    // deadlock-free regardless of what the thread (or its ancestors) already held.
+    void AcquireLocksOrderedFair(const vector<EntityLock*>& locks);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 

@@ -342,6 +342,21 @@ auto EntityLock::WaiterCount() const noexcept -> size_t
     return _waitQueue.size();
 }
 
+auto EntityLock::GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_ownerThread.load(std::memory_order_acquire) != std::this_thread::get_id()) {
+        return 0;
+    }
+
+    scoped_lock locker {_mutex};
+
+    // Re-check under the lock: a concurrent Release on this thread cannot happen (we are the owner
+    // and single-threaded for our own lock state), so the owner check + recursion read are stable.
+    return _ownerThread.load(std::memory_order_relaxed) == std::this_thread::get_id() ? _recursionCount : 0;
+}
+
 auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -981,27 +996,35 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
         }
     }
 
-    // Acquire the whole (now sorted, deduped) set WITHOUT ever parking while holding another lock —
-    // a std::lock-style try-and-back-off. A SyncContext can be NESTED: a per-event-callback context
-    // runs while its parent job/event context already holds locks at arbitrary addresses (e.g.
-    // `Process_RemoteCall` holds the player lock, then `OnPlayerLogin` fires and a handler calls
-    // `Game.Sync(...)` on the nested context). Block-waiting on a lock here while the thread still
-    // holds a parent lock at a HIGHER address inverts the global ascending-address order and
-    // deadlocks against a concurrent acquisition that wants the same pair in the opposite arrival
-    // order (observed: a fresh login holding the player lock vs. that player's controlled-critter
-    // TimeEvent, which auto-widens back to the player).
+    // Acquisition strategy (two stages):
     //
-    // Sorted ascending-address acquisition alone is NOT sufficient: the parent locks were taken
-    // outside this call and cannot be safely released here (that would drop the parent's atomicity
-    // and corrupt its held-lock bookkeeping). Instead, we never hold-and-wait — try-acquire the whole
-    // set; on the first contended lock, release the prefix we just took and retry after a back-off.
-    // Releasing a re-entrant parent lock in the prefix only moves its recursion count, so the parent
-    // keeps its hold. Because the thread never blocks while holding a lock, no wait-for cycle can
-    // form. Locks already owned by this thread (the parent cover) succeed immediately via
-    // TryAcquire's re-entrant fast path and never trigger back-off.
-    const bool can_wait_for_fair_turn = _previousContext == nullptr;
+    // Stage 1 — non-parking try-and-back-off (the fast path for transient contention). Try-acquire
+    // the whole (sorted, deduped) set; on the first contended lock, release the prefix we just took
+    // and spin-yield. This never holds-and-waits *for the duration of one attempt*, so a briefly
+    // contended lock is taken promptly without parking. Locks already owned by this thread (the
+    // parent cover) succeed immediately via TryAcquire's re-entrant fast path.
+    //
+    // Stage 2 — globally-ordered fair acquire (the deadlock-breaker). Stage 1 alone is NOT
+    // sufficient for NESTED contexts: a per-event-callback context runs while its parent job/event
+    // context already holds locks at arbitrary addresses (e.g. a per-player job covers {player,
+    // controlled critter}; `OnPlayerLogout` fires and a handler calls `Sync(cr, leader)` on the
+    // nested context). Those parent locks are held for the WHOLE nested attempt — that is real
+    // hold-and-wait. Two concurrent group-logout cleanups form a genuine 2-cycle: thread 1's parent
+    // holds cr_a and the nested acquire wants {cr_a, cr_b}; thread 2's parent holds cr_b and wants
+    // {cr_b, cr_a}. The contended lock is permanently held by the OTHER thread's parent, so no
+    // amount of non-parking back-off in stage 1 can ever break it (each thread spins forever holding
+    // the lock the other needs). The escalation therefore releases the ENTIRE thread-held lock set
+    // (this context's prefix + every ancestor SyncContext's locks, since `Sync()` observes no entity
+    // state during a lock-set transition) and re-acquires the full union with BLOCKING `Acquire` in
+    // strict ascending-address order. Total resource ordering makes that fair acquire deadlock-free
+    // for any context, nested or not: no thread can hold a higher-addressed lock while blocking on a
+    // lower-addressed one, so no wait-for cycle can form. Each ancestor lock's recursion count is
+    // restored exactly, so parent bookkeeping is intact when control returns to the parent.
+    constexpr int32_t non_parking_spin_budget = 64;
 
-    for (int32_t spins = 0;;) {
+    bool acquired_all = false;
+
+    for (int32_t spins = 0; spins < non_parking_spin_budget; spins++) {
         size_t acquired = 0;
 
         while (acquired < locks.size() && locks[acquired]->TryAcquire()) {
@@ -1009,6 +1032,7 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
         }
 
         if (acquired == locks.size()) {
+            acquired_all = true;
             break;
         }
 
@@ -1016,23 +1040,73 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
             locks[i]->Release();
         }
 
-        // Escalating back-off: spin-yield first so a briefly-contended lock is taken promptly. A
-        // top-level context can then queue briefly for the contended lock and release it immediately,
-        // which gives the lock a visible exclusive waiter and prevents an endless stream of shared
-        // readers from starving this sync attempt. Nested contexts must keep the non-parking rule
-        // because their parent may already hold unrelated locks.
-        if (++spins < 64 || !can_wait_for_fair_turn) {
-            std::this_thread::yield();
-        }
-        else {
-            locks[acquired]->Acquire(NextSyncTicket());
-            locks[acquired]->Release();
-            std::this_thread::sleep_for(std::chrono::microseconds(50));
-        }
+        std::this_thread::yield();
+    }
+
+    if (!acquired_all) {
+        AcquireLocksOrderedFair(locks);
     }
 
     _heldLocks = std::move(locks);
     _heldLockOwners = std::move(owners);
+}
+
+void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Collect every lock the calling thread currently holds across the ancestor SyncContext chain
+    // (each context's per-Sync `_heldLocks` plus its singleton `_singletonLocks`) together with this
+    // call's target `locks`, recording each lock's current exclusive recursion so it can be released
+    // to zero and re-acquired the same number of times. `this` context's own prefix is already
+    // released by the stage-1 back-off, so it contributes only via `locks` (recursion 0 here).
+    unordered_map<EntityLock*, int32_t> reacquire_count;
+
+    const auto add_held = [&reacquire_count](EntityLock* lock) {
+        if (lock != nullptr && !reacquire_count.contains(lock)) {
+            reacquire_count.emplace(lock, lock->GetExclusiveRecursionForCurrentThread());
+        }
+    };
+
+    for (auto* ancestor = _previousContext; ancestor != nullptr; ancestor = ancestor->_previousContext) {
+        for (auto* lock : ancestor->_heldLocks) {
+            add_held(lock);
+        }
+        for (auto* lock : ancestor->_singletonLocks) {
+            add_held(lock);
+        }
+    }
+
+    // The target locks of THIS acquire each need exactly one extra hold on top of whatever ancestors
+    // already hold them.
+    for (auto* lock : locks) {
+        reacquire_count[lock] += 1;
+    }
+
+    // Release every currently-held lock down to zero so the whole union becomes orderable. After this
+    // the calling thread holds none of these locks; another thread that was waiting on one can take
+    // it, which is exactly what breaks a cross-hold 2-cycle. No entity state is observed between here
+    // and the ordered re-acquire below, so dropping the parent cover across the transition is safe —
+    // the parent cover is fully restored (as a superset) before control returns to any script.
+    for (auto& [lock, count] : reacquire_count) {
+        const int32_t held = lock->GetExclusiveRecursionForCurrentThread();
+
+        for (int32_t i = 0; i < held; i++) {
+            lock->Release();
+        }
+    }
+
+    // Re-acquire the entire union in strict ascending-address order with the FIFO-fair blocking
+    // `Acquire`. Ascending order across all threads prevents any wait-for cycle (resource ordering);
+    // the FIFO ticket queue prevents starvation.
+    vector<pair<EntityLock*, int32_t>> ordered {reacquire_count.begin(), reacquire_count.end()};
+    std::ranges::sort(ordered, {}, &pair<EntityLock*, int32_t>::first);
+
+    for (auto& [lock, count] : ordered) {
+        for (int32_t i = 0; i < count; i++) {
+            lock->Acquire(NextSyncTicket());
+        }
+    }
 }
 
 void SyncContext::ReleaseLocks() noexcept
