@@ -95,16 +95,11 @@ void ServerEntity::ValidateAccess() const
     }
 }
 
-// `_entityLock` is null only for non-live template entities (static-map billets / StaticItem read
-// in MapManager, detached during transfer): those carry no registered id, are never handed to a
-// script through the sync rail, and see no concurrent property access — so the no-op fallback is
-// correct and matches the prior base behavior. Every live registered ServerEntity wires its own
-// lock in its ctor (or inherits the holder's via SetEntityLock), so the real path always runs there.
 void ServerEntity::LockForPropertyAccess() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock != nullptr) {
+    if (_entityLock) {
         _entityLock->Acquire(NextSyncTicket());
     }
 }
@@ -113,7 +108,7 @@ void ServerEntity::UnlockForPropertyAccess() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock != nullptr) {
+    if (_entityLock) {
         _entityLock->Release();
     }
 }
@@ -122,7 +117,7 @@ void ServerEntity::LockForPropertyAccessShared() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock != nullptr) {
+    if (_entityLock) {
         _entityLock->AcquireShared(NextSyncTicket());
     }
 }
@@ -131,7 +126,7 @@ void ServerEntity::UnlockForPropertyAccessShared() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock != nullptr) {
+    if (_entityLock) {
         _entityLock->ReleaseShared();
     }
 }
