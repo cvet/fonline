@@ -2148,6 +2148,131 @@ void NarrowsCompoundOrAfterReturn()
             }
         }
         CHECK(found);
+
+        // A `null` literal reassignment drops the narrowing the same way - and the
+        // write itself must compile: it goes through the declared nullable type
+        // (read-time narrowing must not turn it into a non-nullable null write).
+        {
+            MsgCapture null_cap;
+            const auto null_r = buildScript(R"(
+                Resource? GetMaybe() { return null; }
+                void NarrowingResetsAfterNullAssign()
+                {
+                    Resource? g = GetMaybe();
+                    if (g != null) {
+                        Resource a = g;        // OK - narrowed.
+                        g = null;              // Un-narrowing write: legal.
+                        Resource b = g;        // Must fail - g is `Resource?` again.
+                    }
+                }
+            )",
+                null_cap);
+            CHECK(null_r < 0);
+            bool found_bind_error = false;
+            for (const auto& e : null_cap.Errors) {
+                if (e.find("Cannot assign nullable") != string::npos) {
+                    found_bind_error = true;
+                }
+                // The null write itself must not be rejected.
+                CHECK(e.find("Cannot assign 'null'") == string::npos);
+            }
+            CHECK(found_bind_error);
+        }
+    }
+
+    SECTION("NullAssignmentToNarrowedNullableUnNarrows")
+    {
+        // A write goes through the variable's *declared* type: an active smart-cast
+        // narrowing is a read-time refinement only. `x = null;` on a declared-nullable
+        // local (or `&` parameter) inside its own `x != null` guard is a legal
+        // un-narrowing write compiled as a plain REFCPY. Regression: the copy
+        // instruction used to be chosen from the narrowed (non-nullable) view, which
+        // emitted asBC_RefCpyChk and threw "Null assignment to non-nullable handle"
+        // on every execution of the branch.
+        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
+                                                    if (e != nullptr) {
+                                                        e->ShutDownAndRelease();
+                                                    }
+                                                }};
+        REQUIRE(engine);
+        RegisterTestApi(engine.get());
+        // The `Resource? &` inout-parameter flavor needs unsafe references, same as the
+        // game backend (AngelScriptBackend.cpp) which enables them for all scripts.
+        CHECK(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true) >= 0);
+
+        static constexpr string_view UnNarrowScript = R"(
+class Resource
+{
+    int Id;
+    Resource() { Id = AcquireResource(); }
+    ~Resource() { if (Id != 0) ReleaseResource(Id); }
+}
+
+// Local flavor: simple guard.
+void NullAssignToNarrowedLocal()
+{
+    Resource? slot = Resource();
+    if (slot != null) {
+        slot = null;
+    }
+    ObserveResource(slot == null ? 1 : 0);
+}
+
+// Local flavor: compound `&&` guard with a member read - the deferred-attack
+// "target died during hit delay" shape that hit this defect in production.
+void NullAssignToCompoundNarrowedLocal()
+{
+    Resource? slot = Resource();
+    if (slot != null && slot.Id > 0) {
+        slot = null;
+    }
+    ObserveResource(slot == null ? 1 : 0);
+}
+
+// Ref-parameter flavor: the callee clears the caller's slot through `&`.
+void ClearSlot(Resource? & slot)
+{
+    if (slot != null) {
+        slot = null;
+    }
+}
+
+void NullAssignToNarrowedRefParam()
+{
+    Resource? slot = Resource();
+    ClearSlot(slot);
+    ObserveResource(slot == null ? 1 : 0);
+}
+)";
+
+        auto* module = engine->GetModule("UnNarrowModule", asGM_ALWAYS_CREATE);
+        REQUIRE(module != nullptr);
+        REQUIRE(module->AddScriptSection("un_narrow", UnNarrowScript.data(), numeric_cast<unsigned>(UnNarrowScript.size())) >= 0);
+        REQUIRE(module->Build() >= 0);
+
+        ResourceTrackerState state {};
+        engine->SetUserData(&state);
+
+        for (const auto* decl : {"void NullAssignToNarrowedLocal()", "void NullAssignToCompoundNarrowedLocal()", "void NullAssignToNarrowedRefParam()"}) {
+            state.LastObservedId = 0;
+            auto* func = module->GetFunctionByDecl(decl);
+            REQUIRE(func != nullptr);
+            auto* ctx = engine->CreateContext();
+            REQUIRE(ctx != nullptr);
+            CHECK(ctx->Prepare(func) >= 0);
+            const auto result = ctx->Execute();
+            UNSCOPED_INFO(decl);
+            if (result == asEXECUTION_EXCEPTION) {
+                UNSCOPED_INFO(ctx->GetExceptionString());
+            }
+            CHECK(result == asEXECUTION_FINISHED);
+            ctx->Release();
+            // The branch body ran to completion and the slot observes as null.
+            CHECK(state.LastObservedId == 1);
+        }
+
+        engine->SetUserData(nullptr);
+        CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
     }
 
     SECTION("SmartCastDoesNotNarrowMixedAndOr")

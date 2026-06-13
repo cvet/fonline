@@ -174,7 +174,7 @@ Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed i
 
 The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from the project main config `Android.*` settings, including the launcher icon PNG source and the Android signing settings.
 
-Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. If they are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
+Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. `package.py` passes `Android.KeystorePassword` and `Android.KeyPassword` to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` environment variables instead of writing them into the generated Gradle project. If you build the generated Gradle project manually, set those variables before `./gradlew assembleRelease`; if the signing settings are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
 APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace output tree instead of the shared `~/.gradle`, so parallel CI package jobs do not contend for global Gradle caches.
 

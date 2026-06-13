@@ -438,28 +438,28 @@ enum class ImGui_Col : int32_t
     ScrollbarBg = 14, // ImGuiCol_ScrollbarBg
     ScrollbarGrab = 15, // ImGuiCol_ScrollbarGrab
     CheckMark = 18, // ImGuiCol_CheckMark
-    SliderGrab = 19, // ImGuiCol_SliderGrab
-    SliderGrabActive = 20, // ImGuiCol_SliderGrabActive
-    Button = 21, // ImGuiCol_Button
-    ButtonHovered = 22, // ImGuiCol_ButtonHovered
-    ButtonActive = 23, // ImGuiCol_ButtonActive
-    Header = 24, // ImGuiCol_Header
-    HeaderHovered = 25, // ImGuiCol_HeaderHovered
-    HeaderActive = 26, // ImGuiCol_HeaderActive
-    Separator = 27, // ImGuiCol_Separator
-    SeparatorHovered = 28, // ImGuiCol_SeparatorHovered
-    SeparatorActive = 29, // ImGuiCol_SeparatorActive
-    ResizeGrip = 30, // ImGuiCol_ResizeGrip
-    ResizeGripHovered = 31, // ImGuiCol_ResizeGripHovered
-    ResizeGripActive = 32, // ImGuiCol_ResizeGripActive
-    Tab = 35, // ImGuiCol_Tab
-    TabHovered = 34, // ImGuiCol_TabHovered
-    TabSelected = 36, // ImGuiCol_TabSelected
-    TabDimmed = 38, // ImGuiCol_TabDimmed
-    TabDimmedSelected = 39, // ImGuiCol_TabDimmedSelected
-    TableHeaderBg = 45, // ImGuiCol_TableHeaderBg
-    TableRowBg = 48, // ImGuiCol_TableRowBg
-    TableRowBgAlt = 49, // ImGuiCol_TableRowBgAlt
+    SliderGrab = 20, // ImGuiCol_SliderGrab
+    SliderGrabActive = 21, // ImGuiCol_SliderGrabActive
+    Button = 22, // ImGuiCol_Button
+    ButtonHovered = 23, // ImGuiCol_ButtonHovered
+    ButtonActive = 24, // ImGuiCol_ButtonActive
+    Header = 25, // ImGuiCol_Header
+    HeaderHovered = 26, // ImGuiCol_HeaderHovered
+    HeaderActive = 27, // ImGuiCol_HeaderActive
+    Separator = 28, // ImGuiCol_Separator
+    SeparatorHovered = 29, // ImGuiCol_SeparatorHovered
+    SeparatorActive = 30, // ImGuiCol_SeparatorActive
+    ResizeGrip = 31, // ImGuiCol_ResizeGrip
+    ResizeGripHovered = 32, // ImGuiCol_ResizeGripHovered
+    ResizeGripActive = 33, // ImGuiCol_ResizeGripActive
+    Tab = 36, // ImGuiCol_Tab
+    TabHovered = 35, // ImGuiCol_TabHovered
+    TabSelected = 37, // ImGuiCol_TabSelected
+    TabDimmed = 39, // ImGuiCol_TabDimmed
+    TabDimmedSelected = 40, // ImGuiCol_TabDimmedSelected
+    TableHeaderBg = 46, // ImGuiCol_TableHeaderBg
+    TableRowBg = 49, // ImGuiCol_TableRowBg
+    TableRowBgAlt = 50, // ImGuiCol_TableRowBgAlt
 };
 
 ///@ ExportEnum
@@ -482,8 +482,8 @@ enum class ImGui_StyleVar : int32_t
     GrabMinSize = 21, // ImGuiStyleVar_GrabMinSize
     GrabRounding = 22, // ImGuiStyleVar_GrabRounding
     TabRounding = 25, // ImGuiStyleVar_TabRounding
-    ButtonTextAlign = 35, // ImGuiStyleVar_ButtonTextAlign
-    SelectableTextAlign = 36, // ImGuiStyleVar_SelectableTextAlign
+    ButtonTextAlign = 36, // ImGuiStyleVar_ButtonTextAlign
+    SelectableTextAlign = 37, // ImGuiStyleVar_SelectableTextAlign
 };
 
 FO_END_NAMESPACE

@@ -27,6 +27,8 @@ PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
 INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
+ANDROID_RELEASE_STORE_PASSWORD_ENV = 'FO_ANDROID_RELEASE_STORE_PASSWORD'
+ANDROID_RELEASE_KEY_PASSWORD_ENV = 'FO_ANDROID_RELEASE_KEY_PASSWORD'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -1059,9 +1061,7 @@ class Packager:
 		patch_file(app_build_gradle, '$VERSION_NAME$', version_name)
 		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
 		patch_file(app_build_gradle, '$RELEASE_STORE_FILE$', escape_groovy_string(release_store_file))
-		patch_file(app_build_gradle, '$RELEASE_STORE_PASSWORD$', escape_groovy_string(release_store_password))
 		patch_file(app_build_gradle, '$RELEASE_KEY_ALIAS$', escape_groovy_string(release_key_alias))
-		patch_file(app_build_gradle, '$RELEASE_KEY_PASSWORD$', escape_groovy_string(release_key_password))
 		patch_file(os.path.join(self.target_output_path, 'app', 'proguard-rules.pro'), '$PACKAGE$', package_name)
 		self.patch_android_activity(package_name)
 
@@ -1100,6 +1100,10 @@ class Packager:
 			if android_home:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
+			if release_store_password:
+				gradle_env[ANDROID_RELEASE_STORE_PASSWORD_ENV] = release_store_password
+			if release_key_password:
+				gradle_env[ANDROID_RELEASE_KEY_PASSWORD_ENV] = release_key_password
 
 			gradle_user_home = os.path.join(
 				os.path.dirname(self.output_path),

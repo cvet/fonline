@@ -110,6 +110,20 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::MoveHexByDirUnsafe(ihex, hdir::SouthEast);
     CHECK(map_size.is_valid_pos(ihex));
 
+    for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+        const hdir hex_dir = hdir(dir_value);
+        const mdir dir = hex_dir;
+        const mdir reverse_dir = dir.reverse();
+
+        CHECK(dir.hex() == hex_dir);
+        CHECK(reverse_dir.reverse().hex() == hex_dir);
+
+        ipos32 roundtrip_hex {5, 5};
+        GeometryHelper::MoveHexByDirUnsafe(roundtrip_hex, dir);
+        GeometryHelper::MoveHexByDirUnsafe(roundtrip_hex, reverse_dir);
+        CHECK(roundtrip_hex == ipos32 {5, 5});
+    }
+
     // MoveHexAroundAway
     constexpr ipos32 ihex3 {5, 5};
     ipos32 ihex4 = ihex3;
@@ -157,7 +171,9 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::ForEachMultihexLines(invalid_and_odd, start, map_size, [&](mpos) { skipped_count++; });
     CHECK(skipped_count == 4);
 
-    vector<uint8_t> reverse_path = {2, 1, 5, 1};
+    const uint8_t south_east_dir = numeric_cast<uint8_t>(hdir::SouthEast.value());
+    const uint8_t north_west_dir = numeric_cast<uint8_t>(mdir(hdir::SouthEast).reverse().hex().value());
+    vector<uint8_t> reverse_path = {south_east_dir, 1, north_west_dir, 1};
     int32_t reverse_count = 0;
     GeometryHelper::ForEachMultihexLines(reverse_path, start, map_size, [&](mpos pos) {
         CHECK(pos != start);
@@ -167,8 +183,8 @@ TEST_CASE("GeometryHelper")
 
     // HexesInRadius
     CHECK(GeometryHelper::HexesInRadius(0) == 1);
-    CHECK(GeometryHelper::HexesInRadius(1) == 7);
-    CHECK(GeometryHelper::HexesInRadius(2) == 19);
+    CHECK(GeometryHelper::HexesInRadius(1) == 1 + GameSettings::MAP_DIR_COUNT);
+    CHECK(GeometryHelper::HexesInRadius(2) == 1 + GameSettings::MAP_DIR_COUNT * 3);
 }
 
 TEST_CASE("GetHexPos and GetHexPosCoord")

@@ -32,11 +32,12 @@ RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 # Host runtime libs we deliberately use through SDL3 and engine code.
 if(FO_LINUX)
 	# X11 for display, OpenGL for rendering, ALSA for audio backend.
-	# CMake's FindX11 also probes Freetype for Xft support.
-	RegisterFindPackageHandler(X11      PassThroughFindPackage)
-	RegisterFindPackageHandler(Freetype PassThroughFindPackage)
-	RegisterFindPackageHandler(OpenGL   PassThroughFindPackage)
-	RegisterFindPackageHandler(ALSA     PassThroughFindPackage)
+	# CMake's FindX11 also probes Freetype and Fontconfig for Xft support.
+	RegisterFindPackageHandler(X11        PassThroughFindPackage)
+	RegisterFindPackageHandler(Freetype   PassThroughFindPackage)
+	RegisterFindPackageHandler(Fontconfig PassThroughFindPackage)
+	RegisterFindPackageHandler(OpenGL     PassThroughFindPackage)
+	RegisterFindPackageHandler(ALSA       PassThroughFindPackage)
 endif()
 if(FO_MAC)
 	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
@@ -152,8 +153,8 @@ macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_LIBRARIES ZLIB::ZLIB)
     set(ZLIB_INCLUDE_DIR "${FO_ZLIB_INCLUDE_DIR_ABS}")
     set(ZLIB_INCLUDE_DIRS "${FO_ZLIB_INCLUDE_DIR_ABS}")
-    set(ZLIB_VERSION_STRING "1.3.1")
-    set(ZLIB_VERSION "1.3.1")
+    set(ZLIB_VERSION_STRING "1.3.2")
+    set(ZLIB_VERSION "1.3.2")
 endmacro()
 RegisterFindPackageHandler(ZLIB _FoEngineHandleZlibFindPackage)
 
@@ -182,13 +183,33 @@ endif()
 
 # Ogg
 SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
+SetValue(FO_OGG_CONFIG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ThirdParty/ogg/include")
+include(CheckIncludeFiles)
+check_include_files(inttypes.h INCLUDE_INTTYPES_H)
+check_include_files(stdint.h INCLUDE_STDINT_H)
+check_include_files(sys/types.h INCLUDE_SYS_TYPES_H)
+foreach(FO_OGG_INCLUDE_VAR IN ITEMS INCLUDE_INTTYPES_H INCLUDE_STDINT_H INCLUDE_SYS_TYPES_H)
+    if(NOT DEFINED ${FO_OGG_INCLUDE_VAR} OR "${${FO_OGG_INCLUDE_VAR}}" STREQUAL "")
+        SetValue(${FO_OGG_INCLUDE_VAR} 0)
+    endif()
+endforeach()
+SetValue(SIZE16 int16_t)
+SetValue(USIZE16 uint16_t)
+SetValue(SIZE32 int32_t)
+SetValue(USIZE32 uint32_t)
+SetValue(SIZE64 int64_t)
+SetValue(USIZE64 uint64_t)
+include("${FO_OGG_DIR}/cmake/CheckSizes.cmake")
+# (FOnline Patch) The engine builds Ogg through a custom static target instead
+# of upstream CMake, so generate the Unix type header that os_types.h includes.
+configure_file("${FO_OGG_DIR}/include/ogg/config_types.h.in" "${FO_OGG_CONFIG_INCLUDE_DIR}/ogg/config_types.h" @ONLY)
 SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
     "${FO_OGG_DIR}/src/framing.c")
 AddStaticThirdPartyLibrary(Ogg
     SOURCE_LIST FO_OGG_SOURCE
     APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_OGG_DIR}/include")
+    INCLUDE_DIRS "${FO_OGG_DIR}/include" "${FO_OGG_CONFIG_INCLUDE_DIR}")
 
 # Vorbis
 SetValue(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
@@ -226,7 +247,6 @@ SetValue(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
 SetValue(FO_THEORA_SOURCE
     "${FO_THEORA_DIR}/lib/apiwrapper.c"
     "${FO_THEORA_DIR}/lib/bitpack.c"
-    "${FO_THEORA_DIR}/lib/cpu.c"
     "${FO_THEORA_DIR}/lib/decapiwrapper.c"
     "${FO_THEORA_DIR}/lib/decinfo.c"
     "${FO_THEORA_DIR}/lib/decode.c"
@@ -417,7 +437,6 @@ SetValue(FO_IMGUI_SOURCE
     "${FO_DEAR_IMGUI_DIR}/imconfig.h"
     "${FO_DEAR_IMGUI_DIR}/imgui.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui.h"
-    "${FO_DEAR_IMGUI_DIR}/imgui_demo.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_draw.cpp"
     "${FO_DEAR_IMGUI_DIR}/imgui_internal.h"
     "${FO_DEAR_IMGUI_DIR}/imgui_tables.cpp"
@@ -540,6 +559,7 @@ if(FO_BUILD_BAKER_LIB)
         SPIRV_CROSS_ENABLE_REFLECT OFF
         SPIRV_CROSS_ENABLE_C_API OFF
         SPIRV_CROSS_ENABLE_UTIL OFF
+        SPIRV_CROSS_SKIP_INSTALL ON
         SPIRV_SKIP_TESTS ON)
     AddSubdirectory("${FO_SPIRV_CROSS_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")

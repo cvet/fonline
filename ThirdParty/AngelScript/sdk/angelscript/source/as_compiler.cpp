@@ -7522,12 +7522,21 @@ int asCCompiler::PerformAssignment(asCExprValue *lvalue, asCExprValue *rvalue, a
 		return -1;
 	}
 
-	// (FOnline Patch) Invalidate any smart-cast narrowing on this lvalue:
-	// once the local is reassigned, the old guard no longer covers the new
-	// value. The next read will see the variable's declared (nullable) type
-	// again and re-issue the guard if needed.
+	// (FOnline Patch) A smart-cast narrowing is a read-time refinement only; the write
+	// itself goes through the variable's declared type. If this lvalue was compiled under
+	// an active narrowing (the nullable bit was cleared off its declared-nullable type),
+	// restore that bit so the copy-instruction choice and the null-write guards below
+	// treat `x = null;` as a legal un-narrowing write into a nullable slot instead of a
+	// guaranteed-throwing asBC_RefCpyChk write into a non-nullable one. Then invalidate
+	// the narrowing: the old guard no longer covers the new value, so the next read sees
+	// the declared (nullable) type again and must re-issue the guard.
 	if (lvalue->isVariable)
+	{
+		if (lvalue->dataType.IsObjectHandle() && !lvalue->dataType.IsNullable() && GetNarrowedTypeForLocal(lvalue->stackOffset) != 0)
+			lvalue->dataType.MakeNullable(true);
+
 		InvalidateNarrowingForLocal(lvalue->stackOffset);
+	}
 
 	if( lvalue->dataType.IsPrimitive() )
 	{

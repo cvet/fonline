@@ -874,7 +874,7 @@ enum { UFBX_MAXIMUM_ALIGNMENT = sizeof(void*) > 8 ? sizeof(void*) : 8 };
 
 // -- Version
 
-#define UFBX_SOURCE_VERSION ufbx_pack_version(0, 21, 3)
+#define UFBX_SOURCE_VERSION ufbx_pack_version(0, 22, 0)
 ufbx_abi_data_def const uint32_t ufbx_source_version = UFBX_SOURCE_VERSION;
 
 ufbx_static_assert(source_header_version, UFBX_SOURCE_VERSION/1000u == UFBX_HEADER_VERSION/1000u);
@@ -12032,7 +12032,7 @@ static bool ufbxi_match_version_string(const char *fmt, ufbx_string str, uint32_
 			}
 			if (pos >= str.length) return false;
 			pos++;
-		} else if (c == '/' || c == '.' || c == '(' || c == ')') {
+		} else if (c == '/' || c == '.' || c == '(' || c == ')' || c == '_') {
 			if (pos >= str.length) return false;
 			if (str.data[pos] != c) return false;
 			pos++;
@@ -12081,6 +12081,9 @@ ufbxi_nodiscard ufbxi_noinline static int ufbxi_match_exporter(ufbxi_context *uc
 	} else if (ufbxi_match_version_string("motionbuilder/mocap/online version ?.?", creator, version)) {
 		uc->exporter = UFBX_EXPORTER_MOTION_BUILDER;
 		uc->exporter_version = ufbx_pack_version(version[0], version[1], 0);
+	} else if (ufbxi_match_version_string("ufbx_write", creator, version)) {
+		uc->exporter = UFBX_EXPORTER_UFBX_WRITE;
+		uc->exporter_version = ufbx_pack_version(0, 0, 1);
 	}
 
 	uc->scene.metadata.exporter = uc->exporter;
@@ -19392,6 +19395,7 @@ static const ufbxi_shader_mapping ufbxi_obj_fbx_mapping[] = {
 	{ UFBX_MATERIAL_FBX_NORMAL_MAP, 0, 0, ufbxi_mat_string("norm") },
 	{ UFBX_MATERIAL_FBX_DISPLACEMENT, 0, 0, ufbxi_mat_string("disp") },
 	{ UFBX_MATERIAL_FBX_BUMP, 0, 0, ufbxi_mat_string("bump") },
+	{ UFBX_MATERIAL_FBX_BUMP, 0, 0, ufbxi_mat_string("Bump") },
 };
 
 static const ufbxi_shader_mapping ufbxi_fbx_lambert_shader_pbr_mapping[] = {
@@ -19737,6 +19741,7 @@ static const ufbxi_shader_mapping ufbxi_obj_pbr_mapping[] = {
 	{ UFBX_MATERIAL_PBR_TRANSMISSION_COLOR, UFBXI_SHADER_MAPPING_DEFAULT_W_1|UFBXI_SHADER_MAPPING_WIDEN_TO_RGB, 0, ufbxi_mat_string("Tf") },
 	{ UFBX_MATERIAL_PBR_DISPLACEMENT_MAP, 0, 0, ufbxi_mat_string("disp") },
 	{ UFBX_MATERIAL_PBR_NORMAL_MAP, 0, 0, ufbxi_mat_string("bump") },
+	{ UFBX_MATERIAL_PBR_NORMAL_MAP, 0, 0, ufbxi_mat_string("Bump") },
 	{ UFBX_MATERIAL_PBR_NORMAL_MAP, 0, 0, ufbxi_mat_string("norm") },
 	{ UFBX_MATERIAL_PBR_SHEEN_COLOR, UFBXI_SHADER_MAPPING_DEFAULT_W_1|UFBXI_SHADER_MAPPING_WIDEN_TO_RGB, 0, ufbxi_mat_string("Ps") },
 	{ UFBX_MATERIAL_PBR_COAT_FACTOR, 0, 0, ufbxi_mat_string("Pc") },

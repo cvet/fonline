@@ -1092,6 +1092,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         egg.DrawOffset = {numeric_cast<float32_t>(draw_area.x), numeric_cast<float32_t>(draw_area.y)};
     }
 
+    mspr_list.SortIfNeeded();
+
     const auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
     const auto& sprites = mspr_list.GetActiveSprites();
     const bool apply_brightness = _settings->Brightness != 0;
