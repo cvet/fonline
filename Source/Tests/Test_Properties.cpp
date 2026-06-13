@@ -1138,6 +1138,83 @@ TEST_CASE("PropertiesOverlay")
     }
 }
 
+TEST_CASE("PropertiesRawDataCopy")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("RawCopyEntity", EngineSideKind::ServerSide, hashes, resolver);
+
+    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+    const string first_value(4096, 'A');
+    const string second_value(8192, 'B');
+
+    SECTION("CopyOwnsStableBuffer")
+    {
+        props.SetValue<string>(name_prop, first_value);
+
+        PropertyRawData copied_data;
+        props.CopyRawData(name_prop, copied_data);
+
+        props.SetValue<string>(name_prop, second_value);
+
+        REQUIRE(copied_data.GetSize() == first_value.size());
+        const auto* copied_chars = copied_data.GetPtrAs<char>();
+
+        for (size_t i = 0; i < copied_data.GetSize(); i++) {
+            CHECK(copied_chars[i] == 'A');
+        }
+    }
+
+    SECTION("ConcurrentCopyDoesNotTear")
+    {
+        props.SetValue<string>(name_prop, first_value);
+
+        std::atomic_bool writer_done {false};
+        std::atomic_bool torn_copy {false};
+
+        std::thread writer([&]() {
+            for (int32_t i = 0; i < 10000; i++) {
+                props.SetValue<string>(name_prop, i % 2 == 0 ? first_value : second_value);
+            }
+
+            writer_done.store(true, std::memory_order_release);
+        });
+
+        while (!writer_done.load(std::memory_order_acquire)) {
+            PropertyRawData copied_data;
+            props.CopyRawData(name_prop, copied_data);
+
+            const size_t size = copied_data.GetSize();
+            const bool first_size = size == first_value.size();
+            const bool second_size = size == second_value.size();
+
+            if (!first_size && !second_size) {
+                torn_copy.store(true, std::memory_order_relaxed);
+                break;
+            }
+
+            const char expected = first_size ? 'A' : 'B';
+            const auto* copied_chars = copied_data.GetPtrAs<char>();
+
+            for (size_t i = 0; i < size; i++) {
+                if (copied_chars[i] != expected) {
+                    torn_copy.store(true, std::memory_order_relaxed);
+                    break;
+                }
+            }
+
+            if (torn_copy.load(std::memory_order_relaxed)) {
+                break;
+            }
+        }
+
+        writer.join();
+        CHECK_FALSE(torn_copy.load(std::memory_order_relaxed));
+    }
+}
+
 TEST_CASE("PropertiesOverlayFiltersAndCopies")
 {
     HashStorage hashes {};

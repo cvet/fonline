@@ -32,7 +32,6 @@
 //
 
 #include "ServerEntity.h"
-#include "EntitySync.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
@@ -92,50 +91,6 @@ void ServerEntity::ValidateAccess() const
 
     if (!IsEntityAccessValid(this)) {
         throw ScriptException("Entity access without sync", GetName());
-    }
-}
-
-auto ServerEntity::LockForPropertyAccess() -> PropertyAccessLockToken
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto* lock = _entityLock.get();
-
-    if (lock != nullptr) {
-        lock->Acquire(NextSyncTicket());
-    }
-
-    return lock;
-}
-
-void ServerEntity::UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (token != nullptr) {
-        static_cast<EntityLock*>(token)->Release();
-    }
-}
-
-auto ServerEntity::LockForPropertyAccessShared() -> PropertyAccessLockToken
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto* lock = _entityLock.get();
-
-    if (lock != nullptr) {
-        lock->AcquireShared(NextSyncTicket());
-    }
-
-    return lock;
-}
-
-void ServerEntity::UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (token != nullptr) {
-        static_cast<EntityLock*>(token)->ReleaseShared();
     }
 }
 

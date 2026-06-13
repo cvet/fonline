@@ -155,7 +155,8 @@ void Property::AddPostSetter(PropertyPostSetCallback setter) const
 
 Properties::Properties(const PropertyRegistrator* registrator, const Properties* base) noexcept :
     _registrator {registrator},
-    _baseProps {base}
+    _baseProps {base},
+    _dataLocker {SafeAlloc::MakeUnique<shared_mutex>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1288,14 +1289,57 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
     }
 }
 
+void Properties::CopyRawData(const Property* prop, PropertyRawData& prop_data) const noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_lock locker {*_dataLocker};
+
+    if (_baseProps) {
+        if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
+            const auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+            prop_data.Set(raw_data.data(), raw_data.size());
+            return;
+        }
+
+        _baseProps->CopyRawData(prop, prop_data);
+        return;
+    }
+
+    const auto raw_data = GetRawData(prop);
+    prop_data.Set(raw_data.data(), raw_data.size());
+}
+
+auto Properties::IsRawDataEqual(const Property* prop, span<const uint8_t> raw_data) const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    shared_lock locker {*_dataLocker};
+
+    if (_baseProps) {
+        if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
+            const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
+            return RawDataEqual(raw_data, current_overlay_data);
+        }
+
+        return _baseProps->IsRawDataEqual(prop, raw_data);
+    }
+
+    return RawDataEqual(raw_data, GetRawData(prop));
+}
+
 void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {*_dataLocker};
+
     FO_STRONG_ASSERT(_registrator == prop->_registrator);
 
     if (_baseProps) {
-        const auto base_raw_data = _baseProps->GetRawData(prop);
+        PropertyRawData base_prop_data;
+        _baseProps->CopyRawData(prop, base_prop_data);
+        const auto base_raw_data = span<const uint8_t>(base_prop_data.GetPtrAs<uint8_t>(), base_prop_data.GetSize());
 
         if (RawDataEqual(raw_data, base_raw_data)) {
             RemoveOverlayEntry(prop);
@@ -1888,9 +1932,7 @@ void Properties::SetValue(const Property* prop, PropertyRawData& prop_data)
     }
 
     if (!prop->IsVirtual()) {
-        const auto cur_prop_data = GetRawData(prop);
-
-        if (prop_data.GetSize() == cur_prop_data.size() && MemCompare(prop_data.GetPtr(), cur_prop_data.data(), prop_data.GetSize())) {
+        if (IsRawDataEqual(prop, {prop_data.GetPtrAs<uint8_t>(), prop_data.GetSize()})) {
             return;
         }
     }

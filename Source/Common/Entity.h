@@ -138,7 +138,6 @@ public:
     };
 
     using EventCallback = function<EventResult(FuncCallData&)>;
-    using PropertyAccessLockToken = void*;
 
     ///@ ExportEnum
     enum class EventPriority : int32_t
@@ -222,14 +221,14 @@ public:
 
     virtual void ValidateAccess() const { }
 
-    virtual auto LockForPropertyAccess() -> PropertyAccessLockToken { return nullptr; }
-    virtual void UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept { ignore_unused(token); }
+    virtual void LockForPropertyAccess() noexcept { }
+    virtual void UnlockForPropertyAccess() noexcept { }
 
     // Shared ("read") variant of the above. Defaults to the exclusive lock so any entity that only
     // overrides the exclusive pair stays correct; the Game singleton (`ServerEngine`) overrides this
     // to take its engine-global lock in shared mode so concurrent property reads don't serialize.
-    virtual auto LockForPropertyAccessShared() -> PropertyAccessLockToken { return LockForPropertyAccess(); }
-    virtual void UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept { UnlockForPropertyAccess(token); }
+    virtual void LockForPropertyAccessShared() noexcept { LockForPropertyAccess(); }
+    virtual void UnlockForPropertyAccessShared() noexcept { UnlockForPropertyAccess(); }
 
     void MarkAsDestroying() noexcept;
     void MarkAsDestroyed() noexcept;

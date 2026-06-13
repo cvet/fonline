@@ -1111,10 +1111,10 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         cr->SetParent(nullptr);
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
-            Entity::PropertyAccessLockToken property_lock = _engine->LockForPropertyAccess();
-            auto unlock_property = scope_exit([this, property_lock]() noexcept { _engine->UnlockForPropertyAccess(property_lock); });
+            _engine->LockForPropertyAccess();
             const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
             _engine->SetLastGlobalMapTripId(trip_id);
+            _engine->UnlockForPropertyAccess();
 
             cr->SetGlobalMapTripId(trip_id);
 

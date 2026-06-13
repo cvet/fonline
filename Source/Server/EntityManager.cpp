@@ -426,9 +426,9 @@ void EntityManager::FlushExactEntityId()
     scoped_lock lock {_registryLock};
 
     _persistedEntityId = _lastEntityId;
-    Entity::PropertyAccessLockToken property_lock = _engine->LockForPropertyAccess();
-    auto unlock_property = scope_exit([this, property_lock]() noexcept { _engine->UnlockForPropertyAccess(property_lock); });
+    _engine->LockForPropertyAccess();
     _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
+    _engine->UnlockForPropertyAccess();
 }
 
 auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Location*
@@ -1399,9 +1399,9 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
         if (id_num > _persistedEntityId) {
             _persistedEntityId = id_num + _engine->Settings.EntityIdReserveBatch - 1;
 
-            Entity::PropertyAccessLockToken property_lock = _engine->LockForPropertyAccess();
-            auto unlock_property = scope_exit([this, property_lock]() noexcept { _engine->UnlockForPropertyAccess(property_lock); });
+            _engine->LockForPropertyAccess();
             _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_persistedEntityId)});
+            _engine->UnlockForPropertyAccess();
         }
 
         entity->SetId(id);
