@@ -65,6 +65,21 @@ public:
 
     void ValidateAccess() const override;
 
+    // Serialize script property reads/writes on THIS entity's own EntityLock (shared for getters,
+    // exclusive for setters), independent of the SyncContext cover the caller holds. Lock resolution
+    // is FLAT: holding an ancestor (map/location) lock makes a descendant ACCESSIBLE but does not
+    // EXCLUDE another thread holding that descendant's own lock — so two threads can legitimately
+    // observe the same critter's property storage at different cover granularities (own-lock vs
+    // map-lock) and tear a `PublicSync` collection mid-update. The base `Entity` no-op relies solely
+    // on the SyncContext cover, which leaves that gap. Taking the entity's own lock here makes reader
+    // and writer of the same entity always meet on one lock regardless of cover. Re-entrant: when the
+    // caller's cover already holds this lock it recurses cheaply; the own lock is a leaf (never an
+    // ancestor of anything the caller holds), so a single blocking leaf acquire forms no wait-for cycle.
+    void LockForPropertyAccess() noexcept override;
+    void UnlockForPropertyAccess() noexcept override;
+    void LockForPropertyAccessShared() noexcept override;
+    void UnlockForPropertyAccessShared() noexcept override;
+
     [[nodiscard]] auto GetParent() -> refcount_ptr<ServerEntity>;
     [[nodiscard]] auto GetParent() const -> refcount_ptr<const ServerEntity>;
 
