@@ -79,6 +79,8 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 
 The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
 
+Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:
