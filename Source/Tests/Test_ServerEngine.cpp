@@ -1616,18 +1616,28 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
                     std::this_thread::yield();
                 }
 
-                // Nested context (like a per-callback FireEvent scope) requesting BOTH critters.
-                SyncContext nested;
-                nested.Activate();
-                auto nested_cleanup = scope_exit([&]() noexcept {
-                    nested.Release();
-                    nested.Deactivate();
-                });
+                // The rendezvous MUST be met before the nested cross-acquire: if the peer never
+                // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
+                // never forms, and even a broken engine would slip through as a false PASS. The budget
+                // is very generous (the peer only has to take one uncontended primary lock), so a miss
+                // means the setup is broken — fail hard instead of running a non-diagnostic acquire.
+                if (primary_held.load(std::memory_order_acquire) < 2) {
+                    failed.store(true, std::memory_order_release);
+                }
+                else {
+                    // Nested context (like a per-callback FireEvent scope) requesting BOTH critters.
+                    SyncContext nested;
+                    nested.Activate();
+                    auto nested_cleanup = scope_exit([&]() noexcept {
+                        nested.Release();
+                        nested.Deactivate();
+                    });
 
-                vector<ServerEntity*> nested_req {own, peer};
-                nested.SyncEntities(nested_req);
-                CHECK(IsEntityAccessValid(own));
-                CHECK(IsEntityAccessValid(peer));
+                    vector<ServerEntity*> nested_req {own, peer};
+                    nested.SyncEntities(nested_req);
+                    CHECK(IsEntityAccessValid(own));
+                    CHECK(IsEntityAccessValid(peer));
+                }
             }
             catch (const std::exception&) {
                 failed.store(true, std::memory_order_release);

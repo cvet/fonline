@@ -159,7 +159,9 @@ private:
     // the caller, plus every ancestor SyncContext's per-Sync and singleton locks) and re-acquires it
     // in strict ascending-address order via the FIFO-fair blocking `EntityLock::Acquire`, restoring
     // each ancestor lock's recursion count exactly. Total resource ordering makes this fair acquire
-    // deadlock-free regardless of what the thread (or its ancestors) already held.
+    // deadlock-free regardless of what the thread (or its ancestors) already held. If the blocking
+    // re-acquire is aborted by shutdown, it rolls the whole union back to zero and clears the ancestor
+    // bookkeeping so the unwinding contexts don't release locks they no longer hold.
     void AcquireLocksOrderedFair(const vector<EntityLock*>& locks);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;

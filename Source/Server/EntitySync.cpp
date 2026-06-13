@@ -1102,11 +1102,37 @@ void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks)
     vector<pair<EntityLock*, int32_t>> ordered {reacquire_count.begin(), reacquire_count.end()};
     std::ranges::sort(ordered, {}, &pair<EntityLock*, int32_t>::first);
 
+    // `Acquire` blocks and throws `EntityLockWaitAbortedException` if the server shuts down while it
+    // is parked. Reaching that here would corrupt the lock bookkeeping unless we recover: we have
+    // already released the whole union to zero and would only partially restore it, so the ancestor
+    // SyncContexts still list locks this thread no longer owns — their teardown `Release()` would
+    // strong-assert on an unowned lock. Re-acquiring is impossible (the abort keeps firing throughout
+    // shutdown), so on failure bring the entire union back to zero and drop it from every ancestor's
+    // bookkeeping, leaving a consistent "this thread holds nothing" state that unwinds cleanly. The
+    // guard is released after a normal acquire, so it fires only on the abort (or any other) throw.
+    auto restore_on_abort = scope_fail([this, &reacquire_count]() noexcept {
+        for (auto& [lock, count] : reacquire_count) {
+            const int32_t held = lock->GetExclusiveRecursionForCurrentThread();
+
+            for (int32_t i = 0; i < held; i++) {
+                lock->Release();
+            }
+        }
+
+        for (auto* ancestor = _previousContext; ancestor != nullptr; ancestor = ancestor->_previousContext) {
+            ancestor->_heldLocks.clear();
+            ancestor->_heldLockOwners.clear();
+            ancestor->_singletonLocks.clear();
+        }
+    });
+
     for (auto& [lock, count] : ordered) {
         for (int32_t i = 0; i < count; i++) {
             lock->Acquire(NextSyncTicket());
         }
     }
+
+    restore_on_abort.release();
 }
 
 void SyncContext::ReleaseLocks() noexcept
