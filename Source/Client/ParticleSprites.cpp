@@ -33,6 +33,7 @@
 
 #include "ParticleSprites.h"
 #include "Application.h"
+#include "Geometry.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -83,6 +84,7 @@ void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
     ignore_unused(looped);
     ignore_unused(reversed);
 
+    _particle->Respawn();
     StartUpdate();
 }
 
@@ -115,44 +117,15 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& rt_mngr = _sprMngr->GetRtMngr();
-    const auto& rt_stack = rt_mngr.GetRenderTargetStack();
+    const RenderSettings& settings = *_factory->_settings;
+    const mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
+    const mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    const mat44 local_to_world = glm::scale(mat44 {1.0f}, vec3 {settings.ModelProjFactor, settings.ModelProjFactor, settings.ModelProjFactor});
 
-    if (rt_stack.empty()) {
-        return;
-    }
+    const mat44 proj_base = scene_ortho * cam_view * local_to_world;
+    const mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
-    const auto rt_size = rt_stack.back()->GetTexture()->Size;
-    const float32_t rtw = numeric_cast<float32_t>(rt_size.width);
-    const float32_t rth = numeric_cast<float32_t>(rt_size.height);
-
-    const auto draw_size = GetSize();
-    const float32_t draw_w = numeric_cast<float32_t>(draw_size.width);
-    const float32_t draw_h = numeric_cast<float32_t>(draw_size.height);
-    const float32_t proj_h = draw_h / _factory->_settings->ModelProjFactor;
-    const float32_t proj_w = proj_h * (draw_w / draw_h);
-
-    const mat44 atlas_ortho = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, proj_w, 0.0f, proj_h, -10.0f, 10.0f);
-    const mat44 atlas_world = glm::translate(mat44 {1.0f}, vec3 {proj_w / 2.0f, proj_h / 4.0f, 0.0f});
-
-    // (1) Atlas NDC [-1,1] == draw_size in its own frame; rescale so it spans draw_size within _rtMap. The
-    // anisotropic x/y factors just cancel the non-square _rtMap, so the on-screen pixel size stays draw_size.
-    const mat44 proj = glm::scale(mat44 {1.0f}, vec3 {draw_w / rtw, draw_h / rth, draw_h / rth}) * atlas_ortho;
-
-    // (2) view_offset moves the system origin from where it currently lands to the sprite's screen anchor in
-    // NDC. Compute both through the same chain Draw() uses (rotX(tilt) * proj * world); the difference is the
-    // NDC translation Draw must apply (it negates view_offset, so pass origin - target).
-    const float32_t tilt = _factory->_settings->MapCameraAngle * (3.14159265f / 180.0f);
-    const mat44 tilt_mat = glm::rotate(mat44 {1.0f}, tilt, vec3 {1.0f, 0.0f, 0.0f});
-    const mat44 scene_ortho = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, rtw, rth, 0.0f, -10.0f, 10.0f);
-
-    const glm::vec4 origin_clip = tilt_mat * proj * atlas_world * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
-    const glm::vec4 target_clip = scene_ortho * glm::vec4 {scene_pos.x, scene_pos.y, depth, 1.0f};
-    const vec3 view_offset = vec3 {origin_clip.x / origin_clip.w - target_clip.x / target_clip.w, //
-        origin_clip.y / origin_clip.w - target_clip.y / target_clip.w, //
-        origin_clip.z / origin_clip.w - target_clip.z / target_clip.w};
-
-    _particle->Setup(proj, atlas_world, {}, 0.0f, view_offset);
+    _particle->Setup(proj, mat44 {1.0f}, {}, 0.0f, vec3 {0.0f, 0.0f, 0.0f}, true);
     _particle->Draw();
 }
 

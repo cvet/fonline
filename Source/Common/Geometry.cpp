@@ -655,14 +655,14 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
     }
 }
 
-auto GeometryHelper::GetHexWorldPos(mpos hex, float32_t elevation) -> vec3
+auto GeometryHelper::GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetHexWorldPos(ipos32(hex), elevation);
+    return GetHexWorldPos(ipos32(hex), hex_offset, elevation);
 }
 
-auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, float32_t elevation) -> vec3
+auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -676,7 +676,12 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, float32_t elevation) -> vec3
     const ipos32 hex_pos = GetHexPos(raw_hex);
     const float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 
-    return vec3 {numeric_cast<float32_t>(hex_pos.x), elevation, numeric_cast<float32_t>(hex_pos.y) / sin_a};
+    // Hex offsets are authored in legacy map-screen pixels. Treat them as movement along the ground plane:
+    // +X stays +X, while +screenY is the camera-foreshortened projection of +worldZ.
+    vec3 world_pos {numeric_cast<float32_t>(hex_pos.x), elevation, numeric_cast<float32_t>(hex_pos.y) / sin_a};
+    world_pos.x += numeric_cast<float32_t>(hex_offset.x);
+    world_pos.z += numeric_cast<float32_t>(hex_offset.y) / sin_a;
+    return world_pos;
 }
 
 auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
@@ -697,6 +702,85 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
     const float32_t depth = cos_a * world_pos.z + sin_a * world_pos.y;
 
     return vec3 {screen_x, screen_y, depth};
+}
+
+auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+    const float32_t sin_a = std::sin(angle_rad);
+    const float32_t cos_a = std::cos(angle_rad);
+
+    // Inverse of ProjectWorldToMap for a horizontal ground plane:
+    // screen_y = sin(a) * world_z - cos(a) * elevation
+    // depth = cos(a) * world_z + sin(a) * elevation
+    return map_y * cos_a / sin_a + elevation / sin_a;
+}
+
+auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+    const float32_t sin_a = std::sin(angle_rad);
+    const float32_t cos_a = std::cos(angle_rad);
+
+    // Inverse of ProjectWorldToMap for a vertical plane at the anchor's ground Z:
+    // screen_y - anchor_y = -cos(a) * height_delta
+    // depth - anchor_depth = sin(a) * height_delta
+    return anchor_depth - (map_y - anchor_map_y) * sin_a / cos_a;
+}
+
+auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // World -> map-screen pixels (.x/.y, Y down) + view depth (.z): the GPU form of ProjectWorldToMap with the
+    // map camera's scroll (translate) and zoom (scale) folded in. `camera_angle_deg` is the fixed elevation
+    // (pitch) above the ground (arcsin(sqrt(3)/4) == MAP_CAMERA_ANGLE keeps hexes metric-regular); `yaw_deg`
+    // orbits the camera about the vertical (up) axis so a real 3D camera can rotate the scene around the same
+    // elevation/roll. yaw == 0 reproduces the legacy fixed isometric view: result = (ProjectWorldToMap(world).xy
+    // - scroll) * zoom on screen, depth unchanged. The renderer composes the backend ortho on top
+    // (MapViewProj = CreateOrthoMatrix(0, w, h, 0, near, far) * MakeMapCameraView), giving one world->clip
+    // matrix shared by sprites, 3D models and particles. 2D map sprites write per-vertex world depth but keep
+    // DepthFunc = Always (their opaque ordering stays the CPU painter sort), so the shared GPU depth buffer
+    // resolves 3D-model-vs-sprite and particle-vs-sprite occlusion rather than 2D-vs-2D. Pinned against
+    // ProjectWorldToMap / GetHexPos by Test_Geometry.cpp.
+    const float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
+    const float32_t sin_a = std::sin(angle_rad);
+    const float32_t cos_a = std::cos(angle_rad);
+
+    // Rigid tilt about X (map Y is down): screen_y = sin*z - cos*y, depth = cos*z + sin*y; screen_x = x.
+    mat44 tilt {1.0f};
+    tilt[1][1] = -cos_a;
+    tilt[2][1] = sin_a;
+    tilt[1][2] = sin_a;
+    tilt[2][2] = cos_a;
+
+    // Yaw about the world up axis (Y), applied before the tilt so the ground orbits under the fixed-elevation
+    // camera. The vertical axis is invariant under yaw, so walls/models stay vertical on screen.
+    const mat44 yaw_mat = glm::rotate(mat44 {1.0f}, yaw_deg * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+
+    const mat44 scroll_zoom = glm::scale(mat44 {1.0f}, vec3 {zoom, zoom, 1.0f}) * //
+        glm::translate(mat44 {1.0f}, vec3 {-scroll_offset.x, -scroll_offset.y, 0.0f});
+
+    return scroll_zoom * tilt * yaw_mat;
+}
+
+auto GeometryHelper::MakeMapAnchoredProj(const mat44& base_proj, const mat44& map_ortho, fpos32 anchor_pos, float32_t anchor_depth) -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Shift `base_proj` in clip space so its local origin lands at the map-space anchor encoded by
+    // `map_ortho`. This keeps direct-draw models and in-scene particle systems on the same root/depth formula.
+    const glm::vec4 origin_clip = base_proj * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
+    const glm::vec4 anchor_clip = map_ortho * glm::vec4 {anchor_pos.x, anchor_pos.y, anchor_depth, 1.0f};
+    const vec3 clip_offset = vec3 {anchor_clip.x / anchor_clip.w - origin_clip.x / origin_clip.w, //
+        anchor_clip.y / anchor_clip.w - origin_clip.y / origin_clip.w, //
+        anchor_clip.z / anchor_clip.w - origin_clip.z / origin_clip.w};
+
+    return glm::translate(mat44 {1.0f}, clip_offset) * base_proj;
 }
 
 auto GeometryHelper::GetHexAxialCoord(mpos hex) -> ipos32

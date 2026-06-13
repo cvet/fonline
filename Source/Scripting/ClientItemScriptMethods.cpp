@@ -41,6 +41,8 @@ FO_BEGIN_NAMESPACE
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsVisible(ItemView* self)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
 
     if (hex_item == nullptr) {
@@ -48,6 +50,20 @@ FO_SCRIPT_API bool Client_Item_IsVisible(ItemView* self)
     }
 
     return hex_item->IsMapSpriteVisible();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ItemView* self)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
+
+    if (hex_item == nullptr) {
+        throw ScriptException("Item is not on map");
+    }
+
+    return hex_item->GetSpriteOffset();
 }
 
 ///@ ExportMethod

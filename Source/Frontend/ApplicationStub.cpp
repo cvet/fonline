@@ -50,6 +50,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer->CreateEffect(usage, name, loader); }
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return _renderer->IsRenderTargetFlipped(); }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return _renderer->GetProjMatrix(); }
 
     void SetRenderTarget(RenderTexture* tex) override
     {
@@ -57,6 +58,13 @@ public:
 
         _renderTarget = tex;
         _renderer->SetRenderTarget(tex);
+    }
+
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _renderer->SetOrthoDepthRange(nearp, farp);
     }
 
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override
@@ -258,6 +266,7 @@ public:
     void GrabInput(bool enable) override
     {
         FO_STACK_TRACE_ENTRY();
+
         _grabbed = enable;
     }
 

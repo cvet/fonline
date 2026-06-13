@@ -406,144 +406,6 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept;
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept;
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool;
-
-auto ModelManager::MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t in[4];
-    in[0] = objx;
-    in[1] = objy;
-    in[2] = objz;
-    in[3] = 1.0f;
-
-    float32_t out[4];
-    MultMatrixVecf(model_matrix, in, out);
-    MultMatrixVecf(proj_matrix, out, in);
-
-    if (in[3] == 0.0f) {
-        return false;
-    }
-
-    in[0] /= in[3];
-    in[1] /= in[3];
-    in[2] /= in[3];
-
-    in[0] = in[0] * 0.5f + 0.5f;
-    in[1] = in[1] * 0.5f + 0.5f;
-    in[2] = in[2] * 0.5f + 0.5f;
-
-    in[0] = in[0] * numeric_cast<float32_t>(viewport[2] + viewport[0]);
-    in[1] = in[1] * numeric_cast<float32_t>(viewport[3] + viewport[1]);
-
-    *winx = in[0];
-    *winy = in[1];
-    *winz = in[2];
-
-    return true;
-}
-
-auto ModelManager::MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t final_matrix[16];
-    MultMatricesf(model_matrix, proj_matrix, final_matrix);
-
-    if (!InvertMatrixf(final_matrix, final_matrix)) {
-        return false;
-    }
-
-    float32_t in[4];
-    in[0] = winx;
-    in[1] = winy;
-    in[2] = winz;
-    in[3] = 1.0f;
-
-    in[0] = (in[0] - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]);
-    in[1] = (in[1] - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]);
-
-    in[0] = in[0] * 2 - 1;
-    in[1] = in[1] * 2 - 1;
-    in[2] = in[2] * 2 - 1;
-
-    float32_t out[4];
-    MultMatrixVecf(final_matrix, in, out);
-
-    if (out[3] == 0.0f) {
-        return false;
-    }
-
-    out[0] /= out[3];
-    out[1] /= out[3];
-    out[2] /= out[3];
-    *objx = out[0];
-    *objy = out[1];
-    *objz = out[2];
-
-    return true;
-}
-
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        for (auto j = 0; j < 4; j++) {
-            r[i * 4 + j] = a[i * 4 + 0] * b[0 * 4 + j] + a[i * 4 + 1] * b[1 * 4 + j] + a[i * 4 + 2] * b[2 * 4 + j] + a[i * 4 + 3] * b[3 * 4 + j];
-        }
-    }
-}
-
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
-    }
-}
-
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t inv[16];
-    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
-    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
-    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
-    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
-    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
-    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
-    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
-    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
-    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
-    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
-    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
-    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
-    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
-    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
-    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
-    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
-
-    auto det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-
-    if (det == 0.0f) {
-        return false;
-    }
-
-    det = 1.0f / det;
-
-    for (auto i = 0; i < 16; i++) {
-        inv_out[i] = inv[i] * det;
-    }
-
-    return true;
-}
-
 ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _modelMngr(&model_mngr),
     _modelInfo {info}
@@ -568,13 +430,12 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     _frameSize.width = draw_size.width * FRAME_SCALE;
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
-    // Projection
+    // Proj
     const auto frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
     const auto proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    _frameProjColMaj = _frameProj;
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
@@ -583,8 +444,12 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixProject(pos.x, pos.y, pos.z, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!ProjectPoint(pos, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     return {iround<int32_t>(out.x / const_numeric_cast<float32_t>(FRAME_SCALE)), iround<int32_t>(out.y / const_numeric_cast<float32_t>(FRAME_SCALE))};
 }
 
@@ -596,10 +461,50 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
     const auto xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
     const auto yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixUnproject(xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f}, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     out.z = 0.0f;
     return out;
+}
+
+auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+
+    if (clip_pos.w == 0.0f) {
+        return false;
+    }
+
+    const vec3 ndc_pos {clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w, clip_pos.z / clip_pos.w};
+
+    out_pos.x = (ndc_pos.x * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[2]) + numeric_cast<float32_t>(viewport[0]);
+    out_pos.y = (ndc_pos.y * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[3]) + numeric_cast<float32_t>(viewport[1]);
+    out_pos.z = ndc_pos.z * 0.5f + 0.5f;
+    return true;
+}
+
+auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
+    const float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
+    const float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
+    const mat44 clip_to_model = glm::inverse(proj_matrix * model_matrix);
+    const glm::vec<4, float32_t, glm::defaultp> obj_pos = clip_to_model * glm::vec<4, float32_t, glm::defaultp> {ndc_x, ndc_y, ndc_z, 1.0f};
+
+    if (obj_pos.w == 0.0f) {
+        return false;
+    }
+
+    out_pos = vec3 {obj_pos.x / obj_pos.w, obj_pos.y / obj_pos.w, obj_pos.z / obj_pos.w};
+    return true;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -1993,6 +1898,24 @@ void ModelInstance::Draw()
 {
     FO_STACK_TRACE_ENTRY();
 
+    DrawFrame(_frameProj, const_numeric_cast<float32_t>(FRAME_SCALE), false, true);
+}
+
+void ModelInstance::Draw(const mat44& proj, float32_t scale)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DrawFrame(proj, scale, true, true);
+}
+
+void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _drawProj = proj;
+    _directSceneDraw = direct_scene;
+    const auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+
     const auto time = GetTime();
     const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
 
@@ -2002,7 +1925,7 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameSize.width / FRAME_SCALE;
     const auto h = _frameSize.height / FRAME_SCALE;
-    ProcessAnimation(dt, {w / 2, h - h / 4}, const_numeric_cast<float32_t>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, scale);
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
@@ -2010,7 +1933,9 @@ void ModelInstance::Draw()
         }
     }
 
-    DrawAllParticles();
+    if (draw_particles) {
+        DrawAllParticles();
+    }
 }
 
 void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
@@ -2019,12 +1944,13 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Update world matrix, only for root
     if (!_parentBone) {
-        const auto pos3d = Convert2dTo3d(pos);
+        const vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
         const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
         const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
         const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
+        const mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
 
-        _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
+        _parentMatrix = mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -2087,13 +2013,15 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
-    // Particles
     for (auto& model_particle : _modelParticles) {
+        const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+        const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+        const bool tilt_in_proj = _directSceneDraw;
         if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
         }
         else {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
     }
 
@@ -2155,7 +2083,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_frameProjColMaj), 16 * sizeof(float32_t));
+    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_drawProj), 16 * sizeof(float32_t));
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -2198,7 +2126,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     }
 
     effect->DisableCulling = _disableCulling;
-    effect->DisableShadow = shadow_disabled;
+    effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(combined_mesh->MeshBuf.get());

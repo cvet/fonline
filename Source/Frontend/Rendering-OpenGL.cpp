@@ -214,7 +214,9 @@ struct OpenGL_Renderer::Context
     bool BaseFrameBufObjBinded {};
     isize32 BaseFrameBufSize {};
     isize32 TargetSize {};
-    mat44 ProjectionMatrixColMaj {};
+    mat44 ProjMatrix {};
+    float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
+    float32_t OrthoFar {ORTHO_DEPTH_DEFAULT_FAR};
     unique_ptr<RenderTexture> DummyTexture {};
     irect32 ViewPortRect {};
 
@@ -547,7 +549,7 @@ OpenGL_Renderer::~OpenGL_Renderer()
     _ctx->BaseFrameBufObjBinded = false;
     _ctx->BaseFrameBufSize = {};
     _ctx->TargetSize = {};
-    _ctx->ProjectionMatrixColMaj = {};
+    _ctx->ProjMatrix = {};
     _ctx->ViewPortRect = {};
     _ctx->OGL_version_2_0 = false;
     _ctx->OGL_vertex_buffer_object = false;
@@ -850,9 +852,25 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
     GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    _ctx->ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, -10.0f, 10.0f);
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
 
     _ctx->TargetSize = {screen_width, screen_height};
+}
+
+void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _ctx->OrthoNear = nearp;
+    _ctx->OrthoFar = farp;
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
+}
+
+auto OpenGL_Renderer::GetProjMatrix() const -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _ctx->ProjMatrix;
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -1324,7 +1342,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjectionMatrixColMaj), 16 * sizeof(float32_t));
+        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjMatrix), 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
@@ -1435,7 +1453,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_FALSE));
         }
-        if (_usage == EffectUsage::QuadSprite) {
+        if (_usage == EffectUsage::Model || _usage == EffectUsage::QuadSprite) {
             GL(glDepthFunc(ConvertDepthFunc(_depthFunc[pass])));
         }
 
@@ -1495,6 +1513,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 
 #if FO_ENABLE_3D
     if (_usage == EffectUsage::Model) {
+        GL(glDepthFunc(GL_LESS)); // Restore default depth comparison
         GL(glDisable(GL_DEPTH_TEST));
 
         if (!DisableCulling) {

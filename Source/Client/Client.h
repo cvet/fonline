@@ -187,6 +187,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFog, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterSpritesAndFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, MapView* /*map*/, irect32 /*drawArea*/);

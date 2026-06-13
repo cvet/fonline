@@ -38,9 +38,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32_t MAX_LIGHT_INTEN = 10000;
-static constexpr int32_t MAX_LIGHT_HEX = 200;
-static constexpr int32_t MAX_LIGHT_ALPHA = 255;
+static constexpr int32_t LIGHT_INTENSITY_MAX = 100;
+static constexpr int32_t LIGHT_CAPACITY_MAX = 100;
+static constexpr int32_t LIGHT_RAW_INTENSITY_MAX = 10000;
+static constexpr int32_t LIGHT_HEX_COLOR_MAX = 200;
+static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX = 255;
+static constexpr float32_t MAP_DEPTH_RANGE_MARGIN = 1000.0f;
 
 void SpritePattern::Finish()
 {
@@ -96,13 +99,29 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
         _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
 
-    _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex1.png", AtlasType::MapSprites);
-    _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex2.png", AtlasType::MapSprites);
-    _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Hex3.png", AtlasType::MapSprites);
-    _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track1.png", AtlasType::MapSprites);
-    _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "Track2.png", AtlasType::MapSprites);
-
     _mapSize = GetSize();
+    FO_RUNTIME_ASSERT(_mapSize.width > 0 && _mapSize.height > 0);
+
+    {
+        const ipos32 corners[] = {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
+            {0, numeric_cast<int32_t>(_mapSize.height) - 1}, //
+            {numeric_cast<int32_t>(_mapSize.width) - 1, numeric_cast<int32_t>(_mapSize.height) - 1}};
+        const float32_t elev_min = numeric_cast<float32_t>(std::numeric_limits<int16_t>::min());
+        const float32_t elev_max = numeric_cast<float32_t>(std::numeric_limits<int16_t>::max());
+        float32_t min_depth = std::numeric_limits<float32_t>::max();
+        float32_t max_depth = std::numeric_limits<float32_t>::lowest();
+
+        for (const auto corner : corners) {
+            for (const float32_t elev : {elev_min, 0.0f, elev_max}) {
+                const float32_t d = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(corner, ipos32 {}, elev)).z;
+                min_depth = std::min(min_depth, d);
+                max_depth = std::max(max_depth, d);
+            }
+        }
+
+        _mapDepthNear = min_depth - MAP_DEPTH_RANGE_MARGIN;
+        _mapDepthFar = max_depth + MAP_DEPTH_RANGE_MARGIN;
+    }
 
     _hexLight.resize(_mapSize.square() * 3);
     _hexField = SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
@@ -187,10 +206,7 @@ void MapView::EnableMapperMode()
     FO_STACK_TRACE_ENTRY();
 
     _mapperMode = true;
-    _isShowTrack = true;
     _scrollCheckEnabled = false;
-
-    _hexTrack.resize(_mapSize.square());
 }
 
 void MapView::LoadFromFile(string_view map_name, const string& str)
@@ -1154,24 +1170,6 @@ void MapView::ShowHex(const ViewField& vf)
         }
     }
 
-    // Track
-    if (_isShowTrack && GetHexTrack(hex) != 0) {
-        const auto& spr = GetHexTrack(hex) == 1 ? _picTrack1 : _picTrack2;
-        auto* mspr = _mapSprites.AddSprite(DrawOrderType::Track, hex, //
-            {GameSettings::MAP_HEX_WIDTH / 2, (GameSettings::MAP_HEX_HEIGHT / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
-            spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-        AddSpriteToChain(field, mspr);
-    }
-
-    // Hex lines
-    if (_isShowHex) {
-        const auto& spr = _picHex[0];
-        auto* mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hex, //
-            {spr ? spr->GetSize().width / 2 : 0, spr ? spr->GetSize().height : 0}, &field.Offset, //
-            spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-        AddSpriteToChain(field, mspr);
-    }
-
     // Items on hex
     if (!field.OriginItems.empty()) {
         for (auto& item : field.OriginItems) {
@@ -1237,23 +1235,6 @@ void MapView::ShowHex(const ViewField& vf)
             AddSpriteToChain(field, mspr);
         }
     }
-
-    // Scroll block
-    if (_mapperMode && _isShowMapperOverlay) {
-        const irect32 scroll_area = GetScrollAxialArea();
-
-        if (!scroll_area.is_zero()) {
-            const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
-
-            if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
-                const auto& spr = _picTrack1;
-                auto* mspr = _mapSprites.AddSprite(DrawOrderType::Last, hex, //
-                    {GameSettings::MAP_HEX_WIDTH / 2, (GameSettings::MAP_HEX_HEIGHT / 2) + (spr ? spr->GetSize().height / 2 : 0)}, &field.Offset, //
-                    spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr);
-                AddSpriteToChain(field, mspr);
-            }
-        }
-    }
 }
 
 void MapView::HideHex(const ViewField& vf)
@@ -1313,7 +1294,7 @@ void MapView::ProcessLighting()
     _removeLightSourcesScratch.clear();
 
     for (auto* ls : _visibleLightSources | std::views::keys) {
-        const auto prev_intensity = ls->CurIntensity;
+        const int32_t prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
             const auto elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(std::chrono::milliseconds {200});
@@ -1451,7 +1432,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         ls->Intensity = intensity;
     }
 
-    ls->TargetIntensity = std::min(std::abs(ls->Intensity), 100);
+    ls->TargetIntensity = std::clamp(std::abs(ls->Intensity), 0, LIGHT_INTENSITY_MAX);
 
     if (_mapLoading) {
         ls->CurIntensity = ls->TargetIntensity;
@@ -1529,19 +1510,21 @@ void MapView::ApplyLightFan(LightSource* ls)
         ls->Capacity = GetMapDayLightCapacity();
     }
     else {
-        ls->Capacity = 100;
+        ls->Capacity = LIGHT_CAPACITY_MAX;
     }
 
     if (IsEnumSet(ls->Flags, LightFlag::Inverse)) {
-        ls->Capacity = 100 - ls->Capacity;
+        ls->Capacity = LIGHT_CAPACITY_MAX - ls->Capacity;
     }
 
-    const auto intensity = ls->CurIntensity * 100; // To MAX_LIGHT_INTEN
-    const auto center_alpha = numeric_cast<uint8_t>(MAX_LIGHT_ALPHA * ls->Capacity / 100 * intensity / MAX_LIGHT_INTEN);
+    const int32_t raw_intensity = std::clamp(ls->CurIntensity, 0, LIGHT_INTENSITY_MAX) * LIGHT_RAW_INTENSITY_MAX / LIGHT_INTENSITY_MAX;
+    const int32_t clamped_capacity = std::clamp(ls->Capacity, 0, LIGHT_CAPACITY_MAX);
+    const int64_t scaled_center_alpha = numeric_cast<int64_t>(raw_intensity) * LIGHT_COLOR_CHANNEL_MAX * clamped_capacity;
+    const uint8_t center_alpha = numeric_cast<uint8_t>(scaled_center_alpha / LIGHT_RAW_INTENSITY_MAX / LIGHT_CAPACITY_MAX);
 
     ls->CenterColor = ucolor {ls->Color, center_alpha};
 
-    MarkLight(ls, center_hex, intensity);
+    MarkLight(ls, center_hex, raw_intensity);
 
     ipos32 raw_traced_hex = {center_hex.x, center_hex.y};
     bool seek_start = true;
@@ -1577,7 +1560,7 @@ void MapView::ApplyLightFan(LightSource* ls)
                 traced_hex = center_hex;
             }
             else {
-                TraceLightLine(ls, center_hex, traced_hex, distance, intensity);
+                TraceLightLine(ls, center_hex, traced_hex, distance, raw_intensity);
             }
 
             if (!last_traced_hex.has_value() || traced_hex != last_traced_hex.value()) {
@@ -1645,7 +1628,7 @@ void MapView::CleanLightFan(LightSource* ls)
     _visibleLightSources.erase(ls);
 }
 
-void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t intensity)
+void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1658,13 +1641,13 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
     auto curx1_i = numeric_cast<int32_t>(from_hex.x);
     auto cury1_i = numeric_cast<int32_t>(from_hex.y);
 
-    auto cur_inten = intensity;
-    const auto inten_sub = intensity / distance;
+    int32_t cur_raw_intensity = raw_intensity;
+    const int32_t raw_intensity_sub = raw_intensity / distance;
 
     const auto resolve_hex = [this](int32_t hx, int32_t hy) -> mpos { return _mapSize.from_raw_pos(hx, hy); };
 
     while (true) {
-        cur_inten -= inten_sub;
+        cur_raw_intensity -= raw_intensity_sub;
         curx1_f += sx1_f;
         cury1_f += sy1_f;
 
@@ -1720,32 +1703,32 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
 
             if (ox < 0 || ox >= map_width || _hexField->GetCellForReading(resolve_hex(ox, old_cury1_i)).LightBlocked) {
                 to_hex = resolve_hex(ox < 0 || ox >= map_width ? old_curx1_i : ox, old_cury1_i);
-                MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
+                MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_raw_intensity);
                 break;
             }
 
-            MarkLightStep(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(ox, old_cury1_i), cur_inten);
+            MarkLightStep(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(ox, old_cury1_i), cur_raw_intensity);
 
             // Right side
             oy = old_cury1_i + oy;
 
             if (oy < 0 || oy >= map_height || _hexField->GetCellForReading(resolve_hex(old_curx1_i, oy)).LightBlocked) {
                 to_hex = resolve_hex(old_curx1_i, oy < 0 || oy >= map_height ? old_cury1_i : oy);
-                MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
+                MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_raw_intensity);
                 break;
             }
 
-            MarkLightStep(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(old_curx1_i, oy), cur_inten);
+            MarkLightStep(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(old_curx1_i, oy), cur_raw_intensity);
         }
 
         // Main trace
         if (curx1_i < 0 || curx1_i >= map_width || cury1_i < 0 || cury1_i >= map_height || _hexField->GetCellForReading(resolve_hex(curx1_i, cury1_i)).LightBlocked) {
             to_hex = resolve_hex(curx1_i < 0 || curx1_i >= map_width ? old_curx1_i : curx1_i, cury1_i < 0 || cury1_i >= map_height ? old_cury1_i : cury1_i);
-            MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_inten);
+            MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), to_hex, cur_raw_intensity);
             break;
         }
 
-        MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(curx1_i, cury1_i), cur_inten);
+        MarkLightEnd(ls, resolve_hex(old_curx1_i, old_cury1_i), resolve_hex(curx1_i, cury1_i), cur_raw_intensity);
 
         if (curx1_i == numeric_cast<int32_t>(to_hex.x) && cury1_i == numeric_cast<int32_t>(to_hex.y)) {
             break;
@@ -1753,7 +1736,7 @@ void MapView::TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32
     }
 }
 
-void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t intensity)
+void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1764,15 +1747,15 @@ void MapView::MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t
         const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
         if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
-            MarkLight(ls, to_hex, intensity);
+            MarkLight(ls, to_hex, raw_intensity);
         }
     }
     else {
-        MarkLight(ls, to_hex, intensity);
+        MarkLight(ls, to_hex, raw_intensity);
     }
 }
 
-void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t intensity)
+void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1791,36 +1774,36 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t 
     const auto dir = GeometryHelper::GetHexDir(from_hex, to_hex);
 
     if (dir == hdir::NorthEast || (north_south && dir == hdir::East) || (!north_south && (dir == hdir::West || dir == hdir::NorthWest))) {
-        MarkLight(ls, to_hex, intensity);
+        MarkLight(ls, to_hex, raw_intensity);
 
         if (is_wall) {
             if (north_south) {
                 if (to_hex.y > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y - 1), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y - 1), true, raw_intensity);
                 }
                 if (to_hex.y < _mapSize.height - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y + 1), true, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x, to_hex.y + 1), true, raw_intensity);
                 }
             }
             else {
                 if (to_hex.x > 0) {
-                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y), false, raw_intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y - 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y - 1), false, raw_intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y + 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x - 1, to_hex.y + 1), false, raw_intensity);
                     }
                 }
                 if (to_hex.x < _mapSize.width - 1) {
-                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y), false, intensity);
+                    MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y), false, raw_intensity);
 
                     if (to_hex.y > 0) {
-                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y - 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y - 1), false, raw_intensity);
                     }
                     if (to_hex.y < _mapSize.height - 1) {
-                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y + 1), false, intensity);
+                        MarkLightEndNeighbor(ls, _mapSize.from_raw_pos(to_hex.x + 1, to_hex.y + 1), false, raw_intensity);
                     }
                 }
             }
@@ -1828,7 +1811,7 @@ void MapView::MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t 
     }
 }
 
-void MapView::MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t intensity)
+void MapView::MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t raw_intensity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1838,20 +1821,26 @@ void MapView::MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, 
         const auto corner = field.Corner;
 
         if ((north_south && (corner == CornerType::NorthSouth || corner == CornerType::North || corner == CornerType::West)) || (!north_south && (corner == CornerType::EastWest || corner == CornerType::East)) || corner == CornerType::South) {
-            MarkLight(ls, hex, intensity / 2);
+            MarkLight(ls, hex, raw_intensity / 2);
         }
     }
 }
 
-void MapView::MarkLight(LightSource* ls, mpos hex, int32_t intensity)
+void MapView::MarkLight(LightSource* ls, mpos hex, int32_t raw_intensity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto light_value = intensity * MAX_LIGHT_HEX / MAX_LIGHT_INTEN * ls->Capacity / 100;
-    const auto light_value_r = numeric_cast<uint8_t>(light_value * ls->CenterColor.comp.r / 255);
-    const auto light_value_g = numeric_cast<uint8_t>(light_value * ls->CenterColor.comp.g / 255);
-    const auto light_value_b = numeric_cast<uint8_t>(light_value * ls->CenterColor.comp.b / 255);
-    const auto light_color = ucolor {light_value_r, light_value_g, light_value_b, 0};
+    const int32_t clamped_raw_intensity = std::clamp(raw_intensity, 0, LIGHT_RAW_INTENSITY_MAX);
+    const int32_t clamped_capacity = std::clamp(ls->Capacity, 0, LIGHT_CAPACITY_MAX);
+    const int64_t scaled_light_value = numeric_cast<int64_t>(clamped_raw_intensity) * LIGHT_HEX_COLOR_MAX * clamped_capacity;
+    const int32_t light_value = numeric_cast<int32_t>(scaled_light_value / LIGHT_RAW_INTENSITY_MAX / LIGHT_CAPACITY_MAX);
+    const int32_t scaled_light_value_r = light_value * numeric_cast<int32_t>(ls->CenterColor.comp.r) / LIGHT_COLOR_CHANNEL_MAX;
+    const int32_t scaled_light_value_g = light_value * numeric_cast<int32_t>(ls->CenterColor.comp.g) / LIGHT_COLOR_CHANNEL_MAX;
+    const int32_t scaled_light_value_b = light_value * numeric_cast<int32_t>(ls->CenterColor.comp.b) / LIGHT_COLOR_CHANNEL_MAX;
+    const uint8_t light_value_r = numeric_cast<uint8_t>(std::clamp(scaled_light_value_r, 0, LIGHT_COLOR_CHANNEL_MAX));
+    const uint8_t light_value_g = numeric_cast<uint8_t>(std::clamp(scaled_light_value_g, 0, LIGHT_COLOR_CHANNEL_MAX));
+    const uint8_t light_value_b = numeric_cast<uint8_t>(std::clamp(scaled_light_value_b, 0, LIGHT_COLOR_CHANNEL_MAX));
+    const ucolor light_color = ucolor {light_value_r, light_value_g, light_value_b, 0};
 
     auto& field = _hexField->GetCellForWriting(hex);
     const auto it = field.LightSources.find(ls);
@@ -2152,8 +2141,6 @@ void MapView::Resize(msize size)
 
     SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
-    _hexTrack.resize(_mapSize.square());
-    MemFill(_hexTrack.data(), 0, _hexTrack.size());
     _hexLight.resize(_mapSize.square() * 3);
     _hexField->Resize(_mapSize);
 
@@ -2165,24 +2152,6 @@ void MapView::Resize(msize size)
 
     RecacheScrollBlocks();
     RebuildMapNow();
-}
-
-void MapView::SwitchShowHex()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _isShowHex = !_isShowHex;
-
-    RebuildMap();
-}
-
-void MapView::ClearHexTrack()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    MemFill(_hexTrack.data(), 0, _hexTrack.size() * sizeof(char));
 }
 
 void MapView::SetShowMapperOverlay(bool show)
@@ -2210,21 +2179,6 @@ void MapView::SetShowMapperHiddenSprites(bool show)
     }
 
     _isShowMapperHiddenSprites = show;
-    RebuildMap();
-}
-
-void MapView::SwitchShowTrack()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    _isShowTrack = !_isShowTrack;
-
-    if (!_isShowTrack) {
-        ClearHexTrack();
-    }
-
     RebuildMap();
 }
 
@@ -2422,6 +2376,10 @@ void MapView::DrawMap()
     }
 
     UpdateTransparentEggs();
+
+    _engine->SprMngr.GetRender().SetOrthoDepthRange(_mapDepthNear, _mapDepthFar);
+    const auto restore_depth_range = scope_exit([this]() noexcept { _engine->SprMngr.GetRender().SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });
+
     ProcessLighting();
     PrepareFogToDraw();
     _mapSprites.SortIfNeeded();
@@ -2528,6 +2486,8 @@ void MapView::DrawMap()
                 DrawFogSlot(draw_area, DrawOrderType::Last);
                 _engine->OnRenderMap_AfterFog.Fire(this, draw_area);
             }
+
+            _engine->OnRenderMap_AfterSpritesAndFog.Fire(this, draw_area);
 
             // Draw streched render target
             if (!direct_draw) {
@@ -3767,10 +3727,6 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_isShowTrack) {
-        ClearHexTrack();
-    }
-
     const auto check_dist = dist != 0 ? dist : GeometryHelper::GetDistance(start_hex, target_hex);
     auto next_hex = start_hex;
     auto prev_hex = next_hex;
@@ -3780,10 +3736,6 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32
     for (int32_t i = 0; i < check_dist; i++) {
         if (!tracer.GetNextHex(next_hex).has_value()) {
             break;
-        }
-
-        if (_isShowTrack) {
-            GetHexTrack(next_hex) = numeric_cast<int8_t>(next_hex == target_hex ? 1 : 2);
         }
 
         if (check_shoot_blocks && _hexField->GetCellForReading(next_hex).ShootBlocked) {
@@ -4005,31 +3957,6 @@ void MapView::ClearIgnorePids()
     _ignorePids.clear();
 }
 
-void MapView::MarkBlockedHexes()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_mapperMode);
-
-    for (const auto hx : iterate_range(_mapSize.width)) {
-        for (const auto hy : iterate_range(_mapSize.height)) {
-            const auto& field = _hexField->GetCellForReading({hx, hy});
-            auto& track = GetHexTrack({hx, hy});
-
-            track = 0;
-
-            if (field.MoveBlocked) {
-                track = 2;
-            }
-            if (field.ShootBlocked) {
-                track = 1;
-            }
-        }
-    }
-
-    RebuildMap();
-}
-
 auto MapView::GenTempEntityId() -> ident_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -4142,6 +4069,9 @@ void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor 
 {
     FO_STACK_TRACE_ENTRY();
 
+    const int32_t clamped_map_light_capacity = std::clamp(map_light_capacity, 0, LIGHT_CAPACITY_MAX);
+    const int32_t clamped_global_light_capacity = std::clamp(global_light_capacity, 0, LIGHT_CAPACITY_MAX);
+
     if (GetMapDayColor() != map_color) {
         SetMapDayColor(map_color);
         _needReapplyLights = true;
@@ -4152,8 +4082,15 @@ void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor 
         _needReapplyLights = _needReapplyLights || _globalLights != 0;
     }
 
-    SetMapDayLightCapacity(std::clamp(map_light_capacity, 0, 100));
-    SetGlobalDayLightCapacity(std::clamp(global_light_capacity, 0, 100));
+    if (GetMapDayLightCapacity() != clamped_map_light_capacity) {
+        SetMapDayLightCapacity(clamped_map_light_capacity);
+        _needReapplyLights = true;
+    }
+
+    if (GetGlobalDayLightCapacity() != clamped_global_light_capacity) {
+        SetGlobalDayLightCapacity(clamped_global_light_capacity);
+        _needReapplyLights = _needReapplyLights || _globalLights != 0;
+    }
 }
 
 FO_END_NAMESPACE

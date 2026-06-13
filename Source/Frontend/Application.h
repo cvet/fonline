@@ -341,8 +341,10 @@ public:
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
+    [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
 
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
+    virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
     virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(irect32 rect) = 0;
     virtual void DisableScissor() = 0;
@@ -508,8 +510,10 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
     [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
     void SetRenderTarget(RenderTexture* tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;

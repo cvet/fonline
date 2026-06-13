@@ -632,6 +632,87 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(MapperEngine* mapper, boo
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    return map != nullptr && map->IsShowMapperOverlay();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperHexOverlayVisible(MapperEngine* mapper, bool visible)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mapper->SetMapperHexOverlayVisible(visible);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Mapper_Game_IsMapperHexOverlayVisible(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return mapper->IsMapperHexOverlayVisible();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperTrackOverlayHexes(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return mapper->GetMapperTrackOverlayHexes();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return mapper->GetMapperTrackOverlayKinds();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(MapperEngine* mapper)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        return {};
+    }
+
+    const irect32 scroll_area = map->GetScrollAxialArea();
+
+    if (scroll_area.is_zero()) {
+        return {};
+    }
+
+    const msize map_size = map->GetSize();
+    vector<mpos> hexes;
+
+    for (int32_t hy = 0; hy < map_size.height; hy++) {
+        for (int32_t hx = 0; hx < map_size.width; hx++) {
+            const mpos hex = map_size.from_raw_pos(hx, hy);
+
+            if (!map->IsHexToDraw(hex)) {
+                continue;
+            }
+
+            const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+
+            if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
+                hexes.emplace_back(hex);
+            }
+        }
+    }
+
+    return hexes;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(MapperEngine* mapper, bool visible)
 {
     FO_STACK_TRACE_ENTRY();

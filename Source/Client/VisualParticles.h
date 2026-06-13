@@ -85,8 +85,8 @@ private:
     TextureLoader _textureLoader;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     int32_t _animUpdateThreshold {};
-    mat44 _projMatColMaj {};
-    mat44 _viewMatColMaj {};
+    mat44 _viewProjMatrix {};
+    mat44 _viewMatrix {};
 };
 
 class ParticleSystem final
@@ -111,7 +111,7 @@ public:
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset);
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
     void Draw();
@@ -125,8 +125,9 @@ private:
     struct Impl;
     unique_ptr<Impl> _impl;
     raw_ptr<ParticleManager> _particleMngr;
-    mat44 _projMat {};
+    mat44 _projMatrix {};
     vec3 _viewOffset {};
+    bool _tiltInProj {};
     float64_t _elapsedTime {};
     bool _forceDraw {};
     nanotime _lastDrawTime {};

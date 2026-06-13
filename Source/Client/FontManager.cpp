@@ -1151,6 +1151,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             auto& v0 = vbuf[vpos++];
             v0.PosX = x;
             v0.PosY = y + h;
+            v0.PosZ = 0.0f;
             v0.TexU = x1;
             v0.TexV = y2;
             v0.EggFlags[0] = 0.0f;
@@ -1160,6 +1161,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             auto& v1 = vbuf[vpos++];
             v1.PosX = x;
             v1.PosY = y;
+            v1.PosZ = 0.0f;
             v1.TexU = x1;
             v1.TexV = y1;
             v1.EggFlags[0] = 0.0f;
@@ -1169,6 +1171,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             auto& v2 = vbuf[vpos++];
             v2.PosX = x + w;
             v2.PosY = y;
+            v2.PosZ = 0.0f;
             v2.TexU = x2;
             v2.TexV = y1;
             v2.EggFlags[0] = 0.0f;
@@ -1178,6 +1181,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             auto& v3 = vbuf[vpos++];
             v3.PosX = x + w;
             v3.PosY = y + h;
+            v3.PosZ = 0.0f;
             v3.TexU = x2;
             v3.TexV = y2;
             v3.EggFlags[0] = 0.0f;

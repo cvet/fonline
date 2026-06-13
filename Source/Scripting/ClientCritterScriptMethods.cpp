@@ -120,6 +120,8 @@ FO_SCRIPT_API bool Client_Critter_IsModel(CritterView* self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsVisible(CritterView* self)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
 
     if (hex_cr == nullptr) {
@@ -127,6 +129,20 @@ FO_SCRIPT_API bool Client_Critter_IsVisible(CritterView* self)
     }
 
     return hex_cr->IsMapSpriteVisible();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(CritterView* self)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->GetSpriteOffset();
 }
 
 ///@ ExportMethod

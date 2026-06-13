@@ -103,6 +103,9 @@ public:
     [[nodiscard]] auto GetDrawOrder() const noexcept -> DrawOrderType { return _drawOrder; }
     [[nodiscard]] auto GetSortValue() const noexcept -> uint32_t { return _index; }
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
+    [[nodiscard]] auto GetDrawRootPos() const noexcept -> ipos32;
+    [[nodiscard]] auto GetMapRootOffset() const noexcept -> ipos32;
+    [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
     [[nodiscard]] auto GetSprite() const noexcept -> const Sprite* { return _pSpr ? *_pSpr.get() : _spr.get(); }
@@ -119,7 +122,7 @@ public:
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
-    [[nodiscard]] auto GetMapProjection() const noexcept -> bool { return _mapProjection; }
+    [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
@@ -130,7 +133,7 @@ public:
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
-    void SetMapProjection(bool map_projection) noexcept;
+    void SetMapProjected(bool map_projected) noexcept;
     void CreateExtraChain(MapSprite** mspr);
     void AddToExtraChain(MapSprite* mspr);
 
@@ -158,7 +161,7 @@ private:
     ucolor _color {};
     int16_t _elevation {};
     int16_t _angle {};
-    bool _mapProjection {};
+    bool _mapProjected {};
     mutable raw_ptr<RenderEffect*> _drawEffect {};
     raw_ptr<MapSprite*> _extraChainRoot {};
     raw_ptr<MapSprite> _extraChainParent {};
@@ -198,7 +201,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjection, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
@@ -228,7 +231,7 @@ public:
     bool IsTweakAlpha {};
     uint8_t TweakAlpha {};
     int16_t Angle {};
-    bool MapProjection {};
+    bool MapProjected {};
     raw_ptr<MapSprite> MSpr {};
 };
 

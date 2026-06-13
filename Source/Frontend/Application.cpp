@@ -2665,6 +2665,20 @@ auto AppRender::IsRenderTargetFlipped() const -> bool
     return _app->_ctx->ActiveRenderer->IsRenderTargetFlipped();
 }
 
+auto AppRender::GetProjMatrix() const -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _app->_ctx->ActiveRenderer->GetProjMatrix();
+}
+
+void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _app->_ctx->ActiveRenderer->SetOrthoDepthRange(nearp, farp);
+}
+
 auto AppInput::IsMouseAvailable() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
