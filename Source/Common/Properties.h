@@ -309,6 +309,7 @@ public:
     void StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const;
     void RestoreData(const vector<const uint8_t*>& all_data, const vector<uint32_t>& all_data_sizes);
     void RestoreData(const vector<vector<uint8_t>>& all_data);
+    void CopyRawData(const Property* prop, PropertyRawData& prop_data) const noexcept;
     void SetRawData(const Property* prop, span<const uint8_t> raw_data) noexcept;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int32_t value);
@@ -385,9 +386,11 @@ public:
 private:
     auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
     void ReleaseOverlayEntryIndex() noexcept;
+    [[nodiscard]] auto IsRawDataEqual(const Property* prop, span<const uint8_t> raw_data) const noexcept -> bool;
 
     raw_ptr<const PropertyRegistrator> _registrator;
     raw_ptr<const Properties> _baseProps {};
+    mutable unique_ptr<shared_mutex> _dataLocker {};
 
     unique_arr_ptr<uint8_t> _podData {};
     unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};

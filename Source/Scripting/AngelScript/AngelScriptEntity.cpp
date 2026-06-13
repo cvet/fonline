@@ -296,9 +296,7 @@ static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
 
         props.ValidateForRawData(prop);
 
-        const auto prop_raw_data = props.GetRawData(prop);
-
-        prop_data.Pass(prop_raw_data);
+        props.CopyRawData(prop, prop_data);
     }
 
     ConvertPropsToScriptObject(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
