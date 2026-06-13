@@ -65,10 +65,10 @@ public:
 
     void ValidateAccess() const override;
 
-    void LockForPropertyAccess() noexcept override;
-    void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
-    void UnlockForPropertyAccessShared() noexcept override;
+    auto LockForPropertyAccess() -> PropertyAccessLockToken override;
+    void UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept override;
+    auto LockForPropertyAccessShared() -> PropertyAccessLockToken override;
+    void UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept override;
 
     [[nodiscard]] auto GetParent() -> refcount_ptr<ServerEntity>;
     [[nodiscard]] auto GetParent() const -> refcount_ptr<const ServerEntity>;

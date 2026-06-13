@@ -79,6 +79,8 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 
 The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
 
+Server-side AngelScript property accessors serialize through `Entity::LockForPropertyAccess*()` before touching raw property storage. `ServerEngine` uses the game-wide `EntityLock`; regular server entities use their current propagated `EntityLock`, which may belong to the entity itself, a holder, or an ancestor. Acquire-side hooks may throw during shutdown when pending `EntityLock` waiters are aborted; unlock hooks remain `noexcept`.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:

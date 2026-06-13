@@ -1498,16 +1498,17 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         // cr_a's MAP (ancestor) lock. Flat acquisition makes the writer's access VALID without excluding
         // the own-lock reader — so the two race the property storage and tear it. The fix routes every
         // script property read/write through ServerEntity::LockForPropertyAccess[Shared] on the entity's
-        // OWN lock (shared for getters, exclusive for setters), so reader and writer of the same entity
-        // always meet on one lock regardless of which cover their SyncContext holds.
+        // current EntityLock (shared for getters, exclusive for setters), so reader and writer of the
+        // same entity always meet on one lock regardless of which cover their SyncContext holds.
         //
         // Deterministic proof: the reader thread holds cr_a's own lock (own-cover) AND takes the SHARED
         // property lock, then keeps both. The writer thread holds a DIFFERENT cover (the map ancestor)
         // and tries the EXCLUSIVE property lock on cr_a — which must NOT be granted while the reader's
         // shared property lock is held. Before the fix LockForPropertyAccess[Shared] were no-ops on a
         // ServerEntity, so the writer would acquire immediately (the race window); after the fix the
-        // exclusive acquire blocks on cr_a's own lock until the reader releases.
+        // exclusive acquire blocks on cr_a's current EntityLock until the reader releases.
         std::atomic_bool reader_holds {false};
+        std::atomic_bool writer_started {false};
         std::atomic_bool writer_acquired {false};
         std::atomic_bool reader_may_finish {false};
 
@@ -1516,12 +1517,12 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             ctx.Activate();
             vector<ServerEntity*> req {cr_a};
             ctx.SyncEntities(req); // own-lock cover, like LockCritterWithMap's map==null branch
-            cr_a->LockForPropertyAccessShared();
+            Entity::PropertyAccessLockToken property_lock = cr_a->LockForPropertyAccessShared();
             reader_holds.store(true, std::memory_order_release);
             while (!reader_may_finish.load(std::memory_order_acquire)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-            cr_a->UnlockForPropertyAccessShared();
+            cr_a->UnlockForPropertyAccessShared(property_lock);
             ctx.Release();
             ctx.Deactivate();
         });
@@ -1535,16 +1536,23 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             ctx.Activate();
             vector<ServerEntity*> req {map};
             ctx.SyncEntities(req); // map (ancestor) cover — does NOT conflict with the reader's own cover
-            cr_a->LockForPropertyAccess(); // exclusive: must wait for the reader's shared property lock
+            writer_started.store(true, std::memory_order_release);
+            // Exclusive: must wait for the reader's shared property lock.
+            Entity::PropertyAccessLockToken property_lock = cr_a->LockForPropertyAccess();
             writer_acquired.store(true, std::memory_order_release);
-            cr_a->UnlockForPropertyAccess();
+            cr_a->UnlockForPropertyAccess(property_lock);
             ctx.Release();
             ctx.Deactivate();
         });
 
+        for (int32_t i = 0; i < 10000 && !writer_started.load(std::memory_order_acquire); i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        CHECK(writer_started.load());
+
         // While the reader holds the shared property lock the exclusive writer must be blocked. A
-        // generous settle window: a fixed (no-op) build lets the writer acquire essentially instantly.
-        for (int i = 0; i < 200 && !writer_acquired.load(std::memory_order_acquire); i++) {
+        // generous settle window: a no-op build lets the writer acquire essentially instantly.
+        for (int32_t i = 0; i < 200 && !writer_acquired.load(std::memory_order_acquire); i++) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         CHECK_FALSE(writer_acquired.load());

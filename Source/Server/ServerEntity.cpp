@@ -95,39 +95,47 @@ void ServerEntity::ValidateAccess() const
     }
 }
 
-void ServerEntity::LockForPropertyAccess() noexcept
+auto ServerEntity::LockForPropertyAccess() -> PropertyAccessLockToken
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock) {
-        _entityLock->Acquire(NextSyncTicket());
+    auto* lock = _entityLock.get();
+
+    if (lock != nullptr) {
+        lock->Acquire(NextSyncTicket());
+    }
+
+    return lock;
+}
+
+void ServerEntity::UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (token != nullptr) {
+        static_cast<EntityLock*>(token)->Release();
     }
 }
 
-void ServerEntity::UnlockForPropertyAccess() noexcept
+auto ServerEntity::LockForPropertyAccessShared() -> PropertyAccessLockToken
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock) {
-        _entityLock->Release();
+    auto* lock = _entityLock.get();
+
+    if (lock != nullptr) {
+        lock->AcquireShared(NextSyncTicket());
     }
+
+    return lock;
 }
 
-void ServerEntity::LockForPropertyAccessShared() noexcept
+void ServerEntity::UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_entityLock) {
-        _entityLock->AcquireShared(NextSyncTicket());
-    }
-}
-
-void ServerEntity::UnlockForPropertyAccessShared() noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (_entityLock) {
-        _entityLock->ReleaseShared();
+    if (token != nullptr) {
+        static_cast<EntityLock*>(token)->ReleaseShared();
     }
 }
 

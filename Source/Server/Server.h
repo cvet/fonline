@@ -88,10 +88,10 @@ public:
     void Shutdown() override;
     void FlushExactSyncTime();
 
-    void LockForPropertyAccess() noexcept override;
-    void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
-    void UnlockForPropertyAccessShared() noexcept override;
+    auto LockForPropertyAccess() -> PropertyAccessLockToken override;
+    void UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept override;
+    auto LockForPropertyAccessShared() -> PropertyAccessLockToken override;
+    void UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
 

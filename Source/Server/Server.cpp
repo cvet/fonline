@@ -171,32 +171,34 @@ void ServerEngine::CountServerStatsJob() noexcept
     _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
 }
 
-void ServerEngine::LockForPropertyAccess() noexcept
+auto ServerEngine::LockForPropertyAccess() -> PropertyAccessLockToken
 {
     FO_STACK_TRACE_ENTRY();
 
     _entityLock->Acquire(NextSyncTicket());
+    return _entityLock.get();
 }
 
-void ServerEngine::UnlockForPropertyAccess() noexcept
+void ServerEngine::UnlockForPropertyAccess(PropertyAccessLockToken token) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    _entityLock->Release();
+    static_cast<EntityLock*>(token)->Release();
 }
 
-void ServerEngine::LockForPropertyAccessShared() noexcept
+auto ServerEngine::LockForPropertyAccessShared() -> PropertyAccessLockToken
 {
     FO_STACK_TRACE_ENTRY();
 
     _entityLock->AcquireShared(NextSyncTicket());
+    return _entityLock.get();
 }
 
-void ServerEngine::UnlockForPropertyAccessShared() noexcept
+void ServerEngine::UnlockForPropertyAccessShared(PropertyAccessLockToken token) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    _entityLock->ReleaseShared();
+    static_cast<EntityLock*>(token)->ReleaseShared();
 }
 
 void ServerEngine::FlushExactSyncTime()
@@ -3422,8 +3424,8 @@ void ServerEngine::Process_Property(Player* player)
         // Take the entity's per-property auto-lock so this network-driven write serializes
         // through the same primitive used by script-side `Game.X` / `entity.X` access.
         // For non-engine entities `LockForPropertyAccess` is the default no-op virtual.
-        entity->LockForPropertyAccess();
-        auto unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccess(); });
+        Entity::PropertyAccessLockToken property_lock = entity->LockForPropertyAccess();
+        auto unlock = scope_exit([entity, property_lock]() noexcept { entity->UnlockForPropertyAccess(property_lock); });
 
         entity->SetValueFromData(prop, prop_data);
     }

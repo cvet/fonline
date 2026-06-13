@@ -275,8 +275,8 @@ static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityNonNull(entity);
 
-    entity->LockForPropertyAccessShared();
-    auto auto_unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccessShared(); });
+    Entity::PropertyAccessLockToken property_lock = entity->LockForPropertyAccessShared();
+    auto auto_unlock = scope_exit([entity, property_lock]() noexcept { entity->UnlockForPropertyAccessShared(property_lock); });
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
@@ -311,8 +311,8 @@ static void Entity_SetPropertyValue(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityNonNull(entity);
 
-    entity->LockForPropertyAccess();
-    auto auto_unlock = scope_exit([entity]() noexcept { entity->UnlockForPropertyAccess(); });
+    Entity::PropertyAccessLockToken property_lock = entity->LockForPropertyAccess();
+    auto auto_unlock = scope_exit([entity, property_lock]() noexcept { entity->UnlockForPropertyAccess(property_lock); });
 
     CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
