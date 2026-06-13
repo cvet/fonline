@@ -106,8 +106,13 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
         const ipos32 corners[] = {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
             {0, numeric_cast<int32_t>(_mapSize.height) - 1}, //
             {numeric_cast<int32_t>(_mapSize.width) - 1, numeric_cast<int32_t>(_mapSize.height) - 1}};
-        const float32_t elev_min = numeric_cast<float32_t>(std::numeric_limits<int16_t>::min());
-        const float32_t elev_max = numeric_cast<float32_t>(std::numeric_limits<int16_t>::max());
+        // Size the depth range from a realistic elevation bound rather than the full int16 domain (+-32767):
+        // the latter reserves >90% of the depth buffer for elevations no sprite reaches, crushing precision and
+        // the per-layer depth bias (matters now that 2D sprites depth-test with LessEqual). Sprites beyond the
+        // bound would be depth-clipped, so it is a generous, tunable Setting.
+        const float32_t elev_extent = numeric_cast<float32_t>(std::max(_engine->Settings.MapMaxElevation, 0));
+        const float32_t elev_min = -elev_extent;
+        const float32_t elev_max = elev_extent;
         float32_t min_depth = std::numeric_limits<float32_t>::max();
         float32_t max_depth = std::numeric_limits<float32_t>::lowest();
 

@@ -746,9 +746,9 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
     // elevation/roll. yaw == 0 reproduces the legacy fixed isometric view: result = (ProjectWorldToMap(world).xy
     // - scroll) * zoom on screen, depth unchanged. The renderer composes the backend ortho on top
     // (MapViewProj = CreateOrthoMatrix(0, w, h, 0, near, far) * MakeMapCameraView), giving one world->clip
-    // matrix shared by sprites, 3D models and particles. 2D map sprites write per-vertex world depth but keep
-    // DepthFunc = Always (their opaque ordering stays the CPU painter sort), so the shared GPU depth buffer
-    // resolves 3D-model-vs-sprite and particle-vs-sprite occlusion rather than 2D-vs-2D. Pinned against
+    // matrix shared by sprites, 3D models and particles. 2D map sprites write per-vertex world depth and test it
+    // with DepthFunc = LessEqual (the CPU painter sort still orders blended layers), so the shared GPU depth
+    // buffer resolves occlusion across sprites, 3D models and particles alike. Pinned against
     // ProjectWorldToMap / GetHexPos by Test_Geometry.cpp.
     const float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
     const float32_t sin_a = std::sin(angle_rad);
