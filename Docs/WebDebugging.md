@@ -92,6 +92,8 @@ The hidden stop tasks for the web flow currently kill listeners on ports `7000`,
 
 The browser client uses the existing local server defaults from `../../LastFrontier.fomain`, including `ServerHost = localhost` and `ServerPort = 4025`.
 
+The generated `index.html` (from `BuildTools/web/default-index.html`) parses the page URL's query string into engine command-line arguments before the runtime starts: each `key=value` becomes a `--key value` argument pair on `Module.arguments`. This makes the web client configurable per launch the same way native clients accept CLI flags — for example `index.html?ClientNetwork.ServerHost=127.0.0.1&Network.ServerPort=4025&Auth.AutoLoginName=...`. With no query string the client runs on its baked configuration unchanged. (Headless-browser automation relies on this to point the client at an ephemeral server port.)
+
 The web scene workflow uses the `RemoteSceneLaunch` subconfig and starts `LF_ServerHeadless` with `--Scene.Startup <SceneId>`, so the server stays headless while its output remains visible in the terminal.
 
 The Linux staging web workflow is task-only rather than a Chrome debug launch entry. `Web :: Prepare Staging Launch [linux]` prepares the web workspace, bakes resources, builds `LF_ServerHeadless`, builds the web client, removes `Workspace/output/Baking`, packages `LF Staging`, starts `LF_ServerHeadless --ApplySubConfig Staging`, and serves `Workspace/web-debug/LF-Client-Staging-Web/web-server.py` on port `8001`. `Web :: Launch Staging Client [linux]` then opens `https://dev.lastfrontier.ru/play-staging/`, so staging browser behavior depends on both the local staging package/server and the public staging URL route.

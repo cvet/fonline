@@ -146,11 +146,11 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
         _port = endpoint.port();
-        return;
     }
-
-    _host = "Unknown";
-    _port = 0;
+    else {
+        _host = "Unknown";
+        _port = 0;
+    }
 
     if (settings.DisableTcpNagle) {
         std::error_code no_delay_error;
