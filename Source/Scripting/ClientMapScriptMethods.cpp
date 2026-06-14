@@ -637,8 +637,6 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(MapView* self, float32_t targetZoom)
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex provided");
     }
@@ -651,8 +649,6 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Map_GetHexMapPos(MapView* self, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex provided");
     }
@@ -663,8 +659,6 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexMapPos(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(MapView* self, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex provided");
     }
@@ -752,8 +746,6 @@ FO_SCRIPT_API bool Client_Map_IsHexValid(MapView* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(MapView* self)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const msize map_size = self->GetSize();
     vector<mpos> hexes;
     hexes.reserve(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height));

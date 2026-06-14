@@ -2018,6 +2018,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
         const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
         const bool tilt_in_proj = _directSceneDraw;
+
         if (model_particle.Id == 0) {
             model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
         }
