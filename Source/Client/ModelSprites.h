@@ -59,7 +59,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
-    [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
+    [[nodiscard]] auto IsDirectDraw() const -> bool override;
     [[nodiscard]] auto GetModel() -> ModelInstance* { return _model.get(); }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
@@ -70,10 +70,11 @@ public:
     auto Update() -> bool override;
     void SetSize(isize32 size);
     void DrawToAtlas();
+    void DrawInScene(fpos32 scene_pos, float32_t depth) const override;
 
 private:
     raw_ptr<ModelSpriteFactory> _factory {};
-    unique_ptr<ModelInstance> _model {};
+    mutable unique_ptr<ModelInstance> _model {};
     AtlasType _atlasType {};
 };
 
@@ -99,6 +100,7 @@ private:
     void DrawModelToAtlas(ModelSprite* model_spr);
 
     raw_ptr<SpriteManager> _sprMngr;
+    raw_ptr<RenderSettings> _settings;
     unique_ptr<ModelManager> _modelMngr {};
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<raw_ptr<RenderTarget>> _rtIntermediate {};

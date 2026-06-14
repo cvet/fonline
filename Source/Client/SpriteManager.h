@@ -82,7 +82,7 @@ public:
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTexture() const -> const RenderTexture* { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
-    [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
+    [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
@@ -98,6 +98,7 @@ public:
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
     virtual auto Update() -> bool { return false; }
+    virtual void DrawInScene(fpos32 scene_pos, float32_t depth) const { ignore_unused(scene_pos, depth); }
 
 protected:
     void StartUpdate();
@@ -144,6 +145,15 @@ struct DipData
     size_t IndicesCount {};
 };
 
+// A direct-to-scene sprite (e.g. particle system) deferred to a single pass after the sprite batch, so its
+// own shader does not split the batch. Occlusion stays correct via the shared scene depth buffer.
+struct DirectDrawSprite
+{
+    raw_ptr<const Sprite> Spr {};
+    fpos32 ScenePos {};
+    float32_t Depth {};
+};
+
 class SpriteManager final
 {
     friend class FontManager;
@@ -170,6 +180,7 @@ public:
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
     [[nodiscard]] auto GetWindow() noexcept -> IAppWindow& { return *_window; }
     [[nodiscard]] auto GetRender() noexcept -> IAppRender& { return *_render; }
+    [[nodiscard]] auto GetRender() const noexcept -> const IAppRender& { return *_render; }
     [[nodiscard]] auto GetInput() noexcept -> IAppInput& { return *_input; }
     [[nodiscard]] auto GetWindowSize() const -> isize32;
     [[nodiscard]] auto GetScreenSize() const -> isize32;
@@ -259,6 +270,7 @@ private:
     raw_ptr<RenderTarget> _rtMain {};
 
     vector<DipData> _dipQueue {};
+    vector<DirectDrawSprite> _directDrawSprites {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf {};
     unique_ptr<RenderDrawBuffer> _primitiveDrawBuf {};
     unique_ptr<RenderDrawBuffer> _flushDrawBuf {};

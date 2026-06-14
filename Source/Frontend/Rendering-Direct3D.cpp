@@ -162,7 +162,9 @@ struct Direct3D_Renderer::Context
     raw_ptr<ID3D11SamplerState> LinearSampler {};
     raw_ptr<ID3D11Texture2D> OnePixStagingTex {};
     unique_ptr<RenderTexture> DummyTexture {};
-    mat44 ProjectionMatrixColMaj {};
+    mat44 ProjMatrix {};
+    float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
+    float32_t OrthoFar {ORTHO_DEPTH_DEFAULT_FAR};
     bool ScissorEnabled {};
     D3D11_RECT ScissorRect {};
     D3D11_RECT DisabledScissorRect {};
@@ -225,6 +227,32 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
         return D3D11_BLEND_OP_MAX;
     case BlendEquationType::Min:
         return D3D11_BLEND_OP_MIN;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
+static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (depth_func) {
+    case DepthFuncType::Always:
+        return D3D11_COMPARISON_ALWAYS;
+    case DepthFuncType::Never:
+        return D3D11_COMPARISON_NEVER;
+    case DepthFuncType::Less:
+        return D3D11_COMPARISON_LESS;
+    case DepthFuncType::LessEqual:
+        return D3D11_COMPARISON_LESS_EQUAL;
+    case DepthFuncType::Equal:
+        return D3D11_COMPARISON_EQUAL;
+    case DepthFuncType::GreaterEqual:
+        return D3D11_COMPARISON_GREATER_EQUAL;
+    case DepthFuncType::Greater:
+        return D3D11_COMPARISON_GREATER;
+    case DepthFuncType::NotEqual:
+        return D3D11_COMPARISON_NOT_EQUAL;
     }
 
     FO_UNREACHABLE_PLACE();
@@ -538,7 +566,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
     _ctx->Settings = nullptr;
     _ctx->SdlWindow = nullptr;
     _ctx->FeatureLevel = {};
-    _ctx->ProjectionMatrixColMaj = {};
+    _ctx->ProjMatrix = {};
     _ctx->ScissorEnabled = false;
     _ctx->ScissorRect = {};
     _ctx->DisabledScissorRect = {};
@@ -807,9 +835,15 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             if (usage == EffectUsage::Model) {
                 depth_stencil_desc.DepthEnable = TRUE;
                 depth_stencil_desc.DepthWriteMask = d3d_effect->_depthWrite[pass] ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                depth_stencil_desc.DepthFunc = D3D11_COMPARISON_LESS;
+                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->_depthFunc[pass]);
             }
 #endif
+
+            if (usage == EffectUsage::QuadSprite) {
+                depth_stencil_desc.DepthEnable = TRUE;
+                depth_stencil_desc.DepthWriteMask = d3d_effect->_depthWrite[pass] ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->_depthFunc[pass]);
+            }
 
             const auto d3d_create_depth_stencil_state = _ctx->D3DDevice->CreateDepthStencilState(&depth_stencil_desc, d3d_effect->DepthStencilState[pass].get_pp());
 
@@ -822,7 +856,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     return std::move(d3d_effect);
 }
 
-auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -858,7 +892,7 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float
     return result;
 }
 
-auto Direct3D_Renderer::GetViewPort() -> irect32
+auto Direct3D_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -918,7 +952,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
     _ctx->D3DDeviceContext->RSSetViewports(1, &_ctx->ViewPort);
 
-    _ctx->ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, -10.0f, 10.0f);
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
 
     _ctx->DisabledScissorRect.left = vp_ox;
     _ctx->DisabledScissorRect.top = vp_oy;
@@ -926,6 +960,22 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     _ctx->DisabledScissorRect.bottom = vp_oy + vp_height;
 
     _ctx->TargetSize = {screen_width, screen_height};
+}
+
+void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _ctx->OrthoNear = nearp;
+    _ctx->OrthoFar = farp;
+    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
+}
+
+auto Direct3D_Renderer::GetProjMatrix() const -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _ctx->ProjMatrix;
 }
 
 void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
@@ -1366,7 +1416,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, opt
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjectionMatrixColMaj), 16 * sizeof(float32_t));
+        MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_ctx->ProjMatrix), 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {

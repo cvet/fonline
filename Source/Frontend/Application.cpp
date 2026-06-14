@@ -2651,22 +2651,32 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return _app->_ctx->ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
-auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
-auto AppRender::IsRenderTargetFlipped() -> bool
+auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return _app->_ctx->ActiveRenderer->IsRenderTargetFlipped();
+}
+
+auto AppRender::GetProjMatrix() const -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _app->_ctx->ActiveRenderer->GetProjMatrix();
+}
+
+void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _app->_ctx->ActiveRenderer->SetOrthoDepthRange(nearp, farp);
 }
 
 auto AppInput::IsMouseAvailable() const noexcept -> bool

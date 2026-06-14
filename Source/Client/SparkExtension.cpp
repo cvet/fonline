@@ -199,8 +199,8 @@ namespace SPK::FO
         auto& buffer = static_cast<SparkRenderBuffer&>(*renderBuffer);
         buffer.PositionAtStart();
 
-        if (_modelView != _particleMngr->_viewMatColMaj) {
-            _modelView = _particleMngr->_viewMatColMaj;
+        if (_modelView != _particleMngr->_viewMatrix) {
+            _modelView = _particleMngr->_viewMatrix;
             _invModelView = glm::inverse(_modelView);
         }
 
@@ -243,7 +243,7 @@ namespace SPK::FO
         FO_VERIFY_AND_THROW(_effect, "Missing required effect");
         FO_VERIFY_AND_THROW(_texture, "Missing required texture");
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_projMatColMaj), sizeof(_effect->ProjBuf->ProjMatrix));
+        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_viewProjMatrix), sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect.get());
@@ -333,6 +333,20 @@ namespace SPK::FO
         _drawHeight = height;
     }
 
+    auto SparkQuadRenderer::GetDrawInScene() const -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return _drawInScene;
+    }
+
+    void SparkQuadRenderer::SetDrawInScene(bool draw_in_scene)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _drawInScene = draw_in_scene;
+    }
+
     auto SparkQuadRenderer::GetEffectName() const -> const string&
     {
         FO_STACK_TRACE_ENTRY();
@@ -386,6 +400,7 @@ namespace SPK::FO
 
         _drawWidth = 0;
         _drawHeight = 0;
+        _drawInScene = false;
 
         _effectName = "";
         _textureName = "";
@@ -417,6 +432,10 @@ namespace SPK::FO
             default:
                 break;
             }
+        }
+
+        if (const auto* attrib = descriptor.getAttributeWithValue("draw in scene"); attrib != nullptr) {
+            _drawInScene = attrib->getValue<bool>();
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("effect"); attrib != nullptr) {
@@ -520,6 +539,10 @@ namespace SPK::FO
         if (_drawWidth != 0 || _drawHeight != 0) {
             const std::vector tmpSize = {_drawWidth, _drawHeight};
             descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
+        }
+
+        if (_drawInScene) {
+            descriptor.getAttribute("draw in scene")->setValue(_drawInScene);
         }
 
         descriptor.getAttribute("effect")->setValue(std::string(_effectName));

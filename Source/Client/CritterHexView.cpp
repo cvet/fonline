@@ -88,6 +88,7 @@ void CritterHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
+    mspr->SetElevation(GetElevation());
     mspr->SetLight(CornerType::EastWest, _map->GetLightData(), _map->GetSize());
 
     if (!mspr->IsHidden() && GetHideSprite()) {

@@ -1103,9 +1103,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::F10:
-        if (_curMap) {
-            _curMap->SwitchShowHex();
-        }
+        ToggleMapperHexOverlay();
         break;
     case KeyCode::F11:
         SprMngr.ToggleFullscreen();
@@ -1220,9 +1218,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::B:
-        if (_curMap) {
-            _curMap->MarkBlockedHexes();
-        }
+        MarkBlockedHexes();
         break;
     default:
         break;
@@ -1884,7 +1880,7 @@ void MapperEngine::DrawMainPanelImGui()
 
         if (ImGui::BeginMenu("Tools")) {
             run_menu_action_with_message(ImGui::MenuItem("Rebuild map", nullptr, false, _curMap != nullptr), [&] { _curMap->RebuildMap(); }, "Map rebuilt");
-            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, _curMap != nullptr), [&] { _curMap->MarkBlockedHexes(); }, "Blocked hexes marked");
+            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, _curMap != nullptr), [&] { MarkBlockedHexes(); }, "Blocked hexes marked");
             run_menu_action_with_message(ImGui::MenuItem("Reverse lights", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* reverse-light"); }, "Reverse lights done");
             run_menu_action_with_message(ImGui::MenuItem("Merge by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* merge-items"); }, "Merge items command done");
             run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* break-items"); }, "Break items command done");
@@ -2710,7 +2706,7 @@ void MapperEngine::DrawMapWindowImGui()
 
     ImGui::SameLine();
     if (ImGui::Button("Toggle hex")) {
-        _curMap->SwitchShowHex();
+        ToggleMapperHexOverlay();
     }
 
     const auto current_zoom = _curMap->GetSpritesZoomTarget();
@@ -3679,7 +3675,7 @@ void MapperEngine::HandleLeftMouseUp()
     if (MouseHoldMode == INT_SELECT) {
         if (_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (SelectHex1 != SelectHex2) {
-                _curMap->ClearHexTrack();
+                ClearMapperTrackOverlay();
 
                 vector<mpos> hexes;
 
@@ -3775,10 +3771,11 @@ void MapperEngine::HandleSelectionMouseDrag()
         return;
     }
 
-    _curMap->ClearHexTrack();
+    const bool had_track_overlay = !MapperTrackOverlayHexes.empty();
+    ClearMapperTrackOverlay();
 
     if (!_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
-        if (!SelectHex2.is_zero()) {
+        if (!SelectHex2.is_zero() || had_track_overlay) {
             _curMap->RebuildMap();
             SelectHex2 = {};
         }
@@ -3790,7 +3787,7 @@ void MapperEngine::HandleSelectionMouseDrag()
         if (SelectHex1 != SelectHex2) {
             if (SelectAxialGrid) {
                 for (const auto hex : GeometryHelper::GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
-                    _curMap->GetHexTrack(hex) = 1;
+                    AddMapperTrackOverlayHex(hex, 1);
                 }
             }
             else {
@@ -3802,11 +3799,14 @@ void MapperEngine::HandleSelectionMouseDrag()
 
                 for (auto i = fx; i <= tx; i++) {
                     for (auto j = fy; j <= ty; j++) {
-                        _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
+                        AddMapperTrackOverlayHex(map_size.from_raw_pos(i, j), 1);
                     }
                 }
             }
 
+            _curMap->RebuildMap();
+        }
+        else if (had_track_overlay) {
             _curMap->RebuildMap();
         }
     }
@@ -3823,6 +3823,83 @@ void MapperEngine::HandleSelectionMouseDrag()
             _curMap->RebuildMap();
         }
     }
+}
+
+void MapperEngine::SetMapperHexOverlayVisible(bool visible)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (MapperHexOverlayVisible == visible) {
+        return;
+    }
+
+    MapperHexOverlayVisible = visible;
+
+    if (_curMap != nullptr) {
+        _curMap->RebuildMap();
+    }
+}
+
+void MapperEngine::ToggleMapperHexOverlay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetMapperHexOverlayVisible(!MapperHexOverlayVisible);
+}
+
+void MapperEngine::ClearMapperTrackOverlay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MapperTrackOverlayHexes.clear();
+    MapperTrackOverlayKinds.clear();
+}
+
+void MapperEngine::AddMapperTrackOverlayHex(mpos hex, int32_t kind)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap != nullptr && !_curMap->GetSize().is_valid_pos(hex)) {
+        return;
+    }
+
+    const int32_t normalized_kind = kind == 2 ? 2 : 1;
+
+    MapperTrackOverlayHexes.emplace_back(hex);
+    MapperTrackOverlayKinds.emplace_back(normalized_kind);
+}
+
+void MapperEngine::MarkBlockedHexes()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ClearMapperTrackOverlay();
+
+    if (!_curMap) {
+        return;
+    }
+
+    const msize map_size = _curMap->GetSize();
+
+    for (int32_t hx = 0; hx < map_size.width; hx++) {
+        for (int32_t hy = 0; hy < map_size.height; hy++) {
+            const mpos hex = map_size.from_raw_pos(hx, hy);
+            const MapView::Field& field = _curMap->GetField(hex);
+            int32_t kind = 0;
+
+            if (field.MoveBlocked) {
+                kind = 2;
+            }
+            if (field.ShootBlocked) {
+                kind = 1;
+            }
+            if (kind != 0) {
+                AddMapperTrackOverlayHex(hex, kind);
+            }
+        }
+    }
+
+    _curMap->RebuildMap();
 }
 
 auto MapperEngine::GetActiveSubTab() -> SubTab*
@@ -6020,6 +6097,7 @@ void MapperEngine::ShowMap(MapView* map)
         }
 
         _curMap = map;
+        ClearMapperTrackOverlay();
         RefreshActiveProtoLists();
     }
 }
@@ -6140,6 +6218,7 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
 
     if (_curMap == map) {
         SelectClear();
+        ClearMapperTrackOverlay();
         _curMap = nullptr;
     }
 
@@ -6172,6 +6251,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
 
     if (_curMap == map) {
         SelectClear();
+        ClearMapperTrackOverlay();
     }
 
     SetMapDirty(map);
