@@ -1,4 +1,5 @@
 [Effect]
+DepthWrite = False
 Passes = 2
 BlendFunc_Pass1 = DstColor One
 BlendFunc_Pass2 = DstColor One

@@ -430,7 +430,7 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     _frameSize.width = draw_size.width * FRAME_SCALE;
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
-    // Proj
+    // Projection
     const auto frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
     const auto proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;

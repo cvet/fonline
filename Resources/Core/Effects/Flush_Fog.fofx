@@ -1,4 +1,5 @@
 [Effect]
+DepthWrite = False
 
 [ShaderCommon]
 const float FogBlackout = 0.5;
