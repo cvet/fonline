@@ -147,11 +147,8 @@ static auto ContainsCaseInsensitive(string_view text, string_view filter) -> boo
         return true;
     }
 
-    auto lower_text = string(text);
-    auto lower_filter = string(filter);
-
-    std::ranges::transform(lower_text, lower_text.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
-    std::ranges::transform(lower_filter, lower_filter.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
+    const string lower_text = strex(text).lower_utf8();
+    const string lower_filter = strex(filter).lower_utf8();
 
     return lower_text.find(lower_filter) != string::npos;
 }
