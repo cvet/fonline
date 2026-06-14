@@ -465,6 +465,7 @@ private:
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
     bool _shadowDisabled {};
+    bool _disableBackwardAnim {};
     isize32 _drawSize {};
     isize32 _viewSize {};
     hstring _rotationBone {};

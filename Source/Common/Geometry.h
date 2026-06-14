@@ -62,38 +62,38 @@ struct msize : isize<int16_t>
 
     [[nodiscard]] constexpr auto clamp_pos(std::integral auto x, std::integral auto y) const -> mpos
     {
-        FO_RUNTIME_ASSERT(width > 0);
-        FO_RUNTIME_ASSERT(height > 0);
+        FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
+        FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
         const auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
         const auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto clamp_pos(pos_type auto pos) const -> mpos
     {
-        FO_RUNTIME_ASSERT(width > 0);
-        FO_RUNTIME_ASSERT(height > 0);
+        FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
+        FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
         const auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
         const auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto from_raw_pos(std::integral auto x, std::integral auto y) const -> mpos
     {
-        FO_RUNTIME_ASSERT(width > 0);
-        FO_RUNTIME_ASSERT(height > 0);
-        FO_RUNTIME_ASSERT(x >= 0);
-        FO_RUNTIME_ASSERT(y >= 0);
-        FO_RUNTIME_ASSERT(x < width);
-        FO_RUNTIME_ASSERT(y < height);
+        FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
+        FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
+        FO_VERIFY_AND_THROW(x >= 0, "X is negative", x);
+        FO_VERIFY_AND_THROW(y >= 0, "Y is negative", y);
+        FO_VERIFY_AND_THROW(x < width, "X is outside allowed range", x, width);
+        FO_VERIFY_AND_THROW(y < height, "Y is outside allowed range", y, height);
         return {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
     }
     [[nodiscard]] constexpr auto from_raw_pos(pos_type auto pos) const -> mpos
     {
-        FO_RUNTIME_ASSERT(width > 0);
-        FO_RUNTIME_ASSERT(height > 0);
-        FO_RUNTIME_ASSERT(pos.x >= 0);
-        FO_RUNTIME_ASSERT(pos.y >= 0);
-        FO_RUNTIME_ASSERT(pos.x < width);
-        FO_RUNTIME_ASSERT(pos.y < height);
+        FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
+        FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
+        FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+        FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+        FO_VERIFY_AND_THROW(pos.x < width, "Position x is outside allowed range", pos.x, width);
+        FO_VERIFY_AND_THROW(pos.y < height, "Position y is outside allowed range", pos.y, height);
         return {numeric_cast<int16_t>(pos.x), numeric_cast<int16_t>(pos.y)};
     }
 };

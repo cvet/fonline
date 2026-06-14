@@ -123,7 +123,7 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
         };
 
         const auto deflate_init = deflateInit(&_impl->ZStream, Z_BEST_SPEED);
-        FO_RUNTIME_ASSERT(deflate_init == Z_OK);
+        FO_VERIFY_AND_THROW(deflate_init == Z_OK, "Failed to initialize zlib deflate stream", deflate_init);
     }
 
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
@@ -134,10 +134,10 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto deflate_result = deflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    FO_RUNTIME_ASSERT(deflate_result == Z_OK);
+    FO_VERIFY_AND_THROW(deflate_result == Z_OK, "Zlib deflate did not finish with Z_OK", deflate_result, Z_OK, buf.size(), result.size());
 
     const auto writed_len = numeric_cast<size_t>(_impl->ZStream.next_in - buf.data());
-    FO_RUNTIME_ASSERT(writed_len == buf.size());
+    FO_VERIFY_AND_THROW(writed_len == buf.size(), "Zlib deflate did not consume the full input buffer", writed_len, buf.size());
 
     const auto compr_len = numeric_cast<size_t>(_impl->ZStream.next_out - result.data());
     result.resize(compr_len);
@@ -187,7 +187,7 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
         };
 
         const auto inflate_init = inflateInit(&_impl->ZStream);
-        FO_RUNTIME_ASSERT(inflate_init == Z_OK);
+        FO_VERIFY_AND_THROW(inflate_init == Z_OK, "Failed to initialize zlib inflate stream", inflate_init);
     }
 
     result.resize(std::max(result.capacity(), buf.size() * 2));
@@ -198,7 +198,7 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    FO_RUNTIME_ASSERT(first_inflate == Z_OK);
+    FO_VERIFY_AND_THROW(first_inflate == Z_OK, "Initial zlib inflate step did not finish with Z_OK", first_inflate, Z_OK, buf.size(), result.size());
 
     auto uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
 
@@ -209,7 +209,7 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
         _impl->ZStream.avail_out = numeric_cast<uInt>(result.size() - uncompr_len);
 
         const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-        FO_RUNTIME_ASSERT(next_inflate == Z_OK);
+        FO_VERIFY_AND_THROW(next_inflate == Z_OK, "Continuation zlib inflate step did not finish with Z_OK", next_inflate, Z_OK, _impl->ZStream.avail_in, result.size());
 
         uncompr_len = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(result.data());
     }

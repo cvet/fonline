@@ -44,7 +44,9 @@
 #define BACKWARD_HAS_BFD 1
 #endif
 #endif
+FO_DISABLE_WARNINGS_PUSH()
 #include "backward.hpp"
+FO_DISABLE_WARNINGS_POP()
 #define HAS_NATIVE_TRACE 1
 #else
 #define HAS_NATIVE_TRACE 0
@@ -218,30 +220,6 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
     std::scoped_lock locker {ExceptionHandling->CallbackLocker};
 
     return ExceptionHandling->Callback;
-}
-
-extern void ReportStrongAssertAndExit(string_view message, const char* file, int32_t line) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        throw StrongAssertationException(message, file, line);
-    }
-    catch (const StrongAssertationException& ex) {
-        ReportExceptionAndExit(ex);
-    }
-}
-
-extern void ReportVerifyFailed(string_view message, const char* file, int32_t line) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        throw VerifyFailedException(message, file, line);
-    }
-    catch (const VerifyFailedException& ex) {
-        ReportExceptionAndContinue(ex);
-    }
 }
 
 static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData

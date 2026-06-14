@@ -285,7 +285,7 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!name.empty());
+    FO_VERIFY_AND_THROW(!name.empty(), "Pack data source mount requested an empty pack name", dir, maybe_not_available);
 
     const auto is_file_present = [](string_view path) -> bool { return static_cast<bool>(fs_open_ifstream(path)); };
 

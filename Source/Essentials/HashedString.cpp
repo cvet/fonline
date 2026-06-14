@@ -69,7 +69,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
     }
 
     const auto hash_value = _hashFunc(s.data(), s.length());
-    FO_RUNTIME_ASSERT(hash_value != 0);
+    FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
         shared_lock locker {_hashStorageLocker};

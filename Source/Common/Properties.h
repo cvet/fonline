@@ -70,7 +70,7 @@ public:
     template<typename T>
     [[nodiscard]] auto GetAs() noexcept -> T
     {
-        FO_STRONG_ASSERT(sizeof(T) == _dataSize);
+        FO_STRONG_ASSERT(sizeof(T) == _dataSize, "Property raw data size mismatch", sizeof(T), _dataSize);
         return *static_cast<T*>(GetPtr());
     }
 
@@ -481,12 +481,12 @@ auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Property base size does not match requested value type", prop->GetName(), prop->GetBaseSize(), sizeof(T));
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
             PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
@@ -499,7 +499,7 @@ auto Properties::GetValue(const Property* prop) const -> T
     }
 
     const auto raw_data = GetRawData(prop);
-    FO_RUNTIME_ASSERT(raw_data.size() == sizeof(T));
+    FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match requested value type", prop->GetName(), raw_data.size(), sizeof(T));
     auto result = *reinterpret_cast<const T*>(raw_data.data());
     return result;
 }
@@ -510,13 +510,13 @@ auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
-    FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
+    FO_VERIFY_AND_THROW(prop->IsBaseTypeHash(), "Property base type is not hash");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
             PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
@@ -530,7 +530,7 @@ auto Properties::GetValue(const Property* prop) const -> T
     }
 
     const auto raw_data = GetRawData(prop);
-    FO_RUNTIME_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+    FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
     const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
     auto result = ResolveHash(hash);
     return result;
@@ -542,11 +542,11 @@ auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->IsString());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
             PropertyRawData prop_data = prop->_getter(_entity.get(), prop);
@@ -574,13 +574,13 @@ auto Properties::GetValue(const Property* prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->IsArray());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
 
     PropertyRawData prop_data;
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
             prop_data = prop->_getter(_entity.get(), prop);
@@ -597,7 +597,7 @@ auto Properties::GetValue(const Property* prop) const -> T
 
     if (data_size != 0) {
         if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
-            FO_RUNTIME_ASSERT(prop->IsArrayOfString());
+            FO_VERIFY_AND_THROW(prop->IsArrayOfString(), "Property is not an array of strings");
 
             uint32_t arr_size;
             MemCopy(&arr_size, data, sizeof(arr_size));
@@ -613,8 +613,8 @@ auto Properties::GetValue(const Property* prop) const -> T
             }
         }
         else if constexpr (std::same_as<T, vector<hstring>>) {
-            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+            FO_VERIFY_AND_THROW(prop->IsBaseTypeHash(), "Property base type is not hash");
+            FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash array property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
 
             const auto arr_size = data_size / sizeof(hstring::hash_t);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
@@ -626,7 +626,7 @@ auto Properties::GetValue(const Property* prop) const -> T
             }
         }
         else {
-            FO_RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+            FO_VERIFY_AND_THROW(data_size % prop->GetBaseSize() == 0, "Array property raw data size is not aligned to the property base size", prop->GetName(), data_size, prop->GetBaseSize());
             const auto arr_size = data_size / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
@@ -643,13 +643,13 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!prop->IsDisabled());
-    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T));
-    FO_STRONG_ASSERT(prop->IsPlainData());
-    FO_STRONG_ASSERT(!prop->IsVirtual());
+    FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T), "Property base size mismatch in fast value getter", prop->GetName(), sizeof(T), prop->GetBaseSize());
+    FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in fast value getter", prop->GetName());
 
     const auto raw_data = GetRawData(prop);
-    FO_STRONG_ASSERT(raw_data.size() == sizeof(T));
+    FO_STRONG_ASSERT(raw_data.size() == sizeof(T), "Property raw data size mismatch in fast value getter", prop->GetName(), sizeof(T), raw_data.size());
     auto result = *reinterpret_cast<const T*>(raw_data.data());
     return result;
 }
@@ -660,14 +660,14 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!prop->IsDisabled());
-    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-    FO_STRONG_ASSERT(prop->IsPlainData());
-    FO_STRONG_ASSERT(prop->IsBaseTypeHash());
-    FO_STRONG_ASSERT(!prop->IsVirtual());
+    FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in hstring fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t), "Property hash base size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), prop->GetBaseSize());
+    FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in hstring fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(prop->IsBaseTypeHash(), "Property is not hash data in hstring fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in hstring fast value getter", prop->GetName());
 
     const auto raw_data = GetRawData(prop);
-    FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+    FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t), "Property raw hash data size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), raw_data.size());
     const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
     auto result = ResolveHash(hash, nullptr);
     return result;
@@ -679,9 +679,9 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> string_vie
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!prop->IsDisabled());
-    FO_STRONG_ASSERT(prop->IsString());
-    FO_STRONG_ASSERT(!prop->IsVirtual());
+    FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in string fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(prop->IsString(), "Property is not string data in fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in string fast value getter", prop->GetName());
 
     const auto raw_data = GetRawData(prop);
 
@@ -699,9 +699,9 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!prop->IsDisabled());
-    FO_STRONG_ASSERT(prop->IsArray());
-    FO_STRONG_ASSERT(!prop->IsVirtual());
+    FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in array fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(prop->IsArray(), "Property is not array data in fast value getter", prop->GetName());
+    FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in array fast value getter", prop->GetName());
 
     PropertyRawData prop_data;
 
@@ -714,7 +714,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 
     if (data_size != 0) {
         if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
-            FO_STRONG_ASSERT(prop->IsArrayOfString());
+            FO_STRONG_ASSERT(prop->IsArrayOfString(), "Property is not string array data in fast value getter", prop->GetName());
 
             uint32_t arr_size;
             MemCopy(&arr_size, data, sizeof(arr_size));
@@ -730,8 +730,8 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
             }
         }
         else if constexpr (std::same_as<T, vector<hstring>>) {
-            FO_STRONG_ASSERT(prop->IsBaseTypeHash());
-            FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+            FO_STRONG_ASSERT(prop->IsBaseTypeHash(), "Property is not hash array data in fast value getter", prop->GetName());
+            FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t), "Property hash array base size mismatch in fast value getter", prop->GetName(), sizeof(hstring::hash_t), prop->GetBaseSize());
 
             const auto arr_size = data_size / sizeof(hstring::hash_t);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
@@ -743,7 +743,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
             }
         }
         else {
-            FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0);
+            FO_STRONG_ASSERT(data_size % prop->GetBaseSize() == 0, "Property array raw data size is not aligned to base size", prop->GetName(), data_size, prop->GetBaseSize());
             const auto arr_size = data_size / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
@@ -760,14 +760,14 @@ void Properties::SetValue(const Property* prop, T new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
-    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Property base size does not match assigned value type", prop->GetName(), prop->GetBaseSize(), sizeof(T));
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
+    FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
-        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
+        FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual property has no setter while assigning a plain value", prop->GetName(), sizeof(T));
 
         PropertyRawData prop_data;
         prop_data.SetAs<T>(new_value);
@@ -778,7 +778,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     }
     else {
         const auto raw_data = GetRawData(prop);
-        FO_RUNTIME_ASSERT(raw_data.size() == sizeof(T));
+        FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match assigned value type", prop->GetName(), raw_data.size(), sizeof(T));
         const auto cur_value = *reinterpret_cast<const T*>(raw_data.data());
         bool equal;
 
@@ -819,15 +819,15 @@ void Properties::SetValue(const Property* prop, T new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
-    FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match assigned hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
+    FO_VERIFY_AND_THROW(prop->IsBaseTypeHash(), "Property base type is not hash");
+    FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
-        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
+        FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual hash property has no setter while assigning a hashed value", prop->GetName(), sizeof(hstring::hash_t));
 
         PropertyRawData prop_data;
         prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
@@ -839,7 +839,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     else {
         const auto new_value_hash = new_value.as_hash();
         const auto raw_data = GetRawData(prop);
-        FO_RUNTIME_ASSERT(raw_data.size() == sizeof(hstring::hash_t));
+        FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match assigned hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
         const auto cur_value_hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
 
         if (new_value_hash != cur_value_hash) {
@@ -872,13 +872,13 @@ void Properties::SetValue(const Property* prop, const T& new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->IsString());
-    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
+    FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
-        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
+        FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual string property has no setter while assigning a string value", prop->GetName(), new_value.length());
 
         PropertyRawData prop_data;
         prop_data.Pass(new_value.c_str(), new_value.length());
@@ -888,7 +888,7 @@ void Properties::SetValue(const Property* prop, const T& new_value)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+        FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Complex property has no complex data index");
 
         if (!prop->_setters.empty() && _entity) {
             PropertyRawData prop_data;
@@ -917,9 +917,9 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(prop->IsArray());
-    FO_RUNTIME_ASSERT(prop->IsMutable() || prop->IsCoreProperty());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
+    FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
     PropertyRawData prop_data;
 
@@ -950,7 +950,7 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
         }
     }
     else if constexpr (std::same_as<T, hstring>) {
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+        FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash vector property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
 
         if (!new_value.empty()) {
             auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
@@ -963,7 +963,7 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+        FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Vector property base size does not match element storage size", prop->GetName(), prop->GetBaseSize(), sizeof(T));
 
         if (!new_value.empty()) {
             prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
@@ -971,15 +971,15 @@ void Properties::SetValue(const Property* prop, const vector<T>& new_value)
     }
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
-        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
+        FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual array property has no setter while assigning an array value", prop->GetName(), new_value.size());
 
         for (const auto& setter : prop->_setters) {
             setter(_entity.get(), prop, prop_data);
         }
     }
     else {
-        FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+        FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Complex property has no complex data index");
 
         if (!prop->_setters.empty() && _entity) {
             for (const auto& setter : prop->_setters) {

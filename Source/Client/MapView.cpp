@@ -100,7 +100,7 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
     }
 
     _mapSize = GetSize();
-    FO_RUNTIME_ASSERT(_mapSize.width > 0 && _mapSize.height > 0);
+    FO_VERIFY_AND_THROW(_mapSize.width > 0 && _mapSize.height > 0, "Map size must be positive", _mapSize.width, _mapSize.height);
 
     {
         const ipos32 corners[] = {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
@@ -144,19 +144,19 @@ MapView::~MapView()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_VERIFY(_critters.empty());
-    FO_RUNTIME_VERIFY(_crittersMap.empty());
-    FO_RUNTIME_VERIFY(_items.empty());
-    FO_RUNTIME_VERIFY(_itemsMap.empty());
-    FO_RUNTIME_VERIFY(_staticItems.empty());
-    FO_RUNTIME_VERIFY(_dynamicItems.empty());
-    FO_RUNTIME_VERIFY(_processingItems.empty());
-    FO_RUNTIME_VERIFY(_spritePatterns.empty());
-    FO_RUNTIME_VERIFY(!HasFogLayers());
-    FO_RUNTIME_VERIFY(_visibleLightSources.empty());
-    FO_RUNTIME_VERIFY(_lightSources.empty());
-    FO_RUNTIME_VERIFY(!_rtMap);
-    FO_RUNTIME_VERIFY(!_rtLight);
+    FO_VERIFY_AND_CONTINUE(_critters.empty(), "Client map view has critters during destruction", GetId(), _critters.size());
+    FO_VERIFY_AND_CONTINUE(_crittersMap.empty(), "Client map view has critters map entries during destruction", GetId(), _crittersMap.size());
+    FO_VERIFY_AND_CONTINUE(_items.empty(), "Client map view has items during destruction", GetId(), _items.size());
+    FO_VERIFY_AND_CONTINUE(_itemsMap.empty(), "Client map view has item map entries during destruction", GetId(), _itemsMap.size());
+    FO_VERIFY_AND_CONTINUE(_staticItems.empty(), "Client map view has static items during destruction", GetId(), _staticItems.size());
+    FO_VERIFY_AND_CONTINUE(_dynamicItems.empty(), "Client map view has dynamic items during destruction", GetId(), _dynamicItems.size());
+    FO_VERIFY_AND_CONTINUE(_processingItems.empty(), "Client map view has processing items during destruction", GetId(), _processingItems.size());
+    FO_VERIFY_AND_CONTINUE(_spritePatterns.empty(), "Client map view has sprite patterns during destruction", GetId(), _spritePatterns.size());
+    FO_VERIFY_AND_CONTINUE(!HasFogLayers(), "Client map view has fog layers during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(_visibleLightSources.empty(), "Client map view has visible light sources during destruction", GetId(), _visibleLightSources.size());
+    FO_VERIFY_AND_CONTINUE(_lightSources.empty(), "Client map view has light sources during destruction", GetId(), _lightSources.size());
+    FO_VERIFY_AND_CONTINUE(!_rtMap, "Client map view still has map render target during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_rtLight, "Client map view still has light render target during destruction", GetId());
 }
 
 void MapView::OnDestroySelf()
@@ -218,7 +218,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     _mapLoading = true;
     auto reset_loading = scope_exit([&]() noexcept { _mapLoading = false; });
@@ -226,9 +226,9 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
     MapLoader::Load(
         map_name, str, *_engine, _engine->Hashes,
-        [this, &max_id](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
-            FO_RUNTIME_ASSERT(id);
-            FO_RUNTIME_ASSERT(_crittersMap.count(id) == 0);
+        [this, &max_id, map_name](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
+            FO_VERIFY_AND_THROW(id, "Missing required id");
+            FO_VERIFY_AND_THROW(_crittersMap.count(id) == 0, "Map file contains duplicate critter id", map_name, id, proto->GetProtoId());
 
             max_id = std::max(max_id, id.underlying_value());
 
@@ -243,9 +243,9 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             AddCritterInternal(cr.get());
         },
-        [this, &max_id](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
-            FO_RUNTIME_ASSERT(id);
-            FO_RUNTIME_ASSERT(_itemsMap.count(id) == 0);
+        [this, &max_id, map_name](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
+            FO_VERIFY_AND_THROW(id, "Missing required id");
+            FO_VERIFY_AND_THROW(_itemsMap.count(id) == 0, "Map file contains duplicate item id", map_name, id, proto->GetProtoId());
 
             max_id = std::max(max_id, id.underlying_value());
 
@@ -335,7 +335,7 @@ void MapView::LoadStaticData()
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
             const auto item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
             const auto* item_proto = _engine->GetProtoItem(item_pid);
-            FO_RUNTIME_ASSERT(item_proto);
+            FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype");
 
             auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
             const auto props_data_size = reader.Read<uint32_t>();
@@ -660,11 +660,11 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(id);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(id, "Received client map item has an empty entity id", GetId(), pid, hex);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Received client map item targets a hex outside map bounds", GetId(), id, pid, hex, _mapSize);
 
     const auto* proto = _engine->GetProtoItem(pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
@@ -691,11 +691,11 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, const Properties* props, iden
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper item creation was requested outside mapper mode", GetId(), pid, hex);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Mapper item creation targets a hex outside map bounds", GetId(), pid, hex, _mapSize);
 
     const auto* proto = _engine->GetProtoItem(pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
@@ -708,11 +708,11 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper tile creation was requested outside mapper mode", GetId(), pid, hex, layer, is_roof);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Mapper tile creation targets a hex outside map bounds", GetId(), pid, hex, layer, is_roof, _mapSize);
 
     const auto* proto = _engine->GetProtoItem(pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
 
@@ -728,10 +728,10 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Local client map item creation targets a hex outside map bounds", GetId(), pid, hex, _mapSize);
 
     const auto* proto = _engine->GetProtoItem(pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
 
@@ -745,8 +745,8 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(item->GetHex()));
-    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(item->GetHex()), "Item hex is outside client map bounds while adding item", item->GetId(), item->GetHex(), _mapSize);
+    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Client map item has an unexpected ownership mode while being added to a map field", GetId(), item->GetId(), item->GetProtoId(), item->GetOwnership());
 
     if (item->GetId()) {
         if (auto* prev_item = GetItem(item->GetId()); prev_item != nullptr) {
@@ -784,7 +784,7 @@ void MapView::RefreshItem(ItemHexView* item, bool deferred)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item->GetMap() == this);
+    FO_VERIFY_AND_THROW(item->GetMap() == this, "Item refresh requested for an item attached to a different client map", item->GetId(), item->GetMap() != nullptr ? item->GetMap()->GetId() : ident_t {}, GetId());
 
     if (deferred) {
         _deferredRefreshItems.emplace(item);
@@ -812,8 +812,8 @@ void MapView::MoveItem(ItemHexView* item, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item->GetMap() == this);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(item->GetMap() == this, "Item move requested for an item attached to a different client map", item->GetId(), item->GetMap() != nullptr ? item->GetMap()->GetId() : ident_t {}, GetId());
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Item move target hex is outside client map bounds", item->GetId(), hex, _mapSize);
 
     RemoveItemFromField(item);
     item->SetHex(hex);
@@ -824,7 +824,7 @@ void MapView::DestroyItem(ItemHexView* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item->GetMap() == this);
+    FO_VERIFY_AND_THROW(item->GetMap() == this, "Item destroy requested for an item attached to a different client map", item->GetId(), item->GetMap() != nullptr ? item->GetMap()->GetId() : ident_t {}, GetId());
 
     refcount_ptr item_ref_holder = item;
 
@@ -841,7 +841,7 @@ void MapView::DestroyItem(ItemHexView* item)
 
     if (item->GetId()) {
         const auto it = _itemsMap.find(item->GetId());
-        FO_RUNTIME_ASSERT(it != _itemsMap.end());
+        FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Client map item lookup is missing during item destruction", GetId(), item->GetId(), _itemsMap.size());
         _itemsMap.erase(it);
     }
 
@@ -865,7 +865,7 @@ auto MapView::GetItemOnHex(mpos hex) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map item lookup requested a hex outside map bounds", GetId(), hex, _mapSize);
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.Items.empty()) {
@@ -880,7 +880,7 @@ auto MapView::GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map item lookup by proto requested a hex outside map bounds", GetId(), pid, hex, _mapSize);
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.Items.empty()) {
@@ -990,9 +990,9 @@ void MapView::RebuildMapNow()
     FO_STACK_TRACE_ENTRY();
 
     HideHexLines(0, _hVisible);
-    FO_RUNTIME_ASSERT(!_mapSprites.HasActiveSprites());
-    FO_RUNTIME_ASSERT(!_indoorMaskSprites.HasActiveSprites());
-    FO_RUNTIME_ASSERT(_visibleLightSources.empty());
+    FO_VERIFY_AND_THROW(!_mapSprites.HasActiveSprites(), "Map sprites has active sprites is already set");
+    FO_VERIFY_AND_THROW(!_indoorMaskSprites.HasActiveSprites(), "Indoor mask sprites has active sprites is already set");
+    FO_VERIFY_AND_THROW(_visibleLightSources.empty(), "Visible light sources must be empty before this operation");
 
     InitView();
 
@@ -1009,8 +1009,8 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_viewField.empty());
-    FO_RUNTIME_ASSERT(std::abs(axial_hex_offset.y) % 2 == 0);
+    FO_VERIFY_AND_THROW(!_viewField.empty(), "Client map view-field is empty while rebuilding map offset", GetId(), _mapSize, _wVisible, _hVisible);
+    FO_VERIFY_AND_THROW(std::abs(axial_hex_offset.y) % 2 == 0, "Client map axial vertical offset must stay aligned to two raw rows", GetId(), axial_hex_offset, _screenRawHex);
 
     const auto ox = axial_hex_offset.x;
     const auto oy = axial_hex_offset.y;
@@ -1088,7 +1088,7 @@ void MapView::ShowHexLines(int ox, int oy)
     if (ox != 0) {
         const auto from_x = ox > 0 ? std::max(_wVisible - ox, 0) : 0;
         const auto to_x = ox > 0 ? _wVisible : std::min(-ox, _wVisible);
-        FO_RUNTIME_ASSERT(from_x < to_x);
+        FO_VERIFY_AND_THROW(from_x < to_x, "Client map show-column range is empty after scroll offset calculation", GetId(), ox, _wVisible, from_x, to_x);
 
         for (auto x = from_x; x < to_x; x++) {
             for (auto y = 0; y < _hVisible; y++) {
@@ -1101,7 +1101,7 @@ void MapView::ShowHexLines(int ox, int oy)
     if (oy != 0) {
         const auto from_y = oy > 0 ? std::max(_hVisible - oy, 0) : 0;
         const auto to_y = oy > 0 ? _hVisible : std::min(-oy, _hVisible);
-        FO_RUNTIME_ASSERT(from_y < to_y);
+        FO_VERIFY_AND_THROW(from_y < to_y, "Client map show-row range is empty after scroll offset calculation", GetId(), oy, _hVisible, from_y, to_y);
 
         for (auto y = from_y; y < to_y; y++) {
             for (auto x = 0; x < _wVisible; x++) {
@@ -1119,7 +1119,7 @@ void MapView::HideHexLines(int ox, int oy)
     if (ox != 0) {
         const auto from_x = ox > 0 ? std::max(_wVisible - ox, 0) : 0;
         const auto to_x = ox > 0 ? _wVisible : std::min(-ox, _wVisible);
-        FO_RUNTIME_ASSERT(from_x < to_x);
+        FO_VERIFY_AND_THROW(from_x < to_x, "Client map hide-column range is empty after scroll offset calculation", GetId(), ox, _wVisible, from_x, to_x);
 
         for (auto x = from_x; x < to_x; x++) {
             for (auto y = 0; y < _hVisible; y++) {
@@ -1132,7 +1132,7 @@ void MapView::HideHexLines(int ox, int oy)
     if (oy != 0) {
         const auto from_y = oy > 0 ? std::max(_hVisible - oy, 0) : 0;
         const auto to_y = oy > 0 ? _hVisible : std::min(-oy, _hVisible);
-        FO_RUNTIME_ASSERT(from_y < to_y);
+        FO_VERIFY_AND_THROW(from_y < to_y, "Client map hide-row range is empty after scroll offset calculation", GetId(), oy, _hVisible, from_y, to_y);
 
         for (auto y = from_y; y < to_y; y++) {
             for (auto x = 0; x < _wVisible; x++) {
@@ -1266,8 +1266,8 @@ void MapView::HideHex(const ViewField& vf)
         for (auto* ls : field.LightSources | std::views::keys) {
             const auto it = _visibleLightSources.find(ls);
 
-            FO_RUNTIME_ASSERT(it != _visibleLightSources.end());
-            FO_RUNTIME_ASSERT(it->second > 0);
+            FO_VERIFY_AND_THROW(it != _visibleLightSources.end(), "Lookup failed in visible light sources");
+            FO_VERIFY_AND_THROW(it->second > 0, "It second must be positive");
 
             if (it->second > 1) {
                 it->second--;
@@ -1319,7 +1319,7 @@ void MapView::ProcessLighting()
     }
 
     for (auto* ls : _removeLightSourcesScratch) {
-        FO_RUNTIME_ASSERT(_lightSources.count(ls->Id) != 0);
+        FO_VERIFY_AND_THROW(_lightSources.count(ls->Id) != 0, "Client map light source removal is missing the source in the active light map", GetId(), ls->Id, _lightSources.size(), _removeLightSourcesScratch.size());
 
         CleanLightFan(ls);
         _lightSources.erase(ls->Id);
@@ -1338,7 +1338,7 @@ void MapView::ProcessLighting()
         size_t cur_points = 0;
 
         for (const auto* ls : _visibleLightSources | std::views::keys) {
-            FO_RUNTIME_ASSERT(ls->Applied);
+            FO_VERIFY_AND_THROW(ls->Applied, "Light source is not applied to the map view");
 
             // Split large entries to fit into 16-bit index
             if constexpr (sizeof(vindex_t) == 2) {
@@ -1361,7 +1361,7 @@ void MapView::UpdateCritterLightSource(const CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->GetMap() == this);
+    FO_VERIFY_AND_THROW(cr->GetMap() == this, "Critter light update requested for a critter attached to a different client map", cr->GetId(), cr->GetMap() != nullptr ? cr->GetMap()->GetId() : ident_t {}, GetId());
 
     if (_engine->Settings.DisableLighting) {
         return;
@@ -1379,7 +1379,7 @@ void MapView::UpdateItemLightSource(const ItemHexView* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item->GetMap() == this);
+    FO_VERIFY_AND_THROW(item->GetMap() == this, "Item light update requested for an item attached to a different client map", item->GetId(), item->GetMap() != nullptr ? item->GetMap()->GetId() : ident_t {}, GetId());
 
     if (_engine->Settings.DisableLighting) {
         return;
@@ -1490,7 +1490,7 @@ void MapView::ApplyLightFan(LightSource* ls)
         CleanLightFan(ls);
     }
 
-    FO_RUNTIME_ASSERT(!ls->Applied);
+    FO_VERIFY_AND_THROW(!ls->Applied, "Light source applied is already set");
 
     ls->Applied = true;
     ls->NeedReapply = false;
@@ -1599,12 +1599,12 @@ void MapView::CleanLightFan(LightSource* ls)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ls->Applied);
+    FO_VERIFY_AND_THROW(ls->Applied, "Light source is not applied to the map view");
 
     ls->Applied = false;
 
     if (IsEnumSet(ls->Flags, LightFlag::Global)) {
-        FO_RUNTIME_ASSERT(_globalLights > 0);
+        FO_VERIFY_AND_THROW(_globalLights > 0, "Global lights must be positive");
         _globalLights--;
     }
 
@@ -1616,7 +1616,7 @@ void MapView::CleanLightFan(LightSource* ls)
 
         if constexpr (FO_DEBUG) {
             if (field.IsView) {
-                FO_RUNTIME_ASSERT(_visibleLightSources[ls] > 0);
+                FO_VERIFY_AND_THROW(_visibleLightSources[ls] > 0, "Visible light sources[ls] must be positive");
                 _visibleLightSources[ls]--;
             }
         }
@@ -1627,7 +1627,7 @@ void MapView::CleanLightFan(LightSource* ls)
     }
 
     if constexpr (FO_DEBUG) {
-        FO_RUNTIME_ASSERT(_visibleLightSources.count(ls) == 0 || _visibleLightSources[ls] == 0);
+        FO_VERIFY_AND_THROW(_visibleLightSources.count(ls) == 0 || _visibleLightSources[ls] == 0, "Visible light source counter is already active before add");
     }
 
     _visibleLightSources.erase(ls);
@@ -1944,7 +1944,7 @@ void MapView::LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>&
         }
     }
 
-    FO_RUNTIME_ASSERT(points.size() % 3 == 0);
+    FO_VERIFY_AND_THROW(points.size() % 3 == 0, "Client map border polygon points must be grouped into render triangles", GetId(), points.size(), 3);
 }
 
 void MapView::SetHiddenRoof(mpos hex)
@@ -1966,7 +1966,7 @@ auto MapView::MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(spr);
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
 
     const auto left = std::max(spr->GetSize().width / 2 + spr->GetOffset().x + offset.x + _maxScroll.width - _wLeft * GameSettings::MAP_HEX_WIDTH, 0);
     const auto right = std::max(spr->GetSize().width / 2 - spr->GetOffset().x - offset.x + _maxScroll.width - _wRight * GameSettings::MAP_HEX_WIDTH, 0);
@@ -1994,7 +1994,7 @@ auto MapView::MeasureMapBorders(const ItemHexView* item) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item->GetMap() == this);
+    FO_VERIFY_AND_THROW(item->GetMap() == this, "Map border measurement requested for an item attached to a different client map", item->GetId(), item->GetMap() != nullptr ? item->GetMap()->GetId() : ident_t {}, GetId());
 
     return MeasureMapBorders(item->GetSprite(), item->GetSpriteOffset());
 }
@@ -2003,7 +2003,7 @@ void MapView::RecacheHexFlags(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map cannot recache flags for a hex outside map bounds", GetId(), hex, _mapSize);
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -2103,11 +2103,11 @@ void MapView::Resize(msize size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(size.width >= GameSettings::MIN_MAP_SIZE);
-    FO_RUNTIME_ASSERT(size.width <= GameSettings::MAX_MAP_SIZE);
-    FO_RUNTIME_ASSERT(size.height >= GameSettings::MIN_MAP_SIZE);
-    FO_RUNTIME_ASSERT(size.height <= GameSettings::MAX_MAP_SIZE);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
+    FO_VERIFY_AND_THROW(size.width >= GameSettings::MIN_MAP_SIZE, "Map resize width is smaller than the engine minimum", size.width, GameSettings::MIN_MAP_SIZE);
+    FO_VERIFY_AND_THROW(size.width <= GameSettings::MAX_MAP_SIZE, "Map resize width is larger than the engine maximum", size.width, GameSettings::MAX_MAP_SIZE);
+    FO_VERIFY_AND_THROW(size.height >= GameSettings::MIN_MAP_SIZE, "Map resize height is smaller than the engine minimum", size.height, GameSettings::MIN_MAP_SIZE);
+    FO_VERIFY_AND_THROW(size.height <= GameSettings::MAX_MAP_SIZE, "Map resize height is larger than the engine maximum", size.height, GameSettings::MAX_MAP_SIZE);
 
     for (const auto& vf : _viewField) {
         if (_mapSize.is_valid_pos(vf.RawHex)) {
@@ -2134,9 +2134,9 @@ void MapView::Resize(msize size)
                     }
                 }
 
-                FO_RUNTIME_ASSERT(field.OriginCritters.empty());
-                FO_RUNTIME_ASSERT(field.OriginItems.empty());
-                FO_RUNTIME_ASSERT(!field.SpriteChain);
+                FO_VERIFY_AND_THROW(field.OriginCritters.empty(), "Field origin critters must be empty before this operation");
+                FO_VERIFY_AND_THROW(field.OriginItems.empty(), "Field origin items must be empty before this operation");
+                FO_VERIFY_AND_THROW(!field.SpriteChain, "Field sprite chain is already set");
             }
         }
     }
@@ -2163,7 +2163,7 @@ void MapView::SetShowMapperOverlay(bool show)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     if (_isShowMapperOverlay == show) {
         return;
@@ -2177,7 +2177,7 @@ void MapView::SetShowMapperHiddenSprites(bool show)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     if (_isShowMapperHiddenSprites == show) {
         return;
@@ -2270,9 +2270,9 @@ void MapView::InvalidateSpriteChain(Field& field)
     FO_NON_CONST_METHOD_HINT();
 
     if (field.SpriteChain) {
-        FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
+        FO_VERIFY_AND_THROW(field.SpriteChain->IsValid(), "Map field sprite chain is invalid");
         while (field.SpriteChain != nullptr) {
-            FO_RUNTIME_ASSERT(field.SpriteChain->IsValid());
+            FO_VERIFY_AND_THROW(field.SpriteChain->IsValid(), "Map field sprite chain is invalid");
             field.SpriteChain->Invalidate();
         }
     }
@@ -2407,7 +2407,7 @@ void MapView::DrawMap()
                 draw_area = {draw_x, draw_y, _screenSize.width, _screenSize.height};
             }
             else {
-                FO_RUNTIME_ASSERT(_rtMap);
+                FO_VERIFY_AND_THROW(_rtMap, "Missing required rt map");
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap.get());
                 _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
@@ -2680,9 +2680,9 @@ auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(effect);
-    FO_RUNTIME_ASSERT(padding >= 0);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
+    FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
 
     if (!_currentRenderDrawArea.has_value()) {
         throw ScriptException("Map sprite draw is available only inside map render stage events");
@@ -2708,7 +2708,7 @@ auto MapView::DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolo
         throw ScriptException("Entity has no map sprite", entity->GetId());
     }
 
-    FO_RUNTIME_ASSERT(mspr);
+    FO_VERIFY_AND_THROW(mspr, "Missing required mspr");
 
     if (mspr->IsHidden()) {
         return false;
@@ -2958,8 +2958,8 @@ void MapView::InstantZoom(float32_t new_zoom, fpos32 anchor)
         return;
     }
 
-    FO_RUNTIME_ASSERT(new_zoom >= GameSettings::MIN_ZOOM);
-    FO_RUNTIME_ASSERT(new_zoom <= GameSettings::MAX_ZOOM);
+    FO_VERIFY_AND_THROW(new_zoom >= GameSettings::MIN_ZOOM, "Requested map zoom is smaller than the engine minimum", new_zoom, GameSettings::MIN_ZOOM);
+    FO_VERIFY_AND_THROW(new_zoom <= GameSettings::MAX_ZOOM, "Requested map zoom is larger than the engine maximum", new_zoom, GameSettings::MAX_ZOOM);
 
     const float32_t init_zoom = GetSpritesZoom();
     const isize32 init_size = GetViewSize();
@@ -3125,7 +3125,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map cannot add critter to a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
     auto& field = _hexField->GetCellForWriting(hex);
 
     vec_add_unique_value(field.OriginCritters, cr);
@@ -3144,7 +3144,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map cannot remove critter from a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
     auto& field = _hexField->GetCellForWriting(hex);
 
     vec_remove_unique_value(field.OriginCritters, cr);
@@ -3192,8 +3192,8 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(id);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(id, "Received client map critter has an empty entity id", GetId(), pid, hex);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Received client map critter targets a hex outside map bounds", GetId(), id, pid, hex, _mapSize);
 
     const auto* proto = _engine->GetProtoCritter(pid);
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
@@ -3219,11 +3219,11 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper critter creation was requested outside mapper mode", GetId(), pid, hex, dir);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Mapper critter creation targets a hex outside map bounds", GetId(), pid, hex, _mapSize);
 
     const auto* proto = _engine->GetProtoCritter(pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
@@ -3258,14 +3258,14 @@ void MapView::DestroyCritter(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->GetMap() == this);
+    FO_VERIFY_AND_THROW(cr->GetMap() == this, "Critter destroy requested for a critter attached to a different client map", cr->GetId(), cr->GetMap() != nullptr ? cr->GetMap()->GetId() : ident_t {}, GetId());
 
     refcount_ptr cr_ref_holder = cr;
     vec_remove_unique_value(_critters, cr);
 
     if (cr->GetId()) {
         const auto it_map = _crittersMap.find(cr->GetId());
-        FO_RUNTIME_ASSERT(it_map != _crittersMap.end());
+        FO_VERIFY_AND_THROW(it_map != _crittersMap.end(), "Lookup failed in critters map");
         _crittersMap.erase(it_map);
     }
 
@@ -3354,8 +3354,8 @@ void MapView::MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->GetMap() == this);
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(to_hex));
+    FO_VERIFY_AND_THROW(cr->GetMap() == this, "Critter move requested for a critter attached to a different client map", cr->GetId(), cr->GetMap() != nullptr ? cr->GetMap()->GetId() : ident_t {}, GetId());
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(to_hex), "Critter move target hex is outside client map bounds", cr->GetId(), to_hex, _mapSize);
 
     const auto cur_hex = cr->GetHex();
 
@@ -3632,7 +3632,7 @@ auto MapView::FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+    FO_VERIFY_AND_THROW(!cr || cr->GetMap() == this, "Critter belongs to a different map view");
 
     if (start_hex == target_hex) {
         return FindPathResult();
@@ -3691,7 +3691,7 @@ bool MapView::CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int3
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr || cr->GetMap() == this);
+    FO_VERIFY_AND_THROW(!cr || cr->GetMap() == this, "Critter belongs to a different map view");
 
     return !!FindPath(cr, start_hex, target_hex, cut);
 }
@@ -3771,7 +3771,7 @@ void MapView::InstantScrollTo(mpos center_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_viewField.empty());
+    FO_VERIFY_AND_THROW(!_viewField.empty(), "Client map view-field is empty while scrolling to a center hex", GetId(), center_hex, _mapSize, _wVisible, _hVisible);
 
     const ipos32 new_screen_hex = ConvertToScreenRawHex(ipos32(center_hex));
     const ipos32 offset_to_new_pos = GeometryHelper::GetHexOffset(_screenRawHex, new_screen_hex);
@@ -3899,7 +3899,7 @@ void MapView::AddFastPid(hstring pid)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     _fastPids.emplace(pid);
 }
@@ -3908,7 +3908,7 @@ auto MapView::IsFastPid(hstring pid) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     return _fastPids.count(pid) != 0;
 }
@@ -3917,7 +3917,7 @@ void MapView::ClearFastPids()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     _fastPids.clear();
 }
@@ -3926,7 +3926,7 @@ void MapView::AddIgnorePid(hstring pid)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
     _ignorePids.emplace(pid);
 }
 
@@ -3934,7 +3934,7 @@ void MapView::SwitchIgnorePid(hstring pid)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     if (_ignorePids.count(pid) != 0) {
         _ignorePids.erase(pid);
@@ -3948,7 +3948,7 @@ auto MapView::IsIgnorePid(hstring pid) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     return _ignorePids.count(pid) != 0;
 }
@@ -3957,7 +3957,7 @@ void MapView::ClearIgnorePids()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     _ignorePids.clear();
 }
@@ -3966,7 +3966,7 @@ auto MapView::GenTempEntityId() -> ident_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapperMode);
+    FO_VERIFY_AND_THROW(_mapperMode, "Mapper mode is not selected");
 
     auto next_id = ident_t {(_workEntityId.underlying_value() + 1)};
 
@@ -4008,7 +4008,7 @@ auto MapView::SaveToText() const -> string
         for (auto&& [key, value] : section) {
             if (key == "MultihexMesh") {
                 const auto hex_str = strex(value).split(' ');
-                FO_RUNTIME_ASSERT(hex_str.size() % 2 == 0);
+                FO_VERIFY_AND_THROW(hex_str.size() % 2 == 0, "Mapper item MultihexMesh field must contain x/y coordinate pairs", name, key, value, hex_str.size());
                 fomap.append(key).append(" = ");
 
                 for (size_t i = 0; i < hex_str.size(); i += 2) {

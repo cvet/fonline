@@ -45,8 +45,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY_AND_RETURN(size.width >= 0);
-        FO_RUNTIME_VERIFY_AND_RETURN(size.height >= 0);
+        FO_VERIFY_AND_RETURN(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
+        FO_VERIFY_AND_RETURN(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
 
         _size = size;
     }
@@ -101,7 +101,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         const auto it = _cells.find(pos);
 
@@ -117,8 +117,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;
@@ -180,7 +180,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         const auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
@@ -196,8 +196,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;

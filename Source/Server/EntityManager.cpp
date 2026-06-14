@@ -476,7 +476,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> Loc
             auto* map = LoadMap(map_id, is_error);
 
             if (map != nullptr) {
-                FO_RUNTIME_ASSERT(map->GetLocId() == loc->GetId());
+                FO_VERIFY_AND_THROW(map->GetLocId() == loc->GetId(), "Loaded map belongs to a different location");
 
                 const auto loc_map_index = map->GetLocMapIndex();
                 auto loc_maps = loc->GetRawMaps();
@@ -558,7 +558,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
 
             if (cr != nullptr) {
                 cr->SetMapId(map->GetId());
-                FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+                FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
                 if (const auto hex = cr->GetHex(); !map->GetSize().is_valid_pos(hex)) {
                     cr->SetHex(map->GetSize().clamp_pos(hex));
@@ -584,8 +584,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> Map*
             auto* item = LoadItem(item_id, is_error);
 
             if (item != nullptr) {
-                FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-                FO_RUNTIME_ASSERT(item->GetMapId() == map->GetId());
+                FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
+                FO_VERIFY_AND_THROW(item->GetMapId() == map->GetId(), "Item belongs to a different map");
 
                 if (const auto hex = item->GetHex(); !map->GetSize().is_valid_pos(hex)) {
                     item->SetHex(map->GetSize().clamp_pos(hex));
@@ -662,8 +662,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> Critt
             auto* inv_item = LoadItem(item_id, is_error);
 
             if (inv_item != nullptr) {
-                FO_RUNTIME_ASSERT(inv_item->GetOwnership() == ItemOwnership::CritterInventory);
-                FO_RUNTIME_ASSERT(inv_item->GetCritterId() == cr->GetId());
+                FO_VERIFY_AND_THROW(inv_item->GetOwnership() == ItemOwnership::CritterInventory, "Loaded critter inventory item has a non-inventory ownership state", inv_item->GetId(), cr->GetId(), inv_item->GetOwnership());
+                FO_VERIFY_AND_THROW(inv_item->GetCritterId() == cr->GetId(), "Loaded inventory item belongs to a different critter");
 
                 cr->SetItem(inv_item);
             }
@@ -736,8 +736,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> Item*
             auto* inner_item = LoadItem(inner_item_id, is_error);
 
             if (inner_item != nullptr) {
-                FO_RUNTIME_ASSERT(inner_item->GetOwnership() == ItemOwnership::ItemContainer);
-                FO_RUNTIME_ASSERT(inner_item->GetContainerId() == item->GetId());
+                FO_VERIFY_AND_THROW(inner_item->GetOwnership() == ItemOwnership::ItemContainer, "Loaded container item has a non-container ownership state", inner_item->GetId(), item->GetId(), inner_item->GetOwnership());
+                FO_VERIFY_AND_THROW(inner_item->GetContainerId() == item->GetId(), "Loaded inner item belongs to a different container");
 
                 item->SetItemToContainer(inner_item);
             }
@@ -813,7 +813,7 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
             auto* custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
             if (custom_entity != nullptr) {
-                FO_RUNTIME_ASSERT(custom_entity->GetCustomHolderId() == holder_id);
+                FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
 
                 if (auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
                     custom_entity->SetParent(holder_entity);
@@ -825,11 +825,11 @@ void EntityManager::LoadInnerEntitiesEntry(Entity* holder, hstring entry, bool& 
                 // their own lock; engine-as-holder supplies the engine's singleton lock.
                 if (const auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
                     auto* holder_lock = holder_entity->GetEntityLock();
-                    FO_RUNTIME_ASSERT(holder_lock);
+                    FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
                     custom_entity->SetEntityLock(holder_lock);
                 }
                 else {
-                    FO_RUNTIME_ASSERT(_engine.get() == holder);
+                    FO_VERIFY_AND_THROW(_engine.get() == holder, "Entity holder is not the engine singleton");
                     custom_entity->SetEntityLock(_engine->GetEntityLock());
                 }
 
@@ -866,7 +866,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_VERIFY_AND_THROW(id.underlying_value() != 0, "Generated entity id is zero");
 
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
@@ -925,7 +925,7 @@ void EntityManager::CallInit(Location* loc, bool first_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
+    FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
 
     if (loc->IsInitCalled()) {
         return;
@@ -955,7 +955,7 @@ void EntityManager::CallInit(Map* map, bool first_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     if (map->IsInitCalled()) {
         return;
@@ -993,7 +993,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     if (cr->IsInitCalled()) {
         return;
@@ -1023,7 +1023,7 @@ void EntityManager::CallInit(Item* item, bool first_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!item->IsDestroyed());
+    FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     if (item->IsInitCalled()) {
         return;
@@ -1062,7 +1062,7 @@ void EntityManager::RegisterPlayer(Player* player, ident_t id, bool persistent)
     RegisterEntity(player);
     player->SetPersistent(persistent);
     const auto [it, inserted] = _allPlayers.emplace(player->GetId(), player);
-    FO_RUNTIME_ASSERT(inserted);
+    FO_VERIFY_AND_THROW(inserted, "Player id is already registered", player->GetId());
 }
 
 void EntityManager::UnregisterPlayer(Player* player)
@@ -1072,7 +1072,7 @@ void EntityManager::UnregisterPlayer(Player* player)
     scoped_lock lock {_registryLock};
 
     const auto it = _allPlayers.find(player->GetId());
-    FO_RUNTIME_ASSERT(it != _allPlayers.end());
+    FO_VERIFY_AND_THROW(it != _allPlayers.end(), "Lookup failed in all players");
     _allPlayers.erase(it);
     UnregisterEntity(player, false);
 }
@@ -1086,14 +1086,14 @@ void EntityManager::RegisterLocation(Location* loc)
 
         RegisterEntity(loc);
         const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
-        FO_RUNTIME_ASSERT(inserted);
+        FO_VERIFY_AND_THROW(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
     }
 
     // Engine-wide invariant: Register* is reached only from a thread that already has a
     // SyncContext active (worker-pool jobs, _starter / _mainWorker jobs wrapped via
     // WrapJobWithSync, or the Shutdown setup ctx). Any caller without one is a bug.
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(loc);
 }
 
@@ -1104,7 +1104,7 @@ void EntityManager::UnregisterLocation(Location* loc)
     scoped_lock lock {_registryLock};
 
     const auto it = _allLocations.find(loc->GetId());
-    FO_RUNTIME_ASSERT(it != _allLocations.end());
+    FO_VERIFY_AND_THROW(it != _allLocations.end(), "Lookup failed in all locations");
     _allLocations.erase(it);
     UnregisterEntity(loc, true);
 }
@@ -1118,12 +1118,12 @@ void EntityManager::RegisterMap(Map* map)
 
         RegisterEntity(map);
         const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
-        FO_RUNTIME_ASSERT(inserted);
+        FO_VERIFY_AND_THROW(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
     }
 
     // See RegisterLocation: SyncContext invariant.
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(map);
 }
 
@@ -1134,7 +1134,7 @@ void EntityManager::UnregisterMap(Map* map)
     scoped_lock lock {_registryLock};
 
     const auto it = _allMaps.find(map->GetId());
-    FO_RUNTIME_ASSERT(it != _allMaps.end());
+    FO_VERIFY_AND_THROW(it != _allMaps.end(), "Lookup failed in all maps");
     _allMaps.erase(it);
     UnregisterEntity(map, true);
 }
@@ -1148,12 +1148,12 @@ void EntityManager::RegisterCritter(Critter* cr)
 
         RegisterEntity(cr);
         const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
-        FO_RUNTIME_ASSERT(inserted);
+        FO_VERIFY_AND_THROW(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
     }
 
     // See RegisterLocation: SyncContext invariant.
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(cr);
 }
 
@@ -1164,7 +1164,7 @@ void EntityManager::UnregisterCritter(Critter* cr)
     scoped_lock lock {_registryLock};
 
     const auto it = _allCritters.find(cr->GetId());
-    FO_RUNTIME_ASSERT(it != _allCritters.end());
+    FO_VERIFY_AND_THROW(it != _allCritters.end(), "Lookup failed in all critters");
     _allCritters.erase(it);
     UnregisterEntity(cr, !cr->GetControlledByPlayer());
 }
@@ -1178,12 +1178,12 @@ void EntityManager::RegisterItem(Item* item)
 
         RegisterEntity(item);
         const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
-        FO_RUNTIME_ASSERT(inserted);
+        FO_VERIFY_AND_THROW(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
     }
 
     // See RegisterLocation: SyncContext invariant.
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(item);
 }
 
@@ -1194,7 +1194,7 @@ void EntityManager::UnregisterItem(Item* item, bool delete_from_db)
     scoped_lock lock {_registryLock};
 
     const auto it = _allItems.find(item->GetId());
-    FO_RUNTIME_ASSERT(it != _allItems.end());
+    FO_VERIFY_AND_THROW(it != _allItems.end(), "Lookup failed in all items");
     _allItems.erase(it);
     UnregisterEntity(item, delete_from_db);
 }
@@ -1208,7 +1208,7 @@ void EntityManager::RegisterCustomEntity(CustomEntity* custom_entity)
     RegisterEntity(custom_entity);
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto [it, inserted] = custom_entities.emplace(custom_entity->GetId(), custom_entity);
-    FO_RUNTIME_ASSERT(inserted);
+    FO_VERIFY_AND_THROW(inserted, "Custom entity id is already registered", custom_entity->GetTypeName(), custom_entity->GetId());
 }
 
 void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool delete_from_db)
@@ -1219,7 +1219,7 @@ void EntityManager::UnregisterCustomEntity(CustomEntity* custom_entity, bool del
 
     auto& custom_entities = _allCustomEntities[custom_entity->GetTypeName()];
     const auto it = custom_entities.find(custom_entity->GetId());
-    FO_RUNTIME_ASSERT(it != custom_entities.end());
+    FO_VERIFY_AND_THROW(it != custom_entities.end(), "Lookup failed in custom entities");
     custom_entities.erase(it);
     UnregisterEntity(custom_entity, delete_from_db);
 }
@@ -1228,8 +1228,8 @@ void EntityManager::MakePersistent(ServerEntity* entity, bool persistent, bool e
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(entity->GetId());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
         throw EntityManagerException("Can't change persistence of player", player->GetId());
@@ -1257,7 +1257,7 @@ void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     if (processed.contains(entity)) {
         return;
@@ -1280,7 +1280,7 @@ void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_s
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     if (processed.contains(entity)) {
         return;
@@ -1303,7 +1303,7 @@ void EntityManager::EnsureCascadeNodeSynced(ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     // The (de)persist cascade walks an owned subtree (every node is reachable from a root the caller
     // already covers), so pulling each node's own lock into the current sync context is safe — and
@@ -1321,7 +1321,7 @@ void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const fun
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     ValidateEntityAccess(entity);
 
     if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
@@ -1353,7 +1353,7 @@ void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const fun
         const auto& entity_type = _engine->GetEntityType(entity->GetTypeName());
 
         for (auto& [entry, inner_entities] : entity->GetInnerEntities()) {
-            FO_RUNTIME_ASSERT(entity_type.HolderEntries.count(entry));
+            FO_VERIFY_AND_THROW(entity_type.HolderEntries.count(entry), "Entity has an inner-entity holder entry that is not registered for its type", entity->GetTypeName(), entity->GetId(), entry, entity_type.HolderEntries.size());
 
             if (!entity_type.HolderEntries.at(entry).Persistent) {
                 continue;
@@ -1361,7 +1361,7 @@ void EntityManager::ForEachPersistentChildEntity(ServerEntity* entity, const fun
 
             for (auto& inner_entity : inner_entities) {
                 auto* server_entity = dynamic_cast<ServerEntity*>(inner_entity.get());
-                FO_RUNTIME_ASSERT(server_entity);
+                FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
                 callback(server_entity);
             }
         }
@@ -1372,7 +1372,7 @@ auto EntityManager::StoreEntityDoc(ServerEntity* entity) -> AnyData::Document
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
         const auto* proto = entity_with_proto->GetProto();
@@ -1394,7 +1394,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     if (!entity->GetId()) {
         const int64_t id_num = ++_lastEntityId;
         const ident_t id {numeric_cast<int64_t>(id_num)};
-        FO_RUNTIME_ASSERT(_allEntities.count(id) == 0);
+        FO_VERIFY_AND_THROW(_allEntities.count(id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), id);
 
         if (id_num > _persistedEntityId) {
             _persistedEntityId = id_num + _engine->Settings.EntityIdReserveBatch - 1;
@@ -1412,7 +1412,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
     }
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
-    FO_RUNTIME_ASSERT(inserted);
+    FO_VERIFY_AND_THROW(inserted, "Entity id is already registered in the global entity registry", entity->GetTypeName(), entity->GetId());
 }
 
 void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
@@ -1422,10 +1422,10 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
     // Caller must hold _registryLock (unique) for the erase portion.
     const auto entity_id = entity->GetId();
     const auto type_name_plural = entity->GetTypeNamePlural();
-    FO_RUNTIME_ASSERT(entity_id);
+    FO_VERIFY_AND_THROW(entity_id, "Missing required entity id");
 
     const auto it = _allEntities.find(entity_id);
-    FO_RUNTIME_ASSERT(it != _allEntities.end());
+    FO_VERIFY_AND_THROW(it != _allEntities.end(), "Lookup failed in all entities");
     _allEntities.erase(it);
 
     if (delete_from_db && entity->IsPersistent()) {
@@ -1437,7 +1437,7 @@ void EntityManager::DestroyEntity(Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
         _engine->MapMngr.DestroyLocation(loc);
@@ -1481,7 +1481,7 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
             _allEntities.erase(id);
         }
 
-        FO_RUNTIME_ASSERT(entities.empty());
+        FO_VERIFY_AND_THROW(entities.empty(), "Entities must be empty before this operation");
     };
 
     destroy_entities(_allPlayers);
@@ -1494,28 +1494,28 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
         destroy_entities(val);
     }
 
-    FO_RUNTIME_ASSERT(_allEntities.empty());
+    FO_VERIFY_AND_THROW(_allEntities.empty(), "All entities must be empty before this operation");
 }
 
 auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> CustomEntity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(holder);
-    FO_RUNTIME_ASSERT(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry));
+    FO_VERIFY_AND_THROW(holder, "Missing required holder");
+    FO_VERIFY_AND_THROW(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry), "Holder entity type has no custom inner entry with the requested name", holder->GetTypeName(), holder->GetId(), entry);
 
     const hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     auto* entity = CreateCustomEntity(type_name, pid);
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     if (auto* holder_with_id = dynamic_cast<ServerEntity*>(holder); holder_with_id != nullptr) {
-        FO_RUNTIME_ASSERT(holder_with_id->GetId());
+        FO_VERIFY_AND_THROW(holder_with_id->GetId(), "Entity holder has no assigned id");
         entity->SetCustomHolderId(holder_with_id->GetId());
         entity->SetParent(holder_with_id);
     }
     else {
-        FO_RUNTIME_ASSERT(_engine.get() == holder);
+        FO_VERIFY_AND_THROW(_engine.get() == holder, "Entity holder is not the engine singleton");
         // Holder is the global engine singleton; no ServerEntity parent to track. The engine
         // isn't a ServerEntity, so SetParent is skipped, but the engine still owns its own
         // EntityLock (the same one Game.Lock()/Unlock() use). We propagate that lock directly
@@ -1544,11 +1544,11 @@ auto EntityManager::CreateCustomInnerEntity(Entity* holder, hstring entry, hstri
     // engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes).
     if (const auto* holder_entity = dynamic_cast<ServerEntity*>(holder); holder_entity != nullptr) {
         auto* holder_lock = holder_entity->GetEntityLock();
-        FO_RUNTIME_ASSERT(holder_lock);
+        FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
         entity->SetEntityLock(holder_lock);
     }
     else {
-        FO_RUNTIME_ASSERT(_engine.get() == holder);
+        FO_VERIFY_AND_THROW(_engine.get() == holder, "Entity holder is not the engine singleton");
         entity->SetEntityLock(_engine->GetEntityLock());
     }
 
@@ -1560,19 +1560,19 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> Custom
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_engine->IsValidEntityType(type_name));
-    FO_RUNTIME_ASSERT(!_engine->GetEntityType(type_name).Exported);
+    FO_VERIFY_AND_THROW(_engine->IsValidEntityType(type_name), "Invalid entity type name");
+    FO_VERIFY_AND_THROW(!_engine->GetEntityType(type_name).Exported, "Exported entity type cannot be created as custom entity");
 
     const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
-        FO_RUNTIME_ASSERT(has_protos);
+        FO_VERIFY_AND_THROW(has_protos, "Missing required has protos");
         proto = _engine->GetProtoEntity(type_name, pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
     }
     else {
-        FO_RUNTIME_ASSERT(!has_protos);
+        FO_VERIFY_AND_THROW(!has_protos, "Has protos is already set");
     }
 
     const auto* registrator = _engine->GetPropertyRegistrator(type_name);
@@ -1595,7 +1595,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_RUNTIME_ASSERT(id.underlying_value() != 0);
+        FO_VERIFY_AND_THROW(id.underlying_value() != 0, "Generated entity id is zero");
 
         if (!_engine->IsValidEntityType(type_name)) {
             WriteLog(LogType::Warning, "Custom entity {} type {} not valid", id, type_name);
@@ -1607,7 +1607,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             shared_lock lock {_registryLock};
 
             const auto type_it = _allCustomEntities.find(type_name);
-            FO_RUNTIME_ASSERT(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0);
+            FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
         const auto collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
@@ -1706,8 +1706,8 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 
     if (const auto id = entity->GetCustomHolderId()) {
         auto parent = entity->GetParent();
-        FO_RUNTIME_ASSERT(parent);
-        FO_RUNTIME_ASSERT(parent->GetId() == id);
+        FO_VERIFY_AND_THROW(parent, "Missing required parent");
+        FO_VERIFY_AND_THROW(parent->GetId() == id, "Loaded child entity is linked to a different parent");
         ValidateEntityAccess(parent.get());
         holder = parent;
     }
@@ -1754,7 +1754,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             auto custom_entity_holder = custom_entity->GetParent();
 
             if (custom_entity_holder) {
-                FO_RUNTIME_ASSERT(custom_entity_holder->GetId() == custom_entity->GetCustomHolderId());
+                FO_VERIFY_AND_THROW(custom_entity_holder->GetId() == custom_entity->GetCustomHolderId(), "Custom entity holder id does not match custom entity owner");
                 ValidateEntityAccess(custom_entity_holder.get());
 
                 const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
@@ -1797,16 +1797,16 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
                 auto item_cr = item->GetParent<Critter>();
-                FO_RUNTIME_ASSERT(item_cr);
-                FO_RUNTIME_ASSERT(item_cr->GetId() == item->GetCritterId());
+                FO_VERIFY_AND_THROW(item_cr, "Missing required item critter");
+                FO_VERIFY_AND_THROW(item_cr->GetId() == item->GetCritterId(), "Inventory item critter owner id mismatch");
                 ValidateEntityAccess(item_cr.get());
                 find_players_recursively(item_cr.get(), derived_sync);
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_sync == EntityHolderEntrySync::PublicSync) {
                     auto item_map = item->GetParent<Map>();
-                    FO_RUNTIME_ASSERT(item_map);
-                    FO_RUNTIME_ASSERT(item_map->GetId() == item->GetMapId());
+                    FO_VERIFY_AND_THROW(item_map, "Missing required item map");
+                    FO_VERIFY_AND_THROW(item_map->GetId() == item->GetMapId(), "Map item owner id mismatch");
                     ValidateEntityAccess(item_map.get());
 
                     for (auto& map_cr : item_map->GetPlayerCritters()) {
@@ -1818,8 +1818,8 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
             } break;
             case ItemOwnership::ItemContainer: {
                 auto item_cont = item->GetParent<Item>();
-                FO_RUNTIME_ASSERT(item_cont);
-                FO_RUNTIME_ASSERT(item_cont->GetId() == item->GetContainerId());
+                FO_VERIFY_AND_THROW(item_cont, "Missing required item cont");
+                FO_VERIFY_AND_THROW(item_cont->GetId() == item->GetContainerId(), "Container item owner id mismatch");
                 ValidateEntityAccess(item_cont.get());
                 find_players_recursively(item_cont.get(), derived_sync);
             } break;

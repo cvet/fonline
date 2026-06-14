@@ -142,8 +142,8 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             });
         }
         else if (type.IsEnum) {
-            FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-            FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+            FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
+            FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
             writer.WritePtr(static_cast<const uint8_t*>(ptr), type.Size);
         }
         else if (type.IsString) {
@@ -237,7 +237,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(engine->GetSide() != EngineSideKind::MapperSide);
+    FO_VERIFY_AND_THROW(engine->GetSide() != EngineSideKind::MapperSide, "Remote calls are not supported on mapper side");
 
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
@@ -250,13 +250,13 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
             return reader.ReadPtr<void>(type.Size);
         }
         else if (type.IsEnum) {
-            FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-            FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+            FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
+            FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
             return reader.ReadPtr<void>(type.Size);
         }
         else if (type.IsString) {
             const auto str_len = reader.Read<int32_t>();
-            FO_RUNTIME_ASSERT(str_len >= 0);
+            FO_VERIFY_AND_THROW(str_len >= 0, "Str len is negative", str_len);
             const auto* s = reader.ReadPtr<char>(str_len);
             return cast_to_void(&std::get<string>(temp_data.emplace_back(string(s, str_len))));
         }
@@ -294,11 +294,11 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     size_t arg_index = 0;
 
     if (engine->GetSide() == EngineSideKind::ServerSide) {
-        FO_RUNTIME_ASSERT(inbound_call.Args.size() + 1 == func->GetParamCount());
+        FO_VERIFY_AND_THROW(inbound_call.Args.size() + 1 == func->GetParamCount(), "Inbound server remote call argument count does not match function signature", inbound_call.Name, inbound_call.Args.size(), func->GetParamCount());
         data_storage[arg_index++] = cast_to_void(&entity);
     }
     else {
-        FO_RUNTIME_ASSERT(inbound_call.Args.size() == func->GetParamCount());
+        FO_VERIFY_AND_THROW(inbound_call.Args.size() == func->GetParamCount(), "Inbound remote call argument count does not match function signature", inbound_call.Name, inbound_call.Args.size(), func->GetParamCount());
     }
 
     for (const auto& arg : inbound_call.Args) {
@@ -308,7 +308,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
         }
         else if (arg.Type.Kind == ComplexTypeKind::Array) {
             const auto arr_size = reader.Read<int32_t>();
-            FO_RUNTIME_ASSERT(arr_size >= 0);
+            FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
             auto* arr = CreateScriptArray(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptArray>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptArray>::adopt, arr))).get_pp());
             arr->Reserve(arr_size);
@@ -320,7 +320,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
         }
         else if (arg.Type.Kind == ComplexTypeKind::Dict) {
             const auto dict_size = reader.Read<int32_t>();
-            FO_RUNTIME_ASSERT(dict_size >= 0);
+            FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
             auto* dict = CreateScriptDict(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptDict>::adopt, dict))).get_pp());
 
@@ -332,7 +332,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
         }
         else if (arg.Type.Kind == ComplexTypeKind::DictOfArray) {
             const auto dict_size = reader.Read<int32_t>();
-            FO_RUNTIME_ASSERT(dict_size >= 0);
+            FO_VERIFY_AND_THROW(dict_size >= 0, "Dict size is negative", dict_size);
             auto* dict = CreateScriptDict(as_engine, MakeScriptTypeName(arg.Type).c_str());
             data_storage[arg_index++] = cast_to_void(std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(refcount_ptr(refcount_ptr<ScriptDict>::adopt, dict))).get_pp());
 
@@ -340,7 +340,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
                 void* key = read_simple(arg.Type.KeyType.value());
 
                 const auto arr_size = reader.Read<int32_t>();
-                FO_RUNTIME_ASSERT(arr_size >= 0);
+                FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
                 auto* arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg.Type.BaseType)).c_str());
 
                 for (int32_t l = 0; l < arr_size; l++) {
@@ -404,7 +404,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
     FO_STACK_TRACE_ENTRY();
 
     const auto* as_module = as_engine->GetModuleByIndex(0);
-    FO_RUNTIME_ASSERT(as_module);
+    FO_VERIFY_AND_THROW(as_module, "Missing required AngelScript module");
     auto* backend = GetScriptBackend(as_engine);
     const auto* meta = backend->GetMetadata();
 
@@ -417,7 +417,7 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
             if (backend->HasGameEngine()) {
                 auto* engine = backend->GetGameEngine();
                 engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8_t> data) FO_DEFERRED {
-                    FO_RUNTIME_ASSERT(name == inbound_call.Name);
+                    FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
                     InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
                 });
             }

@@ -198,7 +198,7 @@ auto net_sockets::last_error_text() noexcept -> string
 
 tcp_socket::tcp_socket(socket_t sock) noexcept :
     _sock {unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*p);
         delete p;
     })}
@@ -237,7 +237,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     }
 
     _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*p);
         delete p;
     });
@@ -304,7 +304,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     }
 
     _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*p);
         delete p;
     });
@@ -434,7 +434,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     }
 
     _listenSock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*p);
         delete p;
     });
@@ -527,7 +527,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     }
 
     _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_RUNTIME_ASSERT(*p != INVALID_SOCKET_VALUE);
+        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*p);
         delete p;
     });

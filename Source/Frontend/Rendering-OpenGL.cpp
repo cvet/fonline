@@ -165,7 +165,7 @@ static void LoadOpenGLFunctions() noexcept
         expr; \
         if ((ctx)->RenderDebug) { \
             GLenum err__ = glGetError(); \
-            FO_RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, strex(#expr " error {}", ErrCodeToString(err__))); \
+            FO_VERIFY_AND_THROW(err__ == GL_NO_ERROR, #expr " produced OpenGL error", ErrCodeToString(err__)); \
         } \
     } while (0)
 
@@ -308,7 +308,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_ctx);
+    FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = SafeAlloc::MakeUnique<Context>();
 
     WriteLog("Used OpenGL rendering");
@@ -321,10 +321,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     // Create context
 #if !FO_WEB
     _ctx->GlContext = SDL_GL_CreateContext(_ctx->SdlWindow.get());
-    FO_RUNTIME_ASSERT_STR(_ctx->GlContext, strex("OpenGL context not created, error '{}'", SDL_GetError()));
+    FO_VERIFY_AND_THROW(_ctx->GlContext, "OpenGL context was not created", SDL_GetError());
 
     const auto make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
-    FO_RUNTIME_ASSERT_STR(make_current, strex("Can't set current context, error '{}'", SDL_GetError()));
+    FO_VERIFY_AND_THROW(make_current, "OpenGL context could not be made current", SDL_GetError());
 
     if (settings.VSync) {
         if (!SDL_GL_SetSwapInterval(-1)) {
@@ -353,10 +353,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(WebRelated::CanvasSelector.c_str(), &attr);
-    FO_RUNTIME_ASSERT_STR(gl_context > 0, strex("Failed to create WebGL2 context, error {}", static_cast<int32_t>(gl_context)));
+    FO_VERIFY_AND_THROW(gl_context > 0, "WebGL2 context creation failed", static_cast<int32_t>(gl_context));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
-    FO_RUNTIME_ASSERT_STR(r >= 0, strex("Can't set current context, error {}", r));
+    FO_VERIFY_AND_THROW(r >= 0, "WebGL context could not be made current", r);
 
     _ctx->GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
 #endif
@@ -383,7 +383,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         FO_GL_FUNCTIONS(FO_GL_FUNCTION_VALIDATE);
 #undef FO_GL_FUNCTION_VALIDATE
 
-        FO_RUNTIME_ASSERT_STR(missing_funcs.empty(), strex("Missing required OpenGL entry points: {}", missing_funcs));
+        FO_VERIFY_AND_THROW(missing_funcs.empty(), "Required OpenGL entry points are missing", missing_funcs);
     }
 
     int32_t gl_major = 0;
@@ -446,7 +446,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     if (!GL_HAS(framebuffer_object)) {
         check_extension("framebuffer_object_ext", GL_HAS(framebuffer_object_ext), true);
     }
-    FO_RUNTIME_ASSERT(!extension_errors);
+    FO_VERIFY_AND_THROW(!extension_errors, "Extension errors is already set");
 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
@@ -494,8 +494,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     auto atlas_h = atlas_w;
     atlas_w = std::min(max_viewport_size[0], atlas_w);
     atlas_h = std::min(max_viewport_size[1], atlas_h);
-    FO_RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, strex("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    FO_RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, strex("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    FO_VERIFY_AND_THROW(atlas_w >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas width is below the required minimum", AppRender::MIN_ATLAS_SIZE);
+    FO_VERIFY_AND_THROW(atlas_h >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas height is below the required minimum", AppRender::MIN_ATLAS_SIZE);
     const_cast<int32_t&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int32_t&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
@@ -609,7 +609,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 
     GLenum status;
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    FO_RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, strex("Framebuffer not created, status {:#X}", status));
+    FO_VERIFY_AND_THROW(status == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer is incomplete", status);
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, _ctx->BaseFrameBufObj));
 
@@ -643,10 +643,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         const string vert_fname = strex("{}.fofx-{}-vert-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
-        FO_RUNTIME_ASSERT(!vert_content.empty());
+        FO_VERIFY_AND_THROW(!vert_content.empty(), "OpenGL effect vertex shader content is empty after loading", name, pass + 1, vert_fname);
         const string frag_fname = strex("{}.fofx-{}-frag-{}", strex(name).erase_file_extension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
-        FO_RUNTIME_ASSERT(!frag_content.empty());
+        FO_VERIFY_AND_THROW(!frag_content.empty(), "OpenGL effect fragment shader content is empty after loading", name, pass + 1, frag_fname);
 
         // Create shaders
         GLuint vs;
@@ -967,7 +967,7 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.is_valid_pos(pos));
+    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested OpenGL texture pixel is outside texture bounds", pos, Size);
 
     ucolor result;
 
@@ -986,12 +986,12 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
     vector<ucolor> result;
     result.resize(numeric_cast<size_t>(size.width) * size.height);
@@ -1011,10 +1011,10 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(pos.x + size.width <= Size.width);
-    FO_RUNTIME_ASSERT(pos.y + size.height <= Size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture update rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture update rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
     if (use_dest_pitch) {
         GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, Size.width));
@@ -1127,12 +1127,12 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        FO_RUNTIME_ASSERT(Vertices.empty());
+        FO_VERIFY_AND_THROW(Vertices.empty(), "Vertices must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
-        FO_RUNTIME_ASSERT(Vertices3D.empty());
+        FO_VERIFY_AND_THROW(Vertices3D.empty(), "Vertices3 d must be empty before this operation");
         upload_vertices = custom_vertices_size.value_or(VertCount);
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
     }

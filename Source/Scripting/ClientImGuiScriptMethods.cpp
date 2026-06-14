@@ -164,7 +164,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32
     CheckUvRange(uv0, uv1);
 
     auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_RUNTIME_ASSERT(client);
+    FO_VERIFY_AND_THROW(client, "Missing client instance");
 
     ImGui::Dummy({imageSize.width, imageSize.height});
     DrawItemSprite(client, sprId, imageSize, uv0, uv1, ucolor::clear);
@@ -181,7 +181,7 @@ FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, 
     }
 
     auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_RUNTIME_ASSERT(client);
+    FO_VERIFY_AND_THROW(client, "Missing client instance");
 
     const auto button_id = string(strId);
     const auto pressed = ImGui::InvisibleButton(button_id.c_str(), {imageSize.width, imageSize.height});

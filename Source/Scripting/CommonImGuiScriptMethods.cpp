@@ -149,9 +149,9 @@ FO_SCRIPT_API ScriptImGui* Common_Game_ImGui(BaseEngine* engine)
         throw ScriptException("You can use this function only in active ImGui frame");
     }
 
-    FO_RUNTIME_ASSERT(engine);
+    FO_VERIFY_AND_THROW(engine, "Missing required engine");
     auto* imgui = engine->GetImGui();
-    FO_RUNTIME_ASSERT(imgui);
+    FO_VERIFY_AND_THROW(imgui, "Missing required ImGui");
     return imgui;
 }
 

@@ -172,8 +172,8 @@ void NetOutBuffer::WritePropsData(vector<const uint8_t*>* props_data, const vect
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(props_data->size() == props_data_sizes->size());
-    FO_RUNTIME_ASSERT(props_data->size() <= 0xFFFF);
+    FO_VERIFY_AND_THROW(props_data->size() == props_data_sizes->size(), "Property payload pointer list and size list have different lengths", props_data->size(), props_data_sizes->size());
+    FO_VERIFY_AND_THROW(props_data->size() <= 0xFFFF, "Property payload list is too large for uint16 network encoding", props_data->size(), 0xFFFF);
     Write<uint16_t>(numeric_cast<uint16_t>(props_data->size()));
 
     for (size_t i = 0; i < props_data->size(); i++) {
@@ -187,7 +187,7 @@ void NetOutBuffer::StartMsg(NetMessage msg)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_msgStarted);
+    FO_VERIFY_AND_THROW(!_msgStarted, "Msg started is already set");
 
     _msgStarted = true;
     _startedBufPos = _bufEndPos;
@@ -205,8 +205,8 @@ void NetOutBuffer::EndMsg()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_msgStarted);
-    FO_RUNTIME_ASSERT(_bufEndPos > _startedBufPos);
+    FO_VERIFY_AND_THROW(_msgStarted, "Missing required msg started");
+    FO_VERIFY_AND_THROW(_bufEndPos > _startedBufPos, "Network message ended without any payload after its start marker", _startedBufPos, _bufEndPos);
 
     _msgStarted = false;
 
@@ -217,7 +217,7 @@ void NetOutBuffer::EndMsg()
     // Verify signature
     uint32_t msg_signature;
     CopyBuf(_bufData.data() + _startedBufPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
-    FO_RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+    FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
 
     // Write actual message length
     CopyBuf(&msg_len, _bufData.data() + _startedBufPos + sizeof(msg_signature), EncryptKey(0), sizeof(msg_len));
@@ -331,12 +331,12 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     uint32_t msg_signature;
     CopyBuf(_bufData.data() + _bufReadPos, &msg_signature, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
     _bufReadPos += sizeof(msg_signature);
-    FO_RUNTIME_ASSERT(msg_signature == NETMSG_SIGNATURE);
+    FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Incoming network message signature does not match protocol marker", msg_signature, NETMSG_SIGNATURE, _bufReadPos, _bufEndPos);
 
     uint32_t msg_len;
     CopyBuf(_bufData.data() + _bufReadPos, &msg_len, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
     _bufReadPos += sizeof(msg_len);
-    FO_RUNTIME_ASSERT(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
+    FO_VERIFY_AND_THROW(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len), "Incoming network message length is smaller than the protocol header", msg_len, sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
 
     NetMessage msg;
     CopyBuf(_bufData.data() + _bufReadPos, &msg, EncryptKey(sizeof(msg)), sizeof(msg));

@@ -124,7 +124,7 @@ static void AdvanceCritterDir(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
     cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
 }
 
@@ -1444,7 +1444,7 @@ void MapperEngine::PushUndoOp(MapView* map, UndoOp op)
     }
 
     auto* ctx = GetUndoContext(map, true);
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     ctx->RedoStack.clear();
     ctx->UndoStack.emplace_back(std::move(op));
@@ -1625,7 +1625,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (owner == nullptr) {
         if (entity_buf.IsCritter) {
@@ -4586,7 +4586,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (!_curMap->GetSize().is_valid_pos(hex)) {
         throw GenericException("Invalid hex for critter spawn", pid, hex.x, hex.y);
@@ -4629,7 +4629,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     const auto* proto = GetProtoItem(pid);
 
@@ -4726,7 +4726,7 @@ auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDir(), &cr->GetProperties());
@@ -5972,7 +5972,8 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "merge-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             MergeItemsToMultihexMeshes(_curMap.get());
-            FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(_curMap.get()) == 0);
+            const auto merge_items_repeat_count = MergeItemsToMultihexMeshes(_curMap.get());
+            FO_VERIFY_AND_THROW(merge_items_repeat_count == 0, "Mapper merge-items command is not idempotent for current map", _curMap->GetName(), merge_items_repeat_count);
             SetMapDirty(_curMap.get());
 
             if (!before_snapshot.empty()) {
@@ -5985,7 +5986,8 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "break-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             BreakItemsMultihexMeshes(_curMap.get());
-            FO_RUNTIME_ASSERT(BreakItemsMultihexMeshes(_curMap.get()) == 0);
+            const auto break_items_repeat_count = BreakItemsMultihexMeshes(_curMap.get());
+            FO_VERIFY_AND_THROW(break_items_repeat_count == 0, "Mapper break-items command is not idempotent for current map", _curMap->GetName(), break_items_repeat_count);
             SetMapDirty(_curMap.get());
 
             if (!before_snapshot.empty()) {
@@ -6037,7 +6039,8 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     }
 
     MergeItemsToMultihexMeshes(new_map.get());
-    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(new_map.get()) == 0);
+    const auto load_merge_repeat_count = MergeItemsToMultihexMeshes(new_map.get());
+    FO_VERIFY_AND_THROW(load_merge_repeat_count == 0, "Loaded map merge-items normalization is not idempotent", map_name, load_merge_repeat_count);
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
@@ -6080,10 +6083,10 @@ void MapperEngine::ShowMap(MapView* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot show a destroyed map", map->GetName(), LoadedMaps.size());
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper show requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size());
 
     WorkspaceWindowVisible = true;
     MapListWindowVisible = false;
@@ -6159,18 +6162,19 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot save a destroyed map", map->GetName(), custom_name);
 
     MergeItemsToMultihexMeshes(map);
-    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(map) == 0);
+    const auto save_merge_repeat_count = MergeItemsToMultihexMeshes(map);
+    FO_VERIFY_AND_THROW(save_merge_repeat_count == 0, "Map save merge-items normalization is not idempotent", map->GetName(), custom_name, save_merge_repeat_count);
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper save requested for a map that is not tracked as loaded", map->GetName(), custom_name, LoadedMaps.size());
 
     const auto fomap_content = map->SaveToText();
 
     const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
-    FO_RUNTIME_ASSERT(!fomap_name.empty());
+    FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a .fomap file name for saving", map->GetName(), custom_name, map->GetProto() != nullptr ? map->GetProto()->GetName() : hstring {});
 
     string fomap_path;
     const auto fomap_files = MapsFileSys.FilterFiles("fomap");
@@ -6192,13 +6196,13 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 
     if (!dir.empty()) {
         const auto dir_ok = fs_create_directories(dir);
-        FO_RUNTIME_ASSERT(dir_ok);
+        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create .fomap output directory", dir, fomap_path, fomap_name);
     }
 
     std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
-    FO_RUNTIME_ASSERT(fomap_file);
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
     fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
-    FO_RUNTIME_ASSERT(fomap_file);
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
 
     OnEditMapSave.Fire(map);
     auto* ctx = GetUndoContext(map, true);
@@ -6210,7 +6214,7 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot unload a destroyed map", map->GetName(), clear_undo);
 
     if (_curMap == map) {
         SelectClear();
@@ -6219,7 +6223,7 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
     }
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper unload requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size(), clear_undo);
 
     SetMapDirty(map, false);
 
@@ -6235,7 +6239,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : string {};
 

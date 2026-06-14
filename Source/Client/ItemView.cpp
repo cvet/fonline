@@ -50,7 +50,7 @@ ItemView::~ItemView()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_VERIFY(_innerItems.empty());
+    FO_VERIFY_AND_CONTINUE(_innerItems.empty(), "Client item view has inner items during destruction", GetId(), _innerItems.size());
 }
 
 void ItemView::OnDestroySelf()
@@ -109,9 +109,9 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!item->GetStatic());
-    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
-    FO_RUNTIME_ASSERT(item->GetContainerId() == GetId());
+    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
+    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::ItemContainer, "Item is not owned by this container");
+    FO_VERIFY_AND_THROW(item->GetContainerId() == GetId(), "Item belongs to a different container");
 
     vec_add_unique_value(_innerItems, item);
 

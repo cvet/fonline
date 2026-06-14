@@ -44,7 +44,7 @@ RenderTargetManager::RenderTargetManager(IAppRender& render, FlushCallback flush
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_flush);
+    FO_VERIFY_AND_THROW(_flush, "Missing required flush");
 }
 
 auto RenderTargetManager::GetRenderTargetStack() const -> const vector<raw_ptr<RenderTarget>>&
@@ -72,8 +72,8 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width >= 0);
-    FO_RUNTIME_ASSERT(size.height >= 0);
+    FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+    FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
     _flush();
 
@@ -92,9 +92,9 @@ void RenderTargetManager::ResizeRenderTarget(RenderTarget* rt, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(rt);
-    FO_RUNTIME_ASSERT(size.width >= 0);
-    FO_RUNTIME_ASSERT(size.height >= 0);
+    FO_VERIFY_AND_THROW(rt, "Missing required rt");
+    FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+    FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
     if (rt->_size == size) {
         return;
@@ -216,7 +216,7 @@ void RenderTargetManager::DeleteRenderTarget(RenderTarget* rt)
     }
 
     const auto it = std::ranges::find_if(_rtAll, [rt](auto&& check_rt) { return check_rt.get() == rt; });
-    FO_RUNTIME_ASSERT(it != _rtAll.end());
+    FO_VERIFY_AND_THROW(it != _rtAll.end(), "Lookup failed in rt all");
     _rtAll.erase(it);
 }
 

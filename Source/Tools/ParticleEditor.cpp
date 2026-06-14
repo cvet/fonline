@@ -136,11 +136,11 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
     _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor->Settings, *_impl->EffectMngr, App->Render, _editor->BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
         const auto file = editor.BakedResources.ReadFile(path);
-        FO_RUNTIME_ASSERT(file);
+        FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
         auto reader = file.GetReader();
 
         const auto check_number = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(check_number == 42);
+        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
 
         (void)reader.GetLEUInt16();
         (void)reader.GetLEUInt16();
@@ -222,10 +222,10 @@ void ParticleEditor::OnDraw()
             ImGui::SameLine();
             if (ImGui::Button("Save")) {
                 const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
 
                 const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
-                FO_RUNTIME_ASSERT(saver);
+                FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
                 const auto path = std::string(file.GetDiskPath());
 

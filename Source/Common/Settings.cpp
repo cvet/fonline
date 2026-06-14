@@ -635,7 +635,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_bakingMode);
+    FO_VERIFY_AND_THROW(_bakingMode, "Missing required baking mode");
 
     map<string, string> result;
 

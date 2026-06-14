@@ -275,7 +275,7 @@ void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ac
 
     for (auto it = _pendingPackets.begin(); it != _pendingPackets.end();) {
         if (IsPacketAcknowledged(it->Sequence, ack_sequence, ack_bits)) {
-            FO_RUNTIME_ASSERT(_pendingBytes >= it->Payload.size());
+            FO_VERIFY_AND_THROW(_pendingBytes >= it->Payload.size(), "UDP ordered channel pending byte counter is smaller than an acknowledged packet payload", _pendingBytes, it->Payload.size(), it->Sequence, ack_sequence, ack_bits);
             _pendingBytes -= it->Payload.size();
             it = _pendingPackets.erase(it);
         }

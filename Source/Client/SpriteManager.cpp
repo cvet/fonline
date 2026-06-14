@@ -119,7 +119,7 @@ auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(min_value <= max_value);
+    FO_VERIFY_AND_THROW(min_value <= max_value, "Sprite random integer range has an inverted min/max", min_value, max_value);
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
@@ -302,7 +302,7 @@ void SpriteManager::EndScene()
     Flush();
 
     if (_rtMain) {
-        FO_RUNTIME_ASSERT(_rtMain == _rtMngr.GetCurrentRenderTarget());
+        FO_VERIFY_AND_THROW(_rtMain == _rtMngr.GetCurrentRenderTarget(), "Sprite manager render target was changed unexpectedly");
         _rtMngr.PopRenderTarget();
 
         if (_window->IsVirtual()) {
@@ -314,8 +314,8 @@ void SpriteManager::EndScene()
         }
     }
 
-    FO_RUNTIME_ASSERT(_rtMngr.GetRenderTargetStack().empty());
-    FO_RUNTIME_ASSERT(_scissorStack.empty());
+    FO_VERIFY_AND_THROW(_rtMngr.GetRenderTargetStack().empty(), "Sprite drawing left render targets on the render-target stack", _rtMngr.GetRenderTargetStack().size());
+    FO_VERIFY_AND_THROW(_scissorStack.empty(), "Scissor stack must be empty before this operation");
 }
 
 auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
@@ -611,7 +611,7 @@ void SpriteManager::Flush()
     size_t ipos = 0;
 
     for (auto& dip : _dipQueue) {
-        FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
+        FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
 
         if (dip.SourceEffect->IsNeedEggBuf()) {
             auto& egg_buf = dip.SourceEffect->EggBuf = RenderEffect::EggBuffer();
@@ -638,7 +638,7 @@ void SpriteManager::Flush()
 
     _dipQueue.clear();
 
-    FO_RUNTIME_ASSERT(ipos == _spritesDrawBuf->IndCount);
+    FO_VERIFY_AND_THROW(ipos == _spritesDrawBuf->IndCount, "Sprite index buffer position is out of sync with draw buffer");
 
     _spritesDrawBuf->VertCount = 0;
     _spritesDrawBuf->IndCount = 0;
@@ -649,7 +649,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
     FO_STACK_TRACE_ENTRY();
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -712,7 +712,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
     }
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -749,7 +749,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     }
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -831,8 +831,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
     if (atlas_spr == nullptr) {
@@ -860,7 +860,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
     color = ApplyColorBrightness(color);
 
     auto* effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
     const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;
@@ -1113,14 +1113,14 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     for (uint32_t i = range_begin; i < range_end; i++) {
         const auto& mspr = sprites[i];
-        FO_RUNTIME_ASSERT(mspr->IsValid());
+        FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
 
         if (mspr->IsHidden()) {
             continue;
         }
 
         const Sprite* spr = mspr->GetSprite();
-        FO_RUNTIME_ASSERT(spr);
+        FO_VERIFY_AND_THROW(spr, "Missing required sprite");
 
         irect32 mspr_rect = mspr->GetDrawRect();
         mspr_rect.x -= draw_area.x;
@@ -1359,7 +1359,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     Flush();
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.Primitive.get();
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     // Check primitives
     const auto count = points.size();
@@ -1372,16 +1372,16 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     case RenderPrimitiveType::PointList:
         break;
     case RenderPrimitiveType::LineList:
-        FO_RUNTIME_ASSERT(count % 2 == 0);
+        FO_VERIFY_AND_THROW(count % 2 == 0, "LineList primitive requires an even number of sprite vertices", count, prim);
         break;
     case RenderPrimitiveType::LineStrip:
-        FO_RUNTIME_ASSERT(count > 1);
+        FO_VERIFY_AND_THROW(count > 1, "Sprite corner count is too small", count);
         break;
     case RenderPrimitiveType::TriangleList:
-        FO_RUNTIME_ASSERT(count % 3 == 0);
+        FO_VERIFY_AND_THROW(count % 3 == 0, "TriangleList primitive requires sprite vertices grouped by triples", count, prim);
         break;
     case RenderPrimitiveType::TriangleStrip:
-        FO_RUNTIME_ASSERT(count > 2);
+        FO_VERIFY_AND_THROW(count > 2, "Sprite triangle corner count is too small", count);
         break;
     }
 
@@ -1438,10 +1438,10 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(spr);
-    FO_RUNTIME_ASSERT(effect);
-    FO_RUNTIME_ASSERT(padding >= 0);
-    FO_RUNTIME_ASSERT(effect->GetUsage() == EffectUsage::QuadSprite);
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
+    FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
+    FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::QuadSprite, "Effect usage is not quad sprite");
 
     const auto* source_spr = spr;
 

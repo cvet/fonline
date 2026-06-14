@@ -355,7 +355,7 @@ namespace BakerTests
         [[nodiscard]] auto GetOutputText(string_view path) const -> string
         {
             const auto it = Outputs.find(string(path));
-            FO_RUNTIME_ASSERT(it != Outputs.end());
+            FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
             return string {it->second.begin(), it->second.end()};
         }
 

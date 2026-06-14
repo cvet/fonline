@@ -51,7 +51,7 @@ Map::Map(ServerEngine* engine, ident_t id, const ProtoMap* proto, Location* loca
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_staticMap);
+    FO_STRONG_ASSERT(_staticMap, "Server map has no static map", id);
 
     _mapSize = GetSize();
 
@@ -70,13 +70,13 @@ Map::~Map()
     FO_STACK_TRACE_ENTRY();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_RUNTIME_VERIFY(_spectatorPlayers.empty());
-        FO_RUNTIME_VERIFY(_critters.empty());
-        FO_RUNTIME_VERIFY(_crittersMap.empty());
-        FO_RUNTIME_VERIFY(_playerCritters.empty());
-        FO_RUNTIME_VERIFY(_nonPlayerCritters.empty());
-        FO_RUNTIME_VERIFY(_items.empty());
-        FO_RUNTIME_VERIFY(_itemsMap.empty());
+        FO_VERIFY_AND_CONTINUE(_spectatorPlayers.empty(), "Server map has spectator players during destruction", GetId(), _spectatorPlayers.size());
+        FO_VERIFY_AND_CONTINUE(_critters.empty(), "Server map has critters during destruction", GetId(), _critters.size());
+        FO_VERIFY_AND_CONTINUE(_crittersMap.empty(), "Server map has critter map entries during destruction", GetId(), _crittersMap.size());
+        FO_VERIFY_AND_CONTINUE(_playerCritters.empty(), "Server map has player critters during destruction", GetId(), _playerCritters.size());
+        FO_VERIFY_AND_CONTINUE(_nonPlayerCritters.empty(), "Server map has non-player critters during destruction", GetId(), _nonPlayerCritters.size());
+        FO_VERIFY_AND_CONTINUE(_items.empty(), "Server map has items during destruction", GetId(), _items.size());
+        FO_VERIFY_AND_CONTINUE(_itemsMap.empty(), "Server map has item map entries during destruction", GetId(), _itemsMap.size());
     }
 }
 
@@ -84,7 +84,7 @@ void Map::AddSpectatorPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(player);
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
     vec_add_unique_value(_spectatorPlayers, player);
 }
 
@@ -92,7 +92,7 @@ void Map::RemoveSpectatorPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(player);
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
     vec_remove_unique_value(_spectatorPlayers, player);
 }
 
@@ -151,7 +151,7 @@ void Map::AddCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_crittersMap.count(cr->GetId()));
+    FO_VERIFY_AND_THROW(!_crittersMap.count(cr->GetId()), "Server map already contains a critter with the same id", GetId(), cr->GetId());
 
     _crittersMap.emplace(cr->GetId(), cr);
     vec_add_unique_value(_critters, cr);
@@ -177,7 +177,7 @@ void Map::RemoveCritter(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _crittersMap.find(cr->GetId());
-    FO_RUNTIME_ASSERT(it != _crittersMap.end());
+    FO_VERIFY_AND_THROW(it != _crittersMap.end(), "Lookup failed in critters map");
     _crittersMap.erase(it);
 
     vec_remove_unique_value(_critters, cr);
@@ -202,12 +202,12 @@ void Map::RefreshCritterPlayerState(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
-    FO_RUNTIME_ASSERT(_crittersMap.count(cr->GetId()));
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    FO_VERIFY_AND_THROW(_crittersMap.count(cr->GetId()), "Server map is refreshing a critter that is absent from the map critter lookup", GetId(), cr->GetId(), _crittersMap.size());
 
     const bool removed_from_players = vec_safe_remove_unique_value(_playerCritters, cr);
     const bool removed_from_non_players = vec_safe_remove_unique_value(_nonPlayerCritters, cr);
-    FO_RUNTIME_ASSERT(removed_from_players || removed_from_non_players);
+    FO_VERIFY_AND_THROW(removed_from_players || removed_from_non_players, "Critter was not removed from any map critter bucket");
 
     auto cr_ids = GetCritterIds();
     vec_safe_remove_unique_value(cr_ids, cr->GetId());
@@ -231,7 +231,7 @@ void Map::AddCritterToField(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot add critter to a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -245,7 +245,7 @@ void Map::RemoveCritterFromField(Critter* cr)
     FO_STACK_TRACE_ENTRY();
 
     const auto hex = cr->GetHex();
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot remove critter from a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
     auto& field = _hexField->GetCellForWriting(hex);
 
@@ -285,9 +285,9 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
-    FO_RUNTIME_ASSERT(!item->GetStatic());
-    FO_RUNTIME_ASSERT(_mapSize.is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
     refcount_ptr map_holder = this;
     refcount_ptr item_holder = item;
     ignore_unused(map_holder);
@@ -342,7 +342,7 @@ void Map::SetItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
+    FO_VERIFY_AND_THROW(!_itemsMap.count(item->GetId()), "Server map already contains an item with the same id", GetId(), item->GetId(), item->GetProtoId());
 
     _itemsMap.emplace(item->GetId(), item);
     vec_add_unique_value(_items, item);
@@ -391,9 +391,9 @@ void Map::RemoveItem(ident_t item_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item_id);
+    FO_VERIFY_AND_THROW(item_id, "Missing required item id");
     const auto it = _itemsMap.find(item_id);
-    FO_RUNTIME_ASSERT(it != _itemsMap.end());
+    FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
     Item* item = it->second.get();
     refcount_ptr map_holder = this;
     refcount_ptr item_holder = item;
@@ -410,7 +410,7 @@ void Map::RemoveItem(ident_t item_id)
 
     RevertEntityLock(item);
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
@@ -468,7 +468,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
 
     if (type == NetProperty::Map) {
         const auto* map = dynamic_cast<Map*>(entity);
-        FO_RUNTIME_ASSERT(map == this);
+        FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
 
         for (auto& cr : _critters) {
             cr->Send_Property(type, prop, entity);
@@ -480,10 +480,10 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
     }
     else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
-        FO_RUNTIME_ASSERT(item);
-        FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-        FO_RUNTIME_ASSERT(item->GetMapId() == GetId());
-        FO_RUNTIME_ASSERT(GetItem(item->GetId()) == item);
+        FO_VERIFY_AND_THROW(item, "Missing item instance");
+        FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
+        FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
+        FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
         refcount_ptr map_holder = this;
         refcount_ptr item_holder = item;
         ignore_unused(map_holder);
@@ -570,10 +570,10 @@ void Map::ChangeViewItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
-    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-    FO_RUNTIME_ASSERT(item->GetMapId() == GetId());
-    FO_RUNTIME_ASSERT(GetItem(item->GetId()) == item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
+    FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
+    FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
     refcount_ptr map_holder = this;
     refcount_ptr item_holder = item;
     ignore_unused(map_holder);
@@ -618,7 +618,7 @@ auto Map::IsMapItemContextChanged(const Item* item, ident_t map_id, mpos hex) co
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (IsDestroyed() || item->IsDestroyed()) {
         return true;
@@ -843,7 +843,7 @@ auto Map::IsCritterOnHex(mpos hex, const Critter* cr) const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     const auto& field = _hexField->GetCellForReading(hex);
 
@@ -1088,7 +1088,7 @@ void Map::VerifyTrigger(Critter* cr, mpos from_hex, mpos to_hex, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     const ident_t initial_cr_map_id = cr->GetMapId();
     const mpos initial_cr_hex = cr->GetHex();

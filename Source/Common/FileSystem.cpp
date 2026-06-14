@@ -44,15 +44,15 @@ FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_dataSource);
+    FO_VERIFY_AND_THROW(_dataSource, "Missing required data source");
 }
 
 auto FileHeader::GetNameNoExt() const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while extracting the resource name", _fileSize, _writeTime);
 
     string_view name = _filePath;
     auto pos = name.find_last_of("/\\");
@@ -74,8 +74,8 @@ auto FileHeader::GetPath() const -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while returning the resource path", _fileSize, _writeTime);
 
     return _filePath;
 }
@@ -84,9 +84,9 @@ auto FileHeader::GetDiskPath() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(!_filePath.empty());
-    FO_RUNTIME_ASSERT(_dataSource->IsDiskDir());
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
+    FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
 
     return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
@@ -95,7 +95,7 @@ auto FileHeader::GetSize() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return _fileSize;
 }
@@ -104,7 +104,7 @@ auto FileHeader::GetWriteTime() const -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return _writeTime;
 }
@@ -113,7 +113,7 @@ auto FileHeader::GetDataSource() const -> const DataSource*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return _dataSource.get();
 }
@@ -122,7 +122,7 @@ auto FileHeader::Copy() const -> FileHeader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
     return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.get());
 }
@@ -138,11 +138,11 @@ auto File::Load(const FileHeader& fh) -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(fh);
+    FO_VERIFY_AND_THROW(fh, "Missing required fh");
     auto size = fh.GetSize();
     auto write_time = fh.GetWriteTime();
     auto buf = fh.GetDataSource()->OpenFile(fh.GetPath(), size, write_time);
-    FO_RUNTIME_ASSERT(buf);
+    FO_VERIFY_AND_THROW(buf, "Missing required buffer");
 
     return File(fh.GetPath(), size, write_time, fh.GetDataSource(), std::move(buf));
 }
@@ -151,8 +151,8 @@ auto File::GetStr() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
     return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
@@ -161,8 +161,8 @@ auto File::GetData() const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
     vector<uint8_t> result;
     result.resize(_fileSize);
@@ -174,8 +174,8 @@ auto File::GetBuf() const -> const uint8_t*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
     return _fileBuf.get();
 }
@@ -184,8 +184,8 @@ auto File::GetReader() const -> FileReader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_isLoaded);
-    FO_RUNTIME_ASSERT(_fileBuf);
+    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
+    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
     return FileReader({_fileBuf.get(), _fileSize});
 }
@@ -245,7 +245,7 @@ void FileReader::SetCurPos(size_t pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos <= _buf.size());
+    FO_VERIFY_AND_THROW(pos <= _buf.size(), "File reader seek position is outside the loaded buffer", pos, _buf.size(), _curPos);
 
     _curPos = pos;
 }
@@ -254,7 +254,7 @@ void FileReader::GoForward(size_t offs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curPos + offs <= _buf.size());
+    FO_VERIFY_AND_THROW(_curPos + offs <= _buf.size(), "File reader forward seek would move past the loaded buffer", _curPos, offs, _buf.size());
 
     _curPos += offs;
 }
@@ -263,7 +263,7 @@ void FileReader::GoBack(size_t offs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(offs <= _curPos);
+    FO_VERIFY_AND_THROW(offs <= _curPos, "File reader cannot move back before the beginning of the buffer", offs, _curPos);
 
     _curPos -= offs;
 }
@@ -272,7 +272,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!fragment.empty());
+    FO_VERIFY_AND_THROW(!fragment.empty(), "File reader fragment search received an empty pattern", _curPos, _buf.size());
 
     if (_curPos + fragment.size() > _buf.size()) {
         return false;
@@ -462,7 +462,7 @@ auto FileCollection::GetFileByIndex(size_t index) const -> const FileHeader&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index < _files.size());
+    FO_VERIFY_AND_THROW(index < _files.size(), "File collection index is outside the collected file list", index, _files.size());
     return _files[index];
 }
 
@@ -558,7 +558,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
             size_t size = 0;
             uint64_t write_time = 0;
             const auto ok = ds->GetFileInfo(path, size, write_time);
-            FO_RUNTIME_ASSERT(ok);
+            FO_VERIFY_AND_THROW(ok, "Data source listed a file but did not return its metadata", ds->GetPackName(), path);
             auto file_header = FileHeader(path, size, write_time, ds.get());
             files.emplace_back(std::move(file_header));
         }
@@ -571,8 +571,8 @@ auto FileSystem::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File existence check received an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File existence check received a non-relative resource path", path);
 
     for (const auto& ds : _dataSources) {
         if (ds->IsFileExists(path)) {
@@ -587,8 +587,8 @@ auto FileSystem::ReadFile(string_view path) const -> File
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File read requested an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File read requested a non-relative resource path", path);
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;
@@ -614,8 +614,8 @@ auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!path.empty());
-    FO_RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    FO_VERIFY_AND_THROW(!path.empty(), "File header read requested an empty resource path", _dataSources.size());
+    FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File header read requested a non-relative resource path", path);
 
     for (const auto& ds : _dataSources) {
         size_t size = 0;

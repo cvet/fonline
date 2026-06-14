@@ -96,14 +96,14 @@ TEST_CASE("EngineMetadata")
         EngineMetadata meta {[] { }};
         AddTestMigrationRule(meta, "OldField", "MiddleField");
 
-        CHECK_THROWS_AS(AddTestMigrationRule(meta, "OldField", "NewField"), AssertationException);
+        CHECK_THROWS_AS(AddTestMigrationRule(meta, "OldField", "NewField"), VerificationException);
     }
 
     SECTION("SelfReferencingMigrationRuleRejected")
     {
         EngineMetadata meta {[] { }};
 
-        CHECK_THROWS_AS(AddTestMigrationRule(meta, "OldField", "OldField"), AssertationException);
+        CHECK_THROWS_AS(AddTestMigrationRule(meta, "OldField", "OldField"), VerificationException);
     }
 
     SECTION("CyclicMigrationRuleChainRejected")
@@ -112,7 +112,7 @@ TEST_CASE("EngineMetadata")
         AddTestMigrationRule(meta, "OldField", "MiddleField");
         AddTestMigrationRule(meta, "MiddleField", "NewField");
 
-        CHECK_THROWS_AS(AddTestMigrationRule(meta, "NewField", "OldField"), AssertationException);
+        CHECK_THROWS_AS(AddTestMigrationRule(meta, "NewField", "OldField"), VerificationException);
     }
 
     SECTION("BulkMigrationRulesWithCycleRejected")
@@ -125,7 +125,7 @@ TEST_CASE("EngineMetadata")
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "OldField"), HashTestMigrationToken(meta, "MiddleField"));
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "MiddleField"), HashTestMigrationToken(meta, "OldField"));
 
-        CHECK_THROWS_AS(meta.RegisterMigrationRules(std::move(migration_rules)), AssertationException);
+        CHECK_THROWS_AS(meta.RegisterMigrationRules(std::move(migration_rules)), VerificationException);
     }
 }
 

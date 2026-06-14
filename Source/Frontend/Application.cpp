@@ -80,7 +80,7 @@ static auto WindowPosToScreenPos(Renderer* renderer, isize32 screen_size, ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(renderer);
+    FO_VERIFY_AND_THROW(renderer, "Missing required renderer");
 
     const auto vp = renderer->GetViewPort();
 
@@ -94,7 +94,7 @@ static auto ScreenPosToWindowPos(Renderer* renderer, isize32 screen_size, ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(renderer);
+    FO_VERIFY_AND_THROW(renderer, "Missing required renderer");
 
     const auto vp = renderer->GetViewPort();
 
@@ -120,7 +120,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_ctx);
+    FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = SafeAlloc::MakeUnique<Context>();
 
     SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
@@ -287,7 +287,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32_t additional_amount, int32_t total_amount) FO_DEFERRED {
                 auto* app = static_cast<Application*>(userdata);
-                FO_RUNTIME_ASSERT(app);
+                FO_VERIFY_AND_THROW(app, "Missing required app");
                 ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
@@ -608,7 +608,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         _imguiEffect = _ctx->ActiveRenderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
             const auto file = resources.ReadFile(path);
-            FO_RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+            FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
             return file.GetStr();
         });
     }
@@ -703,8 +703,8 @@ void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(window);
-    FO_RUNTIME_ASSERT(window->_isVirtual);
+    FO_VERIFY_AND_THROW(window, "Missing application window");
+    FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
     ignore_unused(size);
 
     isize32 desired = window->_virtualSize.width > 0 && window->_virtualSize.height > 0 //
@@ -817,8 +817,8 @@ void Application::BeginWindowRender(AppWindow* window)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(window);
-    FO_RUNTIME_ASSERT(_currentRenderingWindow == nullptr);
+    FO_VERIFY_AND_THROW(window, "Missing application window");
+    FO_VERIFY_AND_THROW(_currentRenderingWindow == nullptr, "Current rendering window must be unset before this operation");
 
     if (!window->_isVirtual) {
         _currentRenderingWindow = window;
@@ -1469,7 +1469,7 @@ void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_ctx->RenderTargetTex == nullptr);
+    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
     _ctx->ActiveRenderer->ClearRenderTarget(_ctx->ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -1621,7 +1621,7 @@ void Application::BeginFrame()
                     touch = AcquireTouchPoint(finger_id);
                 }
 
-                FO_RUNTIME_ASSERT(touch);
+                FO_VERIFY_AND_THROW(touch, "Missing required touch");
                 touch->FingerId = finger_id;
                 touch->StartPos = touch_pos;
                 touch->LastPos = touch_pos;
@@ -1933,7 +1933,7 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
             auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
-            FO_RUNTIME_ASSERT(resized_window);
+            FO_VERIFY_AND_THROW(resized_window, "Missing required resized window");
 
             int32_t width = 0;
             int32_t height = 0;
@@ -2103,7 +2103,7 @@ void Application::EndFrame()
         EndWindowRender();
     }
 
-    FO_RUNTIME_ASSERT(_ctx->RenderTargetTex == nullptr);
+    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
 
     // Skip unprocessed events
     _ctx->EventsQueue->clear();
@@ -2119,7 +2119,7 @@ void Application::EndFrame()
             if (im_tex->Status != ImTextureStatus_OK) {
                 if (im_tex->Status == ImTextureStatus_WantCreate) {
                     const auto tex_size = isize(im_tex->Width, im_tex->Height);
-                    FO_RUNTIME_ASSERT(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()));
+                    FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
                     auto font_tex = _ctx->ActiveRenderer->CreateTexture(tex_size, true, false);
                     const auto* tex_data = static_cast<const ucolor*>(im_tex->GetPixels());
                     font_tex->UpdateTextureRegion({}, tex_size, tex_data);
@@ -2138,7 +2138,7 @@ void Application::EndFrame()
                 else if (im_tex->Status == ImTextureStatus_WantDestroy) {
                     auto* tex = static_cast<RenderTexture*>(im_tex->GetTexID());
                     const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), tex);
-                    FO_RUNTIME_ASSERT(it != _imguiTextures.end());
+                    FO_VERIFY_AND_THROW(it != _imguiTextures.end(), "Lookup failed in imgui textures");
                     _imguiTextures.erase(it);
                     im_tex->SetTexID(ImTextureID_Invalid);
                     im_tex->SetStatus(ImTextureStatus_Destroyed);
@@ -2183,7 +2183,7 @@ void Application::EndFrame()
 
             for (int32_t cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                FO_RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
+                FO_VERIFY_AND_THROW(pcmd->UserCallback == nullptr, "Unexpected ImGui user callback in draw command");
 
                 const auto clip_rect_l = iround<int32_t>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
                 const auto clip_rect_t = iround<int32_t>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
@@ -2533,7 +2533,7 @@ auto AppWindow::ResolveWindowHandle() const -> WindowInternalHandle*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_windowHandle);
+    FO_VERIFY_AND_THROW(_windowHandle, "Missing native window handle");
     return _windowHandle.get_no_const();
 }
 
@@ -2852,7 +2852,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     LockDevice();
     *_app->_ctx->AudioStreamWriter = std::move(stream_callback);
@@ -2865,7 +2865,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_AudioSpec spec;
     spec.format = static_cast<SDL_AudioFormat>(format);
@@ -2893,7 +2893,7 @@ void AppAudio::MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     const float32_t vlume_01 = numeric_cast<float32_t>(std::clamp(volume, 0, 100)) / 100.0f;
     SDL_MixAudio(output, buf, _app->_ctx->AudioSpec.format, numeric_cast<Uint32>(len), vlume_01);
@@ -2905,7 +2905,7 @@ void AppAudio::LockDevice()
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_LockAudioStream(_app->_ctx->AudioStream.get());
 }
@@ -2916,7 +2916,7 @@ void AppAudio::UnlockDevice()
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_UnlockAudioStream(_app->_ctx->AudioStream.get());
 }

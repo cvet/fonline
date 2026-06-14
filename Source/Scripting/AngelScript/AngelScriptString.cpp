@@ -59,7 +59,7 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         const auto* pstr = cast_from_void<const string*>(str);
-        FO_RUNTIME_ASSERT(pstr);
+        FO_VERIFY_AND_THROW(pstr, "Missing required pstr");
         delete pstr;
         return 0;
     }
@@ -69,7 +69,7 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         const auto* pstr = cast_from_void<const string*>(str);
-        FO_RUNTIME_ASSERT(pstr);
+        FO_VERIFY_AND_THROW(pstr, "Missing required pstr");
 
         if (length != nullptr) {
             *length = numeric_cast<AngelScript::asUINT>(pstr->size());
@@ -750,7 +750,7 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto* as_engine = ctx->GetEngine();
     auto* array = CreateScriptArray(as_engine, "array<string>");
 
@@ -802,7 +802,7 @@ static auto ScriptString_Join(const string& str, const ScriptArray* array) -> st
             capacity += entry.length();
         }
 
-        FO_RUNTIME_ASSERT(capacity < std::numeric_limits<int32_t>::max());
+        FO_VERIFY_AND_THROW(capacity < std::numeric_limits<int32_t>::max(), "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), std::numeric_limits<int32_t>::max());
         result.reserve(capacity);
 
         for (int32_t i = 0; i < size - 1; i++) {

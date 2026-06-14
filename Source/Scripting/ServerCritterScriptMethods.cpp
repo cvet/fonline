@@ -102,7 +102,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex)
     }
 
     auto map = self->GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     ValidateEntityAccess(map.get());
 
@@ -123,7 +123,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(Critter* self, mpos hex, mdir di
     }
 
     auto map = self->GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     ValidateEntityAccess(map.get());
 
@@ -609,7 +609,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 
     if (self->GetMapId()) {
         map = self->GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
 
         ValidateEntityAccess(map.get());
 

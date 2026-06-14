@@ -159,7 +159,7 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ti && string_view(ti->GetName()) == "array");
+    FO_VERIFY_AND_THROW(ti && string_view(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
     auto* engine = ti->GetEngine();
 
@@ -168,7 +168,7 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
     }
     else {
         _elementSize = engine->GetSizeOfPrimitiveType(_subTypeId);
-        FO_RUNTIME_ASSERT(_elementSize != 0);
+        FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
     }
 
     PrecacheSubTypeData();
@@ -213,14 +213,14 @@ ScriptArray::ScriptArray(int32_t length, AngelScript::asITypeInfo* ti) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ti && string_view(ti->GetName()) == "array");
+    FO_VERIFY_AND_THROW(ti && string_view(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         _elementSize = sizeof(void*);
     }
     else {
         _elementSize = _typeInfo->GetEngine()->GetSizeOfPrimitiveType(_subTypeId);
-        FO_RUNTIME_ASSERT(_elementSize != 0);
+        FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
     }
 
     PrecacheSubTypeData();
@@ -238,14 +238,14 @@ ScriptArray::ScriptArray(int32_t length, void* def_val, AngelScript::asITypeInfo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ti && string(ti->GetName()) == "array");
+    FO_VERIFY_AND_THROW(ti && string(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         _elementSize = sizeof(void*);
     }
     else {
         _elementSize = _typeInfo->GetEngine()->GetSizeOfPrimitiveType(_subTypeId);
-        FO_RUNTIME_ASSERT(_elementSize != 0);
+        FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
     }
 
     PrecacheSubTypeData();
@@ -268,7 +268,7 @@ ScriptArray::ScriptArray(const ScriptArray& other) :
     FO_STACK_TRACE_ENTRY();
 
     _elementSize = other._elementSize;
-    FO_RUNTIME_ASSERT(_elementSize != 0);
+    FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
 
     PrecacheSubTypeData();
 
@@ -308,7 +308,7 @@ void ScriptArray::SetValue(int32_t index, void* value)
     FO_STACK_TRACE_ENTRY();
 
     void* ptr = At(index);
-    FO_RUNTIME_ASSERT(ptr != nullptr);
+    FO_VERIFY_AND_THROW(ptr != nullptr, "Missing required pointer");
 
     if ((_subTypeId & ~AngelScript::asTYPEID_MASK_SEQNBR) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
         _typeInfo->GetEngine()->AssignScriptObject(ptr, value, _typeInfo->GetSubType());
@@ -390,7 +390,7 @@ void ScriptArray::Resize(int32_t delta, int32_t at)
     FO_STACK_TRACE_ENTRY();
 
     if (delta < 0) {
-        FO_RUNTIME_ASSERT(-delta <= GetSize());
+        FO_VERIFY_AND_THROW(-delta <= GetSize(), "Script array resize cannot remove more elements than the array contains", delta, GetSize(), at);
         at = std::clamp(at, 0, GetSize() + delta);
         Destruct(at, at - delta);
     }
@@ -409,7 +409,7 @@ void ScriptArray::CheckArraySize(int32_t num_elements) const
         throw ScriptException("Negative array size", num_elements);
     }
 
-    FO_RUNTIME_ASSERT(_elementSize != 0);
+    FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
     const int32_t max_size = 0x7FFFFFFF / _elementSize;
 
     if (num_elements > max_size) {
@@ -534,7 +534,7 @@ void ScriptArray::CreateBuffer(int32_t num_elements)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(num_elements >= 0);
+    FO_VERIFY_AND_THROW(num_elements >= 0, "Num elements is negative");
 
     Construct(0, num_elements);
 }
@@ -550,7 +550,7 @@ void ScriptArray::Construct(int32_t start, int32_t end)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(start <= end);
+    FO_VERIFY_AND_THROW(start <= end, "Script array construction range has inverted boundaries", start, end, GetSize());
 
     if (start == end) {
         return;
@@ -820,8 +820,8 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx);
-        FO_RUNTIME_ASSERT(ctx->GetEngine() == _typeInfo->GetEngine());
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+        FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->PushState());
@@ -913,8 +913,8 @@ auto ScriptArray::Find(int32_t start_at, void* value) const -> int32_t
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx);
-        FO_RUNTIME_ASSERT(ctx->GetEngine() == _typeInfo->GetEngine());
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+        FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->PushState());
@@ -1039,8 +1039,8 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx);
-        FO_RUNTIME_ASSERT(ctx->GetEngine() == _typeInfo->GetEngine());
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+        FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->PushState());

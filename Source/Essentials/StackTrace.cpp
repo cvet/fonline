@@ -41,7 +41,9 @@
 #define BACKWARD_HAS_BFD 1
 #endif
 #endif
+FO_DISABLE_WARNINGS_PUSH()
 #include "backward.hpp"
+FO_DISABLE_WARNINGS_POP()
 #define HAS_NATIVE_TRACE 1
 #else
 #define HAS_NATIVE_TRACE 0

@@ -55,7 +55,7 @@ int main(int argc, char** argv)
     try {
         InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
 
-        FO_RUNTIME_ASSERT(!App->Settings.BakeOutput.empty());
+        FO_VERIFY_AND_THROW(!App->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", App->Settings.GetResourcePacks().size());
 
         WriteLog("Prepare metadata");
         FileSystem metadata_files;
@@ -77,13 +77,13 @@ int main(int argc, char** argv)
 
                 if (!dir.empty()) {
                     const auto dir_ok = fs_create_directories(dir);
-                    FO_RUNTIME_ASSERT(dir_ok);
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create metadata output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
                 file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
             };
 
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
@@ -132,13 +132,13 @@ int main(int argc, char** argv)
 
                 if (!dir.empty()) {
                     const auto dir_ok = fs_create_directories(dir);
-                    FO_RUNTIME_ASSERT(dir_ok);
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create AngelScript output directory", dir, output_path, res_pack.Name);
                 }
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
                 file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
             };
 
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});

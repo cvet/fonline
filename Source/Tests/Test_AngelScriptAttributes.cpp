@@ -273,7 +273,7 @@ namespace
         static void Callback(const asSMessageInfo* msg, void* param)
         {
             auto* self = static_cast<ScriptMessages*>(param);
-            FO_RUNTIME_ASSERT(self != nullptr);
+            FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
 
             self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
         }

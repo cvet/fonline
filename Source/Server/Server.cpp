@@ -108,7 +108,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     // Engine-wide invariant: a primary SyncContext is always active when an event fires.
-    FO_STRONG_ASSERT(GetCurrentSyncContext());
+    FO_STRONG_ASSERT(GetCurrentSyncContext(), "Server event fired without active sync context");
 
     bool had_exception = false;
 
@@ -203,7 +203,7 @@ void ServerEngine::FlushExactSyncTime()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GameTime.IsTimeSynchronized());
+    FO_VERIFY_AND_THROW(GameTime.IsTimeSynchronized(), "Missing required game time is time synchronized");
 
     _persistedSyncTimeMark = GameTime.GetSynchronizedTime();
     const auto* prop = GetPropertySynchronizedTime();
@@ -355,7 +355,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
     registered_collection_types.reserve(2 + GetEntityTypes().size() + Settings.CustomCollections.size());
 
     const auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
-        FO_RUNTIME_ASSERT(!collection_name.as_str().empty());
+        FO_VERIFY_AND_THROW(!collection_name.as_str().empty(), "Database collection registration received an empty collection name", key_type, registered_collection_types.size());
 
         if (registered_collection_types.contains(collection_name)) {
             throw DataBaseException("Duplicate database collection name", collection_name.as_str());
@@ -407,7 +407,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
     }
 
     DbStorage = ConnectToDataBase(Settings, Settings.DbStorage, collection_schemas, [] {
-        FO_RUNTIME_ASSERT(App);
+        FO_VERIFY_AND_THROW(App, "Missing required app");
         App->RequestQuit(false);
     });
 
@@ -642,8 +642,8 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_started);
-    FO_RUNTIME_ASSERT(_workerPool);
+    FO_VERIFY_AND_THROW(!_started, "Started is already set");
+    FO_VERIFY_AND_THROW(_workerPool, "Missing required worker pool");
 
     WriteLog("Start server complete!");
 
@@ -684,7 +684,7 @@ auto ServerEngine::TimeEventJob(Entity* entity, uint32_t event_id) -> std::optio
 
     if (!entity->IsGlobal()) {
         auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         ctx->SyncEntity(dynamic_cast<ServerEntity*>(entity));
     }
 
@@ -756,7 +756,7 @@ auto ServerEngine::UnloginedPlayerJob(Player* unlogined_player) -> std::optional
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->SyncEntity(unlogined_player);
 
     if (unlogined_player->IsDestroyed()) {
@@ -816,7 +816,7 @@ auto ServerEngine::PlayerJob(Player* player) -> std::optional<timespan>
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->SyncEntity(player);
 
     if (player->IsDestroyed()) {
@@ -1116,7 +1116,7 @@ void ServerEngine::Shutdown()
     _started = false;
     _didFinishDispatcher();
 
-    FO_RUNTIME_ASSERT(GetRefCount() == 1);
+    FO_VERIFY_AND_THROW(GetRefCount() == 1, "Server engine still has external references after shutdown", GetRefCount());
 }
 
 auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
@@ -1147,7 +1147,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 
     // Now this thread is allowed to touch engine state — stand up a SyncContext to satisfy the
     // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
-    FO_RUNTIME_ASSERT(!ExternalLockSyncCtx);
+    FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
     ExternalLockSyncCtx->Activate();
     return true;
@@ -1157,7 +1157,7 @@ void ServerEngine::Unlock()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ExternalLockSyncCtx);
+    FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync ctx");
     ExternalLockSyncCtx->Release();
     ExternalLockSyncCtx->Deactivate();
     ExternalLockSyncCtx.reset();
@@ -1165,7 +1165,7 @@ void ServerEngine::Unlock()
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
         unique_lock locker {_syncLocker};
 
-        FO_RUNTIME_ASSERT(_syncRequest > 0);
+        FO_VERIFY_AND_THROW(_syncRequest > 0, "Sync request must be positive");
 
         _syncRequest--;
 
@@ -1813,7 +1813,7 @@ void ServerEngine::ProcessPlayer(Player* player)
         ValidateEntityAccess(player);
         ValidateEntityAccess(player->GetControlledCritter());
         OnPlayerLogout.Fire(player);
-        FO_RUNTIME_ASSERT(!player->IsDestroyed());
+        FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
         player->DetachCritter();
         player->ResetViewMap();
@@ -1921,7 +1921,7 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_
     }
     else {
         player = dynamic_cast<Player*>(caller);
-        FO_RUNTIME_ASSERT(player);
+        FO_VERIFY_AND_THROW(player, "Missing player instance");
     }
 
     if (player == nullptr) {
@@ -1961,7 +1961,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
 
     if (!cr->IsDestroyed()) {
         auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
         if (ctx->IsEmpty()) {
             ctx->SyncEntity(cr.get());
@@ -2001,7 +2001,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr_id);
+    FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
     WriteLog(LogType::Info, "Load critter {}", cr_id);
 
@@ -2039,7 +2039,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
 
     if (!cr->IsDestroyed()) {
         auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
         if (ctx->IsEmpty()) {
             ctx->SyncEntity(cr);
@@ -2083,8 +2083,8 @@ void ServerEngine::UnloadCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
 
@@ -2099,15 +2099,15 @@ void ServerEngine::UnloadCritter(Critter* cr)
 
     ValidateEntityAccess(cr);
     OnCritterUnload.Fire(cr);
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto map = cr->GetParent<Map>();
-    FO_RUNTIME_ASSERT(!cr->GetMapId() || map);
+    FO_VERIFY_AND_THROW(!cr->GetMapId() || map, "Critter has map id but map lookup failed");
 
     MapMngr.RemoveCritterFromMap(cr, map.get());
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
@@ -2138,7 +2138,7 @@ void ServerEngine::UnloadCritterInnerEntities(Critter* cr)
                 }
 
                 auto* custom_entity = dynamic_cast<CustomEntity*>(entity.get());
-                FO_RUNTIME_ASSERT(custom_entity);
+                FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
                 custom_entity->MarkAsDestroyed();
                 EntityMngr.UnregisterCustomEntity(custom_entity, false);
@@ -2183,11 +2183,11 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(player);
-    FO_RUNTIME_ASSERT(!player->IsDestroyed());
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
+    FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     bool release_empty_sync_context = false;
 
@@ -2224,7 +2224,7 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
         return;
     }
 
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     if (prev_cr == cr) {
         throw GenericException("Player critter already selected");
@@ -2264,7 +2264,7 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr_id);
+    FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
     WriteLog(LogType::Info, "Destroy unloaded critter {}", cr_id);
 
@@ -2283,10 +2283,10 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
     ValidateEntityAccess(prev_cr);
 
     auto map = cr->GetParent<Map>();
-    FO_RUNTIME_ASSERT(!!cr->GetMapId() == !!map);
+    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {}, prev_cr != nullptr ? prev_cr->GetId() : ident_t {});
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     bool release_empty_sync_context = false;
 
@@ -2673,7 +2673,7 @@ auto ServerEngine::LoginPlayerToNewRecord(Player* unlogined_player) -> Player*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
 
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
@@ -2737,8 +2737,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
-    FO_RUNTIME_ASSERT(player_id);
+    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
+    FO_VERIFY_AND_THROW(player_id, "Missing required player id");
 
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
@@ -2802,7 +2802,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
     }
     else {
         auto* ctx = GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         ServerEntity* sync_entities[] = {player, unlogined_player};
         ctx->SyncEntities(span<ServerEntity*> {sync_entities});
 
@@ -2845,7 +2845,7 @@ auto ServerEngine::LoginPlayerToTempSession(Player* unlogined_player) -> Player*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!unlogined_player->GetLogined());
+    FO_VERIFY_AND_THROW(!unlogined_player->GetLogined(), "Unlogged player is already marked as logged in");
 
     auto player_holder = refcount_ptr<Player> {unlogined_player};
 
@@ -2934,7 +2934,7 @@ void ServerEngine::Process_Move(Player* player)
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
     ctx->SyncEntities(span<ServerEntity*> {sync_entities});
@@ -3100,7 +3100,7 @@ void ServerEngine::Process_StopMove(Player* player)
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
     ctx->SyncEntities(span<ServerEntity*> {sync_entities});
@@ -3193,7 +3193,7 @@ void ServerEngine::Process_Dir(Player* player)
 
     auto cr_ref = EntityMngr.GetCritter(cr_id);
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     ServerEntity* sync_entities[] = {player, map.get(), cr_ref.get()};
     ctx->SyncEntities(span<ServerEntity*> {sync_entities});
@@ -3496,8 +3496,8 @@ void ServerEngine::OnSaveSynchronizedTime(Entity* entity, const Property* prop)
     // `SyncTimePersistLead` of game time, persisting `live + lead` so the write provides
     // headroom and the next write doesn't fire until live crosses the mark. Init-phase
     // sets (before time is synchronized) and `FlushExactSyncTime` write through directly.
-    FO_RUNTIME_ASSERT(entity == this);
-    FO_RUNTIME_ASSERT(prop == GetPropertySynchronizedTime());
+    FO_VERIFY_AND_THROW(entity == this, "Synchronized time post-setter received an entity different from the server engine", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {});
+    FO_VERIFY_AND_THROW(prop == GetPropertySynchronizedTime(), "Synchronized time post-setter received a different property", prop != nullptr ? string_view {prop->GetName()} : string_view {}, GetPropertySynchronizedTime()->GetName());
 
     if (!GameTime.IsTimeSynchronized()) {
         // Init / external pin path: persist the exact property value.
@@ -3537,7 +3537,7 @@ void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* player = dynamic_cast<Player*>(entity);
-    FO_RUNTIME_ASSERT(player);
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
@@ -3549,7 +3549,7 @@ void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     if (prop->IsPublicSync() || prop->IsOwnerSync()) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
@@ -3566,7 +3566,7 @@ void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
     FO_NON_CONST_METHOD_HINT();
 
     auto* item = dynamic_cast<Item*>(entity);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStatic() && item->GetId()) {
         switch (item->GetOwnership()) {
@@ -3614,7 +3614,7 @@ void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 
     if (prop->IsPublicSync()) {
         auto* map = dynamic_cast<Map*>(entity);
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
 
         map->SendProperty(NetProperty::Map, prop, map);
     }
@@ -3628,7 +3628,7 @@ void ServerEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 
     if (prop->IsPublicSync()) {
         auto* loc = dynamic_cast<Location*>(entity);
-        FO_RUNTIME_ASSERT(loc);
+        FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
         for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -3641,7 +3641,7 @@ void ServerEngine::OnSendCustomEntityValue(Entity* entity, const Property* prop)
     FO_STACK_TRACE_ENTRY();
 
     auto* custom_entity = dynamic_cast<CustomEntity*>(entity);
-    FO_RUNTIME_ASSERT(custom_entity);
+    FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](Player* player, bool owner) {
         if (owner || prop->IsPublicSync()) {
@@ -3655,7 +3655,7 @@ void ServerEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop
     FO_STACK_TRACE_ENTRY();
 
     auto* cr = dynamic_cast<Critter*>(entity);
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     MapMngr.ProcessVisibleCritters(cr);
 
@@ -3673,7 +3673,7 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *cast_from_void<const uint32_t*>(new_value);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStackable() && new_count != 1) {
         throw GenericException("Trying to change count of not stackable item");
@@ -3691,16 +3691,16 @@ void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map = item->GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         map->ChangeViewItem(item);
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto cr = item->GetParent<Critter>();
-        FO_RUNTIME_ASSERT(cr);
+        FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
         if (item->GetHidden()) {
             cr->Send_ChosenRemoveItem(item);
@@ -3722,7 +3722,7 @@ void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
     // NoBlock, ShootThru, IsGag, IsTrigger
     auto* item = dynamic_cast<Item*>(entity);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map = item->GetParent<Map>();
@@ -3741,7 +3741,7 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         const auto map = item->GetParent<Map>();
@@ -3756,9 +3756,9 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->IsMoving());
+    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
     auto* moving = cr->GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     const auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
@@ -3812,7 +3812,7 @@ void ServerEngine::ProcessCritterMovingBySteps(Critter* cr, Map* map)
                 cr->SetHex(target_hex);
                 map->AddCritterToField(cr);
 
-                FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+                FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
 
@@ -3906,10 +3906,10 @@ auto ServerEngine::ReconcileCritterStopPosition(Player* player, Critter* cr, Map
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->IsMoving());
+    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
     const auto* moving = cr->GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance = 2;
@@ -4027,9 +4027,9 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(Player* player, Critter* c
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(player);
-    FO_RUNTIME_ASSERT(cr);
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     const int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
 
@@ -4111,7 +4111,7 @@ auto ServerEngine::MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) 
     cr->SetHex(target_hex);
     map->AddCritterToField(cr);
 
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     map->VerifyTrigger(cr, old_hex, target_hex, dir);
 
@@ -4186,11 +4186,11 @@ auto ServerEngine::CritterMovingJob(Critter* cr) -> std::optional<timespan>
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->SyncEntity(cr);
 
     auto map = cr->GetParent<Map>();
-    FO_RUNTIME_ASSERT(!!cr->GetMapId() == !!map);
+    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
 
     if (map) {
         ServerEntity* sync_entities[] = {map.get(), cr};
@@ -4226,7 +4226,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, uint16_t speed, const vector<
     FO_STACK_TRACE_ENTRY();
 
     const auto map = cr->GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     const auto start_hex = cr->GetHex();
 
@@ -4315,7 +4315,7 @@ void ServerEngine::Process_RemoteCall(Player* player)
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 
     auto* ctx = GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->SyncEntity(player);
 
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);

@@ -655,7 +655,7 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ClientEngine* client, readonly_vec
 {
 #if FO_ENABLE_3D
     auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
-    FO_RUNTIME_ASSERT(model_spr_factory);
+    FO_VERIFY_AND_THROW(model_spr_factory, "Missing model sprite factory");
 
     for (const auto& fname : fnames) {
         model_spr_factory->GetModelMngr()->PreloadModel(fname);

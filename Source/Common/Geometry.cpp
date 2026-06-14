@@ -319,8 +319,8 @@ auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
     const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
     float32_t r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
-    FO_RUNTIME_ASSERT(r >= 0.0f);
-    FO_RUNTIME_ASSERT(r <= 360.0f);
+    FO_VERIFY_AND_THROW(r >= 0.0f, "Hex direction angle calculation produced a negative raw angle", x1, y1, x2, y2, r);
+    FO_VERIFY_AND_THROW(r <= 360.0f, "Hex direction angle calculation produced a value above 360 degrees before normalization", x1, y1, x2, y2, r);
 
     r = -r + 60.0f;
 
@@ -331,8 +331,8 @@ auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
         r -= 360.0f;
     }
 
-    FO_RUNTIME_ASSERT(r >= 0.0f);
-    FO_RUNTIME_ASSERT(r < 360.0f);
+    FO_VERIFY_AND_THROW(r >= 0.0f, "Normalized hex direction angle calculation produced a negative value", x1, y1, x2, y2, r);
+    FO_VERIFY_AND_THROW(r < 360.0f, "Computed hex direction angle is outside the normalized degree range", x1, y1, x2, y2, r);
 
     return r;
 }
@@ -349,8 +349,8 @@ auto GeometryHelper::GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
-    FO_RUNTIME_ASSERT(r >= 0.0f);
-    FO_RUNTIME_ASSERT(r <= 180.0f);
+    FO_VERIFY_AND_THROW(r >= 0.0f, "Unsigned direction angle difference calculation produced a negative value", a1, a2, r);
+    FO_VERIFY_AND_THROW(r <= 180.0f, "Unsigned direction angle difference exceeded 180 degrees", a1, a2, r);
 
     return r;
 }
@@ -362,8 +362,8 @@ auto GeometryHelper::GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32
     const auto a1_r = a1 * DEG_TO_RAD_FLOAT;
     const auto a2_r = a2 * DEG_TO_RAD_FLOAT;
     const auto r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
-    FO_RUNTIME_ASSERT(r >= -180.0f);
-    FO_RUNTIME_ASSERT(r <= 180.0f);
+    FO_VERIFY_AND_THROW(r >= -180.0f, "Signed direction angle difference is below -180 degrees", a1, a2, r);
+    FO_VERIFY_AND_THROW(r <= 180.0f, "Signed direction angle difference exceeded 180 degrees", a1, a2, r);
 
     return r;
 }
@@ -623,8 +623,8 @@ auto GeometryHelper::GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t
         angle -= 360.0f;
     }
 
-    FO_RUNTIME_ASSERT(angle >= 0.0f);
-    FO_RUNTIME_ASSERT(angle < 360.0f);
+    FO_VERIFY_AND_THROW(angle >= 0.0f, "Angle is negative");
+    FO_VERIFY_AND_THROW(angle < 360.0f, "Computed direction angle is outside the normalized degree range", angle, x1, y1, x2, y2);
 
     return angle;
 }
@@ -800,8 +800,8 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
     const ipos32 hex_pos = GetHexPos(raw_hex);
-    FO_RUNTIME_ASSERT(hex_pos.x % (w / 2) == 0);
-    FO_RUNTIME_ASSERT(hex_pos.y % h == 0);
+    FO_VERIFY_AND_THROW(hex_pos.x % (w / 2) == 0, "Raw hex position X is not aligned to the axial coordinate grid", raw_hex, hex_pos, w / 2);
+    FO_VERIFY_AND_THROW(hex_pos.y % h == 0, "Raw hex position Y is not aligned to the axial coordinate grid", raw_hex, hex_pos, h);
 
     return {hex_pos.x / (w / 2), hex_pos.y / h};
 }

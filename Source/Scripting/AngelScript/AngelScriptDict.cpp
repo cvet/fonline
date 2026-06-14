@@ -152,7 +152,7 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
         dont_garbage_collect = true;
     }
     else {
-        FO_RUNTIME_ASSERT(type_id & AngelScript::asTYPEID_OBJHANDLE);
+        FO_VERIFY_AND_THROW(type_id & AngelScript::asTYPEID_OBJHANDLE, "AngelScript dictionary key type is not an object handle", type_id);
         const auto* sub_type = engine->GetTypeInfoById(type_id);
         const auto flags = sub_type->GetFlags();
 
@@ -1006,8 +1006,8 @@ static auto Compare(bool check_less, int32_t type_id, const ScriptDictTypeData* 
         }
 
         auto* ctx = AngelScript::asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx);
-        FO_RUNTIME_ASSERT(ctx->GetEngine() == engine);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+        FO_VERIFY_AND_THROW(ctx->GetEngine() == engine, "AngelScript dictionary context belongs to a different engine");
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->PushState());

@@ -91,7 +91,7 @@ static void ServerWithClientsLoop(ServerEngine* server, vector<unique_ptr<Global
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(server);
+    FO_VERIFY_AND_THROW(server, "Missing server instance");
 
     WriteLog("Auto start embedded headless client(s): {}", App->Settings.AutoStartClientOnServer);
 

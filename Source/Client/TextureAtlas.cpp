@@ -165,8 +165,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     }
 
     // Create new
-    FO_RUNTIME_ASSERT(request_size.width > 0);
-    FO_RUNTIME_ASSERT(request_size.height > 0);
+    FO_VERIFY_AND_THROW(request_size.width > 0, "Request size width must be positive", request_size.width);
+    FO_VERIFY_AND_THROW(request_size.height > 0, "Request size height must be positive", request_size.height);
 
     isize32 result_size;
 
@@ -188,8 +188,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
         break;
     }
 
-    FO_RUNTIME_ASSERT(result_size.width >= request_size.width);
-    FO_RUNTIME_ASSERT(result_size.height >= request_size.height);
+    FO_VERIFY_AND_THROW(result_size.width >= request_size.width, "Texture atlas width cannot satisfy requested image width", atlas_type, result_size.width, request_size.width);
+    FO_VERIFY_AND_THROW(result_size.height >= request_size.height, "Texture atlas height cannot satisfy requested image height", atlas_type, result_size.height, request_size.height);
 
     auto* rt = _rtMngr->CreateRenderTarget(false, result_size, _settings->AtlasLinearFiltration);
     auto atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
@@ -227,7 +227,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     if (atlas == nullptr) {
         atlas = CreateAtlas(atlas_type, size_with_padding);
         atlas_node = atlas->GetLayout()->FindPosition(size_with_padding);
-        FO_RUNTIME_ASSERT(atlas_node);
+        FO_VERIFY_AND_THROW(atlas_node, "Missing required atlas node");
     }
 
     const ipos32 pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};

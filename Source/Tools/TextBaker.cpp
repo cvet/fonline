@@ -73,7 +73,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
 
         const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
@@ -95,7 +95,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
 
         const auto name_pair = strex(file_header.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
@@ -124,7 +124,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     for (const auto& file : filtered_files) {
         const auto name_pair = strex(file.GetNameNoExt()).split('.');
-        FO_RUNTIME_ASSERT(name_pair.size() == 2);
+        FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
         const auto& lang_name = name_pair[1];
 
         if (all_languages.emplace(lang_name).second) {
@@ -150,7 +150,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
         for (const auto& file : filtered_files) {
             const auto name_pair = strex(file.GetNameNoExt()).split('.');
-            FO_RUNTIME_ASSERT(name_pair.size() == 2);
+            FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
             const auto& text_pack_name = name_pair[0];
             const auto& lang_name = name_pair[1];
 
