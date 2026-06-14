@@ -96,7 +96,7 @@ void ServerConnection::InBufAccessor::Lock()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_inBuf);
+    FO_VERIFY_AND_THROW(!_inBuf, "In buf is already set");
     _owner->_inBufLocker.lock();
     _inBuf = &_owner->_inBuf;
 }
@@ -274,11 +274,11 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_updateFileTransfer.PendingFileIndex);
-    FO_RUNTIME_ASSERT(max_portion_size != 0);
+    FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
+    FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
     const auto offset = _updateFileTransfer.PortionIndex * max_portion_size;
-    FO_RUNTIME_ASSERT(offset <= file_size);
+    FO_VERIFY_AND_THROW(offset <= file_size, "Updater file transfer portion offset is outside the file bounds", _updateFileTransfer.PendingFileIndex.value(), _updateFileTransfer.PortionIndex, max_portion_size, offset, file_size);
 
     const auto remaining_size = file_size - offset;
     const auto portion_size = std::min(remaining_size, max_portion_size);
@@ -322,7 +322,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
 
-    FO_RUNTIME_ASSERT(!_sendBuf.empty());
+    FO_VERIFY_AND_THROW(!_sendBuf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->DisableZlibCompression);
     return _sendBuf;
 }
 

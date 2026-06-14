@@ -58,8 +58,8 @@ CritterView::~CritterView()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_VERIFY(_invItems.empty());
-    FO_RUNTIME_VERIFY(_attachedCritters.empty());
+    FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Client critter view has inventory items during destruction", GetId(), _invItems.size());
+    FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Client critter view has attached critters during destruction", GetId(), _attachedCritters.size());
 }
 
 void CritterView::OnDestroySelf()
@@ -125,9 +125,9 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
 
 auto CritterView::AddRawInvItem(ItemView* item) -> ItemView*
 {
-    FO_RUNTIME_ASSERT(!item->GetStatic());
-    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
-    FO_RUNTIME_ASSERT(item->GetCritterId() == GetId());
+    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
+    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::CritterInventory, "Item is not owned by critter inventory");
+    FO_VERIFY_AND_THROW(item->GetCritterId() == GetId(), "Item belongs to a different critter");
 
     vec_add_unique_value(_invItems, item);
 

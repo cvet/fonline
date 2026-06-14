@@ -259,7 +259,7 @@ void DataBaseImpl::InitializeCollections(const DataBaseCollectionSchemas& collec
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& [collection_name, key_type] : collection_schemas) {
-        FO_RUNTIME_ASSERT(!_collectionNames.contains(collection_name.as_str()));
+        FO_VERIFY_AND_THROW(!_collectionNames.contains(collection_name.as_str()), "Database collection name is already registered", collection_name, key_type);
         _collectionNames.emplace(collection_name.as_str(), collection_name);
         _collectionKeyTypes.emplace(collection_name, key_type);
         EnsureCollection(collection_name, key_type);
@@ -371,8 +371,8 @@ void DataBaseImpl::RestorePendingChanges()
         return;
     }
 
-    FO_RUNTIME_ASSERT(_pendingChangesLog);
-    FO_RUNTIME_ASSERT(_committedChangesLog);
+    FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
+    FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
 
     const auto& pending_changes_content = _pendingChangesLog->GetContent();
     const auto& committed_changes_content = _committedChangesLog->GetContent();
@@ -382,7 +382,7 @@ void DataBaseImpl::RestorePendingChanges()
     }
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
-        FO_RUNTIME_ASSERT(i < pending_changes_content.size());
+        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->OpLogPath);
         const size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
@@ -399,8 +399,8 @@ void DataBaseImpl::RestorePendingChanges()
             const auto line_view = string_view {line};
             const auto first_space = line_view.find(' ');
             const auto second_space = line_view.find(' ', first_space + 1);
-            FO_RUNTIME_ASSERT(first_space != string_view::npos && first_space != 0);
-            FO_RUNTIME_ASSERT(second_space != string_view::npos && second_space != first_space + 1);
+            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->OpLogPath, line_view.size(), first_space);
+            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->OpLogPath, line_view.size(), first_space, second_space);
 
             const auto command = line_view.substr(0, first_space);
             const auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
@@ -410,11 +410,11 @@ void DataBaseImpl::RestorePendingChanges()
             const auto third_space = line_view.find(' ', second_space + 1);
 
             if (third_space == string_view::npos) {
-                FO_RUNTIME_ASSERT(second_space + 1 < line_view.size());
+                FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
                 record_id_str = line_view.substr(second_space + 1);
             }
             else {
-                FO_RUNTIME_ASSERT(third_space != second_space + 1 && third_space + 1 < line_view.size());
+                FO_VERIFY_AND_THROW(third_space != second_space + 1 && third_space + 1 < line_view.size(), "Pending database oplog command has an empty record id or missing payload", i + 1, command, collection, second_space, third_space, line_view.size());
                 record_id_str = line_view.substr(second_space + 1, third_space - second_space - 1);
                 other = line_view.substr(third_space + 1);
             }
@@ -462,8 +462,8 @@ void DataBaseImpl::RestorePendingChanges()
         throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->OpLogPath);
     }
 
-    FO_RUNTIME_ASSERT(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount());
-    FO_RUNTIME_ASSERT(_pendingChangesLog->GetContent() == _committedChangesLog->GetContent());
+    FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
+    FO_VERIFY_AND_THROW(_pendingChangesLog->GetContent() == _committedChangesLog->GetContent(), "Pending and committed database logs contain different command payloads");
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_pendingChangesLog->Truncate()) {
@@ -765,7 +765,7 @@ void DataBaseImpl::StartCommitThread()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_commitThread.joinable());
+    FO_VERIFY_AND_THROW(!_commitThread.joinable(), "Commit thread joinable is already set");
 
     {
         scoped_lock locker {_stateLocker};
@@ -781,7 +781,7 @@ void DataBaseImpl::StopCommitThread() noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_RUNTIME_ASSERT(_commitThread.joinable());
+        FO_VERIFY_AND_THROW(_commitThread.joinable(), "Missing required commit thread joinable");
 
         {
             scoped_lock locker {_stateLocker};
@@ -926,13 +926,13 @@ void DataBaseImpl::CommitNextChange() noexcept
             switch (op->Type) {
             case CommitOperationType::Insert: {
                 const auto doc_json = AnyDocumentToJson(op->Doc).dump();
-                FO_RUNTIME_ASSERT(doc_json.find_first_of("\r\n") == string::npos);
+                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
                 const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Update: {
                 const auto doc_json = AnyDocumentToJson(op->Doc).dump();
-                FO_RUNTIME_ASSERT(doc_json.find_first_of("\r\n") == string::npos);
+                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
                 const auto key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
@@ -1688,13 +1688,13 @@ static auto EncodeStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
             using T = std::decay_t<decltype(value)>;
 
             if constexpr (std::is_same_v<T, ident_t>) {
-                FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::IntId);
-                FO_RUNTIME_ASSERT(value != ident_t {});
+                FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::IntId, "Database storage key expected a numeric identifier but the collection key type differs", DbKeyTypeName(key_type), value);
+                FO_VERIFY_AND_THROW(value != ident_t {}, "Database storage key cannot encode an empty identifier", DbKeyTypeName(key_type));
                 return strex("{}", value).str();
             }
             else {
-                FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::String);
-                FO_RUNTIME_ASSERT(!value.empty());
+                FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::String, "Database storage key expected a string identifier but the collection key type differs", DbKeyTypeName(key_type), value);
+                FO_VERIFY_AND_THROW(!value.empty(), "Database storage key cannot encode an empty string identifier", DbKeyTypeName(key_type), escaping);
                 return EncodeDbStringKey(value, escaping);
             }
         },
@@ -1748,7 +1748,7 @@ static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
     }
 
     const auto& value = std::get<string>(key);
-    FO_RUNTIME_ASSERT(!value.empty());
+    FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot encode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
     if (!strvex(value).is_valid_utf8()) {
         throw DataBaseException("Invalid database string key utf8", value);
@@ -1774,7 +1774,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
     }
 
     const auto& value = std::get<string>(key);
-    FO_RUNTIME_ASSERT(!value.empty());
+    FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot decode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
     if (escaping == DataBaseStringKeyEscaping::Raw) {
         if (!strvex(value).is_valid_utf8()) {

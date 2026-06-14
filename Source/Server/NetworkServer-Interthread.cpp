@@ -143,7 +143,7 @@ void InterthreadServer::Shutdown()
 
     scoped_lock locker {InterthreadListenersLocker};
 
-    FO_RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0);
+    FO_VERIFY_AND_THROW(InterthreadListeners.count(_virtualPort) != 0, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort, InterthreadListeners.size());
     InterthreadListeners.erase(_virtualPort);
 }
 

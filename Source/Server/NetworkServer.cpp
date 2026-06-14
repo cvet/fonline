@@ -45,11 +45,11 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_sendCallbackSet);
-    FO_RUNTIME_ASSERT(!_disconnectCallbackSet);
-    FO_RUNTIME_ASSERT(send);
-    FO_RUNTIME_ASSERT(receive);
-    FO_RUNTIME_ASSERT(disconnect);
+    FO_VERIFY_AND_THROW(!_sendCallbackSet, "Send callback set is already set");
+    FO_VERIFY_AND_THROW(!_disconnectCallbackSet, "Disconnect callback set is already set");
+    FO_VERIFY_AND_THROW(send, "Missing required send");
+    FO_VERIFY_AND_THROW(receive, "Missing required receive");
+    FO_VERIFY_AND_THROW(disconnect, "Missing required disconnect");
 
     if (_isDisconnected) {
         return;

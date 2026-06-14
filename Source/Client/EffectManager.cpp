@@ -76,7 +76,7 @@ auto EffectManager::ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_vi
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(defaultEffect != nullptr);
+    FO_VERIFY_AND_THROW(defaultEffect != nullptr, "Missing required default effect");
 
     if (!effectPath.empty()) {
         RenderEffect* effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
@@ -150,7 +150,7 @@ auto EffectManager::GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEff
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(effect != nullptr);
+    FO_VERIFY_AND_THROW(effect != nullptr, "Missing required effect");
 
     if (!effect->ScriptValueBuf.has_value()) {
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();

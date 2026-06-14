@@ -153,7 +153,7 @@ void AngelScriptContextManager::CreateContext()
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx = _asEngine->CreateContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     _freeContexts.emplace_back(refcount_ptr<AngelScript::asIScriptContext>::adopt, ctx);
 
     auto ctx_ext = SafeAlloc::MakeUnique<AngelScriptContextExtendedData>();
@@ -165,7 +165,7 @@ void AngelScriptContextManager::CreateContext()
 
 #if FO_TRACY
     auto* ctx_impl = dynamic_cast<AngelScript::asCContext*>(ctx);
-    FO_RUNTIME_ASSERT(ctx_impl);
+    FO_VERIFY_AND_THROW(ctx_impl, "Missing required context impl");
     ctx_impl->BeginScriptCall = AngelScriptBeginCall;
     ctx_impl->EndScriptCall = AngelScriptEndCall;
 #endif
@@ -190,7 +190,7 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
 
     auto ctx = _freeContexts.back();
     auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx.get());
-    FO_RUNTIME_ASSERT(ctx_ext);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
@@ -220,7 +220,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
     }
 
     try {
-        FO_RUNTIME_ASSERT(ctx->GetState() != AngelScript::asEXECUTION_ACTIVE);
+        FO_VERIFY_AND_THROW(ctx->GetState() != AngelScript::asEXECUTION_ACTIVE, "AngelScript context is already executing");
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
@@ -232,7 +232,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         vec_add_unique_value(_freeContexts, ctx);
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_RUNTIME_ASSERT(ctx_ext);
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
         if (_contextSetupCallback) {
             _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
@@ -246,7 +246,7 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
 
         for (auto& other : _busyContexts) {
             auto* other_ext = AngelScriptContextExtendedData::Get(other.get());
-            FO_RUNTIME_ASSERT(other_ext);
+            FO_VERIFY_AND_THROW(other_ext, "Missing required other ext");
 
             if (other_ext->Parent == ctx) {
                 other_ext->Parent.reset();
@@ -266,7 +266,7 @@ auto AngelScriptContextManager::PrepareContext(AngelScript::asIScriptFunction* f
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(func);
+    FO_VERIFY_AND_THROW(func, "Missing AngelScript function");
 
     auto* ctx = RequestContext();
     const auto as_result = ctx->Prepare(func);
@@ -294,16 +294,16 @@ auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, b
 
     {
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_RUNTIME_ASSERT(ctx_ext);
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
         const bool already_active = ctx_ext->ExecutionActive.exchange(true);
-        FO_RUNTIME_ASSERT(!already_active);
+        FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
 
         auto execution_active_guard = scope_exit([ctx_ext]() noexcept { ctx_ext->ExecutionActive.store(false); });
 
 #if FO_TRACY
-        FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionActive);
-        FO_RUNTIME_ASSERT(!ctx_ext->TracyExecutionCalls);
+        FO_VERIFY_AND_THROW(!ctx_ext->TracyExecutionActive, "Tracy script execution scope is already active");
+        FO_VERIFY_AND_THROW(!ctx_ext->TracyExecutionCalls, "Tracy script execution call depth is not zero");
         ctx_ext->TracyExecutionActive = true;
 
         if (ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
@@ -430,7 +430,7 @@ void AngelScriptContextManager::SuspendScriptContext(AngelScript::asIScriptConte
         ctx->Suspend();
     }
 
-    FO_RUNTIME_ASSERT(_delayedScheduler);
+    FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
     const auto now = GetGameEngine(_asEngine.get())->GameTime.GetFrameTime();
     const auto delay = time > now ? time - now : timespan::zero;
     _delayedScheduler(delay, [this, ctx]() { ResumeSpecificContext(ctx); });
@@ -450,10 +450,10 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         }
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_RUNTIME_ASSERT(ctx_ext);
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
         if (ctx_ext->ExecutionActive.load()) {
-            FO_RUNTIME_ASSERT(_delayedScheduler);
+            FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
@@ -557,7 +557,7 @@ static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx,
     ignore_unused(param);
 
     auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     ctx_ext->Exception = std::current_exception();
 }
 
@@ -573,13 +573,13 @@ static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param
 
     for (auto* ctx_iter = ctx; ctx_iter != nullptr;) {
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx_iter);
-        FO_RUNTIME_ASSERT(ctx_ext);
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
         ctx_ext->ExceptionCount++;
         ctx_iter = ctx_ext->Parent.get();
     }
 
     auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     auto& ex = ctx_ext->Exception;
 
     if (ex) {
@@ -652,7 +652,7 @@ static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept
         return;
     }
 
-    FO_STRONG_ASSERT(ctx_ext->TracyExecutionCalls > 0);
+    FO_STRONG_ASSERT(ctx_ext->TracyExecutionCalls > 0, "AngelScript Tracy call stack underflow", ctx_ext->TracyExecutionCalls);
 
     if (ctx_ext->TracyExecutionCalls > 0) {
         ctx_ext->TracyExecutionCalls--;

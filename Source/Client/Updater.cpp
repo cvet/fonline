@@ -427,7 +427,7 @@ void Updater::Net_OnInitData()
 
     _gameTime.SetSynchronizedTime(time);
 
-    FO_RUNTIME_ASSERT(!_fileListReceived);
+    FO_VERIFY_AND_THROW(!_fileListReceived, "File list received is already set");
     _fileListReceived = true;
 
     const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
@@ -489,7 +489,7 @@ void Updater::Net_OnInitData()
             break;
         }
 
-        FO_RUNTIME_ASSERT(name_len > 0);
+        FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
         const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
         const auto size = reader.Read<uint64_t>();
         const auto hash = reader.Read<uint64_t>();
@@ -755,7 +755,7 @@ auto Updater::GetClientBinaryDir() -> string
     FO_STACK_TRACE_ENTRY();
 
     const auto exe_path = Platform::GetExePath();
-    FO_RUNTIME_ASSERT(exe_path.has_value());
+    FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
     return strex(exe_path.value()).extract_dir().str();
 }
 
@@ -900,7 +900,7 @@ auto GetClientRuntimeLivePath() -> string
     FO_STACK_TRACE_ENTRY();
 
     const auto exe_path = Platform::GetExePath();
-    FO_RUNTIME_ASSERT(exe_path.has_value());
+    FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
     return strex("{}{}", strex(exe_path.value()).extract_dir().combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 

@@ -76,7 +76,7 @@ static void Global_Yield(int32_t durationMs)
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto* engine = GetGameEngine(ctx->GetEngine());
     auto* backend = GetScriptBackend(engine);
     auto* context_mngr = backend->GetContextMngr();
@@ -88,7 +88,7 @@ static auto Global_GetGlobalExceptionCount() -> int32_t
     FO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     const auto* backend = GetScriptBackend(ctx->GetEngine());
     return backend->GetExceptionCounter();
 }
@@ -98,9 +98,9 @@ static auto Global_GetContextExceptionCount() -> int32_t
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     return ctx_ext->ExceptionCount;
 }
 
@@ -109,7 +109,7 @@ static void Global_RunScriptGC()
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto* as_engine = ctx->GetEngine();
     as_engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
 }
@@ -148,8 +148,8 @@ static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asISc
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(func_desc);
-    FO_RUNTIME_ASSERT(func_desc->Call);
+    FO_VERIFY_AND_THROW(func_desc, "Missing script function descriptor");
+    FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
     array<void*, MAX_CALL_ARGS> args_data {};
     array<void*, MAX_CALL_ARGS> indirect_args {};
@@ -334,7 +334,7 @@ static auto Game_ParseGenericEnum(Entity* entity, string enum_name, string value
     FO_STACK_TRACE_ENTRY();
 
     const auto* engine = dynamic_cast<BaseEngine*>(entity);
-    FO_RUNTIME_ASSERT(engine);
+    FO_VERIFY_AND_THROW(engine, "Missing required engine");
     return engine->ResolveEnumValue(enum_name, value_name);
 }
 
@@ -724,7 +724,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     setting_group_types.emplace("", "GlobalSettings");
 
     const auto ensure_setting_group = [&](const vector<string>& path) -> const string& {
-        FO_RUNTIME_ASSERT(!path.empty());
+        FO_VERIFY_AND_THROW(!path.empty(), "AngelScript settings group registration received an empty settings path", setting_group_types.size());
 
         string current_path;
         string parent_path;
@@ -783,7 +783,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {
         const auto path = SplitSettingPath(setting_name);
-        FO_RUNTIME_ASSERT(!path.empty());
+        FO_VERIFY_AND_THROW(!path.empty(), "AngelScript game setting registration received an empty setting path", setting_name, setting_type->Name);
 
         string owner_type = "GlobalSettings";
 

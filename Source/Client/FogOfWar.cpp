@@ -107,7 +107,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 
     if (is_traced_overlay) {
-        FO_RUNTIME_ASSERT(input.TraceBulletToBlock);
+        FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Missing required input trace bullet to block");
     }
 
     const auto base_hex = input.FogOrigin.BaseHex;

@@ -56,7 +56,7 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     static std::once_flag once;
     bool first_call = false;
     std::call_once(once, [&first_call] { first_call = true; });
-    FO_STRONG_ASSERT(first_call);
+    FO_STRONG_ASSERT(first_call, "Application can be initialized only once");
 
     // Fork the process if requested
     if (argc > 0 && std::any_of(argv, argv + argc, [](const char* arg) { return string_view(arg) == "--fork"; })) {

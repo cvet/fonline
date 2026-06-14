@@ -846,7 +846,7 @@ namespace LocEntity
 
     static auto WaitForStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {

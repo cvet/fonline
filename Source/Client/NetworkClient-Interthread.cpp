@@ -131,7 +131,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 
     scoped_lock locker {_interthreadReceivedLocker};
 
-    FO_RUNTIME_ASSERT(!_interthreadReceived.empty());
+    FO_VERIFY_AND_THROW(!_interthreadReceived.empty(), "Interthread client receive was called without a pending packet", buf.size());
     const auto recv_size = _interthreadReceived.size();
 
     while (buf.size() < recv_size) {

@@ -116,8 +116,8 @@ void ModelSprite::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     if (size == _size) {
         return;
@@ -207,7 +207,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_modelMngr);
+    FO_VERIFY_AND_THROW(_modelMngr, "Missing required model mngr");
 
     // Find place for render
     const auto frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};

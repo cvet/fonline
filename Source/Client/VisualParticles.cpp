@@ -77,7 +77,7 @@ auto ParticleManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(min_value <= max_value);
+    FO_VERIFY_AND_THROW(min_value <= max_value, "Particle random integer range has an inverted min/max", min_value, max_value);
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }

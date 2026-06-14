@@ -88,7 +88,7 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
+    FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing draw rect", _hex, _drawOrder, _index);
 
     const ipos32 spr_offset = spr->GetOffset();
     const isize32 spr_size = spr->GetSize();
@@ -108,7 +108,7 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* spr = GetSprite();
-    FO_RUNTIME_VERIFY_AND_RETURN(spr, irect32());
+    FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing view rect", _hex, _drawOrder, _index);
 
     auto rect = GetDrawRect();
 
@@ -217,7 +217,7 @@ void MapSprite::CreateExtraChain(MapSprite** mspr)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_extraChainRoot);
+    FO_VERIFY_AND_THROW(!_extraChainRoot, "Extra chain root is already set");
     _extraChainRoot = mspr;
 }
 
@@ -225,7 +225,7 @@ void MapSprite::AddToExtraChain(MapSprite* mspr)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_extraChainRoot);
+    FO_VERIFY_AND_THROW(_extraChainRoot, "Missing required extra chain root");
     auto* last_spr = this;
 
     while (last_spr->_extraChainChild) {
@@ -326,7 +326,7 @@ void MapSpriteList::Invalidate(MapSprite* mspr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(mspr->_owner);
+    FO_STRONG_ASSERT(mspr->_owner, "Map sprite has no owner", mspr->_index);
     mspr->Reset();
 
     const auto index = mspr->_index;
@@ -386,8 +386,8 @@ auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) cons
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_needSort);
-    FO_RUNTIME_ASSERT(static_cast<uint32_t>(from) <= static_cast<uint32_t>(to));
+    FO_VERIFY_AND_THROW(!_needSort, "Need sort is already set");
+    FO_VERIFY_AND_THROW(static_cast<uint32_t>(from) <= static_cast<uint32_t>(to), "Requested draw-order range has inverted boundaries", from, to);
 
     return {_drawOrderRangeBegin[static_cast<size_t>(from)], _drawOrderRangeBegin[static_cast<size_t>(to) + 1]};
 }
@@ -406,9 +406,9 @@ void MapSpriteHolder::StopDraw()
     FO_STACK_TRACE_ENTRY();
 
     if (Valid) [[likely]] {
-        FO_RUNTIME_ASSERT(MSpr);
+        FO_VERIFY_AND_THROW(MSpr, "Missing required m spr");
         MSpr->Invalidate();
-        FO_RUNTIME_ASSERT(!Valid);
+        FO_VERIFY_AND_THROW(!Valid, "Valid is already set");
     }
 
     MSpr.reset();

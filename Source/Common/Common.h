@@ -545,7 +545,7 @@ struct RemoteCallDesc
 template<typename Fn>
 void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_RUNTIME_ASSERT(p);
+    FO_VERIFY_AND_THROW(p, "Missing required p");
 
     if (type.IsBool) {
         fn(*cast_from_void<bool*>(p));
@@ -627,7 +627,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 template<typename Fn>
 void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_RUNTIME_ASSERT(p);
+    FO_VERIFY_AND_THROW(p, "Missing required p");
 
     if (type.IsBool) {
         fn(*cast_from_void<const bool*>(p));
@@ -709,8 +709,8 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
 template<typename Fn>
 decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTypeDesc& type, Fn&& fn)
 {
-    FO_RUNTIME_ASSERT(a);
-    FO_RUNTIME_ASSERT(b);
+    FO_VERIFY_AND_THROW(a, "Missing required a");
+    FO_VERIFY_AND_THROW(b, "Missing required b");
 
     if (type.IsBool) {
         return fn(*cast_from_void<const bool*>(a), *cast_from_void<const bool*>(b));

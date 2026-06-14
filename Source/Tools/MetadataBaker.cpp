@@ -402,7 +402,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
                 }
             }
 
-            FO_RUNTIME_ASSERT(max_value >= min_value);
+            FO_VERIFY_AND_THROW(max_value >= min_value, "Enum metadata did not collect any value before choosing an underlying type", enum_name, min_value, max_value);
 
             if (min_value < 0) {
                 if (max_value > std::numeric_limits<int32_t>::max()) {
@@ -978,7 +978,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         ref_type.Fields.emplace_back(RefTypeFieldState {.Name = name, .Type = merged_type, .Flags = vector<string>(flags.begin(), flags.end())});
     }
 
-    FO_RUNTIME_ASSERT(ctx.RefTypeRegistrationOrder.size() == ctx.RefTypes.size());
+    FO_VERIFY_AND_THROW(ctx.RefTypeRegistrationOrder.size() == ctx.RefTypes.size(), "RefType registration order does not cover every parsed RefType", ctx.RefTypeRegistrationOrder.size(), ctx.RefTypes.size());
 
     for (const auto& ref_type_name : ctx.RefTypeRegistrationOrder) {
         auto& ref_type = ctx.RefTypes.at(ref_type_name);

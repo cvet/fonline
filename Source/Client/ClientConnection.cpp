@@ -69,7 +69,7 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_handlers.count(msg) == 0);
+    FO_VERIFY_AND_THROW(_handlers.count(msg) == 0, "Duplicate client network message handler registration", msg, _handlers.size());
 
     _handlers.emplace(msg, std::move(handler));
 }
@@ -95,7 +95,7 @@ void ClientConnection::Connect()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_netConnection);
+    FO_VERIFY_AND_THROW(!_netConnection, "Net connection is already set");
 
     try {
         // First try interthread communication
@@ -354,7 +354,7 @@ auto ClientConnection::ReceiveData() -> bool
 
     if (_netConnection->CheckStatus(false)) {
         const auto recv_buf = _netConnection->ReceiveData();
-        FO_RUNTIME_ASSERT(!recv_buf.empty());
+        FO_VERIFY_AND_THROW(!recv_buf.empty(), "Client connection reported readable network data but returned an empty receive buffer", _bytesReceived, _bytesRealReceived);
 
         _netIn.ShrinkReadBuf();
 

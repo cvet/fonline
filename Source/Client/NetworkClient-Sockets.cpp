@@ -342,7 +342,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_sock.is_valid());
+    FO_VERIFY_AND_THROW(_sock.is_valid(), "Missing required sock is valid");
 
     auto len = _sock.receive(buf);
 

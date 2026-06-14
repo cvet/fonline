@@ -42,8 +42,8 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(vertices > 0);
-        FO_RUNTIME_ASSERT(vertices % 4 == 0);
+        FO_VERIFY_AND_THROW(vertices > 0, "Spark render buffer cannot be created without vertices");
+        FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
 
         _renderBuf = _render->CreateDrawBuffer(false);
 
@@ -59,7 +59,7 @@ namespace SPK::FO
         ibuf.resize(ipos);
 
         if constexpr (sizeof(vindex_t) == 2) {
-            FO_RUNTIME_ASSERT(ibuf.size() <= 0xFFFF);
+            FO_VERIFY_AND_THROW(ibuf.size() <= 0xFFFF, "Spark render buffer index count exceeds 16-bit vertex index capacity", ibuf.size(), 0xFFFF, vertices);
         }
 
         for (size_t i = 0; i < ibuf.size() / 6; i++) {
@@ -133,7 +133,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!_particleMngr);
+        FO_VERIFY_AND_THROW(!_particleMngr, "Particle mngr is already set");
 
         _path = path;
         _particleMngr = &particle_mngr;
@@ -193,9 +193,9 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        FO_RUNTIME_ASSERT(_particleMngr);
+        FO_VERIFY_AND_THROW(_particleMngr, "Missing required particle mngr");
 
-        FO_RUNTIME_ASSERT(renderBuffer);
+        FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         auto& buffer = static_cast<SparkRenderBuffer&>(*renderBuffer);
         buffer.PositionAtStart();
 
@@ -240,8 +240,8 @@ namespace SPK::FO
             }
         }
 
-        FO_RUNTIME_ASSERT(_effect);
-        FO_RUNTIME_ASSERT(_texture);
+        FO_VERIFY_AND_THROW(_effect, "Missing required effect");
+        FO_VERIFY_AND_THROW(_texture, "Missing required texture");
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_projMatColMaj), sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;

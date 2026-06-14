@@ -120,7 +120,7 @@ AngelScriptBackend::~AngelScriptBackend()
 
     if (_asEngine) {
         const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
-        FO_STRONG_ASSERT(as_engine_ref_count == 0);
+        FO_STRONG_ASSERT(as_engine_ref_count == 0, "AngelScript engine was not fully released", as_engine_ref_count);
     }
 
     for (const auto& cb : _postCleanupCallbacks) {
@@ -132,7 +132,7 @@ auto AngelScriptBackend::GetGameEngine() -> BaseEngine*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_engine);
+    FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
     return _engine.get();
 }
 
@@ -140,7 +140,7 @@ auto AngelScriptBackend::GetGameEngine() const -> const BaseEngine*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_engine);
+    FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
     return _engine.get();
 }
 
@@ -148,7 +148,7 @@ auto AngelScriptBackend::GetEntityMngr() -> EntityManagerApi*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_entityMngr);
+    FO_VERIFY_AND_THROW(_entityMngr, "Missing entity manager");
     return _entityMngr.get();
 }
 
@@ -157,7 +157,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     FO_STACK_TRACE_ENTRY();
 
     auto* as_engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    FO_RUNTIME_ASSERT(as_engine);
+    FO_VERIFY_AND_THROW(as_engine, "Missing AngelScript engine");
 
     as_engine->SetUserData(cast_to_void(this));
 
@@ -303,12 +303,12 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         FO_UNREACHABLE_PLACE();
     }();
 
-    FO_RUNTIME_ASSERT(script_bin_files.GetFilesCount() == 1);
+    FO_VERIFY_AND_THROW(script_bin_files.GetFilesCount() == 1, "Resource pack must contain exactly one script bytecode file for this engine side", _meta->GetSide(), script_bin_files.GetFilesCount());
     const auto script_bin_file = File::Load(*script_bin_files.begin());
     const auto script_bin = span(script_bin_file.GetBuf(), script_bin_file.GetSize());
 
-    FO_RUNTIME_ASSERT(_asEngine->GetModuleCount() == 0);
-    FO_RUNTIME_ASSERT(!script_bin.empty());
+    FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before loading bytecode", _asEngine->GetModuleCount());
+    FO_VERIFY_AND_THROW(!script_bin.empty(), "AngelScript bytecode resource is empty", script_bin_file.GetPath(), _meta->GetSide());
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
@@ -333,8 +333,8 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     std::vector<uint8_t> lnt_data(reader.Read<uint32_t>());
     MemCopy(lnt_data.data(), reader.ReadPtr<uint8_t>(lnt_data.size()), lnt_data.size());
-    FO_RUNTIME_ASSERT(!buf.empty());
-    FO_RUNTIME_ASSERT(!lnt_data.empty());
+    FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode container has an empty script bytecode payload", script_bin_file.GetPath(), script_bin.size());
+    FO_VERIFY_AND_THROW(!lnt_data.empty(), "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath(), script_bin.size(), buf.size());
 
     auto* mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
@@ -386,7 +386,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         }
     }
 
-    FO_RUNTIME_ASSERT(script_bin.size() >= sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size());
+    FO_VERIFY_AND_THROW(script_bin.size() >= sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size(), "AngelScript bytecode container is shorter than its declared payload sizes", script_bin_file.GetPath(), script_bin.size(), sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size(), buf.size(), lnt_data.size());
     const auto records = DeserializeFunctionAttributeRecords(reader);
     reader.VerifyEnd();
 
@@ -411,7 +411,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_asEngine->GetModuleCount() == 0);
+    FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before compiling scripts", _asEngine->GetModuleCount());
 
     // File loader
     class ScriptLoader : public Preprocessor::FileLoader
@@ -683,7 +683,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
     // Index all functions
     if (_scriptSys) {
-        FO_RUNTIME_ASSERT(_asEngine->GetModuleCount() == 1);
+        FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 1, "AngelScript engine must contain one compiled module before indexing functions", _asEngine->GetModuleCount());
         const auto* mod = _asEngine->GetModuleByIndex(0);
 
         for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
@@ -699,7 +699,7 @@ void AngelScriptBackend::BindRequiredStuff()
                 if (const auto raw_init_attr = FindFunctionAttribute(func, "ModuleInit"); !raw_init_attr.empty()) {
                     int32_t priority = 0;
                     const auto parsed = TryParseModuleFuncPriority(raw_init_attr, "ModuleInit", priority);
-                    FO_RUNTIME_ASSERT(parsed);
+                    FO_VERIFY_AND_THROW(parsed, "Failed to parse serialized script metadata");
                     _scriptSys->AddInitFunc(std::move(func_wrapper), priority);
                 }
             }

@@ -102,10 +102,10 @@ void ResourceManager::IndexFiles()
     }
 
     auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
-    FO_RUNTIME_ASSERT(atlas_spr);
+    FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
     _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
-    FO_RUNTIME_ASSERT(_critterDummyAnimFrames);
+    FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Missing required critter dummy anim frames");
 
     _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName, AtlasType::MapSprites, true) : nullptr;
 
@@ -113,7 +113,7 @@ void ResourceManager::IndexFiles()
         _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(*_sprMngr, AtlasType::MapSprites);
     }
 
-    FO_RUNTIME_ASSERT(_itemHexDummyAnim);
+    FO_VERIFY_AND_THROW(_itemHexDummyAnim, "Missing required item hex dummy anim");
 }
 
 auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
@@ -484,8 +484,8 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
 
     // Try load fofrm
     static constexpr char FRM_IND[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    FO_RUNTIME_ASSERT(state_anim < sizeof(FRM_IND));
-    FO_RUNTIME_ASSERT(action_anim < sizeof(FRM_IND));
+    FO_VERIFY_AND_THROW(state_anim < sizeof(FRM_IND), "Critter frame state animation index cannot be encoded in a FOFRM suffix", model_name, state_anim, sizeof(FRM_IND));
+    FO_VERIFY_AND_THROW(action_anim < sizeof(FRM_IND), "Critter frame action animation index cannot be encoded in a FOFRM suffix", model_name, action_anim, sizeof(FRM_IND));
 
     shared_ptr<SpriteSheet> anim;
 

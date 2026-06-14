@@ -181,7 +181,7 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_particleMngr);
+    FO_VERIFY_AND_THROW(_particleMngr, "Missing required particle mngr");
 
     // Find place for render
     const auto frame_size = particle_spr->GetSize();

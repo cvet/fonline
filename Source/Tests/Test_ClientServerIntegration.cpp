@@ -255,7 +255,7 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForServerStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -273,7 +273,7 @@ namespace ClientServerIntegrationClient
 
     static auto GetServerConnectionCount(ServerEngine* server) -> size_t
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         const auto unlock = scope_exit([server]() noexcept { safe_call([server] { server->Unlock(); }); });
@@ -297,7 +297,7 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForServerConnectionCount(ServerEngine* server, size_t expected_connections) -> bool
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 2000; i++) {
             if (GetServerConnectionCount(server) == expected_connections) {
@@ -312,8 +312,8 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForConnected(ClientEngine* client, ServerEngine* server, size_t expected_connections = 1) -> bool
     {
-        FO_RUNTIME_ASSERT(client);
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(client, "Missing client instance");
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
@@ -330,8 +330,8 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForDisconnected(ClientEngine* client, ServerEngine* server) -> bool
     {
-        FO_RUNTIME_ASSERT(client);
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(client, "Missing client instance");
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
@@ -348,7 +348,7 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForLearnedHash(ClientEngine* client, hstring::hash_t hash, string_view expected_string) -> bool
     {
-        FO_RUNTIME_ASSERT(client);
+        FO_VERIFY_AND_THROW(client, "Missing client instance");
 
         for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();

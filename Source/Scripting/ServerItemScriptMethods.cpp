@@ -234,7 +234,7 @@ FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
         auto map = self->GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         map->ChangeViewItem(self);
         map->RecacheHexFlags(self->GetHex());
     }

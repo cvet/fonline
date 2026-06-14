@@ -40,7 +40,7 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!base || props->GetRegistrator() == base->GetRegistrator());
+    FO_VERIFY_AND_THROW(!base || props->GetRegistrator() == base->GetRegistrator(), "Serialized properties use a different base registrator");
 
     AnyData::Document doc;
 
@@ -130,8 +130,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     props->ValidateForRawData(prop);
 
@@ -812,9 +812,9 @@ static auto GetRefTypeFieldsRegistrator(const BaseTypeDesc& base_type) -> const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(base_type.IsRefType);
-    FO_RUNTIME_ASSERT(base_type.RefType != nullptr);
-    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator != nullptr);
+    FO_VERIFY_AND_THROW(base_type.IsRefType, "Missing required base type is ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType != nullptr, "Missing required base type ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator != nullptr, "Reference type has no fields registrator");
     return base_type.RefType->FieldsRegistrator.get();
 }
 
@@ -908,7 +908,7 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
         }
     }
 
-    FO_RUNTIME_ASSERT(pdata == data.data() + data.size());
+    FO_VERIFY_AND_THROW(pdata == data.data() + data.size(), "Serialized ref-type field buffer size does not match bytes written", fields_registrator->GetTypeName(), pdata - data.data(), data.size());
     return data;
 }
 
@@ -1026,8 +1026,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     const BaseTypeDesc& base_type = prop->GetBaseType();
     const auto* pdata = raw_data.data();
@@ -1036,7 +1036,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
     if (prop->IsPlainData()) {
         auto value = RawDataToValue(base_type, hash_resolver, name_resolver, pdata);
 
-        FO_RUNTIME_ASSERT(pdata == pdata_end);
+        FO_VERIFY_AND_THROW(pdata == pdata_end, "Plain property deserialization did not consume the full raw payload", prop->GetName(), pdata - raw_data.data(), raw_data.size());
         return value;
     }
     else if (base_type.IsRefType && !prop->IsArray() && !prop->IsDict()) {
@@ -1046,7 +1046,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
         const auto* pstr = reinterpret_cast<const char*>(pdata);
         pdata += raw_data.size();
 
-        FO_RUNTIME_ASSERT(pdata == pdata_end);
+        FO_VERIFY_AND_THROW(pdata == pdata_end, "String property deserialization did not consume the full raw payload", prop->GetName(), pdata - raw_data.data(), raw_data.size());
         return string(pstr, raw_data.size());
     }
     else if (prop->IsArray()) {
@@ -1094,7 +1094,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
             }
         }
 
-        FO_RUNTIME_ASSERT(pdata == pdata_end);
+        FO_VERIFY_AND_THROW(pdata == pdata_end, "Array property deserialization did not consume the full raw payload", prop->GetName(), pdata - raw_data.data(), raw_data.size());
         return std::move(arr);
     }
     else if (prop->IsDict()) {
@@ -1238,7 +1238,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
             }
         }
 
-        FO_RUNTIME_ASSERT(pdata == pdata_end);
+        FO_VERIFY_AND_THROW(pdata == pdata_end, "Dict property deserialization did not consume the full raw payload", prop->GetName(), pdata - raw_data.data(), raw_data.size());
         return std::move(dict);
     }
 
@@ -1249,8 +1249,8 @@ void PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     const auto set_data = [props, prop](span<const uint8_t> raw_data) { props->SetRawData(prop, raw_data); };
 
@@ -1376,8 +1376,8 @@ auto PropertiesSerializator::SavePropertyToText(const Properties* props, const P
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     props->ValidateForRawData(prop);
 
@@ -1388,8 +1388,8 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     const BaseTypeDesc& base_type = prop->GetBaseType();
     const auto* pdata = raw_data.data();
@@ -1570,7 +1570,7 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
         FO_UNREACHABLE_PLACE();
     }
 
-    FO_RUNTIME_ASSERT(pdata == pdata_end);
+    FO_VERIFY_AND_THROW(pdata == pdata_end, "Property coded-string serialization did not consume the full raw payload", prop->GetName(), pdata - raw_data.data(), raw_data.size());
     return NormalizeTopLevelCodedString(std::move(result));
 }
 
@@ -1728,8 +1728,8 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     const auto& base_type = prop->GetBaseType();
 
@@ -1799,7 +1799,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 pdata += str.length();
             }
 
-            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
+            FO_VERIFY_AND_THROW(pdata == data.get() + data_size, "String array property buffer size does not match bytes written", prop->GetName(), pdata - data.get(), data_size);
             set_data({data.get(), data_size});
         }
         else if (base_type.IsRefType) {
@@ -1829,7 +1829,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 }
             }
 
-            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
+            FO_VERIFY_AND_THROW(pdata == data.get() + data_size, "Ref-type array property buffer size does not match bytes written", prop->GetName(), pdata - data.get(), data_size);
             set_data({data.get(), data_size});
         }
         else {
@@ -1841,7 +1841,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
                 ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, arr_entry, pdata);
             }
 
-            FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
+            FO_VERIFY_AND_THROW(pdata == data.get() + data_size, "Plain array property buffer size does not match bytes written", prop->GetName(), pdata - data.get(), data_size);
             set_data({data.get(), data_size});
         }
     }
@@ -2031,7 +2031,7 @@ void PropertiesSerializator::LoadPropertyFromValue(const Property* prop, const A
             }
         }
 
-        FO_RUNTIME_ASSERT(pdata == data.get() + data_size);
+        FO_VERIFY_AND_THROW(pdata == data.get() + data_size, "Dict property buffer size does not match bytes written", prop->GetName(), pdata - data.get(), data_size);
         set_data({data.get(), data_size});
     }
     else {
@@ -2043,8 +2043,8 @@ void PropertiesSerializator::LoadPropertyFromText(Properties* props, const Prope
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     const auto set_data = [props, prop](span<const uint8_t> raw_data) { props->SetRawData(prop, raw_data); };
     vector<uint8_t> data;

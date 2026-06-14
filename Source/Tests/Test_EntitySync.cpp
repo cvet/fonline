@@ -662,13 +662,13 @@ TEST_CASE("EntityLockNegative")
     {
         // Read->write upgrade on the same thread (hold shared, then request exclusive) would
         // self-deadlock — the exclusive grant waits for all shared holders to drain, including this
-        // very thread. The Acquire guard (FO_RUNTIME_ASSERT) catches it immediately. The property
+        // very thread. The Acquire guard (FO_VERIFY_AND_THROW) catches it immediately. The property
         // pipeline never upgrades (a getter releases its shared hold before any setter runs), so only
         // an explicit negative test reaches this branch.
         EntityLock lock;
         lock.AcquireShared(0);
 
-        CHECK_THROWS_AS(lock.Acquire(0), AssertationException);
+        CHECK_THROWS_AS(lock.Acquire(0), VerificationException);
 
         // The shared hold is untouched (the assert fired before any state change).
         lock.ReleaseShared();
@@ -983,7 +983,7 @@ TEST_CASE("SyncContextSingletonLock")
     SECTION("UnbalancedSingletonUnlockAsserts")
     {
         // UnlockSingleton with no matching LockSingleton (more Game.Unlock() than Game.Lock()) trips
-        // the find-fail FO_RUNTIME_ASSERT. The first IsLockedByCurrentThread guard fires once the lock
+        // the find-fail FO_VERIFY_AND_THROW. The first IsLockedByCurrentThread guard fires once the lock
         // is already fully released, so the unbalanced second unlock is rejected rather than corrupting
         // the singleton bucket.
         EntityLock singleton;
@@ -997,7 +997,7 @@ TEST_CASE("SyncContextSingletonLock")
         CHECK(ctx.IsEmpty());
 
         // Second unlock has nothing to match.
-        CHECK_THROWS_AS(ctx.UnlockSingleton(&singleton), AssertationException);
+        CHECK_THROWS_AS(ctx.UnlockSingleton(&singleton), VerificationException);
 
         CHECK(ctx.IsEmpty());
         ctx.Deactivate();

@@ -53,7 +53,7 @@ Location::~Location()
     FO_STACK_TRACE_ENTRY();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_RUNTIME_VERIFY(_locMaps.empty());
+        FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
     }
 }
 
@@ -148,7 +148,7 @@ void Location::AddMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     vec_add_unique_value(_locMaps, map);
 
@@ -169,7 +169,7 @@ void Location::RemoveMap(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     vec_remove_unique_value(_locMaps, map);
 

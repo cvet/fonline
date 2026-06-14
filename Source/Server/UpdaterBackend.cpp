@@ -127,9 +127,10 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     }
 
     const auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
+    const auto platform_binaries_path = fs_path_to_string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
-        FO_RUNTIME_ASSERT(std::filesystem::is_directory(platform_binaries_dir));
+        FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
 
         for (const auto& platform_entry : std::filesystem::directory_iterator {platform_binaries_dir}) {
             if (!platform_entry.is_directory()) {
@@ -137,10 +138,10 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             }
 
             const auto binary_target_name = fs_path_to_string(platform_entry.path().filename());
-            FO_RUNTIME_ASSERT(!binary_target_name.empty());
+            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs_path_to_string(platform_entry.path()));
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                FO_RUNTIME_ASSERT(binary_entry.is_regular_file());
+                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
                 const auto disk_path = fs_path_to_string(binary_entry.path());
                 const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
                 auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);

@@ -133,7 +133,7 @@ auto fs_read_file(string_view path) -> optional<string>
         return std::nullopt;
     }
 
-    FO_RUNTIME_ASSERT(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()));
+    FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
 
     std::ifstream file {fs_path, std::ios::binary};
 
@@ -351,7 +351,7 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
             }
             else {
                 const auto file_size = dir_entry.file_size();
-                FO_RUNTIME_ASSERT(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()));
+                FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
                 visitor(strex(cur_dir).combine_path(path), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
             }
         }

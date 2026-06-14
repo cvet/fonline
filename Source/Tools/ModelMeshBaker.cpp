@@ -71,7 +71,7 @@ struct BakerMeshData
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(SkinBones.size() == SkinBoneOffsets.size());
+        FO_VERIFY_AND_THROW(SkinBones.size() == SkinBoneOffsets.size(), "Skin bone list and inverse-bind offset list have different sizes", SkinBones.size(), SkinBoneOffsets.size());
 
         auto len = numeric_cast<uint32_t>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
@@ -193,9 +193,9 @@ struct BakerAnimSet
             len = numeric_cast<uint32_t>(o.Name.length());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.Name.data(), len);
-            FO_RUNTIME_ASSERT(o.ScaleTime.size() == o.ScaleValue.size());
-            FO_RUNTIME_ASSERT(o.RotationTime.size() == o.RotationValue.size());
-            FO_RUNTIME_ASSERT(o.TranslationTime.size() == o.TranslationValue.size());
+            FO_VERIFY_AND_THROW(o.ScaleTime.size() == o.ScaleValue.size(), "Model bone scale keyframe times and values have different sizes", o.Name, o.ScaleTime.size(), o.ScaleValue.size());
+            FO_VERIFY_AND_THROW(o.RotationTime.size() == o.RotationValue.size(), "Model bone rotation keyframe times and values have different sizes", o.Name, o.RotationTime.size(), o.RotationValue.size());
+            FO_VERIFY_AND_THROW(o.TranslationTime.size() == o.TranslationValue.size(), "Model bone translation keyframe times and values have different sizes", o.Name, o.TranslationTime.size(), o.TranslationValue.size());
             len = numeric_cast<uint32_t>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
@@ -378,7 +378,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         bone->AttachedMesh = SafeAlloc::MakeUnique<BakerMeshData>();
         BakerMeshData* mesh = bone->AttachedMesh.get();
         const auto* fbx_mesh = fbx_node->mesh;
-        FO_RUNTIME_ASSERT(fbx_mesh->num_faces == fbx_mesh->num_triangles);
+        FO_VERIFY_AND_THROW(fbx_mesh->num_faces == fbx_mesh->num_triangles, "FBX mesh contains non-triangle faces", fbx_mesh->num_faces, fbx_mesh->num_triangles);
         const auto* fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
@@ -457,7 +457,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                 }
             }
 
-            FO_RUNTIME_ASSERT(mesh_triangles_count == fbx_mesh_part.num_triangles);
+            FO_VERIFY_AND_THROW(mesh_triangles_count == fbx_mesh_part.num_triangles, "Baked mesh triangle count does not match FBX mesh part", mesh_triangles_count, fbx_mesh_part.num_triangles);
         }
 
         vector<uint32_t> indices;
@@ -549,7 +549,7 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
         fbx_bake_opts.trim_start_time = true;
         ufbx_error fbx_error;
         ufbx_baked_anim* fbx_baked_anim = ufbx_bake_anim(fbx_scene, fbx_anim, &fbx_bake_opts, &fbx_error);
-        FO_RUNTIME_ASSERT(fbx_baked_anim);
+        FO_VERIFY_AND_THROW(fbx_baked_anim, "Missing required fbx baked animation");
 
         auto fbx_baked_anim_cleanup = scope_exit([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
 

@@ -98,7 +98,7 @@ ModelAnimationController::ModelAnimationController(int32_t track_count)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track_count >= 0);
+    FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
 
     if (track_count != 0) {
         _anims = SafeAlloc::MakeShared<vector<pair<ModelAnimation*, bool>>>();
@@ -146,8 +146,8 @@ auto ModelAnimationController::GetAnimationBones(int32_t index) const -> const v
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", index, _anims->size());
 
     return (*_anims)[index].first->GetBonesHierarchy();
 }
@@ -156,8 +156,8 @@ auto ModelAnimationController::GetAnimationDuration(int32_t index) const -> floa
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", index, _anims->size());
 
     return (*_anims)[index].first->GetDuration();
 }
@@ -166,8 +166,8 @@ auto ModelAnimationController::GetTrackEnable(int32_t track) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Enabled;
 }
@@ -176,8 +176,8 @@ auto ModelAnimationController::GetTrackSpeed(int32_t track) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Speed;
 }
@@ -186,8 +186,8 @@ auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Position;
 }
@@ -203,10 +203,10 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
-    FO_RUNTIME_ASSERT(anim_index >= 0);
-    FO_RUNTIME_ASSERT(anim_index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+    FO_VERIFY_AND_THROW(anim_index >= 0, "Animation index is negative", anim_index);
+    FO_VERIFY_AND_THROW(anim_index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", anim_index, _anims->size());
 
     const auto* anim = (*_anims)[anim_index].first;
     const auto reversed = (*_anims)[anim_index].second;
@@ -237,8 +237,8 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(skip_track >= 0);
-    FO_RUNTIME_ASSERT(skip_track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(skip_track >= 0, "Skip track is negative", skip_track);
+    FO_VERIFY_AND_THROW(skip_track < numeric_cast<int32_t>(_tracks.size()), "Skipped animation track index is outside track table bounds", skip_track, _tracks.size());
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
@@ -272,8 +272,8 @@ void ModelAnimationController::AddEventEnable(int32_t track, bool enable, float3
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
 }
@@ -282,8 +282,8 @@ void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, flo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -292,8 +292,8 @@ void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, f
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -302,8 +302,8 @@ void ModelAnimationController::SetTrackEnable(int32_t track, bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Enabled = enable;
 }
@@ -312,8 +312,8 @@ void ModelAnimationController::SetTrackPosition(int32_t track, float32_t positio
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Position = position;
 }
@@ -322,8 +322,8 @@ void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Speed = speed;
 }
@@ -350,7 +350,7 @@ void ModelAnimationController::AdvanceTime(float32_t time)
                 float32_t value;
 
                 if (_eventsTime < event.StartTime + event.SmoothTime) {
-                    FO_RUNTIME_ASSERT(event.SmoothTime > 0.0f);
+                    FO_VERIFY_AND_THROW(event.SmoothTime > 0.0f, "Event smooth time must be positive");
 
                     if (!event.ValueFrom.has_value()) {
                         if (event.Type == Track::EventType::Speed) {

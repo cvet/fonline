@@ -108,16 +108,16 @@ namespace
     static auto GetTrackerState(asIScriptEngine* engine) -> ResourceTrackerState&
     {
         auto* state = static_cast<ResourceTrackerState*>(engine->GetUserData());
-        FO_RUNTIME_ASSERT(state != nullptr);
+        FO_VERIFY_AND_THROW(state != nullptr, "Missing required state");
         return *state;
     }
 
     static auto GetActiveEngine() -> asIScriptEngine*
     {
         auto* ctx = asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx != nullptr);
+        FO_VERIFY_AND_THROW(ctx != nullptr, "Missing required context");
         auto* engine = ctx->GetEngine();
-        FO_RUNTIME_ASSERT(engine != nullptr);
+        FO_VERIFY_AND_THROW(engine != nullptr, "Missing required engine");
         return engine;
     }
 

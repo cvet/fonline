@@ -49,7 +49,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_mapSprValid);
+    FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
     const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     auto* mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
@@ -57,8 +57,8 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     _mapSpr = mspr;
     SetupSprite(mspr);
 
-    FO_RUNTIME_ASSERT(_mapSpr == mspr);
-    FO_RUNTIME_ASSERT(_mapSprValid);
+    FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex, static_cast<const void*>(mspr), static_cast<const void*>(_mapSpr.get()));
+    FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
     return _mapSpr.get();
 }
 
@@ -120,7 +120,7 @@ void HexView::InheritAlphaFrom(const HexView* prev)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prev);
+    FO_VERIFY_AND_THROW(prev, "Missing required prev");
 
     _curAlpha = prev->_curAlpha;
 
@@ -223,7 +223,7 @@ auto HexView::GetMapSprite() const -> const MapSprite*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSprValid);
+    FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr.get();
 }
@@ -232,7 +232,7 @@ auto HexView::GetMapSprite() -> MapSprite*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_mapSprValid);
+    FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr.get();
 }
@@ -242,12 +242,12 @@ void HexView::InvalidateSprite()
     FO_STACK_TRACE_ENTRY();
 
     if (_mapSprValid) {
-        FO_RUNTIME_ASSERT(_mapSpr);
+        FO_VERIFY_AND_THROW(_mapSpr, "Missing required map spr");
 
         _mapSpr->Invalidate();
         _mapSpr.reset();
 
-        FO_RUNTIME_ASSERT(!_mapSprValid);
+        FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
     }
 
     if (_extraMapSpr) {

@@ -414,7 +414,7 @@ auto CritterHexView::GetModelLayersData() const -> const int32_t*
     FO_STACK_TRACE_ENTRY();
 
     const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
-    FO_RUNTIME_ASSERT(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT);
+    FO_VERIFY_AND_THROW(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT, "Model layer property raw data size does not match layer count", prop_raw_data.size(), MODEL_LAYERS_COUNT, sizeof(int32_t));
     return reinterpret_cast<const int32_t*>(prop_raw_data.data());
 }
 
@@ -594,7 +594,7 @@ void CritterHexView::Process()
                     const auto new_total = sum_total(new_anim);
 
                     const auto div_round = [](int64_t num, int64_t den) -> int32_t {
-                        FO_RUNTIME_ASSERT(den > 0);
+                        FO_VERIFY_AND_THROW(den > 0, "Den must be positive");
                         const int64_t half = den / 2;
                         return numeric_cast<int32_t>(num >= 0 ? (num + half) / den : -((-num + half) / den));
                     };
@@ -693,7 +693,7 @@ void CritterHexView::ProcessMoving()
     FO_STACK_TRACE_ENTRY();
 
     auto* moving = GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
@@ -751,7 +751,7 @@ auto CritterHexView::GetViewRect() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsMapSpriteValid());
+    FO_VERIFY_AND_THROW(IsMapSpriteValid(), "Missing required is map sprite valid");
 
     return GetMapSprite()->GetViewRect();
 }
@@ -831,7 +831,7 @@ auto CritterHexView::EvaluateMovementDisplacement() const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsMoving());
+    FO_VERIFY_AND_THROW(IsMoving(), "Missing required is moving");
 
     const auto* moving = GetMoving();
     const auto start_hex = moving->GetStartHex();
@@ -851,10 +851,10 @@ auto CritterHexView::EvaluateMovementFrameIndex(const SpriteSheet* anim) const -
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsMoving());
+    FO_VERIFY_AND_THROW(IsMoving(), "Missing required is moving");
 
     const auto frames_count = anim->GetFramesCount();
-    FO_RUNTIME_ASSERT(frames_count > 0);
+    FO_VERIFY_AND_THROW(frames_count > 0, "Frames count must be positive", frames_count);
 
     const auto& spr_offset = anim->GetSprOffset();
 

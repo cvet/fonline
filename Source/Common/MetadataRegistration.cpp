@@ -105,8 +105,8 @@ static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vect
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 2);
-        FO_RUNTIME_ASSERT(tokens.size() % 2 == 0);
+        FO_VERIFY_AND_THROW(tokens.size() >= 2, "Enum metadata record is missing enum name or underlying type", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() % 2 == 0, "Enum metadata record must contain key/value token pairs after the header", tokens[0], tokens.size());
         const auto& enum_name = tokens[0];
         const auto& enum_underlying_type = tokens[1];
 
@@ -137,7 +137,7 @@ static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(!tokens.empty());
+        FO_VERIFY_AND_THROW(!tokens.empty(), "Entity metadata record is empty and cannot provide an entity type name", engine_data.size());
         const auto name = tokens[0];
         const auto flags = span(tokens).subspan(1);
         const auto is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
@@ -154,7 +154,7 @@ static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vec
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 4);
+        FO_VERIFY_AND_THROW(tokens.size() >= 4, "EntityHolder metadata record is missing target, holder entity, target entity or entry name", tokens.size());
         const auto target = tokens[0];
         const auto holder_entity = tokens[1];
         const auto target_entity = tokens[2];
@@ -183,7 +183,7 @@ static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(!tokens.empty());
+        FO_VERIFY_AND_THROW(!tokens.empty(), "FixedType metadata record is empty and cannot provide a type name", engine_data.size());
 
         meta->RegisterFixedType(tokens[0], false);
     }
@@ -194,15 +194,15 @@ static void RegisterDynamicMetadataValueTypes(EngineMetadata* meta, const vector
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 3);
-        FO_RUNTIME_ASSERT(tokens.size() % 2 == 1);
+        FO_VERIFY_AND_THROW(tokens.size() >= 3, "ValueType metadata record is missing type name or at least one field/type pair", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() % 2 == 1, "Dynamic value type metadata must contain a type name followed by field/type pairs", tokens[0], tokens.size());
 
         const auto& name = tokens[0];
         vector<pair<string_view, string_view>> layout;
         layout.reserve((tokens.size() - 1) / 2);
 
         for (size_t i = 1; i < tokens.size(); i += 2) {
-            FO_RUNTIME_ASSERT_STR(meta->IsValidBaseType(tokens[i + 1]), strex("Invalid ValueType field type '{}' for field '{}' in '{}'", tokens[i + 1], tokens[i], name));
+            FO_VERIFY_AND_THROW(meta->IsValidBaseType(tokens[i + 1]), "ValueType metadata field has an invalid base type", tokens[i + 1], tokens[i], name);
             layout.emplace_back(tokens[i], tokens[i + 1]);
         }
 
@@ -216,33 +216,33 @@ static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(!tokens.empty());
+        FO_VERIFY_AND_THROW(!tokens.empty(), "RefType metadata record is empty and cannot provide a type name", engine_data.size());
 
         meta->RegisterRefType(tokens[0]);
     }
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(!tokens.empty());
+        FO_VERIFY_AND_THROW(!tokens.empty(), "RefType layout metadata record is empty and cannot provide a type name", engine_data.size());
 
         const auto& name = tokens[0];
         vector<vector<string_view>> layout;
 
         for (size_t i = 1; i < tokens.size();) {
-            FO_RUNTIME_ASSERT_STR(i + 2 < tokens.size(), strex("Truncated RefType field record in '{}'", name));
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size(), "RefType metadata field record is truncated", name);
 
             const auto field_name = tokens[i];
             const auto field_type = tokens[i + 1];
             const auto flag_count_signed = strex(tokens[i + 2]).to_int32();
-            FO_RUNTIME_ASSERT_STR(flag_count_signed >= 0, strex("Negative flag count for RefType field '{}' in '{}'", field_name, name));
+            FO_VERIFY_AND_THROW(flag_count_signed >= 0, "RefType metadata field has a negative flag count", field_name, name);
             const auto flag_count = numeric_cast<size_t>(flag_count_signed);
 
-            FO_RUNTIME_ASSERT_STR(i + 3 + flag_count <= tokens.size(), strex("Truncated RefType flags for field '{}' in '{}'", field_name, name));
+            FO_VERIFY_AND_THROW(i + 3 + flag_count <= tokens.size(), "RefType metadata field flags are truncated", field_name, name);
 
             const auto type = meta->ResolveComplexType(field_type);
-            FO_RUNTIME_ASSERT_STR(!type.IsMutable, strex("Invalid RefType field type '{}' for field '{}' in '{}'", field_type, field_name, name));
-            FO_RUNTIME_ASSERT_STR(type.Kind != ComplexTypeKind::Callback, strex("Invalid RefType callback field '{}' in '{}'", field_name, name));
-            FO_RUNTIME_ASSERT_STR(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, strex("Invalid RefType entity field '{}' in '{}'", field_name, name));
-            FO_RUNTIME_ASSERT_STR(!type.KeyType.has_value() || !type.KeyType->IsEntity, strex("Invalid RefType dict key type '{}' for field '{}' in '{}'", field_type, field_name, name));
+            FO_VERIFY_AND_THROW(!type.IsMutable, "RefType metadata field has a mutable type", field_type, field_name, name);
+            FO_VERIFY_AND_THROW(type.Kind != ComplexTypeKind::Callback, "RefType metadata field cannot use a callback type", field_name, name);
+            FO_VERIFY_AND_THROW(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, "RefType metadata field cannot reference a runtime entity type", field_name, name);
+            FO_VERIFY_AND_THROW(!type.KeyType.has_value() || !type.KeyType->IsEntity, "RefType metadata dictionary key cannot reference a runtime entity type", field_type, field_name, name);
 
             vector<string_view> field_tokens;
             field_tokens.reserve(2 + flag_count);
@@ -266,7 +266,7 @@ static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 4);
+        FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
         const auto entity_name = tokens[0];
         auto* prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
         const auto prop_tokens = span(tokens).subspan(1);
@@ -282,8 +282,8 @@ static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vec
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 2);
-        FO_RUNTIME_ASSERT((tokens.size() - 2) % 3 == 0);
+        FO_VERIFY_AND_THROW(tokens.size() >= 2, "Event metadata record is missing entity name or event name", tokens.size());
+        FO_VERIFY_AND_THROW((tokens.size() - 2) % 3 == 0, "Event metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens.size());
         const auto entity_name = tokens[0];
         EntityEventDesc event;
         event.Name = tokens[1];
@@ -304,8 +304,8 @@ static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vecto
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 3);
-        FO_RUNTIME_ASSERT((tokens.size() - 3) % 3 == 0);
+        FO_VERIFY_AND_THROW(tokens.size() >= 3, "RemoteCall metadata record is missing call name, subsystem hint or direction", tokens.size());
+        FO_VERIFY_AND_THROW((tokens.size() - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
         RemoteCallDesc remote_call;
         remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
@@ -332,7 +332,7 @@ static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 2);
+        FO_VERIFY_AND_THROW(tokens.size() >= 2, "Setting metadata record is missing setting name or value type", tokens.size());
         const auto name = tokens[0];
         const auto& type = meta->GetBaseType(tokens[1]);
 
@@ -345,7 +345,7 @@ static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const ve
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_RUNTIME_ASSERT(tokens.size() >= 4);
+        FO_VERIFY_AND_THROW(tokens.size() >= 4, "MigrationRule metadata record is missing rule scope, version or target fields", tokens.size());
 
         meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
     }
@@ -355,7 +355,7 @@ auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(resources);
+    FO_VERIFY_AND_THROW(resources, "Missing required resources");
 
     const string target_lower = strex(target).lower();
 

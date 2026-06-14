@@ -185,7 +185,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         bool find_ok = false;
         const auto round_begin = next_hexes_read;
         const auto round_end = next_hexes.size();
-        FO_RUNTIME_ASSERT(round_end > round_begin);
+        FO_VERIFY_AND_THROW(round_end > round_begin, "Pathfinding breadth-first search exhausted its frontier before finding a path", input.FromHex, input.ToHex, input.Cut, round_begin, round_end, next_hexes.size());
 
         for (size_t i = round_begin; i < round_end; i++) {
             const auto cur_hex = next_hexes[i];
@@ -377,7 +377,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
 
                 if (failed) {
-                    FO_RUNTIME_ASSERT(i > 0);
+                    FO_VERIFY_AND_THROW(i > 0, "I must be positive", i);
                     GeometryHelper::MoveHexByDir(trace_hex2, raw_steps[i].reverse(), map_size);
                     continue;
                 }
@@ -416,8 +416,8 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         }
     }
 
-    FO_RUNTIME_ASSERT(!output.Steps.empty());
-    FO_RUNTIME_ASSERT(!output.ControlSteps.empty());
+    FO_VERIFY_AND_THROW(!output.Steps.empty(), "Pathfinding produced no movement steps for an otherwise successful path", input.FromHex, input.ToHex, input.Cut);
+    FO_VERIFY_AND_THROW(!output.ControlSteps.empty(), "Pathfinding produced no control steps for an otherwise successful path", input.FromHex, input.ToHex, output.Steps.size());
 
     output.Result = FindPathOutput::ResultType::Ok;
     output.NewToHex = to_hex;

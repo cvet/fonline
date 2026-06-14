@@ -488,7 +488,7 @@ void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const vector<st
     }
 
     if (auto* old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->GetUserData(AS_FUNC_ATTRIBUTES_USER_DATA))) {
-        FO_RUNTIME_ASSERT(old_user_data->Attributes == attributes);
+        FO_VERIFY_AND_THROW(old_user_data->Attributes == attributes, "AngelScript function attributes were registered twice with different data");
         return;
     }
 
@@ -496,7 +496,7 @@ void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const vector<st
     user_data->Attributes = attributes;
 
     const auto* old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->SetUserData(cast_to_void(user_data.release()), AS_FUNC_ATTRIBUTES_USER_DATA));
-    FO_RUNTIME_ASSERT(!old_user_data);
+    FO_VERIFY_AND_THROW(!old_user_data, "Old user data is already set");
 }
 
 static void SetFunctionAttributesWithVirtualMirror(AngelScript::asIScriptFunction* func, const vector<string>& attributes, const vector<string>* project_blocking_extras)
@@ -1188,7 +1188,7 @@ auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Pr
 
             if (opcode == AngelScript::asBC_CALL || opcode == AngelScript::asBC_CALLSYS || opcode == AngelScript::asBC_CALLINTF || opcode == AngelScript::asBC_Thiscall1) {
                 const auto* target = mod->GetEngine()->GetFunctionById(*reinterpret_cast<const int*>(instruction + 1));
-                FO_RUNTIME_ASSERT(target);
+                FO_VERIFY_AND_THROW(target, "Missing required target");
 
                 ClassifyFunctionAttributes(target, target_has_blocking, target_markers, project_blocking_extras);
 

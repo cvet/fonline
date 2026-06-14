@@ -60,7 +60,7 @@ void SetScriptTypeFastCompare(AngelScript::asITypeInfo* type, ScriptFastCompareF
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(type);
+    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
     type->SetUserData(reinterpret_cast<void*>(func), AS_TYPE_FAST_COMPARE_USER_DATA);
 }
 
@@ -84,7 +84,7 @@ auto GetScriptBackend(BaseEngine* engine) -> AngelScriptBackend*
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* backend = engine->GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX);
-    FO_RUNTIME_ASSERT(backend);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend;
 }
 
@@ -93,7 +93,7 @@ auto GetScriptBackend(AngelScript::asIScriptEngine* as_engine) -> AngelScriptBac
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
-    FO_RUNTIME_ASSERT(backend);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend;
 }
 
@@ -102,7 +102,7 @@ auto GetEngineMetadata(AngelScript::asIScriptEngine* as_engine) -> const EngineM
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
-    FO_RUNTIME_ASSERT(backend);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend->GetMetadata();
 }
 
@@ -111,7 +111,7 @@ auto GetGameEngine(AngelScript::asIScriptEngine* as_engine) -> BaseEngine*
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* backend = cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
-    FO_RUNTIME_ASSERT(backend);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend->GetGameEngine();
 }
 
@@ -175,16 +175,16 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(type);
+    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
 
     string result;
 
     if (type.Kind == ComplexTypeKind::DictOfArray) {
-        FO_RUNTIME_ASSERT(type.KeyType);
+        FO_VERIFY_AND_THROW(type.KeyType, "Missing required type key type");
         result = strex("dict<{},array<{}>>", MakeScriptTypeName(type.KeyType.value()), MakeScriptTypeName(type.BaseType));
     }
     else if (type.Kind == ComplexTypeKind::Dict) {
-        FO_RUNTIME_ASSERT(type.KeyType);
+        FO_VERIFY_AND_THROW(type.KeyType, "Missing required type key type");
         result = strex("dict<{},{}>", MakeScriptTypeName(type.KeyType.value()), MakeScriptTypeName(type.BaseType));
     }
     else if (type.Kind == ComplexTypeKind::Array) {
@@ -201,11 +201,11 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
                 result += "void";
             }
             else if (cb_arg.Kind == ComplexTypeKind::DictOfArray) {
-                FO_RUNTIME_ASSERT(cb_arg.KeyType);
+                FO_VERIFY_AND_THROW(cb_arg.KeyType, "Missing required cb argument key type");
                 result += strex("{}_to_{}_arr", cb_arg.KeyType.value().Name, cb_arg.BaseType.Name);
             }
             else if (cb_arg.Kind == ComplexTypeKind::Dict) {
-                FO_RUNTIME_ASSERT(cb_arg.KeyType);
+                FO_VERIFY_AND_THROW(cb_arg.KeyType, "Missing required cb argument key type");
                 result += strex("{}_to_{}", cb_arg.KeyType.value().Name, cb_arg.BaseType.Name);
             }
             else if (cb_arg.Kind == ComplexTypeKind::Array) {
@@ -227,7 +227,7 @@ auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(type);
+    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
 
     string result = MakeScriptTypeName(type);
 
@@ -300,7 +300,7 @@ auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool
 
     if (type.Kind == ComplexTypeKind::Simple) {
         if ((type.BaseType.IsEntity && !type.BaseType.IsGlobalEntity) || type.BaseType.IsRefType) {
-            FO_RUNTIME_ASSERT(result.back() == '+');
+            FO_VERIFY_AND_THROW(result.back() == '+', "AngelScript type declaration suffix is malformed", result);
 
             if (pass_ownership) {
                 result.pop_back();
@@ -308,7 +308,7 @@ auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool
         }
     }
     else {
-        FO_RUNTIME_ASSERT(result.back() == '+');
+        FO_VERIFY_AND_THROW(result.back() == '+', "AngelScript type declaration suffix is malformed", result);
         result.pop_back();
     }
 
@@ -430,9 +430,9 @@ static auto LookupCachedTypeInfo(AngelScript::asIScriptEngine* as_engine, const 
     }
 
     const auto type_id = as_engine->GetTypeIdByDecl(type);
-    FO_RUNTIME_ASSERT(type_id);
+    FO_VERIFY_AND_THROW(type_id, "Missing AngelScript type id");
     auto* info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(info);
+    FO_VERIFY_AND_THROW(info, "Missing AngelScript type info");
     cache->Map.emplace(type, info);
     return info;
 }
@@ -450,9 +450,9 @@ static auto LookupCachedTypeInfoForProperty(AngelScript::asIScriptEngine* as_eng
 
     const auto type_name = MakeScriptPropertyName(prop);
     const auto type_id = as_engine->GetTypeIdByDecl(type_name.c_str());
-    FO_RUNTIME_ASSERT(type_id);
+    FO_VERIFY_AND_THROW(type_id, "Missing AngelScript type id");
     auto* info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(info);
+    FO_VERIFY_AND_THROW(info, "Missing AngelScript type info");
     cache->ByProperty.emplace(prop, info);
     cache->Map.try_emplace(type_name, info);
     return info;
@@ -462,10 +462,10 @@ auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(as_engine);
+    FO_VERIFY_AND_THROW(as_engine, "Missing AngelScript engine");
     auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_array = ScriptArray::Create(as_type_info);
-    FO_RUNTIME_ASSERT(as_array);
+    FO_VERIFY_AND_THROW(as_array, "Missing required AngelScript array");
     return as_array;
 }
 
@@ -473,10 +473,10 @@ auto CreateScriptDict(AngelScript::asIScriptEngine* as_engine, const char* type)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(as_engine);
+    FO_VERIFY_AND_THROW(as_engine, "Missing AngelScript engine");
     auto* as_type_info = LookupCachedTypeInfo(as_engine, type);
     auto* as_dict = ScriptDict::Create(as_type_info);
-    FO_RUNTIME_ASSERT(as_dict);
+    FO_VERIFY_AND_THROW(as_dict, "Missing required AngelScript dict");
     return as_dict;
 }
 
@@ -589,25 +589,25 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeProtoReference()) {
-            FO_RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            FO_VERIFY_AND_THROW(data_size == sizeof(hstring::hash_t), "Serialized proto reference payload size does not match hash storage size", prop->GetName(), data_size, sizeof(hstring::hash_t));
             new (construct_addr) Entity*(resolve_fixed_type(data));
         }
         else if (prop->IsBaseTypeHash()) {
-            FO_RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            FO_VERIFY_AND_THROW(data_size == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size", prop->GetName(), data_size, sizeof(hstring::hash_t));
             new (construct_addr) hstring(resolve_hash(data));
         }
         else if (prop->IsBaseTypeEnum()) {
-            FO_RUNTIME_ASSERT(data_size != 0);
-            FO_RUNTIME_ASSERT(data_size <= sizeof(int32_t));
+            FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
+            FO_VERIFY_AND_THROW(data_size <= sizeof(int32_t), "Serialized enum payload is wider than AngelScript integer storage", prop->GetName(), data_size, sizeof(int32_t));
             MemFill(construct_addr, 0, sizeof(int32_t));
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
-            FO_RUNTIME_ASSERT(data_size != 0);
+            FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             MemCopy(construct_addr, data, data_size);
         }
         else if (prop->IsBaseTypeStruct()) {
-            FO_RUNTIME_ASSERT(data_size != 0);
+            FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             MemCopy(construct_addr, data, data_size);
         }
         else {
@@ -622,7 +622,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
     }
     else if (prop->IsArray()) {
         auto* arr = ScriptArray::Create(LookupCachedTypeInfoForProperty(as_engine, prop));
-        FO_RUNTIME_ASSERT(arr);
+        FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
@@ -735,7 +735,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
     }
     else if (prop->IsDict()) {
         ScriptDict* dict = ScriptDict::Create(LookupCachedTypeInfoForProperty(as_engine, prop));
-        FO_RUNTIME_ASSERT(dict);
+        FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
@@ -759,7 +759,7 @@ void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data
                     data += sizeof(arr_size);
 
                     auto* arr = ScriptArray::Create(inner_array_type_info);
-                    FO_RUNTIME_ASSERT(arr);
+                    FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -1051,7 +1051,7 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
     const auto resolve_proto_hash = [](const Entity* entity) -> hstring::hash_t {
         if (entity != nullptr) {
             const auto* proto_entity = dynamic_cast<const ProtoEntity*>(entity);
-            FO_RUNTIME_ASSERT(proto_entity);
+            FO_VERIFY_AND_THROW(proto_entity, "Missing required prototype entity");
             return proto_entity->GetProtoId().as_hash();
         }
         else {
@@ -1063,12 +1063,12 @@ auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyR
         if (prop->IsBaseTypeProtoReference()) {
             const auto* entity = *cast_from_void<Entity**>(as_obj);
             const auto pid = resolve_proto_hash(entity);
-            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(pid));
+            FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(pid), "Property base size does not match proto id storage size", prop->GetBaseSize(), sizeof(pid));
             prop_data.SetAs<hstring::hash_t>(pid);
         }
         else if (prop->IsBaseTypeHash()) {
             const auto hash = cast_from_void<const hstring*>(as_obj)->as_hash();
-            FO_RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
+            FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hash), "Property base size does not match hash storage size", prop->GetBaseSize(), sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
         }
         else {
@@ -1574,10 +1574,10 @@ auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string
     }
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto* as_engine = ctx->GetEngine();
     const auto* as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_RUNTIME_ASSERT(as_type_info);
+    FO_VERIFY_AND_THROW(as_type_info, "Missing required AngelScript type info");
     const string type_name = as_type_info->GetName();
     const auto* meta = GetEngineMetadata(as_engine);
 
@@ -1640,7 +1640,7 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(func);
+    FO_VERIFY_AND_THROW(func, "Missing AngelScript function");
 
     string func_name;
 
@@ -1679,10 +1679,10 @@ auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ptr);
-    FO_RUNTIME_ASSERT(enum_type.IsEnum);
-    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
-    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+    FO_VERIFY_AND_THROW(ptr, "Missing required pointer");
+    FO_VERIFY_AND_THROW(enum_type.IsEnum, "Missing required enum type is enum");
+    FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType, "Missing required enum type enum underlying type");
+    FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
 
     if (enum_type.EnumUnderlyingType->IsSignedInt) {
         switch (enum_type.Size) {
@@ -1716,10 +1716,10 @@ void WriteEnumValueFromInt32(void* ptr, const BaseTypeDesc& enum_type, int32_t v
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ptr);
-    FO_RUNTIME_ASSERT(enum_type.IsEnum);
-    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType);
-    FO_RUNTIME_ASSERT(enum_type.EnumUnderlyingType->IsInt);
+    FO_VERIFY_AND_THROW(ptr, "Missing required pointer");
+    FO_VERIFY_AND_THROW(enum_type.IsEnum, "Missing required enum type is enum");
+    FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType, "Missing required enum type enum underlying type");
+    FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
 
     if (enum_type.EnumUnderlyingType->IsSignedInt) {
         switch (enum_type.Size) {
@@ -1759,9 +1759,9 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(base_type.IsRefType);
-    FO_RUNTIME_ASSERT(base_type.RefType);
-    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    FO_VERIFY_AND_THROW(base_type.IsRefType, "Missing required base type is ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Missing required base type ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
     auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator.get());
     ref_instance->LoadFromRawData(base_type, raw_data);
@@ -1773,9 +1773,9 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(base_type.IsRefType);
-    FO_RUNTIME_ASSERT(base_type.RefType);
-    FO_RUNTIME_ASSERT(base_type.RefType->FieldsRegistrator);
+    FO_VERIFY_AND_THROW(base_type.IsRefType, "Missing required base type is ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Missing required base type ref type");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
     if (as_obj == nullptr) {
         return {};
@@ -1789,7 +1789,7 @@ auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsBaseTypeRefType());
+    FO_VERIFY_AND_THROW(prop->IsBaseTypeRefType(), "Property base type is not a reference type");
 
     return CreateRefTypeScriptObjectFromRawData(prop->GetBaseType(), raw_data);
 }
@@ -1798,7 +1798,7 @@ auto ConvertRefTypeScriptObjectToProperty(const Property* prop, void* as_obj) ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsBaseTypeRefType());
+    FO_VERIFY_AND_THROW(prop->IsBaseTypeRefType(), "Property base type is not a reference type");
     const auto raw_data = ConvertRefTypeScriptObjectToRawData(prop->GetBaseType(), as_obj);
 
     PropertyRawData prop_data;

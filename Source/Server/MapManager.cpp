@@ -201,7 +201,7 @@ void MapManager::LoadFromResources()
 
                         // Sort
                         if (item->GetStatic()) {
-                            FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+                            FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
                             static_map->StaticItems.emplace_back(item.get());
                             static_map->StaticItemsById.emplace(item_id, item.get());
 
@@ -249,7 +249,7 @@ void MapManager::LoadFromResources()
                                 static_map->HexItemBillets.emplace_back(item_id, item.get());
                             }
                             else {
-                                FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer);
+                                FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer, "Map item load produced item with unsupported ownership");
                                 static_map->ChildItemBillets.emplace_back(item_id, item.get());
                             }
                         }
@@ -315,7 +315,7 @@ auto MapManager::GetStaticMap(const ProtoMap* proto) -> StaticMap*
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _staticMaps.find(proto);
-    FO_RUNTIME_ASSERT(it != _staticMaps.end());
+    FO_VERIFY_AND_THROW(it != _staticMaps.end(), "Lookup failed in static maps");
     return it->second.get();
 }
 
@@ -323,8 +323,8 @@ void MapManager::GenerateMapContent(Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     unordered_map<ident_t, ident_t> id_map;
 
@@ -332,16 +332,16 @@ void MapManager::GenerateMapContent(Map* map)
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
         const auto* cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
         id_map.emplace(base_cr_id, cr->GetId());
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     }
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         map->AddItem(item, base_item->GetHex(), nullptr);
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     }
 
     // Add children items
@@ -367,22 +367,22 @@ void MapManager::GenerateMapContent(Map* map)
 
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
         // Add to parent
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
             auto* cr_cont = map->GetCritter(owner_id);
-            FO_RUNTIME_ASSERT(cr_cont);
+            FO_VERIFY_AND_THROW(cr_cont, "Missing required critter cont");
 
             _engine->CrMngr.AddItemToCritter(cr_cont, item, false);
-            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+            FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(owner_id);
-            FO_RUNTIME_ASSERT(item_cont);
+            FO_VERIFY_AND_THROW(item_cont, "Missing required item cont");
 
             item_cont->AddItemToContainer(item, {});
-            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+            FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -393,11 +393,11 @@ void MapManager::GenerateMapContent(Map* map)
     for (auto* cr : copy_hold_ref(map->GetCritters())) {
         if (!cr->IsDestroyed()) {
             ProcessVisibleCritters(cr);
-            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+            FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
         if (!cr->IsDestroyed()) {
             ProcessVisibleItems(cr);
-            FO_RUNTIME_ASSERT(!map->IsDestroyed());
+            FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
     }
 }
@@ -410,7 +410,7 @@ void MapManager::DestroyMapContent(Map* map)
     // (or location's) lock once the child is detached during destruction. Pull each into the
     // current SyncContext before handing it to the destruction path so its validator passes.
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems(); detector.AddLoop()) {
         for (auto* cr : copy_hold_ref(map->GetPlayerCritters())) {
@@ -443,7 +443,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     _engine->EntityMngr.RegisterLocation(loc.get());
 
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     bool release_empty_sync_context = false;
 
@@ -495,9 +495,9 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
     FO_STACK_TRACE_ENTRY();
 
     ValidateEntityAccess(loc);
-    FO_RUNTIME_ASSERT(loc);
-    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
-    FO_RUNTIME_ASSERT(!loc->IsDestroying());
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
+    FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
+    FO_VERIFY_AND_THROW(!loc->IsDestroying(), "Location is already being destroyed");
 
     const auto* map_proto = _engine->GetProtoMap(proto_id);
 
@@ -535,8 +535,8 @@ void MapManager::RegenerateMap(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     ValidateEntityAccess(map);
-    FO_RUNTIME_ASSERT(map);
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     refcount_ptr map_holder = map;
 
@@ -593,8 +593,8 @@ void MapManager::DestroyLocation(Location* loc)
 
     for (auto* map : loc->GetMaps()) {
         ValidateEntityAccess(map);
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
-        FO_RUNTIME_ASSERT(!map->IsDestroying());
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
+        FO_VERIFY_AND_THROW(!map->IsDestroying(), "Map is already being destroyed");
     }
 
     // Destroy location in couple with maps
@@ -606,19 +606,19 @@ void MapManager::DestroyLocation(Location* loc)
 
     ValidateEntityAccess(loc);
     _engine->OnLocationFinish.Fire(loc);
-    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
+    FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
 
     for (auto* map : loc->GetMaps()) {
         ValidateEntityAccess(map);
         _engine->OnMapFinish.Fire(map);
-        FO_RUNTIME_ASSERT(!loc->IsDestroyed());
-        FO_RUNTIME_ASSERT(!map->IsDestroyed());
-        FO_RUNTIME_ASSERT(map->GetLocation() == loc);
+        FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
+        FO_VERIFY_AND_THROW(map->GetLocation() == loc, "Map is attached to a different location during location destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
     }
 
     for (auto* map : loc->GetMaps()) {
         auto* ctx = _engine->GetCurrentSyncContext();
-        FO_RUNTIME_ASSERT(ctx);
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         ctx->EnsureEntitySynced(map);
 
         DestroyMapInternal(map);
@@ -656,15 +656,15 @@ void MapManager::DestroyMap(Map* map)
     map->MarkAsDestroying();
     ValidateEntityAccess(map);
     _engine->OnMapFinish.Fire(map);
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     refcount_ptr loc = map->GetLocation();
     ValidateEntityAccess(loc.get());
     ValidateEntityAccess(map);
     loc->OnMapRemoved.Fire(map);
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
-    FO_RUNTIME_ASSERT(!loc->IsDestroyed());
-    FO_RUNTIME_ASSERT(map->GetLocation() == loc.get());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
+    FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
+    FO_VERIFY_AND_THROW(map->GetLocation() == loc.get(), "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
 
     DestroyMapInternal(map);
 }
@@ -700,7 +700,7 @@ void MapManager::DestroyMapInternal(Map* map)
     _engine->TimeEventMngr.CancelAllForEntity(map);
 
     auto loc = map->GetLocation();
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
     loc->RemoveMap(map);
 
@@ -780,7 +780,7 @@ auto MapManager::FindPath(const Map* map, const Critter* from_cr, mpos from_hex,
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
     ValidateEntityAccess(map);
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
@@ -828,7 +828,7 @@ void MapManager::TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, option
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     Transfer(cr, map, hex, dir, safe_radius, {});
 }
@@ -845,7 +845,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     FO_STACK_TRACE_ENTRY();
 
     auto* sync_ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(sync_ctx);
+    FO_VERIFY_AND_THROW(sync_ctx, "Missing required sync context");
 
     bool release_empty_sync_context = false;
 
@@ -868,7 +868,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     ValidateEntityAccess(map);
 
     if (map != nullptr) {
-        FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
+        FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter transfer target hex is outside target map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
     }
 
     if (cr->IsMapTransfersLocked()) {
@@ -881,7 +881,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     const auto prev_map_id = cr->GetMapId();
     auto prev_map_ref = prev_map_id ? cr->GetParent<Map>() : refcount_ptr<Map> {};
     Map* prev_map = prev_map_ref.get();
-    FO_RUNTIME_ASSERT(!prev_map_id || !!prev_map);
+    FO_VERIFY_AND_THROW(!prev_map_id || !!prev_map, "Previous map id is set but previous map was not found");
 
     sync_ctx->EnsureEntitySynced(prev_map);
     ValidateEntityAccess(prev_map);
@@ -906,7 +906,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
     if (map == prev_map) {
         // Between one map
         if (map != nullptr) {
-            FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
+            FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter intra-map transfer target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
             const auto multihex = cr->GetMultihex();
 
@@ -995,7 +995,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
                 return;
             }
 
-            FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
+            FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in the target map after map-enter event", map->GetId(), cr->GetId(), cr->GetMapId());
         }
         else {
             ValidateEntityAccess(cr);
@@ -1008,7 +1008,7 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
                 return;
             }
 
-            FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+            FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
         }
 
         ProcessVisibleCritters(cr);
@@ -1074,12 +1074,12 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
     ValidateEntityAccess(cr);
     ValidateEntityAccess(map);
 
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
-        FO_RUNTIME_ASSERT(map->GetSize().is_valid_pos(hex));
+        FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter map placement target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
         cr->SetMapId(map->GetId());
         cr->SetHex(hex);
@@ -1102,7 +1102,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
-        FO_RUNTIME_ASSERT(!cr_group);
+        FO_VERIFY_AND_THROW(!cr_group, "Critter group is already set");
 
         auto global_cr_ref = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : refcount_ptr<Critter> {};
         Critter* global_cr = global_cr_ref.get();
@@ -1122,7 +1122,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         }
         else {
             auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
-            FO_RUNTIME_ASSERT(global_cr_group);
+            FO_VERIFY_AND_THROW(global_cr_group, "Missing required global critter group");
 
             cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
 
@@ -1144,14 +1144,14 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
     ValidateEntityAccess(cr);
     ValidateEntityAccess(map);
 
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     refcount_ptr cr_holder = cr;
     ignore_unused(cr_holder);
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
-        FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
         refcount_ptr map_holder = map;
         ignore_unused(map_holder);
         ValidateEntityAccess(map);
@@ -1162,8 +1162,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
             return;
         }
 
-        FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
-        FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
+        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in its map before map-exit notification", map->GetId(), cr->GetId(), cr->GetMapId());
 
         for (auto* other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
             if (other->IsDestroyed()) {
@@ -1178,8 +1178,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
                 return;
             }
 
-            FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
-            FO_RUNTIME_ASSERT(map->GetCritter(cr->GetId()) == cr);
+            FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+            FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in its map after disappearance notification", map->GetId(), cr->GetId(), cr->GetMapId());
         }
 
         cr->ClearVisibleEnitites();
@@ -1201,8 +1201,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-        FO_RUNTIME_ASSERT(!cr->GetMapId());
+        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
         ValidateEntityAccess(cr);
         _engine->OnGlobalMapCritterOut.Fire(cr);
 
@@ -1210,8 +1210,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
             return;
         }
 
-        FO_RUNTIME_ASSERT(!cr->GetMapId());
-        FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
+        FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
 
         cr->SetGlobalMapTripId({});
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -1237,7 +1237,7 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
 
     if (cr->GetMapId()) {
         auto map = cr->GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         ValidateEntityAccess(map.get());
 
         for (auto* target : copy_hold_ref(map->GetCritters())) {
@@ -1246,7 +1246,7 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
         }
     }
     else {
-        FO_RUNTIME_ASSERT(cr->GetRawGlobalMapGroup());
+        FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
     }
 }
 
@@ -1256,7 +1256,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(map && cr && target);
+    FO_VERIFY_AND_THROW(map && cr && target, "Map transfer is missing map, critter, or target hex");
     ValidateEntityAccess(map);
     ValidateEntityAccess(cr);
     ValidateEntityAccess(target);
@@ -1293,7 +1293,7 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
 
     if (vis_mode == CritterVisibilityMode::None && target->HasAttachedCritters()) {
         for (auto& attached_cr : target->GetAttachedCritters()) {
-            FO_RUNTIME_ASSERT(attached_cr->GetMapId() == map->GetId());
+            FO_VERIFY_AND_THROW(attached_cr->GetMapId() == map->GetId(), "Attached critter is on a different map than its visibility target", target->GetId(), attached_cr->GetId(), attached_cr->GetMapId(), map->GetId());
 
             const auto attached_mode = IsCritterSeeCritter(map, cr, attached_cr.get());
 
@@ -1434,9 +1434,9 @@ auto MapManager::IsCritterSeeCritter(const Map* map, const Critter* cr, const Cr
     ValidateEntityAccess(map);
     ValidateEntityAccess(cr);
     ValidateEntityAccess(target);
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
-    FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-    FO_RUNTIME_ASSERT(!target->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+    FO_VERIFY_AND_THROW(!target->IsDestroyed(), "Map transfer target is already destroyed");
 
     return CheckCritterVisibilityHook(_engine.get(), map, cr, target);
 }
@@ -1456,7 +1456,7 @@ void MapManager::ProcessVisibleItems(Critter* cr)
     }
 
     auto map = cr->GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
     ValidateEntityAccess(map.get());
 
     for (auto* item : copy_hold_ref(map->GetItems())) {
@@ -1487,8 +1487,8 @@ void MapManager::ViewMap(Player* view_player, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(view_player);
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(view_player, "Missing required view player");
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     ValidateEntityAccess(view_player);
     ValidateEntityAccess(map);

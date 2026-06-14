@@ -236,7 +236,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     FO_STACK_TRACE_ENTRY();
 
     const auto index = static_cast<int32_t>(font);
-    FO_RUNTIME_ASSERT(index >= 0);
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
 
     // Skip if loaded
     if (skip_if_loaded && index < numeric_cast<int32_t>(_allFonts.size()) && _allFonts[index]) {
@@ -402,7 +402,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     FO_STACK_TRACE_ENTRY();
 
     const auto index = static_cast<int32_t>(font);
-    FO_RUNTIME_ASSERT(index >= 0);
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
 
     auto font_data = SafeAlloc::MakeUnique<FontData>();
     font_data->DrawEffect = _sprMngr->_effectMngr->Effects.Font;
@@ -769,10 +769,10 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         }
 
         str.resize(numeric_cast<size_t>(cut_pos));
-        FO_RUNTIME_ASSERT(skip_line_end == 0);
+        FO_VERIFY_AND_THROW(skip_line_end == 0, "Text layout ended before all requested trailing lines were skipped", skip_line_end, fi.LinesAll, str.size());
     }
 
-    FO_RUNTIME_ASSERT(skip_line == 0);
+    FO_VERIFY_AND_THROW(skip_line == 0, "Text layout ended before all requested leading lines were skipped", skip_line, fi.LinesAll, str.size());
 
     if (fi.LinesInRect == 0) {
         fi.LinesInRect = fi.LinesAll;
@@ -984,10 +984,10 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(static_cast<size_t>(font) < _allFonts.size());
-    FO_RUNTIME_ASSERT(format.SkipLines >= 0);
-    FO_RUNTIME_ASSERT(rect.width >= 0);
-    FO_RUNTIME_ASSERT(rect.height >= 0);
+    FO_VERIFY_AND_THROW(static_cast<size_t>(font) < _allFonts.size(), "Text formatting requested a font index outside the loaded font table", font, _allFonts.size(), str.size(), rect);
+    FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Format skip lines is negative");
+    FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
+    FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
 
     const std::array<uint64_t, 8> key_parts {
         hashing_ex::hash(str.data(), str.size()),

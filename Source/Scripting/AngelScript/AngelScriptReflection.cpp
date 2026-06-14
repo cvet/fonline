@@ -52,7 +52,7 @@ static auto TryCastToEnumType(const AngelScript::asITypeInfo* ti) -> const Angel
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* type = dynamic_cast<const AngelScript::asCTypeInfo*>(ti);
-    FO_RUNTIME_ASSERT(type);
+    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
     return CastToEnumType(const_cast<AngelScript::asCTypeInfo*>(type));
 }
 
@@ -299,7 +299,7 @@ auto ScriptType::GetEnumNames() const -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     const auto* enum_type = TryCastToEnumType(_typeInfo.get());
     ScriptArray* result = ScriptArray::Create(ctx->GetEngine()->GetTypeInfoByDecl("string[]"));
@@ -319,7 +319,7 @@ auto ScriptType::GetEnumValues() const -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     const auto* enum_type = TryCastToEnumType(_typeInfo.get());
     ScriptArray* result = ScriptArray::Create(ctx->GetEngine()->GetTypeInfoByDecl("int[]"));
@@ -439,7 +439,7 @@ static auto GetAngelScriptLoadedModules() -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     const auto* engine = ctx->GetEngine();
     auto* modules = ScriptArray::Create(engine->GetTypeInfoByDecl("string[]"));
@@ -457,7 +457,7 @@ static auto GetAngelScriptModule(const char* name) -> AngelScript::asIScriptModu
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     if (name != nullptr) {
         return ctx->GetEngine()->GetModule(name, AngelScript::asGM_ONLY_IF_EXISTS);
@@ -479,7 +479,7 @@ static auto GetEnumsInternal(bool global, const char* module_name) -> ScriptArra
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     const auto* engine = ctx->GetEngine();
     auto* enums = ScriptArray::Create(engine->GetTypeInfoByDecl("reflection::type[]"));
@@ -539,7 +539,7 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* ctx = AngelScript::asGetActiveContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     int32_t count = 0;
     const auto stack_size = ctx->GetCallstackSize();

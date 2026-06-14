@@ -310,7 +310,7 @@ namespace ServerEngineTest
 
     static auto WaitForServerStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -328,7 +328,7 @@ namespace ServerEngineTest
 
     static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
@@ -343,7 +343,7 @@ namespace ServerEngineTest
 
     static auto CreateStandalonePlayer(ServerEngine* server, string_view name) -> refcount_ptr<Player>
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings));
         auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
@@ -358,8 +358,8 @@ namespace ServerEngineTest
 
     static auto WaitForUnlockedServerCondition(ServerEngine* server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
     {
-        FO_RUNTIME_ASSERT(server);
-        FO_RUNTIME_ASSERT(locked);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
+        FO_VERIFY_AND_THROW(locked, "Missing required locked");
 
         server->Unlock();
         locked = false;

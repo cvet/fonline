@@ -185,7 +185,7 @@ int main(int argc, char** argv)
             }
         }
 #else
-        FO_RUNTIME_ASSERT_STR(false, "Invalid OS");
+        FO_VERIFY_AND_THROW(false, "Invalid OS");
 #endif
     }
     catch (const std::exception& ex) {

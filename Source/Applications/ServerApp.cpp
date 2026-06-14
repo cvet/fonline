@@ -132,7 +132,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
 
                 auto* window = App->CreateChildWindow(client_size, title);
-                FO_RUNTIME_ASSERT(window);
+                FO_VERIFY_AND_THROW(window, "Missing application window");
 
                 const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
                 auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
@@ -645,7 +645,7 @@ int main(int argc, char** argv) // Handled by SDL
                 }
             }
 
-            FO_RUNTIME_ASSERT(clients.size() == client_windows.size());
+            FO_VERIFY_AND_THROW(clients.size() == client_windows.size(), "Embedded client list and window list are out of sync", clients.size(), client_windows.size());
 
             const auto* active_window = App->GetActiveWindow();
 
@@ -700,9 +700,9 @@ int main(int argc, char** argv) // Handled by SDL
             }
         }
 
-        FO_RUNTIME_ASSERT(!server);
-        FO_RUNTIME_ASSERT(clients.empty());
-        FO_RUNTIME_ASSERT(client_settings.empty());
+        FO_VERIFY_AND_THROW(!server, "Server is already set");
+        FO_VERIFY_AND_THROW(clients.empty(), "Clients must be empty before this operation");
+        FO_VERIFY_AND_THROW(client_settings.empty(), "Client settings must be empty before this operation");
         ExitApp(App->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {

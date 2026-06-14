@@ -55,8 +55,8 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_id);
-    FO_RUNTIME_ASSERT(id);
+    FO_VERIFY_AND_THROW(!_id, "Id is already set");
+    FO_VERIFY_AND_THROW(id, "Missing required id");
 
     _id = id;
 
@@ -82,7 +82,7 @@ void ClientEntity::DestroySelf()
         for (auto& entities : GetInnerEntities() | std::views::values) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                FO_RUNTIME_ASSERT(custom_entity);
+                FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
                 custom_entity->DestroySelf();
             }
