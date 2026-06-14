@@ -1012,8 +1012,9 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (_isMoving) {
         const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        const bool forbid_back = _modelInfo->_disableBackwardAnim;
 
-        if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
+        if (forbid_back || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
             action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
         }
@@ -1437,7 +1438,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
         RefreshMoveAnimation();
     }
 
-    if (!_modelInfo->_rotationBone) {
+    if (!_modelInfo->_rotationBone || _modelInfo->_disableBackwardAnim) {
         SetLookDir(dir);
     }
 }
@@ -2357,6 +2358,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     const string model = ReadBakedModelDescriptionString(reader);
     const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
+    _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
 
     const int32_t draw_width = reader.Read<int32_t>();

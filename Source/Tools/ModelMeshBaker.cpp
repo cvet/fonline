@@ -326,7 +326,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     ufbx_scene* fbx_scene = ufbx_load_memory(file.GetBuf(), file.GetSize(), &opts, &fbx_error);
 
     if (fbx_scene == nullptr) {
-        throw ModelMeshBakerException("Unable to load FBX", fbx_error.description.data);
+        throw ModelMeshBakerException("Unable to load FBX", fname, fbx_error.description.data);
     }
 
     auto fbx_scene_cleanup = scope_exit([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });
