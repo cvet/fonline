@@ -310,15 +310,20 @@ void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScrip
     _contextSetupCallback = std::move(context_setup_callback);
 }
 
-auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool
+auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend, bool execution_reserved) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
-    const bool already_active = ctx_ext->ExecutionActive.exchange(true);
-    FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
+    if (execution_reserved) {
+        FO_VERIFY_AND_THROW(ctx_ext->ExecutionActive.load(), "Script execution context is not reserved");
+    }
+    else {
+        const bool already_active = ctx_ext->ExecutionActive.exchange(true);
+        FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
+    }
 
     auto execution_active_guard = scope_exit([ctx_ext]() noexcept { ctx_ext->ExecutionActive.store(false); });
 
@@ -478,13 +483,14 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
-        if (ctx_ext->ExecutionActive.load()) {
+        if (ctx_ext->ExecutionActive.exchange(true)) {
             FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
 
         if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
+            ctx_ext->ExecutionActive.store(false);
             return;
         }
 
@@ -493,7 +499,7 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
 
     try {
         auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx, ctx_generation); });
-        RunContext(ctx, true);
+        RunContext(ctx, true, true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);

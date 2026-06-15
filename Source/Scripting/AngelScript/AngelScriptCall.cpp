@@ -298,17 +298,30 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
     array<void*, MAX_CALL_ARGS> args_data;
     call.ArgsData = span(args_data).subspan(0, args_count);
     void* this_obj = gen->GetObject();
+    auto* func = gen->GetFunction();
+    FO_RUNTIME_ASSERT(func);
+
+    const auto get_arg_data = [&](AngelScript::asUINT index) -> void* {
+        AngelScript::asDWORD flags = 0;
+        FO_AS_VERIFY(func->GetParam(index, nullptr, &flags));
+
+        if ((flags & (AngelScript::asTM_INOUTREF | AngelScript::asTM_OUTREF)) != 0) {
+            return gen->GetArgAddress(index);
+        }
+
+        return gen->GetAddressOfArg(index);
+    };
 
     if (add_obj) {
         FO_VERIFY_AND_THROW(this_obj, "Missing required this obj");
 
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data[index] = index == 0 ? static_cast<void*>(&this_obj) : gen->GetAddressOfArg(index - 1);
+            args_data[index] = index == 0 ? static_cast<void*>(&this_obj) : get_arg_data(index - 1);
         }
     }
     else {
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data[index] = gen->GetAddressOfArg(index);
+            args_data[index] = get_arg_data(index);
         }
     }
 
