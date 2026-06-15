@@ -1509,6 +1509,24 @@ FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, readonly_vector<Server
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncEnsure(ServerEngine* server, ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+
+    // Additive cover widen. Unlike Sync (which releases-and-reacquires the whole held set on a
+    // yield-on-sync boundary and is therefore Async), EnsureEntitySynced only *widens* the held set
+    // through the non-parking TryAcquire / AcquireLocks path: it never enqueues and never suspends
+    // the coroutine, so this export is not Async and is callable from synchronous code. In the fully
+    // unrestricted/auto-lock context it is a no-op (a synchronous caller relying on per-property
+    // auto-locking keeps that behaviour); in a restricted context (held entity locks and/or
+    // Game.Lock()) it adds the entity to the held set without dropping the caller's existing cover.
+    // This lets a cross-entity reader (e.g. the analytics emit) stay correct when invoked from a
+    // coroutine that resumed in a partial cover, without disturbing the caller's locks.
+    ctx->EnsureEntitySynced(entity);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
