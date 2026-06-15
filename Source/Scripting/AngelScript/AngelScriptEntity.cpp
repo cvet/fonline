@@ -651,7 +651,8 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
 
         auto* context_mngr = backend->GetContextMngr();
         auto* ctx = context_mngr->PrepareContext(func);
-        auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+        const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+        auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
         ctx->SetArgObject(0, entity); // May be null for protos
 
         if (func->GetParamCount() == 2) {
@@ -745,7 +746,8 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto* context_mngr = backend->GetContextMngr();
             auto* ctx = context_mngr->PrepareContext(func);
-            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+            const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+            auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
             FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
@@ -775,7 +777,8 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto* context_mngr = backend->GetContextMngr();
             auto* ctx = context_mngr->PrepareContext(func);
-            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+            const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+            auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
             FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 

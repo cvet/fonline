@@ -74,6 +74,7 @@ struct AngelScriptContextExtendedData
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
     std::atomic_bool ExecutionActive {};
+    std::atomic<uint64_t> Generation {};
 
 #if FO_TRACY
     bool TracyExecutionActive {};
@@ -99,7 +100,8 @@ public:
     ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
 
     auto RequestContext() -> AngelScript::asIScriptContext*;
-    void ReturnContext(AngelScript::asIScriptContext* ctx) noexcept;
+    void ReturnContext(AngelScript::asIScriptContext* ctx, uint64_t expected_generation) noexcept;
+    auto GetContextGeneration(AngelScript::asIScriptContext* ctx) const noexcept -> uint64_t;
     auto PrepareContext(AngelScript::asIScriptFunction* func) -> AngelScript::asIScriptContext*;
     void SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback);
     auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool;
