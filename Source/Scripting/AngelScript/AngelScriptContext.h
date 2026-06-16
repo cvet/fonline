@@ -104,7 +104,7 @@ public:
     auto GetContextGeneration(AngelScript::asIScriptContext* ctx) const noexcept -> uint64_t;
     auto PrepareContext(AngelScript::asIScriptFunction* func) -> AngelScript::asIScriptContext*;
     void SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback);
-    auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool;
+    auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend, bool execution_reserved = false) -> bool;
     void SuspendScriptContext(AngelScript::asIScriptContext* ctx, nanotime time);
     void ResumeSpecificContext(AngelScript::asIScriptContext* ctx);
 
