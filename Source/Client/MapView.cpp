@@ -124,8 +124,9 @@ MapView::MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize3
             }
         }
 
-        _mapDepthNear = min_depth - MAP_DEPTH_RANGE_MARGIN;
-        _mapDepthFar = max_depth + MAP_DEPTH_RANGE_MARGIN;
+        const float32_t near_bound = min_depth - MAP_DEPTH_RANGE_MARGIN;
+        const float32_t far_bound = max_depth + MAP_DEPTH_RANGE_MARGIN;
+        _mapDepthHalf = std::max(std::abs(near_bound), std::abs(far_bound));
     }
 
     _hexLight.resize(_mapSize.square() * 3);
@@ -2382,7 +2383,7 @@ void MapView::DrawMap()
 
     UpdateTransparentEggs();
 
-    _engine->SprMngr.GetRender().SetOrthoDepthRange(_mapDepthNear, _mapDepthFar);
+    _engine->SprMngr.GetRender().SetOrthoDepthRange(-_mapDepthHalf, _mapDepthHalf);
     const auto restore_depth_range = scope_exit([this]() noexcept { _engine->SprMngr.GetRender().SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });
 
     ProcessLighting();

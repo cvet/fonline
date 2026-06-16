@@ -379,8 +379,7 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
-    float32_t _mapDepthNear {};
-    float32_t _mapDepthFar {};
+    float32_t _mapDepthHalf {};
     ident_t _workEntityId {};
     map<string, string> _headerExtraFields {};
 
