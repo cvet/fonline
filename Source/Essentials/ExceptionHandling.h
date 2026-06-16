@@ -157,6 +157,7 @@ private:
     if (!(expr)) [[unlikely]] { \
         throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
     }
+
 #define FO_VERIFY_AND_CONTINUE(expr, ...) \
     if (!(expr)) [[unlikely]] { \
         try { \
@@ -166,6 +167,7 @@ private:
             FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
         } \
     }
+
 #define FO_VERIFY_AND_RETURN(expr, ...) \
     if (!(expr)) [[unlikely]] { \
         try { \
@@ -176,6 +178,7 @@ private:
         } \
         return; \
     }
+
 #define FO_VERIFY_AND_RETURN_VALUE(expr, ret, ...) \
     if (!(expr)) [[unlikely]] { \
         try { \
@@ -187,7 +190,6 @@ private:
         return ret; \
     }
 
-#if !FO_NO_EXTRA_ASSERTS
 #define FO_STRONG_ASSERT(expr, ...) \
     if (!(expr)) [[unlikely]] { \
         try { \
@@ -197,11 +199,9 @@ private:
             FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
         } \
     }
-#else
-#define FO_STRONG_ASSERT(expr, ...)
-#endif
 
 #define FO_UNREACHABLE_PLACE() throw FO_NAMESPACE UnreachablePlaceException(__FILE__, __LINE__)
+
 #define FO_UNKNOWN_EXCEPTION() \
     try { \
         throw FO_NAMESPACE StrongAssertationException("Unknown exception", __FILE__, __LINE__); \

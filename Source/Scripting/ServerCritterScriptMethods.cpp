@@ -406,6 +406,9 @@ FO_SCRIPT_API void Server_Critter_DestroyItem(Critter* self, ProtoItem* proto, i
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t count)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
+    }
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
@@ -422,6 +425,9 @@ FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, hstring pid, int32_t c
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Critter_AddItem(Critter* self, ProtoItem* proto, int32_t count)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
+    }
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -803,6 +809,12 @@ FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int32_t speed
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot attach a critter that is being destroyed", self->GetId());
+    }
+    if (cr->IsDestroying()) {
+        throw ScriptException("Cannot attach to a critter that is being destroyed", cr->GetId());
+    }
     if (cr == self) {
         throw ScriptException("Critter can't attach to itself");
     }

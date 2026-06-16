@@ -258,7 +258,6 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
-        (void)ctx->Release();
     }
 }
 
@@ -450,10 +449,10 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         }
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+        FO_STRONG_ASSERT(ctx_ext, "Missing extended script execution context");
 
         if (ctx_ext->ExecutionActive.load()) {
-            FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
+            FO_STRONG_ASSERT(_delayedScheduler, "Missing required delayed scheduler");
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }

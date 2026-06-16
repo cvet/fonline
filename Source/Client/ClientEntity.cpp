@@ -72,10 +72,18 @@ void ClientEntity::DestroySelf()
 
     MarkAsDestroying();
 
+    auto ensure_unregister = scope_exit([this]() noexcept {
+        if (_registered) {
+            safe_call([this]() { _engine->UnregisterEntity(this); });
+            _registered = false;
+        }
+    });
+
     OnDestroySelf();
 
     if (_registered) {
         _engine->UnregisterEntity(this);
+        _registered = false;
     }
 
     if (HasInnerEntities()) {

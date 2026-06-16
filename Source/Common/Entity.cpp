@@ -390,11 +390,27 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Ent
     return &it_entry->second;
 }
 
+auto Entity::GetInnerEntitiesCount() const noexcept -> size_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    size_t count = 0;
+
+    if (_innerEntities) {
+        for (const auto& entities : *_innerEntities | std::views::values) {
+            count += entities.size();
+        }
+    }
+
+    return count;
+}
+
 void Entity::AddInnerEntity(hstring entry, Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
+    FO_VERIFY_AND_THROW(!_isDestroyed, "Cannot add an inner entity to an already destroyed object");
+    FO_VERIFY_AND_THROW(!_isDestroying, "Cannot add an inner entity to an object that is being destroyed");
     FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 

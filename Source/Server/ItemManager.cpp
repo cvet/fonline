@@ -222,7 +222,7 @@ void ItemManager::DestroyItem(Item* item)
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     // Tear off from environment
-    for (InfinityLoopDetector detector; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {
         try {
             if (item->GetOwnership() != ItemOwnership::Nowhere) {
                 RemoveItemHolder(item, GetItemHolder(item));
@@ -245,6 +245,12 @@ void ItemManager::DestroyItem(Item* item)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+
+        // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging
+        // loop is corruption, so terminate rather than leave a half-destroyed "undead" item.
+        const size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Item destruction made no progress", item->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 
     _engine->TimeEventMngr.CancelAllForEntity(item);

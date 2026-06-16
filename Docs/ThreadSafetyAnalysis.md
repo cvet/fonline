@@ -8,6 +8,10 @@ still holding a lock — is a **compile-time error** on every Clang toolchain. I
 > TSA is a defense-in-depth layer for **conventional, lexically-scoped mutexes**. It deliberately does **not** model
 > cooperative / dynamically-acquired lock schemes (see *Exemptions*).
 
+> For exception-safety of lock acquisition — why an `EntityLock` post-grant invariant uses `FO_STRONG_ASSERT` (a
+> waiter that woke non-aborted must be `GRANTED` and own the lock, or the process must stop) — see
+> [ExceptionSafety.md](ExceptionSafety.md).
+
 ## Toolchain & enforcement
 
 - Enabled in `BuildTools/cmake/stages/Init.cmake` for every Clang compiler id (native `clang`, `clang-cl`, AppleClang,

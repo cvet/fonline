@@ -165,6 +165,8 @@ void Item::SetItemToContainer(Item* item)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an item to an already destroyed container", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an item to a container that is being destroyed", GetId());
 
     make_if_not_exists(_innerItems);
     vec_add_unique_value(*_innerItems, item);

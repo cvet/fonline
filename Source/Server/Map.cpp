@@ -151,6 +151,8 @@ void Map::AddCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add a critter to an already destroyed map", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add a critter to a map that is being destroyed", GetId());
     FO_VERIFY_AND_THROW(!_crittersMap.count(cr->GetId()), "Server map already contains a critter with the same id", GetId(), cr->GetId());
 
     _crittersMap.emplace(cr->GetId(), cr);
@@ -342,6 +344,8 @@ void Map::SetItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an item to an already destroyed map", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an item to a map that is being destroyed", GetId());
     FO_VERIFY_AND_THROW(!_itemsMap.count(item->GetId()), "Server map already contains an item with the same id", GetId(), item->GetId(), item->GetProtoId());
 
     _itemsMap.emplace(item->GetId(), item);

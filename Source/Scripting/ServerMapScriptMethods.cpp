@@ -44,7 +44,6 @@ FO_SCRIPT_API void Server_Map_SetupScript(Map* self, ScriptFunc<void, Map*, bool
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
     }
-
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
         throw ScriptException("Call init failed", initFunc.GetName().first);
     }
@@ -71,10 +70,12 @@ FO_SCRIPT_API Location* Server_Map_GetLocation(Map* self)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32_t count)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -85,10 +86,12 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, int32_t count)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -99,10 +102,12 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, in
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int32_t count, readonly_map<ItemProperty, int32_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -129,10 +134,12 @@ FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, hstring protoId, int
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Map_AddItem(Map* self, mpos hex, ProtoItem* proto, int32_t count, readonly_map<ItemProperty, int32_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -346,7 +353,6 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
     }
-
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -867,6 +873,9 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHe
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -877,6 +886,9 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -887,6 +899,9 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpo
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, int32_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -908,6 +923,9 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir, readonly_map<CritterProperty, int32_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -924,6 +942,9 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpo
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -946,6 +967,9 @@ FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, hstring protoId, mpos he
 ///@ ExportMethod
 FO_SCRIPT_API Critter* Server_Map_AddCritter(Map* self, ProtoCritter* proto, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a critter to a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }

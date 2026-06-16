@@ -64,6 +64,10 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
+    }
+
     Map* map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
     return map;
 }
@@ -71,6 +75,10 @@ FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
 ///@ ExportMethod
 FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, ProtoMap* mapProto)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
+    }
+
     Map* map = self->GetEngine()->MapMngr.CreateMap(mapProto->GetProtoId(), self);
     return map;
 }

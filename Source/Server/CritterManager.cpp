@@ -53,6 +53,8 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
     FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot add an item to an already destroyed critter", cr->GetId());
+    FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot add an item to a critter that is being destroyed", cr->GetId());
     refcount_ptr cr_holder = cr;
     refcount_ptr item_holder = item;
     ignore_unused(cr_holder);
@@ -283,7 +285,7 @@ void CritterManager::DestroyCritter(Critter* cr)
         cr->LockMapTransfers();
         auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
-        for (InfinityLoopDetector detector; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters(); detector.AddLoop()) {
+        for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
             try {
                 DestroyInventory(cr);
 
@@ -316,6 +318,13 @@ void CritterManager::DestroyCritter(Critter* cr)
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+
+            // Each teardown pass must strictly reduce the critter's remaining dependencies; a stalled
+            // (or growing) count means the destruction can never converge, so terminate deterministically
+            // rather than leave a half-destroyed "undead" critter in the registry until restart.
+            const size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
+            FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
+            prev_deps = remaining_deps;
         }
     }
 
@@ -332,10 +341,14 @@ void CritterManager::DestroyInventory(Critter* cr)
     auto* ctx = _engine->GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    for (InfinityLoopDetector detector {cr->GetInvItems().size()}; cr->HasItems(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems();) {
         auto* item = cr->GetInvItems().front().get();
         ctx->EnsureEntitySynced(item);
         _engine->ItemMngr.DestroyItem(item);
+
+        const size_t remaining_deps = cr->GetInvItems().size();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter inventory destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 }
 

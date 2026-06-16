@@ -6,6 +6,8 @@
 
 The server runtime owns authoritative game state. It loads resources, initializes scripts and metadata, accepts network connections, creates and persists entities, validates client input, processes player/critter/map/item state, broadcasts visible changes, and runs the game loop jobs that make the world advance.
 
+For how this state stays internally consistent when an exception is thrown mid-operation — the WorkerPool catch-and-continue model, the entity-lifecycle throw-as-signal contract, and the `throw` / `FO_VERIFY_*` / `FO_STRONG_ASSERT` error tiers — see [ExceptionSafety.md](ExceptionSafety.md).
+
 Read this page together with:
 
 - [EntityModel.md](EntityModel.md) for entity/property/prototype ownership.

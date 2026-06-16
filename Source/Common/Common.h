@@ -809,30 +809,6 @@ private:
     timespan _idleTimeBalance {};
 };
 
-FO_DECLARE_EXCEPTION(InfinityLoopException);
-
-class InfinityLoopDetector
-{
-public:
-    explicit InfinityLoopDetector(size_t max_count = 10) :
-        _maxCount {max_count + 10}
-    {
-    }
-
-    auto AddLoop() -> bool
-    {
-        if (++_counter >= _maxCount) {
-            throw InfinityLoopException("Detected infinity loop", _counter);
-        }
-
-        return true;
-    }
-
-private:
-    size_t _maxCount;
-    size_t _counter {};
-};
-
 extern auto MakeSeededRandomGenerator() -> std::mt19937;
 extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
 

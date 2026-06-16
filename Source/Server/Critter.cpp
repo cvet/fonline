@@ -254,6 +254,10 @@ void Critter::AttachToCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot attach an already destroyed critter", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot attach a critter that is being destroyed", GetId());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot attach to an already destroyed critter", cr->GetId());
+    FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot attach to a critter that is being destroyed", cr->GetId());
     FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
     FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
     FO_VERIFY_AND_THROW(!cr->GetIsAttached(), "Critter is already attached");
@@ -377,14 +381,14 @@ void Critter::ClearVisibleEnitites()
         auto* cr = _visibleCrWhoSeeMe.front().get();
         FO_VERIFY_AND_THROW(cr, "Missing critter instance");
         const auto del_ok = RemoveVisibleCritter(cr);
-        FO_VERIFY_AND_THROW(del_ok, "Missing required del ok");
+        FO_STRONG_ASSERT(del_ok, "Missing required del ok");
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
         auto* cr = _visibleCr.front().get();
         FO_VERIFY_AND_THROW(cr, "Missing critter instance");
         const auto del_ok2 = cr->RemoveVisibleCritter(this);
-        FO_VERIFY_AND_THROW(del_ok2, "Missing required del ok2");
+        FO_STRONG_ASSERT(del_ok2, "Missing required del ok2");
     }
 
     _visibleCrGroup1.clear();
@@ -393,15 +397,15 @@ void Critter::ClearVisibleEnitites()
 
     _visibleItems.clear();
 
-    FO_VERIFY_AND_THROW(_visibleCrWhoSeeMe.empty(), "Visible cr who see me must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrWhoSeeMeMap.empty(), "Visible cr who see me map must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCr.empty(), "Visible cr must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrMap.empty(), "Visible cr map must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrModes.empty(), "Visible cr modes must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrGroup1.empty(), "Visible cr group1 must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrGroup2.empty(), "Visible cr group2 must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleCrGroup3.empty(), "Visible cr group3 must be empty before this operation");
-    FO_VERIFY_AND_THROW(_visibleItems.empty(), "Visible items must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrWhoSeeMe.empty(), "Visible cr who see me must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrWhoSeeMeMap.empty(), "Visible cr who see me map must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCr.empty(), "Visible cr must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrMap.empty(), "Visible cr map must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrModes.empty(), "Visible cr modes must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup1.empty(), "Visible cr group1 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup2.empty(), "Visible cr group2 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup3.empty(), "Visible cr group3 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleItems.empty(), "Visible items must be empty before this operation");
 }
 
 auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
@@ -552,7 +556,7 @@ auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
     }
 
     const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
-    FO_VERIFY_AND_THROW(inserted2, "Missing required inserted2");
+    FO_STRONG_ASSERT(inserted2, "Visible critter graph asymmetry on add", GetId(), cr->GetId());
 
     cr->_visibleCrModes[GetId()] = mode;
     _visibleCrWhoSeeMe.emplace_back(cr);
@@ -582,17 +586,17 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     _visibleCrWhoSeeMeMap.erase(it_map);
 
     const auto it_map2 = cr->_visibleCrMap.find(GetId());
-    FO_VERIFY_AND_THROW(it_map2 != cr->_visibleCrMap.end(), "Lookup failed in critter visible cr map");
+    FO_STRONG_ASSERT(it_map2 != cr->_visibleCrMap.end(), "Lookup failed in critter visible cr map");
     cr->_visibleCrMap.erase(it_map2);
 
     cr->_visibleCrModes.erase(GetId());
 
     const auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
-    FO_VERIFY_AND_THROW(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
+    FO_STRONG_ASSERT(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
     _visibleCrWhoSeeMe.erase(it);
 
     const auto it2 = std::ranges::find(cr->_visibleCr, this);
-    FO_VERIFY_AND_THROW(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
+    FO_STRONG_ASSERT(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
     cr->_visibleCr.erase(it2);
 
     return true;
