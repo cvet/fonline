@@ -495,7 +495,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemRecacheHex(entity, prop); });
-        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemMultihexLines(entity, prop); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::MultihexLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) FO_DEFERRED { ignore_unused(data); OnSetItemMultihexLines(entity, prop); });
     }
 
     return std::nullopt;
@@ -2748,21 +2748,32 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         vec_remove_unique_value(_unloginedPlayers, unlogined_player);
     }
 
+    refcount_ptr<Player> player_ref;
+    Player* player = nullptr;
     bool registered_player = false;
+    bool reconnect_swapped = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
+        if (reconnect_swapped) {
+            safe_call([&] { player->SwapConnection(unlogined_player); });
+        }
+
         if (registered_player) {
             safe_call([&] { unlogined_player->DetachCritter(); });
             safe_call([&] { unlogined_player->ResetViewMap(); });
             safe_call([&] { unlogined_player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(unlogined_player); });
         }
+        else {
+            safe_call([&] { unlogined_player->MarkAsDestroyed(); });
+        }
+
         safe_call([&] { unlogined_player->SetLogined(false); });
         safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
     }};
 
-    auto player_ref = EntityMngr.GetPlayer(player_id);
-    Player* player = player_ref.get();
+    player_ref = EntityMngr.GetPlayer(player_id);
+    player = player_ref.get();
 
     if (player == nullptr) {
         player = unlogined_player;
@@ -2812,6 +2823,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
 
         // Kick previous
         player->SwapConnection(unlogined_player);
+        reconnect_swapped = true;
         unlogined_player->GetConnection()->HardDisconnect();
         player->Send_LoginSuccess();
 
@@ -2823,6 +2835,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(Player* unlogined_player, ident_t
         if (login_result == Entity::EventResult::StopChain) {
             player->SetLogined(false);
             player->GetConnection()->GracefulDisconnect();
+            unlogined_player->SetLogined(false);
+            unlogined_player->MarkAsDestroyed();
             return nullptr;
         }
 

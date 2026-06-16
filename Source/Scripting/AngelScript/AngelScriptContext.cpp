@@ -195,6 +195,11 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
 
+    auto restore_to_free = scope_fail([&]() noexcept {
+        vec_remove_unique_value(_busyContexts, ctx);
+        vec_add_unique_value(_freeContexts, ctx);
+    });
+
     auto* parent_ctx = AngelScript::asGetActiveContext();
     auto* parent_ctx_ext = parent_ctx != nullptr ? AngelScriptContextExtendedData::Get(parent_ctx) : nullptr;
     auto* root_ctx = parent_ctx_ext != nullptr ? parent_ctx_ext->Root.get() : parent_ctx;
@@ -228,8 +233,6 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         scoped_lock lock {_poolLocker};
 
         refcount_ptr ctx_holder = ctx;
-        vec_remove_unique_value(_busyContexts, ctx);
-        vec_add_unique_value(_freeContexts, ctx);
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
@@ -245,6 +248,10 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         ctx_ext->BirthNativeTruncated = false;
 
         for (auto& other : _busyContexts) {
+            if (other.get() == ctx) {
+                continue;
+            }
+
             auto* other_ext = AngelScriptContextExtendedData::Get(other.get());
             FO_VERIFY_AND_THROW(other_ext, "Missing required other ext");
 
@@ -255,6 +262,10 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
                 other_ext->Root.reset();
             }
         }
+
+        // Single atomic busy->free move; reserve first so the add cannot half-complete.
+        vec_remove_unique_value(_busyContexts, ctx);
+        vec_add_unique_value(_freeContexts, ctx);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);

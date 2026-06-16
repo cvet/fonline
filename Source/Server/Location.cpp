@@ -185,6 +185,10 @@ void Location::RemoveMap(Map* map)
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
 
+    for (size_t index = 0; index < _locMaps.size(); index++) {
+        _locMaps[index]->SetLocMapIndex(numeric_cast<int32_t>(index));
+    }
+
     // Currently all maps are destroyed on this stage but in future maps can be reused or
     // moved to another location, so keep the persistence flag in sync with the location.
     if (map->IsPersistent() && !map->IsExplicitlyPersistent() && !map->IsDestroying() && !map->IsDestroyed()) {
