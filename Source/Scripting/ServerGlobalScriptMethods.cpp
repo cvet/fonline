@@ -1509,6 +1509,14 @@ FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, readonly_vector<Server
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncEnsure(ServerEngine* server, ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    ctx->EnsureEntitySynced(entity);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
