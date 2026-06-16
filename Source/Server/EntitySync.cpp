@@ -533,6 +533,29 @@ static auto FindLockOwner(ServerEntity* entity, const EntityLock* lock) noexcept
     return owner;
 }
 
+// Bounded back-off between SyncEntities verify-after-acquire retries. A failed verify means a
+// concurrent reparent (e.g. MapManager::Transfer) moved a requested entity out of the cover we
+// just acquired; recomputing immediately re-races the same in-flight transfer, the busy-spin that
+// exhausts the retry budget under sustained map-transfer churn. The first attempts only yield (the
+// transfer usually completes within a scheduler slice), later attempts add a short, capped sleep so
+// a longer transfer window can settle. Mirrors the stage-1 non-parking back-off in AcquireLocks and
+// keeps the common single-retry case latency-free. Called with no locks held.
+static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr int32_t yield_only_attempts = 8;
+    constexpr int32_t max_backoff_shift = 6;
+
+    if (attempt < yield_only_attempts) {
+        std::this_thread::yield();
+    }
+    else {
+        const int32_t shift = std::min(attempt - yield_only_attempts, max_backoff_shift);
+        std::this_thread::sleep_for(std::chrono::microseconds(int64_t {50} << shift));
+    }
+}
+
 void SyncContext::SyncEntities(span<ServerEntity*> entities)
 {
     FO_STACK_TRACE_ENTRY();
@@ -554,8 +577,11 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
     // the wait time of AcquireLocks. After we hold the computed lock set we walk each
     // requested entity's current parent chain and verify that at least one held lock still
     // covers it; if anyone escaped (was reparented out of the cover during the wait), we
-    // release, recompute the cover from the now-current parent layout, and try again. The give-up
-    // budget (MAX_SYNC_RETRIES) is a livelock safety valve sized well above realistic churn depth.
+    // release, recompute the cover from the now-current parent layout, and try again. A failed
+    // verify backs off (BackoffBeforeSyncRetry) before recomputing so the racing reparent can
+    // complete instead of being re-raced immediately; the budget is generous because each retry
+    // is cheap (recompute the cover) and, with back-off, far more likely to make progress. The
+    // give-up budget (MAX_SYNC_RETRIES) remains a livelock safety valve.
     for (int32_t attempt = 0;; attempt++) {
         // Collect all entity locks, then reduce to minimal covering set:
         // if two entities share a common ancestor, use the ancestor's lock
@@ -821,7 +847,12 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
         }
 
-        // Some entity escaped the cover; loop and recompute against the current parent layout.
+        // Some entity escaped the cover during AcquireLocks: a concurrent reparent is in flight.
+        // Release the stale cover (so we don't block other threads while waiting) and back off
+        // briefly before recomputing against the current parent layout — without this the
+        // immediate recompute re-races the same transfer and exhausts the budget under churn.
+        ReleaseLocks();
+        BackoffBeforeSyncRetry(attempt);
     }
 }
 

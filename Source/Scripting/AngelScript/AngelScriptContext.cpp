@@ -195,7 +195,7 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
 
-    auto restore_to_free = scope_fail([&]() noexcept {
+    auto restore_to_free = scope_fail([&]() FO_TSA_NO_ANALYSIS noexcept {
         vec_remove_unique_value(_busyContexts, ctx);
         vec_add_unique_value(_freeContexts, ctx);
     });
