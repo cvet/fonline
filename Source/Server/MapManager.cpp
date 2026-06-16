@@ -412,7 +412,7 @@ void MapManager::DestroyMapContent(Map* map)
     auto* ctx = _engine->GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); map->HasCritters() || map->HasItems();) {
         for (auto* cr : copy_hold_ref(map->GetPlayerCritters())) {
             ctx->EnsureEntitySynced(cr);
             TransferToGlobal(cr, {});
@@ -425,6 +425,11 @@ void MapManager::DestroyMapContent(Map* map)
             ctx->EnsureEntitySynced(item);
             _engine->ItemMngr.DestroyItem(item);
         }
+
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        const size_t remaining_deps = map->GetCritters().size() + map->GetItems().size();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map content destruction made no progress", map->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 }
 
@@ -624,7 +629,7 @@ void MapManager::DestroyLocation(Location* loc)
         DestroyMapInternal(map);
     }
 
-    for (InfinityLoopDetector detector; loc->HasInnerEntities(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); loc->HasInnerEntities();) {
         try {
             if (loc->HasInnerEntities()) {
                 _engine->EntityMngr.DestroyInnerEntities(loc);
@@ -633,6 +638,11 @@ void MapManager::DestroyLocation(Location* loc)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+
+        // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption.
+        const size_t remaining_deps = loc->GetInnerEntitiesCount();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Location inner-entity destruction made no progress", loc->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 
     _engine->TimeEventMngr.CancelAllForEntity(loc);
@@ -679,10 +689,10 @@ void MapManager::DestroyMapInternal(Map* map)
     while (map->HasSpectatorPlayers()) {
         auto* player = map->GetSpectatorPlayers().back().get();
         player->ResetViewMap();
-        player->Send_LoadMap(nullptr);
+        safe_call([&] { player->Send_LoadMap(nullptr); });
     }
 
-    for (InfinityLoopDetector detector; map->HasCritters() || map->HasItems() || map->HasInnerEntities(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); map->HasCritters() || map->HasItems() || map->HasInnerEntities();) {
         try {
             if (map->HasCritters() || map->HasItems()) {
                 DestroyMapContent(map);
@@ -695,6 +705,11 @@ void MapManager::DestroyMapInternal(Map* map)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+
+        // Each pass must strictly reduce the map's remaining content; non-convergence is corruption.
+        const size_t remaining_deps = map->GetCritters().size() + map->GetItems().size() + map->GetInnerEntitiesCount();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Map destruction made no progress", map->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 
     _engine->TimeEventMngr.CancelAllForEntity(map);
@@ -1111,10 +1126,15 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
         cr->SetParent(nullptr);
 
         if (global_cr == nullptr || global_cr->GetMapId()) {
-            _engine->LockForPropertyAccess();
-            const auto trip_id = _engine->GetLastGlobalMapTripId() + 1;
-            _engine->SetLastGlobalMapTripId(trip_id);
-            _engine->UnlockForPropertyAccess();
+            // Tight lambda so the property lock is released (even on a throw) exactly when the
+            // trip-id read/advance finishes, without widening the locked region over the work below.
+            const auto trip_id = [this]() {
+                _engine->LockForPropertyAccess();
+                auto unlock_prop = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
+                const auto next_trip_id = _engine->GetLastGlobalMapTripId() + 1;
+                _engine->SetLastGlobalMapTripId(next_trip_id);
+                return next_trip_id;
+            }();
 
             cr->SetGlobalMapTripId(trip_id);
 

@@ -55,6 +55,9 @@ void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& 
 
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
+    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
+    FO_VERIFY_AND_THROW(it.second, "Duplicate prototype id", type_name, proto->GetProtoId());
+
     if (const auto* loc = dynamic_cast<const ProtoLocation*>(proto.get()); loc != nullptr) {
         _locProtos[proto->GetProtoId()] = loc;
     }
@@ -67,9 +70,6 @@ void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& 
     else if (const auto* item = dynamic_cast<const ProtoItem*>(proto.get()); item != nullptr) {
         _itemProtos[proto->GetProtoId()] = item;
     }
-
-    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
-    FO_VERIFY_AND_THROW(it.second, "Missing required it second");
 }
 
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
@@ -81,24 +81,16 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
-            _locProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
-            _mapProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
-            _crProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
-            _itemProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
         }
         else {
             return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);

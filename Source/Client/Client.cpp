@@ -231,18 +231,18 @@ void ClientEngine::Shutdown()
     _chosen = nullptr;
 
     if (_curMap) {
-        _curMap->DestroySelf();
-        _curMap = nullptr;
+        auto cur_map = std::move(_curMap);
+        cur_map->DestroySelf();
     }
 
     if (_curLocation) {
-        _curLocation->DestroySelf();
-        _curLocation = nullptr;
+        auto cur_location = std::move(_curLocation);
+        cur_location->DestroySelf();
     }
 
     if (_curPlayer) {
-        _curPlayer->DestroySelf();
-        _curPlayer = nullptr;
+        auto cur_player = std::move(_curPlayer);
+        cur_player->DestroySelf();
     }
 
     for (auto& cr : _globalMapCritters) {
@@ -2319,8 +2319,8 @@ void ClientEngine::UnloadMap()
     Settings.ScrollMouseUp = false;
 
     if (_curMap) {
-        _curMap->DestroySelf();
-        _curMap = nullptr;
+        auto cur_map = std::move(_curMap);
+        cur_map->DestroySelf();
 
         CleanupSpriteCache();
     }

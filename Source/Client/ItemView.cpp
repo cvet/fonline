@@ -62,7 +62,7 @@ void ItemView::OnDestroySelf()
     SetCritterSlot(CritterItemSlot::Inventory);
 
     for (auto& item : _innerItems) {
-        item->DestroySelf();
+        safe_call([&] { item->DestroySelf(); });
     }
 
     _innerItems.clear();

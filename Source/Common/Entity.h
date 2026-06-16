@@ -190,6 +190,7 @@ public:
     [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int32_t prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
+    [[nodiscard]] auto GetInnerEntitiesCount() const noexcept -> size_t;
     [[nodiscard]] auto GetInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;

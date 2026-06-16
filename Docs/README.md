@@ -35,6 +35,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 ## Runtime model
 
 - [EntityModel.md](EntityModel.md) — entity/property/prototype runtime model, holders, events, and serialization relationships.
+- [ExceptionSafety.md](ExceptionSafety.md) — engine-invariant stability under exceptions: terminate-on-OOM allocation model, the entity-lifecycle throw-as-signal contract, post-mutation `FO_STRONG_ASSERT` policy, and the disposition decision rules.
 - [MapsMovementGeometry.md](MapsMovementGeometry.md) — map coordinates, geometry modes, path finding, line tracing, movement contexts, and map loading.
 - [Networking.md](Networking.md) — network buffers, command packing, client/server transports, and ordered UDP.
 - [Persistence.md](Persistence.md) — server database facade, backend implementations, commit queue, and recovery logs.

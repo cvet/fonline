@@ -115,9 +115,9 @@ void EntityLock::Acquire(uint64_t ticket)
         throw EntityLockWaitAbortedException("EntityLock::Acquire aborted: shutdown in progress");
     }
 
-    FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
+    FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
     const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
-    FO_VERIFY_AND_THROW(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
+    FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)

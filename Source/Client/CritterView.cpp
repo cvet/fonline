@@ -67,7 +67,7 @@ void CritterView::OnDestroySelf()
     FO_STACK_TRACE_ENTRY();
 
     for (auto& item : _invItems) {
-        item->DestroySelf();
+        safe_call([&] { item->DestroySelf(); });
     }
 
     _invItems.clear();
@@ -99,6 +99,7 @@ auto CritterView::AddMapperInvItem(ident_t id, const ProtoItem* proto, CritterIt
     FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
+    auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
@@ -113,6 +114,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, const ProtoItem* proto, Critter
     FO_STACK_TRACE_ENTRY();
 
     auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
+    auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->RestoreData(props_data);
     item->SetStatic(false);

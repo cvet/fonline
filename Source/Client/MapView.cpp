@@ -165,18 +165,21 @@ void MapView::OnDestroySelf()
     FO_STACK_TRACE_ENTRY();
 
     for (auto& cr : _critters) {
-        cr->DestroySelf();
+        safe_call([&] { cr->DestroySelf(); });
     }
     for (auto& item : _items) {
-        item->DestroySelf();
+        safe_call([&] { item->DestroySelf(); });
     }
+
     for (auto& pattern : _spritePatterns) {
         pattern->Finish();
     }
+
     for (auto& fog_slot : _fogs) {
         for (auto& fog : fog_slot) {
             fog->Disposed = true; // so a script still holding the handle recreates it on the next map
         }
+
         fog_slot.clear();
     }
 

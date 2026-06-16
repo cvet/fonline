@@ -4,6 +4,8 @@ This document explains the reusable runtime entity model: entity type descriptor
 
 Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
 
+For how entity create/destroy/register stays consistent when an exception is thrown mid-operation — the terminate-on-OOM allocation model, the lifecycle throw-as-signal contract, and the post-mutation `FO_STRONG_ASSERT` policy — see [ExceptionSafety.md](ExceptionSafety.md).
+
 ## Ownership model
 
 The engine owns the entity runtime and metadata/property mechanics. An embedding game project owns concrete prototype files, content IDs, scripts, and gameplay rules that use those mechanics.

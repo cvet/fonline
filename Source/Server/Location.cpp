@@ -149,6 +149,10 @@ void Location::AddMap(Map* map)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(map, "Missing map instance");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add a map to an already destroyed location", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add a map to a location that is being destroyed", GetId());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add an already destroyed map to a location", map->GetId());
+    FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a map that is being destroyed to a location", map->GetId());
 
     vec_add_unique_value(_locMaps, map);
 
@@ -180,6 +184,10 @@ void Location::RemoveMap(Map* map)
     map->SetLocId({});
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
+
+    for (size_t index = 0; index < _locMaps.size(); index++) {
+        _locMaps[index]->SetLocMapIndex(numeric_cast<int32_t>(index));
+    }
 
     // Currently all maps are destroyed on this stage but in future maps can be reused or
     // moved to another location, so keep the persistence flag in sync with the location.

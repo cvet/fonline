@@ -195,6 +195,11 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
 
+    auto restore_to_free = scope_fail([&]() noexcept {
+        vec_remove_unique_value(_busyContexts, ctx);
+        vec_add_unique_value(_freeContexts, ctx);
+    });
+
     ctx_ext->Generation++;
 
     auto* parent_ctx = AngelScript::asGetActiveContext();
@@ -247,8 +252,6 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         FO_AS_VERIFY(ctx->Unprepare());
 
         refcount_ptr ctx_holder = ctx;
-        vec_remove_unique_value(_busyContexts, ctx);
-        vec_add_unique_value(_freeContexts, ctx);
 
         if (_contextSetupCallback) {
             _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
@@ -261,6 +264,10 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
         ctx_ext->BirthNativeTruncated = false;
 
         for (auto& other : _busyContexts) {
+            if (other.get() == ctx) {
+                continue;
+            }
+
             auto* other_ext = AngelScriptContextExtendedData::Get(other.get());
             FO_VERIFY_AND_THROW(other_ext, "Missing required other ext");
 
@@ -271,6 +278,10 @@ void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx
                 other_ext->Root.reset();
             }
         }
+
+        // Single atomic busy->free move; reserve first so the add cannot half-complete.
+        vec_remove_unique_value(_busyContexts, ctx);
+        vec_add_unique_value(_freeContexts, ctx);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -481,10 +492,10 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         }
 
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+        FO_STRONG_ASSERT(ctx_ext, "Missing extended script execution context");
 
         if (ctx_ext->ExecutionActive.exchange(true)) {
-            FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
+            FO_STRONG_ASSERT(_delayedScheduler, "Missing required delayed scheduler");
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }

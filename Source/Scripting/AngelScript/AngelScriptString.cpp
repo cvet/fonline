@@ -534,7 +534,13 @@ static auto ScriptString_RawLength(const string& str) -> int32_t
 
 static void ScriptString_RawResize(string& str, int32_t length)
 {
-    str.resize(numeric_cast<int32_t>(length));
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (length < 0) {
+        throw ScriptException("String resize length must not be negative", length);
+    }
+
+    str.resize(numeric_cast<size_t>(length));
 }
 
 static auto ScriptString_RawGet(const string& str, int32_t index) -> uint8_t
