@@ -222,6 +222,13 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
         throw ScriptException("Trace distance must be non-negative");
     }
 
+    if (startOffset.x < std::numeric_limits<int16_t>::min() || startOffset.x > std::numeric_limits<int16_t>::max() || //
+        startOffset.y < std::numeric_limits<int16_t>::min() || startOffset.y > std::numeric_limits<int16_t>::max() || //
+        targetOffset.x < std::numeric_limits<int16_t>::min() || targetOffset.x > std::numeric_limits<int16_t>::max() || //
+        targetOffset.y < std::numeric_limits<int16_t>::min() || targetOffset.y > std::numeric_limits<int16_t>::max()) {
+        throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
+    }
+
     const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
     const auto target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
     LineTracer tracer(fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset);
@@ -255,6 +262,14 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
 
     if (dist < 0) {
         throw ScriptException("Trace distance must be non-negative");
+    }
+
+
+    if (startOffset.x < std::numeric_limits<int16_t>::min() || startOffset.x > std::numeric_limits<int16_t>::max() || //
+        startOffset.y < std::numeric_limits<int16_t>::min() || startOffset.y > std::numeric_limits<int16_t>::max() || //
+        targetOffset.x < std::numeric_limits<int16_t>::min() || targetOffset.x > std::numeric_limits<int16_t>::max() || //
+        targetOffset.y < std::numeric_limits<int16_t>::min() || targetOffset.y > std::numeric_limits<int16_t>::max()) {
+        throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
     }
 
     const auto start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};

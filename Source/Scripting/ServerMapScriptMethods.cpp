@@ -209,6 +209,9 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemOnHex(Map* self, mpos hex, Ite
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemInRadius(Map* self, mpos hex, int32_t radius, hstring pid)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -227,6 +230,9 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemInRadius(Map* self, mpos hex, 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemInRadius(Map* self, mpos hex, int32_t radius, ProtoItem* proto)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -245,6 +251,9 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemInRadius(Map* self, mpos hex, 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Map_GetItemInRadius(Map* self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -319,6 +328,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int32_t radius)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -329,6 +341,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int32_t radius, hstring pid)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -350,6 +365,9 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int32_t radius, ProtoItem* proto)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
     }
@@ -415,6 +433,10 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(Map* self, mpos hex, ItemPr
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(Map* self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
+
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -475,6 +497,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(Map* self, mpos
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32_t radius, hstring pid)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -485,10 +510,12 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, m
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32_t radius, ProtoItem* proto)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (proto == nullptr) {
         throw ScriptException("Item proto arg is null");
     }
-
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -521,6 +548,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(Map* self, mpos
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(Map* self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -639,6 +669,9 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersOnHex(Map* self, mpos hex, 
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInRadius(Map* self, mpos hex, int32_t radius, CritterFindType findType)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -1002,6 +1035,9 @@ FO_SCRIPT_API bool Server_Map_IsHexMovable(Map* self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexesMovable(Map* self, mpos hex, int32_t radius)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }

@@ -1443,6 +1443,10 @@ void EntityManager::DestroyEntity(Entity* entity)
         _engine->MapMngr.DestroyLocation(loc);
     }
     else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+        if (cr->GetControlledByPlayer()) {
+            throw ScriptException("Cannot destroy a player-controlled critter; detach the player first", cr->GetId());
+        }
+
         _engine->CrMngr.DestroyCritter(cr);
     }
     else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {

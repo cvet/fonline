@@ -151,6 +151,10 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
+    }
+
     self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
 }
 
@@ -160,6 +164,10 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
+    }
+
     if (preciseHex) {
         self->GetEngine()->MapMngr.TransferToMap(self, map, hex, dir, std::nullopt);
     }
@@ -715,6 +723,9 @@ static auto StartCritterMoveToHex(Critter* self, mpos hex, int32_t cut, ipos16 e
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
+    if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
+        throw ScriptException("Speed arg out of range", speed);
+    }
 
     self->StopMoving();
 
@@ -803,6 +814,10 @@ FO_SCRIPT_API void Server_Critter_StopMoving(Critter* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_ChangeMovingSpeed(Critter* self, int32_t speed)
 {
+    if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
+        throw ScriptException("Speed arg out of range", speed);
+    }
+
     self->GetEngine()->ChangeCritterMovingSpeed(self, numeric_cast<uint16_t>(speed));
 }
 

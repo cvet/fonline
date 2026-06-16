@@ -619,6 +619,10 @@ FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, string_view langN
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32_t skipCount = 0)
 {
+    if (skipCount < 0) {
+        throw ScriptException("Skip count arg must not be negative", skipCount);
+    }
+
     return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));
 }
 
