@@ -150,7 +150,10 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(item);
-    _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
+
+    if (!cr->IsDestroying()) {
+        _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
+    }
 }
 
 auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> Critter*

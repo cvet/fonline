@@ -413,14 +413,20 @@ void MapManager::DestroyMapContent(Map* map)
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); map->HasCritters() || map->HasItems();) {
-        for (auto* cr : copy_hold_ref(map->GetPlayerCritters())) {
+        for (auto* cr : copy_hold_ref(map->GetCritters())) {
             ctx->EnsureEntitySynced(cr);
-            TransferToGlobal(cr, {});
+
+            if (cr->GetControlledByPlayer()) {
+                TransferToGlobal(cr, {});
+            }
+            else if (cr->IsDestroying()) {
+                RemoveCritterFromMap(cr, map);
+            }
+            else {
+                _engine->CrMngr.DestroyCritter(cr);
+            }
         }
-        for (auto* cr : copy_hold_ref(map->GetNonPlayerCritters())) {
-            ctx->EnsureEntitySynced(cr);
-            _engine->CrMngr.DestroyCritter(cr);
-        }
+
         for (auto* item : copy_hold_ref(map->GetItems())) {
             ctx->EnsureEntitySynced(item);
             _engine->ItemMngr.DestroyItem(item);
