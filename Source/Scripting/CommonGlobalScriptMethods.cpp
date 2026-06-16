@@ -264,7 +264,6 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(BaseEngine* engine, msize ma
         throw ScriptException("Trace distance must be non-negative");
     }
 
-
     if (startOffset.x < std::numeric_limits<int16_t>::min() || startOffset.x > std::numeric_limits<int16_t>::max() || //
         startOffset.y < std::numeric_limits<int16_t>::min() || startOffset.y > std::numeric_limits<int16_t>::max() || //
         targetOffset.x < std::numeric_limits<int16_t>::min() || targetOffset.x > std::numeric_limits<int16_t>::max() || //
