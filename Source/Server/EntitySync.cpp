@@ -43,6 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t MAX_VALIDATE_ATTEMPTS = 32;
+static constexpr int32_t MAX_SYNC_RETRIES = 128;
 
 static thread_local SyncContext* CurrentContext {};
 static std::atomic<uint64_t> TicketCounter {};
@@ -383,6 +384,22 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         }
     };
 
+    const auto dump_uncovered = [&try_hold_entity](const ServerEntity* e, string_view where) {
+        WriteLog("SyncDiag access-without-sync [{}]: entity '{}' id={} destroyed={}", where, e != nullptr ? e->GetName() : string_view {}, e != nullptr ? e->GetId() : ident_t {}, e != nullptr && e->IsDestroyed());
+
+        for (auto walk = try_hold_entity(e); walk; walk = walk->GetParentRaw()) {
+            const auto* walk_lock = walk->GetEntityLock();
+            WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), walk_lock == nullptr ? string_view {"none"} : (walk_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
+        }
+
+        auto* widen = e != nullptr ? const_cast<ServerEntity*>(e)->GetSyncWidenEntity() : nullptr;
+
+        if (widen != nullptr) {
+            const auto* widen_lock = widen->GetEntityLock();
+            WriteLog("SyncDiag   widen: '{}' id={} lock={}", widen->GetName(), widen->GetId(), widen_lock == nullptr ? string_view {"none"} : (widen_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
+        }
+    };
+
     for (int32_t attempt = 0; attempt < MAX_VALIDATE_ATTEMPTS; attempt++) {
         const EntityLock* found_lock = nullptr;
 
@@ -421,6 +438,7 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
                 }
             }
 
+            dump_uncovered(entity, "no-lock-found");
             return false;
         }
 
@@ -443,7 +461,9 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         // different held lock (e.g. caller holds multiple ancestors and the new chain hits one).
     }
 
+    dump_uncovered(entity, "retry-exhausted");
     FO_VERIFY_AND_CONTINUE(false, "Unable to prove entity is covered by a held sync lock", entity ? entity->GetId() : ident_t {}, MAX_VALIDATE_ATTEMPTS);
+
     return false;
 }
 
@@ -534,9 +554,8 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
     // the wait time of AcquireLocks. After we hold the computed lock set we walk each
     // requested entity's current parent chain and verify that at least one held lock still
     // covers it; if anyone escaped (was reparented out of the cover during the wait), we
-    // release, recompute the cover from the now-current parent layout, and try again.
-    constexpr int32_t max_sync_retries = 16;
-
+    // release, recompute the cover from the now-current parent layout, and try again. The give-up
+    // budget (MAX_SYNC_RETRIES) is a livelock safety valve sized well above realistic churn depth.
     for (int32_t attempt = 0;; attempt++) {
         // Collect all entity locks, then reduce to minimal covering set:
         // if two entities share a common ancestor, use the ancestor's lock
@@ -797,7 +816,7 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             return;
         }
 
-        if (attempt + 1 >= max_sync_retries) {
+        if (attempt + 1 >= MAX_SYNC_RETRIES) {
             ReleaseLocks();
             throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
         }

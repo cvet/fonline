@@ -1533,6 +1533,14 @@ FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ServerEngine
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsEntityLocked(ServerEngine* server, FO_NULLABLE ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    return IsEntityAccessValid(entity);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Lock(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
