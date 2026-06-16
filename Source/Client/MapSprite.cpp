@@ -90,17 +90,56 @@ auto MapSprite::GetDrawRect() const noexcept -> irect32
     const auto* spr = GetSprite();
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing draw rect", _hex, _drawOrder, _index);
 
-    const ipos32 spr_offset = spr->GetOffset();
     const isize32 spr_size = spr->GetSize();
-    int32_t x = _hexOffset.x + _pHexOffset->x - spr_size.width / 2 + spr_offset.x;
-    int32_t y = _hexOffset.y + _pHexOffset->y - spr_size.height + spr_offset.y;
+    const ipos32 root_pos = GetDrawRootPos();
+    const ipos32 root_offset = GetSpriteRootOffset();
 
-    if (_pSprOffset) {
-        x += _pSprOffset->x;
-        y += _pSprOffset->y;
+    return {ipos32(root_pos.x - root_offset.x, root_pos.y - root_offset.y), spr_size};
+}
+
+auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ipos32 pos = _hexOffset + *_pHexOffset;
+
+    if (_elevation != 0) {
+        const float32_t elevation = numeric_cast<float32_t>(_elevation);
+        const float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        pos.y -= iround<int32_t>(map_elevation_y);
     }
 
-    return {ipos32(x, y), spr_size};
+    if (_pSprOffset) {
+        pos += *_pSprOffset;
+    }
+
+    return pos;
+}
+
+auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ipos32 offset = _hexOffset;
+
+    if (_pSprOffset) {
+        offset += *_pSprOffset;
+    }
+
+    return offset;
+}
+
+auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* spr = GetSprite();
+    FO_VERIFY_AND_RETURN_VALUE(spr, ipos32(), "Map sprite has no sprite while computing sprite root offset", _hex, _drawOrder, _index);
+
+    const ipos32 spr_offset = spr->GetOffset();
+    const isize32 spr_size = spr->GetSize();
+
+    return {spr_size.width / 2 - spr_offset.x, spr_size.height - spr_offset.y};
 }
 
 auto MapSprite::GetViewRect() const noexcept -> irect32
@@ -199,6 +238,13 @@ void MapSprite::SetHidden(bool hidden) noexcept
     _hidden = hidden;
 }
 
+void MapSprite::SetElevation(int16_t elevation) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _elevation = elevation;
+}
+
 void MapSprite::SetAngle(int16_t angle) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -206,11 +252,11 @@ void MapSprite::SetAngle(int16_t angle) noexcept
     _angle = angle;
 }
 
-void MapSprite::SetMapProjection(bool map_projection) noexcept
+void MapSprite::SetMapProjected(bool map_projected) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _mapProjection = map_projection;
+    _mapProjected = map_projected;
 }
 
 void MapSprite::CreateExtraChain(MapSprite** mspr)
@@ -287,8 +333,9 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
     mspr->_color = ucolor::clear;
+    mspr->_elevation = 0;
     mspr->_angle = 0;
-    mspr->_mapProjection = false;
+    mspr->_mapProjected = false;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
 

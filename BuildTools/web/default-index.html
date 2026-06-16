@@ -319,7 +319,26 @@
       }
     });
 
+    // Engine command-line arguments from the URL query string, so the web client
+    // is configurable per launch the same way native clients accept CLI flags
+    // (e.g. ?ClientNetwork.ServerHost=127.0.0.1&Network.ServerPort=4025). Each
+    // key=value pair becomes a "--key" "value" argument pair. With no query string
+    // the client runs on its baked configuration exactly as before.
+    function buildEngineArguments() {
+      var args = [];
+      var params = new URLSearchParams(window.location.search);
+      params.forEach(function (value, key) {
+        if (!key) {
+          return;
+        }
+        args.push('--' + key);
+        args.push(value);
+      });
+      return args;
+    }
+
     var Module = {
+      arguments: buildEngineArguments(),
       websocket: {},
       preRun: [function () {
         if (typeof FS !== 'undefined') {

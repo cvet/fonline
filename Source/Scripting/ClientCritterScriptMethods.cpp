@@ -130,6 +130,18 @@ FO_SCRIPT_API bool Client_Critter_IsVisible(CritterView* self)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(CritterView* self)
+{
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->GetSpriteOffset();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);

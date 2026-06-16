@@ -47,7 +47,7 @@ RenderTargetManager::RenderTargetManager(IAppRender& render, FlushCallback flush
     FO_VERIFY_AND_THROW(_flush, "Missing required flush");
 }
 
-auto RenderTargetManager::GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&
+auto RenderTargetManager::GetRenderTargetStack() const -> const vector<raw_ptr<RenderTarget>>&
 {
     FO_NO_STACK_TRACE_ENTRY();
 

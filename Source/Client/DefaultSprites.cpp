@@ -119,6 +119,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v0 = vbuf[vpos++];
     v0.PosX = pos.x;
     v0.PosY = pos.y + pos.height;
+    v0.PosZ = 0.0f;
     v0.TexU = _atlasRect.x;
     v0.TexV = _atlasRect.y + _atlasRect.height;
     v0.EggFlags[0] = 0.0f;
@@ -128,6 +129,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v1 = vbuf[vpos++];
     v1.PosX = pos.x;
     v1.PosY = pos.y;
+    v1.PosZ = 0.0f;
     v1.TexU = _atlasRect.x;
     v1.TexV = _atlasRect.y;
     v1.EggFlags[0] = 0.0f;
@@ -137,6 +139,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v2 = vbuf[vpos++];
     v2.PosX = pos.x + pos.width;
     v2.PosY = pos.y;
+    v2.PosZ = 0.0f;
     v2.TexU = _atlasRect.x + _atlasRect.width;
     v2.TexV = _atlasRect.y;
     v2.EggFlags[0] = 0.0f;
@@ -146,6 +149,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v3 = vbuf[vpos++];
     v3.PosX = pos.x + pos.width;
     v3.PosY = pos.y + pos.height;
+    v3.PosZ = 0.0f;
     v3.TexU = _atlasRect.x + _atlasRect.width;
     v3.TexV = _atlasRect.y + _atlasRect.height;
     v3.EggFlags[0] = 0.0f;

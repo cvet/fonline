@@ -191,14 +191,12 @@ public:
     ~MapView() override;
 
     [[nodiscard]] auto IsMapperMode() const noexcept -> bool { return _mapperMode; }
-    [[nodiscard]] auto IsShowTrack() const noexcept -> bool { return _isShowTrack; }
     [[nodiscard]] auto IsShowMapperOverlay() const noexcept -> bool { return _isShowMapperOverlay; }
     [[nodiscard]] auto IsShowMapperHiddenSprites() const noexcept -> bool { return _isShowMapperHiddenSprites; }
     [[nodiscard]] auto IsScrollCheck() const noexcept -> bool { return _scrollCheckEnabled; }
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetHexTrack(mpos hex) noexcept -> int8_t& { return _hexTrack[static_cast<size_t>(hex.y) * _mapSize.width + hex.x]; }
     [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
@@ -219,8 +217,6 @@ public:
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
 
-    void ClearHexTrack();
-    void SwitchShowTrack();
     void SetShowMapperOverlay(bool show);
     void SetShowMapperHiddenSprites(bool show);
 
@@ -293,8 +289,6 @@ public:
     void UpdateItemLightSource(const ItemHexView* item);
     void UpdateHexLightSources(mpos hex);
 
-    void SwitchShowHex();
-    void MarkBlockedHexes();
     void SetHiddenRoof(mpos hex);
     void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
     void ClearTransparentEgg(TransparentEggSlot slot);
@@ -369,11 +363,11 @@ private:
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(LightSource* ls);
     void CleanLightFan(LightSource* ls);
-    void TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t intensity);
-    void MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t intensity);
-    void MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t intensity);
-    void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t intensity);
-    void MarkLight(LightSource* ls, mpos hex, int32_t intensity);
+    void TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity);
+    void MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
+    void MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
+    void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t raw_intensity);
+    void MarkLight(LightSource* ls, mpos hex, int32_t raw_intensity);
     void CalculateHexLight(mpos hex, const Field& field);
     void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points) const;
 
@@ -385,6 +379,7 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
+    float32_t _mapDepthHalf {};
     ident_t _workEntityId {};
     map<string, string> _headerExtraFields {};
 
@@ -416,11 +411,6 @@ private:
     fpos32 _autoScrollOffset {};
     int32_t _autoScrollSpeed {};
 
-    shared_ptr<Sprite> _picTrack1 {};
-    shared_ptr<Sprite> _picTrack2 {};
-    shared_ptr<Sprite> _picHex[3] {};
-    bool _isShowTrack {};
-    bool _isShowHex {};
     bool _isShowMapperOverlay {true};
     bool _isShowMapperHiddenSprites {true};
 
@@ -467,8 +457,6 @@ private:
 
     unordered_set<hstring> _fastPids {};
     unordered_set<hstring> _ignorePids {};
-    vector<int8_t> _hexTrack {};
-
     vector<refcount_ptr<SpritePattern>> _spritePatterns {};
 };
 

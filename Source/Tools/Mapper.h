@@ -226,6 +226,15 @@ public:
     void HandleSelectionMouseDrag();
     void SetActivePanelMode(int32_t mode);
 
+    void SetMapperHexOverlayVisible(bool visible);
+    void ToggleMapperHexOverlay();
+    auto IsMapperHexOverlayVisible() const noexcept -> bool { return MapperHexOverlayVisible; }
+    void ClearMapperTrackOverlay();
+    void AddMapperTrackOverlayHex(mpos hex, int32_t kind);
+    auto GetMapperTrackOverlayHexes() const noexcept -> const vector<mpos>& { return MapperTrackOverlayHexes; }
+    auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
+    void MarkBlockedHexes();
+
     auto GetActiveSubTab() -> SubTab*;
     auto GetActiveSubTab() const -> const SubTab*;
     auto GetActiveProtoIndex() const -> int32_t;
@@ -333,6 +342,9 @@ public:
     mpos SelectHex1 {};
     mpos SelectHex2 {};
     ipos32 SelectPos {};
+    vector<mpos> MapperTrackOverlayHexes {};
+    vector<int32_t> MapperTrackOverlayKinds {};
+    bool MapperHexOverlayVisible {};
     bool RightMouseDragged {};
     fpos32 RightMouseInertia {};
     fpos32 RightMouseVelocityAccum {};

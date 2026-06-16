@@ -200,6 +200,8 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
         vec_add_unique_value(_freeContexts, ctx);
     });
 
+    ctx_ext->Generation++;
+
     auto* parent_ctx = AngelScript::asGetActiveContext();
     auto* parent_ctx_ext = parent_ctx != nullptr ? AngelScriptContextExtendedData::Get(parent_ctx) : nullptr;
     auto* root_ctx = parent_ctx_ext != nullptr ? parent_ctx_ext->Root.get() : parent_ctx;
@@ -216,26 +218,40 @@ auto AngelScriptContextManager::RequestContext() -> AngelScript::asIScriptContex
     return ctx.get();
 }
 
-void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx) noexcept
+void AngelScriptContextManager::ReturnContext(AngelScript::asIScriptContext* ctx, uint64_t expected_generation) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ctx->GetState() == AngelScript::asEXECUTION_SUSPENDED) {
-        return;
-    }
-
     try {
-        FO_VERIFY_AND_THROW(ctx->GetState() != AngelScript::asEXECUTION_ACTIVE, "AngelScript context is already executing");
+        scoped_lock lock {_poolLocker};
+
+        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return busy.get() == ctx; });
+
+        if (it == _busyContexts.end()) {
+            return;
+        }
+
+        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+
+        if (ctx_ext->Generation.load() != expected_generation) {
+            return;
+        }
+
+        if (ctx_ext->ExecutionActive.load()) {
+            return;
+        }
+
+        const AngelScript::asEContextState state = ctx->GetState();
+
+        if (state == AngelScript::asEXECUTION_SUSPENDED || state == AngelScript::asEXECUTION_ACTIVE) {
+            return;
+        }
 
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
-        scoped_lock lock {_poolLocker};
-
         refcount_ptr ctx_holder = ctx;
-
-        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
         if (_contextSetupCallback) {
             _contextSetupCallback(ctx, AngelScriptContextSetupReason::Return);
@@ -279,14 +295,23 @@ auto AngelScriptContextManager::PrepareContext(AngelScript::asIScriptFunction* f
     FO_VERIFY_AND_THROW(func, "Missing AngelScript function");
 
     auto* ctx = RequestContext();
+    const auto ctx_generation = GetContextGeneration(ctx);
     const auto as_result = ctx->Prepare(func);
 
     if (as_result < 0) {
-        ReturnContext(ctx);
+        ReturnContext(ctx, ctx_generation);
         throw ScriptCallException("Can't prepare context", func->GetName(), as_result);
     }
 
     return ctx;
+}
+
+auto AngelScriptContextManager::GetContextGeneration(AngelScript::asIScriptContext* ctx) const noexcept -> uint64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    return ctx_ext != nullptr ? ctx_ext->Generation.load() : 0;
 }
 
 void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback)
@@ -296,21 +321,26 @@ void AngelScriptContextManager::SetContextSetupCallback(function<void(AngelScrip
     _contextSetupCallback = std::move(context_setup_callback);
 }
 
-auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend) -> bool
+auto AngelScriptContextManager::RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend, bool execution_reserved) -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+
+    if (execution_reserved) {
+        FO_VERIFY_AND_THROW(ctx_ext->ExecutionActive.load(), "Script execution context is not reserved");
+    }
+    else {
+        const bool already_active = ctx_ext->ExecutionActive.exchange(true);
+        FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
+    }
+
+    auto execution_active_guard = scope_exit([ctx_ext]() noexcept { ctx_ext->ExecutionActive.store(false); });
 
     int32_t exec_result = 0;
 
     {
-        auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
-
-        const bool already_active = ctx_ext->ExecutionActive.exchange(true);
-        FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
-
-        auto execution_active_guard = scope_exit([ctx_ext]() noexcept { ctx_ext->ExecutionActive.store(false); });
-
 #if FO_TRACY
         FO_VERIFY_AND_THROW(!ctx_ext->TracyExecutionActive, "Tracy script execution scope is already active");
         FO_VERIFY_AND_THROW(!ctx_ext->TracyExecutionCalls, "Tracy script execution call depth is not zero");
@@ -450,6 +480,8 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
 {
     FO_STACK_TRACE_ENTRY();
 
+    uint64_t ctx_generation = 0;
+
     {
         scoped_lock lock {_poolLocker};
 
@@ -462,20 +494,23 @@ void AngelScriptContextManager::ResumeSpecificContext(AngelScript::asIScriptCont
         auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
         FO_STRONG_ASSERT(ctx_ext, "Missing extended script execution context");
 
-        if (ctx_ext->ExecutionActive.load()) {
+        if (ctx_ext->ExecutionActive.exchange(true)) {
             FO_STRONG_ASSERT(_delayedScheduler, "Missing required delayed scheduler");
             _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
 
         if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
+            ctx_ext->ExecutionActive.store(false);
             return;
         }
+
+        ctx_generation = ctx_ext->Generation.load();
     }
 
     try {
-        auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx); });
-        RunContext(ctx, true);
+        auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx, ctx_generation); });
+        RunContext(ctx, true, true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);

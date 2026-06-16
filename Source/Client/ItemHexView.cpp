@@ -67,6 +67,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
+    mspr->SetElevation(GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 

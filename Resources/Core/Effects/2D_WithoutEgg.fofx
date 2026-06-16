@@ -1,7 +1,8 @@
 [Effect]
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -13,7 +14,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }
@@ -26,9 +27,14 @@ layout(location = 1) in vec2 TexCoord;
 
 layout(location = 0) out vec4 FragColor;
 
+const float AlphaDepthCutoff = 1.0 / 255.0;
+
 void main(void)
 {
     vec4 texColor = texture(MainTex, TexCoord);
     FragColor.rgb = (texColor.rgb * Color.rgb) * 2.0;
     FragColor.a = texColor.a * Color.a;
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
+    }
 }

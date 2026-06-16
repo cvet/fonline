@@ -387,7 +387,8 @@ void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call)
     auto* backend = GetScriptBackend(as_engine);
     auto* context_mngr = backend->GetContextMngr();
     auto* ctx = context_mngr->PrepareContext(func);
-    auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+    const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+    auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
     const auto* func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
     FO_VERIFY_AND_THROW(func_desc, "Missing script function descriptor");
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");

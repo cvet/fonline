@@ -511,8 +511,6 @@ FO_SCRIPT_API void Mapper_Game_AddMessage(MapperEngine* mapper, string_view mess
 ///@ ExportMethod
 FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(MapperEngine* mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -525,8 +523,6 @@ FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(MapperEngine* mapper)
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(MapperEngine* mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -542,8 +538,6 @@ FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(MapperEngine* mapper)
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(MapperEngine* mapper, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size.width <= 0 || size.height <= 0) {
         throw ScriptException("View size must be positive", size.width, size.height);
     }
@@ -560,8 +554,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(MapperEngine* mapper, isize32 s
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(MapperEngine* mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -588,8 +580,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(MapperEngine* mapper)
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(MapperEngine* mapper, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -606,8 +596,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(MapperEngine* mapper, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(MapperEngine* mapper, ipos32 rawHex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -620,8 +608,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(MapperEngine* mapper, ipos32
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(MapperEngine* mapper, bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -632,10 +618,77 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(MapperEngine* mapper, boo
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(MapperEngine* mapper)
+{
+    auto* map = mapper->GetCurMap();
+
+    return map != nullptr && map->IsShowMapperOverlay();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMapperHexOverlayVisible(MapperEngine* mapper, bool visible)
+{
+    mapper->SetMapperHexOverlayVisible(visible);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Mapper_Game_IsMapperHexOverlayVisible(MapperEngine* mapper)
+{
+    return mapper->IsMapperHexOverlayVisible();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperTrackOverlayHexes(MapperEngine* mapper)
+{
+    return mapper->GetMapperTrackOverlayHexes();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(MapperEngine* mapper)
+{
+    return mapper->GetMapperTrackOverlayKinds();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(MapperEngine* mapper)
+{
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        return {};
+    }
+
+    const irect32 scroll_area = map->GetScrollAxialArea();
+
+    if (scroll_area.is_zero()) {
+        return {};
+    }
+
+    const msize map_size = map->GetSize();
+    vector<mpos> hexes;
+
+    for (int32_t hy = 0; hy < map_size.height; hy++) {
+        for (int32_t hx = 0; hx < map_size.width; hx++) {
+            const mpos hex = map_size.from_raw_pos(hx, hy);
+
+            if (!map->IsHexToDraw(hex)) {
+                continue;
+            }
+
+            const ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+
+            if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
+                hexes.emplace_back(hex);
+            }
+        }
+    }
+
+    return hexes;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(MapperEngine* mapper, bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -648,8 +701,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(MapperEngine* mappe
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(MapperEngine* mapper, readonly_vector<hstring> itemPids)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -666,8 +717,6 @@ FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(MapperEngine* mapper, re
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(MapperEngine* mapper, bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto* map = mapper->GetCurMap();
 
     if (map == nullptr) {
@@ -681,8 +730,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(MapperEngine* mapper,
 ///@ ExportMethod
 FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(MapperEngine* mapper, isize32 viewportSize)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (viewportSize.width <= 0 || viewportSize.height <= 0) {
         throw ScriptException("Viewport size must be positive", viewportSize.width, viewportSize.height);
     }
@@ -718,8 +765,6 @@ FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(MapperEngine* mapper, isiz
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperZoom(MapperEngine* mapper, float32_t zoom)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!(zoom > 0.0f)) {
         throw ScriptException("Zoom must be positive", zoom);
     }
@@ -737,8 +782,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(MapperEngine* mapper, float32_t zoo
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(MapperEngine* mapper, string_view filePath)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");
     }

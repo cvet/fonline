@@ -475,13 +475,13 @@ namespace MapOpsTest
         mpos original = hex;
 
         // Move hex by direction (dir 0 = north-ish)
-        bool moved = map.MoveHexByDir(hex, 0);
+        bool moved = map.MoveHexByDir(hex, mdir(0));
         if (!moved) return -3;
         if (hex.x == original.x && hex.y == original.y) return -4;
 
         // Move multiple steps
         mpos hex2(50, 50);
-        int steps = map.MoveHexByDir(hex2, 1, 3);
+        int steps = map.MoveHexByDir(hex2, mdir(1), 3);
         if (steps != 3) return -5;
 
         Game.DestroyLocation(loc);

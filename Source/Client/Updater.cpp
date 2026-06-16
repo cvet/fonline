@@ -754,9 +754,15 @@ auto Updater::GetClientBinaryDir() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto exe_path = Platform::GetExePath();
-    FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
-    return strex(exe_path.value()).extract_dir().str();
+    if constexpr (FO_WEB) {
+        // The web client runs from the virtual filesystem root and has no on-disk exe path.
+        return "/";
+    }
+    else {
+        const auto exe_path = Platform::GetExePath();
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
+        return strex(exe_path.value()).extract_dir().str();
+    }
 }
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
@@ -899,9 +905,19 @@ auto GetClientRuntimeLivePath() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto exe_path = Platform::GetExePath();
-    FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
-    return strex("{}{}", strex(exe_path.value()).extract_dir().combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    string binary_dir;
+
+    if constexpr (FO_WEB) {
+        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root.
+        binary_dir = "/";
+    }
+    else {
+        const auto exe_path = Platform::GetExePath();
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
+        binary_dir = strex(exe_path.value()).extract_dir().str();
+    }
+
+    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
 auto GetClientRuntimeStagingPath() -> string
