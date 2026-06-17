@@ -118,13 +118,15 @@ auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewCo
 {
     FO_STACK_TRACE_ENTRY();
 
+    const int32_t ws_port = settings.WebSocketPort > 0 ? settings.WebSocketPort : settings.ServerPort + 1;
+
     if (settings.SecuredWebSockets) {
-        WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
+        WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
 
         return SafeAlloc::MakeUnique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
     }
     else {
-        WriteLog("Listen WebSockets (no TLS) connections on port {}", settings.ServerPort + 1);
+        WriteLog("Listen WebSockets (no TLS) connections on port {}", ws_port);
 
         return SafeAlloc::MakeUnique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
     }
@@ -293,7 +295,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.WebSocketPort > 0 ? settings.WebSocketPort : settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = run_thread("Network-WebSockets", [this] { Run(); });

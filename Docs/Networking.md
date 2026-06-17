@@ -133,6 +133,16 @@ The client runtime should depend on the abstract connection interface where poss
 - `StartWebSocketsServer()` when `FO_HAVE_WEB_SOCKETS` is enabled;
 - `CreateDummyConnection()` for tests/special paths.
 
+The listen ports and the client connect endpoint are configured per transport:
+
+- **TCP** listens on `Network.ServerPort`; **UDP** on `Network.ServerPort + Network.UdpPortOffset`.
+- **WebSocket(S)** listens on `Network.WebSocketPort` when set (> 0), otherwise the legacy
+  `Network.ServerPort + 1`.
+- The client connects plain TCP/UDP to `ClientNetwork.ServerHost`:`Network.ServerPort`, and
+  WebSocket(S) to `ClientNetwork.WebServerHost` (falling back to `ClientNetwork.ServerHost`) on the
+  resolved WebSocket port — so the WebSocket endpoint can keep a hostname (for its TLS certificate)
+  while the TCP/UDP endpoint can be a raw IP, letting a native client connect without DNS resolution.
+
 Concrete files include:
 
 - `NetworkServer-Interthread.cpp`

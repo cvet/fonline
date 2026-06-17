@@ -83,7 +83,14 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
 #if FO_WEB
-    port++;
+    // WebSocket(S) endpoint is configured independently of the plain TCP/UDP endpoint: WebServerHost
+    // (falls back to ServerHost) keeps a hostname for the TLS certificate, while WebSocketPort (falls
+    // back to the legacy ServerPort + 1) gives an explicit port. This lets the native client reach the
+    // game by IP (no DNS dependency) while the web client uses the hostname.
+    if (!_settings->WebServerHost.empty()) {
+        host = _settings->WebServerHost;
+    }
+    port = numeric_cast<uint16_t>(_settings->WebSocketPort > 0 ? _settings->WebSocketPort : _settings->ServerPort + 1);
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
