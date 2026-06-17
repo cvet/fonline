@@ -524,6 +524,7 @@ static void CustomEntity_HasAny(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     const auto* holder = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityAccessAndNonDestroyed(holder);
     const auto* entities = holder->GetInnerEntities(entry);
 
     new (gen->GetAddressOfReturnLocation()) bool(entities != nullptr);
