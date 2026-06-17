@@ -1453,7 +1453,11 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_FALSE));
         }
-        if (_usage == EffectUsage::Model || _usage == EffectUsage::QuadSprite) {
+        if (
+#if FO_ENABLE_3D
+            _usage == EffectUsage::Model ||
+#endif
+            _usage == EffectUsage::QuadSprite) {
             GL(glDepthFunc(ConvertDepthFunc(_depthFunc[pass])));
         }
 
