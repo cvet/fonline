@@ -261,6 +261,7 @@ static void Entity_HasComponent(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    // May call on unsynced entity
     CheckScriptEntityNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
     const auto& props = entity->GetProperties();
@@ -325,8 +326,8 @@ static auto Entity_DownCast(Entity* entity) -> Entity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
-
+    // May call on unsynced entity
+    // May call on destroyed entity
     return entity;
 }
 
@@ -335,8 +336,9 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    // May call on unsynced entity
+    // May call on destroyed entity
     const auto entity_type_name = entity->GetTypeName();
-    CheckScriptEntityNonDestroyed(entity);
     const auto& target_type_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     bool valid_cast = false;
 
@@ -937,6 +939,7 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (entity->IsDestroyed()) {
         return;
@@ -952,6 +955,7 @@ static void EntityEvent_UnsubscribeAll(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (entity->IsDestroyed()) {
         return;
@@ -967,6 +971,7 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (!entity->IsDestroyed() && entity->HasEventCallbacks(event.Name)) {
         ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
