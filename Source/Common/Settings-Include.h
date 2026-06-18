@@ -64,6 +64,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual BaseSettings);
 FIXED_SETTING(int32_t, Network, ServerPort, 4000); // Server port number
+FIXED_SETTING(int32_t, Network, WebSocketPort, 4001); // WebSockets port for server listen and client connect
 FIXED_SETTING(int32_t, Network, NetBufferSize, 4096); // Network buffer size
 FIXED_SETTING(int32_t, Network, UdpPortOffset, 0); // UDP port offset relative to ServerPort
 FIXED_SETTING(int32_t, Network, UdpPacketSize, 1200); // Target UDP payload budget in bytes
@@ -97,7 +98,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
-FIXED_SETTING(string, ClientNetwork, ServerHost, "localhost"); // Server host address
+FIXED_SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
+FIXED_SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 FIXED_SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
 VARIABLE_SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type

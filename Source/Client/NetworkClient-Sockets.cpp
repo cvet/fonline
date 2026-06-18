@@ -79,11 +79,15 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 {
     FO_STACK_TRACE_ENTRY();
 
-    string_view host = _settings->ServerHost;
-    auto port = numeric_cast<uint16_t>(_settings->ServerPort);
+#if !FO_WEB
+    const string_view host = _settings->ServerHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-#if FO_WEB
-    port++;
+    WriteLog("Connecting to server '{}:{}'", host, port);
+
+#else
+    const string_view host = _settings->WebSocketHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
@@ -93,8 +97,6 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         WebRelated::SetWebSocketScheme(true);
         WriteLog("Connecting to server 'wss://{}:{}'", host, port);
     }
-#else
-    WriteLog("Connecting to server '{}:{}'", host, port);
 #endif
 
     if (!net_sockets::startup()) {
