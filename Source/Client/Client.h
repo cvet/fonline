@@ -265,6 +265,8 @@ public:
     CacheStorage Cache;
 
     ipos32 MousePos {};
+    ipos32 ForcedMousePos {};
+    bool HasForcedMousePos {};
 
     bool CanDrawInScripts {};
 

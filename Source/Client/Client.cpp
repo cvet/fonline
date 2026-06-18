@@ -424,6 +424,10 @@ void ClientEngine::ProcessInputEvents()
 
         OnInputLost.Fire();
     }
+
+    if (HasForcedMousePos) {
+        MousePos = ForcedMousePos;
+    }
 }
 
 void ClientEngine::ProcessInputEvent(const InputEvent& ev)
