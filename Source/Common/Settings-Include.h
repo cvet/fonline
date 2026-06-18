@@ -99,7 +99,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
 FIXED_SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
-FIXED_SETTING(string, ClientNetwork, WebServerHost, "localhost"); // WebSockets server host for client connect
+FIXED_SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 FIXED_SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
 VARIABLE_SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type

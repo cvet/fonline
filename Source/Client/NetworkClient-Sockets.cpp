@@ -86,7 +86,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     WriteLog("Connecting to server '{}:{}'", host, port);
 
 #else
-    const string_view host = _settings->WebServerHost;
+    const string_view host = _settings->WebSocketHost;
     const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
 
     if (!_settings->SecuredWebSockets) {
