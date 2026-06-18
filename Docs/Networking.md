@@ -136,12 +136,14 @@ The client runtime should depend on the abstract connection interface where poss
 The listen ports and the client connect endpoint are configured per transport:
 
 - **TCP** listens on `Network.ServerPort`; **UDP** on `Network.ServerPort + Network.UdpPortOffset`.
-- **WebSocket(S)** listens on `Network.WebSocketPort` when set (> 0), otherwise the legacy
-  `Network.ServerPort + 1`.
+- **WebSocket(S)** listens on `Network.WebSocketPort`.
 - The client connects plain TCP/UDP to `ClientNetwork.ServerHost`:`Network.ServerPort`, and
-  WebSocket(S) to `ClientNetwork.WebServerHost` (falling back to `ClientNetwork.ServerHost`) on the
-  resolved WebSocket port — so the WebSocket endpoint can keep a hostname (for its TLS certificate)
-  while the TCP/UDP endpoint can be a raw IP, letting a native client connect without DNS resolution.
+  WebSocket(S) to `ClientNetwork.WebServerHost`:`Network.WebSocketPort` — so the WebSocket endpoint
+  can keep a hostname (for its TLS certificate) while the TCP/UDP endpoint can be a raw IP, letting a
+  native client connect without DNS resolution.
+
+Each endpoint is configured explicitly: the WebSocket host and port are independent settings, not
+derived from `ServerHost` / `ServerPort`.
 
 Concrete files include:
 
