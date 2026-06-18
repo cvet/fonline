@@ -79,18 +79,15 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 {
     FO_STACK_TRACE_ENTRY();
 
-    string_view host = _settings->ServerHost;
-    auto port = numeric_cast<uint16_t>(_settings->ServerPort);
+#if !FO_WEB
+    const string_view host = _settings->ServerHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-#if FO_WEB
-    // WebSocket(S) endpoint is configured independently of the plain TCP/UDP endpoint: WebServerHost
-    // (falls back to ServerHost) keeps a hostname for the TLS certificate, while WebSocketPort (falls
-    // back to the legacy ServerPort + 1) gives an explicit port. This lets the native client reach the
-    // game by IP (no DNS dependency) while the web client uses the hostname.
-    if (!_settings->WebServerHost.empty()) {
-        host = _settings->WebServerHost;
-    }
-    port = numeric_cast<uint16_t>(_settings->WebSocketPort > 0 ? _settings->WebSocketPort : _settings->ServerPort + 1);
+    WriteLog("Connecting to server '{}:{}'", host, port);
+
+#else
+    const string_view host = _settings->WebServerHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
@@ -100,8 +97,6 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         WebRelated::SetWebSocketScheme(true);
         WriteLog("Connecting to server 'wss://{}:{}'", host, port);
     }
-#else
-    WriteLog("Connecting to server '{}:{}'", host, port);
 #endif
 
     if (!net_sockets::startup()) {
